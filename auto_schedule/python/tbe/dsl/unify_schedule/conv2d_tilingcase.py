@@ -77,10 +77,10 @@ def parse_fuzz_build_range(info_list):
     range_list: list of 4d range
     """
     invalid = (not isinstance(info_list, list)) or len(info_list) == 0
-    if invalid:
-        raise RuntimeError("invalid missing support info {}".format(str(info_list)))
-    list_size = 4
     range_list = []
+    if invalid:
+        return range_list
+    list_size = 4
     for item in info_list:
         inputs = item.get("inputs")
         invalid = (not isinstance(inputs, list)) or len(inputs) == 0
@@ -191,9 +191,10 @@ def add_covered_shape_range(compile_info):
     for kernel_id, block_id in compile_info["block_dim"].items():
         new_compile = compile_info.copy()
         # >>> start: keep only one record
-        for value in new_compile.values():
+        for key, value in new_compile.items():
             if isinstance(value, dict):
                 value = {} if value.get(kernel_id) is None else {kernel_id: value[kernel_id]}
+                new_compile[key] = value
         # <<< end: keep only one record
         new_compile["kernelId"] = kernel_id
         new_compile["_vars"] = {kernel_id: var_list}
@@ -320,7 +321,8 @@ def calc_conv2d(outs, option=None):
         # te fusion make sure that each range is within the range request
         range_str = get_context().get_addition("missing_support_info")
         range_list = []
-        if len(range_str) > 0:
+        valid = isinstance(range_str, str) and (len(range_str) > 0)
+        if valid:
             range_list = parse_fuzz_build_range(json.loads(range_str))
         if len(range_list) > 0:
             tgt_list.clear()
