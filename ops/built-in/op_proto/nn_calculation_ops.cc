@@ -5060,6 +5060,14 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer){
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
+  // >>> start: the restriction comes from DeformableOffsets
+  bool modulated = true;
+  op.GetAttr("modulated", modulated);
+  if (!modulated) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Currently modulated must be true.");
+    return GRAPH_FAILED;
+  }
+  // <<< end: the restriction comes from DeformableOffsets
   std::vector<int64_t> exp_shape;
   if (offset_format == FORMAT_NCHW) {
     exp_shape.push_back(in);

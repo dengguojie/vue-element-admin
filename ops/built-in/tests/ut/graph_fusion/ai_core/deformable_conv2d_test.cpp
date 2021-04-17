@@ -49,13 +49,13 @@ protected:
     filter_0.set_attr_value(filter);
     filter_0.update_output_desc_y(filter_desc);
 
-    TensorDesc offset_desc(ge::Shape({1,7,7,27}), FORMAT_NHWC, DT_FLOAT16);
+    TensorDesc offset_desc(ge::Shape({1,4,4,27}), FORMAT_NHWC, DT_FLOAT16);
     offset_desc.SetOriginFormat(FORMAT_NHWC);
     auto offset_0 = op::Const("offset_0");
     Tensor offset;
-    fp16_t * offset_value = new fp16_t[7*7*27*1];
+    fp16_t * offset_value = new fp16_t[4*4*27*1];
     offset.SetTensorDesc(offset_desc);
-    offset.SetData((uint8_t*)offset_value, 7*7*27*1*sizeof(fp16_t));
+    offset.SetData((uint8_t*)offset_value, 4*4*27*1*sizeof(fp16_t));
     offset_0.set_attr_value(offset);
     offset_0.update_output_desc_y(offset_desc);
 
@@ -81,6 +81,8 @@ protected:
                     .set_attr_pads({1,1,1,1});
 
     dfm_conv2d_layer.update_input_desc_x(tensor_desc_x);
+    dfm_conv2d_layer.update_input_desc_filter(filter_desc);
+    dfm_conv2d_layer.update_input_desc_offsets(offset_desc);
     dfm_conv2d_layer.update_output_desc_y(out_desc);
 
     auto relu_0 = op::Relu("relu_0");
@@ -116,13 +118,13 @@ protected:
     filter_0.set_attr_value(filter);
     filter_0.update_output_desc_y(filter_desc);
 
-    TensorDesc offset_desc(ge::Shape({1,27,7,7}), FORMAT_NCHW, DT_FLOAT16);
+    TensorDesc offset_desc(ge::Shape({1,27,4,4}), FORMAT_NCHW, DT_FLOAT16);
     offset_desc.SetOriginFormat(FORMAT_NCHW);
     auto offset_0 = op::Const("offset_0");
     Tensor offset;
-    fp16_t * offset_value = new fp16_t[7*7*27*1];
+    fp16_t * offset_value = new fp16_t[4*4*27*1];
     offset.SetTensorDesc(offset_desc);
-    offset.SetData((uint8_t*)offset_value, 7*7*27*1*sizeof(fp16_t));
+    offset.SetData((uint8_t*)offset_value, 4*4*27*1*sizeof(fp16_t));
     offset_0.set_attr_value(offset);
     offset_0.update_output_desc_y(offset_desc);
 
@@ -148,6 +150,8 @@ protected:
                     .set_attr_pads({1,1,1,1});
 
     dfm_conv2d_layer.update_input_desc_x(tensor_desc_x);
+    dfm_conv2d_layer.update_input_desc_filter(filter_desc);
+    dfm_conv2d_layer.update_input_desc_offsets(offset_desc);
     dfm_conv2d_layer.update_output_desc_y(out_desc);
 
     auto relu_0 = op::Relu("relu_0");
@@ -166,117 +170,117 @@ protected:
   }
 };
 
-// TEST_F(deformable_conv2d_test, deformable_conv2d_test_1) {
-//   ge::ComputeGraphPtr compute_graph;
-//   BuildGraph(compute_graph);
-//   FusionPassTestUtils::InferShapeAndType(compute_graph);
-//   FusionPassTestUtils::RunGraphFusionPass("ADeformableConv2dPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
-//   bool find_offsets = false;
-//   bool find_conv2d = false;
-//   bool offset_out_equal = false;
-//   bool conv_in_equal = false;
-//   bool ksize_equal = false;
-//   bool pads_equal = false;
-//   bool strides_equal = false;
-//   bool bias_equal = false;
-//   for (auto node: compute_graph->GetAllNodes()) {
-//     if (node->GetType() == "DeformableOffsets") {
-//       find_offsets = true;
-//       OpDescPtr offset_desc = node->GetOpDesc();
-//       auto y_tensor = offset_desc->GetOutputDesc(0);
-//       vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
-//       vector<int64_t> exp_out = {1, 12, 12, 16};
-//       offset_out_equal = out_shape == exp_out;
-//       std::vector<int64_t> exp_ksize(2,3);
-//       std::vector<int64_t> ksize;
-//       AttrUtils::GetListInt(offset_desc, "ksize", ksize),
-//       ksize_equal = ksize == exp_ksize;
-//     }
-//     if (node->GetType() == "Conv2D") {
-//       find_conv2d = true;
-//       OpDescPtr convDesc = node->GetOpDesc();
-//       std::vector<int64_t> exp_strides = {1, 3, 3, 1};
-//       std::vector<int64_t> strides;
-//       AttrUtils::GetListInt(convDesc, "strides", strides),
-//       strides_equal = strides == exp_strides;
-//       std::vector<int64_t> exp_pads(4);
-//       std::vector<int64_t> pads;
-//       AttrUtils::GetListInt(convDesc, "pads", pads),
-//       pads_equal = pads == exp_pads;
-//       auto x_tensor = convDesc->GetInputDesc(0);
-//       vector<int64_t> in_shape = x_tensor.GetOriginShape().GetDims();
-//       vector<int64_t> exp_in = {1, 12, 12, 16};
-//       conv_in_equal = in_shape == exp_in;
-//       auto bias_tensor = convDesc->GetInputDesc(2);
-//       vector<int64_t> bias_shape = bias_tensor.GetOriginShape().GetDims();
-//       vector<int64_t> exp_bias = {4};
-//       bias_equal = bias_shape == exp_bias;
-//     }
-//   }
-//   EXPECT_EQ(find_offsets, true);
-//   EXPECT_EQ(ksize_equal, true);
-//   EXPECT_EQ(pads_equal, true);
-//   EXPECT_EQ(strides_equal, true);
-//   EXPECT_EQ(find_conv2d, true);
-//   EXPECT_EQ(offset_out_equal, true);
-//   EXPECT_EQ(conv_in_equal, true);
-//   EXPECT_EQ(bias_equal, true);
-// }
+TEST_F(deformable_conv2d_test, deformable_conv2d_test_1) {
+  ge::ComputeGraphPtr compute_graph;
+  BuildGraph(compute_graph);
+  FusionPassTestUtils::InferShapeAndType(compute_graph);
+  FusionPassTestUtils::RunGraphFusionPass("ADeformableConv2dPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
+  bool find_offsets = false;
+  bool find_conv2d = false;
+  bool offset_out_equal = false;
+  bool conv_in_equal = false;
+  bool ksize_equal = false;
+  bool pads_equal = false;
+  bool strides_equal = false;
+  bool bias_equal = false;
+  for (auto node: compute_graph->GetAllNodes()) {
+    if (node->GetType() == "DeformableOffsets") {
+      find_offsets = true;
+      OpDescPtr offset_desc = node->GetOpDesc();
+      auto y_tensor = offset_desc->GetOutputDesc(0);
+      vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
+      vector<int64_t> exp_out = {1, 12, 12, 16};
+      offset_out_equal = out_shape == exp_out;
+      std::vector<int64_t> exp_ksize(2,3);
+      std::vector<int64_t> ksize;
+      AttrUtils::GetListInt(offset_desc, "ksize", ksize),
+      ksize_equal = ksize == exp_ksize;
+    }
+    if (node->GetType() == "Conv2D") {
+      find_conv2d = true;
+      OpDescPtr convDesc = node->GetOpDesc();
+      std::vector<int64_t> exp_strides = {1, 3, 3, 1};
+      std::vector<int64_t> strides;
+      AttrUtils::GetListInt(convDesc, "strides", strides),
+      strides_equal = strides == exp_strides;
+      std::vector<int64_t> exp_pads(4);
+      std::vector<int64_t> pads;
+      AttrUtils::GetListInt(convDesc, "pads", pads),
+      pads_equal = pads == exp_pads;
+      auto x_tensor = convDesc->GetInputDesc(0);
+      vector<int64_t> in_shape = x_tensor.GetOriginShape().GetDims();
+      vector<int64_t> exp_in = {1, 12, 12, 16};
+      conv_in_equal = in_shape == exp_in;
+      auto bias_tensor = convDesc->GetInputDesc(2);
+      vector<int64_t> bias_shape = bias_tensor.GetOriginShape().GetDims();
+      vector<int64_t> exp_bias = {4};
+      bias_equal = bias_shape == exp_bias;
+    }
+  }
+  EXPECT_EQ(find_offsets, true);
+  EXPECT_EQ(ksize_equal, true);
+  EXPECT_EQ(pads_equal, true);
+  EXPECT_EQ(strides_equal, true);
+  EXPECT_EQ(find_conv2d, true);
+  EXPECT_EQ(offset_out_equal, true);
+  EXPECT_EQ(conv_in_equal, true);
+  EXPECT_EQ(bias_equal, true);
+}
 
-// TEST_F(deformable_conv2d_test, deformable_conv2d_test_2) {
-//   ge::ComputeGraphPtr compute_graph;
-//   BuildGraph1(compute_graph);
-//   FusionPassTestUtils::InferShapeAndType(compute_graph);
-//   FusionPassTestUtils::RunGraphFusionPass("ADeformableConv2dPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
-//   bool find_offsets = false;
-//   bool find_conv2d = false;
-//   bool offset_out_equal = false;
-//   bool conv_in_equal = false;
-//   bool conv_out_equal = false;
-//   bool ksize_equal = false;
-//   bool pads_equal = false;
-//   bool strides_equal = false;
-//   for (auto node: compute_graph->GetAllNodes()) {
-//     if (node->GetType() == "DeformableOffsets") {
-//       find_offsets = true;
-//       OpDescPtr offset_desc = node->GetOpDesc();
-//       auto y_tensor = offset_desc->GetOutputDesc(0);
-//       vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
-//       vector<int64_t> exp_out = {1, 16, 12, 12};
-//       offset_out_equal = out_shape == exp_out;
-//       std::vector<int64_t> exp_ksize(2,3);
-//       std::vector<int64_t> ksize;
-//       AttrUtils::GetListInt(offset_desc, "ksize", ksize),
-//       ksize_equal = ksize == exp_ksize;
-//     }
-//     if (node->GetType() == "Conv2D") {
-//       find_conv2d = true;
-//       OpDescPtr convDesc = node->GetOpDesc();
-//       std::vector<int64_t> exp_strides = {1, 1, 3, 3};
-//       std::vector<int64_t> strides;
-//       AttrUtils::GetListInt(convDesc, "strides", strides),
-//       strides_equal = strides == exp_strides;
-//       std::vector<int64_t> exp_pads(4);
-//       std::vector<int64_t> pads;
-//       AttrUtils::GetListInt(convDesc, "pads", pads),
-//       pads_equal = pads == exp_pads;
-//       auto x_tensor = convDesc->GetInputDesc(0);
-//       vector<int64_t> in_shape = x_tensor.GetOriginShape().GetDims();
-//       vector<int64_t> exp_in = {1, 16, 12, 12};
-//       conv_in_equal = in_shape == exp_in;
-//       auto y_tensor = convDesc->GetOutputDesc(0);
-//       vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
-//       vector<int64_t> exp_out = {1, 4, 4, 4};
-//       conv_out_equal = out_shape == exp_out;
-//     }
-//   }
-//   EXPECT_EQ(find_offsets, true);
-//   EXPECT_EQ(ksize_equal, true);
-//   EXPECT_EQ(pads_equal, true);
-//   EXPECT_EQ(strides_equal, true);
-//   EXPECT_EQ(find_conv2d, true);
-//   EXPECT_EQ(offset_out_equal, true);
-//   EXPECT_EQ(conv_in_equal, true);
-//   EXPECT_EQ(conv_out_equal, true);
-// }
+TEST_F(deformable_conv2d_test, deformable_conv2d_test_2) {
+  ge::ComputeGraphPtr compute_graph;
+  BuildGraph1(compute_graph);
+  FusionPassTestUtils::InferShapeAndType(compute_graph);
+  FusionPassTestUtils::RunGraphFusionPass("ADeformableConv2dPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph);
+  bool find_offsets = false;
+  bool find_conv2d = false;
+  bool offset_out_equal = false;
+  bool conv_in_equal = false;
+  bool conv_out_equal = false;
+  bool ksize_equal = false;
+  bool pads_equal = false;
+  bool strides_equal = false;
+  for (auto node: compute_graph->GetAllNodes()) {
+    if (node->GetType() == "DeformableOffsets") {
+      find_offsets = true;
+      OpDescPtr offset_desc = node->GetOpDesc();
+      auto y_tensor = offset_desc->GetOutputDesc(0);
+      vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
+      vector<int64_t> exp_out = {1, 16, 12, 12};
+      offset_out_equal = out_shape == exp_out;
+      std::vector<int64_t> exp_ksize(2,3);
+      std::vector<int64_t> ksize;
+      AttrUtils::GetListInt(offset_desc, "ksize", ksize),
+      ksize_equal = ksize == exp_ksize;
+    }
+    if (node->GetType() == "Conv2D") {
+      find_conv2d = true;
+      OpDescPtr convDesc = node->GetOpDesc();
+      std::vector<int64_t> exp_strides = {1, 1, 3, 3};
+      std::vector<int64_t> strides;
+      AttrUtils::GetListInt(convDesc, "strides", strides),
+      strides_equal = strides == exp_strides;
+      std::vector<int64_t> exp_pads(4);
+      std::vector<int64_t> pads;
+      AttrUtils::GetListInt(convDesc, "pads", pads),
+      pads_equal = pads == exp_pads;
+      auto x_tensor = convDesc->GetInputDesc(0);
+      vector<int64_t> in_shape = x_tensor.GetOriginShape().GetDims();
+      vector<int64_t> exp_in = {1, 16, 12, 12};
+      conv_in_equal = in_shape == exp_in;
+      auto y_tensor = convDesc->GetOutputDesc(0);
+      vector<int64_t> out_shape = y_tensor.GetOriginShape().GetDims();
+      vector<int64_t> exp_out = {1, 4, 4, 4};
+      conv_out_equal = out_shape == exp_out;
+    }
+  }
+  EXPECT_EQ(find_offsets, true);
+  EXPECT_EQ(ksize_equal, true);
+  EXPECT_EQ(pads_equal, true);
+  EXPECT_EQ(strides_equal, true);
+  EXPECT_EQ(find_conv2d, true);
+  EXPECT_EQ(offset_out_equal, true);
+  EXPECT_EQ(conv_in_equal, true);
+  EXPECT_EQ(conv_out_equal, true);
+}
 } // namespace fe

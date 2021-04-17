@@ -46,6 +46,7 @@ static const char kAttrDilations[] = "dilations";
 static const char kAttrGroups[] = "groups";
 static const char kAttrDataFmt[] = "data_format";
 static const char kAttrDfmGroups[] = "deformable_groups";
+static const char kAttrModulated[] = "modulated";
 static const char kAttrOrgFmt[] = "origin_format";
 static const std::set<string> kFilterFmt = {"HWCN", "NCHW"};
 
@@ -87,10 +88,11 @@ vector<FusionPattern*> DeformableConv2dPass::DefinePatterns() {
   *      [dilations]:         use deformable_conv2d
   *      [data_format]:       use deformable_conv2d
   *      [dfm_groups]:        use deformable_conv2d
+  *      [modulated]:         use deformable_conv2d
   *
-  * @param dfm_conv_node DeforableConv2D node.
+  * @param dfm_conv_node DeformableConv2D node.
   * @param offset_desc New DeforableOffsets node.
-  * @param with_bias Whether DeforableConv2D has bias.
+  * @param with_bias Whether DeformableConv2D has bias.
   * @return bool Whether the DeforableOffsets desc is created successfully.
   */
 bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr& offset_desc, bool with_bias){
@@ -136,6 +138,11 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
   FUSION_PASS_CHECK(!AttrUtils::GetInt(dfm_conv_desc, kAttrDfmGroups, dfm_groups),
                     OP_LOGW(fused_op_type_.c_str(), "get %s attr failed", kAttrDfmGroups), return false);
   AttrUtils::SetInt(offset_desc, kAttrDfmGroups, dfm_groups);
+
+  bool modulated;
+  FUSION_PASS_CHECK(!AttrUtils::GetBool(dfm_conv_desc, kAttrModulated, modulated),
+                    OP_LOGW(fused_op_type_.c_str(), "get %s attr failed", kAttrModulated), return false);
+  AttrUtils::SetBool(offset_desc, kAttrModulated, modulated);
 
   AttrUtils::GetStr(x_tensor, kAttrOrgFmt, fmt_str);
   pos_h = fmt_str.find('H');
@@ -188,9 +195,9 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
   *      [dilations]:    keep defualt
   *      [data_format]:  use deformable_conv2d
   *
-  * @param dfm_conv_node DeforableConv2D node.
+  * @param dfm_conv_node DeformableConv2D node.
   * @param conv_desc New conv2d node.
-  * @param with_bias Whether DeforableConv2D has bias.
+  * @param with_bias Whether DeformableConv2D has bias.
   * @return bool Whether the DeforableOffsets desc is created successfully.
   */
 bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr& conv_desc, bool with_bias){
