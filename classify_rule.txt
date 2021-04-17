@@ -10,3 +10,7 @@ ops/built-in/tbe/
 [canndev_3RD]
 third_party/
 ops/built-in/fusion_pass/buffer_fusion
+
+[toolchain_op_test_frame]
+tools/msopgen/
+tools/op_test_frame/python/op_test_frame/st/
