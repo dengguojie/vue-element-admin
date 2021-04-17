@@ -704,6 +704,7 @@ class CceConvOp:
         self._quant_fusion_muti_groups_in_cl0 = False
         self._filter_muti_groups_in = False
         self._l0a_dma_flag = False
+        self._dynamic_flag = False
         self._flag_dict = {}
         self._lhisi_dequant_quant_para = {'deq_sqrt': False,
                                           'deq_relu': False,
@@ -755,8 +756,7 @@ class CceConvOp:
                                  "uncompact_mode_index_size": 2,
                                  "compress_flag": 2,
                                  "compress_tiling": [0, 0, 0, 0]}
-        self._var_map = ConvParam.var_map
-        self._dynamic_para = ConvParam.dynamic_para
+        self._dyn_var_map = ConvParam.dyn_var_map
         self._tiling_case = None
         self._var_range = None
         self._fused_flag = False
@@ -921,7 +921,7 @@ class CceConvOp:
                 """
                 avoid cyclomatic complexity, check tiling in inner_batch situation
                 """
-                if "batch_n" in self._var_map:
+                if "batch_n" in self._dyn_var_map:
                     return
                 batch = int(fmap_shape_nc1hwc0[0])
                 if len(tiling["AL1_shape"]) > 2:
@@ -1325,7 +1325,7 @@ class CceConvOp:
                     avoid cyclomatic complexity, handle block_dim
                     """
                     tiling["block_dim"] = [1, 1, 1, 1]
-                    if self._var_map and ("batch_n" in self._var_map):
+                    if self._dynamic_flag and ("batch_n" in self._dyn_var_map):
                         return
                     device_core_num = self._corenum
                     if (ConvParam.batch > 1) and (device_core_num > 1):
@@ -1352,7 +1352,7 @@ class CceConvOp:
                                "uint4": 1.0 / 2, "int4": 1.0 / 2}
                 input_data_type = in_dtype
                 w_out = ConvParam.w_out
-                if self._var_map:
+                if self._dynamic_flag:
                     tiling_m = 1
                 else:
                     for m_target in range(32, 0, -1):
@@ -1416,7 +1416,7 @@ class CceConvOp:
                 else:
                     c_ub_shape = list(tensor_map["c_ub"].shape)
                     c_shape = [c_ub_shape[0], c_ub_shape[1], h_out, w_out, c_ub_shape[3]]
-                    if self._var_map:
+                    if self._dynamic_flag:
                         c_shape = list(c_shape)
                     else:
                         c_shape = list(map(int, c_shape))
@@ -1510,7 +1510,7 @@ class CceConvOp:
 
             fmap_shape_nc1hwc0 = ConvParam.tiling_query_param["fmap_shape_nc1hwc0"]
             shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
-            if self._var_map:
+            if self._dynamic_flag:
                 fmap_shape_nc1hwc0 = list(fmap_shape_nc1hwc0)
                 shape_w_nc1hwc0 = list(shape_w_nc1hwc0)
             else:
@@ -1528,7 +1528,7 @@ class CceConvOp:
             c_shape = get_c_shape()
             reserved_ub = get_reserved_ub()
             fused_ub_cl0 = get_fused_ub_cl0()
-            if self._var_map and (not tilingdict_flag):
+            if self._dynamic_flag and (not tilingdict_flag):
                 tiling_new = self._tiling_case
             elif is_support_v200() and ConvParam.res_dtype == "int32":
                 def calc_coeff_l0c_to_ub():
@@ -2225,7 +2225,7 @@ class CceConvOp:
 
                     return setfmatrix_dict
 
-                if self._var_map:
+                if self._dynamic_flag:
                     _dynamic_im2col_v2()
                 else:
                     setfmatrix_dict = _im2col_with_row_major(setfmatrix_dict)
@@ -2579,7 +2579,7 @@ class CceConvOp:
                         if "mean_matrix" in tensor_map:
                             sch[mean_matrix].emit_insn(mean_matrix.op.axis[-1], "vector_dup")
                             sch[mean_matrix_fp16].emit_insn(mean_matrix_fp16.op.axis[0], "vector_conv")
-                            if 'fmap_h' in self._var_map or 'fmap_w' in self._var_map:
+                            if 'fmap_h' in self._dyn_var_map or 'fmap_w' in self._dyn_var_map:
                                 sch[mean_matrix].reused_by(c_ub_avg)
                             if get_soc_spec("SOC_VERSION") == "Ascend310":
                                 sch[mean_matrix].reused_by(mean_matrix_fp16, mean_matrix_rec)
@@ -2654,7 +2654,7 @@ class CceConvOp:
             setfmatrix_dict = {}
             setfmatrix_dict = config_setfmatrix(setfmatrix_dict)
 
-            if not self._var_map:
+            if not self._dynamic_flag:
                 handle_l0a_emit_insn()
                 get_weight_repeat_number()
 
@@ -2989,7 +2989,7 @@ class CceConvOp:
             """
             inline row_major_reshape tensor for v200 and dynamic mode
             """
-            if not self._var_map and is_support_v200() and not c0_optim_flg and not self._l0a_dma_flag:
+            if not self._dynamic_flag and is_support_v200() and not c0_optim_flg and not self._l0a_dma_flag:
                 row_major_reshape = tensor_map["row_major_reshape_res"]
                 sch[row_major_reshape].compute_inline()
 
@@ -3038,7 +3038,7 @@ class CceConvOp:
             """
             if l0a_load2d_flag:
                 sch[al1].storage_align(sch[al1].op.axis[1], 256, 0)
-            elif not l0a_load2d_flag and not self._var_map:
+            elif not l0a_load2d_flag and not self._dynamic_flag:
                 if c04_v200_flag:
                     sch[fmap_col_before].buffer_align(
                         (1, 1),
@@ -3771,12 +3771,12 @@ class CceConvOp:
             if tiling["AL1_shape"]:
                 al1_m = tiling["AL1_shape"][1] * c_tiling_factor[1]
                 if not l0a_load2d_flag:
-                    if "fmap_h" in self._var_map or "fmap_w" in self._var_map:
+                    if "fmap_h" in self._dyn_var_map or "fmap_w" in self._dyn_var_map:
                         additional_rows = tvm.select(
                             tvm.floormod(al1_m, w_out) == 0,
                             0,
                             tvm.select(tvm.floormod(al1_m * 2, w_out) == 0, 1, 2))
-                    elif "batch_n" in self._var_map:
+                    elif "batch_n" in self._dyn_var_map:
                         if al1_m % w_out == 0:
                             additional_rows = 0
                         elif al1_m * 2 % w_out == 0:
@@ -3863,6 +3863,7 @@ class CceConvOp:
             self._compile_para = None
             self._preload = 0
             self._l0a_dma_flag = ConvParam.l0a_dma_flag
+            self._dynamic_flag = ConvParam.dynamic_flag
             if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
             ("virtual_res" in res.op.name or res.dtype == "int8"):
                 self._quant_fusion_muti_groups_in_cl0 = True
@@ -3930,7 +3931,7 @@ class CceConvOp:
                 if not tiling["BL1_shape"]:
                     reorder_flag = True
                 elif double_buffer_flag["AL1_pbuffer"] == double_buffer_flag["BL1_pbuffer"]:
-                    if self._var_map:
+                    if self._dynamic_flag:
                         pass
                     elif bl1_factor[1] >= al1_factor[1]:
                         reorder_flag = True
@@ -3983,19 +3984,19 @@ class CceConvOp:
                 if al1_factor[0] != 1:
                     # to modify when pass solve the bug
                     sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
-                    if not self._var_map:
+                    if not self._dynamic_flag:
                         sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
                 # to modify when pass solve the bug
                 elif tiling["CL0_matrix"][5] > 1:
                     sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
-                    if not self._var_map:
+                    if not self._dynamic_flag:
                         sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
                 else:
                     if self._l0a_dma_flag:
                         sch[al1].compute_inline()
                     else:
                         sch[al1].compute_at(sch[res_c], al1_at_c_axis)
-                    if not self._var_map:
+                    if not self._dynamic_flag:
                         sch[fmap_col_before].compute_at(
                             sch[res_c], al1_at_c_axis)
             else:
@@ -4010,20 +4011,20 @@ class CceConvOp:
                     if self._l1_fusion_type == 1:
                         if tiling["CL0_matrix"][5] > 1:
                             sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
-                            if not self._var_map:
+                            if not self._dynamic_flag:
                                 sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
                         else:
                             sch[al1].compute_at(sch[res_c], cout1_group_inner_outer)
-                            if not self._var_map:
+                            if not self._dynamic_flag:
                                 sch[fmap_col_before].compute_at(sch[res_c], cout1_group_inner_outer)
                     # wait for pass bug ok
                     elif tiling["CL0_matrix"][5] > 1:
                         sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
-                        if not self._var_map:
+                        if not self._dynamic_flag:
                             sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
                     else:
                         sch[al1].compute_at(sch[res_c], noo)
-                        if not self._var_map:
+                        if not self._dynamic_flag:
                             sch[fmap_col_before].compute_at(sch[res_c], noo)
 
         def _get_aub_factor():
@@ -4150,23 +4151,23 @@ class CceConvOp:
             """
             if tilingdict_flag:
                 return
-            if "fmap_h" in self._var_map:
+            if "fmap_h" in self._dyn_var_map:
                 fmap_h_range = self._var_range['fmap_h']
                 ho_range = self._var_range['ho']
-                sch.set_var_range(self._var_map['fmap_h'], fmap_h_range[0],
+                sch.set_var_range(self._dyn_var_map['fmap_h'], fmap_h_range[0],
                                   fmap_h_range[1])
-                sch.set_var_range(self._var_map['ho'], ho_range[0], ho_range[1])
+                sch.set_var_range(self._dyn_var_map['ho'], ho_range[0], ho_range[1])
 
-            if "fmap_w" in self._var_map:
+            if "fmap_w" in self._dyn_var_map:
                 fmap_w_range = self._var_range['fmap_w']
                 wo_range = self._var_range['wo']
-                sch.set_var_range(self._var_map['fmap_w'], fmap_w_range[0],
+                sch.set_var_range(self._dyn_var_map['fmap_w'], fmap_w_range[0],
                                   fmap_w_range[1])
-                sch.set_var_range(self._var_map['wo'], wo_range[0], wo_range[1])
+                sch.set_var_range(self._dyn_var_map['wo'], wo_range[0], wo_range[1])
 
-            if "batch_n" in self._var_map:
+            if "batch_n" in self._dyn_var_map:
                 batch_range = self._var_range['batch_n']
-                sch.set_var_range(self._var_map['batch_n'], batch_range[0],
+                sch.set_var_range(self._dyn_var_map['batch_n'], batch_range[0],
                                   batch_range[1])
 
         def _handle_dynamic_scope():
@@ -4397,12 +4398,12 @@ class CceConvOp:
             al0 = tensor_map["al0_load2d"]
         else:
             if self._l0a_dma_flag:
-                if not self._var_map:
+                if not self._dynamic_flag:
                     fmap_col_before_before = tensor_map["fmap_im2col_row_major_res"]
                     fmap_col_before = tensor_map["fmap_im2col_fractal_res"]
                 fmap_col = sch.cache_read(fmap_col_before, cce.scope_ca, [c_col])
             else:
-                if not self._var_map:
+                if not self._dynamic_flag:
                     fmap_col_before = tensor_map["fmap_im2col_row_major_res"]
                 fmap_col = tensor_map["fmap_im2col_fractal_res"]
             c04_row_major_reshape_compute(tensor_map)
@@ -4527,7 +4528,7 @@ class CceConvOp:
             fmap_col = al0
             sch[al1].set_scope(cce.scope_cbuf)
         else:
-            if self._var_map:
+            if self._dynamic_flag:
                 if strideh_opti_flag:
                     sch[fmap_l1].set_scope(cce.scope_cbuf)
                     al1 = fmap_l1
@@ -4879,7 +4880,7 @@ class CceConvOp:
                 block_dim = tiling["block_dim"]
 
             # split batch of res_c
-            if "batch_n" in self._var_map:
+            if "batch_n" in self._dyn_var_map:
                 batch_dim_factor = int_ceil_div(dim_map["out_img_shape"][0],
                                                 tiling["block_dim"][0])
                 batch_dim_factor = tvm.max(1, batch_dim_factor)
@@ -4949,7 +4950,7 @@ class CceConvOp:
                     batch_outer,
                     cout1_group_outer, c_outer_outer_outer_outer,
                     m_outer_outer_outer_outer)
-                if self._var_map:
+                if self._dynamic_flag:
                     noo_true, _ = sch[res_c].split(batch_cout_fused, factor=1)
                 else:
                     noo_true, _ = sch[res_c].split(batch_cout_fused, nparts=blocks)
@@ -4981,7 +4982,7 @@ class CceConvOp:
 
         axis_sequence = check_axis_sequence(reorder_flag, bl1_factor, al1_factor, block_dim)
         self.overload_flag = check_feature_map(tiling, al1_factor, axis_sequence)
-        if not self._var_map:
+        if not self._dynamic_flag:
             set_overload_flag(self.overload_flag,
                               self._schedule[res], noi)
 
@@ -5221,7 +5222,7 @@ class CceConvOp:
             else:
                 nbuffer_flag_al1 = False
 
-        if "fmap_h" in self._var_map or "fmap_w" in self._var_map or tiling["CL0_matrix"][5] > 1:
+        if "fmap_h" in self._dyn_var_map or "fmap_w" in self._dyn_var_map or tiling["CL0_matrix"][5] > 1:
             tiling["A_overhead_opt_flag"] = False
 
         if l0a_load2d_flag:
@@ -5279,26 +5280,26 @@ class CceConvOp:
                             # nbbufer only works here
                             sch[al1].compute_at(
                                 sch[c_col], k_outer_outer_inner_outer)
-                            if not self._var_map:
+                            if not self._dynamic_flag:
                                 sch[fmap_col_before].compute_at(
                                     sch[c_col], k_outer_outer_inner_outer)
                         else:
                             # nbbufer does not work
                             sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
-                            if not self._var_map:
+                            if not self._dynamic_flag:
                                 sch[fmap_col_before].compute_at(
                                     sch[c_col], al1_at_ccol_axis)
                         sch[al1].allocate_at(sch[c_col], al1_at_ccol_axis)
                     else:
                         # nbbufer does not work
                         sch[al1].compute_at(sch[res_c], noi)
-                        if not self._var_map:
+                        if not self._dynamic_flag:
                             sch[fmap_col_before].compute_at(sch[res_c], noi)
                         sch[al1].allocate_at(sch[res_c], al1_at_c_axis)
                 else:
                     # nbbufer does not work
                     sch[al1].compute_at(sch[res_c], noi)
-                    if not self._var_map:
+                    if not self._dynamic_flag:
                         sch[fmap_col_before].compute_at(sch[res_c], noi)
                     # moooin is 1 when AL1_shape is [], nbbufer does not work
                     sch[al1].allocate_at(sch[res_c], noo)
@@ -5313,7 +5314,7 @@ class CceConvOp:
             else:
                 sch[scale_ub].compute_at(sch[res_c], m_outer_outer_inner)
 
-        if self.unzip_parameters.get("weight_zip_flag") or (self._var_map and tiling["BL1_shape"] == []) \
+        if self.unzip_parameters.get("weight_zip_flag") or (self._dynamic_flag and tiling["BL1_shape"] == []) \
         or tiling["CL0_matrix"][5] > 1 or (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1):
             tiling["B_overhead_opt_flag"] = False
 
@@ -5346,15 +5347,15 @@ class CceConvOp:
                             sch[bl1].compute_at(sch[c_col], bl1_at_ccol_axis)
                         else:
                             sch[bl1].compute_at(sch[c_col], coo)
-                        if not self._var_map and dim_map['out_img_shape'][2] > tiling["CL0_matrix"][1] * 16:
+                        if not self._dynamic_flag and dim_map['out_img_shape'][2] > tiling["CL0_matrix"][1] * 16:
                             out_extract_axis = m_outer_outer_inner
                     elif tiling["CL0_matrix"][5] == 1 and (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1):
                         sch[bl1].compute_at(sch[res_c], cout1_group_inner_outer)
                     else:
                         sch[bl1].compute_at(sch[res_c], bl1_at_c_axis)
-                        if not self._var_map and reorder_flag and al1_factor[1] > tiling["block_dim"][2]:
+                        if not self._dynamic_flag and reorder_flag and al1_factor[1] > tiling["block_dim"][2]:
                             out_extract_axis = m_outer_outer_outer_inner
-                if not self._var_map and out_extract_axis == -1 and \
+                if not self._dynamic_flag and out_extract_axis == -1 and \
                       dim_map["out_img_shape"][0] > 1:
                     out_extract_axis = noo
             else:
@@ -5367,13 +5368,13 @@ class CceConvOp:
                 elif tiling["BL1_shape"] is not None:
                     sch[bl1].compute_at(sch[res_c], cout1_group_inner_outer)
                 else:
-                    if (tiling["BL0_matrix"] and not self._var_map
+                    if (tiling["BL0_matrix"] and not self._dynamic_flag
                             and dim_map['out_img_shape'][2] > tiling["CL0_matrix"][1] * 16):
                         out_extract_axis = m_outer_outer_inner
-                    elif not self._var_map and out_extract_axis == -1 and dim_map["out_img_shape"][0] > 1:
+                    elif not self._dynamic_flag and out_extract_axis == -1 and dim_map["out_img_shape"][0] > 1:
                         out_extract_axis = noo
 
-        if "fmap_h" in self._var_map or "fmap_w" in self._var_map:
+        if "fmap_h" in self._dyn_var_map or "fmap_w" in self._dyn_var_map:
             sch[res].pragma(c_pragma_axis, "gm_no_sync", 1)
 
         # parser the tbe compile parameter
@@ -5444,7 +5445,7 @@ class CceConvOp:
         util.L1CommonParam.l1_fusion_tensors_map = l1_tensor_map
 
         _conv_pooling_optm()
-        if self._var_map:
+        if self._dynamic_flag:
             _handle_dynamic_scope()
             return True
 
@@ -5560,7 +5561,7 @@ class CceConvOp:
                 """
                 dynamic quant stage not used
                 """
-                if self._var_map and self._conv_quant_fused_flag:
+                if self._dynamic_flag and self._conv_quant_fused_flag:
                     if "quant" in lop["op"]:
                         self._schedule[lop["dst_buffer"]].compute_inline()
 
@@ -5574,7 +5575,7 @@ class CceConvOp:
                 coo, _ = self._schedule[c_reform_vector].split(
                     self._schedule[c_reform_vector].op.axis[ndim - 1], factor)
                 axis_list = self._schedule[c_reform_vector].op.axis[0:ndim - 1]
-                if "fmap_h" in self._var_map or "fmap_w" in self._var_map:
+                if "fmap_h" in self._dyn_var_map or "fmap_w" in self._dyn_var_map:
                     self._schedule[c_reform_vector].reorder(coo, *axis_list)
                     self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2], "vector_auto")
                 else:

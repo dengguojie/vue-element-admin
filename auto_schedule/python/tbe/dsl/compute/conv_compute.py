@@ -131,7 +131,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     None
 
     """
-    def _l1_buffer_size_check(max_feature_map_l1, dynamic_para=None):
+    def _l1_buffer_size_check(max_feature_map_l1, dynamic_flag=None):
         """
         Check for not bigger than L1 size.
         """
@@ -139,7 +139,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if ConvParam.fusion_para["l1_fusion_type"] in (0, 1):
             pass
         elif int(max_feature_map_l1) > l1_buffer_size:
-            if not dynamic_para:
+            if not dynamic_flag:
                 ConvParam.l0a_dma_flag = True
             else:
                 err_man.raise_err_specific("conv2d",
@@ -207,7 +207,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             err_man.raise_err_attr_range_invalid("conv2d", range_value,
                                                  "feature map W when split w", shape_in[3])
 
-    if not dynamic_para["var_map"]:
+    if not ConvParam.dynamic_flag:
         _check_fmap_range()
         util.check_shape_rule(shape_in, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
     util.check_shape_rule(shape_w, CONV_SHAPE_DIM, CONV_SHAPE_DIM)
@@ -237,8 +237,14 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
     h_out = (h_i + pad_top + pad_bottom - hk_dilation) // strideh + 1
     w_out = (w_i + pad_left + pad_right - wk_dilation) // stridew + 1
-    if not dynamic_para["var_map"] and (int(w_out) < 1 or int(h_out) < 1):
-        err_man.raise_err_specific("conv2d", "output shape should greater than 0, please check the input shape.\n")
+    if ConvParam.dynamic_flag:
+        if "fmap_h" not in dynamic_para["var_map"] and int(h_out) < 1:
+            err_man.raise_err_specific("conv2d", "output shape should greater than 0, please check the input shape.\n")
+        if "fmap_w" not in dynamic_para["var_map"] and int(w_out) < 1:
+            err_man.raise_err_specific("conv2d", "output shape should greater than 0, please check the input shape.\n")
+    else:
+        if (int(w_out) < 1 or int(h_out) < 1):
+            err_man.raise_err_specific("conv2d", "output shape should greater than 0, please check the input shape.\n")
 
     def _check_pad():
         """
@@ -308,7 +314,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
 
         m_bit_ratio = {"float16": 2, "int8": 1}
-        if "fmap_w" in ConvParam.var_map and dynamic_para["var_map"]:
+        if "fmap_w" in ConvParam.dyn_var_map and ConvParam.dynamic_flag:
             fmap_w_upper = get_te_var("fmap_w").get_bound()[1]
             if fmap_w_upper:
                 #same as static conv2d
@@ -324,7 +330,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                 ho_upper = math.floor(config['mac'][0] / wo_upper) + 1
             l1_m = ((ho_upper - 1) * strideh + hk_dilation) * fmap_w_upper
             max_feature_map_l1 = ci0 * l1_m * m_bit_ratio[w_dtype]
-            _l1_buffer_size_check(max_feature_map_l1, "dynamic")
+            _l1_buffer_size_check(max_feature_map_l1, ConvParam.dynamic_flag)
         else:
             point_per_w = math.floor((w_i - wk_dilation + pad_left + pad_right) / stridew) + 1
             w_in = math.floor(config['mac'][0] / point_per_w) + 2
@@ -363,7 +369,7 @@ class ConvParam:
         cls.tensor_map.clear()
         cls.dim_map.clear()
         cls.tiling = None
-        cls.var_map = None
+        cls.dyn_var_map = None
         cls.dynamic_para = None
         cls.tiling_query_param.clear()
         cls.convbn1_flag = False
@@ -377,6 +383,7 @@ class ConvParam:
         cls.strided_read_flag = False
         cls.aipp_fuse_flag = False
         cls.l0a_dma_flag = False
+        cls.dynamic_flag = False
         cls.has_padding = False
         cls.dequant_doubleout_flag = False # mark v100 v200 conv_dequant_*_quant doubleout
         cls.fusion_para = {"input_memory_type": [],
@@ -410,6 +417,7 @@ class ConvParam:
     conv1d_split_w_flag = False
     pre_relu_flag = False
     l0a_dma_flag = False
+    dynamic_flag = False
     has_padding = False
     dynamic_para = None
     compress_index_shape = {}
@@ -419,7 +427,7 @@ class ConvParam:
     compress_tiling_frac = {}
     tiling_info_dict = {}
     para_dict = {}
-    var_map = {}
+    dyn_var_map = {}
     fmap_range = None
     kernel_name = None
 
@@ -548,7 +556,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             fmap_l1_shape = fmap_shape  # NC1HWC0
             fmap_l1_shape[2] = (fmap_l1_shape[2] - 1) // stride_h + 1
 
-            if ConvParam.var_map:
+            if ConvParam.dynamic_flag:
                 group_opt = ConvParam.para_dict["group_opt"]
                 fmap_al1_shape = (group_opt, fmap_l1_shape[0], ConvParam.para_dict["c1_opt"],
                                   fmap_l1_shape[2], fmap_l1_shape[3], fmap_l1_shape[4])
@@ -732,7 +740,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             -------
             tensor: im2col result tensor
             """
-            if not ConvParam.var_map:
+            if not ConvParam.dynamic_flag:
                 in_channel_c1 = ConvParam.para_dict["c1_opt"]
                 fmap_im2col_row_major_shape = (ConvParam.para_dict["group_opt"],
                                                ConvParam.para_dict["a_shape"][0],
@@ -785,7 +793,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                              block_size_m,
                                              block_size_k)
                 if not strideh_opti_flag:
-                    if ConvParam.var_map:
+                    if ConvParam.dynamic_flag:
                         group_opt = ConvParam.para_dict["group_opt"]
                         fmap_shape = ConvParam.para_dict["a_shape"]
                         fmap_l1_shape = (group_opt, fmap_shape[0], ConvParam.para_dict["c1_opt"],
@@ -855,7 +863,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         out_channel_c0 = weight_shape[2]
         out_channel = out_channel_c1*out_channel_c0
 
-        if ConvParam.var_map and ConvParam.para_dict["pooling_mode"] == "AVG":
+        if ConvParam.dynamic_flag and ConvParam.para_dict["pooling_mode"] == "AVG":
             strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict["c0_optim_flg"]
         else:
             strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict["c0_optim_flg"] and \
@@ -941,7 +949,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         bias_optimize_flag = True
         if is_support_v200():
             bias_optimize_flag = False
-        if ConvParam.var_map:
+        if ConvParam.dynamic_flag:
             bias_optimize_flag = False
 
         howo_mad = (height_out*width_out + block_size_m - 1) // block_size_m*block_size_m
@@ -1211,16 +1219,16 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         mac_dim = config['mac']
 
         batch = img_shape[0]
-        if "fmap_h" not in ConvParam.var_map:
+        if "fmap_h" not in ConvParam.dyn_var_map:
             out_h = ((img_shape[-3] + pad[2] + pad[3]) -
                      ((filter_shape[-3]-1)*dilate[0] + 1)) // stride[0] + 1
         else:
-            out_h = ConvParam.var_map['ho']
-        if "fmap_w" not in ConvParam.var_map:
+            out_h = ConvParam.dyn_var_map['ho']
+        if "fmap_w" not in ConvParam.dyn_var_map:
             out_w = ((img_shape[-2] + pad[0] + pad[1]) -
                      ((filter_shape[-2]-1)*dilate[1] + 1)) // stride[1] + 1
         else:
-            out_w = ConvParam.var_map['wo']
+            out_w = ConvParam.dyn_var_map['wo']
 
         fmap_valid_dim = (batch,
                           out_h*out_w,
@@ -1772,7 +1780,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                 -------
                 fmap_shape_nc1hwc0: a list of [batch, cin1, hin, win, cin0]
                 """
-                if not ConvParam.var_map:
+                if not ConvParam.dynamic_flag:
                     fmap_shape_nc1hwc0 = list(shape_to_list(data.shape))
                 else:
                     fmap_shape_nc1hwc0 = list(data.shape)
@@ -1856,14 +1864,14 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
             filter_h_dilation = (ConvParam.filter_h - 1)*ConvParam.dilate_h + 1
             filter_w_dilation = (ConvParam.filter_w - 1)*ConvParam.dilate_w + 1
-            if 'ho' in ConvParam.var_map:
-                ConvParam.h_out = ConvParam.var_map.get('ho')
+            if 'ho' in ConvParam.dyn_var_map:
+                ConvParam.h_out = ConvParam.dyn_var_map.get('ho')
             else:
                 ConvParam.h_out = (ConvParam.h_in + (ConvParam.pad_h[0] + ConvParam.pad_h[1]) -
                                    filter_h_dilation) // ConvParam.stride_h + 1
 
-            if 'wo' in ConvParam.var_map:
-                ConvParam.w_out = ConvParam.var_map.get('wo')
+            if 'wo' in ConvParam.dyn_var_map:
+                ConvParam.w_out = ConvParam.dyn_var_map.get('wo')
             else:
                 ConvParam.w_out = (ConvParam.w_in + (ConvParam.pad_w[0] + ConvParam.pad_w[1]) -
                                    filter_w_dilation) // ConvParam.stride_w + 1
@@ -1910,7 +1918,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         Set this flag to define whether is doing conv1d.
         """
-        if not ConvParam.var_map and data.shape[2].value == 1 \
+        if not ConvParam.dynamic_flag and data.shape[2].value == 1 \
             and para_dict.get("filter_h") == 1 \
             and (pad_top + pad_bottom) == 0 and \
             not load2d_to_load3d_flag:
@@ -1956,7 +1964,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         Save tiling_info_dict for dynamic.
         """
-        if ConvParam.var_map:
+        if ConvParam.dynamic_flag:
             in_size_h = shape_fmap_nc1hwc0[2]
             in_size_w = shape_fmap_nc1hwc0[3]
             kernel_h = shape_w_nc1hwc0[2]
@@ -2007,33 +2015,36 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
 
         fmap_range = []
-        var_map = {}
+        dyn_var_map = {}
+        is_dynamic = False
         if isinstance(data.shape[0], tvm.expr.Var):
             fmap_range.append(get_te_var("batch_n").get_bound())
-            var_map["batch_n"] = get_te_var("batch_n").get_tvm_var()
+            dyn_var_map["batch_n"] = get_te_var("batch_n").get_tvm_var()
         else:
             fmap_range.append((data.shape[0], data.shape[0]))
 
         if isinstance(data.shape[2], tvm.expr.Var):
             fmap_range.append(get_te_var("fmap_h").get_bound())
-            var_map["fmap_h"] = get_te_var("fmap_h").get_tvm_var()
-            var_map["ho"] = get_te_var("ho").get_tvm_var()
+            dyn_var_map["fmap_h"] = get_te_var("fmap_h").get_tvm_var()
+            dyn_var_map["ho"] = get_te_var("ho").get_tvm_var()
         else:
             fmap_range.append((data.shape[2], data.shape[2]))
 
         if isinstance(data.shape[3], tvm.expr.Var):
             fmap_range.append(get_te_var("fmap_w").get_bound())
-            var_map["fmap_w"] = get_te_var("fmap_w").get_tvm_var()
-            var_map["wo"] = get_te_var("wo").get_tvm_var()
+            dyn_var_map["fmap_w"] = get_te_var("fmap_w").get_tvm_var()
+            dyn_var_map["wo"] = get_te_var("wo").get_tvm_var()
         else:
             fmap_range.append((data.shape[3], data.shape[3]))
+        if dyn_var_map:
+            is_dynamic = True
 
         dynamic_para = {
             "fmap_range": fmap_range,
-            "var_map": var_map,
+            "var_map": dyn_var_map,
             "correct_range_flag": para_dict.get("correct_range_flag", False)
         }
-        return dynamic_para
+        return dynamic_para, is_dynamic
 
     def calculate_remove_pad_params(padded_column_shape, v200_width_out_1_flag):
         """
@@ -2169,14 +2180,14 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         calculate res of bias_add in fp16
         """
-        if bias_tensor_flag and ((not ConvParam.var_map) or (ConvParam.var_map and not dsl_flag)):
+        if bias_tensor_flag and ((not ConvParam.dynamic_flag) or (ConvParam.dynamic_flag and not dsl_flag)):
             res = bias_add(conv_res, bias_tensor)
             return res
         return conv_res
 
     ConvParam.set_default()
-    ConvParam.dynamic_para = _get_dynamic_para()
-    ConvParam.var_map = ConvParam.dynamic_para.get("var_map")
+    ConvParam.dynamic_para, ConvParam.dynamic_flag = _get_dynamic_para()
+    ConvParam.dyn_var_map = ConvParam.dynamic_para.get("var_map")
 
     bias_tensor = para_dict.get("bias_tensor")
     bias_tensor_flag = isinstance(bias_tensor, tvm.tensor.Tensor)
@@ -2332,7 +2343,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
     if dsl_flag:
         res_c = remove_pad_fp16_dsl(res, conv_shape, invalid_data_rm_flag)
-        if ConvParam.var_map and bias_tensor_flag:
+        if ConvParam.dynamic_flag and bias_tensor_flag:
             res_c = bias_add(res_c, bias_tensor)
         return res_c
 

@@ -133,7 +133,7 @@ class CubeParaProcess:
         if DYNAMIC_FLAG in filter_shape:
             err_man.raise_err_specific_user(
                 self.op_type, "dynamic weight is not supported yet.")
-        if self.dilations[H_DIM] != 1 or self.dilations[W_DIM] != 1:
+        if (self.dilations[H_DIM] != 1 or self.dilations[W_DIM] != 1) and self.op_type not in ("conv2d"):
             err_man.raise_err_specific_user(
                 self.op_type, "dilations is not supported in dynamic shape yet.")
 
@@ -439,11 +439,6 @@ class Conv2dParaProcess(CubeParaProcess):
                     dict["range"][H_DIM] = list(operation.get_te_var("fmap_h").get_bound())
                 if operation.get_te_var("fmap_w"):
                     dict["range"][W_DIM] = list(operation.get_te_var("fmap_w").get_bound())
-                test = []
-                test1 = []
-                test2 = []
-                test3 = []
-                test5 = []
 
             return dict
 

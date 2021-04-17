@@ -12,7 +12,7 @@ def test_conv_rm_data_pass(test_arg):
     import json
     import te
     import copy
-    from impl.build_pass.conv2d_data_rm_build_pass import conv2d_data_rm_build_pass
+    from tbe.common.register.fusion_pass.conv2d_data_rm_fusion_pass import conv2d_data_rm_build_pass
 
     op_list = []
     op_new = {}

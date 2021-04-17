@@ -225,23 +225,23 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
             if (shape_fm == (-2,)) or (shape_fm[0] == -1 and -1 not in shape_fm[1:]) or \
                 (shape_fm[2] == -1 and shape_fm[3] == -1 and -1 not in shape_fm[:2]):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16",
-                                                       format="NC1HWC0",
-                                                       unknownshape_format="NC1HWC0")
+                                                       datatype="float16,int8",
+                                                       format="NC1HWC0,NC1HWC0",
+                                                       unknownshape_format="NC1HWC0,NC1HWC0")
                 input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                                                       datatype="float16",
-                                                       format="FRACTAL_Z",
-                                                       unknownshape_format="FRACTAL_Z")
+                                                       datatype="float16,int8",
+                                                       format="FRACTAL_Z,FRACTAL_Z",
+                                                       unknownshape_format="FRACTAL_Z,FRACTAL_Z")
                 input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                       datatype="float16",
-                                                       format="ND")
+                                                       datatype="float16,int32",
+                                                       format="ND,ND")
                 input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                                       datatype="int8",
-                                                       format="ND")
+                                                       datatype="int8,int8",
+                                                       format="ND,ND")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16",
-                                                        format="NC1HWC0",
-                                                        unknownshape_format="NC1HWC0")
+                                                        datatype="float16,int32",
+                                                        format="NC1HWC0,NC1HWC0",
+                                                        unknownshape_format="NC1HWC0,NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,int8",
