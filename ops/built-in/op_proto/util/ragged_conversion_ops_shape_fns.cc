@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include "op_log.h"
 #include "common_shape_fns.h"
+#include "graph/utils/op_desc_utils.h"
 #include "./error_util.h"
 
 namespace ge {
@@ -243,21 +244,25 @@ graphStatus MakeShapeFromTensorShape(const TensorShape& input_shape, Shape& out,
 
 graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
   TensorShape shape;
-  {
-    Shape shape_handle;
-    Tensor tensor;
-    if (op.GetInputConstData("shape", tensor) != GRAPH_SUCCESS) {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("input orig_input_tensor_shape GetInputConstData failed"));
-      return GRAPH_FAILED;
-    }
-    if (MakeShapeFromShapeTensorTreatScalarAsUnknownShape(tensor, shape_handle, op.GetName().c_str()) !=
-        GRAPH_SUCCESS) {
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("makeShapeFromShapeTensorTreatScalarAsUnknownShape failed"));
-      return GRAPH_FAILED;
-    }
-
-    ShapeHandleToTensorShape(shape_handle, shape);
+  Shape shape_handle;
+  Tensor tensor;
+  std::vector<std::string> input_infer_depends = {"shape"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
+  TensorDesc out_desc = op.GetOutputDesc("result");
+  out_desc.SetDataType(op.GetInputDesc("values").GetDataType());
+  if (op.GetInputConstData("shape", tensor) != GRAPH_SUCCESS) {
+    out_desc.SetShape(Shape(ge::UNKNOWN_RANK));
+    op.UpdateOutputDesc("result", out_desc);
+    return GRAPH_SUCCESS;
   }
+  if (MakeShapeFromShapeTensorTreatScalarAsUnknownShape(tensor, shape_handle, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("MakeShapeFromShapeTensorTreatScalarAsUnknownShape failed"));
+    return GRAPH_FAILED;
+  }
+
+  ShapeHandleToTensorShape(shape_handle, shape);
 
   std::vector<RowPartitionType> row_partition_types;
   if (GetRowPartitionTypes(op, row_partition_types) != GRAPH_SUCCESS) {
@@ -291,9 +296,7 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc out_desc = op.GetOutputDesc("result");
   out_desc.SetShape(output_shape_handle);
-  out_desc.SetDataType(op.GetInputDesc("values").GetDataType());
   if (op.UpdateOutputDesc("result", out_desc) != GRAPH_SUCCESS) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("update result desc failed."));
     return GRAPH_FAILED;

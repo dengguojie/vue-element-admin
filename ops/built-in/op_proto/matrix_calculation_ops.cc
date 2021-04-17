@@ -36,6 +36,7 @@
 #include "graph/utils/node_utils.h"
 #include "graph/utils/type_utils.h"
 #include "graph/common_error_codes.h"
+#include "graph/utils/op_desc_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "common/util/error_manager/error_manager.h"
 #include "op_log.h"
@@ -2371,7 +2372,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
   Shape input_shape;
   auto input_tensor_desc = op.GetInputDesc(0);
   if (WithRankAtLeast(input_tensor_desc, 2, input_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input input must be at least 2-D, real rank is %lld.",
+    OP_LOGE(op.GetName().c_str(), "Input[input], index is [0], must be at least 2-D, real rank is [%lld].",
             input_tensor_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
@@ -2379,7 +2380,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
   Shape k_shape;
   auto k_tensor_desc = op.GetInputDesc(1);
   if (WithRankAtMost(k_tensor_desc, 1, k_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input k must be at most 1-D, real rank is %lld.",
+    OP_LOGE(op.GetName().c_str(), "Input[k], index is [1], must be at most 1-D, real rank is [%lld].",
             k_tensor_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
@@ -2387,7 +2388,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
   Shape padding_value_shape;
   auto padding_value_tensor_desc = op.GetInputDesc(2);
   if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input padding_value rank must be 0, real rank is %lld.",
+    OP_LOGE(op.GetName().c_str(), "Input[padding_value], index is [2], rank must be 0, real rank is [%lld].",
             padding_value_tensor_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
@@ -2395,6 +2396,9 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
   TensorDesc output_desc = op.GetOutputDesc("diagonal");
 
   Tensor k_tensor;
+  std::vector<std::string> input_infer_depends = {"k"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
   if (op.GetInputConstData("k", k_tensor) != GRAPH_SUCCESS || !RankKnown(input_shape) || !FullyDefined(k_shape)) {
     output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
     output_desc.SetDataType(input_tensor_desc.GetDataType());
@@ -2419,14 +2423,14 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
       lower_diag_index = *(data);
       upper_diag_index = *(data + 1);
     } else {
-      OP_LOGE(op.GetName().c_str(), "diag_index must be a vector with one or two elements. It has %lld elements.",
+      OP_LOGE(op.GetName().c_str(), "The variable [diag_index] must be a vector with one or two elements. It has [%lld] elements.",
               num_elements);
       return GRAPH_PARAM_INVALID;
     }
   }
 
   if (lower_diag_index > upper_diag_index) {
-    OP_LOGE(op.GetName().c_str(), "lower_diag_index is greater than upper_diag_index");
+    OP_LOGE(op.GetName().c_str(), "The variable [lower_diag_index] is greater than [upper_diag_index]");
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2437,12 +2441,12 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
   int64_t max_diag_len = ge::UNKNOWN_DIM;
   if (num_rows != ge::UNKNOWN_DIM && num_cols != ge::UNKNOWN_DIM) {
     if (lower_diag_index != 0 && (-num_rows >= lower_diag_index || lower_diag_index >= num_cols)) {
-      OP_LOGE(op.GetName().c_str(), "lower_diag_index %lld is out of bound, num_rows: %lld, num_cols: %lld.",
+      OP_LOGE(op.GetName().c_str(), "The variable [lower_diag_index] is out of bound, lower_diag_index is [%lld], num_rows is [%lld], num_cols is [%lld].",
               lower_diag_index, num_rows, num_cols);
       return GRAPH_PARAM_INVALID;
     }
     if (upper_diag_index != 0 && (-num_rows >= upper_diag_index || upper_diag_index >= num_cols)) {
-      OP_LOGE(op.GetName().c_str(), "upper_diag_index %lld is out of bound, num_rows: %lld, num_cols: %lld.",
+      OP_LOGE(op.GetName().c_str(), "The variable [upper_diag_index] is out of bound, lower_diag_index is [%lld], num_rows is [%lld], num_cols is [%lld].",
               upper_diag_index, num_rows, num_cols);
       return GRAPH_PARAM_INVALID;
     }
@@ -2596,7 +2600,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   Shape diagonal_shape;
   auto diagonal_tensor_desc = op.GetInputDesc(0);
   if (WithRankAtLeast(diagonal_tensor_desc, 1, diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input diagonal must be at least 1-D, real rank is %lld.",
+    OP_LOGE(op.GetName().c_str(), "Input[diagonal], index is [0], must be at least 1-D, real rank is [%lld].",
             diagonal_tensor_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
@@ -2604,7 +2608,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   Shape k_shape;
   auto k_tensor_desc = op.GetInputDesc(1);
   if (WithRankAtMost(k_tensor_desc, 1, k_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input k rank must be at most 1-D, real rank is %lld.",
+    OP_LOGE(op.GetName().c_str(), "Input[k], index is [1], rank must be at most 1-D, real rank is [%lld].",
             k_tensor_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
@@ -2612,7 +2616,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   Shape num_rows_shape;
   auto num_rows_tensor_desc = op.GetInputDesc(2);
   if (WithRank(num_rows_tensor_desc, 0, num_rows_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input num_rows rank must be 0, real rank is %lld.",
+    OP_LOGE(op.GetName().c_str(), "Input[num_rows], index is [2], rank must be 0, real rank is [%lld].",
             num_rows_tensor_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
@@ -2620,7 +2624,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   Shape num_cols_shape;
   auto num_cols_tensor_desc = op.GetInputDesc(3);
   if (WithRank(num_cols_tensor_desc, 0, num_cols_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input num_cols rank must be 0, real rank is %lld.",
+    OP_LOGE(op.GetName().c_str(), "Input[num_cols], index is [3], rank must be 0, real rank is [%lld].",
             num_cols_tensor_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
@@ -2628,13 +2632,16 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   Shape padding_value_shape;
   auto padding_value_tensor_desc = op.GetInputDesc(4);
   if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input padding_value rank must be 0, real rank is %lld.",
+    OP_LOGE(op.GetName().c_str(), "Input[padding_value], index is [4], rank must be 0, real rank is [%lld].",
             padding_value_tensor_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   auto output_desc = op.GetOutputDesc("output");
   Tensor k_tensor;
+  std::vector<std::string> input_infer_depends = {"k", "num_rows", "num_cols"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
   if (op.GetInputConstData("k", k_tensor) != GRAPH_SUCCESS || !RankKnown(diagonal_shape) || !FullyDefined(k_shape)) {
     output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
     output_desc.SetDataType(diagonal_tensor_desc.GetDataType());
@@ -2659,14 +2666,14 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
       lower_diag_index = *(data);
       upper_diag_index = *(data + 1);
     } else {
-      OP_LOGE(op.GetName().c_str(), "diag_index must be a vector with one or two elements. It has %lld elements.",
+      OP_LOGE(op.GetName().c_str(), "The variable [diag_index] must be a vector with one or two elements. It has [%lld] elements.",
               num_elements);
       return GRAPH_PARAM_INVALID;
     }
   }
 
   if (lower_diag_index > upper_diag_index) {
-    OP_LOGE(op.GetName().c_str(), "lower_diag_index is greater than upper_diag_index.");
+    OP_LOGE(op.GetName().c_str(), "The variable [lower_diag_index] is greater than [upper_diag_index].");
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2677,9 +2684,9 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
     const int64_t other_dim = diagonal_dims[diagonal_rank - 1];
     if (num_diags != (upper_diag_index - lower_diag_index + 1)) {
       OP_LOGE(op.GetName().c_str(),
-              "The number of rows of `diagonal` doesn't match the number of \
-               diagonals implied from `d_lower` and `d_upper` \
-               num_diags = %lld, d_lower = %lld, d_upper = %lld, other_dim = %lld",
+              "The number of rows of [diagonal] doesn't match the number of"
+              "diagonals implied from [d_lower] and [d_upper]"
+              "num_diags is [%lld], d_lower is [%lld], d_upper is [%lld], other_dim is [%lld]",
               num_diags, lower_diag_index, upper_diag_index, other_dim);
       return GRAPH_PARAM_INVALID;
     }
@@ -2709,22 +2716,21 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   if (num_rows == ge::UNKNOWN_DIM) {
     num_rows = min_num_rows;
   } else if (num_rows < min_num_rows) {
-    OP_LOGE(op.GetName().c_str(), "num_rows %d is too small.", num_rows);
+    OP_LOGE(op.GetName().c_str(), "Variable [num_rows] is too small, num_rows is [%d].", num_rows);
     return GRAPH_PARAM_INVALID;
   }
 
   if (num_cols == ge::UNKNOWN_DIM) {
     num_cols = min_num_cols;
   } else if (num_cols < min_num_cols) {
-    OP_LOGE(op.GetName().c_str(), "num_cols %d is too small.", num_cols);
+    OP_LOGE(op.GetName().c_str(), "Variable [num_cols] is too small, num_cols is [%d].", num_cols);
     return GRAPH_PARAM_INVALID;
   }
 
   if (num_rows != min_num_rows && num_cols != min_num_cols) {
     OP_LOGE(op.GetName().c_str(),
-            "num_rows and num_cols are not consistent with lower_diag_index, \
-             upper_diag_index, and the length of the given diagonals. \
-             num_rows = %lld != min_num_rows = %lld, num_cols = %lld != min_num_cols = %lld",
+            "The Variable [num_rows] and [num_cols] are not equal with [min_num_rows] and [min_num_rows]"
+            "num_rows is [%lld], min_num_rows is [%lld], num_cols is [%lld], min_num_cols is [%lld]",
             num_rows, min_num_rows, num_cols, min_num_cols);
     return GRAPH_PARAM_INVALID;
   }
@@ -2733,20 +2739,20 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   OP_LOGE(op.GetName().c_str(), "num_rows: ", num_rows, " num_cols: ", num_cols);
   if (lower_diag_index == upper_diag_index) {
     if (ReplaceDim(diagonal_shape, diagonal_rank - 1, num_rows, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to replacedim from diagonal_shape.");
+      OP_LOGE(op.GetName().c_str(), "Failed to replacedim from diagonal_shape.");
       return GRAPH_FAILED;
     }
     if (Concatenate(output_shape, Shape({num_cols}), output_shape) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to concatenate betweent outputshape and shape({num_cols}).");
+      OP_LOGE(op.GetName().c_str(), "Failed to concatenate betweent outputshape and shape({num_cols}).");
       return GRAPH_FAILED;
     }
   } else {
     if (ReplaceDim(diagonal_shape, diagonal_rank - 2, num_rows, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to replacedim from diagonal_shape.");
+      OP_LOGE(op.GetName().c_str(), "Failed to replacedim from diagonal_shape.");
       return GRAPH_FAILED;
     }
     if (ReplaceDim(output_shape, diagonal_rank - 1, num_cols, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to replacedim from output_shape.");
+      OP_LOGE(op.GetName().c_str(), "Failed to replacedim from output_shape.");
       return GRAPH_FAILED;
     }
   }

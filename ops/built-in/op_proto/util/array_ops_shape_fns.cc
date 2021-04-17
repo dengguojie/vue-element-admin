@@ -23,6 +23,7 @@
 #include "op_log.h"
 #include "error_util.h"
 #include "common_shape_fns.h"
+#include "graph/utils/op_desc_utils.h"
 #include "axis_util.h"
 
 namespace ge {
@@ -110,6 +111,9 @@ graphStatus PadShapeFn(Operator& op) {
   }
   TensorDesc output_desc = op.GetOutputDesc("y");
   Tensor paddings_tensor;
+  std::vector<std::string> input_infer_depends = {"paddings"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
   status = op.GetInputConstData("paddings", paddings_tensor);
   if (status != GRAPH_SUCCESS) {
     if (dim0 != UNKNOWN_DIM) {
