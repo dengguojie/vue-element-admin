@@ -147,6 +147,13 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     concatNodes.clear();
     return NOT_CHANGED;
   }
+  
+  if (fusedInputNodes.size() > 63) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "cocnat input tensors number %d more than 63", fusedInputNodes.size());
+    fusedInputNodes.clear();
+    concatNodes.clear();
+    return NOT_CHANGED;
+  }
 
   ge::OpDescPtr fusedConcatv2dOpDesc = AttrUtils::CloneOpDesc(concatv2dNode->GetOpDesc());
   FUSION_PASS_CHECK(
@@ -214,5 +221,5 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   return SUCCESS;
 }
 
-REGISTER_PASS("AConcatv2dFusionPass", BUILT_IN_GRAPH_PASS, Concatv2dFusionPass);
+REGISTER_PASS("ZConcatv2dFusionPass", BUILT_IN_GRAPH_PASS, Concatv2dFusionPass);
 }  // namespace fe
