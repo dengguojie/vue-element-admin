@@ -229,7 +229,7 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
     }
   } else {
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                          "dimOut is invalid, please check! actual is %d, expect is 4", dimOut.size());
+                          "dimOut is invalid, please check! actual is %zu, expect is 4", dimOut.size());
     return PARAM_INVALID;
   }
   outputC1 = (outputC + outputC0 - 1) / outputC0;

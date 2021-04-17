@@ -546,7 +546,7 @@ void NormalizeRange(const std::string &op_name, const int64_t dim,
     if (shape_range == EMPTY_RANGE) {
       OP_LOGW(
           op_name.c_str(),
-          "[InferShape] the dimension is -1 and no range is provided, therefore, the range is assumed to be [1, %lld]",
+          "[InferShape] the dimension is -1 and no range is provided, therefore, the range is assumed to be [1, %ld]",
           NORMALIZE_FULL_RANGE.second);
     }
   } else if (dim > 0) {
@@ -570,7 +570,7 @@ bool IntersectDimensionAndRange(const std::string &op_name,
 
   if (dim_a > 0 && dim_b > 0) {
     if (dim_a != dim_b || range_a != range_b) {
-      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimensions a(%lld) and b(%lld) must be same", dim_a, dim_b);
+      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimensions a(%ld) and b(%ld) must be same", dim_a, dim_b);
       return false;
     }
     dim = dim_a;
@@ -582,7 +582,7 @@ bool IntersectDimensionAndRange(const std::string &op_name,
     auto lower_bound = std::max(range_a.first, range_b.first);
     auto upper_bound = std::min(range_a.second, range_b.second);
     if (lower_bound > upper_bound) {
-      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] range a(%lld, %lld) and b(%lld, %lld) must have intersections",
+      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] range a(%ld, %ld) and b(%ld, %ld) must have intersections",
         range_a.first, range_a.second, range_b.first, range_b.second);
       return false;
     }
@@ -598,7 +598,7 @@ bool IntersectDimensionAndRange(const std::string &op_name,
       range = range_b;
       return true;
     }
-    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)",
+    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%ld) must be in range(%ld, %ld)",
                           dim_b, range_a.first, range_b.second);
     return false;
   }
@@ -607,7 +607,7 @@ bool IntersectDimensionAndRange(const std::string &op_name,
     range = range_a;
     return true;
   }
-  CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)",
+  CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%ld) must be in range(%ld, %ld)",
     dim_a, range_b.first, range_b.second);
   return false;
 }
@@ -651,7 +651,7 @@ bool BroadcastDimensionAndRange(const std::string &op_name,
 
   if (dim_a > 1 && dim_b > 1) {
     if (dim_a != dim_b) {
-      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimensions a(%lld) and b(%lld) must be equal",
+      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimensions a(%ld) and b(%ld) must be equal",
         dim_a, dim_b);
       return false;
     }
@@ -665,7 +665,7 @@ bool BroadcastDimensionAndRange(const std::string &op_name,
       range = range_a;
       return true;
     }
-    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)",
+    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%ld) must be in range(%ld, %ld)",
       dim_a, range_b.first, range_b.second);
     return false;
   }
@@ -675,7 +675,7 @@ bool BroadcastDimensionAndRange(const std::string &op_name,
       range = range_b;
       return true;
     }
-    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)",
+    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%ld) must be in range(%ld, %ld)",
       dim_b, range_a.first, range_a.second);
     return false;
   }
@@ -689,7 +689,7 @@ bool BroadcastDimensionAndRange(const std::string &op_name,
     auto lower_bound = std::max(range_a.first, range_b.first);
     auto upper_bound = std::min(range_a.second, range_b.second);
     if (lower_bound > upper_bound) {
-      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] range a(%lld, %lld) and b(%lld, %lld) must have intersections",
+      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] range a(%ld, %ld) and b(%ld, %ld) must have intersections",
         range_a.first, range_a.second, range_b.first, range_b.second);
       return false;
     }

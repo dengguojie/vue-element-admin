@@ -223,3 +223,30 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest9) {
     auto ret = depthwiseconv2d.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+// base dynamic ut with xshape = -2
+TEST_F(DepthwiseConv2DProtoTest, checksupporterror1) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({3, 3, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{3, 3, 16, 1},ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("pads", {-1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("dilations", {2, 2, 2, 2});
+
+    auto ret = depthwiseconv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(DepthwiseConv2DProtoTest, checksupporterror2) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori({-1, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({3, 3, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{3, 3, 16, 1},ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("pads", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("dilations", {2, 2, 2, 2});
+
+    auto ret = depthwiseconv2d.InferShapeAndType();
+    EXPECT_EQ(ret, false);
+}

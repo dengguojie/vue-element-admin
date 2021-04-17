@@ -2158,7 +2158,7 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
   auto truth_shape_num_elements = truth_shape_desc.GetShape().GetShapeSize();
   if (hypothesis_shape_num_elements != truth_shape_num_elements) {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
-                          "Num elements of hypothesis_shape does not match truth_shape: %lld vs %lld",
+                          "Num elements of hypothesis_shape does not match truth_shape: %ld vs %ld",
                           hypothesis_shape_num_elements, truth_shape_num_elements);
     return GRAPH_PARAM_INVALID;
   }

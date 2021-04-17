@@ -198,3 +198,18 @@ TEST_F(DeformableOffsetsProtoTest, deformable_offsets_test_format) {
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(DeformableOffsetsProtoTest, deformable_offsets_test_offsets) {
+    ge::op::DeformableOffsets op;
+    op.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16}, ge::FORMAT_NHWC));
+    op.UpdateInputDesc("offsets", create_desc_with_ori({64, 64, 216}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{64, 64, 216}, ge::FORMAT_NHWC));
+    op.UpdateOutputDesc("y", create_desc_with_ori({4, 192, 192, 32}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 192, 192, 32}, ge::FORMAT_NHWC));
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("ksize", {3, 3});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format", "NHWC");
+    op.SetAttr("deformable_groups", 8);
+    op.SetAttr("modulated", true);
+    auto status = op.InferShapeAndType();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

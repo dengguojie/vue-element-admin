@@ -354,3 +354,128 @@ TEST_F(matmul_infer_test, fuzzy_compile_2) {
   EXPECT_EQ(output_range, expected_range);
 }
 
+
+TEST_F(matmul_infer_test, supportcheckerror1) {
+  auto shape_x1 = vector<int64_t>({32, -1});
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {};
+  auto shape_x2 = vector<int64_t>({-1, 64});
+  std::vector<std::pair<int64_t,int64_t>> range_x2 = {};
+  bool transpose_x1 = false;
+  bool transpose_x2 = false;
+  // create desc
+  auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x1, ge::FORMAT_ND, range_x1);
+  auto tensor_desc_x2 = create_desc_shape_range(shape_x2, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x2, ge::FORMAT_ND, range_x2);
+  // new op and do infershape
+  ge::op::MatMul op;
+  op.UpdateInputDesc("x1", tensor_desc_x1);
+  op.UpdateInputDesc("x2", tensor_desc_x2);
+  op.SetAttr("transpose_x1", transpose_x1);
+  op.SetAttr("transpose_x2", transpose_x2);
+  op.SetAttr("_fuzz_build", true);
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, false);
+}
+
+TEST_F(matmul_infer_test, supportcheckerror2) {
+  auto shape_x1 = vector<int64_t>({32, 32});
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {};
+  auto shape_x2 = vector<int64_t>({64, 64});
+  std::vector<std::pair<int64_t,int64_t>> range_x2 = {};
+  bool transpose_x1 = false;
+  bool transpose_x2 = false;
+  // create desc
+  auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x1, ge::FORMAT_ND, range_x1);
+  auto tensor_desc_x2 = create_desc_shape_range(shape_x2, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x2, ge::FORMAT_ND, range_x2);
+  // new op and do infershape
+  ge::op::MatMul op;
+  op.UpdateInputDesc("x1", tensor_desc_x1);
+  op.UpdateInputDesc("x2", tensor_desc_x2);
+  op.SetAttr("transpose_x1", transpose_x1);
+  op.SetAttr("transpose_x2", transpose_x2);
+  op.SetAttr("_fuzz_build", true);
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(matmul_infer_test, supportcheckerror3) {
+  auto shape_x1 = vector<int64_t>({32, -1});
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{2, 3}};
+  auto shape_x2 = vector<int64_t>({-1, 64});
+  std::vector<std::pair<int64_t,int64_t>> range_x2 = {{4, 5}};
+  bool transpose_x1 = false;
+  bool transpose_x2 = false;
+  // create desc
+  auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x1, ge::FORMAT_ND, range_x1);
+  auto tensor_desc_x2 = create_desc_shape_range(shape_x2, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x2, ge::FORMAT_ND, range_x2);
+  // new op and do infershape
+  ge::op::MatMul op;
+  op.UpdateInputDesc("x1", tensor_desc_x1);
+  op.UpdateInputDesc("x2", tensor_desc_x2);
+  op.SetAttr("transpose_x1", transpose_x1);
+  op.SetAttr("transpose_x2", transpose_x2);
+  op.SetAttr("_fuzz_build", true);
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, false);
+}
+
+TEST_F(matmul_infer_test, supportcheckerror4) {
+  auto shape_x1 = vector<int64_t>({32, 32});
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {};
+  auto shape_x2 = vector<int64_t>({-1, 64});
+  std::vector<std::pair<int64_t,int64_t>> range_x2 = {{4, 5}};
+  bool transpose_x1 = false;
+  bool transpose_x2 = false;
+  // create desc
+  auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x1, ge::FORMAT_ND, range_x1);
+  auto tensor_desc_x2 = create_desc_shape_range(shape_x2, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x2, ge::FORMAT_ND, range_x2);
+  // new op and do infershape
+  ge::op::MatMul op;
+  op.UpdateInputDesc("x1", tensor_desc_x1);
+  op.UpdateInputDesc("x2", tensor_desc_x2);
+  op.SetAttr("transpose_x1", transpose_x1);
+  op.SetAttr("transpose_x2", transpose_x2);
+  op.SetAttr("_fuzz_build", true);
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, false);
+}
+
+TEST_F(matmul_infer_test, supportcheckerror5) {
+  auto shape_x1 = vector<int64_t>({32, -1});
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{2, 3}};
+  auto shape_x2 = vector<int64_t>({64, 64});
+  std::vector<std::pair<int64_t,int64_t>> range_x2 = {};
+  bool transpose_x1 = false;
+  bool transpose_x2 = false;
+  // create desc
+  auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x1, ge::FORMAT_ND, range_x1);
+  auto tensor_desc_x2 = create_desc_shape_range(shape_x2, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                shape_x2, ge::FORMAT_ND, range_x2);
+  // new op and do infershape
+  ge::op::MatMul op;
+  op.UpdateInputDesc("x1", tensor_desc_x1);
+  op.UpdateInputDesc("x2", tensor_desc_x2);
+  op.SetAttr("transpose_x1", transpose_x1);
+  op.SetAttr("transpose_x2", transpose_x2);
+  op.SetAttr("_fuzz_build", true);
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, false);
+}

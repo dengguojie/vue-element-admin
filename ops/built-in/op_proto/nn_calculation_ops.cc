@@ -364,7 +364,7 @@ static bool GetPadDepthwiseConv2D(ge::Operator& op, int64_t inH, int64_t inW, in
   if (padtop < 0 || padbottom < 0 || padleft < 0 || padright < 0) {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
                           "pads should be positive, "
-                          " actual is [%d,%d,%d,%d].",
+                          " actual is [%ld,%ld,%ld,%ld].",
                           padtop, padbottom, padleft, padright);
     return false;
   }
@@ -487,7 +487,7 @@ static bool GetDimInFormat(const std::string& opName, const std::string& formatS
                            int64_t& dimPosition) {
   dimPosition = formatStr.find(dimName);
   if (dimPosition < 0) {
-    CUBE_INNER_ERR_REPORT(opName.c_str(), "Position(%s) is invalid: %d, which format is %s.",
+    CUBE_INNER_ERR_REPORT(opName.c_str(), "Position(%s) is invalid: %ld, which format is %s.",
       dimName.c_str(), dimPosition, formatStr.c_str());
     return false;
   }
@@ -9267,7 +9267,7 @@ static graphStatus VerifyDeformableOffsetsInput(const ge::Operator& op) {
     return GRAPH_FAILED;
   }
   if (offsets_shape.size() != kDeformDimSizeLimit) {
-    OP_LOGE(op.GetName().c_str(), "Offsets shape should be 4d, actual is [%d].",
+    OP_LOGE(op.GetName().c_str(), "Offsets shape should be 4d, actual is [%zu].",
             offsets_shape.size());
     map<string, string> err_map;
     err_map["op_name"] = "DeformableOffsets";

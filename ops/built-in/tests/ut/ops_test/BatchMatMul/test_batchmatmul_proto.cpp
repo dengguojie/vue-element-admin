@@ -21,6 +21,8 @@ using namespace ge;
 using namespace op;
 
 #define OP_TUPLE tuple<vector<int64_t>, DataType, Format, vector<pair<int64_t,int64_t>>>
+#define PASS true
+#define FAILED false
 
 class BatchMatMulInferSliceTest : public testing::Test {
 protected:
@@ -46,9 +48,14 @@ BatchMatMul CreateBatchMatMulOp(OP_TUPLE a, OP_TUPLE b,
   return op;
 }
 
-void Operate(BatchMatMul &op) {
+void Operate(BatchMatMul &op, bool expected_result = PASS) {
   auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, GRAPH_SUCCESS);
+
+  if (expected_result == PASS){
+    EXPECT_EQ(ret, GRAPH_SUCCESS);
+  } else {
+    EXPECT_EQ(ret, GRAPH_FAILED);
+  }
 }
 
 void Check(BatchMatMul &op, vector<int64_t> expected_shape, vector<pair<int64_t,int64_t>> expected_range) {
@@ -100,6 +107,39 @@ TEST(BatchMatMulInferTest, StaticNormal4) {
   Operate(op);
 
   Check(op, {2, 3, 2, 5}, {{2, 2}, {3, 3}, {2, 2}, {5, 5}});
+}
+
+TEST(BatchMatMulInferTest, supportcheckerror1) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{3, 6, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op, FAILED);
+}
+
+TEST(BatchMatMulInferTest, supportcheckerror2) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{6, 7}}},
+                                false, false);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, FAILED);
+}
+
+TEST(BatchMatMulInferTest, supportcheckerror3) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{6, 7}}},
+                                OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op, FAILED);
+}
+
+TEST(BatchMatMulInferTest, supportcheckerror4) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{6, 7}}},
+                                OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{3, 4}}},
+                                false, false);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, FAILED);
 }
 
 // cut batch in NZ

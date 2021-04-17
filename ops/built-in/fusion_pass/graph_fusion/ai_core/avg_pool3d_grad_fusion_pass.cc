@@ -341,7 +341,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   // set filter and mul inputas constant input
   auto const_input_nodes = OpDescUtils::GetConstInputs(fusion_node_ptr);
   FUSION_PASS_CHECK(const_input_nodes.size() <= 0,
-                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "GetConstInputs Error Size: %u", const_input_nodes.size()),
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "GetConstInputs Error Size: %zu", const_input_nodes.size()),
                     return PARAM_INVALID);
   for (int i = 0; i < const_input_nodes.size(); i++) {
     NodePtr const_input = const_input_nodes[i];
