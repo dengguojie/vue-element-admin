@@ -929,10 +929,10 @@ class VectorSchedule(object):
             "broadcast": "broadcast",
             "elewise_single_round": "vector_conv_rint",
             "elewise_single_rec": "vector_rec",
-            "elewise_binary_sub": "elewise_binary_sub",
+            "elewise_binary_sub": "vector_sub",
             "elewise_single_cast": "vector_conv",
             "elewise_single_floor": "vector_conv_floor",
-            "elewise_single_ceil": "elewise_single_ceil",
+            "elewise_single_ceil": "vector_conv_ceil",
             "elewise_binary_compare_lt":
                 "elewise_binary_compare_lt",
             "elewise_binary_compare_gt":
