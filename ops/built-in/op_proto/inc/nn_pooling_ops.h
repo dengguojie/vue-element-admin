@@ -1682,7 +1682,27 @@ REG_OP(MaxPoolWithArgmaxV1)
     .ATTR(ceil_mode, Bool, false)
     .OP_END_FACTORY_REG(MaxPoolWithArgmaxV1)
 
-// SubSample
+/**
+*@brief Randomly sample a subset of positive and negative examples,and overwrite
+the label vector to the ignore value (-1) for all elements that are not
+included in the sample.\n
+
+* @par Inputs:
+* One input:
+* labels: shape of labels,(N, ) label vector with values. \n
+
+* @par Attributes:
+* @li batch_size_per_images: A require attribute of type int.
+* @li positive_fraction: A require attribute of type float.
+
+*@par Outputs:
+*y: The result of subSample. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Pytorch operator SubSample.
+*@par Restrictions:
+*Warning: This operator can be integrated only by MaskRcnn. Please do not use it directly.
+*/
 REG_OP(SubSample)
     .INPUT(labels, TensorType({DT_INT32}))
     .OUTPUT(y, TensorType({DT_INT32}))
@@ -1690,7 +1710,28 @@ REG_OP(SubSample)
     .REQUIRED_ATTR(positive_fraction, Float)
     .OP_END_FACTORY_REG(SubSample)
 
-//  SubSampleLabels
+/**
+*@brief Randomly sample a subset of positive and negative examples,and overwrite
+the label vector to the ignore value (-1) for all elements that are not
+included in the sample.\n
+
+* @par Inputs:
+* two inputs, including:
+* @li labels: shape of labels,(N, ) label vector with values:.
+* @li shuffle_matrix: random matrix with shape (N, ). \n
+
+* @par Attributes:
+* @li batch_size_per_images: A require attribute of type int.
+* @li positive_fraction: A require attribute of type float.
+
+*@par Outputs:
+*y: The result of subSample. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Pytorch operator SubSampleLabels.
+*@par Restrictions:
+*Warning: This operator can be integrated only by MaskRcnn. Please do not use it directly.
+*/
 REG_OP(SubSampleLabels)
     .INPUT(labels, TensorType({DT_INT32}))
     .INPUT(shuffle_matrix, TensorType({DT_INT32}))
