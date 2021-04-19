@@ -1248,49 +1248,19 @@ IMPLEMT_VERIFIER(BNTrainingUpdateGrad, BNTrainingUpdateGradVerify) {
   return GRAPH_SUCCESS;
 }
 IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateGradInferShape) {
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_grads_desc = op_desc->MutableInputDesc("grads");
-  auto input_x_desc = op_desc->MutableInputDesc("x");
-  auto input_batch_mean_desc = op_desc->MutableInputDesc("batch_mean");
-  auto input_batch_variance_desc = op_desc->MutableInputDesc("batch_variance");
-  auto output_scale_desc = op_desc->MutableInputDesc("diff_scale");
-  auto output_offset_desc = op_desc->MutableInputDesc("diff_offset");
+  auto shape = op.GetInputDesc("batch_mean").GetShape();
+  auto output_dtype = op.GetInputDesc("batch_mean").GetDataType();
 
-  if (input_grads_desc == nullptr || input_x_desc == nullptr || input_batch_mean_desc == nullptr || 
-    input_batch_variance_desc == nullptr || output_scale_desc == nullptr || output_offset_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get null node ptr");
-    return GRAPH_FAILED;
-  }
+  TensorDesc td_diff_scale = op.GetOutputDesc("diff_scale");
+  td_diff_scale.SetShape(shape);
+  td_diff_scale.SetDataType(output_dtype);
+  op.UpdateOutputDesc("diff_scale", td_diff_scale);
 
-  auto input_batch_mean_shape = input_batch_mean_desc->MutableShape().GetDims();
-  auto input_batch_mean_dtype = input_batch_mean_desc->GetDataType();
+  TensorDesc td_diff_offset = op.GetOutputDesc("diff_offset");
+  td_diff_offset.SetShape(shape);
+  td_diff_offset.SetDataType(output_dtype);
+  op.UpdateOutputDesc("diff_offset", td_diff_scale);
 
-  if (!IsUnknown(input_batch_mean_shape)) {
-    output_scale_desc->SetShape(GeShape(input_batch_mean_shape));
-    output_scale_desc->SetOriginShape(GeShape(input_batch_mean_shape));
-
-    output_offset_desc->SetShape(GeShape(input_batch_mean_shape));
-    output_offset_desc->SetOriginShape(GeShape(input_batch_mean_shape));
-  } else {
-    std::vector<std::pair<int64_t, int64_t>> input_batch_mean_range;
-    if (input_batch_mean_desc->GetShapeRange(input_batch_mean_range) != GRAPH_SUCCESS) {
-      return GRAPH_FAILED;
-    }
-
-    MakeUpShapeRange(input_batch_mean_shape, input_batch_mean_range);
-    output_scale_desc->SetShape(GeShape(input_batch_mean_shape));
-    output_scale_desc->SetOriginShape(GeShape(input_batch_mean_shape));
-    output_offset_desc->SetShape(GeShape(input_batch_mean_shape));
-    output_offset_desc->SetOriginShape(GeShape(input_batch_mean_shape));
-
-    if (output_scale_desc->GetShapeRange(input_batch_mean_range) != GRAPH_SUCCESS || 
-        output_offset_desc->GetShapeRange(input_batch_mean_range) != GRAPH_SUCCESS) {
-      return GRAPH_FAILED;
-    }
-
-    output_scale_desc->SetDataType(input_batch_mean_dtype);
-    output_offset_desc->SetDataType(input_batch_mean_dtype);
-  }
   return GRAPH_SUCCESS;
 }
 
