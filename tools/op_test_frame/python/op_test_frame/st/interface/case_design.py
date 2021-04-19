@@ -110,7 +110,7 @@ class CaseDesign:
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
-    def _check_range_value_valid(self, range_value):
+    def _check_range_value_valid(self, range_value, for_shape_range=False):
         if len(range_value) != 2:
             utils.print_error_log('The value(%s) of "range_value" is not [min,'
                                   'max]. Please modify it in file %s.'
@@ -124,8 +124,8 @@ class CaseDesign:
                     % (range_value, self.current_json_path))
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-        # consider shape_range allow[1, -1] in dynamic shape scenario.
-        if range_value[0] == 1 and range_value[1] == -1:
+        # consider shape_range allow[n, -1] or [-1,n]in dynamic shape scenario.
+        if for_shape_range and (range_value[0] == -1 or range_value[1] == -1):
             return
         if range_value[1] < range_value[0]:
             utils.print_error_log(
@@ -328,7 +328,7 @@ class CaseDesign:
                 op_desc, utils.SHAPE_RANGE, op_key)
             shape_range_list_list.append(shape_range_list)
             for item in shape_range_list:
-                self._check_range_value_valid(item)
+                self._check_range_value_valid(item, for_shape_range=True)
             one_op_dict.update({
                 utils.SHAPE_RANGE: shape_range_list_list})
 

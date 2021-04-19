@@ -152,7 +152,7 @@ class DataGenerator:
                 else:
                     dtype = utils.DTYPE_TO_NUMPY_MAP[input_desc.get('type')]
                 # consider dynamic shape scenario
-                shape_list = dynamic_handle.replace_shape_to_typical_shape(
+                input_shape = dynamic_handle.replace_shape_to_typical_shape(
                     input_desc)
                 file_path = os.path.join(
                     self.output_path,
@@ -165,7 +165,7 @@ class DataGenerator:
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
                 try:
                     data = self.gen_data(
-                            shape_list, range_min, range_max, dtype,
+                            input_shape, range_min, range_max, dtype,
                             input_desc['data_distribute'])
                 except MemoryError as error:
                     utils.print_warn_log(
@@ -177,7 +177,8 @@ class DataGenerator:
                     input_dic = {
                         'value': data,
                         'dtype': input_desc.get('type'),
-                        'shape': input_desc.get('shape')
+                        'shape': input_shape,
+                        'format': input_desc.get('format')
                     }
                     calc_func_params_tmp.append(input_dic)
                     data.tofile(file_path)
@@ -195,9 +196,12 @@ class DataGenerator:
                     param_info_list.append("input_{index}".format(index=index))
             # get output param
             for index, output_desc in enumerate(case['output_desc']):
+                output_shape = dynamic_handle.replace_shape_to_typical_shape(
+                    output_desc)
                 output_dic = {
                     'dtype': output_desc.get('type'),
-                    'shape': output_desc.get('shape')
+                    'shape': output_shape,
+                    'format': output_desc.get('format')
                 }
                 calc_func_params_tmp.append(output_dic)
                 if output_desc.get('name'):
