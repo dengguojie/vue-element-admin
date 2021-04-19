@@ -53,23 +53,22 @@ vector<FusionPattern *> CommonLSTMFusionPass::DefinePatterns()
 }
 
 template <class T>
-static Status SetWeightTensorData(ge::GeTensorPtr wTensorPtr, ge::GeTensorPtr rTensorPtr,
-                                  std::vector<int32_t> &inputDims) {
+static ge::GeTensorPtr SetWeightTensorData(ge::GeTensorPtr wTensorPtr, ge::GeTensorPtr rTensorPtr,
+                                           std::vector<int32_t> &inputDims, ge::GeTensorDesc tensorDesc) {
   int32_t wRow = inputDims[0];
   int32_t wCol = inputDims[1];
   int32_t rRow = inputDims[2];
   int32_t rCol = inputDims[3];
   int32_t targetCol = wCol + rCol;
+  int32_t weightSize = targetCol * wRow;
   // the wx + wh matrix
-  unique_ptr<T[]> wxhMergeData(new (std::nothrow) T[targetCol * wRow]());
-  FUSION_PASS_CHECK(wxhMergeData.get() == nullptr, OP_LOGE(FUSED_NODE, "wxhMergeData is NULL"),
-                    return PARAM_INVALID);
+  unique_ptr<T[]> wxhMergeData(new (std::nothrow) T[weightSize]());
+  FUSION_PASS_CHECK(wxhMergeData.get() == nullptr, OP_LOGE(FUSED_NODE, "wxhMergeData is NULL"), return nullptr);
   T *wxData = (T *)wTensorPtr->GetData().data();
   T *whData = (T *)rTensorPtr->GetData().data();
 
-  auto retMem = memset_s(wxhMergeData.get(), targetCol * wRow, 0, targetCol * wRow);
-  FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_NODE, "Failed to operate memset_s function!"),
-                    return PARAM_INVALID);
+  auto retMem = memset_s(wxhMergeData.get(), weightSize, 0, weightSize);
+  FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_NODE, "Failed to operate memset_s function!"), return nullptr);
 
   // wx transpose, assign to merge data
   T *dstWeight = wxhMergeData.get();
@@ -91,8 +90,11 @@ static Status SetWeightTensorData(ge::GeTensorPtr wTensorPtr, ge::GeTensorPtr rT
       dstWeight[col * wRow + beginSize * 3 + row] = tmp;
     }
   }
-  wTensorPtr->SetData(reinterpret_cast<uint8_t *>(wxhMergeData.get()), (targetCol * wRow) * sizeof(T));
-  return SUCCESS;
+  ge::GeTensorPtr dstTensorPtr = nullptr;
+  FUSION_PASS_MAKE_SHARED((dstTensorPtr = std::make_shared<ge::GeTensor>(
+                               tensorDesc, reinterpret_cast<uint8_t *>(wxhMergeData.get()), weightSize * sizeof(T))),
+                          return nullptr);
+  return dstTensorPtr;
 }
 
 ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo,
@@ -102,21 +104,16 @@ ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, cons
   ge::OutDataAnchorPtr constWxAnchorPtr0 = inputWxAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputWNode = constWxAnchorPtr0->GetOwnerNode();
   vector<ge::GeTensorPtr> weightsW = ge::OpDescUtils::MutableWeights(inputWNode);
-  if (weightsW.empty()) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsW is null, fusion failed.");
-    return nullptr;
-  }
-
+  FUSION_PASS_CHECK(weightsW.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsW is null, fusion failed."),
+                    return nullptr);
   ge::GeTensorPtr wTensorPtr = weightsW[0];
 
   ge::InDataAnchorPtr inputRAnchorPtr0 = fusedNode->GetInDataAnchor(inputIndexInfo.rIndex);
   ge::OutDataAnchorPtr constRAnchorPtr0 = inputRAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr inputRNode = constRAnchorPtr0->GetOwnerNode();
   vector<ge::GeTensorPtr> weightsR = ge::OpDescUtils::MutableWeights(inputRNode);
-  if (weightsR.empty()) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsR is null, fusion failed.");
-    return nullptr;
-  }
+  FUSION_PASS_CHECK(weightsR.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsR is null, fusion failed."),
+                    return nullptr);
   ge::GeTensorPtr rTensorPtr = weightsR[0];
 
   ge::GeTensorDesc wConstTensorDesc = wTensorPtr->GetTensorDesc();
@@ -134,95 +131,75 @@ ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, cons
   hiddenSize = rRow / 4;
 
   // wxRow == whRow
-  std::vector<int64_t> dimsIn;
-  int32_t targetCol = wCol + rCol;
-  dimsIn.push_back(targetCol);
-  dimsIn.push_back(wRow);
+  ge::GeTensorDesc weightTensorDesc;
+  std::vector<int64_t> dimsIn = {wCol + rCol, wRow};
+  SetTensorDescription(weightTensorDesc, dimsIn, ge::FORMAT_HWCN, dataType);
 
-  ge::GeShape wrhShape(dimsIn);
-  ge::GeTensorDesc wrhTensorDesc(wrhShape, ge::FORMAT_HWCN, dataType);
-  wrhTensorDesc.SetOriginShape(wrhShape);
-  wrhTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
-
-  fusedNode->GetInDataAnchor(inputIndexInfo.wIndex)
-      ->GetPeerOutAnchor()
-      ->GetOwnerNode()
-      ->GetOpDesc()
-      ->UpdateOutputDesc(0, wrhTensorDesc);
-  wTensorPtr->SetTensorDesc(wrhTensorDesc);
-
+  ge::GeTensorPtr dstTensorPtr = nullptr;
   std::vector<int32_t> inputDims{wRow, wCol, rRow, rCol};
   if (dataType == ge::DT_FLOAT16) {
-    SetWeightTensorData<uint16_t>(wTensorPtr, rTensorPtr, inputDims);
+    dstTensorPtr = SetWeightTensorData<uint16_t>(wTensorPtr, rTensorPtr, inputDims, weightTensorDesc);
   } else if (dataType == ge::DT_FLOAT) {
-    SetWeightTensorData<float>(wTensorPtr, rTensorPtr, inputDims);
+    dstTensorPtr = SetWeightTensorData<float>(wTensorPtr, rTensorPtr, inputDims, weightTensorDesc);
   } else {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, float32), fusion failed.");
     return nullptr;
   }
-  return wTensorPtr;
+  return dstTensorPtr;
 }
 
 template <class T>
-static Status SetBiasTensorData(ge::GeTensorPtr &biasTensorPtr, ge::GeTensorDesc biasTensorDesc, int32_t hiddenSize,
-                                DataType dataType) {
+static ge::GeTensorPtr SetBiasTensorData(ge::GeTensorPtr srcBiasTensorPtr, ge::GeTensorDesc tensorDesc,
+                                         int32_t hiddenSize, DataType dataType) {
   int32_t biasSize = 4 * hiddenSize;
   unique_ptr<T[]> dstBiasData(new (std::nothrow) T[biasSize]());
   auto retMem = memset_s(dstBiasData.get(), biasSize, 0, biasSize);
-  FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_NODE, "bias memset failed!"), return FAILED);
-  if (biasTensorPtr == nullptr) {
-    FUSION_PASS_MAKE_SHARED(
-        (biasTensorPtr = std::make_shared<ge::GeTensor>(
-              biasTensorDesc, reinterpret_cast<uint8_t *>(dstBiasData.get()), biasSize * sizeof(T))),
-        return FAILED);
-    return SUCCESS;
+  FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_NODE, "bias memset failed!"), return nullptr);
+
+  if (srcBiasTensorPtr != nullptr) {
+    T *biasData = (T *)srcBiasTensorPtr->GetData().data();
+    T *dstBias = dstBiasData.get();
+    if (dataType == ge::DT_FLOAT16) {
+      fp16_t totalValue;
+      for (int32_t i = 0; i < biasSize; i++) {
+        fp16_t value1(*(biasData + i));
+        fp16_t value2(*(biasData + biasSize + i));
+        totalValue = value1 + value2;
+        dstBias[i] = totalValue.val;
+      }
+    } else {
+      for (int32_t i = 0; i < biasSize; i++) {
+        dstBias[i] = *(biasData + i) + *(biasData + biasSize + i);
+      }
+    }
+
+    // swap 1, 3
+    for (int32_t i = 0; i < hiddenSize; i++) {
+      T tmp = dstBias[i + hiddenSize * 1];
+      dstBias[i + hiddenSize * 1] = dstBias[i + hiddenSize * 3];
+      dstBias[i + hiddenSize * 3] = tmp;
+    }
   }
 
-  T *biasData = (T *)biasTensorPtr->GetData().data();
-  T *dstBias = dstBiasData.get();
-  if (dataType == ge::DT_FLOAT) {
-    for (int32_t i = 0; i < biasSize; i++) {
-      dstBias[i] = *(biasData + i) + *(biasData + biasSize + i);
-    }
-  } else if (dataType == ge::DT_FLOAT16) {
-    fp16_t totalValue;
-    for (int32_t i = 0; i < biasSize; i++) {
-      fp16_t value1(*(biasData + i));
-      fp16_t value2(*(biasData + biasSize + i));
-      totalValue = value1 + value2;
-      dstBias[i] = totalValue.val;
-    }
-  }
-
-  for (int32_t i = 0; i < hiddenSize; i++) {
-    T tmp = dstBias[i + hiddenSize * 1];
-    dstBias[i + hiddenSize * 1] = dstBias[i + hiddenSize * 3];
-    dstBias[i + hiddenSize * 3] = tmp;
-  }
-  biasTensorPtr->SetData(reinterpret_cast<uint8_t *>(dstBiasData.get()), biasSize * sizeof(T));
-  return SUCCESS;
+  ge::GeTensorPtr dstTensorPtr = nullptr;
+  FUSION_PASS_MAKE_SHARED((dstTensorPtr = std::make_shared<ge::GeTensor>(
+                               tensorDesc, reinterpret_cast<uint8_t *>(dstBiasData.get()), biasSize * sizeof(T))),
+                          return nullptr);
+  return dstTensorPtr;
 }
 
 ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMBias(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo,
-                                                      bool hasBias, int32_t hiddenSize) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "has enter process onnx LSTM bias has bool %d", hasBias);
-  std::vector<int64_t> dimsIn = {4 * hiddenSize};
-  ge::GeShape biasShape(dimsIn);
+                                                      int32_t hiddenSize) {
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
+  ge::GeTensorDesc biasTensorDesc;
+  std::vector<int64_t> dimsIn = {4 * hiddenSize};
   DataType dataType = fusedDesc->GetInputDesc(0).GetDataType();
-  ge::GeTensorDesc biasTensorDesc(biasShape, ge::FORMAT_ND, dataType);
-  biasTensorDesc.SetShape(biasShape);
-  biasTensorDesc.SetOriginShape(biasShape);
-  biasTensorDesc.SetOriginFormat(ge::FORMAT_ND);
-  biasTensorDesc.SetFormat(ge::FORMAT_ND);
+  SetTensorDescription(biasTensorDesc, dimsIn, ge::FORMAT_ND, dataType);
 
-  ge::GeTensorPtr biasTensorPtr = nullptr;
+  bool hasBias = fusedDesc->MutableInputDesc("b") != nullptr;
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "has enter process onnx LSTM bias has bool %d", hasBias);
+  ge::GeTensorPtr srcTensorPtr = nullptr;
   if (hasBias) {
-    fusedNode->GetInDataAnchor(inputIndexInfo.biasIndex)
-        ->GetPeerOutAnchor()
-        ->GetOwnerNode()
-        ->GetOpDesc()
-        ->UpdateOutputDesc(0, biasTensorDesc);
     ge::InDataAnchorPtr biasInputAnchorPtr0 = fusedNode->GetInDataAnchor(inputIndexInfo.biasIndex);
     ge::OutDataAnchorPtr constBiasAnchorPtr0 = biasInputAnchorPtr0->GetPeerOutAnchor();
     ge::NodePtr biasNode = constBiasAnchorPtr0->GetOwnerNode();
@@ -230,18 +207,31 @@ ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMBias(ge::NodePtr fusedNode, con
     FUSION_PASS_CHECK(biasT.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "onnx LSTM biasT is null, fusion failed."),
                       return nullptr);
 
-    biasTensorPtr = biasT[0];
-    ge::GeTensorDesc biasTensorDesc = biasTensorPtr->GetTensorDesc();
-    FUSION_PASS_CHECK(biasTensorDesc.GetShape().GetDim(0) != 1,
+    srcTensorPtr = biasT[0];
+    FUSION_PASS_CHECK(srcTensorPtr->GetTensorDesc().GetShape().GetDim(0) != 1,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Currently, the bias size cannot be set to 2. fusion failed."),
                       return nullptr);
   }
+
+  ge::GeTensorPtr dstTensorPtr = nullptr;
   if (dataType == ge::DT_FLOAT16) {
-    SetBiasTensorData<uint16_t>(biasTensorPtr, biasTensorDesc, hiddenSize, dataType);
+    dstTensorPtr = SetBiasTensorData<uint16_t>(srcTensorPtr, biasTensorDesc, hiddenSize, dataType);
   } else if (dataType == ge::DT_FLOAT) {
-    SetBiasTensorData<float>(biasTensorPtr, biasTensorDesc, hiddenSize, dataType);
+    dstTensorPtr = SetBiasTensorData<float>(srcTensorPtr, biasTensorDesc, hiddenSize, dataType);
   }
-  return biasTensorPtr;
+  return dstTensorPtr;
+}
+
+void CommonLSTMFusionPass::SetTensorDescription(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims,
+                                                const ge::Format &format, const ge::DataType &dtype) {
+    ge::GeShape shape(dims);
+    tensorDesc.SetShape(shape);
+    tensorDesc.SetDataType(dtype);
+    tensorDesc.SetFormat(format);
+    tensorDesc.SetOriginShape(shape);
+    tensorDesc.SetOriginDataType(dtype);
+    tensorDesc.SetOriginFormat(format);
+    return;
 }
 
 Status CommonLSTMFusionPass::AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
@@ -338,20 +328,9 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
   dynamicRnnDesc->UpdateInputDesc("w", wTensorPtr->GetTensorDesc());
 
   // process bias
-  ge::GeTensorDesc biasDesc = fusedDesc->GetInputDesc(inputIndexInfo.biasIndex);
-  ge::GeTensorDesc bias = biasDesc;
-  std::vector<int64_t> dimsIn = {4 * hiddenSize};
-  ge::GeShape biasShape(dimsIn);
-  bias.SetShape(biasShape);
-  bias.SetOriginShape(biasShape);
-  bias.SetFormat(ge::FORMAT_ND);
-  bias.SetOriginFormat(ge::FORMAT_ND);
-  bias.SetDataType(fusedDesc->GetInputDesc(0).GetDataType());
-
-  bool hasBias = fusedDesc->MutableInputDesc("b") != nullptr;
-  ge::GeTensorPtr biasTensorPtr = ProcessLSTMBias(fusedNode, inputIndexInfo, hasBias, hiddenSize);
+  ge::GeTensorPtr biasTensorPtr = ProcessLSTMBias(fusedNode, inputIndexInfo, hiddenSize);
   FUSION_PASS_CHECK(biasTensorPtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process b fail."), return FAILED);
-  dynamicRnnDesc->AddInputDesc("b", bias);
+  dynamicRnnDesc->AddInputDesc("b", biasTensorPtr->GetTensorDesc());
 
   // create dynamic_rnn node
   ge::NodePtr dynamicRnnNode = graph.AddNode(dynamicRnnDesc);
@@ -368,30 +347,18 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
   return FAILED);
 
   // connect w
+  ge::OpDescPtr wDesc = ge::OpDescUtils::CreateConstOp(wTensorPtr);
+  ge::NodePtr wNode = graph.AddNode(wDesc);
   FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndexInfo.wIndex)->GetPeerOutAnchor(),
-                                         dynamicRnnNode->GetInDataAnchor(1)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion node w failed."),
-  return FAILED);
+      SUCCESS != ge::GraphUtils::AddEdge(wNode->GetOutDataAnchor(0), dynamicRnnNode->GetInDataAnchor(1)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion node w failed."), return FAILED);
 
   // connect bias
-  if (hasBias) {
-    FUSION_PASS_CHECK(
-        SUCCESS !=
-        ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndexInfo.biasIndex)->GetPeerOutAnchor(),
-                                dynamicRnnNode->GetInDataAnchor(2)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion node bias failed."),
-    return FAILED);
-  } else {
-    ge::OpDescPtr biasDesc = ge::OpDescUtils::CreateConstOp(biasTensorPtr);
-    ge::NodePtr const_node = graph.AddNode(biasDesc);
-    FUSION_PASS_CHECK(
-        SUCCESS !=
-        ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0),
-                                dynamicRnnNode->GetInDataAnchor(2)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion node bias failed."),
-    return FAILED);
-  }
+  ge::OpDescPtr biasDesc = ge::OpDescUtils::CreateConstOp(biasTensorPtr);
+  ge::NodePtr biasNode = graph.AddNode(biasDesc);
+  FUSION_PASS_CHECK(
+      SUCCESS != ge::GraphUtils::AddEdge(biasNode->GetOutDataAnchor(0), dynamicRnnNode->GetInDataAnchor(2)),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion node bias failed."), return FAILED);
 
   // connect seq_length
   if (hasSeqLength) {

@@ -38,8 +38,9 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) override;
  private:
   ge::GeTensorPtr ProcessLSTMWxh(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, int32_t &hiddenSize);
-  ge::GeTensorPtr ProcessLSTMBias(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, bool hasBias,
-                                  int32_t hiddenSize);
+  ge::GeTensorPtr ProcessLSTMBias(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, int32_t hiddenSize);
+  void SetTensorDescription(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims, const ge::Format &format,
+                            const ge::DataType &dtype);
   Status AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
                         ge::GeTensorDesc dynamicRnnOutputDesc, vector<ge::NodePtr> &newNodes, std::string nodeName,
                         int nodeIndex);
