@@ -1124,6 +1124,26 @@ REG_OP(InstanceNorm)
     .REQUIRED_ATTR(epsilon, Float)
     .OP_END_FACTORY_REG(InstanceNorm)
 
+/**
+* @brief Computes Kl_div_loss_grad or Kl_div_loss_backward. \n
+
+* @par Inputs:
+* Three inputs, including:
+* @li grad: A Tensor. Must be one of the following types: float16, float32.
+* Required.
+* @li input: A Tensor. Has the same type as "grad". Required.
+* @li target: A Tensor. Has the same type as "grad". Required. \n
+
+* @par Attributes:
+* @li reduction: An optional attribute of type String. Defaults to "mean". \n
+* @li log_target: An optional attribute of type Bool. Defaults to false. \n
+
+* @par Outputs:
+* @li y: A Tensor. Has the same type as "grad". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator KlDivLossGrad.
+*/
 REG_OP(KlDivLossGrad)
     .INPUT(grad, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(input, TensorType({DT_FLOAT16, DT_FLOAT}))
