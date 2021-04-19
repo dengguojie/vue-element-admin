@@ -1500,6 +1500,23 @@ REG_OP(Sort)
     .ATTR(descending, Bool, false)
     .OP_END_FACTORY_REG(Sort)
 
+/**
+*@brief Computes iou for input bboxes and gtboxes.
+
+*@par Inputs:
+* Two inputs, including:
+*@li bboxes: boxes, a 4D Tensor of type float16 with the shape (x0, x1, y0, y1),
+*@li gtboxes: boxes, a 4D Tensor of type float16 withthe shape (x0, x1, y0, y1).\n
+
+*@par Attributes:
+*@li mode: A optional attribute of type string, whether judge the mode of iou. \n
+
+*@par Outputs:
+*@li overlap: A 3D Tensor of type float16 with shape (batch, max_total_size, 4). \n
+
+*@attention Constraints:
+* Only computation of float16 data is supported.
+*/
 REG_OP(PtIou)
     .INPUT(bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(gtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -1729,3 +1746,4 @@ REG_OP(PSROIPoolingGradV2D)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_DETECT_OPS_H_
+
