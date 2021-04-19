@@ -42,7 +42,9 @@ Status ParseParamsCommonLSTM(const Message* op_src, ge::Operator& op_dest) {
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "hidden_size" && attr.type() == ge::onnx::AttributeProto::INT) {
       hidden_size_flag = true;
-      break;
+    }
+    if (attr.name() == "direction" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      op_dest.SetAttr("direction", attr.s());
     }
   }
   if (!hidden_size_flag) {

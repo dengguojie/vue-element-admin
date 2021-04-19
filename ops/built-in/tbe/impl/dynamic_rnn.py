@@ -45,6 +45,7 @@ from te.tvm.schedule import create_schedule
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+
 # pylint: disable=invalid-name
 def sigmoid(x):
     """
@@ -555,6 +556,7 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
     if tanhc["dtype"] != bias_dtype:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "tanhc dtype is not the same as bias dtype !")
 
+
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
 def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
                       wci, wcf, wco, mask, y, output_h, output_c, i, j, f, o,
@@ -576,10 +578,8 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "w, b shape is wrong, please check!")
 
     # seq_length
-    if seq_length is not None and (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
-        error_manager_vector.raise_err_check_params_rules("DynamicRNN",
-                                                          "(seq_length.shape[0] + 15)/16 != output_h.shape[2]",
-                                                          "seq_length.shape[0]", output_h["shape"][2])
+    if seq_length is not None and (seq_length["shape"] != output_h["shape"]):
+        error_manager_vector.raise_err_check_params_rules("DynamicRNN: seq_length.shape != output_h.shape")
 
     # check init
     if (init_h is None and init_c is not None) or (
@@ -653,7 +653,7 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
     if cell_type not in ["LSTM", "GRU", "RNN_RELU", "RNN_TANH"]:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr cell_type is not support, please check!")
 
-    if direction not in ["UNIDIRECTIONAL", "BIDIRECTIONAL"]:
+    if direction not in ["UNIDIRECTIONAL", "REDIRECTIONAL", "BIDIRECTIONAL"]:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr direction is not support, please check!")
 
     if cell_depth != 1:
@@ -751,9 +751,15 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                  scope=scope_gm, name='weight')
     bias = tik_instance.Tensor(shape=shape_bias, scope=scope_gm,
                                dtype=bias_dtype, name='bias')
+    
+    is_using_seq_mask = False
     if seq_length is not None:
-        seq_len = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
-                                      dtype="int32", name='seq_length')
+        is_using_seq_mask = True
+        seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
+                                      dtype="float16", name='seq_mask_gm')
+    else:
+        seq_mask_gm = None
+
     if is_global_init:
         s_init_h_gm = tik_instance.Tensor(shape=shape_hc_init,
                                           dtype=input_dtype,
@@ -789,8 +795,8 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                           name='c_t_tanh_gm')
 
     build_input_list = [input_x, weight, bias]
-    if seq_length is not None:
-        build_input_list.append(seq_len)
+    if is_using_seq_mask:
+        build_input_list.append(seq_mask_gm)
     if is_global_init:
         build_input_list.append(s_init_h_gm)
         build_input_list.append(s_init_c_gm)
@@ -814,9 +820,14 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     loop_m = m_size // cut_m
 
     with tik_instance.for_range(0, loop_t) as loop_i:
+
+        if direction == "REDIRECTIONAL":
+            valid_loop_i = loop_t - 1 - loop_i
+        else:
+            valid_loop_i = loop_i
         with tik_instance.for_range(0, loop_m) as loop_j:
 
-            input_x_var = input_x[loop_i * cut_t: loop_i * cut_t + cut_t,
+            input_x_var = input_x[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                   :,
                                   loop_j * cut_m: loop_j * cut_m + cut_m,
                                   :, :]
@@ -832,44 +843,51 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 s_init_c_gm_var = None
                 s_init_h_gm_var = None
 
-            state_h_last = update_h_gm[loop_i * cut_t - last: loop_i * cut_t + cut_t - last:,
+            if direction == "REDIRECTIONAL":
+                state_h_last = update_h_gm[valid_loop_i * cut_t + last: valid_loop_i * cut_t + cut_t + last:,
+                                           :, loop_j * cut_m: loop_j * cut_m + cut_m, :, :]
+                state_c_last = update_c_gm[valid_loop_i * cut_t + last: valid_loop_i * cut_t + cut_t + last:,
+                                           :,
+                                           loop_j * cut_m: loop_j * cut_m + cut_m,
+                                           :, :]
+            else:
+                state_h_last = update_h_gm[valid_loop_i * cut_t - last: valid_loop_i * cut_t + cut_t - last:,
                                        :, loop_j * cut_m: loop_j * cut_m + cut_m, :, :]
-            state_c_last = update_c_gm[loop_i * cut_t - last: loop_i * cut_t + cut_t - last:,
+                state_c_last = update_c_gm[valid_loop_i * cut_t - last: valid_loop_i * cut_t + cut_t - last:,
                                        :,
                                        loop_j * cut_m: loop_j * cut_m + cut_m,
                                        :, :]
-
-            update_h_gm_var = update_h_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+            update_h_gm_var = update_h_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                           :,
                                           loop_j * cut_m: loop_j * cut_m + cut_m,
                                           :, :]
-            update_c_gm_var = update_c_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+            update_c_gm_var = update_c_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                           :,
                                           loop_j * cut_m: loop_j * cut_m + cut_m,
                                           :, :]
-            update_h_gm_as_y_var = update_h_gm_as_y[loop_i * cut_t: loop_i * cut_t + cut_t:,
+            update_h_gm_as_y_var = update_h_gm_as_y[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t:,
                                                     :,
                                                     loop_j * cut_m: loop_j * cut_m + cut_m,
                                                     :, :]
 
             if is_gate_output:
-                f_t_sigmoid_gm_var = f_t_sigmoid_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                f_t_sigmoid_gm_var = f_t_sigmoid_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                                     :,
                                                     loop_j * cut_m: loop_j * cut_m + cut_m,
                                                     :, :]
-                i_t_sigmoid_gm_var = i_t_sigmoid_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                i_t_sigmoid_gm_var = i_t_sigmoid_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                                     :,
                                                     loop_j * cut_m: loop_j * cut_m + cut_m,
                                                     :, :]
-                o_t_sigmoid_gm_var = o_t_sigmoid_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                o_t_sigmoid_gm_var = o_t_sigmoid_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                                     :,
                                                     loop_j * cut_m: loop_j * cut_m + cut_m,
                                                     :, :]
-                j_t_tanh_gm_var = j_t_tanh_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                j_t_tanh_gm_var = j_t_tanh_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                               :,
                                               loop_j * cut_m: loop_j * cut_m + cut_m,
                                               :, :]
-                c_t_tanh_gm_var = c_t_tanh_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                c_t_tanh_gm_var = c_t_tanh_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                               :,
                                               loop_j * cut_m: loop_j * cut_m + cut_m,
                                               :, :]
@@ -879,10 +897,18 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 o_t_sigmoid_gm_var = None
                 j_t_tanh_gm_var = None
                 c_t_tanh_gm_var = None
-
+                
+            if is_using_seq_mask:
+                seq_mask_gm_var = seq_mask_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
+                                              :,
+                                              loop_j * cut_m: loop_j * cut_m + cut_m,
+                                              :, :]
+            else:
+                seq_mask_gm_var = None
+                
             input_list = [input_x_var, weight, bias, s_init_h_gm_var,
                           s_init_c_gm_var, state_h_last,
-                          state_c_last, sync]
+                          state_c_last, sync, seq_mask_gm_var]
 
             if is_gate_output:
                 output_list = [update_h_gm_var, update_c_gm_var,
@@ -934,6 +960,7 @@ def dynamic_rnn_tik(input_list, custom_list):
     s_state_h_gm_last = input_list[5]
     s_state_c_gm_last = input_list[6]
     sync0 = input_list[7]
+    seq_mask_gm = input_list[8]
 
     is_gate_output = custom_list[0]
     is_first_round = custom_list[1]
@@ -941,7 +968,7 @@ def dynamic_rnn_tik(input_list, custom_list):
     forget_bias = custom_list[3]
 
     return dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
-                            s_state_h_gm_last, s_state_c_gm_last, sync0,
+                            s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                             is_gate_output, is_first_round, is_global_init,
                             forget_bias)
 
@@ -949,7 +976,7 @@ def dynamic_rnn_tik(input_list, custom_list):
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-statements,unnecessary-lambda
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
-                     s_state_h_gm_last, s_state_c_gm_last, sync0,
+                     s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                      is_gate_output, is_first_round, is_global_init,
                      forget_bias):
     """
@@ -994,6 +1021,10 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             s_state_c_ub = tvm.compute(shape_i,
                                        lambda _, i, j, k, l: s_init_c_gm[
                                            0, i, j, k, l], name="s_init_c")
+            if seq_mask_gm is not None:
+                s_state_h_ub_for_element = tvm.compute(shape_h,
+                                                       lambda _, i, j, k, l: s_init_h_gm[
+                                           0, i, j, k, l], name="s_state_h_ub_for_element")
         else:
             s_state_h_ub = \
                 tvm.compute(shape_h,
@@ -1006,6 +1037,12 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             lambda *indices: tvm.const(0.0, dtype=bias_dtype),
                             name='s_state_c_ub',
                             tag="broadcast")
+            if seq_mask_gm is not None:
+                s_state_h_ub_for_element = \
+                            tvm.compute(shape_h,
+                            lambda *indices: tvm.const(0.0, dtype=input_dtype),
+                            name='s_state_h_ub_for_element',
+                            tag="broadcast")
     else:
         s_state_h_ub = tvm.compute(shape_h,
                                    lambda _, i, j, k, l: s_state_h_gm_last[
@@ -1013,6 +1050,10 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s_state_c_ub = tvm.compute(shape_i,
                                    lambda _, i, j, k, l: s_state_c_gm_last[
                                        0, i, j, k, l], name="s_state_c_ub")
+        if seq_mask_gm is not None:
+            s_state_h_ub_for_element = tvm.compute(shape_h,
+                                       lambda _, i, j, k, l: s_state_h_gm_last[
+                                       0, i, j, k, l], name="s_state_h_ub_for_element")
 
     # input and s_start_h is Nz, need trans to zZ
     # so change axis 1 and 2
@@ -1217,6 +1258,14 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     c_t_tmp1 = vmul(s_state_c_ub, f_t_sigmoid_ub)
     c_t_tmp2 = vmul(j_t_tanh_ub, i_t_sigmoid_ub)
     update_c = vadd(c_t_tmp1, c_t_tmp2)
+    
+    if seq_mask_gm is not None:
+        seq_mask_ub = tvm.compute(shape_h, lambda _, i, j, k, l: seq_mask_gm[0, i, j, k, l],
+                                    name="seq_mask_ub")
+        
+        update_c_diff = vsub(update_c, s_state_c_ub)
+        update_c_tmp = vmul(update_c_diff, seq_mask_ub)
+        update_c = vadd(update_c_tmp, s_state_c_ub)
 
     # c_gm fp32 case need flag
     if bias_dtype == 'float16':
@@ -1282,6 +1331,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             c_t_tanh_ub = c_t_tanh_back_fp32
 
     update_h = vmul(c_t_tanh_ub, o_t_sigmoid_ub)
+    
+    if seq_mask_gm is not None:
+        update_h = vmul(update_h, seq_mask_ub)
 
     if fp16_input_output:
         update_h_fp16 = tvm.compute(shape_i,
@@ -1296,10 +1348,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                             lambda *indices: update_h_gm_as_y(*indices),
                                             name="update_h_gm_as_y_back",
                                             tag="out_to_ub")
-        update_h_gm = tvm.compute(shape_i,
-                                  lambda *indices: update_h_gm_as_y_back(*indices),
-                                  name="update_h_gm",
-                                  tag="ub_to_out")
+ 
     else:
         update_h_gm_as_y = tvm.compute(shape_i,
                                        lambda *indices: update_h(*indices),
@@ -1309,8 +1358,21 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                             lambda *indices: update_h_gm_as_y(*indices),
                                             name="update_h_gm_as_y_back",
                                             tag="out_to_ub")
+
+    update_h_gm_as_y_back_mid = update_h_gm_as_y_back
+    if seq_mask_gm is not None:
+        update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element)
+        update_h_diff_mask = vmul(update_h_diff, seq_mask_ub)
+        update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element)
+    
+    if fp16_input_output:
+        update_h_gm = tvm.compute(shape_i,
+                                  lambda *indices: update_h_gm_as_y_back_mid(*indices),
+                                  name="update_h_gm",
+                                  tag="ub_to_out")
+    else:
         update_h_fp16_cast = tvm.compute(shape_i,
-                                         lambda *indices: update_h_gm_as_y_back(*indices).astype('float16'),
+                                         lambda *indices: update_h_gm_as_y_back_mid(*indices).astype('float16'),
                                          name="update_h_fp16_cast_drnn_cast",
                                          tag="elewise_single_cast")
         update_h_gm = tvm.compute(shape_i,
@@ -1352,7 +1414,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                     if "elewise" in in_tensor.op.tag or in_tensor.op.tag == "broadcast":
                         if in_tensor.name.endswith("_drnn_cast"):
                             continue
-                        if in_tensor.name in ["s_state_h_ub", "s_state_c_ub"]:
+                        if in_tensor.name in ["s_state_h_ub", "s_state_c_ub", "s_state_h_ub_for_element"]:
                             continue
                         if in_tensor not in tensor_list:
                             tensor_list.append(in_tensor)
@@ -1374,6 +1436,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[bias_bc_ub].set_scope(scope_ubuf)
     s[s_state_h_ub].set_scope(scope_ubuf)
     s[s_state_c_ub].set_scope(scope_ubuf)
+    if seq_mask_gm is not None:
+        s[s_state_h_ub_for_element].set_scope(scope_ubuf)
 
     s[a_ub].set_scope(scope_ubuf)
 
@@ -1413,7 +1477,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[update_h_fp16_cast].set_scope(scope_ubuf)
 
     s[update_h_gm_as_y_back].set_scope(scope_ubuf)
-
+    
+    if seq_mask_gm is not None:
+        s[seq_mask_ub].set_scope(scope_ubuf)
     # compute inline
     compute_inline_tensors = [i_t, j_t, f_t, o_t]
     for tensor in compute_inline_tensors:
@@ -1508,7 +1574,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                            update_h_gm.op.axis[4])
 
     s[s_state_c_ub].compute_at(s[update_h_gm], vn_o_inner)
-
+    if seq_mask_gm is not None:
+        s[s_state_h_ub_for_element].compute_at(s[update_h_gm], vn_o_inner)
     s[barrier_tensor].compute_at(s[update_h_gm], vn_o_inner)
 
     for tensor in elewise_tensors:
@@ -1527,7 +1594,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[update_c_fp32_back].compute_at(s[update_h_gm], vn_o_inner)
         s[update_c].compute_at(s[update_h_gm], vn_o_inner)
         s[update_h_fp16_cast].compute_at(s[update_h_gm], vn_o_inner)
-
+    if seq_mask_gm is not None:
+        s[seq_mask_ub].compute_at(s[update_h_gm], vn_o_inner)
     s[update_h_gm_as_y].compute_at(s[update_h_gm], vn_o_inner)
     s[update_h_gm_as_y_back].compute_at(s[update_h_gm], vn_o_inner)
 
@@ -1608,12 +1676,18 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         if is_global_init:
             s[s_state_h_ub].emit_insn(s_state_h_ub.op.axis[0], 'dma_copy')
             s[s_state_c_ub].emit_insn(s_state_c_ub.op.axis[0], 'dma_copy')
+            if seq_mask_gm is not None:
+                s[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'dma_copy')
         else:
             s[s_state_h_ub].emit_insn(s_state_h_ub.op.axis[0], 'broadcast')
             s[s_state_c_ub].emit_insn(s_state_c_ub.op.axis[0], 'broadcast')
+            if seq_mask_gm is not None:
+                s[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'broadcast')
     else:
         s[s_state_h_ub].emit_insn(s_state_h_ub.op.axis[0], 'dma_copy')
         s[s_state_c_ub].emit_insn(s_state_c_ub.op.axis[0], 'dma_copy')
+        if seq_mask_gm is not None:
+            s[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'dma_copy')
 
     s[barrier_tensor].emit_insn(barrier_tensor.op.axis[1], 'vector_add')
 
@@ -1683,7 +1757,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                         'phony_insn')
         s[update_h_fp16_cast].emit_insn(update_h_fp16_cast.op.axis[0],
                                         'vector_conv')
-
+    if seq_mask_gm is not None:
+        s[seq_mask_ub].emit_insn(seq_mask_ub.op.axis[0],
+                                        'dma_copy')
     s[update_h_gm_as_y].emit_insn(update_h_gm_as_y.op.axis[0], 'dma_copy')
     s[update_h_gm_as_y_back].emit_insn(update_h_gm_as_y_back.op.axis[0],
                                        'phony_insn')

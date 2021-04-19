@@ -129,7 +129,8 @@ IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
   TensorDesc outputFTensorDesc = op.GetOutputDesc("f");
   TensorDesc outputOTensorDesc = op.GetOutputDesc("o");
   TensorDesc outputTanhcTensorDesc = op.GetOutputDesc("tanhc");
-
+  bool has_seq = op_desc->MutableInputDesc("seq_length") != nullptr;
+  
   int64_t dim_num = shapeX.GetDimNum();
   int64_t batchSize = 0;
   int64_t hiddenSize = 0;
@@ -146,6 +147,21 @@ IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
     OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
     OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
     return GRAPH_FAILED;
+  }
+  if (has_seq == true) {
+    ge::TensorDesc inputSTensorDesc = op.GetInputDesc("seq_length");
+    ge::Shape shapeS = inputSTensorDesc.GetShape();
+    int64_t seq_dim_num = shapeS.GetDimNum();
+    if (seq_dim_num == 1) {
+      if (batchSize != shapeS.GetDims().at(0)) {
+        OP_LOGE(op.GetName().c_str(), "The len of seq_length'shape not equal batch_size, please check!");
+        return GRAPH_FAILED;
+      }
+    }
+    else {
+      OP_LOGE(op.GetName().c_str(), "The input shape of seq_length not equal 1, please check!");
+      return GRAPH_FAILED;
+    }
   }
 
   vector<int64_t> outputHDims = {num_step, batchSize, hiddenSize};

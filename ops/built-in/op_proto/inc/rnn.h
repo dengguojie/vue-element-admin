@@ -190,7 +190,7 @@ REG_OP(DynamicRNNGrad)
 *@li x:A required 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li w:A required 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
 *@li b:A required 1D Tensor. Must be one of the following types: float16, float32. The format must be ND.
-*@li seq_length:A optional 1D Tensor. Must be one of the following types: int32. The format must be ND.
+*@li seq_length:A optional ND Tensor. Must be one of the following types: float16. The format must be FRACTAL_NZ.
 *@li init_h:A optional 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li init_c:A optional 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li wci:A 4D optional Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_ZN_LSTM.
@@ -228,7 +228,7 @@ REG_OP(DynamicRNN)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(w, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(b, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(seq_length, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(seq_length, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(init_c, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(wci, TensorType({DT_FLOAT16, DT_FLOAT}))
