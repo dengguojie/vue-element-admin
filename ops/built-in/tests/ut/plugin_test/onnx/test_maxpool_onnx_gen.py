@@ -230,6 +230,33 @@ def make_max_pool_aicpu():
     onnx.checker.check_model(model)
 
 
+def make_max_pool_1d():
+    """1d input"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3, 32])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 3, 31])
+    node_def = helper.make_node(
+        'MaxPool',
+        inputs=['x'],
+        outputs=['y'],
+        kernel_shape=[2, ],
+        strides=[1, ],
+        auto_pad="NOTSET",
+        dilations=[1, ],
+        pads=[0, 0]
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'MaxPool',
+        [x],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 11
+    onnx.save(model, "./test_maxpool_case_1d_input.onnx")
+    onnx.checker.check_model(model)
+
 if __name__ == '__main__':
     make_max_pool()
     make_max_pool1()
@@ -240,3 +267,4 @@ if __name__ == '__main__':
     make_max_pool_v12()
     make_max_pool_v13()
     make_max_pool_aicpu()
+    make_max_pool_1d()

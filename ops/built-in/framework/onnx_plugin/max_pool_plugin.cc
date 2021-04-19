@@ -27,11 +27,14 @@
 #include "graph.h"
 #include "all_ops.h"
 #include "op_log.h"
+#include "operator.h"
 
 using namespace ge;
 namespace domi {
 static const int OUTPUT_SIZE = 1;
+static const int LEN_ATTR_1D = 1;
 struct TbeAttr {
+  bool trans_2d = false;
   // public attr
   std::vector<int64_t> ksize;
   std::vector<int64_t> strides;
@@ -43,6 +46,7 @@ struct TbeAttr {
 };
 
 struct OnnxAttr {
+  bool trans_2d = false;
   // according to onnx::maxpool
   std::string auto_pad = "NOTSET";
   int64_t ceil_mode = 0;
@@ -58,9 +62,17 @@ Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_at
       for (int i = 0; i < attr.ints_size(); i++) {
         onnx_attr.kernel_shape.push_back(attr.ints(i));
       }
+      if (attr.ints_size() == LEN_ATTR_1D) {
+        onnx_attr.kernel_shape.push_back(1);
+        onnx_attr.trans_2d = true;
+      }
     } else if (attr.name() == "strides" && attr.type() == ge::onnx::AttributeProto::INTS) {
       for (int i = 0; i < attr.ints_size(); i++) {
         onnx_attr.strides.push_back(attr.ints(i));
+      }
+      if (attr.ints_size() == LEN_ATTR_1D) {
+        onnx_attr.strides.push_back(1);
+        onnx_attr.trans_2d = true;
       }
     } else if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
       onnx_attr.auto_pad = attr.s();
@@ -74,11 +86,20 @@ Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_at
         onnx_attr.pads.push_back(attr.ints(i));
         onnx_attr.pads.push_back(attr.ints(i + len / 2));
       }
+      if (len / 2 == LEN_ATTR_1D) {
+        onnx_attr.pads.push_back(0);
+        onnx_attr.pads.push_back(0);
+        onnx_attr.trans_2d = true;
+      }
     } else if (attr.name() == "ceil_mode" && attr.type() == ge::onnx::AttributeProto::INT) {
       onnx_attr.ceil_mode = attr.i();
     } else if (attr.name() == "dilations" && attr.type() == ge::onnx::AttributeProto::INTS) {
       for (int i = 0; i < attr.ints_size(); i++) {
         onnx_attr.dilations.push_back(attr.ints(i));
+      }
+      if (attr.ints_size() == LEN_ATTR_1D) {
+        onnx_attr.dilations.push_back(attr.ints(0));
+        onnx_attr.trans_2d = true;
       }
     } else if (attr.name() == "storage_order" && attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1) {
       OP_LOGE("MaxPool", "only support storage_order=0, but 1 is obtained now.");
@@ -141,6 +162,7 @@ Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
 
   op_dest.SetAttr("dims", dims);
   op_dest.SetAttr("ceil_mode", node_attr.ceil_mode);
+  op_dest.SetAttr("trans_2d", node_attr.trans_2d);
   std::map<string, string> padding_mode = {
       {"NOTSET", "CALCULATED"}, {"SAME_UPPER", "SAME"}, {"SAME_LOWER", "SAME"}, {"VALID", "VALID"}};
   op_dest.SetAttr("padding_mode", padding_mode[node_attr.auto_pad]);
@@ -184,6 +206,9 @@ Status UpdateTbeAttrFromOp(const Operator& op, TbeAttr& tbe_attr, int dims) {
   if (op.GetAttr("dilation", tbe_attr.dilation) != SUCCESS) {
     OP_LOGE("MaxPool", "get dilation from op failed");
     return FAILED;
+  };
+  if (op.GetAttr("trans_2d", tbe_attr.trans_2d) != SUCCESS) {
+    OP_LOGW("MaxPool", "get trans_2d from op failed, use default.");
   };
   return SUCCESS;
 }
@@ -273,11 +298,15 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  auto data0 = op::Data("data0").set_attr_index(0);
+  ge::Operator data0 = op::Data("data0").set_attr_index(0);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
 
   if (dims == 2) {
+    if (tbe_attr.trans_2d) {
+      ge::Operator::OpListInt axes = {3};
+      data0 = op::Unsqueeze("UnsqueezeX").set_input_x(data0).set_attr_axes(axes);
+    }
     // because of the limitation of tbe operator, use aicpu instead 
     if (tbe_attr.ksize[2]*tbe_attr.ksize[3] > 255 || (tbe_attr.strides[2] > 63 || tbe_attr.strides[3] > 63)) {
       Operator aicpu_op;
@@ -286,7 +315,11 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
       if (UpdateFormat(aicpu_op, ge::FORMAT_NHWC) != SUCCESS) {
         return FAILED;
       }
-      auto transposeOut = op::TransposeD("permuteOut").set_input_x(aicpu_op).set_attr_perm({0, 3, 1, 2});
+      ge::Operator transposeOut = op::TransposeD("permuteOut").set_input_x(aicpu_op).set_attr_perm({0, 3, 1, 2});
+      if (tbe_attr.trans_2d) {
+        ge::Operator::OpListInt axis = {3};
+        transposeOut = op::Squeeze("SqueezeTranspose").set_input_x(transposeOut).set_attr_axis(axis);
+      }
       // update output format
       auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(transposeOut);
       ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
@@ -301,14 +334,21 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
               op_desc->GetOutputDesc("y").GetFormat());
       outputs.emplace_back(transposeOut, std::vector<std::size_t>{0});
     } else {
-      auto maxpoolv3 = op::MaxPoolV3()
-                          .set_input_x(data0)
-                          .set_attr_ksize(tbe_attr.ksize)
-                          .set_attr_strides(tbe_attr.strides)
-                          .set_attr_padding_mode(tbe_attr.padding_mode)
-                          .set_attr_pads(tbe_attr.pads)
-                          .set_attr_ceil_mode(tbe_attr.ceil_mode == 1)
-                          .set_attr_data_format("NCHW");
+      ge::Operator maxpoolv3 = op::MaxPoolV3()
+                                  .set_input_x(data0)
+                                  .set_attr_ksize(tbe_attr.ksize)
+                                  .set_attr_strides(tbe_attr.strides)
+                                  .set_attr_padding_mode(tbe_attr.padding_mode)
+                                  .set_attr_pads(tbe_attr.pads)
+                                  .set_attr_ceil_mode(tbe_attr.ceil_mode == 1)
+                                  .set_attr_data_format("NCHW");
+      if (tbe_attr.trans_2d) {
+        ge::Operator::OpListInt axis = {3};
+        maxpoolv3 = op::Squeeze("SqueezeMaxpoolv3").set_input_x(maxpoolv3).set_attr_axis(axis);
+        if (UpdateFormat(maxpoolv3, ge::FORMAT_NCHW) != SUCCESS) {
+          return FAILED;
+        }
+      }
       outputs.emplace_back(maxpoolv3, std::vector<std::size_t>{0});
     }
   } else {
