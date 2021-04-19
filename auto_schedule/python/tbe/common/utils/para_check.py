@@ -609,8 +609,8 @@ def _check_range(shape, shape_range, min_dim=0, max_dim=RANK_LIMIT,
                 'max_range_value': max_shape_num}
             raise RuntimeError(
                 error_info,
-                "In op, the n-dim of first range input[%s] is less than "
-                "that of the second range input[%s], and the n-dim of range "
+                "In op, the dim of first range input[%s] is less than "
+                "that of the second range input[%s], and the dim of range "
                 "should be in the range of [%s, %s]."
                 % (error_info['first_real_value'],
                    error_info['second_real_value'], 0, max_shape_num))

@@ -6,6 +6,7 @@
 #include "register/graph_optimizer/graph_fusion/graph_fusion_pass_base.h"
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 
+
 using std::string;
 namespace fe
 {
@@ -42,7 +43,6 @@ namespace fe
         RunGraphFusionPass(string fusion_pass_name, GraphFusionPassType passType, ge::ComputeGraph &computeGraph, bool checkSupportedResult);
         static Status
         InferShapeAndType(ge::ComputeGraphPtr computeGraphPtr);
-
     };
 
 }

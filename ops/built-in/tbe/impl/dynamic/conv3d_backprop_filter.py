@@ -102,9 +102,12 @@ def _check_equal(x_1, x_2, param_1, param_2):
 
 def _check_dimensions(shape, name, dimension):
     if len(shape) != dimension:
-        dict_args = dict()
-        dict_args["errCode"] = "E60107"
-        dict_args["param_name"] = name
+        dict_args = {
+            "errCode": "E60011",
+            "attr_name": name,
+            "range": "[{}, {}]".format(dimension, dimension),
+            "value": "{}".format(len(shape))
+        }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
@@ -112,19 +115,10 @@ def _check_dimensions(shape, name, dimension):
 def _check_type(shape, name, type_set):
     if not isinstance(shape, type_set):
         dict_args = dict()
-        dict_args["errCode"] = "E60107"
+        dict_args["errCode"] = "E60037"
         dict_args["param_name"] = name
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
-
-def _check_data_format(data_format, name, format_set=("NDHWC", "NCDHW")):
-    if data_format not in format_set:
-        dict_args = {}
-        dict_args['errCode'] = "E60008"
-        dict_args['param_name'] = name
-        dict_args['expected_format_list'] = format_set
-        dict_args["format"] = data_format
+        dict_args["type_list"] = "[tuple, list]"
+        dict_args["type"] = "{}".format(type(shape))
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
@@ -139,12 +133,19 @@ def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_forma
         if list(x_shape) != _DYNAMIC_RANK_FLAG:
             _check_dimensions(x_shape, "x", _CONV_BACKPROP_SHAPE_DIM)
 
-        _check_type(dedw_shape, "y", (tuple, list))
-        _check_dimensions(dedw_shape, "y", _CONV_BACKPROP_SHAPE_DIM)
+        para_check.check_shape_rule(strides, _CONV_BACKPROP_SHAPE_DIM, _CONV_BACKPROP_SHAPE_DIM)
+        para_check.check_shape_rule(dilations, _CONV_BACKPROP_SHAPE_DIM, _CONV_BACKPROP_SHAPE_DIM)
+        para_check.check_shape_rule(dedw_shape, _CONV_BACKPROP_SHAPE_DIM, _CONV_BACKPROP_SHAPE_DIM)
 
-        _check_data_format(x_format, "x")
-        _check_data_format(dedy_format, "out_backprop")
-        _check_data_format(dedw_format, "res", ("NDHWC", "NCDHW", "DHWCN"))
+        para_check.check_format(x_format, ("NDHWC", "NCDHW"), "x")
+        para_check.check_format(dedy_format, ("NDHWC", "NCDHW"), "out_backprop")
+        para_check.check_format(dedw_format, ("NDHWC", "NCDHW", "DHWCN"), "y")
+        para_check.check_format(data_format, ("NDHWC", "NCDHW"), "data_format")
+
+        if x_format != data_format or dedy_format != data_format:
+            error_manager_cube.raise_err_specific_user(
+                "conv3d_backprop_filter",
+                "The original format of fmap and out_backprop must be same as data_format.")
 
     def _get_shape(shape, ori_format):
         pos_n, pos_d, pos_h, pos_w, pos_c = _get_pos_from_format(ori_format)
@@ -206,27 +207,31 @@ def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_forma
     return ret
 
 
-def _get_pads_attr(strides, pads, dilations, data_format, fmap_shape, w_ndhwc):
+def _check_pads_value(fmap_shape, pads):
+    _check_type(pads, "pads", (tuple, list))
+    _check_dimensions(pads, "pads", _PADDING_SHAPE_DIM)
+
+    if -1 not in fmap_shape[1:4]:
+        for value in pads:
+            if value < 0:
+                error_manager_cube.raise_err_specific_user(
+                    "conv3d_backprop_filter",
+                    "Each value of pads has to be greater than 0 "
+                    "when D/H/W demision is not dynamic.")
+    else:
+        for value in pads:
+            if value < -1:
+                error_manager_cube.raise_err_specific_user(
+                    "conv3d_backprop_filter",
+                    "Each value of pads must be -1 "
+                    "when D/H/W demision is dynamic.")
+
+
+def _get_pads_attr(strides, pads, dilations, fmap_shape, w_ndhwc):
     def _convert_shape_to_list(shape):
         for i, var in enumerate(shape):
             if isinstance(var, tvm.expr.IntImm):
                 shape[i] = var.value
-
-    def _check_attrs_rules():
-        if len(strides) != _CONV_BACKPROP_SHAPE_DIM:
-            dict_args = dict()
-            dict_args["errCode"] = "E60107"
-            dict_args["param_name"] = "strides"
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
-        if isinstance(pads, (tuple, list)):
-            _check_dimensions(pads, "pads", _PADDING_SHAPE_DIM)
-
-        _check_dimensions(dilations, "dilations", _CONV_BACKPROP_SHAPE_DIM)
-        _check_data_format(data_format, "data_format")
-
-    _check_attrs_rules()
 
     # get pads
     _, stride_d, stride_h, stride_w, _ = strides
@@ -312,9 +317,11 @@ def _gen_input_shape(fmap_ndhwc, dedy_ndhwc, fmap_range):
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
 
-    if -1 not in fmap_ndhwc[0:4]:
-        error_manager_cube.raise_err_specific_user(
-            "conv3d_backprop_filter", "need at least one dimension is a variable.")
+    for value in fmap_ndhwc:
+        if value < 1 and value != -1:
+            error_manager_cube.raise_err_specific_user(
+                "conv3d_backprop_filter",
+                "Each dimension of fmap has to be -1 or positive integer.")
 
     if fmap_ndhwc[-1] == -1:
         error_manager_cube.raise_err_specific_user(
@@ -423,7 +430,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                                   dedy_dtype, dedw_dtype, kernel_name,
                                   fmap_range, dedy_range):
     def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
-        if not value:
+        if value is None:
             return
         if (not isinstance(value, int)) or value > attr_max \
                 or value < attr_min:
@@ -434,7 +441,6 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
             dict_args["value"] = str(value)
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
-
 
     def _check_64bits_limitation(attr_name, attr_value, dtype=None):
         if dtype:
@@ -447,6 +453,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
             dict_args['attr_name'] = attr_name
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
+
     # First : Base check, Mainly required by interface appearance
     # ============================================================
     # util check
@@ -458,16 +465,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
     if None not in upper_bound:
         para_check.check_shape_rule(upper_bound, _CONV_BACKPROP_SHAPE_DIM,
                                     _CONV_BACKPROP_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
-    para_check.check_shape_rule(dedw_ndhwc, _CONV_BACKPROP_SHAPE_DIM,
-                                _CONV_BACKPROP_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
-    # stride check
-    para_check.check_shape_rule(strides,
-                                _CONV_BACKPROP_SHAPE_DIM, _CONV_BACKPROP_SHAPE_DIM,
-                                _DEFAULT_MAX_SHAPE_NUM)
-    # dilation check
-    para_check.check_shape_rule(dilations,
-                                _CONV_BACKPROP_SHAPE_DIM, _CONV_BACKPROP_SHAPE_DIM,
-                                _DEFAULT_MAX_SHAPE_NUM)
+
     dilation_n, dilation_d, dilation_h, dilation_w, dilation_c = dilations
     _check_attr_range_dw("dilations's D", dilation_d,
                          _DILATION_MIN, _DILATION_MAX)
@@ -531,10 +529,10 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                            error_manager_util.get_error_message(dict_args))
 
     pad = _get_pads_attr(strides, pads, dilations,
-                         "NDHWC", fmap_shape, dedw_ndhwc)
+                         fmap_shape, dedw_ndhwc)
     pad_front, pad_back, pad_up, pad_down, pad_left, pad_right = pad
 
-    upper_pad = _get_pads_attr(strides, pads, dilations, "NDHWC",
+    upper_pad = _get_pads_attr(strides, pads, dilations,
                                upper_bound, dedw_ndhwc)
     upper_pad_front, upper_pad_back, \
     upper_pad_up, upper_pad_down, upper_pad_left, upper_pad_right = upper_pad
@@ -602,7 +600,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
             if (isinstance(fmap_d, int) and \
                 ((fmap_d - filter_d_dilation + int(pad_front) + int(pad_back)) // stride_d + 1) != dedy_d):
                 dict_args = {}
-                dict_args["errCode"] = "E60023"
+                dict_args["errCode"] = "E62508"
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
 
@@ -698,6 +696,8 @@ def _conv3d_backprop_filter_compute(x, filter_size, out_backprop, y,
     dilations = shape_dict.get("dilations_ndhwc")
     strides = shape_dict.get("strides_ndhwc")
 
+    _check_pads_value(x_ndhwc, pads)
+
     # Do range Correction
     dedy_range, fmap_range = _range_correction(fmap_range, dedw_ndhwc, pads, strides,
                                                dilations, dedy_ndhwc)
@@ -708,7 +708,7 @@ def _conv3d_backprop_filter_compute(x, filter_size, out_backprop, y,
                                              groups, _C0_SIZE, _C0_SIZE)
 
     pad = _get_pads_attr(strides, pads, dilations,
-                         data_format, fmap_shape, dedw_ndhwc)
+                         fmap_shape, dedw_ndhwc)
 
     fmap_shape, dedy_shape = _check_conv3dbp_filter_params(
         fmap_shape, dedy_shape, dedw_ndhwc, strides, pads, dilations,
