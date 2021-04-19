@@ -337,263 +337,266 @@ def target_crop_and_resize_compute(x, boxes, box_index, x_dic, y_dic, input_form
             batch_id = batch_factor * block_index + n1
 
             ib.emit(tvm.call_extern("int32", 'copy_gm_to_ubuf',
-                                    boxes_ub_buf.access_ptr("w", ptr_type="int32", offset=0),
-                                    boxes_buf.access_ptr("rw", ptr_type="int32", offset=4*batch_id),
-                                    0, 1, 1, 0, 0))
-
-            ib.emit(tvm.call_extern("int32", 'copy_gm_to_ubuf',
                                     box_index_ub_buf.access_ptr("w", ptr_type="int32", offset=0),
                                     box_index_buf.access_ptr("rw", ptr_type="int32", offset=batch_id),
                                     0, 1, 1, 0, 0))
-
-            # get load_start_pos_h
-            ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", tmp[0]),
-                                    boxes_ub_buf.access_ptr('r', offset=0)))
-            boxes_reg[0] = tmp[0]
-
-            # get load_start_pos_w
-            ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", tmp[0]),
-                                    boxes_ub_buf.access_ptr('r', offset=1)))
-            boxes_reg[1] = tmp[0]
-
-            # get crop_size_h
-            ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", tmp[0]),
-                                    boxes_ub_buf.access_ptr('r', offset=2)))
-            boxes_reg[2] = tmp[0]
-
-            # get crop_size_w
-            ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", tmp[0]),
-                                    boxes_ub_buf.access_ptr('r', offset=3)))
-            boxes_reg[3] = tmp[0]
-
             ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", box_index_reg[0]),
                                     box_index_ub_buf.access_ptr('r', offset=0)))
 
-            aipp_xt = src_w - 1
+            with ib.if_scope(box_index_reg[0] >= 0):
+                ib.emit(tvm.call_extern("int32", 'copy_gm_to_ubuf',
+                                        boxes_ub_buf.access_ptr("w", ptr_type="int32", offset=0),
+                                        boxes_buf.access_ptr("rw", ptr_type="int32", offset=4*batch_id),
+                                        0, 1, 1, 0, 0))
 
-            set_spr0_spr1(ib, x_buf, x_dic, input_format, box_index_reg)
+                # get load_start_pos_h
+                ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", tmp[0]),
+                                        boxes_ub_buf.access_ptr('r', offset=0)))
+                boxes_reg[0] = tmp[0]
 
-            with ib.if_scope(boxes_reg[2] != height):
-                spr13[0] = spr13[0] | tvm.const(1, dtype="uint64")
-                scf_inc_vscl[0] = ((boxes_reg[2] - tvm.const(1, dtype="uint64"))*tvm.const(262144, dtype="uint64") /
-                                   (tvm.const(height - 1, dtype="uint64"))) & 0xFFFFFC
-                spr16[0] = spr16[0] | scf_inc_vscl[0]
+                # get load_start_pos_w
+                ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", tmp[0]),
+                                        boxes_ub_buf.access_ptr('r', offset=1)))
+                boxes_reg[1] = tmp[0]
 
-            with ib.if_scope(boxes_reg[3] != width):
-                spr13[0] = spr13[0] | tvm.const(1, dtype="uint64") << 2
+                # get crop_size_h
+                ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", tmp[0]),
+                                        boxes_ub_buf.access_ptr('r', offset=2)))
+                boxes_reg[2] = tmp[0]
 
-                scf_inc_hscl[0] = ((boxes_reg[3] - tvm.const(1, dtype="uint64"))*tvm.const(262144, dtype="uint64") /
-                                   (tvm.const(width - 1, dtype="uint64"))) & 0xFFFFFC
-                spr16[0] = spr16[0] | scf_inc_hscl[0] << 32
+                # get crop_size_w
+                ib.emit(tvm.call_extern("int32", "reg_mov", tvm.call_extern("uint64", "reg", tmp[0]),
+                                        boxes_ub_buf.access_ptr('r', offset=3)))
+                boxes_reg[3] = tmp[0]
 
-            with ib.if_scope(width > boxes_reg[3]):
-                spr13[0] = spr13[0] | tvm.const(1, dtype="uint64") << 7
+                aipp_xt = src_w - 1
 
-            ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_13", spr13[0]))
-            ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_16", spr16[0]))
+                set_spr0_spr1(ib, x_buf, x_dic, input_format, box_index_reg)
 
-            if l1_image_buf_max >= actual_col_size:
-                ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15", spr15[0]))
+                with ib.if_scope(boxes_reg[2] != height):
+                    spr13[0] = spr13[0] | tvm.const(1, dtype="uint64")
+                    scf_inc_vscl[0] = ((boxes_reg[2] - tvm.const(1, dtype="uint64"))*tvm.const(262144, dtype="uint64")
+                                       / (tvm.const(height - 1, dtype="uint64"))) & 0xFFFFFC
+                    spr16[0] = spr16[0] | scf_inc_vscl[0]
 
-                spr12 = (height - 1) | ((width - 1) << 16)
-                ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_12", tvm.const(spr12, dtype="uint64")))
+                with ib.if_scope(boxes_reg[3] != width):
+                    spr13[0] = spr13[0] | tvm.const(1, dtype="uint64") << 2
 
-                with ib.new_scope():
-                    output_cb_buf, output_ub_buf = \
-                        aipp_comm.new_alloc(ib, output_dtype, l1_image_buf_max * channel_0)
+                    scf_inc_hscl[0] = ((boxes_reg[3] - tvm.const(1, dtype="uint64"))*tvm.const(262144, dtype="uint64")
+                                       / (tvm.const(width - 1, dtype="uint64"))) & 0xFFFFFC
+                    spr16[0] = spr16[0] | scf_inc_hscl[0] << 32
 
-                    aipp_xs = tbe_platform.get_const(
-                        (boxes_reg[3] - 1) |
-                        (boxes_reg[2] - 1) << 16 |
-                        (boxes_reg[1]) << 32 |
-                        (boxes_reg[0]) << 48)
+                with ib.if_scope(width > boxes_reg[3]):
+                    spr13[0] = spr13[0] | tvm.const(1, dtype="uint64") << 7
 
-                    ib.emit(tvm.call_extern(output_dtype, "load_image_to_cbuf",
-                                            output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
-                                            aipp_xs, tbe_platform.get_const(aipp_xt)))
+                ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_13", spr13[0]))
+                ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_16", spr16[0]))
 
-                    output_offset = n1 * channel_1 * height * width * channel_0
+                if l1_image_buf_max >= actual_col_size:
+                    ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15", spr15[0]))
 
-                    ib.emit(tvm.call_extern(
-                        output_dtype, 'copy_cbuf_to_ubuf',
-                        output_ub_buf.access_ptr("w", ptr_type=output_dtype, offset=0),
-                        output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
-                        0, 1, channel_1 * height * width * channel_0 * size // 32, 0, 0))
+                    spr12 = (height - 1) | ((width - 1) << 16)
+                    ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_12", tvm.const(spr12, dtype="uint64")))
 
-                    if (channel_1 * height * width * channel_0 * size) % 32 != 0:
+                    with ib.new_scope():
+                        output_cb_buf, output_ub_buf = \
+                            aipp_comm.new_alloc(ib, output_dtype, l1_image_buf_max * channel_0)
+
+                        aipp_xs = tbe_platform.get_const(
+                            (boxes_reg[3] - 1) |
+                            (boxes_reg[2] - 1) << 16 |
+                            (boxes_reg[1]) << 32 |
+                            (boxes_reg[0]) << 48)
+
+                        ib.emit(tvm.call_extern(output_dtype, "load_image_to_cbuf",
+                                                output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
+                                                aipp_xs, tbe_platform.get_const(aipp_xt)))
+
+                        output_offset = n1 * channel_1 * height * width * channel_0
+
+                        ib.emit(tvm.call_extern(
+                            output_dtype, 'copy_cbuf_to_ubuf',
+                            output_ub_buf.access_ptr("w", ptr_type=output_dtype, offset=0),
+                            output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
+                            0, 1, channel_1 * height * width * channel_0 * size // 32, 0, 0))
+
+                        if (channel_1 * height * width * channel_0 * size) % 32 != 0:
+                            with ib.new_scope():
+                                tail_ub = ib.allocate(output_dtype, (32 // size,), "tail_ub",
+                                                      scope=tbe_platform.scope_ubuf)
+                                tail_ub_buf = tvm.decl_buffer((32 // size,), output_dtype, "tail_ub_buf",
+                                                              scope=tbe_platform.scope_ubuf, data=tail_ub)
+                                aipp_comm.copy_ubuf_to_gm_tail(
+                                    ib, output_dtype, output_buf, output_ub_buf, tail_ub_buf,
+                                    channel_1*height*width*channel_0, block_index*offset + output_offset, 0)
+
+                        ib.emit(tvm.call_extern(
+                            output_dtype, 'copy_ubuf_to_gm',
+                            output_buf.access_ptr("w", ptr_type=output_dtype,
+                                                  offset=block_index*offset + output_offset),
+                            output_ub_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
+                            0, 1, channel_1*height*width*channel_0*size // 32, 0, 0))
+                else:
+                    buffer_upper_limit = l1_image_buf_max
+                    l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE) - 64
+
+                    if 2*width > l1_image_buf_max:
+                        buffer_upper_limit = l1_size // size // channel_0
+
+                    tiling_h = buffer_upper_limit // width
+
+                    if input_format == "YUV420SP_U8":
+                        # tiling_h must be even
+                        if tiling_h % 2 != 0:
+                            if tiling_h > 1:
+                                tiling_h = tiling_h - 1
+
+                    h_loop = height // tiling_h
+
+                    h_start_pos = tvm.const(48, dtype="uint64")
+                    w_start_pos = tvm.const(32, dtype="uint64")
+                    load_h_pos = tvm.const(16, dtype="uint64")
+                    tiling_h_const = tvm.const(tiling_h, dtype="uint64")
+
+                    resize_input_h_stat_pos = ib.allocate("uint64", [1], name="resize_input_h_stat_pos",
+                                                          scope=tbe_platform.scope_reg)
+                    resize_input_h_end_pos = ib.allocate("uint64", [1], name="resize_input_h_end_pos",
+                                                         scope=tbe_platform.scope_reg)
+                    load_h = ib.allocate("uint64", [1], name="load_h", scope=tbe_platform.scope_reg)
+                    load_h[0] = tvm.const(tiling_h - 1, dtype="uint64")
+
+                    xs = ib.allocate("uint64", [1], name="Xs", scope=tbe_platform.scope_reg)
+                    xs[0] = tvm.const(0, dtype="uint64")
+
+                    with ib.for_range(zero_const, h_loop, name="h1", dtype="uint64") as h1:
                         with ib.new_scope():
-                            tail_ub = ib.allocate(output_dtype, (32 // size,), "tail_ub",
-                                                  scope=tbe_platform.scope_ubuf)
-                            tail_ub_buf = tvm.decl_buffer((32 // size,), output_dtype, "tail_ub_buf",
-                                                          scope=tbe_platform.scope_ubuf, data=tail_ub)
-                            aipp_comm.copy_ubuf_to_gm_tail(
-                                ib, output_dtype, output_buf, output_ub_buf, tail_ub_buf,
-                                channel_1*height*width*channel_0, block_index*offset + output_offset, 0)
+                            num = (((channel_1 * buffer_upper_limit * channel_0 * size + 31) // 32) * 32) // size
+                            output_cb = ib.allocate(output_dtype, (num,), "output_cb",
+                                                    scope=tbe_platform.scope_cbuf)
+                            output_cb_buf = tvm.decl_buffer((num,), output_dtype, "output_cb_buf",
+                                                            scope=tbe_platform.scope_cbuf, data=output_cb)
 
-                    ib.emit(tvm.call_extern(
-                        output_dtype, 'copy_ubuf_to_gm',
-                        output_buf.access_ptr("w", ptr_type=output_dtype, offset=block_index*offset + output_offset),
-                        output_ub_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
-                        0, 1, channel_1*height*width*channel_0*size // 32, 0, 0))
-            else:
-                buffer_upper_limit = l1_image_buf_max
-                l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE) - 64
+                            output_w = width
+                            output_h = tiling_h
+                            output_offset = n1 * channel_1 * height * width * channel_0 + \
+                                            channel_1 * (h1 * tiling_h) * output_w * channel_0
 
-                if 2*width > l1_image_buf_max:
-                    buffer_upper_limit = l1_size // size // channel_0
+                            spr12 = (tvm.const(tiling_h - 1, dtype="uint64")) | \
+                                    (tvm.const(width - 1, dtype="uint64")) << 16
+                            ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_12", spr12))
 
-                tiling_h = buffer_upper_limit // width
+                            with ib.if_scope(boxes_reg[2] != height):
+                                resize_input_h_stat_pos[0] = tvm.const(0, dtype="uint64")
+                                resize_input_h_end_pos[0] = tvm.const(0, dtype="uint64")
 
-                if input_format == "YUV420SP_U8":
-                    # tiling_h must be even
-                    if tiling_h % 2 != 0:
-                        if tiling_h > 1:
-                            tiling_h = tiling_h - 1
+                                resize_output_h_start_pos = h1 * tiling_h
+                                resize_output_h_end_pos = (h1 + 1) * tiling_h - 1
 
-                h_loop = height // tiling_h
+                                resize_input_h_stat_pos[0] = \
+                                    (scf_inc_vscl[0] * tbe_platform.get_const(resize_output_h_start_pos)) >> 18
+                                resize_input_h_end_pos[0] = \
+                                    ((scf_inc_vscl[0] * tbe_platform.get_const(resize_output_h_end_pos)) +
+                                     tvm.const((1 << 18) - 1, dtype="uint64")) >> 18
 
-                h_start_pos = tvm.const(48, dtype="uint64")
-                w_start_pos = tvm.const(32, dtype="uint64")
-                load_h_pos = tvm.const(16, dtype="uint64")
-                tiling_h_const = tvm.const(tiling_h, dtype="uint64")
+                                if input_format == "YUV420SP_U8":
+                                    resize_input_h_stat_pos[0] = resize_input_h_stat_pos[0] & 0xfffffffffffffffe
+                                    resize_input_h_end_pos[0] += \
+                                        (resize_input_h_end_pos[0] -
+                                         resize_input_h_stat_pos[0] + tvm.const(1, dtype="uint64")) & 0x1
 
-                resize_input_h_stat_pos = ib.allocate("uint64", [1], name="resize_input_h_stat_pos",
-                                                      scope=tbe_platform.scope_reg)
-                resize_input_h_end_pos = ib.allocate("uint64", [1], name="resize_input_h_end_pos",
-                                                     scope=tbe_platform.scope_reg)
-                load_h = ib.allocate("uint64", [1], name="load_h", scope=tbe_platform.scope_reg)
-                load_h[0] = tvm.const(tiling_h - 1, dtype="uint64")
+                                acc_vscl = \
+                                    (scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) - \
+                                    (resize_input_h_stat_pos[0] << 18)
+                                spr15[0] = acc_vscl
 
-                xs = ib.allocate("uint64", [1], name="Xs", scope=tbe_platform.scope_reg)
-                xs[0] = tvm.const(0, dtype="uint64")
+                                ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15",
+                                                        tbe_platform.get_const(spr15[0])))
 
-                with ib.for_range(zero_const, h_loop, name="h1", dtype="uint64") as h1:
-                    with ib.new_scope():
-                        num = (((channel_1 * buffer_upper_limit * channel_0 * size + 31) // 32) * 32) // size
-                        output_cb = ib.allocate(output_dtype, (num,), "output_cb",
-                                                scope=tbe_platform.scope_cbuf)
-                        output_cb_buf = tvm.decl_buffer((num,), output_dtype, "output_cb_buf",
-                                                        scope=tbe_platform.scope_cbuf, data=output_cb)
+                                load_h[0] = (resize_input_h_end_pos[0] - resize_input_h_stat_pos[0])
+                            with ib.else_scope():
+                                ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15", tvm.const(0, dtype="uint64")))
 
-                        output_w = width
-                        output_h = tiling_h
-                        output_offset = n1 * channel_1 * height * width * channel_0 + \
-                                        channel_1 * (h1 * tiling_h) * output_w * channel_0
+                            with ib.if_scope(boxes_reg[2] != height):
+                                xs[0] = tbe_platform.get_const(
+                                    (boxes_reg[3] - 1) | load_h[0] << load_h_pos |
+                                    (tbe_platform.get_const(boxes_reg[1])) << w_start_pos |
+                                    (boxes_reg[0] + resize_input_h_stat_pos[0]) << h_start_pos)
+                            with ib.else_scope():
+                                xs[0] = tbe_platform.get_const(
+                                    (boxes_reg[3] - 1) | load_h[0] << load_h_pos |
+                                    (tbe_platform.get_const(boxes_reg[1])) << w_start_pos |
+                                    (boxes_reg[0] + h1*tiling_h_const) << h_start_pos)
 
-                        spr12 = (tvm.const(tiling_h - 1, dtype="uint64")) | \
-                                (tvm.const(width - 1, dtype="uint64")) << 16
-                        ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_12", spr12))
+                            ib.emit(tvm.call_extern(output_dtype, "load_image_to_cbuf",
+                                                    output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
+                                                    xs[0], tbe_platform.get_const(aipp_xt)))
 
-                        with ib.if_scope(boxes_reg[2] != height):
-                            resize_input_h_stat_pos[0] = tvm.const(0, dtype="uint64")
-                            resize_input_h_end_pos[0] = tvm.const(0, dtype="uint64")
+                            move_data_from_l1_to_gm(ib, channel_1*output_h*width*channel_0, output_dtype,
+                                                    output_cb_buf, output_buf, block_index*offset+output_offset,
+                                                    "NC1HWC0_C04")
 
-                            resize_output_h_start_pos = h1 * tiling_h
-                            resize_output_h_end_pos = (h1 + 1) * tiling_h - 1
+                    tail_h = height % tiling_h
+                    if tail_h != 0:
+                        tail_h_postion = ib.allocate("uint64", [1], name="tail_h_postion", scope=tbe_platform.scope_reg)
+                        tail_h_postion[0] = boxes_reg[0] + tvm.const(h_loop*tiling_h, dtype="uint64")
+                        load_tail_h = ib.allocate("uint64", [1], name="load_tail_h", scope=tbe_platform.scope_reg)
+                        load_tail_h[0] = tvm.const(tail_h - 1, dtype="uint64")
 
-                            resize_input_h_stat_pos[0] = \
-                                (scf_inc_vscl[0] * tbe_platform.get_const(resize_output_h_start_pos)) >> 18
-                            resize_input_h_end_pos[0] = \
-                                ((scf_inc_vscl[0] * tbe_platform.get_const(resize_output_h_end_pos)) +
-                                 tvm.const((1 << 18) - 1, dtype="uint64")) >> 18
+                        with ib.new_scope():
+                            num = (((channel_1*buffer_upper_limit*channel_0*size + 31) // 32)*32) // size
+                            output_cb = ib.allocate(output_dtype, (num,), "output_cb", scope=tbe_platform.scope_cbuf)
+                            output_cb_buf = tvm.decl_buffer((num,), output_dtype, "output_cb_buf",
+                                                            scope=tbe_platform.scope_cbuf, data=output_cb)
 
-                            if input_format == "YUV420SP_U8":
-                                resize_input_h_stat_pos[0] = resize_input_h_stat_pos[0] & 0xfffffffffffffffe
-                                resize_input_h_end_pos[0] += \
-                                    (resize_input_h_end_pos[0] -
-                                     resize_input_h_stat_pos[0] + tvm.const(1, dtype="uint64")) & 0x1
+                            output_w = width
+                            output_h = tail_h
+                            output_offset = \
+                                n1*channel_1*height*width*channel_0 + channel_1*(h_loop*tiling_h)*output_w*channel_0
 
-                            acc_vscl = \
-                                (scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) - \
-                                (resize_input_h_stat_pos[0] << 18)
-                            spr15[0] = acc_vscl
+                            spr12 = (tvm.const(tail_h - 1, dtype="uint64")) | \
+                                    (tvm.const(width - 1, dtype="uint64")) << 16
+                            ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_12", spr12))
 
-                            ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15",
-                                                    tbe_platform.get_const(spr15[0])))
+                            with ib.if_scope(boxes_reg[2] != height):
+                                resize_input_h_stat_pos[0] = tvm.const(0, dtype="uint64")
+                                resize_input_h_end_pos[0] = tvm.const(0, dtype="uint64")
 
-                            load_h[0] = (resize_input_h_end_pos[0] - resize_input_h_stat_pos[0])
-                        with ib.else_scope():
-                            ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15", tvm.const(0, dtype="uint64")))
+                                resize_output_h_start_pos = tvm.const(h_loop*tiling_h, dtype="uint64")
+                                resize_output_h_end_pos = tvm.const(height - 1, dtype="uint64")
 
-                        with ib.if_scope(boxes_reg[2] != height):
-                            xs[0] = tbe_platform.get_const(
-                                (boxes_reg[3] - 1) | load_h[0] << load_h_pos |
-                                (tbe_platform.get_const(boxes_reg[1])) << w_start_pos |
-                                (boxes_reg[0] + resize_input_h_stat_pos[0]) << h_start_pos)
-                        with ib.else_scope():
-                            xs[0] = tbe_platform.get_const(
-                                (boxes_reg[3] - 1) | load_h[0] << load_h_pos |
-                                (tbe_platform.get_const(boxes_reg[1])) << w_start_pos |
-                                (boxes_reg[0] + h1*tiling_h_const) << h_start_pos)
+                                resize_input_h_stat_pos[0] = (scf_inc_vscl[0]*resize_output_h_start_pos) >> 18
+                                resize_input_h_end_pos[0] = ((scf_inc_vscl[0]*resize_output_h_end_pos) +
+                                                             tvm.const((1 << 18) - 1, dtype="uint64")) >> 18
 
-                        ib.emit(tvm.call_extern(output_dtype, "load_image_to_cbuf",
-                                                output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
-                                                xs[0], tbe_platform.get_const(aipp_xt)))
+                                if input_format == "YUV420SP_U8":
+                                    resize_input_h_stat_pos[0] = resize_input_h_stat_pos[0] & 0xfffffffffffffffe
+                                    resize_input_h_end_pos[0] += (resize_input_h_end_pos[0] -
+                                                                  resize_input_h_stat_pos[0] +
+                                                                  tvm.const(1, dtype="uint64")) & 0x1
 
-                        move_data_from_l1_to_gm(ib, channel_1*output_h*width*channel_0, output_dtype,
-                                                output_cb_buf, output_buf, block_index*offset+output_offset,
-                                                "NC1HWC0_C04")
+                                acc_vscl = (scf_inc_vscl[0]*resize_output_h_start_pos) - \
+                                           (resize_input_h_stat_pos[0] << 18)
+                                spr15[0] = acc_vscl
 
-                tail_h = height % tiling_h
-                if tail_h != 0:
-                    tail_h_postion = ib.allocate("uint64", [1], name="tail_h_postion", scope=tbe_platform.scope_reg)
-                    tail_h_postion[0] = boxes_reg[0] + tvm.const(h_loop*tiling_h, dtype="uint64")
-                    load_tail_h = ib.allocate("uint64", [1], name="load_tail_h", scope=tbe_platform.scope_reg)
-                    load_tail_h[0] = tvm.const(tail_h - 1, dtype="uint64")
+                                ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15",
+                                                        tbe_platform.get_const(spr15[0])))
 
-                    with ib.new_scope():
-                        num = (((channel_1*buffer_upper_limit*channel_0*size + 31) // 32)*32) // size
-                        output_cb = ib.allocate(output_dtype, (num,), "output_cb", scope=tbe_platform.scope_cbuf)
-                        output_cb_buf = tvm.decl_buffer((num,), output_dtype, "output_cb_buf",
-                                                        scope=tbe_platform.scope_cbuf, data=output_cb)
+                                load_tail_h[0] = resize_input_h_end_pos[0] - resize_input_h_stat_pos[0]
+                                tail_h_postion[0] = boxes_reg[0] + resize_input_h_stat_pos[0]
+                            with ib.else_scope():
+                                ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15", tvm.const(0, dtype="uint64")))
 
-                        output_w = width
-                        output_h = tail_h
-                        output_offset = \
-                            n1*channel_1*height*width*channel_0 + channel_1*(h_loop*tiling_h)*output_w*channel_0
+                            aipp_xs = (boxes_reg[3] - 1) | load_tail_h[0] << load_h_pos | \
+                                      tail_h_postion[0] << h_start_pos | (boxes_reg[1]) << w_start_pos
 
-                        spr12 = (tvm.const(tail_h - 1, dtype="uint64")) | \
-                                (tvm.const(width - 1, dtype="uint64")) << 16
-                        ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_12", spr12))
+                            ib.emit(tvm.call_extern(output_dtype, "load_image_to_cbuf",
+                                                    output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
+                                                    tbe_platform.get_const(aipp_xs),
+                                                    tbe_platform.get_const(aipp_xt)))
 
-                        with ib.if_scope(boxes_reg[2] != height):
-                            resize_input_h_stat_pos[0] = tvm.const(0, dtype="uint64")
-                            resize_input_h_end_pos[0] = tvm.const(0, dtype="uint64")
-
-                            resize_output_h_start_pos = tvm.const(h_loop*tiling_h, dtype="uint64")
-                            resize_output_h_end_pos = tvm.const(height - 1, dtype="uint64")
-
-                            resize_input_h_stat_pos[0] = (scf_inc_vscl[0]*resize_output_h_start_pos) >> 18
-                            resize_input_h_end_pos[0] = ((scf_inc_vscl[0]*resize_output_h_end_pos) +
-                                                         tvm.const((1 << 18) - 1, dtype="uint64")) >> 18
-
-                            if input_format == "YUV420SP_U8":
-                                resize_input_h_stat_pos[0] = resize_input_h_stat_pos[0] & 0xfffffffffffffffe
-                                resize_input_h_end_pos[0] += (resize_input_h_end_pos[0] - resize_input_h_stat_pos[0] +
-                                                              tvm.const(1, dtype="uint64")) & 0x1
-
-                            acc_vscl = (scf_inc_vscl[0]*resize_output_h_start_pos) - (resize_input_h_stat_pos[0] << 18)
-                            spr15[0] = acc_vscl
-
-                            ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15",
-                                                    tbe_platform.get_const(spr15[0])))
-
-                            load_tail_h[0] = resize_input_h_end_pos[0] - resize_input_h_stat_pos[0]
-                            tail_h_postion[0] = boxes_reg[0] + resize_input_h_stat_pos[0]
-                        with ib.else_scope():
-                            ib.emit(tvm.call_extern(output_dtype, "set_aipp_spr_15", tvm.const(0, dtype="uint64")))
-
-                        aipp_xs = (boxes_reg[3] - 1) | load_tail_h[0] << load_h_pos | \
-                                  tail_h_postion[0] << h_start_pos | (boxes_reg[1]) << w_start_pos
-
-                        ib.emit(tvm.call_extern(output_dtype, "load_image_to_cbuf",
-                                                output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
-                                                tbe_platform.get_const(aipp_xs),
-                                                tbe_platform.get_const(aipp_xt)))
-
-                        move_data_from_l1_to_gm(ib, channel_1*output_h*width*channel_0, output_dtype,
-                                                output_cb_buf, output_buf, block_index*offset+output_offset,
-                                                "NC1HWC0_C04")
+                            move_data_from_l1_to_gm(ib, channel_1*output_h*width*channel_0, output_dtype,
+                                                    output_cb_buf, output_buf, block_index*offset+output_offset,
+                                                    "NC1HWC0_C04")
 
         return ib.get()
 
