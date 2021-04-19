@@ -99,7 +99,7 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
   GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
   auto split_maps = op_calc_info.GetAxisSplitMapVec();
   if (split_maps.empty()) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "axis split map vector is empty");
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "axis split map vector is empty");
     return;
   }
   // when deconv + prelu, add one input
@@ -109,12 +109,12 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
     vector<int64_t> split_flag = {0};
     for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
       auto output_split_infos = (*it).GetOutputSplitInfoVec();
-      if (output_split_infos.empty()) {
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "output_split_infos is empty");
-        return;
+      auto input_split_infos = (*it).GetInputSplitInfoVec();
+      if (output_split_infos.empty() || input_split_infos.empty()) {
+        continue;
       }
       if (output_split_infos[0].GetAxis()[0] == 1) {
-        InputSplitInfo input_split_info;
+        InputSplitInfo input_split_info = input_split_infos[0];
         input_split_info.SetIndex(inpre);
         input_split_info.SetAxis(cout_dim);
         input_split_info.SetHeadOverLap(split_flag);
@@ -123,9 +123,8 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
       }
     }
     op_calc_info.SetAxisSplitMaps(split_maps);
-    SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   }
-
+  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   for (auto fusion_node : fusion_nodes) {
     ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
   }
@@ -190,6 +189,7 @@ Status TbeDxElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping, vec
       }
     }
   }
+  SetSplitInfo(mapping, fusion_nodes);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do conv2d_bp_input_elemwise!");
 
   return SUCCESS;
