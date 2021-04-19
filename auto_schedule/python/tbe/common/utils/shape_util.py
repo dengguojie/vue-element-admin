@@ -422,7 +422,7 @@ def variable_shape(inputs: list, op_mode="elewise"):
     def _get_dim(_i, _shapes):
         return max([s[_i] for s in _shapes])
 
-    def _fill(_inputs):
+    def _extract(_inputs):
         def _complete(_in):
             shapes, ranges = [], []
             for x in _in:
@@ -464,40 +464,30 @@ def variable_shape(inputs: list, op_mode="elewise"):
                 const_shape = [a & b for a, b in zip(input1, input2)]
             else:
                 const_shape = inputs[0]["shape"]
-            operation.get_context().get_current_compute(). \
-                add("_const_shape", const_shape)
+            operation.get_context().get_current_compute().add("_const_shape", const_shape)
             operation.get_context().get_current_compute().add("_const_origin_inputs", inputs)
         elif mode == para_check.SPECIAL and inputs[0].get("pattern"):
             pattern = inputs[0].get("pattern")
-            operation.get_context().\
-                get_current_compute().add("_pattern", pattern)
+            operation.get_context().get_current_compute().add("_pattern", pattern)
             for i, _pattern in enumerate(pattern):
                 if _pattern == para_check.COMMON:
                     for j in range(len(shapes)):
                         if shapes[j][i] == -1:
+                            # mark this dimension dose not exist broadcast
                             shapes[j][i] = -77
         elif mode == para_check.SPECIAL_SCALAR:
             pattern = inputs[0].get("pattern")
-            operation.get_context(). \
-                get_current_compute().add("_pattern", pattern)
-
-    def _get_support_broadcast():
-        support_flag = operation.get_context().get("_support_broadcast")
-        if support_flag is None:
-            support_flag = False
-        return support_flag
+            operation.get_context().get_current_compute().add("_pattern", pattern)
 
     if len(inputs) < 1:
         return []
-    mode = inputs[0].get("mode")
-    if mode is None:
-        mode = para_check.ORIGINAL
+    mode = inputs[0].get("mode") or para_check.ORIGINAL
     operation.get_context().add("_mode", mode)
     current_compute = operation.get_context().get_current_compute()
     current_compute.add("_mode", mode)
-    support_broadcast = _get_support_broadcast()
+    support_broadcast = operation.get_context().get("_support_broadcast") or False
 
-    shapes, ranges = _fill(inputs)
+    shapes, ranges = _extract(inputs)
     _mode_process()
 
     d_shapes = [[] for _ in shapes]
@@ -510,13 +500,12 @@ def variable_shape(inputs: list, op_mode="elewise"):
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
-                    _var = operation.var_inner("_dim_" + str(i) + "_" + str(_suffix),
-                                               _range[i])
+                    _var = operation.var_inner("_dim_" + str(i) + "_" + str(_suffix), _range[i])
                 d_shape.append(_var)
             elif shape[i] == -77:
+                # no broadcast
                 if _var is None:
-                    _var = operation.var_inner("_dim_" + str(i) + "_" + str(_suffix),
-                                               _range[i])
+                    _var = operation.var_inner("_dim_" + str(i) + "_" + str(_suffix), _range[i])
                 d_shape.append(_var)
             else:
                 d_shape.append(shape[i])

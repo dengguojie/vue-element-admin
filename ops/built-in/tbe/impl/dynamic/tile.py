@@ -167,7 +167,8 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
     schedules, tensors = [], []
     for (_input_m, _input_x) in ins:
         with tbe.compute():
-            shape_mul, shape = shape_util.variable_shape([_input_m, _input_x])
+            shape_mul = shape_util.variable_shape([_input_m])[0]
+            shape = [shape_mul[i] if shape_adapt[i] != 1 else shape_adapt[i] for i in range(len(shape_mul))]
             data = tvm.placeholder(shape, name="input_x", dtype=input_x_dtype)
             input_mul = tvm.placeholder(shape_mul, name="multiples", dtype=input_m_dtype)
 

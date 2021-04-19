@@ -63,12 +63,8 @@ class ElewiseComputation(Computation):
             if mode == SPECIAL:
                 _base_key = 210000000
             elif mode == CONST:
-                _base_key = operation.get_context().get("_const_base_key")
-                if _base_key is None:
-                    _base_key = 100000000
-                else:
-                    _base_key += 1
-                operation.get_context().add("_const_base_key", _base_key)
+                _base_key = operation.get_context().get("_const_base_key") or 100000000
+                operation.get_context().add("_const_base_key", _base_key + 1)
             elif mode == EMPTY:
                 _base_key = EMPTY_KEY
             else:

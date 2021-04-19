@@ -18,6 +18,7 @@ elewise schedule
 import copy
 from copy import deepcopy
 from typing import Optional
+from functools import reduce
 
 from tbe import tvm
 from tbe.common.utils import op_tiling
@@ -36,6 +37,8 @@ from .constants import Pattern
 from .constants import SUPPORT_SCALAR_INSNS
 from .constants import TERNARY_INSNS
 from .schedule import Schedule
+from .broadcast_tilingcase import TilingStrategy
+from .broadcast_tilingcase import BroadcastTilingCase
 
 DEFAULT = "default"
 
@@ -50,22 +53,16 @@ VTRANSPOSE_TEMP_SPACE = 8192
 
 CONST = "const"
 VECTOR = "vector"
+BROADCAST = "broadcast"
+VECTOR_BROADCAST = "vector_broadcast"
+UNKNOWN_BROADCAST = "unknown_broadcast"
+DMA_COPY = "dma_copy"
+PHONY_INSN = "phony_insn"
 
 # vcmpsel constant
 VCMP_INPUT_NUMBER = 2
 VSEL_INPUT_NUMBER = 3
 VCMPSEL_INPUT_NUMBER = 4
-
-# TYPE DOUNDS
-TYPE_DOUNDS = {
-    1: (1, 32767),
-    2: (1, 32767),
-    4: (1, 16383),
-    8: (1, 8191),
-}
-
-# BA templete and block split 0, ub split 0
-BA_KEY = 221000001
 
 
 # 'pylint: disable=R0902, R0903
@@ -90,15 +87,39 @@ class BroadcastSchedule(Schedule):
     def get_supported_sub_pattern(cls):
         return [BroadcastPattern.B_0]
 
+    class ComputeAt:
+        def __init__(self):
+            self._compute_at_axis = None
+
+        @property
+        def compute_at_axis(self):
+            return self._compute_at_axis
+
+        @compute_at_axis.setter
+        def compute_at_axis(self, axis):
+            self._compute_at_axis = axis
+
+    class EmitInsn:
+        def __init__(self):
+            self._emit_insn_axis = None
+
+        @property
+        def emit_insn_axis(self):
+            return self._emit_insn_axis
+
+        @emit_insn_axis.setter
+        def emit_insn_axis(self, axis):
+            self._emit_insn_axis = axis
+
     def __init__(self, outs, tiling_case):
-        self._out = None  # type: Optional[tvm.tensor.Tensor]
+        self._out: Optional[tvm.tensor.Tensor] = None
         self._outs = outs
         self._schedule = None
-        self._tiling_case = tiling_case
-        self._tiling_strategy = self._tiling_case.get("tiling_strategy")
-        self._is_db = self._tiling_case.get("is_need_db", False)
-        self._is_one_dim = self._tiling_case.get("is_one_dim", False)
-        self._redundant_coe = self._tiling_case.get("redundant_coe", 0)
+        self._tiling_case: Optional[BroadcastTilingCase] = tiling_case
+        self._tiling_strategy = self._tiling_case.tiling_strategy
+        self._enable_db = self._tiling_case.enable_db
+        self._is_one_dim = self._tiling_case.is_one_dim
+        self._redundant_coe = self._tiling_case.redundant_coe
         self._mode = operation.get_context().get("_mode")
 
         self._scope = "local.UB"
@@ -111,7 +132,6 @@ class BroadcastSchedule(Schedule):
 
         self._broadcast_tensors = set()
         self._absorbable_broadcast_tensors = set()
-        self._compute_inline_broadcast = set()
         self._broadcast_axis_num = {}
 
         self._broadcast_store_predicate = set()
@@ -124,42 +144,42 @@ class BroadcastSchedule(Schedule):
         self._coexisting_quantity = 1
         self._tensor_space = None
         self._ub_size = util.get_ub_size()
-        self._correct_factor = 2 if self._is_db else 1
+        self._correct_factor = 2 if self._enable_db else 1
         self._tmp_ub_size = 0
+        self._min_storage_bound = -1
 
         # input -> outputs mapping relations
         self._in_out_map = {}
 
         self._cache_read_tensors = set()
         self._cache_read_buffer_tensor_map = {}
-        self._placeholder_tensor_map = {}
+        self._input_tensor_map = {}
         self._middle_out_cache_read_buffer_map = {}
 
         self._cache_write_tensors = set()
         self._cache_write_buffer_tensor_map = {}
-        self._cache_write_tensor_map = {}
+        self._out_tensor_map = {}
         self._middle_out_cache_write_buffer_map = {}
 
         self._compute_inline_tensors = set()
+        self._compute_inline_broadcast = set()
 
         self._compute_at_map = {}
 
-        # just for const tiling
         self._need_do_block = False
         self._block_dims = 1
-        self._block_split_axis = -1
+        self._block_split_axis = self._tiling_case.block_split_axis or -1
         self._block_factor = 1
-        self._ub_split_axis = 0
+        self._ub_split_axis = self._tiling_case.ub_split_axis or 0
         self._ub_factor = 1
 
         self._block_tiling_vars = {}
         self._ub_tiling_vars = {}
         self._block_bind_axis = None
-        self._compute_at_axis = None
+        self._compute_at_axis = self.ComputeAt()
         self._compute_at_axis_idx = None
-        self._emit_insn_axis = None
+        self._emit_insn_axis = self.EmitInsn()
 
-        self._ir_axes = []
         self._inner_shape = []
 
         self._constraints = set()
@@ -176,7 +196,7 @@ class BroadcastSchedule(Schedule):
         self._construct_compute_graph()
 
         self._schedule = tvm.create_schedule(self._out.op)
-        self._schedule.tiling_key = self._tiling_case["key"]
+        self._schedule.tiling_key = self._tiling_case.tiling_key
 
         self._calc_cache_read()
         self._do_cache_read()
@@ -187,36 +207,27 @@ class BroadcastSchedule(Schedule):
         self._set_scope()
 
         self._calc_store_predicate()
-
         self._calc_storage_bound()
-
         self._calc_tiling()
-        self._do_tiling()
-
-        self._do_storage_bound()
-
         self._calc_compute_inline()
-        self._do_compute_inline()
-
         self._calc_multi_core()
-        self._do_multi_core()
-
         self._calc_compute_at()
-        self._do_compute_at()
-
-        self._do_store_predicate()
-
         self._calc_double_buffer()
-        self._do_double_buffer()
-
         self._calc_mem_reuse()
-        self._do_mem_reuse()
-
         self._calc_constraints()
-        self._do_constraints()
-
         self._calc_emit_insn()
+
+        self._do_tiling()
+        self._do_storage_bound()
+        self._do_compute_inline()
+        self._do_multi_core()
+        self._do_compute_at()
+        self._do_store_predicate()
+        self._do_double_buffer()
+        self._do_mem_reuse()
+        self._do_constraints()
         self._do_emit_insn()
+
         self._add_compile_info()
 
         return self._schedule if self._check_tiling_case() else None
@@ -273,11 +284,9 @@ class BroadcastSchedule(Schedule):
             if match_scalar_scene(tensor_i):
                 self._absorbable_broadcast_tensors.add(tensor_i)
 
-        ub_idx = 0
-        if self._tiling_strategy == TilingStrategy.ONE_CUT:
-            ub_idx = self._tiling_case["ub_tiling_axis"]
+        ub_idx = self._tiling_case.ub_split_axis
         for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
-            if tensor_i.op.tag != "broadcast":
+            if util.get_dsl_insn(tensor_i) != BROADCAST:
                 src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
                 dst_shapes = tensor_i.shape[ub_idx:]
                 self._broadcast_axis_num[tensor_i] = _no_broadcast(src_shapes, dst_shapes)
@@ -288,14 +297,12 @@ class BroadcastSchedule(Schedule):
 
     def _do_cache_read(self):
         for tensor_i in self._cache_read_tensors:
-            buffer_tensor = self._schedule.cache_read(
-                tensor_i, self._scope, self._in_out_map[tensor_i])
+            buffer_tensor = self._schedule.cache_read(tensor_i, self._scope, self._in_out_map[tensor_i])
             self._cache_read_buffer_tensor_map[buffer_tensor] = tensor_i
-            self._placeholder_tensor_map[tensor_i] = buffer_tensor
+            self._input_tensor_map[tensor_i] = buffer_tensor
 
             if tensor_i in self._middle_out_tensors:
-                self._middle_out_cache_read_buffer_map[tensor_i] = \
-                    buffer_tensor
+                self._middle_out_cache_read_buffer_map[tensor_i] = buffer_tensor
 
     def _calc_cache_write(self):
         self._cache_write_tensors.update(self._out_tensors)
@@ -304,7 +311,7 @@ class BroadcastSchedule(Schedule):
         for tensor_i in self._cache_write_tensors:
             buffer_tensor = self._schedule.cache_write(tensor_i, self._scope)
             self._cache_write_buffer_tensor_map[buffer_tensor] = tensor_i
-            self._cache_write_tensor_map[tensor_i] = buffer_tensor
+            self._out_tensor_map[tensor_i] = buffer_tensor
 
             if tensor_i in self._middle_out_tensors:
                 self._middle_out_cache_write_buffer_map[tensor_i] = \
@@ -337,26 +344,27 @@ class BroadcastSchedule(Schedule):
     def _calc_tiling_one_cut(self):
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_i = self._tiling_case["block_tiling_axis"]
-        u_i = self._tiling_case["ub_tiling_axis"]
+        b_i = self._tiling_case.block_split_axis
+        u_i = self._tiling_case.ub_split_axis
         b_bound = (1, util.get_bound(shape[b_i])[1])
-        if self._is_one_dim:
-            u_bound = TYPE_DOUNDS.get(self._max_dtype_bytes)
-        else:
-            u_bound = self._tiling_case.get("ub_factor_bound")
+        u_bound = self._tiling_case.ub_factor_bound
         if u_bound is None:
             u_bound = (1, util.get_bound(shape[u_i])[1])
         self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
         self._ub_tiling_vars[u_i] = operation.var_inner("_ub_factor_" + str(u_i), u_bound)
+        self._block_factor = self._block_tiling_vars[b_i]
+        self._ub_factor = self._ub_tiling_vars[u_i]
 
     def _calc_tiling_static(self):
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_i = self._tiling_case["block_tiling_axis"]
-        u_i = self._tiling_case["ub_tiling_axis"]
+        b_i = self._tiling_case.block_split_axis
+        u_i = self._tiling_case.ub_split_axis
         b_bound = (1, util.get_bound(shape[b_i])[1])
         self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
-        self._ub_tiling_vars[u_i] = self._tiling_case["ub_tiling_factor"]
+        self._ub_tiling_vars[u_i] = self._tiling_case.ub_factor_bound
+        self._block_factor = self._block_tiling_vars[b_i]
+        self._ub_factor = self._ub_tiling_vars[u_i]
 
     def _calc_tiling_const(self):
         def _get_original_inputs():
@@ -371,51 +379,54 @@ class BroadcastSchedule(Schedule):
                 x["shape"] = x["const_shape"]
             return origin_inputs
 
+        def _get_const_tiling():
+            inputs = []
+            input_shapes = []
+            max_dim_length = len(output_shape)
+            for _input in self._input_tensors:
+                input_shape = util.shape_to_list(_input.shape)
+                inputs.append({"shape": input_shape, "dtype": _input.dtype})
+                input_shapes.append([1] * (max_dim_length - len(input_shape)) + input_shape)
+            outputs = [{"shape": output_shape, "dtype": res.dtype}]
+            if len(inputs) == 0:
+                inputs = deepcopy(outputs)
+                max_dim_length = 0
+
+            input_shapes = list(map(list, zip(*input_shapes)))
+            broadcast_axis = [False] * max_dim_length
+            for i in range(max_dim_length - 1, -1, -1):
+                if any([input_shapes[i][0] != s for s in input_shapes[i]]):
+                    broadcast_axis[i] = True
+
+            # pure eletwise delete double tmp size
+            if len(output_shape) == 1:
+                self._is_one_dim = True
+                if True not in broadcast_axis:
+                    self._correct_factor = 2
+
+            base_info = {"000": [self._ub_size - self._correct_factor * self._tmp_ub_size,
+                                 self._max_dtype_bytes, self._coexisting_quantity, util.get_core_num()]}
+
+            const_compile_info = {
+                CompileInfo.FLAG_INFO: [True],
+                CompileInfo.BASE_INFO: base_info,
+                CompileInfo.BROADCAST_AXIS: broadcast_axis,
+                CompileInfo.OUTS_UINT1: "uint1" in self._outs_dtypes,
+            }
+            const_compile_info.update(get_compile_info())
+
+            op_type = operation.get_context().get_op_type()
+            return op_tiling.do_op_tiling(op_type, const_compile_info, _get_original_inputs(), outputs)
+
         res = self._out
         output_shape = util.shape_to_list(res.shape)
         if output_shape == [0]:
             self._block_dims = 1
             self._need_do_block = False
             return
-        inputs = []
-        input_shapes = []
-        max_dim_length = len(output_shape)
-        for _input in self._input_tensors:
-            input_shape = util.shape_to_list(_input.shape)
-            inputs.append({"shape": input_shape, "dtype": _input.dtype})
-            input_shapes.append([1] * (max_dim_length - len(input_shape)) + input_shape)
-        outputs = [{"shape": output_shape, "dtype": res.dtype}]
-        if len(inputs) == 0:
-            inputs = deepcopy(outputs)
-            max_dim_length = 0
 
-        input_shapes = list(map(list, zip(*input_shapes)))
-        broadcast_axis = [False] * max_dim_length
-        for i in range(max_dim_length - 1, -1, -1):
-            if any([input_shapes[i][0] != s for s in input_shapes[i]]):
-                broadcast_axis[i] = True
+        run_info = _get_const_tiling()
 
-        # pure eletwise delete double tmp size
-        if len(output_shape) == 1:
-            self._is_one_dim = True
-            if True not in broadcast_axis:
-                self._correct_factor = 2
-
-        base_info = {"000": [self._ub_size - self._correct_factor * self._tmp_ub_size,
-                             self._max_dtype_bytes, self._coexisting_quantity, util.get_core_num()]}
-
-        outs_contains_uint1 = "uint1" in self._outs_dtypes
-
-        const_compile_info = {
-            CompileInfo.FLAG_INFO: [True],
-            CompileInfo.BASE_INFO: base_info,
-            CompileInfo.BROADCAST_AXIS: broadcast_axis,
-            CompileInfo.OUTS_UINT1: outs_contains_uint1,
-        }
-        const_compile_info.update(get_compile_info())
-
-        op_type = operation.get_context().get_op_type()
-        run_info = op_tiling.do_op_tiling(op_type, const_compile_info, _get_original_inputs(), outputs)
         tiling_format = {
             "need_multi_core": "int",
             "block_axis": "int",
@@ -432,7 +443,7 @@ class BroadcastSchedule(Schedule):
             self._ub_split_axis = tiling_data["ub_axis"]
             self._ub_factor = tiling_data["ub_factor"]
 
-        self._is_db = True if tiling_data.get("is_need_db", 0) == 1 else False
+        self._enable_db = True if tiling_data.get("is_need_db", 0) == 1 else False
 
     def _do_tiling(self):
         funcs = {TilingStrategy.ALL_CUT: self._do_tiling_all_cut,
@@ -456,28 +467,27 @@ class BroadcastSchedule(Schedule):
             ub_axes.append([x_io, _i])
             inner_axes.append([x_ii, _i])
             self._inner_shape.append([self._ub_tiling_vars[_i], _i])
-        self._ir_axes = block_axes + ub_axes + inner_axes
-        ordered_axes = [x[0] for x in self._ir_axes]
+        ir_axes = block_axes + ub_axes + inner_axes
+        ordered_axes = [x[0] for x in ir_axes]
         sch[res].reorder(*ordered_axes)
         self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
-        self._compute_at_axis = ub_axes[-1][0]
+        self._compute_at_axis.compute_at_axis = ub_axes[-1][0]
         self._compute_at_axis_idx = ub_axes[-1][1]
-        self._emit_insn_axis = inner_axes[0][0]
+        self._emit_insn_axis.emit_insn_axis = inner_axes[0][0]
 
     def _do_tiling_none_cut(self):
         res = self._out
         shape = util.shape_to_list(res.shape)
         for _i, _x in enumerate(res.op.axis):
-            self._ir_axes.append([_x, _i])
             self._inner_shape.append([shape[_i], _i])
-        self._emit_insn_axis = res.op.axis[0]
+        self._emit_insn_axis.emit_insn_axis = res.op.axis[0]
 
     def _do_tiling_one_cut(self):
         sch = self._schedule
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_idx = self._tiling_case["block_tiling_axis"]
-        u_idx = self._tiling_case["ub_tiling_axis"]
+        b_idx = self._tiling_case.block_split_axis
+        u_idx = self._tiling_case.ub_split_axis
         block_axes = []
         ub_axes = []
         inner_axes = []
@@ -504,11 +514,10 @@ class BroadcastSchedule(Schedule):
             inner_axes.append([res.op.axis[i], i])
             self._inner_shape.append([shape[i], i])
 
-        self._ir_axes = block_axes + ub_axes + inner_axes
         self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
-        self._compute_at_axis = ub_axes[-1][0]
+        self._compute_at_axis.compute_at_axis = ub_axes[-1][0]
         self._compute_at_axis_idx = ub_axes[-1][1]
-        self._emit_insn_axis = inner_axes[0][0]
+        self._emit_insn_axis.emit_insn_axis = inner_axes[0][0]
 
     def _do_tiling_static(self):
         self._do_tiling_one_cut()
@@ -524,18 +533,18 @@ class BroadcastSchedule(Schedule):
                                       factor=self._block_factor)
             block_axes.append([b_o, self._block_split_axis])
             self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
-            if self._block_split_axis == self._ub_split_axis:
+            if self._block_split_axis >= 0 and self._block_split_axis == self._ub_split_axis:
                 u_o, u_i = sch[res].split(b_i, factor=self._ub_factor)
             else:
                 u_o, u_i = sch[res].split(res.op.axis[self._ub_split_axis],
                                           factor=self._ub_factor)
-            self._compute_at_axis = u_o
-            self._emit_insn_axis = u_i
+            self._compute_at_axis.compute_at_axis = u_o
+            self._emit_insn_axis.emit_insn_axis = u_i
         else:
-            self._emit_insn_axis = res.op.axis[0]
+            self._emit_insn_axis.emit_insn_axis = res.op.axis[0]
 
     def _calc_compute_inline(self):
-        def _no_broadcast(_src_shapes, _dst_shapes):
+        def no_broadcast(_src_shapes, _dst_shapes):
             _src_shapes = util.shape_to_list(_src_shapes)
             _dst_shapes = util.shape_to_list(_dst_shapes)
             for x, y in zip(_src_shapes, _dst_shapes):
@@ -543,20 +552,40 @@ class BroadcastSchedule(Schedule):
                     return False
             return True
 
-        self._compute_inline_tensors = \
-            self._absorbable_broadcast_tensors.copy()
+        def update_store_predicate(_tensor):
+            if _tensor in self._broadcast_store_predicate:
+                self._broadcast_store_predicate.remove(_tensor)
+                self._all_pre_node_broadcast.remove(_tensor.op.input_tensors[0])
+                self._broadcast_store_predicate.add(_tensor.op.input_tensors[0])
+
+        self._compute_inline_tensors = self._absorbable_broadcast_tensors.copy()
         if self._tiling_strategy == TilingStrategy.CONST:
             ub_idx = self._ub_split_axis
             for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
-                if tensor_i.op.tag != "broadcast":
+                if util.get_dsl_insn(tensor_i) != BROADCAST:
                     src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
                     dst_shapes = tensor_i.shape[ub_idx:]
-                    if _no_broadcast(src_shapes, dst_shapes):
-                        self._compute_inline_tensors.add(tensor_i)
+                    if no_broadcast(src_shapes, dst_shapes):
+                        self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
         else:
             for tensor_i in self._broadcast_axis_num:
                 if self._broadcast_axis_num[tensor_i] == 0:
-                    self._compute_inline_broadcast.add(tensor_i)
+                    if util.is_unified_broadcast(tensor_i):
+                        self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
+                    else:
+                        self._compute_inline_broadcast.add(self._get_ub_tensor(tensor_i))
+
+        self._calc_tensor_space()
+
+        for tensor_i in self._broadcast_tensors - self._compute_inline_tensors:
+            if util.get_dsl_insn(tensor_i) != BROADCAST:
+                ub_under_shapes = util.shape_to_list(tensor_i.op.input_tensors[0].shape[self._ub_split_axis + 1:])
+                ub_under_size = reduce(lambda x, y: x * y, ub_under_shapes or [1])
+                if (self._min_storage_bound // ub_under_size) == 1 and isinstance(self._ub_factor, tvm.expr.Var):
+                    # now, only handle compile broadcast, unknown broadcast need fix
+                    if util.is_unified_broadcast(tensor_i):
+                        self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
+                        update_store_predicate(tensor_i)
 
     def _do_compute_inline(self):
         sch = self._schedule
@@ -588,24 +617,25 @@ class BroadcastSchedule(Schedule):
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
         for tensor_i in self._cache_write_buffer_tensor_map:
-            self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
+            if tensor_i not in self._compute_inline_tensors:
+                self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
     def _do_compute_at(self):
         sch = self._schedule
         for tensor_i, param in self._compute_at_map.items():
-            sch[tensor_i].compute_at(sch[param[0]], param[1])
+            sch[tensor_i].compute_at(sch[param[0]], param[1].compute_at_axis)
 
     def _get_ub_tensor(self, tensor_i):
-        if tensor_i in self._placeholder_tensor_map:
-            return self._placeholder_tensor_map[tensor_i]
-        if tensor_i in self._cache_write_tensor_map:
-            return self._cache_write_tensor_map[tensor_i]
+        if tensor_i in self._input_tensor_map:
+            return self._input_tensor_map[tensor_i]
+        if tensor_i in self._out_tensor_map:
+            return self._out_tensor_map[tensor_i]
         return tensor_i
 
     def _do_store_predicate(self):
         sch = self._schedule
         cond_limit = 1
-        if self._is_db:
+        if self._enable_db:
             # pass double buffer error, avoid it in schedule
             # double buffer IR:
             # ' for i:a
@@ -615,30 +645,47 @@ class BroadcastSchedule(Schedule):
             # '     do()
             cond_limit = 2
         for tensor_i in self._broadcast_store_predicate:
-            sch[self._get_ub_tensor(tensor_i)].set_store_predicate(self._compute_at_axis < cond_limit)
+            sch[self._get_ub_tensor(tensor_i)].set_store_predicate(self._compute_at_axis.compute_at_axis < cond_limit)
             sch[self._get_ub_tensor(tensor_i)].mem_unique()
         for tensor_i in self._all_pre_node_broadcast:
-            if tensor_i in self._placeholder_tensor_map:
-                sch[self._placeholder_tensor_map[tensor_i]].set_store_predicate(self._compute_at_axis < cond_limit)
+            if tensor_i in self._input_tensor_map:
+                sch[self._input_tensor_map[tensor_i]].set_store_predicate(
+                    self._compute_at_axis.compute_at_axis < cond_limit)
             else:
-                sch[tensor_i].set_store_predicate(self._compute_at_axis < cond_limit)
+                sch[tensor_i].set_store_predicate(self._compute_at_axis.compute_at_axis < cond_limit)
         for tensor_i in self._store_predicate_common_tensors:
-            if tensor_i in self._placeholder_tensor_map:
-                sch[self._placeholder_tensor_map[tensor_i]].mem_unique()
+            if tensor_i in self._input_tensor_map:
+                sch[self._input_tensor_map[tensor_i]].mem_unique()
             else:
                 sch[tensor_i].mem_unique()
 
     def _calc_constraints(self):
         for tensor_i in self._broadcast_tensors:
-            if tensor_i.op.tag == "unknown_broadcast":
-                src_shapes = tensor_i.op.input_tensors[0].shape
-                dst_shapes = tensor_i.shape
+            if util.is_unknown_broadcast(tensor_i):
+                src_shapes = util.shape_to_list(tensor_i.op.input_tensors[0].shape)
+                dst_shapes = util.shape_to_list(tensor_i.shape)
                 for src_shape, dst_shape in zip(src_shapes, dst_shapes):
-                    if src_shape != dst_shape:
-                        self._constraints.add(src_shape <= dst_shape)
+                    cond = src_shape <= dst_shape
+                    if not expr_equal(src_shape, dst_shape) and isinstance(cond, tvm.expr.Expr):
+                        self._constraints.add(cond)
                 # add build args: constant_realize_extent_in_infer_bound
-                operation.add_build_arg(
-                    "constant_realize_extent_in_infer_bound", False)
+                operation.add_build_arg("constant_realize_extent_in_infer_bound", False)
+
+        shapes = util.shape_to_list(self._out.shape)
+        ub_shapes = shapes[self._ub_split_axis + 1:]
+        for s in ub_shapes:
+            cond = s <= self._min_storage_bound
+            if isinstance(cond, tvm.expr.Expr):
+                self._constraints.add(cond)
+        if self._tiling_strategy != TilingStrategy.NONE_CUT:
+            ub_shapes.insert(0, self._ub_factor)
+            shape_size = reduce(lambda x, y: x * y, ub_shapes)
+            cond = shape_size <= self._min_storage_bound
+            if isinstance(cond, tvm.expr.Expr):
+                self._constraints.add(cond)
+            cond = self._ub_factor <= self._min_storage_bound
+            if isinstance(cond, tvm.expr.Expr):
+                self._constraints.add(cond)
 
     def _do_constraints(self):
         sch = self._schedule
@@ -656,63 +703,67 @@ class BroadcastSchedule(Schedule):
 
         for source, target in self._cache_read_buffer_tensor_map.items():
             if target in self._middle_out_tensors:
-                self._emit_insn_map[source] = [source.op.axis[0], "phony_insn"]
+                self._emit_insn_map[source] = [source.op.axis[0], PHONY_INSN]
             else:
-                self._emit_insn_map[source] = [source.op.axis[0], "dma_copy"]
+                self._emit_insn_map[source] = [source.op.axis[0], DMA_COPY]
 
         for tensor_i in (self._pure_middle_tensors - self._compute_inline_tensors):
             self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], get_insn(tensor_i)]
             if tensor_i in self._compute_inline_broadcast:
-                self._emit_insn_map[tensor_i].append("phony_insn")
+                self._emit_insn_map[tensor_i].append(PHONY_INSN)
 
         for source, target in self._cache_write_buffer_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[0], get_insn(target)]
-            if target in self._compute_inline_broadcast:
-                self._emit_insn_map[source].append("phony_insn")
+            if source in self._compute_inline_broadcast:
+                self._emit_insn_map[source].append(PHONY_INSN)
 
         if len(self._out_tensors) > 1:
             for tensor_i in self._out_tensors:
-                self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], "dma_copy"]
+                self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], DMA_COPY]
             if len(self._out_tensors) - len(self._middle_out_tensors) > 1:
-                self._emit_insn_map[self._out] = [self._emit_insn_axis, "phony_insn"]
+                self._emit_insn_map[self._out] = [self._emit_insn_axis, PHONY_INSN]
             else:
-                self._emit_insn_map[self._out] = [self._emit_insn_axis, "dma_copy"]
+                self._emit_insn_map[self._out] = [self._emit_insn_axis, DMA_COPY]
         else:
             for tensor_i in self._out_tensors:
-                self._emit_insn_map[tensor_i] = [self._emit_insn_axis, "dma_copy"]
+                self._emit_insn_map[tensor_i] = [self._emit_insn_axis, DMA_COPY]
 
     def _do_emit_insn(self):
+        def get_ori_tensor(tensor_i):
+            if tensor_i in self._cache_read_buffer_tensor_map:
+                return self._cache_read_buffer_tensor_map[tensor_i]
+            if tensor_i in self._cache_write_buffer_tensor_map:
+                return self._cache_write_buffer_tensor_map[tensor_i]
+            return tensor_i
+
         sch = self._schedule
         for tensor_i, param in self._emit_insn_map.items():
+            emit_insn_axis = param[0]
+            if isinstance(emit_insn_axis, self.EmitInsn):
+                emit_insn_axis = emit_insn_axis.emit_insn_axis
             if len(param) > 2:
-                sch[tensor_i].emit_insn(param[0], param[2])
-            compile_broadcast_no_inline = (param[1] == "unified_broadcast" and
-                                           self._broadcast_axis_num.get(tensor_i, 0) > 1)
-            if param[1] == "unknown_broadcast" or compile_broadcast_no_inline:
-                u_idx = 0
-                if self._tiling_strategy != TilingStrategy.NONE_CUT:
-                    u_idx = self._tiling_case["ub_tiling_axis"]
+                sch[tensor_i].emit_insn(emit_insn_axis, param[2])
+            compile_broadcast_no_inline = (param[1] == VECTOR_BROADCAST and
+                                           self._broadcast_axis_num.get(get_ori_tensor(tensor_i), 0) > 1)
+            attrs = {}
+            tensor_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
+            if param[1] == UNKNOWN_BROADCAST:
+                u_idx = self._tiling_case.ub_split_axis
                 src_shapes = tensor_i.op.input_tensors[0].shape[u_idx:]
-                tensor_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                           tvm.expr.Call.PureIntrinsic, None, 0)
-                attrs = {}
-                if compile_broadcast_no_inline:
-                    attrs = dict(storage_bound=[tensor_bound])
-                if param[1] == "unknown_broadcast":
-                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
-                sch[tensor_i].emit_insn(param[0], param[1], attrs)
-            else:
-                if tensor_i in self._out_tensors and self._is_one_dim:
-                    sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(no_overlap=0))
-                else:
-                    sch[tensor_i].emit_insn(param[0], param[1])
+                attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
+            elif compile_broadcast_no_inline:
+                attrs = dict(storage_bound=[tensor_bound])
+            elif tensor_i in self._out_tensors and self._is_one_dim:
+                attrs = dict(no_overlap=0)
+            sch[tensor_i].emit_insn(emit_insn_axis, param[1], attrs)
 
     def _calc_double_buffer(self):
         pass
 
     def _do_double_buffer(self):
-        if self._is_db:
+        if self._enable_db:
             sch = self._schedule
 
             tensors = self._pure_middle_tensors \
@@ -729,13 +780,6 @@ class BroadcastSchedule(Schedule):
             "elewise_multiple_madd": 1,
             "elewise_multiple_maddrelu": 1,
         }
-
-        def __get_ub_tensor(_input_tensor, _output_tensor):
-            if _input_tensor in self._placeholder_tensor_map:
-                _input_tensor = self._placeholder_tensor_map[_input_tensor]
-            if _output_tensor in self._cache_write_tensor_map:
-                _output_tensor = self._cache_write_tensor_map[_output_tensor]
-            return _input_tensor, _output_tensor
 
         # one of the input of the ternary instruction must be reused with the output, refer to "ternary_reuse_map"
         # consider "vmadd": A=A*A+B, output reuse the second A, input_tensors is 2, which need to be completed to 3
@@ -759,19 +803,18 @@ class BroadcastSchedule(Schedule):
                         index += 1
                 reuse_index = ternary_reuse_map.get(insn)
                 src_tensor = src_tensors[reuse_index]
-                src_tensor, dst_tensor = __get_ub_tensor(src_tensor, tensor_i)
+                src_tensor = self._get_ub_tensor(src_tensor)
+                dst_tensor = self._get_ub_tensor(tensor_i)
                 util.merge_value(self._mem_reuse_map,
                                  src_tensor,
                                  dst_tensor)
-        for tensor_i, write_buffer in \
-                self._middle_out_cache_write_buffer_map.items():
+        for tensor_i, write_buffer in self._middle_out_cache_write_buffer_map.items():
             util.merge_value(self._mem_reuse_map,
                              self._middle_out_cache_read_buffer_map[tensor_i],
                              write_buffer)
         for tensor_i in self._compute_inline_broadcast:
-            input_tensor = tensor_i.op.input_tensors[0]
-            input_tensor, broadcast_tensor = __get_ub_tensor(input_tensor, tensor_i)
-            util.merge_value(self._data_reuse_map, input_tensor, broadcast_tensor)
+            input_tensor = self._get_ub_tensor(tensor_i.op.input_tensors[0])
+            util.merge_value(self._data_reuse_map, input_tensor, tensor_i)
 
     def _do_mem_reuse(self):
         sch = self._schedule
@@ -793,7 +836,7 @@ class BroadcastSchedule(Schedule):
             if len(tensor_i.op.input_tensors) != 1:
                 return False
             if self._tiling_strategy == TilingStrategy.ONE_CUT:
-                u_i = self._tiling_case["ub_tiling_axis"]
+                u_i = self._tiling_case.ub_split_axis
                 src_shape = tensor_i.op.input_tensors[0].shape
                 dst_shape = tensor_i.shape
                 return expr_equal(1, src_shape[u_i]) and not expr_equal(1, dst_shape[u_i])
@@ -817,7 +860,6 @@ class BroadcastSchedule(Schedule):
                 self._store_predicate_common_tensors.update(common_tensor)
 
     def _calc_storage_bound(self):
-
         def _correct_ub_size_by_cmp_sel(_tensor):
             if util.is_vcmp_insn(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE * (VCMP_INPUT_NUMBER - len(_tensor.op.input_tensors))
@@ -831,21 +873,20 @@ class BroadcastSchedule(Schedule):
         def _calc_current_space(_tensor):
             # one of the input of the ternary instruction must be reused with the output
             if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in dependent_map:
-                _current_space = len(dependent_map)
+                current_space = len(dependent_map)
             else:
-                _current_space = len(dependent_map) + 1
+                current_space = len(dependent_map) + 1
             for tensor_i in dependent_map.keys():
                 if tensor_i in self._absorbable_broadcast_tensors and \
                         len(tensor_i.op.input_tensors) == 1 and tensor_i.op.input_tensors[0] in dependent_map:
-                    _current_space -= 1
-            if util.need_extent_node(_tensor) and _tensor not in self._compute_inline_broadcast:
-                _current_space += 1
-            if util.get_dsl_insn(_tensor) == "unified_broadcast" and \
-                    self._broadcast_axis_num.get(_tensor, 0) > 1:
-                _current_space += 1
+                    current_space -= 1
+            if util.need_extent_node(_tensor):
+                current_space += 1
+            if util.is_unified_broadcast(_tensor) and self._broadcast_axis_num.get(_tensor, 0) > 1:
+                current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE
-            return _current_space
+            return current_space
 
         def _r_coexisting(_tensor):
             if _tensor in dependent_map and _tensor not in init_map:
@@ -917,22 +958,33 @@ class BroadcastSchedule(Schedule):
 
         if self._coexisting_quantity == 1:
             self._tmp_ub_size += BLOCK_SIZE_BYTE
-        if len(self._broadcast_tensors - self._compute_inline_tensors - self._compute_inline_broadcast) > 0:
+        if len(self._broadcast_tensors - self._compute_inline_tensors) > 0:
             self._tmp_ub_size += BLOCK_SIZE_BYTE
 
-    def _do_storage_bound(self):
-
-        # delete tmp size
+    def _calc_tensor_space(self):
+        # minus tmp size
         self._ub_size -= self._correct_factor * self._tmp_ub_size
         tensor_space = self._ub_size // self._coexisting_quantity
-        if self._is_db:
-            tensor_space = tensor_space // 2
+        if self._enable_db:
+            tensor_space = self._ub_size // 2 // self._coexisting_quantity
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
-        # adjust storage bound by tiling handle one dime (128 align)
+        # adjust storage bound by tiling handle one dim (128 align)
         if self._is_one_dim and self._tensor_space > ONE_DIM_ALIGN:
             self._tensor_space = self._tensor_space // ONE_DIM_ALIGN * ONE_DIM_ALIGN
 
+        tensors = self._pure_middle_tensors \
+            .union(self._cache_read_buffer_tensor_map.keys()) \
+            .union(self._cache_write_buffer_tensor_map.keys())
+
+        min_storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[self._out.dtype])
+        for tensor_i in tensors:
+            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
+            if storage_bound < min_storage_bound:
+                min_storage_bound = storage_bound
+        self._min_storage_bound = min_storage_bound
+
+    def _do_storage_bound(self):
         sch = self._schedule
         tensors = self._pure_middle_tensors \
             .union(self._cache_read_buffer_tensor_map.keys()) \
@@ -995,7 +1047,7 @@ def _fake_node(tensors):
     shape = [1] * dim_length
     for tensor_i in tensors:
         if DTYPE_BYTE_MAPPING[tensor_i.dtype] > DTYPE_BYTE_MAPPING[dtype]:
-            dtype = tensor_i.type
+            dtype = tensor_i.dtype
         shape_i = util.shape_to_list(tensor_i.shape)
         diff = dim_length - len(shape_i)
         shape_i = [1] * diff + shape_i

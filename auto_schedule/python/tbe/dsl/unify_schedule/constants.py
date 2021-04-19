@@ -74,6 +74,7 @@ class CompileInfo:
     """
     Built-in Compilation Info Keys
     """
+    PATTERN = "_pattern"
     BASE_INFO = "_base_info"
     FLAG_INFO = "_flag_info"
     MAX_DTYPE = "_max_dtype_bytes"
