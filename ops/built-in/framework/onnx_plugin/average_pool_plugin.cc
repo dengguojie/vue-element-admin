@@ -19,6 +19,7 @@
 #include "all_ops.h"
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
+#include "operator.h"
 
 using namespace std;
 using namespace ge;
@@ -36,6 +37,7 @@ struct AvgPoolAttr {
 };
 
 struct AvgTbeAttr {
+  bool trans_2d = false;
   std::string padding_mode = "NOTSET";
   int64_t ceil_mode = 0;
   int64_t exclusive = 0;
@@ -44,15 +46,19 @@ struct AvgTbeAttr {
   std::vector<int64_t> strides;
 };
 
-void AvgMaybeChangeAttr(std::vector<int64_t>& value, int64_t length, int64_t num) {
+void AvgMaybeChangeAttr(std::vector<int64_t>& value, int64_t length, int64_t num, bool transform_2d) {
   if (value.empty()) {
     value = std::vector<int64_t>(length, num);
   } else if (length == 4 && num != 0) {
     value.resize(length);
-    value[3] = value[1];
+    value[3] = transform_2d ? 1 : value[1];
     value[2] = value[0];
     value[1] = 1;
     value[0] = 1;
+  } else if (length == 4 && num == 0 && transform_2d) {
+    value.resize(length);
+    value[3] = 0;
+    value[2] = 0;
   }
 }
 
@@ -117,28 +123,35 @@ Status ParseParamsAveragePool(const Message* op_src, ge::Operator& op_dest) {
   }
 
   int64_t dims = node_attr.kernel_shape.size();
-  if (dims != 2 && dims != 3) {
-    OP_LOGE("AveragePool", "Only support 2D/3D, but the length of kernel_shape is %ld", dims);
+  if (dims != 1 && dims != 2 && dims != 3) {
+    OP_LOGE("AveragePool", "Only support 1D/2D/3D, but the length of kernel_shape is %ld", dims);
     return FAILED;
   }
 
   std::map<string, string> padding_mode = {
       {"NOTSET", "CALCULATED"}, {"SAME_UPPER", "SAME"}, {"SAME_LOWER", "SAME"}, {"VALID", "VALID"}};
   // set attr for AvgPoolV2
-  AvgMaybeChangeAttr(node_attr.kernel_shape, dims == 2 ? dims + 2 : dims, 1);
+  bool trans = false;
+  if (dims == 1) {
+    dims = 2;
+    trans = true;
+  }
+
+  AvgMaybeChangeAttr(node_attr.kernel_shape, dims == 2 ? dims + 2 : dims, 1, trans);
   op_dest.SetAttr("ksize", node_attr.kernel_shape);
 
-  AvgMaybeChangeAttr(node_attr.strides, dims == 2 ? dims + 2 : dims, 1);
+  AvgMaybeChangeAttr(node_attr.strides, dims == 2 ? dims + 2 : dims, 1, trans);
   op_dest.SetAttr("strides", node_attr.strides);
 
   op_dest.SetAttr("padding_mode", padding_mode[node_attr.auto_pad]);
   op_dest.SetAttr("dims", dims);
 
-  AvgMaybeChangeAttr(node_attr.pads, dims * 2, 0);
+  AvgMaybeChangeAttr(node_attr.pads, dims * 2, 0, trans);
   op_dest.SetAttr("pads", node_attr.pads);
 
   op_dest.SetAttr("ceil_mode", node_attr.ceil_mode);
   op_dest.SetAttr("exclusive", node_attr.count_include_pad);
+  op_dest.SetAttr("trans_2d", trans);
   return SUCCESS;
 }
 
@@ -166,6 +179,9 @@ Status AvgUpdateTbeAttrFromOp(const Operator& op, AvgTbeAttr& tbe_attr) {
   if (op.GetAttr("exclusive", tbe_attr.exclusive) != SUCCESS) {
     OP_LOGE("AveragePool", "get exclusive from op failed");
     return FAILED;
+  };
+  if (op.GetAttr("trans_2d", tbe_attr.trans_2d) != SUCCESS) {
+    OP_LOGW("AveragePool", "get trans_2d from op failed, use default.");
   };
   return SUCCESS;
 }
@@ -208,25 +224,37 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
     return FAILED;
   }
 
-  auto data0 = op::Data("data0").set_attr_index(0);
+  ge::Operator data0 = op::Data("data0").set_attr_index(0);
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
 
   if (dims == 2) {
+    if (tbe_attr.trans_2d) {
+      ge::Operator::OpListInt axes = {3};
+      data0 = op::Unsqueeze("UnsqueezeX").set_input_x(data0).set_attr_axes(axes);
+
+    }
     if (tbe_attr.ksize[2] * tbe_attr.ksize[3] > 255 || (tbe_attr.strides[2] > 63 || tbe_attr.strides[3] > 63)) {
       OP_LOGE("AveragePool", "not support ksize[2] %d * ksize[3] %d > 255 or strides[2] %d > 63 strides[3] %d > 63",
               tbe_attr.ksize[2], tbe_attr.ksize[3], tbe_attr.strides[2], tbe_attr.strides[3]);
       return FAILED;
     } else {
-      auto avgpoolv2 = op::AvgPoolV2()
-                           .set_input_x(data0)
-                           .set_attr_ksize(tbe_attr.ksize)
-                           .set_attr_strides(tbe_attr.strides)
-                           .set_attr_padding_mode(tbe_attr.padding_mode)
-                           .set_attr_pads(tbe_attr.pads)
-                           .set_attr_ceil_mode(tbe_attr.ceil_mode != 0)
-                           .set_attr_exclusive(tbe_attr.exclusive != 0)
-                           .set_attr_data_format("NCHW");
+      ge::Operator avgpoolv2 = op::AvgPoolV2()
+                                  .set_input_x(data0)
+                                  .set_attr_ksize(tbe_attr.ksize)
+                                  .set_attr_strides(tbe_attr.strides)
+                                  .set_attr_padding_mode(tbe_attr.padding_mode)
+                                  .set_attr_pads(tbe_attr.pads)
+                                  .set_attr_ceil_mode(tbe_attr.ceil_mode != 0)
+                                  .set_attr_exclusive(tbe_attr.exclusive != 0)
+                                  .set_attr_data_format("NCHW");
+      if (tbe_attr.trans_2d) {
+        ge::Operator::OpListInt axis = {3};
+        avgpoolv2 = op::Squeeze("SqueezeAvgpoolv2").set_input_x(avgpoolv2).set_attr_axis(axis);
+        if (AvgUpdateFormat(avgpoolv2, ge::FORMAT_NCHW) != SUCCESS) {
+          return FAILED;
+        }
+      }
       outputs.emplace_back(avgpoolv2, std::vector<std::size_t>{0});
     }
   } else {
