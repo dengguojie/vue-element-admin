@@ -73,7 +73,6 @@ MIN_FP16 = 2**(-24)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("asinh")
 def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     """
     algrithm: asinh(x) = log(x + sqrt(x^2 + 1))
@@ -400,6 +399,32 @@ def _log_compute(data_x, res, shape):
     return res
 
 
+@tbe_platform.fusion_manager.fusion_manager.register("asinh")
+def asinh_compute(data_input, output_y, kernel_name):
+    """
+    algrithm: asinh(x) = log(x + sqrt(x^2 + 1))
+
+    Parameters
+    ----------
+    input_x: the placeholder of data input
+
+    output_y : the dict of output
+
+    kernel_name : cce kernel name, default value is "asinh"
+
+    Returns
+    -------
+    res : result of asinh
+
+    """
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32") or not \
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vrec", "float32"):
+        res = asinh_compute_cloud(data_input, output_y, kernel_name)
+    else:
+        res = asinh_compute_mini(data_input, output_y, kernel_name)
+    return res
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def asinh(input_x, output_y, kernel_name="asinh"):
     """
@@ -434,11 +459,7 @@ def asinh(input_x, output_y, kernel_name="asinh"):
                                  dtype=inp_dtype, name="data_input")
 
     with tvm.target.cce():
-        if tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32") or not \
-                tbe_platform.cce_conf.api_check_support("te.lang.cce.vrec", "float32"):
-            res = asinh_compute_cloud(data_input, output_y, kernel_name)
-        else:
-            res = asinh_compute_mini(data_input, output_y, kernel_name)
+        res = asinh_compute(data_input, output_y, kernel_name)
         sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
