@@ -16,6 +16,8 @@
 unsorted_segment_sum
 """
 # pylint: disable=too-many-lines
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -139,6 +141,138 @@ def _div(val, block):
     return front_part_num, last_part
 
 
+def op_select_format(x, segment_ids, num_segments, y,
+                     kernel_name="unsorted_segment_sum"):
+    """
+    select format dynamically
+    """
+    segment_ids_shape = list(segment_ids.get("shape"))
+    atomic_add = tbe_platform.api_check_support("tik.set_atomic_add")
+    if len(segment_ids_shape) == 1 and atomic_add:
+        input0_dtype = "float16,float16,float,float,int32,int32"
+        input0_format = "NC1HWC0,ND,NC1HWC0,ND,NC1HWC0,ND"
+        input1_dtype = "int32,int32,int32,int32,int32,int32"
+        input1_format = "ND,ND,ND,ND,ND,ND"
+        input2_dtype = "int32,int32,int32,int32,int32,int32"
+        input2_format = "ND,ND,ND,ND,ND,ND"
+    elif len(segment_ids_shape) == 1 and not atomic_add:
+        input0_dtype = "float16,float16,int32,int32"
+        input0_format = "NC1HWC0,ND,NC1HWC0,ND"
+        input1_dtype = "int32,int32,int32,int32"
+        input1_format = "ND,ND,ND,ND"
+        input2_dtype = "int32,int32,int32,int32"
+        input2_format = "ND,ND,ND,ND"
+    elif len(segment_ids_shape) > 1 and not atomic_add:
+        input0_dtype = "float16,int32"
+        input0_format = "ND,ND"
+        input1_dtype = "int32,int32"
+        input1_format = "ND,ND"
+        input2_dtype = "int32,int32"
+        input2_format = "ND,ND"
+    else:
+        input0_dtype = "float16,int32,float"
+        input0_format = "ND,ND,ND"
+        input1_dtype = "int32,int32,int32"
+        input1_format = "ND,ND,ND"
+        input2_dtype = "int32,int32,int32"
+        input2_format = "ND,ND,ND"
+    ori_dtype = x.get("dtype").lower()
+    if ori_dtype in ("float16", "float32") and len(segment_ids_shape) == 1:
+        input0_dtype = "float,float"
+        input0_format = "NC1HWC0,ND"
+        input1_dtype = "int32,int32"
+        input1_format = "ND,ND"
+        input2_dtype = "int32,int32"
+        input2_format = "ND,ND"
+    elif ori_dtype in ("float16", "float32") and len(segment_ids_shape) > 1:
+        input0_dtype = "float"
+        input0_format = "ND"
+        input1_dtype = "int32"
+        input1_format = "ND"
+        input2_dtype = "int32"
+        input2_format = "ND"
+    input0 = gen_param(classify="input0", name="x",
+                       datatype=input0_dtype,
+                       format=input0_format,
+                       unknownshape_format=input0_format)
+    input1 = gen_param(classify="input1", name="segment_ids",
+                       datatype=input1_dtype,
+                       format=input1_format,
+                       unknownshape_format=input1_format)
+    input2 = gen_param(classify="input2", name="num_segments",
+                       datatype=input2_dtype,
+                       format=input2_format,
+                       unknownshape_format=input2_format)
+    output0 = gen_param(classify="output0", name="y",
+                        datatype=input0_dtype,
+                        format=input0_format,
+                        unknownshape_format=input0_format)
+
+    param_list = [input0, input1, input2, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
+
+
+def check_supported(x, segment_ids, num_segments, y,
+                    kernel_name="unsorted_segment_sum"):
+    """
+    dynamic -2 not support
+    dynamic -1 support
+    segment_ids int64 not support
+    static shape x_shape ends with 1 or lens equals 1 not support
+    temporary support x_dtype of "float32" in compilestatic process
+    """
+    shapex = x.get("ori_shape")
+    shapeid = segment_ids.get("ori_shape")
+    shape_seg = num_segments.get("ori_shape")
+    shapey = y.get("ori_shape")
+    id_dtype = segment_ids.get("dtype").lower()
+    x_dtype = x.get("dtype").lower()
+    dynamic_x = True
+    dynamic_id = True
+    dynamic_seg = True
+    dynamic_y = True
+
+    if id_dtype != "int32":
+        return False
+    if x_dtype in ("int8", "uint8"):
+        return False
+
+    for i in range(len(shapex)):
+        if shapex[i] == -2:
+            return False
+        if shapex[i] == -1:
+            dynamic_x = False
+            break
+    for i in range(len(shapeid)):
+        if shapeid[i] == -2:
+            return False
+        if shapeid[i] == -1:
+            dynamic_id = False
+            break
+    for i in range(len(shape_seg)):
+        if shape_seg[i] == -2:
+            return False
+        if shape_seg[i] == -1:
+            dynamic_seg = False
+            break
+    for i in range(len(shapey)):
+        if shapey[i] == -2:
+            return False
+        if shapey[i] == -1:
+            dynamic_y = False
+            break
+
+    if dynamic_x and dynamic_id and dynamic_seg and dynamic_y:
+        if x_dtype in ("float16", "int32"):
+            return False
+        # when the input0_shape ends wtih 1, the compilestatic process dose not support
+        if shapex[-1] == 1 or len(shapex) == 1:
+            return False
+
+    return True
+
+
 class UnsortedSegmentSum():
     """
         Function: use to store concat base parameters
@@ -207,7 +341,7 @@ class UnsortedSegmentSum():
                 self.input_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,), name="input_gm", scope=tik.scope_gm)
                 self.ids_gm = tik_instance.Tensor(ids_dtype, (MAX_INT32,), name="ids_gm", scope=tik.scope_gm)
                 self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (MIN_TENSOR_ELE_NUM,),
-                                                           name="num_segments_gm",
+                                                           name="num_segments",
                                                            scope=tik.scope_gm)
                 if input_dtype == DTYPE_FP32:
                     self.output_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,),
@@ -1104,11 +1238,23 @@ class UnsortedSegmentSum():
                                                                   self.obj_fp32_output_init_input_scalar)
 
         _disable_atomic_add(self.tik_instance)
+        # add compile info
+        tbe_context.get_context().add_compile_info(
+            "vars", {
+                "ub_size": self.ub_size,
+                "core_num": self.core_num,
+                "dtype": self.obj_gm_tensor.input_gm.dtype,
+                "ub_tensor_num": self.ub_tensor_num
+            })
+        opt_config = {
+            "enable_const_fold": True
+        }
+
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
             inputs=[self.obj_gm_tensor.input_gm, self.obj_gm_tensor.ids_gm, self.obj_gm_tensor.num_segments_gm],
             outputs=[self.obj_gm_tensor.output_gm],
-            flowtable=[self.obj_gm_tensor.tiling_gm])
+            flowtable=[self.obj_gm_tensor.tiling_gm], config=opt_config)
 
 
 def _enable_atomic_add(tik_inst):
@@ -3890,11 +4036,4 @@ def unsorted_segment_sum(x_dict, segment_ids_dict, num_segments_dict, y_dict, ke
     else:
         obj = UnsortedSegmentSum(x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name)
         obj.unsorted_segment_sum()
-        # add compile info
-        tbe_context.get_context().add_compile_info(
-            "vars", {
-                "ub_size": obj.ub_size,
-                "core_num": obj.core_num,
-                "dtype": obj.obj_gm_tensor.input_gm.dtype,
-                "ub_tensor_num": obj.ub_tensor_num
-            })
+

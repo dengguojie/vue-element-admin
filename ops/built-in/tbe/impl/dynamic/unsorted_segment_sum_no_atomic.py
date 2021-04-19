@@ -619,11 +619,23 @@ class UnsortedSegmentSum():
                                                             self.obj_int32_ids_input_scalar,
                                                             self.obj_int32_e_num_input_scalar, self.input_dtype)
 
+        # add compile info
+        tbe_context.get_context().add_compile_info(
+            "vars", {
+                "ub_size": self.ub_size,
+                "core_num": self.core_num,
+                "dtype": self.obj_gm_tensor.input_gm.dtype,
+                "ub_tensor_num": self.ub_tensor_num
+            })
+        opt_config = {
+            "enable_const_fold": True
+        }
+
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
             inputs=[self.obj_gm_tensor.input_gm, self.obj_gm_tensor.ids_gm, self.obj_gm_tensor.num_segments_gm],
             outputs=[self.obj_gm_tensor.output_gm],
-            flowtable=[self.obj_gm_tensor.tiling_gm])
+            flowtable=[self.obj_gm_tensor.tiling_gm], config=opt_config)
 
 
 def _enable_atomic_add(tik_inst, dtype):
@@ -2771,11 +2783,4 @@ def unsorted_segment_sum_no_atomic(x_dict,
 
     obj = UnsortedSegmentSum(x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name)
     obj.unsorted_segment_sum()
-    # add compile info
-    tbe_context.get_context().add_compile_info(
-        "vars", {
-            "ub_size": obj.ub_size,
-            "core_num": obj.core_num,
-            "dtype": obj.obj_gm_tensor.input_gm.dtype,
-            "ub_tensor_num": obj.ub_tensor_num
-        })
+
