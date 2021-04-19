@@ -1434,9 +1434,10 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
                         "tensor_list": None}
 
     for key in local_config_map:
-        if (config_map.get(key) is not None) and \
-                (isinstance(config_map[key], type(local_config_map[key])) or
-                 (local_config_map[key] is None)):
+        key_exist_flag = (config_map.get(key) is not None) and \
+                         (isinstance(config_map[key], type(local_config_map[key])) or
+                          (local_config_map[key] is None))
+        if key_exist_flag:
             local_config_map[key] = config_map[key]
 
     config_tensor_list = local_config_map["tensor_list"]
@@ -1478,7 +1479,9 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
 
     tensor_list = tensor_list + l1_fusion_tensors
     _build(sch, tensor_list, local_config_map["name"])
-    _write_workspace_info(special_tensor_list, local_config_map["name"])
+
+    if fusion_manager.get_build_cfg() != "disable":
+        _write_workspace_info(special_tensor_list, local_config_map["name"])
 
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
 
