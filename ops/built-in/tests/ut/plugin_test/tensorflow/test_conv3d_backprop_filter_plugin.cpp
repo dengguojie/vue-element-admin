@@ -2,7 +2,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "gmock/gmock.h"
 #include "tensorflow_parser.h"
 
 using namespace ge;

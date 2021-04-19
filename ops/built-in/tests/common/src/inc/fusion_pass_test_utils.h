@@ -5,6 +5,8 @@
 #include "register/graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 #include "register/graph_optimizer/graph_fusion/graph_fusion_pass_base.h"
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
+#include "register/graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+#include "register/graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 
 
 using std::string;
