@@ -20,7 +20,6 @@
 #include <iostream>
 #include <gtest/gtest.h>
 #include "op_proto_test_util.h"
-#include "_ops.h"
 #include "ragged_conversion_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "utils/op_desc_utils.h"

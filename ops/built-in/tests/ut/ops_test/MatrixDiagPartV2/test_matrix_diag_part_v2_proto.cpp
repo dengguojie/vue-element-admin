@@ -52,7 +52,7 @@ TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape) {
   auto tensor_desc3 = create_desc_shape_range({},
                                               ge::DT_INT64, ge::FORMAT_ND,
                                               {},
-                                              ge::FORMAT_ND, {{}}});
+                                              ge::FORMAT_ND, {{}});
 
   op.UpdateInputDesc("input", tensor_desc1);
   op.UpdateInputDesc("k", tensor_desc2);

@@ -57,20 +57,11 @@ TEST_F(DecodeWav, DecodeWav_infer_shape3) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(DecodeWav, DecodeWav_infer_shape4) {
+TEST_F(DecodeWav, DecodeWav_infer_shape5) {
   ge::op::DecodeWav op;
   op.UpdateInputDesc("contents", create_desc({}, ge::DT_STRING));
   op.SetAttr("desired_channel", -1);
   op.SetAttr("desired_samples", -2);
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}
-
-TEST_F(DecodeWav, DecodeWav_infer_shape4) {
-  ge::op::DecodeWav op;
-  op.UpdateInputDesc("contents", create_desc({}, ge::DT_STRING));
-  op.SetAttr("desired_channels", -1);
-  op.SetAttr("desired_sample", -2);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
