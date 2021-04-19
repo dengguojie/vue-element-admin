@@ -218,4 +218,11 @@ def test_op_select_format(test_arg):
                      {"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),
                       "ori_format": "NCHW"},
                      "test_real_div_op_select_format_16")
+    op_select_format({"shape": (16,), "dtype": "float16", "format": "NHWC", "ori_shape": (16,),
+                      "ori_format": "NHWC"},
+                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),
+                      "ori_format": "ND"},
+                     {"shape": (16,), "dtype": "float16", "format": "NHWC", "ori_shape": (16,),
+                      "ori_format": "NHWC"},
+                     "test_real_div_op_select_format_17")
 ut_case.add_cust_test_func(test_func=test_op_select_format)

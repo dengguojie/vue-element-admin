@@ -649,7 +649,8 @@ class Dilation2D(Dilation2DBase):
                                                     scope=tik.scope_gm)
         self.y_gm = self.instance.Tensor(self.x_dtype, (self.filter_h, y_size // self.filter_h // 16, 16),
                                          name="y_gm",
-                                         scope=tik.scope_gm)
+                                         scope=tik.scope_gm,
+                                         is_atomic_add=True)
         self.x_offset_list = _get_product_of_each_dim(self.x_shape, len(self.x_shape))
         self.filter_offset_list = _get_product_of_each_dim(self.filter_shape, len(self.filter_shape))
         self.tiling_params = {}
@@ -1039,12 +1040,15 @@ class Dilation2D(Dilation2DBase):
         self.instance.set_atomic_add(1)
         c1_stride = self.c1
         cut_size = self.tiling_params["ub_size_info"].get("expand")
+        n_stride = cut_size // self.c1 // (self.out_backprop_h * self.out_backprop_w) // self.c0
 
-        with self.instance.for_range(0, c1_stride) as c1_cnt:
-            with self.instance.for_range(0, self.filter_w * self.filter_h) as i:
-                self.instance.data_move(self.y_gm[c1_cnt * self.filter_h * self.filter_w * self.c0 + i * self.c0],
-                                        update_matrix_ub[i * cut_size + c1_cnt * (cut_size // c1_stride)], 0, 1, 2, 0,
-                                        0)
+        with self.instance.for_range(0, n_stride) as n_cnt:
+            with self.instance.for_range(0, c1_stride) as c1_cnt:
+                with self.instance.for_range(0, self.filter_w * self.filter_h) as i:
+                    self.instance.data_move(
+                        self.y_gm[c1_cnt * self.filter_h * self.filter_w * self.c0 + i * self.c0],
+                        update_matrix_ub[i * cut_size + n_cnt * (cut_size // n_stride) + c1_cnt *
+                                         (cut_size // n_stride // c1_stride)], 0, 1, 2, 0, 0)
         self.instance.set_atomic_add(0)
 
     def cut_c1(self, ub_list, offset_list, c1_num, out_offset):
@@ -1096,11 +1100,12 @@ class Dilation2D(Dilation2DBase):
         c1_stride = self.tiling_params["ub_factor"]
         cut_size = self.tiling_params["ub_size_info"].get("expand")
 
-        with self.instance.for_range(0, c1_stride) as c1_cnt:
+        with self.instance.for_range(0, c1_num) as c1_cnt:
             with self.instance.for_range(0, self.filter_w * self.filter_h) as i:
-                self.instance.data_move(
-                    self.y_gm[(c1_offset + c1_cnt) * self.filter_h * self.filter_w * self.c0 + i * self.c0],
-                    update_matrix_ub[i * cut_size + c1_cnt * (cut_size // c1_stride)], 0, 1, 2, 0, 0)
+                gm_addr = (c1_offset + c1_cnt) % self.c1
+                self.instance.data_move(self.y_gm[gm_addr * self.filter_h * self.filter_w * self.c0 + i * self.c0],
+                                        update_matrix_ub[i * cut_size + c1_cnt * (cut_size // c1_stride)], 0, 1, 2, 0,
+                                        0)
         self.instance.set_atomic_add(0)
 
     def search_max_position(self, ub_list, h_step, w_step):
@@ -1204,6 +1209,7 @@ class Dilation2D(Dilation2DBase):
         mask_align_pad_size = mask_size // 4 * 32
 
         c1_stride = self.c1
+        n_stride = cut_size // self.c1 // (self.out_backprop_h * self.out_backprop_w) // self.c0
 
         out_backprop_ub_padding = self.instance.Tensor(self.x_dtype, (pad_size // self.c0, self.c0),
                                                        name="out_backprop_ub_padding",
@@ -1219,13 +1225,17 @@ class Dilation2D(Dilation2DBase):
                                       sel_zero_ub, 1, 8, 8, 8)
 
         # accmulate result
-        with self.instance.for_range(0, c1_stride) as c1_cnt:
-            with self.instance.for_range(0, self.filter_w * self.filter_h) as i:
-                with self.instance.for_range(1, cut_size // self.c0 // c1_stride) as j:
-                    self.instance.vec_add(self.c0, update_matrix[i * cut_size + c1_cnt * (cut_size // c1_stride)],
-                                          update_matrix[i * cut_size + c1_cnt * (cut_size // c1_stride)],
-                                          update_matrix[i * cut_size + c1_cnt * (cut_size // c1_stride) + j * self.c0],
-                                          1, 8, 8, 8)
+        with self.instance.for_range(0, n_stride) as n_cnt:
+            with self.instance.for_range(0, c1_stride) as c1_cnt:
+                with self.instance.for_range(0, self.filter_w * self.filter_h) as i:
+                    with self.instance.for_range(1, cut_size // self.c0 // n_stride // c1_stride) as j:
+                        self.instance.vec_add(
+                            self.c0, update_matrix[i * cut_size + n_cnt * (cut_size // n_stride) + c1_cnt *
+                                                   (cut_size // n_stride // c1_stride)],
+                            update_matrix[i * cut_size + n_cnt * (cut_size // n_stride) + c1_cnt *
+                                          (cut_size // n_stride // c1_stride)],
+                            update_matrix[i * cut_size + n_cnt * (cut_size // n_stride) + c1_cnt *
+                                          (cut_size // n_stride // c1_stride) + j * self.c0], 1, 8, 8, 8)
 
         return update_matrix
 
