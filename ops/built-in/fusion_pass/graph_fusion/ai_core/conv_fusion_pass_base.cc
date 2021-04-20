@@ -33,6 +33,8 @@
 #include "graph/utils/tensor_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "common/util/error_manager/error_manager.h"
+#include "../../../op_proto/util/error_util.h"
 
 namespace fe {
 Status ConvFusionPassBase::DoFusion(ge::ComputeGraph& graph, ge::NodePtr convNode, ge::NodePtr destNode,
@@ -42,7 +44,7 @@ Status ConvFusionPassBase::DoFusion(ge::ComputeGraph& graph, ge::NodePtr convNod
   Status removeNodeRet = graph.RemoveNode(destNode);
   FUSION_PASS_CHECK(
       removeNodeRet != SUCCESS,
-      OP_LOGE(convNode->GetType().c_str(), "ConvNode[%s]: remove the destNode failed.", convNodeName.c_str()),
+      CUBE_INNER_ERR_REPORT(convNode->GetType().c_str(), "ConvNode[%s]: remove the destNode failed.", convNodeName.c_str()),
       return removeNodeRet);
   fusionNodes.push_back(convNode);
   return SUCCESS;
@@ -126,7 +128,7 @@ Status ConvFusionPassBase::AddBiasNode(ge::ComputeGraph& graph, ge::NodePtr& con
                           return PARAM_INVALID);
   ge::GeTensorDesc constOutDesc;
   FUSION_PASS_CHECK(constOpDesc->AddOutputDesc(constOutDesc) != SUCCESS,
-                    OP_LOGE("AddBiasNode", "AddOutputDesc failed!"), return FAILED);
+                    CUBE_INNER_ERR_REPORT("AddBiasNode", "AddOutputDesc failed!"), return FAILED);
   ge::NodePtr constNode = graph.AddNode(constOpDesc);
   ge::GeTensorPtr biasPtr = nullptr;
   FUSION_PASS_MAKE_SHARED((biasPtr = std::make_shared<ge::GeTensor>(constOutDesc, (uint8_t*)0, sizeof(float))),
@@ -134,14 +136,15 @@ Status ConvFusionPassBase::AddBiasNode(ge::ComputeGraph& graph, ge::NodePtr& con
                           return PARAM_INVALID);
   ge::GeShape biasShape({1});
   biasPtr->MutableTensorDesc().SetShape(biasShape);
-  FUSION_PASS_CHECK(constNode == nullptr, OP_LOGE("AddBiasNode", "constNode is nullptr"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(constNode == nullptr,
+                    CUBE_INNER_ERR_REPORT("AddBiasNode", "constNode is nullptr"), return PARAM_INVALID);
   vector<ge::GeTensorPtr> weights;
   weights.push_back(biasPtr);
   ge::OpDescUtils::SetWeights(constNode, weights);
   // bias is the name of the third input of conv2d in IR conv2d.h
   Status res = convNode->AddLinkFrom("bias", constNode);
   FUSION_PASS_CHECK(res != SUCCESS,
-                    OP_LOGE(convNode->GetType().c_str(),
+                    CUBE_INNER_ERR_REPORT(convNode->GetType().c_str(),
                             "ConvNode[%s]: add edge between new const node and conv "
                             "node failed!",
                             convNode->GetName().c_str()),

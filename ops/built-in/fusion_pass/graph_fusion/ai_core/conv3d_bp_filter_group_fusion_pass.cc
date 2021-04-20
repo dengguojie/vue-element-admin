@@ -34,6 +34,8 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "pattern_fusion_util.h"
+#include "common/util/error_manager/error_manager.h"
+#include "../../../op_proto/util/error_util.h"
 
 using namespace std;
 using namespace ge;
@@ -48,8 +50,10 @@ vector<FusionPattern*> Conv3DBpFilterGroupFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter Conv3DBpFilterGroupFusionPass::DefinePatterns.");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern(PATTERN_CONV3D_DW_GROUP);
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
+  
   // define origin graph
   pattern->AddOpDesc(PATTERN_CONV3D_DW_GROUP, {CONV3D_DW}).SetOutput(PATTERN_CONV3D_DW_GROUP);
 
@@ -79,8 +83,7 @@ Status Conv3DBpFilterGroupFusionPass::GetChannelValue(const ge::OpDescPtr& dw_de
   } else if (format == ge::FORMAT_NCDHW) {
     channel = dims[1];
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(),
-            "The original format of the input is [%d], which is unsupportable.", format);
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "original format of the input.");
     return FAILED;
   }
 
@@ -160,8 +163,8 @@ Status Conv3DBpFilterGroupFusionPass::TransOutDims2dhwcn(const ge::OpDescPtr& dw
   } else if (out_format == ge::FORMAT_DHWCN) {
     dims = out_dims;
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(),
-            "The original format of the output is [%d], which is unsupportable.", out_format);
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "The original format of the output is [%d], which is unsupportable.", out_format);
     return FAILED;
   }
 
@@ -227,14 +230,14 @@ bool Conv3DBpFilterGroupFusionPass::GenMultiplier(ge::ComputeGraph& graph,
   GeTensorPtr multiplier_ptr{nullptr};
   int64_t multiplier_size = real_g * kernel_depth * cin1_g * kernel_height * kernel_width * cout_g * CHANNEL_MIN;
   unique_ptr<float> multiplier_mem(new (std::nothrow) float[multiplier_size]());
-  FUSION_PASS_CHECK(multiplier_mem.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "multiplier is NULL."),
+  FUSION_PASS_CHECK(multiplier_mem.get() == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "multiplier is NULL."),
                     return false);
-
   float* data_ptr = multiplier_mem.get();
   FUSION_PASS_CHECK(
     0 != memset_s(data_ptr, multiplier_size * sizeof(float),
                   0, multiplier_size * sizeof(float)),
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "memset failed."),
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "memset failed."),
     return false);
 
   SetMultiplierValue(data_ptr, dims, group_map);
@@ -258,9 +261,8 @@ bool Conv3DBpFilterGroupFusionPass::GenMultiplier(ge::ComputeGraph& graph,
   OpDescPtr const_opdesc = OpDescUtils::CreateConstOp(multiplier_ptr);
   FUSION_PASS_CHECK(
     const_opdesc == nullptr,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Create const op desc failed."),
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Create const op desc failed."),
     return false);
-
   const_node = graph.AddNode(const_opdesc);
 
   return true;
@@ -302,17 +304,18 @@ bool Conv3DBpFilterGroupFusionPass::Relink(ge::NodePtr& conv_node,
 
   graphStatus status = GraphUtils::AddEdge(const_node->GetOutAnchor(0), mul_node->GetInDataAnchor(0));
   FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "add const data to mul edge fail."), return false);
-
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const data to mul edge fail."),
+                    return false);
   status = GraphUtils::AddEdge(conv_node->GetOutAnchor(0), mul_node->GetInDataAnchor(1));
   FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "add conv to mul edge fail."), return false);
-
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add conv to mul edge fail."),
+                    return false);
   for (size_t i = 0; i < out_nodes.size(); ++i) {
     status = GraphUtils::AddEdge(mul_node->GetOutAnchor(0),
                                  out_nodes.at(i)->GetInDataAnchor(outAnchorIndexes[i]));
     FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul to output edge fail."), return false);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mul to output edge fail."),
+                      return false);
   }
 
   return true;

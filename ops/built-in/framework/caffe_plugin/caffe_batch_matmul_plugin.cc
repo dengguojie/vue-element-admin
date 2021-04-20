@@ -21,6 +21,8 @@
  */
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
+#include "../../op_proto/util/error_util.h"
+#include "common/util/error_manager/error_manager.h"
 #include "op_log.h"
 
 namespace domi {
@@ -31,7 +33,7 @@ Status ParseParamBatchMatMul(const Message* op_src, ge::Operator& op_dest) {
   auto layer = dynamic_cast<const caffe::LayerParameter*>(op_src);
   // Ckeck operator parameter's validity
   if (nullptr == layer) {
-    OP_LOGE(op_dest.GetName().c_str(), "convert src op failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dest.GetName().c_str(), "convert src op failed.");
     return FAILED;
   }
   // get layer

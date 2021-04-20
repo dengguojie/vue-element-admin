@@ -33,7 +33,8 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-#include "error_util.h"
+#include "../../../op_proto/util/error_util.h"
+#include "common/util/error_manager/error_manager.h"
 
 using namespace ge;
 
@@ -60,9 +61,8 @@ vector<FusionPattern*> DeconvWeightTransFusionPass::DefinePatterns() {
       new (std::nothrow) FusionPattern("DeconvWeightTransFusionPass");
   FUSION_PASS_CHECK(
       pattern == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
       return patterns);
-
   pattern->AddOpDesc(PATTERN_DECONV, {DECONV, CONV2D_TRANSPOSE})
       .SetOutput(PATTERN_DECONV);
 
@@ -133,7 +133,7 @@ void DeconvWeightTransFusionPass::
         vector<int64_t>& permute_shape, vector<int64_t>& reverse_axis,
         vector<int64_t>& reshape_out) {
   if (shape_GNCHW.size() != CONST_VECTOR_LEN) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "size of shape_GNCHW not equal 5");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "size of shape_GNCHW not equal 5");
     return;
   }
   complement_dimension.resize(CONST_VECTOR_LEN);
@@ -310,7 +310,7 @@ Status DeconvWeightTransFusionPass::Relink(
       ge::GraphUtils::RemoveEdge(filter_node->GetOutDataAnchor(0),
                                  deconv_node->GetInDataAnchor(filter_anchor)) !=
           SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
               "fail to remove edge between filter_node and deconv_node"),
       return FAILED);
 
@@ -319,25 +319,24 @@ Status DeconvWeightTransFusionPass::Relink(
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(filter_node->GetOutDataAnchor(0),
                                 dim_comp_node->GetInDataAnchor(0)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "fail to add edge between filter_node and dim_comp_node"),
         return FAILED);
     dim_comp_out_anchor = dim_comp_node->GetOutDataAnchor(0);
   } else {
     dim_comp_out_anchor = filter_node->GetOutDataAnchor(0);
   }
-
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(dim_comp_out_anchor,
                               transpose_node->GetInDataAnchor(0)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
               "fail to add edge between dim_comp_node and transpose_node"),
       return FAILED);
 
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(transpose_node->GetOutDataAnchor(0),
                               reformat_node->GetInDataAnchor(0)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
               "fail to add edge between dim_comp_node and transpose_node"),
       return FAILED);
 
@@ -345,49 +344,47 @@ Status DeconvWeightTransFusionPass::Relink(
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reformat_node->GetOutDataAnchor(0),
                                 reshape_in_node->GetInDataAnchor(0)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "fail to add edge between transpose_node and reshape_in_node"),
         return FAILED);
-
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reshape_in_node->GetOutDataAnchor(0),
                                 reverse_node->GetInDataAnchor(0)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "fail to add edge between reshape_in_node and reverse_node"),
         return FAILED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reverse_node->GetOutDataAnchor(0),
                                 reshape_out_node->GetInDataAnchor(0)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "fail to add edge between reverse_node and reshape_out_node"),
         return FAILED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reshape_out_node->GetOutDataAnchor(0),
                                 deconv_node->GetInDataAnchor(filter_anchor)) !=
             SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "fail to add edge between reshape_out_node and deconv_node"),
         return FAILED);
   } else {
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reformat_node->GetOutDataAnchor(0),
                                 reshape_out_node->GetInDataAnchor(0)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "fail to add edge between transpose_node and reshape_out_node"),
         return FAILED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reshape_out_node->GetOutDataAnchor(0),
                                 deconv_node->GetInDataAnchor(filter_anchor)) !=
             SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "fail to add edge between reshape_out_node and deconv_node"),
         return FAILED);
   }
-
   FUSION_PASS_CHECK(
       deconv_node->GetOpDesc()->UpdateInputDesc(
           filter_anchor, reshape_out_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
               "fail to update input description of deconv"),
       return FAILED);
 

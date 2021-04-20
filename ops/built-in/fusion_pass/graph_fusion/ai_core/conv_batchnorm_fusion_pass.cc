@@ -33,6 +33,8 @@
 #include "graph/utils/tensor_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "common/util/error_manager/error_manager.h"
+#include "../../../op_proto/util/error_util.h"
 
 namespace fe {
 static const char PATTERN_CONV[] = "conv";
@@ -44,7 +46,9 @@ static const int BIAS_INDEX = 2;
 vector<FusionPattern*> ConvBatchnormFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConvBatchnomFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object not success."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object not success."),
+                    return patterns);
 
   /*
           Data(input)
@@ -78,9 +82,9 @@ vector<FusionPattern*> ConvBatchnormFusionPass::DefinePatterns() {
       pattern1 == nullptr, patterns.clear(); if (pattern != nullptr) {
         delete pattern;
         pattern = nullptr;
-      } OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object not success."),
-                                             return patterns);
-
+      }
+      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object not success."),
+      return patterns);
   // conv2d+switch->batchnorm
   pattern1->AddOpDesc(PATTERN_CONV, {CONV2D, CONV3D})
       .AddOpDesc(PATTERN_BATCHNORM, {BATCHNORM, BN_INFERENCE_D})
@@ -94,7 +98,8 @@ vector<FusionPattern*> ConvBatchnormFusionPass::DefinePatterns() {
 
 Status ConvBatchnormFusionPass::CheckWeights(const ge::NodePtr bnNode) {
   ge::OpDescPtr destOpDesc = bnNode->GetOpDesc();
-  FUSION_PASS_CHECK(destOpDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "destOpDesc is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(destOpDesc == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "destOpDesc is null."), return PARAM_INVALID);
   string bnNodeName = destOpDesc->GetName();
   string bnOpType = destOpDesc->GetType();
   // 1. get BatchNormOpParams's WeightDef
@@ -131,9 +136,11 @@ bool ConvBatchnormFusionPass::IsBatchNormMultiOutput(ge::NodePtr &destNode) {
 Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr convNode = GetNodeFromMapping(PATTERN_CONV, mapping);
   ge::NodePtr destNode = GetNodeFromMapping(PATTERN_BATCHNORM, mapping);
-  FUSION_PASS_CHECK(convNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new convNode not success."),
+  FUSION_PASS_CHECK(convNode == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new convNode not success."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(destNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new destNode not success."),
+  FUSION_PASS_CHECK(destNode == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new destNode not success."),
                     return PARAM_INVALID);
   if (convNode->GetInDataNodes().at(1)->GetType() == QUANTWEIGHTROLLBACK) {
     return NOT_CHANGED;
@@ -165,9 +172,8 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   string convNodeName = convNode->GetName();
   Status ret = PatternFusionUtil::LinkControlEdge(destNode, convNode);
   FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "ConvNode[%s]: LinkControlEdge not success.", convNodeName.c_str()),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ConvNode[%s]: LinkControlEdge not success.", convNodeName.c_str()),
                     return ret);
-
   // 1. get the filterFormat and kernelNum
   int filterInputIndex = -1;
   FUSION_PASS_CHECK(
@@ -213,7 +219,7 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   int biasIndex = convNode->GetOpDesc()->GetInputIndexByName("bias");
   FUSION_PASS_CHECK(biasIndex >= (int)convNode->GetAllInDataAnchorsSize(),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                             "The index[:%d] of bias of convNode[%s] is greater than size"
                             " of input.",
                             biasIndex, convNode->GetName().c_str()),
@@ -223,7 +229,7 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::OutDataAnchorPtr biasOutputAnchor = convNode->GetInDataAnchor(biasIndex)->GetPeerOutAnchor();
   FUSION_PASS_CHECK(GetAllConstInput(convNode, conv2dInputs, conv2dInputsName, conv2dInputAncors, conv2dConstOutputs,
                                      conv2dConstOutputAncors) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get const of convNode[%s] not success, fusion failed.",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get const of convNode[%s] not success, fusion failed.",
                             convNode->GetName().c_str()),
                     return FAILED);
   int biasInputIndex = 2;
@@ -242,74 +248,72 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   biasDesc.SetOriginShape(biasShape);
   biasDesc.SetOriginDataType(biasDesc.GetDataType());
   FUSION_PASS_CHECK(convNode->GetOpDesc()->UpdateInputDesc(BIAS_INDEX, biasDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "update bias input desc of ConvNode[%s] not success.",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "update bias input desc of ConvNode[%s] not success.",
                             convNode->GetName().c_str()),
                     return FAILED);
-
   FUSION_PASS_CHECK(!conv2dInputsName.empty() && !conv2dInputsName[0].empty() && !conv2dInputs.empty() &&
                         conv2dInputs.size() > 0 &&
                         filterHostOpdesc->AddInputDesc(conv2dInputsName[0], conv2dInputs[0]) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add const input of ConvBnFilterHost failed."), return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const input of ConvBnFilterHost failed."), return FAILED);
   FUSION_PASS_CHECK(filterHostOpdesc->AddOutputDesc("y", filterOutputDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add const output of ConvBnFilterHost failed."), return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const output of ConvBnFilterHost failed."), return FAILED);
   FUSION_PASS_CHECK(!conv2dInputsName.empty() && !conv2dInputsName[1].empty() && !conv2dInputs.empty() &&
                         conv2dInputs.size() > 1 &&
                         biasHostOpdesc->AddInputDesc(conv2dInputsName[1], conv2dInputs[1]) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add const input of ConvBnBiasHost failed."), return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const input of ConvBnBiasHost failed."), return FAILED);
   FUSION_PASS_CHECK(biasHostOpdesc->AddOutputDesc("y", biasOutputDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add const output of ConvBnBiasHost failed."), return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const output of ConvBnBiasHost failed."), return FAILED);                  
   vector<ge::GeTensorDesc> destConstInputs;
   vector<ge::InDataAnchorPtr> destdInputAncors;
   vector<ge::GeTensorDesc> destConstOutputs;
   vector<ge::OutDataAnchorPtr> destConstOutputAncors;
   vector<string> descInputsName;
   FUSION_PASS_CHECK(GetAllConstInput(destNode, destConstInputs, descInputsName, destdInputAncors, destConstOutputs,
-                                     destConstOutputAncors) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get const of destNode[%s] not success, fusion failed.",
+                                      destConstOutputAncors) != SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get const of destNode[%s] not success, fusion failed.",
                             destNode->GetName().c_str()),
                     return FAILED);
   for (size_t i = 0; i < destConstInputs.size(); i++) {
     FUSION_PASS_CHECK(filterHostOpdesc->AddInputDesc(descInputsName[i], destConstInputs[i]) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add const input of dest failed."), return FAILED);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const input of dest failed."), return FAILED);
     FUSION_PASS_CHECK(biasHostOpdesc->AddInputDesc(descInputsName[i], destConstInputs[i]) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add const input of dest failed."), return FAILED);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const input of dest failed."), return FAILED);
   }
   ge::NodePtr filterHostNode = graph.AddNode(filterHostOpdesc);
   ge::NodePtr biasHostNode = graph.AddNode(biasHostOpdesc);
-
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(filterHostNode->GetOutDataAnchor(0),
                                             convNode->GetInDataAnchor(filterInputIndex)) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                             filterHostNode->GetName().c_str(), convNode->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(biasHostNode->GetOutDataAnchor(0), convNode->GetInDataAnchor(biasIndex)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.", biasHostNode->GetName().c_str(),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.", biasHostNode->GetName().c_str(),
               convNode->GetName().c_str()),
       return FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(biasOutputAnchor, biasHostNode->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                             biasOutputAnchor->GetOwnerNode()->GetName().c_str(), biasHostNode->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(filterOutputAnchor, filterHostNode->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                             filterOutputAnchor->GetOwnerNode()->GetName().c_str(), filterHostNode->GetName().c_str()),
                     return FAILED);
   for (size_t i = 0; i < destConstOutputAncors.size(); i++) {
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(destConstOutputAncors[i], filterHostNode->GetInDataAnchor(i + 1)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                 destConstOutputAncors[i]->GetOwnerNode()->GetName().c_str(), filterHostNode->GetName().c_str()),
         return FAILED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(destConstOutputAncors[i], biasHostNode->GetInDataAnchor(i + 1)) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                 destConstOutputAncors[i]->GetOwnerNode()->GetName().c_str(), biasHostNode->GetName().c_str()),
         return FAILED);
   }
   float eps = 0.0;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetFloat(destNode->GetOpDesc(), ge::BATCHNORM_ATTR_EPSILON, eps),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "DestNode[%s]: get epsilon attr %s not success.",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DestNode[%s]: get epsilon attr %s not success.",
                             destNode->GetName().c_str(), ge::BATCHNORM_ATTR_EPSILON.c_str()),
                     return FAILED);
   if (eps < EPS) {
