@@ -184,7 +184,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         if var_map:
             sch[a_zero].buffer_tile((None, None), (None, None), (None, None),
                                     (None, aub_tiling_m_factor),
-                                    (None, aub_w + kernel_w - 1), (None, None))
+                                    (None, None), (None, None))
             sch[a_vn].buffer_tile((None, None), (None, None), (None, None),
                                   (None, aub_tiling_m_factor),
                                   (None, None), (None, None))
@@ -330,6 +330,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         c_ub_vn = tensor_map.get("c_ub_vn")
         c_fill_zero = tensor_map.get("c_fill_zero")
         c_ub = tensor_map.get("c_ub")
+        output_shape = cube_util.shape_to_list(c_ddr.op.attrs["output_shape"])
         sch[c_fill_zero].set_scope(tbe_platform_info.scope_ubuf)
         sch[c_ub_vn].set_scope(tbe_platform_info.scope_ubuf)
         c_col = tensor_map.get("c_col")
@@ -378,6 +379,18 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             a_ddr = a_l1.op.input_tensors[0]  # dEdY in ddr
             stride_h = 1
             stride_w = 1
+        if "dedy_d" in var_map:
+            sch.set_var_range(a_ddr.shape[1], *var_range.get("dedy_d"))
+            sch.set_var_range(output_shape[1], *var_range.get("dedx_d"))
+        if "dedy_h" in var_map:
+            sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_h"))
+            sch.set_var_range(output_shape[3], *var_range.get("dedx_h"))
+        if "dedy_w" in var_map:
+            sch.set_var_range(a_ddr.shape[4], *var_range.get("dedy_w"))
+            sch.set_var_range(output_shape[4], *var_range.get("dedx_w"))
+        if "batch_n" in var_map:
+            sch.set_var_range(a_ddr.shape[0], *var_range.get("batch_n"))
+            sch.set_var_range(output_shape[0], *var_range.get("batch_n"))
         tensor_map['a_ddr'] = a_ddr
         tensor_attr['stride_w'] = stride_w
         tensor_attr['stride_h'] = stride_h
@@ -409,7 +422,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         sch[c_col].set_scope(tbe_platform_info.scope_cc)
         sch[c_ub].set_scope(tbe_platform_info.scope_ubuf)
         padding = cube_util.shape_to_list(a_col_before.op.attrs["padding"])
-        output_shape = cube_util.shape_to_list(c_ddr.op.attrs["output_shape"])
         tensor_attr['padding'] = padding
         tensor_attr['output_shape'] = output_shape
         tensor_attr['stride_d'] = stride_d
@@ -1175,12 +1187,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         _emit_insn_fusion_op()
 
     def _handle_dynamic_workspace(stride_w):
-        def _get_al1_m_extent(al1_m):
-            al1_h = tvm.select(
-                        (tvm.floormod(al1_m, output_shape[4]) == 0).asnode(),
-                        kernel_h + (al1_m // output_shape[4]) - 1,
-                        kernel_h + (al1_m // output_shape[4]) + 1)
-            al1_w = a_ddr.shape[4] * stride_w
+        def _get_al1_m_extent(al0_m):
+            al1_h = tvm.select((tvm.floormod(al0_m, output_shape[4]) == 0).asnode(),
+                               kernel_h + (al0_m // output_shape[4]) - 1,
+                               tvm.select(tvm.all(tvm.floormod(2*al0_m, output_shape[4]) == 0,
+                                          tvm.floormod(output_shape[4], al0_m) == 0),
+                                          kernel_h + (al0_m // output_shape[4]),
+                                          kernel_h + (al0_m // output_shape[4]) + 1))
+            al1_w = a_l1.shape[-2]
             return al1_h, al1_w
 
         def _get_al0_bound():
@@ -1194,17 +1208,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
         def _get_al1_bound():
             d_factor = _dfactor_dynamic(var_map)
-            if len(tiling["AL1_shape"]) != 0:
-                k_al1, multi_m_al1 = tiling["AL1_shape"][:2]
-                al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
+            al0_m = cl0_tiling_mc * cl0_tiling_m0
+            al1_h, al1_w = _get_al1_m_extent(al0_m)
+            if tiling["AL1_shape"]:
+                k_al1 = tiling["AL1_shape"][0]
                 al1_c = k_al1 // kernel_h // kernel_w
-                al1_h, al1_w = _get_al1_m_extent(al1_m)
-                al1_bound = al1_c * al1_h * al1_w * d_factor
             else:
-                al1_m = compute_util.int_ceil_div(a_l1.shape[4] * a_l1.shape[5], cl0_tiling_m0) * cl0_tiling_m0
                 al1_c = al1_co1 * al1_co0
-                al1_bound = al1_c * al1_m * d_factor 
-                al1_h, al1_w = a_l1.shape[4], a_l1.shape[5]
+            al1_bound = al1_c * al1_h * al1_w * d_factor
             return al1_bound, al1_h
 
         def _get_bl1_bound():
@@ -1251,18 +1262,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         sch[b_l1].set_storage_bound(_get_bl1_bound())
         sch[a_col].set_storage_bound(_get_al0_bound())
         _set_aub_bound(al1_h)
-        if "dedy_d" in var_map:
-            sch.set_var_range(a_ddr.shape[1], *var_range.get("dedy_d"))
-            sch.set_var_range(output_shape[1], *var_range.get("dedx_d"))
-        if "dedy_h" in var_map:
-            sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_h"))
-            sch.set_var_range(output_shape[3], *var_range.get("dedx_h"))
-        if "dedy_w" in var_map:
-            sch.set_var_range(a_ddr.shape[4], *var_range.get("dedy_w"))
-            sch.set_var_range(output_shape[4], *var_range.get("dedx_w"))
-        if "batch_n" in var_map:
-            sch.set_var_range(a_ddr.shape[0], *var_range.get("batch_n"))
-            sch.set_var_range(output_shape[0], *var_range.get("batch_n"))
 
         sch.disable_allocate(tbe_platform_info.scope_cbuf)
         sch.disable_allocate(tbe_platform_info.scope_ca)

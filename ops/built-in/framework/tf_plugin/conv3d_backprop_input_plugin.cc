@@ -44,13 +44,6 @@ Status ParseParamsConv3DBackpropInput(const Message* op_src, ge::Operator& op) {
   auto ret = op_dsc->UpdateInputDesc(kIndex1, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Update filter format failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = "Conv3dBackpropInput";
-    err_map["param_name"] = "updating filter's format";
-    err_map["rule_desc"] = "update filter's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
   OP_LOGI(op.GetName().c_str(), "Update filter format success");
@@ -69,13 +62,6 @@ Status ParseParamsConv3DBackpropInput(const Message* op_src, ge::Operator& op) {
   ret = op_dsc->UpdateInputDesc(kIndex0, org_tensor_y);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "update inout out_backprop format failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = "Conv3dBackpropInput";
-    err_map["param_name"] = "updating out_backprop's format";
-    err_map["rule_desc"] = "update out_backprop's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
   OP_LOGI(op.GetName().c_str(), "update inout out_backprop format success.");
@@ -86,13 +72,6 @@ Status ParseParamsConv3DBackpropInput(const Message* op_src, ge::Operator& op) {
   ret = op_dsc->UpdateOutputDesc(kIndex0, org_tensor_x);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "update output dx format failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dBackpropInput";
-    err_map["param_name"] = "updating output_dx's format";
-    err_map["rule_desc"] = "update output_dx's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
 

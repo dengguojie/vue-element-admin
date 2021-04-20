@@ -112,7 +112,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                          tag=self.op_tag + "dy_l1_s1")
             else:
                 shape_dy_filling_l1_group = (
-                    self._real_g, dy_batch, dy_deep, cout1_filling, dy_h, dy_w, kernel_cout0)
+                    self._real_g, dy_batch, dy_deep, cout1_g, dy_h, dy_w, kernel_cout0)
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling_l1_group,
                     lambda g_idx, batch_idx, dy_deep, cout1_g_idx, ho_idx, wo_idx, kernel_cout0_idx:
@@ -131,14 +131,14 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 dy_filling = tvm.compute(
                     shape_dy_filling_l1,
                     lambda batch_idx, dy_deep_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
-                    tvm.select(tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0,
-                                       kernel_cout1_idx < kernel_cout1),
-                            dy_ddr(batch_idx,
-                                    dy_deep_idx,
-                                    kernel_cout1_idx,
-                                    ho_idx // stride_h,
-                                    wo_idx // stride_w,
-                                    kernel_cout0_idx)),
+                    tvm.select(tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0),
+                               tvm.select((kernel_cout1_idx < kernel_cout1),
+                                          dy_ddr(batch_idx,
+                                                 dy_deep_idx,
+                                                 kernel_cout1_idx,
+                                                 ho_idx // stride_h,
+                                                 wo_idx // stride_w,
+                                                 kernel_cout0_idx)),),
                     name="dy_filling",
                     tag=self.op_tag + "dy_filling",
                     attrs={"stride_expand": (self._stride_h, self._stride_w)})
