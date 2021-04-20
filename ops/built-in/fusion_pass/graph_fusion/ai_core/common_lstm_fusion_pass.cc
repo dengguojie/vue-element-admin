@@ -270,6 +270,76 @@ Status CommonLSTMFusionPass::AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr
   return SUCCESS;
 }
 
+Status CommonLSTMFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode, ge::ComputeGraph &graph,
+                                            int32_t hiddenSize, vector<ge::NodePtr> &newNodes)
+    {
+        bool hasBias = fusedNode->GetOpDesc()->MutableInputDesc("b") != nullptr;
+        int32_t seqLenIndex = 4;
+        if (!hasBias) {
+            seqLenIndex = 3;
+        }
+        bool rnnGenMaskExist = false;
+        ge::NodePtr existRnnNode = nullptr;
+        auto outDataAnchor = fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor();
+        for (auto nextInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
+            ge::NodePtr outputNode = nextInDataAnchor->GetOwnerNode();
+            if (outputNode->GetType() == "RnnGenMask") {
+                rnnGenMaskExist = true;
+                existRnnNode = outputNode;
+                break;
+            }
+        }
+        if (rnnGenMaskExist) {
+            ge::GeTensorDesc tensorOutDesc = existRnnNode->GetOpDesc()->GetOutputDesc(0).Clone();
+            dynamicRnnNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutDesc);
+            // Add Edge
+            FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(existRnnNode->GetOutDataAnchor(0),
+                dynamicRnnNode->GetInDataAnchor(3)),
+                OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
+            return SUCCESS;
+        }
+
+        ge::OpDescPtr rnnMaskDesc = nullptr;
+        FUSION_PASS_MAKE_SHARED(
+            (rnnMaskDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/RnnGenMask", "RnnGenMask")),
+            rnnMaskDesc = nullptr; return FAILED);
+        ge::GeTensorDesc inputRnnMaskDesc = fusedNode->GetOpDesc()->GetInputDesc(seqLenIndex).Clone();
+        std::vector <int64_t> dimLength = inputRnnMaskDesc.GetShape().GetDims();
+        FUSION_PASS_CHECK(dimLength.size() != 1,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Unexcepted seqlength input shape"), return FAILED);
+        int64_t batchSize = dimLength[0];
+        int64_t numStep = fusedNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(0);
+        std::vector <int64_t> maskDims = {numStep, batchSize, hiddenSize};
+        ge::GeShape tensorMaskShape(maskDims);
+        ge::GeShape tensorMaskOriginShape(maskDims);
+        ge::GeTensorDesc tensorOutputMaskDesc = ge::GeTensorDesc(tensorMaskShape, ge::FORMAT_ND, ge::DT_FLOAT16);
+        tensorOutputMaskDesc.SetOriginShape(tensorMaskOriginShape);
+        tensorOutputMaskDesc.SetOriginFormat(ge::FORMAT_ND);
+        rnnMaskDesc->AddInputDesc("seq_length", inputRnnMaskDesc);
+        rnnMaskDesc->AddOutputDesc("seq_mask", tensorOutputMaskDesc);
+        dynamicRnnNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutputMaskDesc);
+
+        // Set Attr
+        ge::AttrUtils::SetInt(rnnMaskDesc, "num_step", numStep);
+        ge::AttrUtils::SetInt(rnnMaskDesc, "hidden_size", hiddenSize);
+
+        //Creat Mask
+        ge::NodePtr maskNode = graph.AddNode(rnnMaskDesc);
+        FUSION_PASS_CHECK(maskNode == nullptr,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Mask node:%s failed", rnnMaskDesc->GetName().c_str()),
+            return FAILED);
+        newNodes.push_back(maskNode);
+
+        //Add Edge
+        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor(), maskNode->GetInDataAnchor(0)),
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask input edge failed"), return FAILED);
+
+        //Add Edge
+        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(maskNode->GetOutDataAnchor(0), dynamicRnnNode->GetInDataAnchor(3)),
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
+
+        return SUCCESS;
+    }
 Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes)
 {
   // get the NodePtr of LSTM
@@ -320,6 +390,12 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
     dynamicRnnDesc->UpdateInputDesc("init_c", initial_c_desc);
   }
 
+  // Set Attr
+  std::map<string, string> directionMapInfo { {"forward", "UNIDIRECTIONAL"}, {"reverse", "REDIRECTIONAL"} };
+  string direction;
+  ge::AttrUtils::GetStr(fusedDesc, "direction", direction);
+  ge::AttrUtils::SetStr(dynamicRnnDesc, "direction", directionMapInfo[direction]);  
+
   // process w
   InputIndexInfo inputIndexInfo;
   int32_t hiddenSize = 0;
@@ -362,8 +438,9 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
 
   // connect seq_length
   if (hasSeqLength) {
-    ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
-                            dynamicRnnNode->GetInDataAnchor(3));
+     FUSION_PASS_CHECK(SUCCESS != AddRNNMaskNode(fusedNode, dynamicRnnNode, graph, hiddenSize, newNodes),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "AddRNNMaskNode return failed"),
+                      return FAILED);
   }
 
   // connect init_h

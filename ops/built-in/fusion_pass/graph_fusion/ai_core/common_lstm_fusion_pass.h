@@ -44,6 +44,8 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
   Status AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
                         ge::GeTensorDesc dynamicRnnOutputDesc, vector<ge::NodePtr> &newNodes, std::string nodeName,
                         int nodeIndex);
+  Status AddRNNMaskNode(ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode, ge::ComputeGraph &graph,
+                        int32_t hiddenSize, vector<ge::NodePtr> &newNodes);
   const string FUSED_OP_TYPE = "CommonLSTM";
 };
 }  // namespace fe
