@@ -401,17 +401,24 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
   if (input_size == 0) {
     input_size = 1;
   }
-  int64_t num_row_splits;
-  if (Add(input_size, 1, num_row_splits) != GRAPH_SUCCESS) {
+
+  int64_t row_splits_num = 0;
+  if (Add(input_size, 1, row_splits_num) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call Add function to add dim0[",
         input_size, "] of input[input] with 1.");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
+  DataType type = DT_INT64;
+  if (op.GetAttr("Tsplits", type) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[Tsplits] failed"));
+    return GRAPH_FAILED;
+  }
+
   TensorDesc row_splits_desc = op.GetOutputDesc("row_splits");
-  Shape row_splits_shape({num_row_splits});
-  row_splits_desc.SetDataType(DT_INT64);
+  Shape row_splits_shape({row_splits_num});
+  row_splits_desc.SetDataType(type);
   row_splits_desc.SetShape(row_splits_shape);
   std::vector<std::pair<int64_t, int64_t>> shape_range;
   (void) op.GetInputDesc(0).GetShapeRange(shape_range);
@@ -453,21 +460,28 @@ IMPLEMT_INFERFUNC(UnicodeDecode, UnicodeDecodeInfer) {
   if (input_size == 0) {
     input_size = 1;
   }
-  int64_t num_row_splits;
-  if (Add(input_size, 1, num_row_splits) != GRAPH_SUCCESS) {
+
+  int64_t row_splits_num = 0;
+  if (Add(input_size, 1, row_splits_num) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call Add function to add dim0[",
         input_size, "] of input[input] with 1.");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
+  DataType type = DT_INT64;
+  if (op.GetAttr("Tsplits", type) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[Tsplits] failed"));
+    return GRAPH_FAILED;
+  }
+
   TensorDesc row_splits_desc = op.GetOutputDesc("row_splits");
-  Shape row_splits_shape({num_row_splits});
-  row_splits_desc.SetDataType(DT_INT64);
+  Shape row_splits_shape({row_splits_num});
+  row_splits_desc.SetDataType(type);
   row_splits_desc.SetShape(row_splits_shape);
-  std::vector<std::pair<int64_t, int64_t>> shape_range;
-  (void) op.GetInputDesc(0).GetShapeRange(shape_range);
-  row_splits_desc.SetShapeRange(shape_range);
+  std::vector<std::pair<int64_t, int64_t>> row_splits_shape_range;
+  (void) op.GetInputDesc(0).GetShapeRange(row_splits_shape_range);
+  row_splits_desc.SetShapeRange(row_splits_shape_range);
   if (op.UpdateOutputDesc("row_splits", row_splits_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         op.GetName(), string("update output[row_splits] desc failed."));
