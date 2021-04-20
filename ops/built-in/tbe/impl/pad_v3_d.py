@@ -17,6 +17,7 @@ pad_v3
 """
 from te.utils import para_check
 from impl.pad_d import pad_d
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
@@ -59,16 +60,17 @@ def pad_v3_d(input_x, output_x, paddings, constant_values=0, mode="constant", pa
     paddings = list(paddings)
     para_check.check_shape(shape, param_name="input_x")
     if len(paddings) is not len(shape):
-        raise RuntimeError("Paddings and shape are not the same length.")
+        error_manager_vector.raise_err_specific_reson("pad_v3_d", "Paddings and shape are not the same length.")
     for padding in paddings:
         if len(padding) != 2:
-            raise RuntimeError("Paddings's shape is not in the form of (n,2)")
+            error_manager_vector.raise_err_specific_reson("pad_v3_d", "Paddings's shape is not in the form of (n,2)")
         if (not isinstance(padding[0], int)) or (not isinstance(padding[1], int)):
-            raise RuntimeError("Paddings only suppot int")
+            error_manager_vector.raise_err_specific_reson("pad_v3_d", "Paddings only suppot int")
 
     mode_list = ["constant", "reflect", "edge"]
     if mode.lower() not in mode_list:
-        raise RuntimeError("mode should be one of \"constant\", \"reflect\", \"edge\"")
+        error_manager_vector.raise_err_input_value_invalid("pad_v3_d", "mode", "constant, reflect, edge",
+                                                           str(mode.lower()))
 
     # [[begin0, begin1], ..., [end0, end1], ...] --> [[begin0, end0], [begin1, end1], ...]
     flatten_paddings = [i for item in paddings for i in item]
@@ -79,7 +81,7 @@ def pad_v3_d(input_x, output_x, paddings, constant_values=0, mode="constant", pa
 
     if mode.lower() == "constant":
         if constant_values != 0:
-            raise RuntimeError("only support constant_values=0 now")
+            error_manager_vector.raise_err_specific_reson("pad_v3_d", "only support constant_values=0 now")
         pad_d(input_x, output_x, paddings, kernel_name)
     else:
-        raise RuntimeError("only support mode=\"constant\" now")
+        error_manager_vector.raise_err_specific_reson("pad_v3_d", "only support mode=\"constant\" now")

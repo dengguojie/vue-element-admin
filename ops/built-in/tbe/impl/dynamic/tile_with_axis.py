@@ -25,6 +25,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -83,7 +84,7 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
 
     # check tiles
     if tiles <= 0:
-        raise RuntimeError("the tiles should more than 1, but actually is [%s]." % tiles)
+        error_manager_vector.raise_err_input_value_invalid("tile_with_axis", "tiles", "more than 1", str(tiles))
 
     # check shape for 5HD
     shape_x = list(input_x.get("shape"))
@@ -96,19 +97,23 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
         ori_format = input_x.get("ori_format")
         length_x_ori = len(shape_x_ori)
         if ori_format not in ("NCHW", "NHWC"):
-            raise RuntimeError("input_x's ori_format is invalid for 5D Tensor")
+            error_manager_vector.raise_err_specific_reson("tile_with_axis", "input_x's ori_format \
+                                                          is invalid for 5D Tensor")
         if shape_x_len != 5:
-            raise RuntimeError("input_x's shape is invalid for 5D Tensor")
+            error_manager_vector.raise_err_specific_reson("tile_with_axis", "input_x's shape is \
+                                                          invalid for 5D Tensor")
         if length_x_ori != 4:
-            raise RuntimeError("input_x's ori_shape is invalid for 5D Tensor")
+            error_manager_vector.raise_err_specific_reson("tile_with_axis", "input_x's ori_shape \
+                                                          is invalid for 5D Tensor")
         axis = shape_util.axis_check(length_x_ori, axis)
         axis = shape_util.axis_transfrom_5d(axis, ori_format)
         if axis in (1, 4):
-            raise RuntimeError("axis is invalid for 5D Tensor")
+            error_manager_vector.raise_err_specific_reson("tile_with_axis", "axis is invalid for 5D Tensor")
     else:
         if axis >= shape_x_len or axis < -shape_x_len:
-            raise RuntimeError("The parameter axis should be in the range of [%s, %s], but actually is [%s]." \
-                % (-shape_x_len, shape_x_len-1, axis))
+            error_manager_vector.raise_err_input_value_invalid("tile_with_axis", "axis",
+                                                               "in range of [ {} , {} ]".format(-shape_x_len, \
+                                                               shape_x_len - 1), str(axis))
         if axis < 0:
             axis += shape_x_len
 

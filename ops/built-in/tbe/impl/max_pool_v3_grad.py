@@ -80,7 +80,7 @@ def cal_byte_size(shape, dtype):
         return cal_shape_ele(shape) * 2
     if dtype == "float32":
         return cal_shape_ele(shape) * 4
-    raise RuntimeError("Not support shape now")
+    error_manager_vector.raise_err_specific_reson("max_pool_v3_grad", "Not support shape now")
 
 
 # MIN VALUE OF FP16
@@ -159,106 +159,45 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, data_forma
     para_check.check_dtype(ori_input_dtype, ("float16",), param_name="ori_input")
     # the format of input_x must be NC1HWC0
     if len(ori_input_shape) != 5:
-        raise RuntimeError("invalid shape params, input feature map must be "
-                           "5D format in kernel.")
+        error_manager_vector.raise_err_specific_reson("max_pool_v3_grad", "input feature map \
+                                                      must be 5D format in kernel.")
     if len(ori_output_shape) != 5:
-        raise RuntimeError("invalid shape params, forward output must be "
-                           "5D format in kernel.")
+        error_manager_vector.raise_err_specific_reson("max_pool_v3_grad", "forward output \
+                                                      must be 5D format in kernel.")
     if len(grad_shape) != 5:
-        raise RuntimeError("invalid shape params, update grad must be "
-                           "5D format in kernel.")
+        error_manager_vector.raise_err_specific_reson("max_pool_v3_grad", "update grad \
+                                                      must be 5D format in kernel.")
 
     if grad_shape != ori_output_shape:
-        raise RuntimeError(
-            "invalid shape params, update grad must be same shape as forward output")
+        error_manager_vector.raise_err_two_input_shape_invalid("max_pool_v3_grad", "grad", "ori_output",
+                                                               "update grad must be same shape as forward output")
 
     if grad_shape[-1] != 16 or ori_input_shape[-1] != 16:
-        raise RuntimeError("invalid shape params, C0 must be equal to 16.")
+        error_manager_vector.raise_err_specific_reson("max_pool_v3_grad", "C0 must be equal to 16.")
 
     if ori_output_shape[:2] != ori_input_shape[:2]:
-        raise RuntimeError(
-            "invalid shape params, N axis and C1 axis should be same.")
+        error_manager_vector.raise_err_specific_reson("max_pool_v3_grad", "N axis and C1 axis should be same.")
 
     if global_pooling:
         error_manager_vector.raise_err_specific_reson('max_pool_v3', 'can not support global now.')
 
     if len(pads) != 4:
-        errorInfo = {}
-        errorInfo['errCode'] = para_check.OP_ERROR_CODE_012
-        errorInfo['op_name'] = 'max_pool_v3'
-        errorInfo['param_name'] = 'pads'
-        errorInfo['min_value'] = '4'
-        errorInfo['max_value'] = '4'
-        errorInfo['real_value'] = len(pads)
-        raise RuntimeError(errorInfo,
-                           "In op[%s], the num of dimensions of input[%s] should"
-                           " be in the range of [%s, %s], but actually is [%s]." %
-                           (errorInfo['op_name'], errorInfo['param_name'],
-                            errorInfo['min_value'], errorInfo['max_value'],
-                            errorInfo['real_value']))
+        error_manager_vector.raise_err_input_param_not_in_range("max_pool_v3", "pads", "4", "4", str(len(pads)))
     if data_format in ("NHWC", "NC1HWC0", "NCHW"):
         if len(ksize) != 4:
-            errorInfo = {}
-            errorInfo['errCode'] = para_check.OP_ERROR_CODE_012
-            errorInfo['op_name'] = 'max_pool_v3'
-            errorInfo['param_name'] = 'ksize'
-            errorInfo['min_value'] = '4'
-            errorInfo['max_value'] = '4'
-            errorInfo['real_value'] = len(ksize)
-            raise RuntimeError(errorInfo,
-                               "In op[%s], the num of dimensions of input[%s] should "
-                               "be in the range of [%s, %s], but actually is [%s]." %
-                               (errorInfo['op_name'], errorInfo['param_name'],
-                                errorInfo['min_value'], errorInfo['max_value'],
-                                errorInfo['real_value']))
+            error_manager_vector.raise_err_input_param_not_in_range("max_pool_v3", "ksize", "4", "4", str(len(ksize)))
 
         if ksize[0] != 1 or ksize[3] != 1:
-            errorInfo = {}
-            errorInfo['errCode'] = para_check.OP_ERROR_CODE_000
-            errorInfo['op_name'] = 'max_pool_v3'
-            errorInfo['param_name'] = ",".join(("ksize[0]", "ksize[3]"))
-            errorInfo['expected_value'] = '1'
-            errorInfo['real_value'] = ",".join((ksize[0], ksize[3]))
-            raise RuntimeError("In op[%s], the parameter[%s] should be [%s], "
-                               "but actually is [%s]." %
-                               (errorInfo['op_name'], errorInfo['param_name'],
-                                errorInfo['expected_value'], errorInfo['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("max_pool_v3", "ksize[0], ksize[3]",
+                                                               "1", str(ksize[0]) + ", " + str(ksize[3]))
         if len(strides) != 4:
-            errorInfo = {}
-            errorInfo['errCode'] = para_check.OP_ERROR_CODE_012
-            errorInfo['op_name'] = 'max_pool_v3'
-            errorInfo['param_name'] = 'strides'
-            errorInfo['min_value'] = '4'
-            errorInfo['max_value'] = '4'
-            errorInfo['real_value'] = len(strides)
-            raise RuntimeError(errorInfo,
-                               "In op[%s], the num of dimensions of input[%s] should"
-                               " be in the range of [%s, %s], but actually is [%s]." %
-                               (errorInfo['op_name'], errorInfo['param_name'],
-                                errorInfo['min_value'], errorInfo['max_value'],
-                                errorInfo['real_value']))
+            error_manager_vector.raise_err_input_param_not_in_range("max_pool_v3", "strides",
+                                                                    "4", "4", str(len(strides)))
         if strides[0] != 1 or strides[3] != 1:
-            errorInfo = {}
-            errorInfo['errCode'] = para_check.OP_ERROR_CODE_000
-            errorInfo['op_name'] = 'max_pool_v3'
-            errorInfo['param_name'] = ",".join(("strides[0]", "strodes[3]"))
-            errorInfo['expected_value'] = '1'
-            errorInfo['real_value'] = ",".join((strides[0], strides[3]))
-            raise RuntimeError("In op[%s], the parameter[%s] should be [%s],"
-                               " but actually is [%s]." %
-                               (errorInfo['op_name'], errorInfo['param_name'],
-                                errorInfo['expected_value'], errorInfo['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("max_pool_v3", "strides[0], strides[3]",
+                                                               "1", str(strides[0]) + ", " + str(strides[3]))
     else:
-        errorInfo = {}
-        errorInfo['errCode'] = para_check.OP_ERROR_CODE_015
-        errorInfo['op_name'] = 'max_pool_v3'
-        errorInfo['param_name'] = 'x'
-        errorInfo['excepted_format_list'] = ",".join(("NC1HWC0", "NCHW", "NHWC"))
-        errorInfo['format'] = data_format
-        raise RuntimeError(errorInfo, "In op[%s], the format[%s] of input should"
-                                      " be one of [%s], but actually is [%s]."
-                           % (errorInfo['op_name'], errorInfo['param_name'],
-                              errorInfo['excepted_format_list'], errorInfo['format']))
+        error_manager_vector.raise_err_input_format_invalid("max_pool_v3", "x", "NC1HWC0, NCHW, NHWC", str(data_format))
 
 
 # pylint: disable=dangerous-default-value,too-many-locals,
@@ -461,7 +400,8 @@ class MaxpoolV3Grad():
             remain_ele = ele_num % VECTOR_FP32_SIZE
             mask_value = VECTOR_FP32_SIZE
         else:
-            raise RuntimeError("Not support dtype")
+            error_manager_vector.raise_err_input_dtype_not_supported("max_pool_v3", "dtype",
+                                                                     "float16, float32", str(dtype))
         repeate_max_time = total_repeate_time // MAX_VECTOR_REPEATE_TIME
         remain_repeate_time = total_repeate_time % MAX_VECTOR_REPEATE_TIME
 
@@ -2402,14 +2342,15 @@ class MaxpoolV3Grad():
         if self.dtype == "float16":
             self.pad_value = MIN_VALUE_FP16
         else:
-            raise RuntimeError("Only Support float16 Now!")
+            error_manager_vector.raise_err_input_dtype_not_supported("max_pool_v3", "dtype",
+                                                                     "float16", str(self.dtype))
         pad_calc_wo, pad_calc_ho, pad_pads = \
             self._padding_mode(self.ori_input_shape, self.ksize, self.strides,
                                self.padding, self.pads, self.global_pooling, self.ceil_mode)
         self.pad = (int(pad_pads[0]), int(pad_pads[1]), int(pad_pads[2]), int(pad_pads[3]))
         self.pad_left, self.pad_right, self.pad_top, self.pad_bottom = self.pad
         if pad_calc_ho != self.ho or pad_calc_wo != self.wo:
-            raise RuntimeError("Wrong ori_output shape")
+            error_manager_vector.raise_err_specific_reson("max_pool_v3", "Wrong ori_output shape")
 
         # nc do block is not enough, but ncho is enough
         # real_block == 32 or block_num * self.ho < 32

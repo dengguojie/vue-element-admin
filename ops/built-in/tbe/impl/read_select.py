@@ -19,6 +19,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from impl.util.platform_adapter import error_manager_vector
 
 READ_SELECT_TAG = "read_select"
 PARA_LIST_LEN = 5
@@ -27,16 +28,16 @@ EMPTY_LIST_LEN = 0
 
 def _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list):
     if len(total_shape) != PARA_LIST_LEN:
-        raise RuntimeError("the len of input shape should be 5")
+        error_manager_vector.raise_err_specific_reson("read_select", "the len of input shape should be 5")
 
     if (len(valid_shape) != PARA_LIST_LEN) and (len(valid_shape) != EMPTY_LIST_LEN):
-        raise RuntimeError("the len of valid shape should be 5 or 0")
+        error_manager_vector.raise_err_specific_reson("read_select", "the len of valid shape should be 5 or 0")
 
     if (len(slice_offset) != PARA_LIST_LEN) and (len(slice_offset) != EMPTY_LIST_LEN):
-        raise RuntimeError("the len of slice offset should be 5 or 0")
+        error_manager_vector.raise_err_specific_reson("read_select", "the len of slice offset should be 5 or 0")
 
     if len(stride_list) != PARA_LIST_LEN:
-        raise RuntimeError("the len of stride list should be 5")
+        error_manager_vector.raise_err_specific_reson("read_select", "the len of stride list should be 5")
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,dangerous-default-value
@@ -144,8 +145,8 @@ def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1],
 
     check_list = ["float16", "int8", "int16"]
     if input_dtype not in check_list:
-        raise RuntimeError("read_select only support %s while dtype is %s"
-                           % (",".join(check_list), input_dtype))
+        error_manager_vector.raise_err_input_dtype_not_supported("read_select", "input_x",
+                                                                 "float16, int8, int16", str(input_dtype))
 
     src_in_flag = "DDR"
     if "src_in_flag" in input_x:

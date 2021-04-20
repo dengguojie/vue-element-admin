@@ -81,15 +81,8 @@ def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_na
                                                             ["NHWC", "NC1HWC0", "NCHW"], data_format)
 
     if padding_mode not in ("SAME", "VALID", "CALCULATED"):
-        errorInfo = {}
-        errorInfo['errCode'] = para_check.OP_ERROR_CODE_012
-        errorInfo['op_name'] = 'max_pool_v3'
-        errorInfo['param_name'] = 'pads'
-        errorInfo['min_value'] = '4'
-        errorInfo['max_value'] = '4'
-        errorInfo['real_value'] = len(pads)
-        raise RuntimeError(
-            "MaxPool can only support SAME or VALID or CALCULATED padding mode.")
+        error_manager_vector.raise_err_pad_mode_invalid("max_pool_v3", "SAME, VALID or CALCULATED",
+                                                        str(padding_mode))
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
@@ -131,7 +124,8 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
         window_h, window_w = ksize[2], ksize[3]
         stride_h, stride_w = strides[2], strides[3]
     else:
-        raise RuntimeError("don't support this format")
+        error_manager_vector.raise_err_input_format_invalid("max_pool_v3", "data_format",
+                                                            "NHWC, NC1HWC0 or NCHW", str(data_format))
 
     conv_pooling_flag = False
     temp_tensor = input_data

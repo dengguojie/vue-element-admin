@@ -22,6 +22,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import error_manager_vector
 
 MAX_INT32 = 2 ** 31 - 1
 TILING_NUM = 64
@@ -56,7 +57,9 @@ def _check_param(grads, images, align_corners, half_pixel_centers):
     None
     """
     if align_corners and half_pixel_centers:
-        raise RuntimeError("align_corners and half_pixel_centers can not be set to true at the same time.")
+        error_manager_vector.raise_err_specific_reson("resize_bilinear_v2_grad",
+                                                      "align_corners and half_pixel_centers \
+                                                      can not be set to true at the same time.")
     grads_dtype = grads.get("dtype")
     images_dtype = images.get("dtype")
     para_check.check_dtype(grads_dtype, ["float32"])

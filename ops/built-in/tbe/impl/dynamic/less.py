@@ -166,7 +166,7 @@ def less(input_x, input_y, output_z, kernel_name="less"):
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
     para_check.check_elewise_shape_range([input_x, input_y], support_broadcast=True)
     if x_dtype != y_dtype:
-        error_manager_vector.raise_err_inputs_dtype_not_equal('less', 'x_dtype', 'y_dtype',
+        error_manager_vector.raise_err_inputs_dtype_not_equal('less', 'input_x', 'input_y',
                                                               str(x_dtype), str(y_dtype))
 
     ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)

@@ -28,6 +28,7 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import error_manager_vector
 
 
 @fusion_manager.register("tile_with_axis")
@@ -203,16 +204,8 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='til
     """
     check_param_range
     """
-    error_info = {}
-    error_info['errCode'] = 'E80002'
-    error_info['opname'] = op_name
-    error_info['param_name'] = param_name
-    error_info['min_value'] = str(min_value)
-    error_info['max_value'] = str(max_value)
-    error_info['real_value'] = str(real_value)
-    raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                       % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-                          error_info['max_value'], error_info['real_value']))
+    error_manager_vector.raise_err_input_param_range_invalid("tile_with_axis", param_name,
+                                                             str(min_value), str(max_value), str(real_value))
 
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
@@ -253,17 +246,8 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
     para_check.check_dtype(dtype_y, check_list, param_name="input_x")
 
     if dtype_x != dtype_y:
-        error_info = {}
-        error_info['errCode'] = 'E80019'
-        error_info['op_name'] = 'tile_with_axis'
-        error_info['input1_name'] = 'x'
-        error_info['input2_name'] = 'y'
-        error_info['input1_dtype'] = str(dtype_x)
-        error_info['input2_dtype'] = str(dtype_y)
-        raise RuntimeError(
-            "In op[%s], the shape of input[%s] and input[%s] should be the same, but actually are [%s] and [%s]."
-            % (error_info['op_name'], error_info['input1_name'], error_info['input2_name'],
-               error_info['input1_dtype'], error_info['input2_dtype']))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("tile_with_axis", "x", "y",
+                                                              str(dtype_x), str(dtype_y))
 
     if tiles <= 0:
         check_param_range('tiles', 1, 'inf', tiles)
@@ -278,15 +262,18 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
         length_x_ori = len(shape_x_ori)
 
         if ori_format not in ("NCHW", "NHWC"):
-            raise RuntimeError("input_x's ori_format is invalid for 5D Tensor")
+            error_manager_vector.raise_err_specific_reson("tile_with_axis", "input_x's ori_format \
+                                                          is invalid for 5D Tensor")
         if shape_x_len != 5:
-            raise RuntimeError("input_x's shape is invalid for 5D Tensor")
+            error_manager_vector.raise_err_specific_reson("tile_with_axis", "input_x's shape is \
+                                                          invalid for 5D Tensor")
         if length_x_ori != 4:
-            raise RuntimeError("input_x's ori_shape is invalid for 5D Tensor")
+            error_manager_vector.raise_err_specific_reson("tile_with_axis", "input_x's ori_shape \
+                                                          is invalid for 5D Tensor")
         axis = util.axis_check(length_x_ori, axis)
         axis = util.axis_transfrom_5d(axis, ori_format)
         if axis in (1, 4):
-            raise RuntimeError("axis is invalid for 5D Tensor")
+            error_manager_vector.raise_err_specific_reson("tile_with_axis", "axis is invalid for 5D Tensor")
     else:
         if axis >= shape_x_len or axis < -shape_x_len:
             check_param_range('axis', -shape_x_len, shape_x_len-1, axis)
@@ -299,14 +286,9 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
     shape_y_expected[axis] *= tiles
 
     if not check_same_shape(shape_y, shape_y_expected):
-        error_info = {}
-        error_info['errCode'] = 'E80017'
-        error_info['op_name'] = 'tile_with_axis'
-        error_info['attr_name'] = 'shape_y'
-        error_info['expect_value'] = str(shape_y_expected)
-        error_info['real_value'] = str(shape_y)
-        raise RuntimeError("In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-                           % (error_info['op_name'], error_info['attr_name'], error_info['expect_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("tile_with_axis", "output_y", "the parameter[shape_y] \
+                                                           should be [{}],  but actually is \
+                                                           [{}].".format(str(shape_y_expected), str(shape_y)))
 
     shape_x_adapt = []
     shape_y_adapt = []

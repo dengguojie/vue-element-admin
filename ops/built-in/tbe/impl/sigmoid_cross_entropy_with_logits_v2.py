@@ -26,6 +26,7 @@ from topi import generic
 from topi.cce.util import compare_tensor_dict_key
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.platform_adapter import error_manager_vector
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -242,7 +243,8 @@ def sigmoid_cross_entropy_with_logits_v2(
     compare_tensor_dict_key(predict, target, "shape")
 
     if reduction not in ("mean", "sum", "none"):
-        raise RuntimeError("{} is not a valid value for reduction".format(reduction))
+        error_manager_vector.raise_err_input_value_invalid("sigmoid_cross_entropy_with_logits_v2",
+                                                           "reduction", "mean, sum, none", str(reduction))
 
     data_weight = None
     if weight is not None:

@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import OpImplMode
+from impl.util.platform_adapter import error_manager_vector
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -167,7 +168,8 @@ def sigmoid_cross_entropy_with_logits_v2(predict,
     para_check.check_dtype(dtype_target, check_list, param_name="target")
 
     if reduction not in ("mean", "sum", "none"):
-        raise RuntimeError("{} is not a valid value for reduction".format(reduction))
+        error_manager_vector.raise_err_input_value_invalid("sigmoid_cross_entropy_with_logits_v2",
+                                                           "reduction", "mean, sum, none", str(reduction))
     weight_data = None
     pos_weight_data = None
     if (weight is not None) and (pos_weight is not None):

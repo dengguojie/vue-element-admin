@@ -21,6 +21,7 @@ from te import tik
 from te import platform as tbe_platform
 from topi.cce import util
 from impl.constant_util import MASK64
+from impl.util.platform_adapter import error_manager_vector
 
 DIM2 = 2
 NEGATIVE = -1
@@ -49,18 +50,21 @@ def _shape_and_dtype_check(x, target, weight, kernel_name):
     util.check_dtype_rule(target_dtype, "int32")
     util.check_dtype_rule(weight_dtype, "float32")
     if len(x_shape) > DIM2:
-        raise RuntimeError("The dimension of x should be equal to"
-                           "or less than 2")
+        error_manager_vector.raise_err_specific_reson("nll_loss", "The dimension of x \
+                                                      should be equal to or less than 2")
     if len(target_shape) != 1:
-        raise RuntimeError("The dimension of target only support 1")
+        error_manager_vector.raise_err_specific_reson("nll_loss", "The dimension of \
+                                                      target only support 1")
     if len(x_shape) == DIM2 and x_shape[0] != target_shape[0]:
-        raise RuntimeError("The first dimension of x and"
-                           " target should be equal")
+        error_manager_vector.raise_err_specific_reson("nll_loss", "The first dimension \
+                                                      of x and target should be equal")
     if len(weight_shape) != 1:
-        raise RuntimeError("The dimension of weight only support 1")
+        error_manager_vector.raise_err_specific_reson("nll_loss", "The dimension of \
+                                                      weight only support 1")
     if x_shape[-1] != weight_shape[0]:
-        raise RuntimeError("The last dimension of x and the first dimension"
-                           "of weight should be equal")
+        error_manager_vector.raise_err_specific_reson("nll_loss", "The last dimension of \
+                                                      x and the first dimension of \
+                                                      weight should be equal")
 
 
 # pylint: disable=too-many-instance-attributes,too-many-arguments
@@ -1227,8 +1231,8 @@ class NllLossCompute:
         elif self.x_dims == DIM2:
             self.reduction_is_none_and_sum_compute()
         else:
-            raise RuntimeError("No algorithm matched, please check"
-                               "distribution rules.")
+            error_manager_vector.raise_err_specific_reson("nll_loss", "No algorithm matched, \
+                                                          please check distribution rules.")
 
         if self.x_dims == DIM2 and (self.reduction == "sum" or
                                     self.reduction == "mean"):

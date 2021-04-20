@@ -22,6 +22,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_common
 
 
@@ -100,21 +101,8 @@ def mul(input1, input2, output, kernel_name="mul"):
     para_check.check_dtype(dtype_x2, check_list, param_name="input2")
     para_check.check_elewise_shape_range([input1, input1], support_broadcast=True)
     if dtype_x1 != dtype_x2:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_018
-        error_info['op_name'] = 'mul'
-        error_info['param_name1'] = 'dtype_x1'
-        error_info['param_name2'] = 'dtype_x2'
-        error_info['param1_dtype'] = str(dtype_x1)
-        error_info['param2_dtype'] = str(dtype_x2)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("mul", "input1", "input2",
+                                                              str(dtype_x1), str(dtype_x2))
 
     ins = classify([input1, input2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

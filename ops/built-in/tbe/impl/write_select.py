@@ -19,6 +19,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from impl.util.platform_adapter import error_manager_vector
 
 WRITE_SELECT_TAG = "write_select"
 PARA_LIST_LEN = 5
@@ -48,7 +49,8 @@ def write_select_compute(input_tensor, output_x, kernel_name="write_select"):
     valid_shape = output_x.get("valid_shape")
 
     if len(valid_shape) != PARA_LIST_LEN:
-        raise RuntimeError("the len of valid shape should be 5")
+        error_manager_vector.raise_err_specific_reson("write_select", "the len of \
+                                                      valid shape should be 5")
 
     _, _, h_valid, w_valid, c0_valid = valid_shape
 
@@ -97,11 +99,12 @@ def write_select(input_x, output_x, kernel_name="write_select"):
         check_list = ["int32", "float16", "float32", "int8"]
 
     if input_dtype not in check_list:
-        raise RuntimeError("write_select only support %s while dtype is %s"
-                           % (",".join(check_list), input_dtype))
+        error_manager_vector.raise_err_input_dtype_not_supported("write_select", "input_x",
+                                                                 ", ".join(check_list), input_dtype)
 
     if len(valid_shape) != PARA_LIST_LEN:
-        raise RuntimeError("the len of valid shape should be 5")
+        error_manager_vector.raise_err_specific_reson("write_select", "the len of \
+                                                      valid shape should be 5")
 
     dst_out_flag = "DDR"
     if "dst_out_flag" in output_x:

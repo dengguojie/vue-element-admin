@@ -96,7 +96,7 @@ def maximum(x1, x2, y, kernel_name="maximum"):
     para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
 
     if dtype_x1 != dtype_x2:
-        error_manager_vector.raise_err_inputs_dtype_not_equal('maximum', 'dtype_x1', 'dtype_x2',
+        error_manager_vector.raise_err_inputs_dtype_not_equal('maximum', 'x1', 'x2',
                                                               str(dtype_x1), str(dtype_x2))
 
     ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)

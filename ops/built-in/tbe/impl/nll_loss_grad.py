@@ -21,6 +21,7 @@ from te import tik
 from topi.cce import util
 from te import platform as tbe_platform
 from impl.constant_util import MASK64
+from impl.util.platform_adapter import error_manager_vector
 
 DIM2 = 2
 NUM_EIGHT = 8
@@ -62,28 +63,33 @@ def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction,
     util.check_dtype_rule(total_weight_dtype, "float32")
 
     if reduction in ("mean", "sum") and y_grad_shape[0] != 1:
-        raise RuntimeError("The shape of y_grad must be (1,),"
-                           " while reduction is mean or sum. ")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The shape of y_grad  \
+                                                      must be (1,), while reduction is mean or sum.")
     if len(x_shape) == 1 and y_grad_shape[0] != 1:
-        raise RuntimeError("The shape of y_grad must be (1,),"
-                           " while input x is 1D. ")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The shape of y_grad  \
+                                                      must be (1,), while input x is 1D.")
     if len(x_shape) > DIM2:
-        raise RuntimeError("The dimension of x should be equal to"
-                           "or less than two.")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The dimension of x \
+                                                      should be equal to or less than two.")
     if len(x_shape) == DIM2 and x_shape[0] != target_shape[0]:
-        raise RuntimeError("The first dimension of x and"
-                           " target should be equal")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The first dimension \
+                                                      of x and target should be equal")
     if x_shape[-1] != weight_shape[0]:
-        raise RuntimeError("The last dimension of x and the first dimension"
-                           " of weight should be equal")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The last dimension of \
+                                                      x and the first dimension of weight should \
+                                                      be equal")
     if len(y_grad_shape) != 1:
-        raise RuntimeError("The dimension of y_grad should be 1D.")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The dimension of \
+                                                      y_grad should be 1D.")
     if len(weight_shape) != 1:
-        raise RuntimeError("The dimension of weight should be 1D.")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The dimension of \
+                                                      weight should be 1D.")
     if len(target_shape) != 1:
-        raise RuntimeError("The dimension of target should be 1D.")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The dimension of \
+                                                      target should be 1D.")
     if total_weight_shape[0] != 1:
-        raise RuntimeError("The shape of total_weight must be (1,)")
+        error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The shape of \
+                                                      total_weight must be (1,).")
 
 
 # pylint: disable=too-many-instance-attributes,too-many-arguments

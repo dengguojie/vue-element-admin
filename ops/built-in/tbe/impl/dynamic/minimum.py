@@ -22,6 +22,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import error_manager_vector
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -94,21 +95,8 @@ def minimum(x1, x2, y, kernel_name="minimum"):
     para_check.check_dtype(dtype_x2, check_list, param_name="x2")
     para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
     if dtype_x1 != dtype_x2:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_018
-        error_info['op_name'] = 'minimum'
-        error_info['param_name1'] = 'dtype_x1'
-        error_info['param_name2'] = 'dtype_x2'
-        error_info['param1_dtype'] = str(dtype_x1)
-        error_info['param2_dtype'] = str(dtype_x2)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("minimum", "x1", "x2",
+                                                              str(dtype_x1), str(dtype_x2))
 
     ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

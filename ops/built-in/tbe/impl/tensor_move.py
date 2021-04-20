@@ -21,6 +21,7 @@ from topi.cce import util
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable = unused-argument
@@ -102,8 +103,8 @@ class TensorMove():
                 util.check_tensor_shape_size(list(self.dst_shape))
 
         if self.data_size != self.data_dst_size:
-            raise RuntimeError("The size of src and des is not equal,"
-                               " can not use fuc(CopyOnly)")
+            error_manager_vector.raise_err_specific_reson("TensorMove", "The size of src and des\
+                                                          is not equal, can not use fuc(CopyOnly)")
         # get dtype size, float16 size = 2 byte   / float32 size = 4 byte
         self.dtype_size = \
             tbe_platform.cce_intrin.get_bit_len(self.src_dtype) // 8
