@@ -43,6 +43,7 @@ set(_onnx_plugins
   mean_variance_normalization_plugin.cc
   mod_plugin.cc
   mul_plugin.cc
+  onehot_plugin.cc
   pad_plugin.cc
   reduce_mean_plugin.cc
   reduce_sum_plugin.cc
