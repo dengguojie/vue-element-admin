@@ -26,6 +26,7 @@ from .layer_norm_tilingcase import LayerNormTilingCase
 from . import util
 from .util import get_dsl_insn
 
+MAX_NODE_COUNT = 12
 
 class WorkspaceLayerNormSchedule:
     def __init__(self, graph_info, layer_norm_info, outs):
@@ -195,9 +196,11 @@ class WorkspaceLayerNormSchedule:
         tensor_storage_bound_set = set(self.forward_compute_graph_map.keys()) | set(
             self.output_tensor_ub_list) | set(self.input_tensor_ub_list)
         if self.is_cast:
-            self.max_ub_size = int(UB_SIZE / 12 / 2)
+            # fp16 --> fp32
+            self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2)
         else:
-            self.max_ub_size = int(UB_SIZE / 10 / 2)
+            # fp32
+            self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2)
         for stage_tensor in tensor_storage_bound_set:
             if self.forward_compute_graph_map.get(stage_tensor) and stage_tensor in self.graph_info.input_tensor_set:
                 continue
@@ -235,8 +238,12 @@ class WorkspaceLayerNormSchedule:
                 sub_block_inner, factor=ub_fuse_inner)
             reduce0_ub_fuse_outer, reduce0_ub_fuse_inner = self.schedule[reduce_tensor].split(
                 reduce_tensor.op.reduce_axis[self.ub_split_axis_index_reduce], factor=ub_inner)
-            sub_ub_gm_outer, sub_ub_gm_inner = self.schedule[self.sub_gm_tensor].split(
-                self.sub_gm_tensor.op.axis[self.ub_split_axis_index], factor=ub_inner)
+            if case.is_split_ub:
+                sub_ub_gm_outer, sub_ub_gm_inner = self.schedule[self.sub_gm_tensor].split(
+                    self.sub_gm_tensor.op.axis[self.ub_split_axis_index], factor=ub_inner)
+            else:
+                sub_ub_gm_outer, sub_ub_gm_inner = self.schedule[self.sub_gm_tensor].split(
+                    sub_ub_fuse_inner, factor=ub_inner)
 
             self.sub_block_split_result = [sub_block_outer, sub_block_inner]
             self.sub_ub_fuse_split_result = [sub_ub_fuse_outer, sub_ub_fuse_inner]
@@ -256,15 +263,21 @@ class WorkspaceLayerNormSchedule:
                 res_block_inner, factor=ub_fuse_inner)
             reduce1_ub_fuse_outer, reduce1_ub_fuse_inner = self.schedule[reduce_tensor].split(
                 reduce_tensor.op.reduce_axis[self.ub_split_axis_index_reduce], factor=ub_inner)
-            res_ub_gm_outer, res_ub_gm_inner = self.schedule[self.res_tensor].split(
-                self.res_tensor.op.axis[self.ub_split_axis_index], factor=ub_inner)
+            if case.is_split_ub:
+                res_ub_gm_outer, res_ub_gm_inner = self.schedule[self.res_tensor].split(
+                    self.res_tensor.op.axis[self.ub_split_axis_index], factor=ub_inner)
+            else:
+                res_ub_gm_outer, res_ub_gm_inner = self.schedule[self.res_tensor].split(
+                    res_ub_fuse_inner, factor=ub_inner)
             # judge open multi_core
+
             if case.multi_core is None:
                 raise RuntimeError("Tilingcase didn`t declare multi_core switch")
             if case.multi_core:
                 block = tvm.thread_axis("blockIdx.x")
                 self.schedule[self.res_tensor].bind(res_block_outer, block)
                 self.schedule[self.sub_gm_tensor].bind(self.sub_block_split_result[0], block)
+
             self.res_block_split_result = [res_block_outer, res_block_inner]
             self.res_ub_fuse_split_result = [res_ub_fuse_outer, res_ub_fuse_inner]
             self.res_ub_split_result = [res_ub_gm_outer, res_ub_gm_inner]

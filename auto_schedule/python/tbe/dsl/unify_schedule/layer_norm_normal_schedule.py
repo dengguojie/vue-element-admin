@@ -27,6 +27,7 @@ from .layer_norm_workspace_schedule import WorkspaceLayerNormSchedule
 from . import util
 from .util import get_dsl_insn
 
+MAX_NODE_COUNT = 12
 
 @register_schedule(pattern=Pattern.LayerNorm)
 def schedule(outs, tiling_case):
@@ -188,9 +189,11 @@ class NormalLayerNormSchedule:
         tensor_storage_bound_set = set(self.forward_compute_graph_map.keys()) | set(
             self.output_tensor_stage_list) | set(self.input_tensor_stage_list) | set(self.input_tensor_stage_list_1)
         if self.is_cast:
-            self.max_ub_size = int(UB_SIZE / 12 / 2)
+            # fp16 --> fp32
+            self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2)
         else:
-            self.max_ub_size = int(UB_SIZE / 10 / 2)
+            # fp32
+            self.max_ub_size = int(UB_SIZE / MAX_NODE_COUNT / 2)
         for stage_tensor in tensor_storage_bound_set:
             if self.forward_compute_graph_map.get(stage_tensor) and stage_tensor in self.graph_info.input_tensor_set:
                 continue

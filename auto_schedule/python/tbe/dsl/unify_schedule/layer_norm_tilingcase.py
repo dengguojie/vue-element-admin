@@ -274,16 +274,6 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis, ub_split_axis_inde
 
     :return: key(int32)
     """
-    def _check(idx, value):
-        rule = [range(2), range(100), range(9), range(9), range(1000)]
-        name = ["db", "shape_type", "block_split_axis",
-                "ub_split_axis", "pattern"]
-        if value not in rule[idx]:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "%s should in %s, but is %d" % (
-                name[idx], str(rule[idx]), value)
-            raise RuntimeError(dict_args, get_error_message(dict_args))
 
     pattern = _get_pattern_key(shape, reduce_idx_list, block_split_axis,
                                ub_split_axis_index_reduce, ub_split_axis, is_normal)
@@ -291,7 +281,6 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis, ub_split_axis_inde
     val = (10**9, 10**7, 10**6, 10**5, 10**4, 10**3)
     key = 0
     for item, value in enumerate(pos):
-        _check(item, value)
         key += value * val[item]
     return key
 
@@ -465,37 +454,37 @@ def _gen_tiling_case(info: LayerNormInfo):
     reduce_axis_index = info.reduce_axis_indices
     tiling_case_list = []
     for i in range(0, len(shape_before_reduce)):
-        if i not in reduce_axis_index:
-            block_split_axis = i
-            # workspace tilingcase
+        # if i not in reduce_axis_index: NOT ALL REDUCE CASE
+        # ELSE: ALL REDUCE
+        block_split_axis = i
 
-            for j in range(i + 1, len(shape_before_reduce)):
-                ub_split_axis = j
+        for wj in range(i, len(shape_before_reduce)):
+            # workspace tilingcase
+            ub_split_axis = wj
+            if ub_split_axis in reduce_axis_index:
                 for k in range(len(reduce_axis_index)):
                     ub_split_axis_index_reduce = k
                     workspace_tiling_case = LayerNormTilingCase()
                     workspace_tiling_case.block_split_axis_index = block_split_axis
                     workspace_tiling_case.ub_split_axis_index = ub_split_axis
                     workspace_tiling_case.ub_split_axis_index_reduce = ub_split_axis_index_reduce
-                    workspace_tiling_case.multi_core = True
                     workspace_tiling_case.is_normal = False
-                    workspace_tiling_case.is_split_ub = True
+                    workspace_tiling_case.multi_core = True
+                    workspace_tiling_case.is_split_ub = False if ub_split_axis == block_split_axis else True
                     tiling_case_list.append(workspace_tiling_case)
+        for nj in range(i, len(shape_before_reduce)):
             # Normal tilingcase
-            for x in range(i, len(shape_before_reduce)):
-                n_ub_split_axis = x
-                if x not in reduce_axis_index:
-                    normal_tiling_case = LayerNormTilingCase()
-                    normal_tiling_case.block_split_axis_index = block_split_axis
-                    normal_tiling_case.ub_split_axis_index = n_ub_split_axis
-                    normal_tiling_case.ub_split_axis_index_reduce = 0
-                    normal_tiling_case.multi_core = True
-                    normal_tiling_case.is_normal = True
-                    if n_ub_split_axis == block_split_axis:
-                        normal_tiling_case.is_split_ub = False
-                    else:
-                        normal_tiling_case.is_split_ub = True
-                    tiling_case_list.append(normal_tiling_case)
+            n_ub_split_axis = nj
+            if n_ub_split_axis in reduce_axis_index:
+                continue
+            normal_tiling_case = LayerNormTilingCase()
+            normal_tiling_case.block_split_axis_index = block_split_axis
+            normal_tiling_case.ub_split_axis_index = n_ub_split_axis
+            normal_tiling_case.ub_split_axis_index_reduce = 0
+            normal_tiling_case.multi_core = True
+            normal_tiling_case.is_normal = True
+            normal_tiling_case.is_split_ub = False if n_ub_split_axis == block_split_axis else True
+            tiling_case_list.append(normal_tiling_case)
     return tiling_case_list
 
 

@@ -612,9 +612,12 @@ def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis):
         #         x["range"] = [(1,1),]
         #     ins.append({"shape":[],"value":[],"rel_pos_to_reduce":"axis"})
         #     continue
+        """
         for x in ins:
             x = _fuse_shape_operation(x, res_fuse_axis)
         ins.append({'shape': fused_reduce_axis, 'value': fused_reduce_axis, 'rel_pos_to_reduce': 'axis'})
+        """
+        ins.append({'shape': reduce_axis, 'value': reduce_axis, 'rel_pos_to_reduce': 'axis'})
     return outs
 
 
@@ -641,8 +644,8 @@ def _fuse_axis_operation(input_x, reduce_axis, broadcast_axis):
         if not fuse_axis:
             fuse_axis.append([index])
         else:
-            if index - fuse_axis[-1] == 1:
-                fuse_axis[-1].append([index])
+            if index - fuse_axis[-1][-1] == 1:
+                fuse_axis[-1].append(index)
             else:
                 if len(fuse_axis[-1]) < 2:
                     fuse_axis.append([index])

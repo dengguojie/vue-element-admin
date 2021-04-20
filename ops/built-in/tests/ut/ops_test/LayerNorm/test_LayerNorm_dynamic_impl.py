@@ -17,12 +17,29 @@ case1 = {"params": [{"shape": (-1, -1, -1), "dtype": "float16", "format": "NCHW"
                     {"shape": (-1, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, -1, -1),
                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
                     2, 2],
-         #  "case_name": "layer_norm_1",
+         # "case_name": "layer_norm_1",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case2 = {"params": [{"shape": (-1, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, -1, -1), "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                    {"shape": (-1,), "dtype": "float16", "format": "NCHW", "ori_shape": (-1,),
+                     "ori_format": "NCHW", "range": ((1, None), )},
+                    {"shape": (-1,), "dtype": "float16", "format": "NCHW", "ori_shape": (-1,),
+                     "ori_format": "NCHW", "range": ((1, None), )},
+                    {"shape": (-1, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, -1, -1),
+                     "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                    {"shape": (-1, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, -1, -1),
+                     "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                    {"shape": (-1, -1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, -1, -1),
+                     "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                    0, 2],
+         # "case_name": "layer_norm_2",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
 
-# ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
 
 if __name__ == "__main__":
     with tbe.common.context.op_context.OpContext("dynamic"):
