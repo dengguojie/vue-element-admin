@@ -58,6 +58,10 @@ struct CompileInfoReduce {
   int32_t core_num{-1};
   int32_t min_block_size{-1};
   int32_t coef{-1};
+  uint idx{0};
+  std::vector<int32_t> pattern_info;
+  std::vector<int32_t> ub_info_rf;
+  std::vector<int32_t> ub_info;
 };
 
 class Reduce {
@@ -69,12 +73,14 @@ class Reduce {
   ~Reduce() {
   }
   bool Init();
+  bool IsZero();
   bool DoTiling();
   bool WriteTilingData();
   bool ConstInputProcPost();
   bool FusedReduceAxis();
   bool GetCompileInfo();
   bool ChooseAtomic();
+  bool ChooseUBInfo();
 
   bool ProcessAtomicTiling();
   bool ProcessNormalTiling();
@@ -93,7 +99,6 @@ class Reduce {
 
  private:
   int32_t CalcPattern(std::vector<int64_t>& input, std::vector<int32_t>& axis);
-  int32_t GetBlockSize(std::string dtypeUB);
   int64_t GetReorderInputShapeMul(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
   int64_t GetAlignShapeMul(int32_t axis_index);
   int64_t GetShapeMul(std::vector<int64_t>& shape, int32_t axis_index);

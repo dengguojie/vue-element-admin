@@ -69,13 +69,12 @@ class ComputeGraphInfo:
         self.mid_tensor_set: Set[Tensor] = set()
         self.endpoint_output_tensor_set: Set[Tensor] = set()
         # For ReduceSch(only)
-        self.tensor_ub_size_before_reduce: Optional[int] = None
-        self.tensor_ub_size_after_reduce: Optional[int] = None
-        self.tensors_before_reduce: Optional[List[Tensor]] = []
-        self.tensors_after_reduce: Optional[List[Tensor]] = []
+        self.coexisting_quantities: Optional[Dict] = None
         self.max_type: Optional[str] = None
         self.min_type: Optional[str] = None
         self.coef: Optional[int] = None
+        self.tensors_before_reduce: Optional[List[Tensor]] = []
+        self.tensors_after_reduce: Optional[List[Tensor]] = []
         # Do info collection
         self._collect_info(output_tensors)
         self._fake_node()
@@ -288,10 +287,11 @@ class ComputeGraphInfo:
               sizeof(bNode) = coef * sizeof(sNode)
         """
         def _analysis_dependent(dependent):
-            _dict = {"_bNodeNum": [], "_sNodeNum": []}
+            _dict = {"SubGraphBeforeReduce": False, "_bNodeNum": [], "_sNodeNum": []}
             for item in dependent.keys():
                 if item in self.tensors_before_reduce:
                     _dict["_bNodeNum"].append(item.dtype)
+                    _dict["SubGraphBeforeReduce"] = True
                 elif item in self.tensors_after_reduce:
                     _dict["_sNodeNum"].append(item.dtype)
                 else:
@@ -366,6 +366,7 @@ class ComputeGraphInfo:
             else:
                 if _tensor in self.tensors_before_reduce:
                     _dict["_bNodeNum"].append(dtype)
+                    _dict["SubGraphBeforeReduce"] = True
                 else:
                     _dict["_sNodeNum"].append(dtype)
 
@@ -393,36 +394,6 @@ class ComputeGraphInfo:
             if _tensor not in dependent_map:
                 dependent_map[_tensor] = self.tensor_consumers_map[_tensor].copy()
 
-        def _get_max(_node_list, reduce_type, coefficients=1):
-            # _node is [{},{},...,{}]
-            # node belong to _sNodeNum that has space "1*DTYPE_BYTE_MAPPING[dtype]"
-            # node belong to _bNodeNum that has space "coefficients*DTYPE_BYTE_MAPPING[dtype]"
-            def _calc_value(_node):
-                value = 0
-                for item in _node.get("_sNodeNum"):
-                    value += DTYPE_BYTE_MAPPING[item]
-                for item in _node.get("_bNodeNum"):
-                    value += coefficients * DTYPE_BYTE_MAPPING[item]
-                return value
-
-            max_item = _node_list[0]
-            max_value = _calc_value(_node_list[0])
-            for item in _node_list:
-                item_value = _calc_value(item)
-                if max_value < item_value:
-                    max_value = item_value
-                    max_item = item
-                elif max_value == item_value and not item.get("_sNodeNum"):
-                    # reduce maybe init in begin of graph
-                    max_value = item_value
-                    max_item = item
-            # reduce maybe init in begin of graph
-            if not max_item.get("_sNodeNum"):
-                max_value += DTYPE_BYTE_MAPPING[reduce_type]
-                max_item["_sNodeNum"].append(reduce_type)
-
-            return max_item, max_value
-
         # [Common Reduce] Find maximum sub_graph
         self.get_all_tensors_before_reduce()
         if not operation.get_context().get("_placeholder_before_reduce") and \
@@ -442,6 +413,7 @@ class ComputeGraphInfo:
             curr_dict = _analysis_dependent(dependent_map)
             _current_compute_need_space(_out, curr_dict)
             coexisting_quantities.append(curr_dict)
+        self.coexisting_quantities = coexisting_quantities
 
         # [Common Reduce] coefficients between bNode and sNode
         self.coef = 1
@@ -449,19 +421,47 @@ class ComputeGraphInfo:
             # pure data_move
             self.coef = 1
 
-        # [Single Reduce] ReduceNode may be initialized in the begin of graph
-        reduce_tensors = list(self.reduce_tensor_set)
+    @staticmethod
+    def get_maximum_subgraph(graph_info, reduce_info, tiling_case):
+        reduce_tensors = list(graph_info.reduce_tensor_set)
+        _node_list = graph_info.coexisting_quantities
+        coefficients = graph_info.coef
+        soc_ub_size = graph_info.soc_ub_size
         reduce_type = reduce_tensors[0].dtype
-        curr_dict, total_num = _get_max(coexisting_quantities, reduce_type, coefficients=self.coef)
 
-        # [Single Reduce] Find roots of reduce
+        def _calc_value(_graph):
+            value = 0
+            for item in _graph.get("_sNodeNum"):
+                value += DTYPE_BYTE_MAPPING[item]
+            for item in _graph.get("_bNodeNum"):
+                value += coefficients * DTYPE_BYTE_MAPPING[item]
+
+            if _graph.get("SubGraphBeforeReduce"):
+                # compute_at reduce cause value++
+                if not _graph.get("_sNodeNum"):
+                    value += coefficients * DTYPE_BYTE_MAPPING[reduce_type]
+                # rfactor cause value++
+                cond0 = reduce_info.is_reduce_last_axis()
+                cond1 = reduce_info.all_axes[tiling_case.ub_split_axis_index] \
+                        in reduce_info.reduce_axes
+                if tiling_case.type.value in ["NORMAL", ] and cond0 and cond1:
+                    # ac_tensor is rf_tensor
+                    value += coefficients * DTYPE_BYTE_MAPPING[reduce_type]
+            return value
+
+        max_value = _calc_value(_node_list[0])
+        for item in _node_list:
+            item_value = _calc_value(item)
+            if max_value < item_value:
+                max_value = item_value
+
         def _r_parent(_child, _parent):
-            if not self.tensor_producers_map.get(_child):
+            if not graph_info.tensor_producers_map.get(_child):
                 # reduce_i isn't connect to input directly
-                if reduce_i not in self.tensor_consumers_map.get(_child):
+                if reduce_i not in graph_info.tensor_consumers_map.get(_child):
                     _parent.append(_child)
                 return
-            for _tensor in self.tensor_producers_map.get(_child):
+            for _tensor in graph_info.tensor_producers_map.get(_child):
                 _r_parent(_tensor, _parent)
 
         reduce_parents = []
@@ -470,16 +470,21 @@ class ComputeGraphInfo:
         reduce_parents = list(set(reduce_parents))
 
         for parent_i in reduce_parents:
-            # Reserve space for inputs' "db"
-            curr_dict["_bNodeNum"].append(parent_i.dtype)
-            total_num += DTYPE_BYTE_MAPPING[parent_i.dtype] * self.coef
+            # Reserve space for input's "db"
+            max_value += DTYPE_BYTE_MAPPING[parent_i.dtype] * coefficients
 
         # [Common Reduce] avoid bank conflict in malloc ub
-        self.soc_ub_size -= 1024
-        small_ub_size = self.soc_ub_size // total_num // 128 * 128
-        self.tensor_ub_size_before_reduce = self.coef * small_ub_size
-        self.tensor_ub_size_after_reduce = small_ub_size
-        operation.add_compile_info_inner("_zero_ub_factor", self.tensor_ub_size_after_reduce)
+        soc_ub_size -= 1024
+        small_ub_size = soc_ub_size // max_value // 128 * 128
+        tiling_case.tensor_ub_size_before_reduce = int(small_ub_size * coefficients)
+        tiling_case.tensor_ub_size_after_reduce = int(small_ub_size)
+
+        cond_rf_0 = reduce_info.is_reduce_last_axis()
+        cond_rf_1 = reduce_info.all_axes[tiling_case.ub_split_axis_index] \
+                    in reduce_info.reduce_axes
+        if tiling_case.type.value in ["NORMAL", ] and cond_rf_0 and cond_rf_1:
+            tiling_case.tensor_ub_size_before_reduce = 16384
+            tiling_case.tensor_ub_size_after_reduce = 16384
 
     @staticmethod
     def set_map_deepcopy(_map: Dict[Tensor, Set[Tensor]]) -> Dict[Tensor, Set[Tensor]]:

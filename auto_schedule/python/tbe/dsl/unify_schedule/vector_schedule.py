@@ -96,6 +96,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
             TILING_INNER = auto()
             FUSE_RESULT = auto()
             REDUCE_AXIS = auto()
+            ITER_VAR = auto()
 
         def __init__(self, _type: PlaceholderType, _key: Any):
             self.type = _type
@@ -106,7 +107,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
                     self.type == self.PlaceholderType.CACHE_WRITE_TENSOR:
                 return getattr(self.key[0], item)
             elif self.type == self.PlaceholderType.RFACTOR_TENSOR:
-                return getattr(self.key[1], item)
+                return getattr(self.key[0], item)
             else:
                 raise KeyError("%s does not exist as a valid attribute for %s Placeholder" % (item, self.type))
 
@@ -448,10 +449,13 @@ class VectorSchedule(VectorScheduleBase, ABC):
             return self._tiling_result_list[key].result
 
         def get_rfactor_result(key) -> Tensor:
-            return self._tiling_result_list[key[0]].result
+            return self._tiling_result_list[key[1]].result
 
         def get_reduce_axis(key) -> IterVar:
             return self.schedule[self.solve_placeholder(key[0])].op.reduce_axis[key[1]]
+
+        def get_iter_var(key) -> IterVar:
+            return self.schedule[self.solve_placeholder(key[0])].all_iter_vars[key[1]]
 
         solution_registry: Dict[VectorSchedule.Placeholder.PlaceholderType, Callable] = {
             VectorSchedule.Placeholder.PlaceholderType.CACHE_READ_TENSOR: get_cache_read_or_write_buffer,
@@ -461,6 +465,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
             VectorSchedule.Placeholder.PlaceholderType.FUSE_RESULT: get_fuse_result,
             VectorSchedule.Placeholder.PlaceholderType.RFACTOR_TENSOR: get_rfactor_result,
             VectorSchedule.Placeholder.PlaceholderType.REDUCE_AXIS: get_reduce_axis,
+            VectorSchedule.Placeholder.PlaceholderType.ITER_VAR: get_iter_var
         }
         return solution_registry[placeholder.type](placeholder.key)
 
@@ -606,7 +611,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
                                        VectorSchedule.TilingInfo.TilingMode.RFACTOR,
                                        rfactor_scope=scope)
         placeholder = VectorSchedule.Placeholder(VectorSchedule.Placeholder.PlaceholderType.RFACTOR_TENSOR,
-                                                 (tiling_index, source_tensor))
+                                                 (source_tensor, tiling_index))
         self.__stage_graph_manipulation(placeholder, source_tensor, True)
         if source_tensor in self.tensor_reduced_axis_indices:
             self.tensor_reduced_axis_indices[placeholder] = self.tensor_reduced_axis_indices[source_tensor]
@@ -653,7 +658,10 @@ class VectorSchedule(VectorScheduleBase, ABC):
         return False
 
     def get_itervar_by_original_index(self,
-                                      tensor: Union[Placeholder, Tensor], axis_index: int) -> IterVar:
+                                      tensor: Union[Placeholder, Tensor],
+                                      axis_index: Union[Placeholder, int]) -> IterVar:
+        if isinstance(axis_index, VectorSchedule.Placeholder):
+            return self.solve_placeholder(axis_index)
         real_tensor: Tensor = self.solve_placeholder(tensor)
         compute = operation.get_context().get_current_compute()
         if compute.get("_mode") != "zero" and tensor not in self.tensor_reduced_axis_indices:

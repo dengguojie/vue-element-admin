@@ -1001,9 +1001,9 @@ class ReduceAtomicSchedule(_VectorSchedule):
         """
         def _get_tensor_space(_tensor):
             if _tensor in self.graph_info.tensors_after_reduce:
-                _space = self.graph_info.tensor_ub_size_after_reduce
+                _space = self._tiling_case.tensor_ub_size_after_reduce
             elif _tensor in self.graph_info.tensors_before_reduce:
-                _space = self.graph_info.tensor_ub_size_before_reduce
+                _space = self._tiling_case.tensor_ub_size_before_reduce
             else:
                 raise RuntimeError("undefined tensor")
             return _space
@@ -1020,7 +1020,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
             self._schedule[tensor].set_storage_bound(_get_tensor_space(tensor))
 
         # final output must be reduce_shape
-        _bound = self.graph_info.tensor_ub_size_after_reduce
+        _bound = self._tiling_case.tensor_ub_size_after_reduce
         self._schedule[self._final_out_tensor_ub_rf].set_storage_bound(_bound)
         self._schedule[self._final_out_tensor_global].set_storage_bound(_bound)
 
@@ -1484,7 +1484,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         shape_before_reduce = self._reduce_info["shape_before_reduce_expr"]
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
-        max_ub_count = self.graph_info.tensor_ub_size_before_reduce
+        max_ub_count = self._tiling_case.tensor_ub_size_before_reduce
 
         if self._reduce_case == 2:
             reordered_shape, _, orignal_to_reorder_axis_map = \
@@ -2131,7 +2131,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         # ub_tiling_tensor must be reduce_tensor
         res_tensor = self._res_tensor
-        extra_space = self.graph_info.tensor_ub_size_before_reduce
+        extra_space = self._tiling_case.tensor_ub_size_before_reduce
 
         if self._reduce_case == 2:
             ub_split_axis = ub_tiling_result["axis"]

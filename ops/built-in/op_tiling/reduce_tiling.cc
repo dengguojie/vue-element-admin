@@ -281,23 +281,43 @@ bool Reduce::FusedReduceAxis() {
 
 bool Reduce::GetCompileInfo() {
   std::vector<int32_t> common_info;
-  std::vector<int32_t> pattern_info;
-  std::vector<int32_t> ub_info;
-
+  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
   try {
+    // GetData
     common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
-    pattern_info = op_info.at("_pattern_info").get<std::vector<int32_t>>();
-    ub_info = op_info.at("_ub_info").get<std::vector<int32_t>>();
+    compileInfo.pattern_info = op_info.at("_pattern_info").get<std::vector<int32_t>>();
+    compileInfo.ub_info_rf = op_info.at("_ub_info_rf").get<std::vector<int32_t>>();
+    compileInfo.ub_info = op_info.at("_ub_info").get<std::vector<int32_t>>();
+    compileInfo.idx = 0;
+    for (auto item: compileInfo.pattern_info) {
+      if (item == pattern) {
+        break;
+      }
+      compileInfo.idx += 1;
+    }
 
-    const int32_t common_info_size = 5;
-    V_CHECK_EQ(common_info.size(), common_info_size,
+    // CHECK VALUE
+    if (compileInfo.idx >= compileInfo.pattern_info.size()) {
+      OP_LOGE(op_type.c_str(), "pattern is %d that not in pattern_info", pattern);
+      return false;
+    }
+    V_CHECK_EQ(compileInfo.pattern_info.size(), compileInfo.ub_info.size(),
+               OP_LOGE(op_type.c_str(), "pattern_info's size should be as same as ub_info"),
+               return false);
+    V_CHECK_EQ(compileInfo.pattern_info.size(), compileInfo.ub_info_rf.size(),
+               OP_LOGE(op_type.c_str(), "pattern_info's size should be as same as ub_info_rf"),
+               return false);
+    V_CHECK_EQ(common_info.size(), 5,
                OP_LOGE(op_type.c_str(), "size of common_info should be 5"),
                return false);
+
+    // Get Data
     compileInfo.core_num = common_info[0];
     compileInfo.is_keep_dims = (bool)common_info[1];
     compileInfo.min_block_size = common_info[2];
     compileInfo.atomic = (bool)common_info[3];
     compileInfo.coef = common_info[4];
+
     // CHECK VALUE
     V_OP_TILING_CHECK(!(compileInfo.coef <= 0),
                       OP_LOGE(op_type.c_str(), "coef is %d that is illegal", compileInfo.coef),
@@ -308,28 +328,6 @@ bool Reduce::GetCompileInfo() {
     V_OP_TILING_CHECK(!(compileInfo.core_num <= 0),
                       OP_LOGE(op_type.c_str(), "core_num is %d that is illegal", compileInfo.core_num),
                       return false);
-
-    uint idx = 0;
-    for (auto item : pattern_info) {
-      if (item == pattern) {
-        break;
-      }
-      idx += 1;
-    }
-    if (idx >= pattern_info.size()) {
-      OP_LOGE(op_type.c_str(), "pattern is %d that not in pattern_info", pattern);
-      return false;
-    }
-
-    V_CHECK_EQ(pattern_info.size(), ub_info.size(),
-               OP_LOGE(op_type.c_str(), "pattern_info's size should be as same as ub_info"),
-               return false);
-    compileInfo.max_ub_count = ub_info[idx];
-    V_OP_TILING_CHECK(!(compileInfo.max_ub_count <= 0),
-                      OP_LOGE(op_type.c_str(), "max_ub_count is %d that is illegal", compileInfo.max_ub_count),
-                      return false);
-    is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
-
   } catch (const std::exception &e) {
     OP_LOGE(op_type.c_str(), "Func: GetCompileInfo error. Error message: %s", e.what());
     return false;
@@ -357,10 +355,11 @@ bool Reduce::ChooseAtomic() {
     }
   }
 
-  // block_size: would be used fTilingInfoReduceor storage align in whole graph(min dtype)
+  // UB_SPACE of ub_info is more than ub_info_rf, Atomic selected the former.
   // nodes after reduce(include reduce) have same space(ubSizeA)
   // nodes before reduce have same space(ubSizeB)
   // ubSizeB = ubSizeA * coef (max dtype)
+  compileInfo.max_ub_count = compileInfo.ub_info[compileInfo.idx];
   block_size = compileInfo.min_block_size;
   ubSizeB = compileInfo.max_ub_count;
   ubSizeA = ubSizeB / compileInfo.coef;
@@ -372,7 +371,7 @@ bool Reduce::ChooseAtomic() {
   compileInfo.atomic = total_output_count <= ubSizeB &&
                        total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
                        total_output_count < (int64_t)compileInfo.core_num * block_size / 2 &&
-                        total_reduce_count > (int64_t)compileInfo.core_num / 2;
+                       total_reduce_count > (int64_t)compileInfo.core_num / 2;
   // Layer 2 Check if it is nlast_reduce
   //         Check if it is in a0, r, a1 pattern and a0 is 0
   bool is_outermost_nlast_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
@@ -392,6 +391,24 @@ bool Reduce::ChooseAtomic() {
   compileInfo.atomic = compileInfo.atomic || (shape_limitation && is_outermost_nlast_reduce);
   // Final
   compileInfo.atomic = compileInfo.atomic && atomic_available;
+  return true;
+}
+
+bool Reduce::ChooseUBInfo() {
+  // According adaptation of SCH, choose the best UBInfo.
+  // Rfactor only attached in Normal + Last Reduce.
+  if (not compileInfo.atomic && is_last_axis_reduce) {
+    int64_t last_dim = input_shape[input_shape.size()-1];
+    int64_t real_reduce_count = total_reduce_count / last_dim;
+    last_dim = (last_dim + block_size - 1) / block_size * block_size;
+    real_reduce_count *= last_dim;
+    bool ub_split_in_r = real_reduce_count > compileInfo.max_ub_count;
+    if (ub_split_in_r) {
+      compileInfo.max_ub_count = compileInfo.ub_info_rf[compileInfo.idx];
+      ubSizeB = compileInfo.max_ub_count;
+      ubSizeA = ubSizeB / compileInfo.coef;
+    }
+  }
   return true;
 }
 
@@ -835,6 +852,25 @@ bool Reduce::Init() {
   return true;
 }
 
+bool Reduce::IsZero() {
+  for (uint32_t i = 0; i < input_shape_ori.size(); ++i) {
+    int64_t dim = input_shape_ori[i];
+    bool non_reduce_axis = std::find(reduce_axis_ori.begin(), reduce_axis_ori.end(), i) == reduce_axis_ori.end();
+
+    if (dim == 0) {
+      exit_zero_axis = true;
+      if (non_reduce_axis) {
+        exit_non_reduce_zero_axis = true;
+      }
+    } else {
+      if (non_reduce_axis) {
+        fusion_dim_value *= dim;
+      }
+    }
+  }
+  return exit_zero_axis;
+}
+
 bool Reduce::WriteTilingData() {
   if (exit_zero_axis) {
     ByteBufferPut(run_info.tiling_data, (int32_t)fusion_dim_value);
@@ -856,6 +892,8 @@ bool Reduce::WriteTilingData() {
     ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
     ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_axis);
     ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ubSizeB));
+    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ubSizeA));
     run_info.block_dim = tilingInfo.block_dim;
     return true;
   }
@@ -893,40 +931,22 @@ bool Reduce::DoTiling() {
      2. input(unknown):
         do all process
   */
-  bool ret = true;
-  ret = ret && Init();
+  bool ret = Init();
 
-  for (uint32_t i = 0; i < input_shape_ori.size(); ++i) {
-    int64_t dim = input_shape_ori[i];
-    bool non_reduce_axis = std::find(reduce_axis_ori.begin(), reduce_axis_ori.end(), i) == reduce_axis_ori.end();
-
-    if (dim == 0) {
-      exit_zero_axis = true;
-      if (non_reduce_axis) {
-        exit_non_reduce_zero_axis = true;
-      }
-    } else {
-      if (non_reduce_axis) {
-        fusion_dim_value *= dim;
-      }
-    }
-  }
-
-  if (exit_zero_axis) {
-    if (exit_non_reduce_zero_axis) {
-      zero_tiling_key = 2147483647;  // EmptySchedule
-      tilingInfo.ub_tiling_factor = 128;
-    } else {
-      try {
+  if (IsZero()) {
+    try {
+      if (exit_non_reduce_zero_axis) {
+        zero_tiling_key = 2147483647;  // EmptySchedule
+        tilingInfo.ub_tiling_factor = 128;
+      } else {
         zero_tiling_key = 10;
         tilingInfo.ub_tiling_factor = op_info.at("_zero_ub_factor").get<std::int64_t>();
-      } catch (const std::exception &e) {
-        OP_LOGE(op_type.c_str(), "get zero_ub_factor error. Error message: %s", e.what());
-        return false;
       }
+    } catch (const std::exception &e) {
+      OP_LOGE(op_type.c_str(), "get zero_ub_factor error. Error message: %s", e.what());
+      return false;
     }
-
-    return true;
+    return ret;
   }
 
   if (compileInfo.is_const) {
@@ -961,6 +981,7 @@ bool Reduce::DoTiling() {
   // common process
   ret = ret && GetCompileInfo();
   ret = ret && ChooseAtomic();
+  ret = ret && ChooseUBInfo();
 
   if (compileInfo.atomic) {
     run_info.clear_atomic = true;
