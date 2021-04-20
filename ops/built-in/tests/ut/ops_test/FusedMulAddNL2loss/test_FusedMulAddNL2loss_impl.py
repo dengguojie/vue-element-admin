@@ -34,6 +34,16 @@ case2 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "format_expect": [],
          "support_expect": True}
 
+case3 = {"params": [{"shape": (4, 4, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (1, 1, 64, 64),"ori_format": "HWCN"},
+                    {"shape": (4, 4, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (1, 1, 64, 64),"ori_format": "HWCN"},
+                    {"shape": (4, 4, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (1, 1, 64, 64),"ori_format": "HWCN"},
+                    {"shape": (4, 4, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (1, 1, 64, 64),"ori_format": "HWCN"},
+                    {"shape": (4, 4, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (1, 1, 64, 64),"ori_format": "HWCN"}],
+         "case_name": "FusedMulAddNL2loss_3",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 def test_get_op_support_info(test_arg):
     from impl.fused_mul_addn_l2_loss import get_op_support_info
     get_op_support_info({"shape": (20, 28, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (20, 28, 16, 16),"ori_format": "NCHW"},
@@ -45,6 +55,7 @@ def test_get_op_support_info(test_arg):
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend920A"], case3)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 precision_case1 = {"params": [{"shape": (2,4,4), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (2,4,4), "param_type":"input"},
