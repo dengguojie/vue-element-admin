@@ -36,7 +36,7 @@ class DynamicRNNGradFusionPass : public PatternFusionBasePass {
                                                             ge::NodePtr lstmSplitDy, ge::NodePtr lstmSplitI,
                                                              ge::NodePtr lstmSplitJ, ge::NodePtr lstmSplitF,
                                                              ge::NodePtr lstmSplitO, ge::NodePtr lstmSplitTanh,
-                                                             ge::NodePtr lstmXConcatD, ge::NodePtr lstmGageConcatD);
+                                                             ge::NodePtr lstmXConcatD, ge::NodePtr& lstmGageConcatD);
 
   vector<vector<ge::NodePtr>> AddTLoopNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
                                                                    vector<ge::NodePtr>& newNodes, bool& failStatus);
