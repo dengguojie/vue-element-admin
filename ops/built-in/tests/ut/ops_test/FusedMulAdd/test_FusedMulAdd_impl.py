@@ -45,11 +45,20 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case6 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"},
+                    {"shape": (1,1,16,16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (16,16),"ori_format": "ND"}],
+         "case_name": "FusedMulAdd_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 
 def calc_expect_func(x1, x2, x3, y):
     mul = x1['value'] * x2['value']
@@ -94,4 +103,17 @@ ut_case.add_precision_case(["Ascend310", "Ascend910"], precision_case1)
 ut_case.add_precision_case(["Ascend310", "Ascend910"], precision_case2)
 ut_case.add_precision_case(["Ascend310", "Ascend910"], precision_case3)
 ut_case.add_precision_case(["Ascend310", "Ascend910"], precision_case4)
+
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.fused_mul_add import op_select_format
+    op_select_format({"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                     {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
+                     {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
+                     {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
+                     "test_fused_mul_add_op_select_format_1")
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 

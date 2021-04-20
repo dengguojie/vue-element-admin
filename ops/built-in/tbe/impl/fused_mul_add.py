@@ -159,6 +159,38 @@ def op_select_format(input0, input1, input2, output,
                                     NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
                                     NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
 
+    elif not _division_sixteen(shape_0) and _division_sixteen(shape_1) \
+            and _division_sixteen(shape_2):
+        # ND+NZ+NZ
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float16,float16,float16,float16,\
+                                      float,float,float,float,float,\
+                                      int32,int32,int32,int32,int32",
+                                                format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+
     elif not _division_sixteen(shape_0) and not _division_sixteen(shape_1) \
             and _division_sixteen(shape_2):
         # ND+ND+NZ
@@ -243,6 +275,7 @@ def check_format(format_input0, format_input1, format_input2):
                     ["ND", "FRACTAL_NZ", "ND"],
                     ["ND", "ND", "FRACTAL_NZ"],
                     ["FRACTAL_NZ", "ND", "FRACTAL_NZ"],
+                    ["ND", "FRACTAL_NZ", "FRACTAL_NZ"],
                     ]
     if standard_format in list_pattern:
         format_pattern = list_pattern.index(standard_format) + 1
@@ -366,8 +399,8 @@ def _infer_shape_two(shape_input0, shape_input1, shape_input2, format_pattern):
     shape_input0 : FRACTAL_NZ, [N,...,A,B,16,16]
     last_two_dims : [B*16, A*16]
     """
-    # Only support format_pattern == 4
-    # Nz ND Nz
+    # support format_pattern == 4 or 5
+    # Nz ND Nz || ND NZ NZ
     last_two_dims = [shape_input0[-2]*shape_input0[-3],
                      shape_input0[-4]*shape_input0[-1]]
 
@@ -569,6 +602,10 @@ def fused_mul_add(input0, input1, input2,
     elif format_pattern == 4:
         shape_input0, shape_input1, shape_input2 = \
             _infer_shape_two(shape_input0, shape_input1,
+                             shape_input2, format_pattern)
+    elif format_pattern == 5:
+        shape_input1, shape_input0, shape_input2 = \
+            _infer_shape_two(shape_input1, shape_input0,
                              shape_input2, format_pattern)
     else:
         shape_input0, shape_input1, shape_max_mul = \
