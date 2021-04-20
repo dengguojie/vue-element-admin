@@ -1506,16 +1506,20 @@ REG_OP(Sort)
 *@par Inputs:
 * Two inputs, including:
 *@li bboxes: boxes, a 4D Tensor of type float16 with the shape (x0, x1, y0, y1),
-*@li gtboxes: boxes, a 4D Tensor of type float16 withthe shape (x0, x1, y0, y1).\n
+*@li gtboxes: boxes, a 4D Tensor of type float16 with the shape (x0, x1, y0, y1).\n
 
 *@par Attributes:
 *@li mode: A optional attribute of type string, whether judge the mode of iou. \n
 
 *@par Outputs:
-*@li overlap: A 3D Tensor of type float16 with shape (batch, max_total_size, 4). \n
+*@li overlap: A 2D Tensor of type float16 with shape [n, m]. \n
 
 *@attention Constraints:
 * Only computation of float16 data is supported.
+
+*@par Restrictions:
+*Warning:THIS FUNCTION IS DEPRECATED.Please use Iou instead.
+*Warning:THIS FUNCTION IS EXPERIMENTAL.please do not use.
 */
 REG_OP(PtIou)
     .INPUT(bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
