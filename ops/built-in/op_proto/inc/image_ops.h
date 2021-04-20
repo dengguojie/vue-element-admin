@@ -1747,6 +1747,9 @@ REG_OP(DenseImageWarpGrad)
 
 *@par Third-party framework compatibility
 *Compatible with pytorch GridSampler2D operator.
+
+*@par Restrictions:
+*Warning:THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(GridSampler2D)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))

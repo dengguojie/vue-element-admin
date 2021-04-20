@@ -1518,8 +1518,7 @@ REG_OP(Sort)
 * Only computation of float16 data is supported.
 
 *@par Restrictions:
-*Warning:THIS FUNCTION IS DEPRECATED.Please use Iou instead.
-*Warning:THIS FUNCTION IS EXPERIMENTAL.please do not use.
+*Warning:THIS FUNCTION IS DEPRECATED. Please use Iou instead.
 */
 REG_OP(PtIou)
     .INPUT(bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -1562,6 +1561,9 @@ selected indices from the boxes tensor, where M <= max_output_size. \n
 
 *@par Third-party framework compatibility
 *Compatible with onnx NonMaxSuppression operator.
+
+*@par Restrictions:
+*Warning:THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 
 REG_OP(NonMaxSuppressionV6)
