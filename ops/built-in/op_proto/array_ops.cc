@@ -348,39 +348,39 @@ IMPLEMT_INFERFUNC(ListDiff, ListDiffInfer) {
   auto y_desc = op_desc->MutableInputDesc(1);
 
   Shape unused_shape;
-  std::string err_msg;
+  std::string error_msg;
   if (WithRank(x_desc, 1, unused_shape, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
-    std::string err_msg =
+    std::string error_msg =
         GetShapeErrMsg(0, DebugString(x_desc->GetShape().GetDims()), "1D");
-    err_msg = string("failed to call WithRank function, ") + err_msg;
+    error_msg = string("failed to call WithRank function, ") + error_msg;
     return GRAPH_FAILED;
   }
 
   if (WithRank(y_desc, 1, unused_shape, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
-    std::string err_msg =
+    std::string error_msg =
         GetShapeErrMsg(1, DebugString(y_desc->GetShape().GetDims()), "1D");
-    err_msg = string("failed to call WithRank function, ") + err_msg;
+    error_msg = string("failed to call WithRank function, ") + error_msg;
     return GRAPH_FAILED;
   }
 
-  DataType out_type = x_desc->GetDataType();
-  DataType idx_type;
-  if (op.GetAttr("out_idx", idx_type) != GRAPH_SUCCESS) {
+  DataType output_type = x_desc->GetDataType();
+  DataType index_type;
+  if (op.GetAttr("out_idx", index_type) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
                                        string("failed to get attr[out_idx]."));
     return GRAPH_FAILED;
   }
 
   GeShape result({ge::UNKNOWN_DIM});
-  auto out_desc = op_desc->MutableOutputDesc(0);
-  out_desc->SetShape(GeShape(result));
-  out_desc->SetDataType(out_type);
+  auto output_desc = op_desc->MutableOutputDesc(0);
+  output_desc->SetShape(GeShape(result));
+  output_desc->SetDataType(output_type);
 
-  auto idx_desc = op_desc->MutableOutputDesc(1);
-  idx_desc->SetShape(GeShape(result));
-  idx_desc->SetDataType(idx_type);
+  auto index_desc = op_desc->MutableOutputDesc(1);
+  index_desc->SetShape(GeShape(result));
+  index_desc->SetDataType(index_type);
 
   return GRAPH_SUCCESS;
 }
@@ -468,15 +468,15 @@ IMPLEMT_INFERFUNC(ReverseSequence, ReverseSequenceInfer) {
 INFER_FUNC_REG(ReverseSequence, ReverseSequenceInfer);
 
 IMPLEMT_INFERFUNC(Const, ConstInfer) {
-  auto value = op.get_attr_value();
-  auto valDesc = value.GetTensorDesc();
-  auto dims = valDesc.GetShape().GetDims();
-  auto attrDtype = valDesc.GetDataType();
+  auto const_value = op.get_attr_value();
+  auto val_desc = const_value.GetTensorDesc();
+  auto dims = val_desc.GetShape().GetDims();
+  auto attr_dtype = val_desc.GetDataType();
 
-  TensorDesc outDesc = op.get_output_desc_y();
-  outDesc.SetDataType(ge::DataType(attrDtype));
-  outDesc.SetShape(Shape(dims));
-  (void)op.update_output_desc_y(outDesc);
+  TensorDesc out_desc = op.get_output_desc_y();
+  out_desc.SetDataType(ge::DataType(attr_dtype));
+  out_desc.SetShape(Shape(dims));
+  (void)op.update_output_desc_y(out_desc);
 
   return GRAPH_SUCCESS;
 }
@@ -484,15 +484,15 @@ IMPLEMT_INFERFUNC(Const, ConstInfer) {
 INFER_FUNC_REG(Const, ConstInfer);
 
 IMPLEMT_INFERFUNC(Constant, ConstantInfer) {
-  auto value = op.get_attr_value();
-  auto valDesc = value.GetTensorDesc();
-  auto dims = valDesc.GetShape().GetDims();
-  auto attrDtype = valDesc.GetDataType();
+  auto const_value = op.get_attr_value();
+  auto val_desc = const_value.GetTensorDesc();
+  auto dims = val_desc.GetShape().GetDims();
+  auto attr_dtype = val_desc.GetDataType();
 
-  TensorDesc outDesc = op.get_output_desc_y();
-  outDesc.SetDataType(ge::DataType(attrDtype));
-  outDesc.SetShape(Shape(dims));
-  (void)op.update_output_desc_y(outDesc);
+  TensorDesc out_desc = op.get_output_desc_y();
+  out_desc.SetDataType(ge::DataType(attr_dtype));
+  out_desc.SetShape(Shape(dims));
+  (void)op.update_output_desc_y(out_desc);
 
   return GRAPH_SUCCESS;
 }
@@ -920,7 +920,7 @@ template <typename T>
 static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTensorPtr& tenosr, int64_t& product,
                                  int& unknow_index, GeShape& output, Operator& op) {
   int64_t dim_num = tenosr->MutableTensorDesc().MutableShape().GetDim(0);
-  T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tenosr->GetData().GetData()));
+  const T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tenosr->GetData().GetData()));
   std::vector<int64_t> out_dims = output.GetDims();
   if (shape_data == nullptr) {
     GE_OP_LOGE(op.GetName().c_str(), "truth shape data is invalid");
@@ -932,6 +932,7 @@ static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTe
   (void)op.GetAttr("allowzero", allow_zero);
 
   for (int64_t i = 0; i < dim_num; i++) {
+    OP_LOGD(op.GetName().c_str(), "i: %ld, shape_data[i]: %ld.", i, shape_data[i]);
     if (shape_data[i] == -1) {
       if (unknow_index != -1) {
         string reason = "only one dim may be -1, not both dim[ " + std::to_string(unknow_index) + "] and dim[" +
@@ -948,19 +949,20 @@ static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTe
       GE_OP_LOGE(op.GetName().c_str(), "Size[%lld] must be non-negative", i);
       return GRAPH_PARAM_INVALID;
     } else {
+      auto dim = shape_data[i];
       if ((allow_zero == 0) && (shape_data[i] == 0)) {
-        shape_data[i] = x_shape[i];
+        dim = x_shape[i];
       }
-      if (shape_data[i] != 0 && product > (INT64_MAX / shape_data[i])) {
-        string reason = "Mul overflow of int64, product[" + std::to_string(product) + "] shape_data[" +
-                        std::to_string((int64_t)shape_data[i]) + "]";
+      if (dim != 0 && product > (INT64_MAX / dim)) {
+        string reason = "Mul overflow of int64, product[" + std::to_string(product) + "] dim[" +
+                        std::to_string((int64_t)dim) + "]";
         GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
-        GE_OP_LOGE(op.GetName().c_str(), "Mul overflow of int64, product[%lld] shape_data[%lld]", product,
-                   (int64_t)shape_data[i]);
+        GE_OP_LOGE(op.GetName().c_str(), "Mul overflow of int64, product[%lld] dim[%lld]", product,
+                   (int64_t)dim);
         return GRAPH_PARAM_INVALID;
       }
-      out_dims.push_back(shape_data[i]);
-      product *= shape_data[i];
+      out_dims.push_back(dim);
+      product *= dim;
     }
   }
 
