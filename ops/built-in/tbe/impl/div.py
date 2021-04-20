@@ -23,6 +23,48 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from tbe.dsl.compute.gemm_compute import batchmatmul_elem_nd2nz
+from tbe.dsl.compute.gemm_compute import batchmatmul_elem_reshape
+from tbe.dsl.compute.gemm_compute import check_batchmatmul_fuse
+
+
+def _div_compute_with_batchmatmul(input_x, input_y):
+    """
+    div compute
+    calculating data's div, res = x / y
+
+    Parameters
+    ----------
+    input_x: TVM tensor
+        the placeholder of input_x
+    input_y: TVM tensor
+        the placeholder of input_y
+    Returns
+    -------
+    res: TVM tensor
+        the result of div compute
+    """
+    if "para_name" in input_x.op.attrs:
+        para_name = input_x.op.attrs["para_name"].value
+        para_name += "_div"
+    else:
+        para_name = "div"
+    dtype = input_x.dtype
+    batch_shape = shape_util.shape_to_list(input_x.op.attrs["batch_shape"])
+    para_dict= {"format_elem": input_y.op.attrs["format"],
+                "batch_shape": batch_shape}
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
+        input_x = tbe.cast_to(input_x, "float32")
+        input_y = tbe.cast_to(input_y, "float32")
+    input_y, shape_max = batchmatmul_elem_nd2nz(input_x, input_y, para_dict, para_name)
+    input_y = tbe.broadcast(input_y, shape_max)
+    input_y = batchmatmul_elem_reshape(input_x, input_y, batch_shape, para_name)
+
+    res = tbe.vdiv(input_x, input_y)
+    res = tbe.cast_to(res, dtype)
+    res.op.attrs["batch_shape"] = batch_shape
+    res.op.attrs["para_name"] = para_name
+    return res
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
@@ -48,6 +90,13 @@ def div_compute(input_x, input_y, output_div, kernel_name="div"):
     res: TVM tensor
         the result of div compute
     """
+    batch_matmul_flag_lhs = check_batchmatmul_fuse(input_x)
+    batch_matmul_flag_rhs = check_batchmatmul_fuse(input_y)
+    if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
+        if batch_matmul_flag_rhs:
+            input_x, input_y = input_y, input_x
+        return _div_compute_with_batchmatmul(input_x, input_y)
+
     input_data1 = shape_util.shape_to_list(input_x.shape)
     input_data2 = shape_util.shape_to_list(input_y.shape)
     shape_list = shape_util.broadcast_shapes(input_data1, input_data2,

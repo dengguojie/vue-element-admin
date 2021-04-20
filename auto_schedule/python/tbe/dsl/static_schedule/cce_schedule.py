@@ -117,8 +117,7 @@ def set_op_pattern(all_tags, op_info):
     set op pattern to gemm when batchmatmul fused with fusedmuladd or reduce_sum
     """
     op_pattern = op_info["pattern"]
-    if (("broadcast_mul" in all_tags and "broadcast_add" in all_tags) or
-        "reduce_sum" in all_tags or "dropout_broadcast" in all_tags):
+    if ("reduce_sum" in all_tags or "dropout_broadcast" in all_tags or "broadcast_reshape" in all_tags):
         op_pattern = OpPatterns.GEMM_PATTERN
     return op_pattern
 

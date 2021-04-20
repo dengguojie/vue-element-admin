@@ -26,10 +26,15 @@ from topi.generic import auto_schedule
 from impl.batch_matmul import get_op_support_info
 from impl.batch_matmul import batch_matmul_compute
 from impl.confusion_transpose_d import confusion_transpose_d_compute
+from impl.add import add_compute
+from impl.relu import relu_compute
+from impl.div import div_compute
+from impl.fused_mul_add import fusion_mul_add_compute
 from te.platform.cce_conf import te_set_version
 
 from batchmatmul_fusion_case import batchmatmul_ut_fusion_case
 from test_BatchMatMul_fusion import test_batchmatmul_fusion
+
 
 ut_case = OpUT("BatchMatMul", "impl.batch_matmul", "batch_matmul")
 
@@ -144,8 +149,99 @@ def test_batchmatmul_confusion_transpose_710(test_arg):
         cce_build_code(sch, config)
     te_set_version("Ascend310")
 
+def test_batchmatmul_add(test_arg):
+    with cce():
+        x1 = tvm.placeholder((16, 20, 6, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 96, 320)}, dtype="float16")
+        x2 = tvm.placeholder((20, 20, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (320, 320)}, dtype="float16")
+        output_y = {"shape": (16, 20, 6, 16, 16), "dtype": "float16", "ori_shape": (16, 96, 320), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = batch_matmul_compute(x1, x2, None, output_y)
+
+        add_tensor = tvm.placeholder((320, ), name='tensor_add', dtype="float16", attrs={"format": "ND", "ori_shape": (320,)})
+        out = add_compute(matmul_out, add_tensor, {})
+
+        tensor_list = [x1, x2, add_tensor, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "batch_matmul_add",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+def test_batchmatmul_add_add(test_arg):
+    with cce():
+        x1 = tvm.placeholder((16, 20, 6, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 96, 320)}, dtype="float16")
+        x2 = tvm.placeholder((20, 20, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (320, 320)}, dtype="float16")
+        output_y = {"shape": (16, 20, 6, 16, 16), "dtype": "float16", "ori_shape": (16, 96, 320), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = batch_matmul_compute(x1, x2, None, output_y)
+
+        add_tensor = tvm.placeholder((320, ), name='tensor_add', dtype="float16", attrs={"format": "ND", "ori_shape": (320,)})
+        add_tensor1 = tvm.placeholder((16, 20, 6, 16, 16), name='tensor_add1', dtype="float16", attrs={"format": "FRACTAL_NZ", "ori_shape": (16, 320, 320)})
+        out = add_compute(matmul_out, add_tensor, {})
+        out = add_compute(out, add_tensor1, {})
+
+        tensor_list = [x1, x2, add_tensor, add_tensor1, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "batch_matmul_add_add",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+def test_batchmatmul_add_relu(test_arg):
+    with cce():
+        x1 = tvm.placeholder((16, 20, 6, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 96, 320)}, dtype="float16")
+        x2 = tvm.placeholder((128, 20, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (320, 2048)}, dtype="float16")
+        output_y = {"shape": (16, 128, 6, 16, 16), "dtype": "float16", "ori_shape": (16, 96, 2048), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = batch_matmul_compute(x1, x2, None, output_y)
+
+        add_tensor = tvm.placeholder((2048, ), name='tensor_add', dtype="float16", attrs={"format": "ND", "ori_shape": (2048, )})
+        out = add_compute(matmul_out, add_tensor, {})
+        out = relu_compute(out, {})
+
+        tensor_list = [x1, x2, add_tensor, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "batch_matmul_add_relu",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+def test_batchmatmul_div_fusedmuladd(test_arg):
+    with cce():
+        x1 = tvm.placeholder((16*4, 5, 6, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 4, 96, 80)}, dtype="float16")
+        x2 = tvm.placeholder((16*4, 6, 5, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 4, 80, 96)}, dtype="float16")
+        output_y = {"shape": (16*4, 6, 6, 16, 16), "dtype": "float16", "ori_shape": (16,4, 96, 96), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = batch_matmul_compute(x1, x2, None, output_y)
+
+        div_tensor = tvm.placeholder((1, 1, 1 ,1 ,1, 1), name='tensor_div', dtype="float16", attrs={"format": "ND", "ori_shape": (1,)})
+        mul_tensor = tvm.placeholder((16, 1, 6, 6 ,16, 16), name='tensor_mul', dtype="float16", attrs={"format": "FRACTAL_NZ", "ori_shape": (16, 1, 96, 96)})
+        add_tensor =  tvm.placeholder((16, 1, 6, 6 ,16, 16), name='tensor_add', dtype="float16", attrs={"format": "FRACTAL_NZ", "ori_shape": (16, 1, 96, 96)})
+        out = div_compute(matmul_out, div_tensor, {})
+        out = fusion_mul_add_compute(out, mul_tensor, add_tensor, {})
+
+        tensor_list = [x1, x2, div_tensor, mul_tensor, add_tensor, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "batch_matmul_div_fusedmuladd",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
 ut_case.add_cust_test_func(test_func=test_batchmatmul_confusion_transpose_910)
 ut_case.add_cust_test_func(test_func=test_batchmatmul_confusion_transpose_710)
+ut_case.add_cust_test_func(test_func=test_batchmatmul_add)
+ut_case.add_cust_test_func(test_func=test_batchmatmul_add_add)
+ut_case.add_cust_test_func(test_func=test_batchmatmul_add_relu)
+ut_case.add_cust_test_func(test_func=test_batchmatmul_div_fusedmuladd)
+
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

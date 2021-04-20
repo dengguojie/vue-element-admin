@@ -29,32 +29,48 @@ namespace fe {
 namespace {
 static const char PATTERN_BATCH_MATMUL[] = "batchmatmul";
 static const char PATTERN_ELEM[] = "elemwise";
+static const char PATTERN_ELEM_1[] = "elemwise1";
 }  // namespace
 
 /*
  * @brief:  define Matmul and element-wise op fusion pattern
  *
- *   Matmul + FusedMulAdd
+ *   Matmul + Elemwise + (Elemwise1)
  *
- * fusion node:  Matmul, FusedMulAdd
+ * fusion node:  Matmul, Elemwise, (Elemwise1)
  *
  * @return BufferFusionPattern: return all valid patterns.
  */
 vector<BufferFusionPattern*> TbeBatchMatmulFusedMulAddFusionPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
-  string passName = "TbeBatchMatmulFusedMulAddFusionPass";
 
+  string passName = "TbeBatchMatmulELEMPASS";
   BufferFusionPattern* pattern = new (std::nothrow) BufferFusionPattern(passName);
   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
   pattern->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM_1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({PATTERN_BATCH_MATMUL})
+      .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_ELEM}, TBE_OUTPUT_BRANCH_SINGLE, true)
+      .SetOutputs(PATTERN_ELEM, {PATTERN_ELEM_1}, TBE_OUTPUT_BRANCH_SINGLE, true)
+      .SetOutputs(PATTERN_ELEM_1, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
+  patterns.push_back(pattern);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName.c_str());
+
+  string passName1 = "TbeBatchMatmulELEMPASS";
+  BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(passName1);
+  FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName1.c_str());
+  // define pattern rules
+  pattern1->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_BATCH_MATMUL})
       .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_ELEM}, TBE_OUTPUT_BRANCH_SINGLE, true)
       .SetOutputs(PATTERN_ELEM, {}, TBE_OUTPUT_BRANCH_SINGLE, true);
-  patterns.push_back(pattern);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName.c_str());
+  patterns.push_back(pattern1);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName1.c_str());
 
   return patterns;
 }
@@ -68,10 +84,6 @@ Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMap
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
                     return SUCCESS);
 
-  auto inputs = elemNode[0]->GetOpDesc()->GetAllInputsDesc();
-  FUSION_PASS_CHECK(inputs.size() != 3,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
-                    return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
 
   // buffer fusion do not support dynamic shape now

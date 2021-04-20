@@ -23,6 +23,9 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 from impl.util import util_common
+from tbe.dsl.compute.gemm_compute import batchmatmul_elem_nd2nz
+from tbe.dsl.compute.gemm_compute import batchmatmul_elem_reshape
+from tbe.dsl.compute.gemm_compute import check_batchmatmul_fuse
 
 # constant, value is 16
 SIZE_SIXTEEN = 16
@@ -524,6 +527,38 @@ def _infer_shape(format_pattern, x, y):
     return shape_x, shape_y
 
 
+def _add_compute_with_batchmatmul(lhs_tensor, rhs_tensor):
+    """
+    calculating data's add, c = a + b
+
+    Parameters
+    ----------
+    lhs_tensor: TVM tensor
+        the placeholder of first input data
+    rhs_tensor: TVM tensor
+        the placeholder of second input data
+    Returns
+    -------
+    res : output of the lhs_tensor + rhs_tensor
+    """
+    if "para_name" in lhs_tensor.op.attrs:
+        para_name = lhs_tensor.op.attrs["para_name"].value
+        para_name += "_add"
+    else:
+        para_name = "add"
+    batch_shape = shape_util.shape_to_list(lhs_tensor.op.attrs["batch_shape"])
+    para_dict= {"format_elem": rhs_tensor.op.attrs["format"],
+                "batch_shape": batch_shape}
+    rhs_tensor, shape_max = batchmatmul_elem_nd2nz(lhs_tensor, rhs_tensor, para_dict, para_name)
+    rhs_tensor = tbe.broadcast(rhs_tensor, shape_max)
+    rhs_tensor = batchmatmul_elem_reshape(lhs_tensor, rhs_tensor, batch_shape, para_name)
+    res = tbe.vadd(lhs_tensor, rhs_tensor)
+    res.op.attrs["batch_shape"] = batch_shape
+    res.op.attrs["para_name"] = para_name
+
+    return res
+
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("add")
 def add_compute(input_x, input_y, output_z, kernel_name="add"):
@@ -545,6 +580,13 @@ def add_compute(input_x, input_y, output_z, kernel_name="add"):
     -------
     res : output of the data's add
     """
+    batch_matmul_flag_lhs = check_batchmatmul_fuse(input_x)
+    batch_matmul_flag_rhs = check_batchmatmul_fuse(input_y)
+    if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
+        if batch_matmul_flag_rhs:
+            input_x, input_y = input_y, input_x
+        return _add_compute_with_batchmatmul(input_x, input_y)
+
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)
 

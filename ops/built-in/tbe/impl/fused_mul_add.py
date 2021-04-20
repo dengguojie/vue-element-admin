@@ -23,15 +23,12 @@ from te.utils import shape_util
 from te.utils import para_check
 from impl.util import util_select_op_base
 from tbe.dsl import broadcast
-from tbe.dsl.compute.gemm_compute import batchmatmul_fusedmuladd_reshape_nd2nz
-from tbe.dsl.compute.gemm_compute import batchmatmul_fusedmuladd_reshape
+from tbe.dsl.compute.gemm_compute import batchmatmul_elem_nd2nz
+from tbe.dsl.compute.gemm_compute import batchmatmul_elem_reshape
+from tbe.dsl.compute.gemm_compute import check_batchmatmul_fuse
 
 SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
 SIZE_SIXTEEN = 16
-BATCH_MATMUL_LENGTH = 5
-BATCH_LENGTH_1 = 1
-BATCH_LENGTH_2 = 2
-BATCH_LENGTH_3 = 3
 
 # pylint: disable=locally-disabled,unused-variable,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,too-many-statements
@@ -491,7 +488,7 @@ def fusion_mul_add_compute(data_input0, data_input1, data_input2,
     output: TVM tensor
          the output tensor of add
     kernel_name : str
-        kernel name, default value is "fuesd_mul_add"
+        kernel name, default value is "fused_mul_add"
 
     Returns
     -------
@@ -499,23 +496,33 @@ def fusion_mul_add_compute(data_input0, data_input1, data_input2,
     """
     shape_0 = shape_util.shape_to_list(data_input0.shape)
     shape_1 = shape_util.shape_to_list(data_input1.shape)
-    batch_matmul_flag_lhs = ("matmul" in data_input0.op.tag) \
-                            and data_input0.op.attrs["format"] == "FRACTAL_NZ" \
-                            and len(shape_0) == BATCH_MATMUL_LENGTH
-    batch_matmul_flag_rhs = ("matmul" in data_input1.op.tag) \
-                            and data_input1.op.attrs["format"] == "FRACTAL_NZ" \
-                            and len(shape_1) == BATCH_MATMUL_LENGTH
+    batch_matmul_flag_lhs = check_batchmatmul_fuse(data_input0)
+    batch_matmul_flag_rhs = check_batchmatmul_fuse(data_input1)
+
     if batch_matmul_flag_rhs:
         data_input0, data_input1 = data_input1, data_input0
+    if "para_name" in data_input0.op.attrs:
+        para_name = data_input0.op.attrs["para_name"].value
+        para_name += "_muladd"
+    else:
+        para_name = "muladd"
+    batch_shape = shape_util.shape_to_list(data_input0.op.attrs["batch_shape"])
+    para_dict_1= {"format_elem":data_input1.op.attrs["format"],
+                  "batch_shape": batch_shape}
+    para_dict_2= {"format_elem":data_input2.op.attrs["format"],
+                  "batch_shape": batch_shape}
 
     if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
-        data_input1, data_input2, shape_max, batch_shape = batchmatmul_fusedmuladd_reshape_nd2nz(
-            data_input0, data_input1, data_input2)
+        data_input1, shape_max = batchmatmul_elem_nd2nz(data_input0, data_input1, para_dict_1, para_name + "1")
+        data_input2, _ = batchmatmul_elem_nd2nz(data_input0, data_input2, para_dict_2, para_name + "2")
         data_input1 = broadcast(data_input1, shape_max)
         data_input2 = broadcast(data_input2, shape_max)
-        data_input1, data_input2 = batchmatmul_fusedmuladd_reshape(data_input0, data_input1, data_input2, batch_shape)
+        data_input1 = batchmatmul_elem_reshape(data_input0, data_input1, batch_shape, para_name + "1")
+        data_input2 = batchmatmul_elem_reshape(data_input0, data_input2, batch_shape, para_name + "2")
         mul_result = tbe.vmul(data_input0, data_input1)
         res = tbe.vadd(mul_result, data_input2)
+        res.op.attrs["batch_shape"] = batch_shape
+        res.op.attrs["para_name"] = para_name
     else:
         res = fused_mul_add_compute(data_input0, data_input1, data_input2, output, kernel_name)
 
