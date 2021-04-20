@@ -698,9 +698,6 @@ REG_OP(DynamicGRU)
 *@li reset:Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li new:Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li hidden_new:Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-
-*@par Restrictions:
-*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(DynamicGRUV2)
     .INPUT(x, TensorType({DT_FLOAT16}))
@@ -1002,22 +999,15 @@ REG_OP(CommonLSTM)
 
 * @par Attributes:
 * @li activation_alpha: Optional scaling values used by some activation functions.  \n
-
 * @li activation_beta: Optional scaling values used by some activation functions.  \n
-
 * @li activations: A list of 2 (or 4 if bidirectional) activation functions for update, reset, and hidden gates.  \n
-
 * @li clip: Cell clip threshold. \n
-
 * @li direction: Specify if the RNN is forward, reverse, or bidirectional. \n
-
 * @li hidden_size: Number of neurons in the hidden layer. \n
-
 * @li linear_before_reset: When computing the output of the hidden gate, apply the linear transformation before multiplying by the output of the reset gate. \n
 
 * @par Outputs:
 * @li y: A Tensor that concats all the intermediate output values of the hidden(float16,float32). The format must be FRACTAL_NZ
-
 * @li y_h: The last output value of the hidden(float16,float32). The format must be FRACTAL_NZ
 */
 REG_OP(CommonGRU)
