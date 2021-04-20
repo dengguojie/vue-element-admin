@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import numpy as np
+from impl.util.platform_adapter import tbe_context
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 
@@ -64,10 +65,22 @@ def test_op_check_cpu_false(test_arg):
     if by_dynamic_static_union_version(input_x, 1) == True:
         raise Exception("lhisi not support, should return False")
 
+def test_op_check_supported_not_in_white_list_but_fuzzily_build(test_arg):
+    from impl.dynamic.transpose import check_supported
+    import tbe
+    input_x = {'ori_shape': (1234, 4321), 'shape': (1234, 4321), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (2,), 'shape': (2,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (4321, 1234), 'shape': (4321, 1234), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    with tbe.common.context.op_context.OpContext("transpose_ut"):
+        tbe_context.get_context().set_build_type("fuzzily_build")
+        if check_supported(input_x, perm, output_y) == False:
+            raise Exception("fuzzily build, should return True")
+
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_return_false)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_return_true)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_dtype_not_in_white_list_return_true)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_but_fuzzily_build)
 
 
 ut_case.add_precision_case("Ascend910A",
@@ -193,4 +206,3 @@ ut_case.add_precision_case("Ascend910A",
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
     ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-#    ut_case.run("Ascend910A")

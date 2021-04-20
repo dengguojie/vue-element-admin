@@ -100,6 +100,11 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     if _by_dynamic_static_union_version(x_shape, CORE_NUM):
         return True
 
+    if tbe_context.get_context():
+        if hasattr(tbe_context.get_context(), "get_build_type"):
+            if tbe_context.get_context().get_build_type() == "fuzzily_build":
+                return True
+
     return False
 
 

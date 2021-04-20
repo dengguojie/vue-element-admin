@@ -57,7 +57,7 @@ static int64_t CalcVnchwconvPartialUbSize(int64_t coreNum, int64_t ubBlocks) {
     if (coreNum > 2 && ubBlocks == 8192) {
         return 3952; // 910, UB : 256KB
     }
-    else if (coreNum == 2 && ubBlocks == 8192) {
+    else if (coreNum == 2 && ubBlocks == 7936) {
         return 3696; // 310, UB : 248KB
     }
     else if (coreNum == 1 && ubBlocks == 6144) {
