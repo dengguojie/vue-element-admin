@@ -29,6 +29,7 @@ from tbe.dsl.base.operation import get_context
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import tuple_sum
 
 
 SCALAR_ONE = 1
@@ -57,7 +58,7 @@ def _check_format_nd(data_format, origin_foramt):
             error_manager_vector.raise_err_specific_reson("bn_training_update_grad", error_reson)
 
 
-@register_operator_compute("bn_training_update_grad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BNTrainingUpdateGrad", op_mode="dynamic", support_fusion=False)
 def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
                                     diff_scale, diff_offset, epsilon,
                                     kernel_name="bn_training_update_grad"):
@@ -120,13 +121,12 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
 
     scale_mul = tbe.vmul(grads, x_norm)
 
-    diff_scale = tbe.reduce_sum(scale_mul, axis, True)
-    diff_offset = tbe.reduce_sum(grads, axis, True)
+    [diff_scale, diff_offset] = tuple_sum([scale_mul, grads], axis, True)
 
     res_list = [diff_scale, diff_offset]
     return res_list
 
-@register_operator("BNTrainingUpdateGrad", pattern=Pattern.BN_TRAINING_UPDATE_GRAD)
+@register_operator("BNTrainingUpdateGrad", "BNTrainingUpdateGrad")
 def bn_training_update_grad(grads, x, batch_mean, batch_variance,
                             diff_scale, diff_offset, epsilon=0.0001,
                             kernel_name="bn_training_update_grad"):

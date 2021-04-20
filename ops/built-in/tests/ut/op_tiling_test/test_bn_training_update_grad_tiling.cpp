@@ -7,7 +7,7 @@
 
 using namespace std;
 
-class BNTrainingUpdateGradDTiling : public testing::Test {
+class BNTrainingUpdateGradTiling : public testing::Test {
  protected:
   static void SetUpTestCase() {
     std::cout << "BNTrainingUpdateGradTiling SetUp" << std::endl;
@@ -31,20 +31,26 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-TEST_F(BNTrainingUpdateGradDTiling, BNTrainingUpdateGradDTiling1) {
+TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling1) {
     using namespace optiling;
     std::string op_name = "BNTrainingUpdateGrad";
     auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
     ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-    std::string compileInfo = R"({"_pattern": "bn_update_grad", 
-                                  "common_info": [32, 1, 8, 0], 
+    std::string compileInfo = R"({"_pattern": "BNTrainingUpdateGrad", 
+                                  "common_info": [32, 1, 8, 1], 
                                   "pattern_info": [134], 
-                                  "max_ub_count": 13107,
-                                  "_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]},
-                                  "_normal_vars": {"1013400": []},
-                                  "_attr_vars": {"1013400": []},
-                                  "_custom_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]}})";
+                                  "max_ub_count": 9216,
+                                  "_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"], 
+                                  "1213400":["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "13400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                  "213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]},
+                                  "_normal_vars": {"1013400": [], "1213400": [], "13400": [], "213400": []},
+                                  "_attr_vars": {"1013400": [], "1213400": [], "13400": [], "213400": []},
+                                  "_custom_vars": {"1013400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                                   "1213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                                   "13400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"],
+                                                   "213400": ["dim_0_0", "dim_0_1", "dim_0_2", "dim_0_3", "block_factor", "ub_factor"]}})";
 
     std::vector<int64_t> inputA{32, 64, 7, 7, 16};
     std::vector<int64_t> inputB{32, 64, 7, 7, 16};
@@ -112,8 +118,8 @@ TEST_F(BNTrainingUpdateGradDTiling, BNTrainingUpdateGradDTiling1) {
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 32);
-    EXPECT_EQ(runInfo.tiling_key, 1013400);
-    EXPECT_EQ(to_string(runInfo.tiling_data), "32 64 7 7 2 16 ");
+    EXPECT_EQ(runInfo.tiling_key, 213400);
+    EXPECT_EQ(to_string(runInfo.tiling_data), "32 64 7 7 2 7 ");
     
 
 }

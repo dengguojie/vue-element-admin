@@ -48,17 +48,18 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
     tilingInfo.ub_tiling_axis = -1;
     tilingInfo.ub_tiling_factor = -1;
 
-    int32_t ub_split_axis = 0;
+    int32_t ub_split_axis = 2;
     int32_t ub_split_inner = 1;
 
     int32_t block_factor = c1 / core_num;
     int32_t block_dim = core_num;
 
-    for(int32_t i = n; i > 0; i--) {
-        if (n%i != 0) {
+    for(int32_t i = h; i > 0; i--) {
+        if (h%i != 0) {
             continue;
         }
-        if ((i*h*w*c0) > max_ub_count) {
+
+        if ((i*w*c0) > max_ub_count) {
             continue;
         }
 
@@ -67,7 +68,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
     }
 
     tilingInfo.block_dim = block_dim;
-    tilingInfo.block_tiling_axis = 1;
+    tilingInfo.block_tiling_axis = 0;
     tilingInfo.block_tiling_factor = block_factor;
     tilingInfo.ub_tiling_axis = ub_split_axis;
     tilingInfo.ub_tiling_factor = ub_split_inner;

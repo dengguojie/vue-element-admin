@@ -551,7 +551,7 @@ def _calc_tiling_key(bn_training_update_grad_info, tiling):
 
     tiling.tiling_key = tiling_key
 
-@register_tiling_case(pattern=Pattern.BN_TRAINING_UPDATE_GRAD)
+@register_tiling_case("BNTrainingUpdateGrad")
 def calc_tiling_case(outs, options=None):
     [options].clear()
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
@@ -640,7 +640,7 @@ def _calculate_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTrainingUp
         original_axis = reorder_to_original_axis_map[i]
         if original_axis not in reduce_axis_index:
             block_split_axis = original_axis
-            if block_split_axis != 1:
+            if block_split_axis not in (0, 1):
                 continue
             
             for j in range(0, len(reordered_shape)):
@@ -648,7 +648,7 @@ def _calculate_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTrainingUp
                 if original_axis not in reduce_axis_index and j < i:
                     continue 
                 ub_split_axis = reorder_to_original_axis_map[j]
-                if ub_split_axis != 0:
+                if ub_split_axis not in (0, 2):
                     continue
                 tiling_case = BNTrainingUpdateGradTilingCase()
                 tiling_case.block_split_axis_index = block_split_axis
@@ -670,7 +670,7 @@ def _calculate_atomic_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTra
         original_axis = reorder_to_original_axis_map[i]
         if original_axis in reduce_axis_index:
             block_split_axis = original_axis
-            if block_split_axis != 1:
+            if block_split_axis not in (0, 1):
                 continue
             
             for j in range(0, len(reordered_shape)):
@@ -678,7 +678,7 @@ def _calculate_atomic_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTra
                 if original_axis in reduce_axis_index and j < i:
                     continue 
                 ub_split_axis = reorder_to_original_axis_map[j]
-                if ub_split_axis != 0:
+                if ub_split_axis not in (0, 2):
                     continue
                 tiling_case = BNTrainingUpdateGradTilingCase()
                 tiling_case.is_atomic = True
