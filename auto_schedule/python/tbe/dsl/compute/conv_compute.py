@@ -19,7 +19,6 @@ conv2d DSL interface.
 """
 from __future__ import division
 import math
-from te.platform import get_L1_info
 from topi.cce import util
 from topi.cce.util import check_load3d_w_out_1_support
 from tbe import tvm
@@ -2222,6 +2221,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     if (in_dtype, w_dtype) == ("int8", "int8"):
         res_dtype = "int32"
     #====================fetch L1fusion information from pass interface=============
+    from te.platform import get_L1_info
     l1_fusion_enable_flag = get_L1_info("L1_fusion_enabled")
     l2_fusion_enable_flag = get_L1_info("L2_fusion_enabled") and get_L1_info("L2_mode") == 1
     lxfusion_enable_flag = l1_fusion_enable_flag or l2_fusion_enable_flag
