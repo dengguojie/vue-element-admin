@@ -30,7 +30,7 @@ using NodeProto = ge::onnx::NodeProto;
 struct AvgPoolAttr {
   std::string auto_pad = "NOTSET";
   int64_t ceil_mode = 0;
-  int64_t count_include_pad = 0;
+  int64_t count_include_pad = 0; // 0 indicates not include pad
   std::vector<int64_t> kernel_shape;
   std::vector<int64_t> pads;
   std::vector<int64_t> strides;
@@ -40,7 +40,7 @@ struct AvgTbeAttr {
   bool trans_2d = false;
   std::string padding_mode = "NOTSET";
   int64_t ceil_mode = 0;
-  int64_t exclusive = 0;
+  int64_t exclusive = 0; // 0 indicates not include pad
   std::vector<int64_t> ksize;
   std::vector<int64_t> pads;
   std::vector<int64_t> strides;
@@ -246,7 +246,7 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
                                   .set_attr_padding_mode(tbe_attr.padding_mode)
                                   .set_attr_pads(tbe_attr.pads)
                                   .set_attr_ceil_mode(tbe_attr.ceil_mode != 0)
-                                  .set_attr_exclusive(tbe_attr.exclusive != 0)
+                                  .set_attr_exclusive(tbe_attr.exclusive != 1) // True indicates not include pad
                                   .set_attr_data_format("NCHW");
       if (tbe_attr.trans_2d) {
         ge::Operator::OpListInt axis = {3};
@@ -263,7 +263,7 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
                          .set_attr_ksize(tbe_attr.ksize)
                          .set_attr_strides(tbe_attr.strides)
                          .set_attr_pads(tbe_attr.pads)
-                         .set_attr_count_include_pad(tbe_attr.exclusive != 0)
+                         .set_attr_count_include_pad(tbe_attr.exclusive != 0) // False indicates not include pad
                          .set_attr_ceil_mode(tbe_attr.ceil_mode)
                          .set_attr_data_format("NCDHW");
     if (AvgUpdateFormat(avgpool3d, ge::FORMAT_NCDHW) != SUCCESS) {
