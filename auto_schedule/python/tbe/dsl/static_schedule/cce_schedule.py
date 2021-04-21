@@ -27,13 +27,11 @@ import warnings
 from functools import reduce as functools_reduce
 
 from tbe import tvm
-from te import platform as cceconf
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform import scope_cbuf_fusion
 from tbe.common.buildcfg import get_L1_info
 from tbe.common.utils import log
 from tbe.common.platform.platform_info import get_soc_spec
-from te.platform import conv_buffer_ex
 from te.platform.cce_conf import get_kernel_meta_dir
 from te.platform.fusion_manager import fusion_manager
 from tbe.dsl.compute.conv_compute import ConvParam  # pylint: disable=C0412
@@ -1363,6 +1361,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
         """
         update build config
         """
+        from te import platform as cceconf
         config = cceconf.cce_build.build_config
         fusion_config_map = config_map.get("fusion_build_config", {})
         build_map = {}
@@ -1408,11 +1407,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
         device = "cce"
 
         with local_build_config:
-            if conv_buffer_ex.offsetPad:
-                tvm.build(sch, tensor_list, device, name=name,
-                          binds=conv_buffer_ex.offsetPad)
-            else:
-                tvm.build(sch, tensor_list, device, name=name)
+            tvm.build(sch, tensor_list, device, name=name)
 
     if config_map is None:
         config_map = {}
