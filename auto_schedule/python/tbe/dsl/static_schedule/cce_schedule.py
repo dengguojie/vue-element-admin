@@ -1191,7 +1191,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             need_tensorize=True, need_pragma=True)
         cce_conv2d_backprop_filter_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.CUBE_LAYER_NORM:
-        cce_cube_layer_norm_op = CceLayerNormCubeOp(cceconf.scope_ubuf)
+        cce_cube_layer_norm_op = CceLayerNormCubeOp(scope_ubuf)
         cce_cube_layer_norm_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.MATMUL_PATTERN:
         mmad_schedule(outs, sch_list)  # pylint: disable=W0631
