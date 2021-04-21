@@ -123,6 +123,7 @@ set(_optiling_files
   embedding_dense_grad.cc
   one_hot.cc
   maxpoolwithargmaxv1.cc
+  maxpoolgradwithargmaxv1.cc
   bounding_box_decode.cc
   iou.cc
   layer_norm.cc
