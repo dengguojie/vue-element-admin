@@ -119,7 +119,6 @@ class BroadcastSchedule(Schedule):
         self._tiling_strategy = self._tiling_case.tiling_strategy
         self._enable_db = self._tiling_case.enable_db
         self._is_one_dim = self._tiling_case.is_one_dim
-        self._redundant_coe = self._tiling_case.redundant_coe
         self._mode = operation.get_context().get("_mode")
 
         self._scope = "local.UB"
@@ -954,7 +953,6 @@ class BroadcastSchedule(Schedule):
             coexisting_quantities.append(_current_space)
 
         self._coexisting_quantity = max(coexisting_quantities)
-        self._coexisting_quantity += self._redundant_coe
 
         if self._coexisting_quantity == 1:
             self._tmp_ub_size += BLOCK_SIZE_BYTE

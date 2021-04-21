@@ -100,9 +100,6 @@ class BroadcastComputation(Computation):
         else:
             tiling_case = self._calc_original_tiling_case(dim_len, dtype)
 
-        redundant_coe = self._get_option_v(self.option, "redundant_coe", 0)
-        for case in tiling_case:
-            case.redundant_coe = redundant_coe
         return tiling_case
 
     def get_sub_pattern(self):
@@ -119,10 +116,6 @@ class BroadcastComputation(Computation):
     @classmethod
     def get_supported_soc(cls):
         return [DEFAULT]
-
-    def _get_option_v(self, option, k, default_v=None):
-        # type: (Optional[Dict[str, Any]], str, Any) -> Any
-        return option.get(k, default_v) if option else default_v
 
     def _default_db_func(self, db_params=None):
         return False
@@ -349,7 +342,6 @@ class BroadcastTilingCase:
         self._block_split_axis = None
         self._ub_split_axis = None
         self._ub_factor_bound = None
-        self._redundant_coe = None
         self._enable_db: Optional[bool] = False
         self._is_one_dim: Optional[bool] = False
 
@@ -394,10 +386,6 @@ class BroadcastTilingCase:
         return self._is_one_dim
 
     @property
-    def redundant_coe(self):
-        return self._redundant_coe
-
-    @property
     def block_split_axis(self):
         return self._block_split_axis
 
@@ -412,7 +400,3 @@ class BroadcastTilingCase:
     @property
     def ub_factor_bound(self):
         return self._ub_factor_bound
-
-    @redundant_coe.setter
-    def redundant_coe(self, redundant_coe):
-        self._redundant_coe = redundant_coe

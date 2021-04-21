@@ -160,6 +160,33 @@ TERNARY_INSNS = [
     "elewise_binary_scalar_axpy",
 ]
 
+# dst can not reuse src by insn realize
+DST_SRC_NO_REUSE_SET = {
+    # complex insns
+    "elewise_binary_vcmpv_gt",
+    "elewise_binary_vcmpv_ge",
+    "elewise_binary_vcmpv_lt",
+    "elewise_binary_vcmpv_le",
+    "elewise_binary_vcmpv_eq",
+    "elewise_binary_vcmpv_ne",
+    "elewise_multiple_sel",
+    "elewise_binary_cmpsel_gt",
+    "elewise_binary_cmpsel_ge",
+    "elewise_binary_cmpsel_lt",
+    "elewise_binary_cmpsel_le",
+    "elewise_binary_cmpsel_eq",
+    "elewise_binary_cmpsel_ne",
+
+    # cast insns
+    "elewise_single_cast",
+    "elewise_single_ceil",
+    "elewise_single_floor",
+    "elewise_single_trunc",
+    "elewise_single_round",
+    "elewise_single_round_d",
+}
+
+
 # support scalar insn
 # example: tensor - scalar
 SUPPORT_SCALAR_INSNS = [

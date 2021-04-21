@@ -33,6 +33,7 @@ from .constants import FAKE_NODE_TAG
 from .constants import INSN_MAPPING
 from .constants import Pattern
 from .constants import SUPPORT_SCALAR_INSNS
+from .constants import DST_SRC_NO_REUSE_SET
 from .constants import TERNARY_INSNS
 from .elewise_tilingcase import TilingStrategy
 from .schedule import Schedule
@@ -91,7 +92,6 @@ class ElewiseSchedule(Schedule):
         self._tiling_strategy = self._tiling_case.get("tiling_strategy")
         self._is_db = self._tiling_case.get("is_need_db", False)
         self._is_one_dim = self._tiling_case.get("is_one_dim", False)
-        self._redundant_coe = self._tiling_case.get("redundant_coe", 0)
         self._mode = operation.get_context().get("_mode")
 
         self._scope = "local.UB"
@@ -145,7 +145,6 @@ class ElewiseSchedule(Schedule):
         self._inner_shape = []
 
         self._mem_reuse_map = {}
-        self._data_reuse_map = {}
 
         self._emit_insn_map = {}
 
@@ -560,10 +559,6 @@ class ElewiseSchedule(Schedule):
         for _a, _b in self._mem_reuse_map.items():
             for b_i in _b:
                 sch[_a].reused_by(b_i)
-        for _a, _b in self._data_reuse_map.items():
-            for b_i in _b:
-                sch[_a].reused_by(b_i)
-                sch[b_i].reused_by(reuse_data=True)
 
     def _calc_storage_bound(self):
 
@@ -577,36 +572,58 @@ class ElewiseSchedule(Schedule):
             if util.is_vcmpsel_insn(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))
 
-        def _calc_current_space(_tensor):
+        def _dst_can_not_reuse_src(_tensor):
+
+            # get tensor insn
+            _tensor_insn = util.get_dsl_insn(_tensor)
+
+            # place hold tensor need one in ub
+            is_place_hold = util.is_placeholder(_tensor)
+
+            # check by insn if dst can reuse src
+            dst_no_reuse_src_insn = _tensor_insn in DST_SRC_NO_REUSE_SET
+
+            # check by dependent_map if dst can reuse src
+            _tensor_inputs = _tensor.op.input_tensors
+            dependent_keys = dependent_map.keys()
+            # if inputs(src) are all in dependent after refresh dependent, dst can not reuse inputs
+            dst_no_src_dependent = set(_tensor_inputs).issubset(set(dependent_keys))
+
+            return is_place_hold or dst_no_reuse_src_insn or dst_no_src_dependent
+
+        def _calc_current_coexist_node(_tensor):
             # one of the input of the ternary instruction must be reused with the output
-            if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in init_map:
-                _current_space = len(dependent_map)
-            else:
-                _current_space = len(dependent_map) + 1
+            _current_coexist_node = len(dependent_map)
+
+            _refresh_dependent(_tensor)
+
+            # check if all src be used later
+            if _dst_can_not_reuse_src(_tensor):
+                _current_coexist_node += 1
+
+            # correct ub size in broadcast absorb
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE
-            return _current_space
-
-        def _r_coexisting(_tensor):
-            if _tensor in dependent_map and _tensor not in init_map:
-                return len(dependent_map)
-            _need_space = []
-            for _tensor_i in _tensor.op.input_tensors:
-                _need_space.append(_r_coexisting(_tensor_i))
-
-            _current_space = _calc_current_space(_tensor)
 
             # correct ub size in vcmp or vsel or vcmpsel
             _correct_ub_size_by_cmp_sel(_tensor)
 
-            _need_space.append(_current_space)
-            _refresh_dependent(_tensor)
+            return _current_coexist_node
+
+        def _r_coexisting(_tensor):
+            if _tensor in dependent_map:
+                return len(dependent_map)
+            _need_coexist_node = []
+            for _tensor_i in _tensor.op.input_tensors:
+                _need_coexist_node.append(_r_coexisting(_tensor_i))
+
+            _current_coexist_node = _calc_current_coexist_node(_tensor)
+
+            _need_coexist_node.append(_current_coexist_node)
+
             if _tensor not in dependent_map:
-                if _tensor in init_map:
-                    init_map.remove(_tensor)
-                else:
-                    dependent_map[_tensor] = self._in_out_map[_tensor].copy()
-            return max(_need_space)
+                dependent_map[_tensor] = self._in_out_map[_tensor].copy()
+            return max(_need_coexist_node)
 
         def _refresh_dependent(_tensor):
             for _tensor_i in _tensor.op.input_tensors:
@@ -627,29 +644,21 @@ class ElewiseSchedule(Schedule):
 
         coexisting_quantities = []
         dependent_map = {}
-        init_map = set()
         for tensor_i in self._out.op.input_tensors:
             coexisting_quantities.append(_r_coexisting(tensor_i))
         if not self._out.op.tag == FAKE_NODE_TAG:
-            if util.get_dsl_insn(self._out) in TERNARY_INSNS:
-                current_space = len(dependent_map)
-            else:
-                current_space = len(dependent_map) + 1
-
-            # correct ub size in vcmp or vsel or vcmpsel
-            _correct_ub_size_by_cmp_sel(self._out)
-
-            if util.need_temp_space(self._out) or _need_external_space(self._out):
-                self._tmp_ub_size += BLOCK_SIZE_BYTE
-            if util.need_extent_node(self._out):
-                current_space += 1
-            coexisting_quantities.append(current_space)
+            # last node cal current node
+            current_coexist_node = _calc_current_coexist_node(self._out)
+            coexisting_quantities.append(current_coexist_node)
 
         self._coexisting_quantity = max(coexisting_quantities)
-        self._coexisting_quantity += self._redundant_coe
 
         if self._coexisting_quantity == 1:
             self._tmp_ub_size += BLOCK_SIZE_BYTE
+
+        # in order to improve performance, add one node
+        if len(self._input_tensors) >= 2:
+            self._coexisting_quantity += 1
 
     def _do_storage_bound(self):
 

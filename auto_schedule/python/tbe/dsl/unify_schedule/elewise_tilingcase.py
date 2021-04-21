@@ -57,7 +57,6 @@ class ElewiseComputation(Computation):
 
     def do_tiling_case(self):
         mode = operation.get_context().get("_mode")
-        redundant_coe = self._get_option_v("redundant_coe", 0)
 
         def calc_base_key():
             if mode == SPECIAL:
@@ -74,8 +73,6 @@ class ElewiseComputation(Computation):
         base_key = calc_base_key()
         if mode in (CONST, EMPTY) or operation.get_context().get_mode() == STATIC:
             cases = self._const_tiling(base_key)
-            for case in cases:
-                case["redundant_coe"] = redundant_coe
             return cases
 
         # db handle
@@ -85,9 +82,6 @@ class ElewiseComputation(Computation):
 
         outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
         cases = self._calc_elewise(outs, base_key, enable_db_func)
-
-        for case in cases:
-            case["redundant_coe"] = redundant_coe
 
         return cases
 
@@ -105,10 +99,6 @@ class ElewiseComputation(Computation):
     @classmethod
     def get_supported_soc(cls):
         return [DEFAULT]
-
-    def _get_option_v(self, k, default_v=None):
-        # type: (str, Any) -> Any
-        return self.option.get(k, default_v) if self.option else default_v
 
     def _default_db_func(self, db_params=None):
         return False
@@ -190,6 +180,8 @@ def _pre_build(schedules_list):
 
     # add build config
     operation.add_build_arg("double_buffer_non_reuse", True)
+    # close double calculation switch
+    operation.add_build_arg("enable_vector_2x", False)
 
     only_const_tiling = False
     support_broadcast = operation.get_context().get("_support_broadcast")
