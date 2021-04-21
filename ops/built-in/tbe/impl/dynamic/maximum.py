@@ -24,6 +24,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from te.utils.error_manager import error_manager_vector
 
+
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 
@@ -56,10 +57,18 @@ def maximum_compute(x1, x2, y, kernel_name="maximum"):
                                                  param_name_input1="x1",
                                                  param_name_input2="x2")
 
+    dtype = x1.dtype
+    if dtype in ("int8", "uint8"):
+        x1 = tbe.cast_to(x1, "float16")
+        x2 = tbe.cast_to(x2, "float16")
+
     data1 = tbe.broadcast(x1, shape_max)
     data2 = tbe.broadcast(x2, shape_max)
 
     res = tbe.vmax(data1, data2)
+
+    if dtype in ("int8", "uint8"):
+        res = tbe.cast_to(res, dtype)
 
     return res
 
@@ -88,7 +97,7 @@ def maximum(x1, x2, y, kernel_name="maximum"):
     """
 
     # check input tensor data dtype
-    check_list = ["float16", "float32", "int32"]
+    check_list = ["float16", "float32", "int32", "int8", "uint8"]
     dtype_x1 = x1.get("dtype").lower()
     dtype_x2 = x2.get("dtype").lower()
     para_check.check_dtype(dtype_x1, check_list, param_name="x1")

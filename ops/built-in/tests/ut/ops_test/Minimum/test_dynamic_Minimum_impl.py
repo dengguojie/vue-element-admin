@@ -18,9 +18,16 @@ def gen_dynamic_minimum_case(shape_x, shape_y, range_x, range_y, dtype_val,
         "support_expect": True}
 
 
-ut_case.add_case("all",
-                 gen_dynamic_minimum_case((1,), (-1,), ((1, 1),), ((2, 16),),
+ut_case.add_case("all", gen_dynamic_minimum_case((1,), (-1,), ((1, 1),), ((2, 16),),
                                           "float16", "dynamic_minimum_fp16_ND",
+                                          "success"))
+
+ut_case.add_case("all", gen_dynamic_minimum_case((1,), (-1,), ((1, 1),), ((2, 16),),
+                                          "int8", "dynamic_minimum_fp16_ND",
+                                          "success"))
+
+ut_case.add_case("all", gen_dynamic_minimum_case((1,), (-1,), ((1, 1),), ((2, 16),),
+                                          "uint8", "dynamic_minimum_fp16_ND",
                                           "success"))
 
 if __name__ == '__main__':
