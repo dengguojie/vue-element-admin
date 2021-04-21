@@ -53,8 +53,11 @@ OPTIONAL_ST_GOLDEN_OUTPUT = './msopst/golden/base_case/' \
                             'golden_output/optional_input'
 ST_GOLDEN_OP_CASE_JSON_INPUT = './msopst/golden/base_case/input' \
                                '/Pooling_case_20210225145706.json'
-ST_GOLDEN_ACL_PROJECT_OUTPUT = './msopst/golden/base_case' \
-                               '/golden_output/gen_optional_acl_prj/Pooling'
+ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC = './msopst/golden/base_case/golden_output' \
+                                   '/gen_optional_acl_prj/Pooling/src'
+ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN = './msopst/golden/base_case/golden_output' \
+                                   '/gen_optional_acl_prj/Pooling/run/out'\
+                                   '/test_data/config/'
 MSOPST_CONF_INI = './msopst/golden/base_case/input/msopst.ini'
 
 # dynamic shape
@@ -534,8 +537,12 @@ class TestUtilsMethods(unittest.TestCase):
                         'op_test_frame.st.interface.utils'
                         '.check_path_valid'):
                     msopst.main()
+        op_output_src = os.path.join(ST_OUTPUT, 'src')
+        op_output_run = os.path.join(ST_OUTPUT, 'run/out/test_data/config/')
         self.assertTrue(test_utils.check_file_context(
-            ST_OUTPUT, ST_GOLDEN_ACL_PROJECT_OUTPUT))
+            op_output_src, ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC))
+        self.assertTrue(test_utils.check_file_context(
+            op_output_run, ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN))
 
     # ------------------------parse aicpu head file----------------
     def test_create_cmd_for_aicpu_parse_head_file(self):
@@ -579,9 +586,13 @@ class TestUtilsMethods(unittest.TestCase):
                         'op_test_frame.st.interface.utils'
                         '.check_path_valid'):
                     msopst.main()
-        pooling_output = os.path.join(ST_OUTPUT, 'Pooling')
+        pooling_output_src = os.path.join(ST_OUTPUT, 'Pooling/src')
+        pooling_output_json = os.path.join(ST_OUTPUT,
+                                           'Pooling/run/out/test_data/config/')
         self.assertTrue(test_utils.check_file_context(
-            pooling_output, ST_GOLDEN_ACL_PROJECT_OUTPUT))
+            pooling_output_src, ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC))
+        self.assertTrue(test_utils.check_file_context(
+            pooling_output_json, ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN))
 
     # ------------------------dynamic_shape--------------------
     def test_gen_dynamic_shape_src_code(self):
