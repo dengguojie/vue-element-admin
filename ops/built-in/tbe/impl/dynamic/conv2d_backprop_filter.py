@@ -249,6 +249,9 @@ def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw):
 
     fmap_n, fmap_c, fmap_h, fmap_w = fmap_nchw
     dedy_n, dedy_c, dedy_h, dedy_w = dedy_nchw
+    if fmap_n * dedy_n < 0:
+        fmap_n = fmap_n if fmap_n > 0 else dedy_n
+        dedy_n = fmap_n
     if fmap_n != dedy_n:
         error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter", "Fmap's N",
                                                   "Dedy's N")
@@ -483,6 +486,8 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     def _check_axis_hw(fmap_h, fmap_w, dedy_h, dedy_w):
         _check_equal(dedy_c, filter_n, "Dedy's C", "Filter's N")
         _check_equal(fmap_c, filter_c * groups, "Fmap's C", "Filter's C")
+        if fmap_w * dedy_w < 0 and fmap_w == DYNAMIC_FLAG:
+            dedy_w = DYNAMIC_FLAG
         calculated_dedy_w = _ceil(fmap_w, stride_w)
         if pad_left != -1 and pad_right != -1 and fmap_w != DYNAMIC_FLAG:
             if filter_w_dilation > upper_fmap_w_padding:
@@ -492,11 +497,13 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
             calculated_dedy_w = ((fmap_w - filter_w_dilation + int(pad_left) + int(pad_right)) //
                                 stride_w) + 1
         if dedy_w == DYNAMIC_FLAG:
-            dedy_w = calculated_dedy_w
+            dedy_w = calculated_dedy_w if fmap_w != DYNAMIC_FLAG else dedy_w
         elif calculated_dedy_w != dedy_w:
             error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter",
                 calculated_dedy_w, dedy_w)
 
+        if fmap_h * dedy_h < 0 and fmap_h == DYNAMIC_FLAG:
+            dedy_h = DYNAMIC_FLAG
         calculated_dedy_h = _ceil(fmap_h, stride_h)
         if pad_up != -1 and pad_down != -1 and fmap_h != DYNAMIC_FLAG:
             if filter_h_dilation > upper_fmap_h_padding:
@@ -505,11 +512,11 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
                     "the corresponding dim of input(after padding)")
             calculated_dedy_h = ((fmap_h - filter_h_dilation + int(pad_up) + int(pad_down)) //
                                 stride_h) + 1
-            if dedy_h == DYNAMIC_FLAG:
-                dedy_h = calculated_dedy_h
-            elif calculated_dedy_h != dedy_h:
-                error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter",
-                    calculated_dedy_h, dedy_h)
+        if dedy_h == DYNAMIC_FLAG:
+            dedy_h = calculated_dedy_h if fmap_h != DYNAMIC_FLAG else dedy_h
+        elif calculated_dedy_h != dedy_h:
+            error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter",
+                calculated_dedy_h, dedy_h)
         return dedy_h, dedy_w
 
     dedy_h, dedy_w = _check_axis_hw(fmap_h, fmap_w, dedy_h, dedy_w)
