@@ -479,13 +479,6 @@ class ComputeGraphInfo:
         tiling_case.tensor_ub_size_before_reduce = int(small_ub_size * coefficients)
         tiling_case.tensor_ub_size_after_reduce = int(small_ub_size)
 
-        cond_rf_0 = reduce_info.is_reduce_last_axis()
-        cond_rf_1 = reduce_info.all_axes[tiling_case.ub_split_axis_index] \
-                    in reduce_info.reduce_axes
-        if tiling_case.type.value in ["NORMAL", ] and cond_rf_0 and cond_rf_1:
-            tiling_case.tensor_ub_size_before_reduce = 16384
-            tiling_case.tensor_ub_size_after_reduce = 16384
-
     @staticmethod
     def set_map_deepcopy(_map: Dict[Tensor, Set[Tensor]]) -> Dict[Tensor, Set[Tensor]]:
         return dict((key, _map[key].copy()) for key in _map)
