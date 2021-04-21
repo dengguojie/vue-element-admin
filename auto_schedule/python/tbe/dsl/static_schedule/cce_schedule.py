@@ -1338,10 +1338,6 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
             for i, element in enumerate(workspace_list):
                 total_size[i] = total_size[i] * get_data_width(element.dtype)
 
-            if not os.path.exists("kernel_meta"):
-                os.mkdir("kernel_meta")
-                os.chmod("kernel_meta",
-                         stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
             addr_type_list = []
             for tensor_w in workspace_list:
                 if sch[tensor_w].scope == scope_cbuf_fusion:
