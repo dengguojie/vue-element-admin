@@ -36,6 +36,7 @@ set(local_host_kernels_src_files
     kernels/host/format_transfer/register_format_transfer.cc
     kernels/host/format_transfer/format_transfer_utils.cc
     kernels/host/format_transfer/format_transfer_fractal_nz.cc
+    kernels/host/format_transfer/format_transfer_hwcn_fractal_zn_lstm.cc
 )
 set(local_device_kernels_src_files
     kernels/device/where.cc
