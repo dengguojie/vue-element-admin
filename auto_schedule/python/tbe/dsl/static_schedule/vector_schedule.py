@@ -926,7 +926,7 @@ class VectorSchedule(object):
             "elewise_binary_cmpsel": "vector_cmpsel",
             "elewise_single_VS_cond": "elewise_single_VS_cond",
             "elewise_binary_logic": "elewise_binary_logic",
-            "broadcast": "broadcast",
+            "broadcast": "vector_broadcast",
             "elewise_single_round": "vector_conv_rint",
             "elewise_single_rec": "vector_rec",
             "elewise_binary_sub": "vector_sub",
