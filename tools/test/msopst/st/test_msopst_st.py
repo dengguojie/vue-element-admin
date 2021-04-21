@@ -22,6 +22,7 @@ from op_test_frame.st.interface.op_st_case_info import OpSTCaseTrace
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
 from op_test_frame.st.interface import ms_op_generator
 from util import test_utils
+import test_pytorch_model_parser
 
 sys.path.append(os.path.dirname(__file__) + "/../../")
 
@@ -42,8 +43,14 @@ ST_GOLDEN_OP_RESULT_TXT = './msopst/golden/base_case/input' \
                           '/result.txt'
 
 # AICPU_PARSE_HEAD_FILE OUTPUT
-AICPU_PROJECT_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
+BUCKETIZE_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
                           '/cpukernel/op_info_cfg/aicpu_kernel/bucketize.ini'
+TOPK_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
+                          '/cpukernel/op_info_cfg/aicpu_kernel/top_k.ini'
+LESS_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
+                          '/cpukernel/op_info_cfg/aicpu_kernel/less.ini'
+CAST_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
+                          '/cpukernel/op_info_cfg/aicpu_kernel/cast.ini'
 AICPU_CASE_JSON_GOLDEN_OUTPUT = './msopst/golden/base_case/golden_output' \
                                 '/aicpu/json'
 
@@ -122,7 +129,7 @@ class TestUtilsMethods(unittest.TestCase):
         """
         test_utils.clear_out_path(ST_OUTPUT)
 
-        args = ['msopst', 'create', '-i', INI_INPUT,
+        args = ['msopst', 'create', '-i', CAST_INI_INPUT,
                 '-out', ST_OUTPUT]
         with pytest.raises(SystemExit) as error:
             with mock.patch('sys.argv', args):
@@ -173,7 +180,7 @@ class TestUtilsMethods(unittest.TestCase):
                  'output_shape': [[1, 1, 5, 5]],
                  'attr': [
                      {'name': 'T', 'type': 'type', 'value': ' DT_FLOAT'}]}]
-        args = ['msopst', 'create', '-i', AICPU_PROJECT_INI_INPUT,
+        args = ['msopst', 'create', '-i', BUCKETIZE_INI_INPUT,
                 '-out', ST_OUTPUT, '-m', MODEL_ARGS]
         with pytest.raises(SystemExit) as error:
             with mock.patch('sys.argv', args):
@@ -551,13 +558,41 @@ class TestUtilsMethods(unittest.TestCase):
         """
         test_utils.clear_out_path(ST_OUTPUT)
 
-        args = ['msopst', 'create', '-i', AICPU_PROJECT_INI_INPUT,
+        args = ['msopst', 'create', '-i', BUCKETIZE_INI_INPUT,
                 '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
                 msopst.main()
         self.assertTrue(test_utils.check_file_context(
             ST_OUTPUT, AICPU_CASE_JSON_GOLDEN_OUTPUT))
+
+    def test_create_cmd_for_aicpu_parse_head_file_with_attr(self):
+        """
+        test create cmd of aicpu support parse head file to create case.json
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+
+        args = ['msopst', 'create', '-i', TOPK_INI_INPUT,
+                '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit) as error:
+            with mock.patch('sys.argv', args):
+                msopst.main()
+        self.assertEqual(
+            error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+
+    def test_create_cmd_for_aicpu_from_ini_file(self):
+        """
+        test create cmd of aicpu support parse head file to create case.json
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+
+        args = ['msopst', 'create', '-i', LESS_INI_INPUT,
+                '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit) as error:
+            with mock.patch('sys.argv', args):
+                msopst.main()
+        self.assertEqual(
+            error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
 
     # ------------------------paramType is optional---------------
     def test_create_cmd_form_with_optional_ini(self):
