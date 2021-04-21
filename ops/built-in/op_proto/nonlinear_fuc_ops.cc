@@ -584,27 +584,25 @@ COMMON_INFER_FUNC_REG(Mish, MishInferShape);
 // ------------Mish Op End----------------
 
 // ----------------HardtanhGrad Begin-------------------
-IMPLEMT_VERIFIER(HardtanhGrad, HardtanhGradVerify) {
-  DataType input_type_x = op.GetInputDesc("result").GetDataType();
-  DataType input_type_y = op.GetInputDesc("grad").GetDataType();
-  if (input_type_x != input_type_y) {
+IMPLEMT_INFERFUNC(HardtanhGrad, HardtanhGradInferShape) {
+  auto tensor_result = op.GetInputDesc("result");
+  auto result_type = tensor_result.GetDataType();
+  auto tensor_grad = op.GetInputDesc("grad");
+  auto grad_type = tensor_grad.GetDataType();
+
+  if (result_type != grad_type) {
+    OP_LOGE(op.GetName().c_str(), "result'dtype is not same as grad'dtype.");
     return GRAPH_FAILED;
   }
-  return GRAPH_SUCCESS;
+
+  if (OneInOneOutDynamicInfer(op, "result", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+
+  OP_LOGE(op.GetName().c_str(), "shape of y is not same as shape of result.");
+  return GRAPH_FAILED;
 }
-
-IMPLEMT_COMMON_INFERFUNC(HardtanhGradInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-
-  auto tensor_desc = op.GetInputDesc("result");
-  auto tensor_shape = tensor_desc.GetShape();
-  output_desc.SetShape(tensor_shape);
-
-  (void)op.UpdateOutputDesc("y", output_desc);
-  return GRAPH_SUCCESS;
-}
-COMMON_INFER_FUNC_REG(HardtanhGrad, HardtanhGradInferShape);
-VERIFY_FUNC_REG(HardtanhGrad, HardtanhGradVerify);
+INFER_FUNC_REG(HardtanhGrad, HardtanhGradInferShape);
 // ----------------HardtanhGrad END---------------------
 
 // ----------------SoftplusV2 Begin-------------------
