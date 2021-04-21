@@ -112,7 +112,7 @@ Status MatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionMappin
   fusion_nodes = GetMatchedNodes(mapping);
 
   // buffer fusion do not support dynamic shape now
-  for (const auto& matmul_node : matmul_nodes){
+  for (const auto& matmul_node : matmul_nodes) {
     vector<int64_t> input0_dims = matmul_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
     vector<int64_t> input1_dims = matmul_node->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
     vector<int64_t> all_dims;
@@ -125,6 +125,10 @@ Status MatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionMappin
         return SUCCESS;
       }
     }
+  }
+
+  for (auto& matmul_node : matmul_nodes) {
+    ge::AttrUtils::SetStr(matmul_node->GetOpDesc(), UB_FUSION_OP_TYPE, "DropOutDoMaskV3D");
   }
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do MatmulDropOutDoMaskV3DFusion!");
