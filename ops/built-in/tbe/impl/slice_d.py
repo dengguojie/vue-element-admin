@@ -36,6 +36,7 @@ from impl.util import util_select_op_base
 from impl.util import util_common
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.strided_slice_d import make_perf_params
+from impl.strided_slice_d import strided_slice_d
 
 
 BURST_LEN = 65535
@@ -7462,6 +7463,11 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
 
+    ori_x = x
+    ori_y = y
+    ori_begin = list(begin)
+    ori_size = list(size)
+
     if input_format in ("NDC1HWC0", "NC1HWC0", "FRACTAL_NZ", "FRACTAL_Z", "FRACTAL_Z_3D"):
         x = util_common.update_shape_base_other_format(x)
         shape = x.get("shape")
@@ -7915,6 +7921,10 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
             sch = tvm.create_schedule(res.op)
             with build_config:
                 tvm.build(sch, tensor_list, "cce", name=kernel_name)
+        elif input_format in ("NDC1HWC0", "NHWC", "NCHW", "ND"):
+            strides = [1] * len(ori_begin)
+            end_new = _get_end(ori_x.get("ori_shape"), ori_begin, ori_size)
+            strided_slice_d(ori_x, ori_y, ori_begin, end_new, strides, 0, 0, 0, 0, 0, kernel_name)
         else:
             strides = [1] * len(begin_new)
             end_new = list(map(lambda x, y: x + y, begin_new, size_new))

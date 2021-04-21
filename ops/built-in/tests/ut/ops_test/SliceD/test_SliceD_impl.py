@@ -125,7 +125,7 @@ case10 = {
 case11 = {"params": [
     {"shape": (65536, 31748), "dtype": "int64", "format": "NCHW", "ori_shape": (65536, 31748), "ori_format": "NCHW"},
     # x
-    {"shape": (0, 0), "dtype": "int64", "format": "NCHW", "ori_shape": (0, 0), "ori_format": "NCHW"},
+    {"shape": (65536, 31748), "dtype": "int64", "format": "NCHW", "ori_shape": (65536, 31748), "ori_format": "NCHW"},
     (0, 0), (65536, 31748),
 ],
     "case_name": "SliceD_11",
@@ -154,7 +154,7 @@ case13 = {"params": [
     "expect": "success",
     "support_expect": True}
 
-# TODO fix me, this comment, run failed
+
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
 ut_case.add_case("Ascend910A", case3)
@@ -208,15 +208,16 @@ ut_case.add_precision_case("Ascend910A", {"params": [
                                           "calc_expect_func": calc_expect_func,
                                           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                           })
+
 ut_case.add_precision_case("Ascend910A", {"params": [
     {"shape": (65, 75), "dtype": "float32", "format": "NCHW", "ori_shape": (65, 75), "ori_format": "NCHW",
      "param_type": "input"},
     {"shape": (15, 33), "dtype": "float32", "format": "NCHW", "ori_shape": (15, 33), "ori_format": "NCHW",
      "param_type": "output"},
     (13, 25), (15, 33)],
-                                          "calc_expect_func": calc_expect_func,
-                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                          })
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
 
 
 def test_op_select_format(test_arg):

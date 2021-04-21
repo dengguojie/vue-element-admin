@@ -1127,9 +1127,7 @@ def strided_slice_d(input_x,
     input_format = input_x.get("format")
     input_ori_format = input_x.get("ori_format")
     input_dtype = input_x.get("dtype").lower()
-    check_list = ("float16", "float32", "int32", "uint8", "bool", "int8")
 
-    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     para_check.check_shape(input_shape, param_name="input_x")
 
     begin = list(begin)
