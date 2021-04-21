@@ -2237,17 +2237,21 @@ IMPLEMT_COMMON_INFERFUNC(OneHotDInferShape) {
   }
 
   ge::Shape indices_shape = op.GetInputDesc(0).GetShape();
-  int32_t dim_num = 0;
-  dim_num = indices_shape.GetDimNum();
+  int32_t dim_nums = 0;
+  dim_nums = indices_shape.GetDimNum();
   int32_t axis = -1;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     OpsGetAttrErrReport(op.GetName(), "axis");
     OP_LOGE("Get const axis failed from op of 'OneHotD'!\n");
     return GRAPH_FAILED;
   }
-  if (axis < -dim_num || axis > dim_num) {
-    OpsInputShapeDimErrReport(op.GetName(), "axis", ConcatString(dim_num), ConcatString(-dim_num), ConcatString(axis));
+  if (axis < -dim_nums || axis > dim_nums) {
+    OpsInputShapeDimErrReport(op.GetName(), "axis", ConcatString(dim_nums), ConcatString(-dim_nums), ConcatString(axis));
     OP_LOGE(op.GetName().c_str(), "attr axis is not in range");
+    return GRAPH_FAILED;
+  }
+  if (axis < -1) {
+    OP_LOGE(op.GetName().c_str(), "attr axis must be >= -1");
     return GRAPH_FAILED;
   }
 
@@ -2267,6 +2271,10 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     std::string err_msg = GetInputInvalidErrMsg("Get const axis failed from op of 'OneHot'!\n");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (axis < -1) {
+    OP_LOGE(op.GetName().c_str(), "attr axis must be >= -1");
     return GRAPH_FAILED;
   }
 
