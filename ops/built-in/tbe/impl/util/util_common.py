@@ -494,3 +494,55 @@ def uint8_int8_overflow_proc(x, x_dtype):
         x = tbe.vadds(x, neg_int8_mod_val)
     x = tbe.cast_to(x, x_dtype)
     return x
+
+
+def floor_div_scalar(input_num, align_factor):
+    """
+    floor_div_scalar
+
+    Parameters
+    ----------
+    input_num: Scalar or Int
+    align_factor: Scalar or Int(must be > 0)
+
+    Returns
+    -------
+    result
+    """
+    return input_num // align_factor
+
+
+def ceil_div_scalar(input_num, align_factor):
+    """
+    ceil_div_scalar
+
+    Parameters
+    ----------
+    input_num: Scalar or Int
+    align_factor: Scalar or Int(must be > 0)
+
+    Returns
+    -------
+    result
+    """
+    return (input_num + align_factor - 1) // align_factor
+
+
+def div_align_scalar(input_num, align_factor, div_mode="ceil"):
+    """
+    div_align_scalar
+
+    Parameters
+    ----------
+    input_num: Scalar or Int
+    align_factor: Scalar or Int(must be > 0)
+    div_mode: str, div mode, when ceil, ceil div to  align
+
+    Returns
+    -------
+    result
+    """
+    if div_mode == "ceil":
+        return ceil_div_scalar(input_num, align_factor) * align_factor
+
+    return floor_div_scalar(input_num, align_factor) * align_factor

@@ -64,6 +64,9 @@ struct ResizeV2TilingParams {
   int64_t is_split_axi_reverse;
   int64_t split_part_num;
   int64_t split_dim;
+  // add for performance
+  int64_t inner_real_dims;
+  int64_t outer_real_dims;
 };
 
 struct ReverseV2CompileParams {
@@ -141,6 +144,7 @@ static void PrintVectorValues(const std::string& op_type, const std::string& pri
 }
 
 void SetRuningParams(const ResizeV2TilingParams& tiling_params, OpRunInfo& run_info) {
+  ByteBufferPut(run_info.tiling_data, tiling_params.tiling_key);
   ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_0);
   ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_1);
   ByteBufferPut(run_info.tiling_data, tiling_params.inner_shape_2);
@@ -172,10 +176,12 @@ void SetRuningParams(const ResizeV2TilingParams& tiling_params, OpRunInfo& run_i
   ByteBufferPut(run_info.tiling_data, tiling_params.is_split_axi_reverse);
   ByteBufferPut(run_info.tiling_data, tiling_params.split_part_num);
   ByteBufferPut(run_info.tiling_data, tiling_params.split_dim);
-  ByteBufferPut(run_info.tiling_data, tiling_params.tiling_key);
+  ByteBufferPut(run_info.tiling_data, tiling_params.inner_real_dims);
+  ByteBufferPut(run_info.tiling_data, tiling_params.outer_real_dims);
 }
 
 void PrintTilingParams(const ResizeV2TilingParams& tiling_params, const std::string& op_type) {
+  OP_LOGD(op_type, "tiling_data, tiling_key = %d.", tiling_params.tiling_key);
   OP_LOGD(op_type, "tiling_data, tiling_params.inner_shape_0 = %d.", tiling_params.inner_shape_0);
   OP_LOGD(op_type, "tiling_data, tiling_params.inner_shape_1 = %d.", tiling_params.inner_shape_1);
   OP_LOGD(op_type, "tiling_data, tiling_params.inner_shape_2 = %d.", tiling_params.inner_shape_2);
@@ -207,7 +213,8 @@ void PrintTilingParams(const ResizeV2TilingParams& tiling_params, const std::str
   OP_LOGD(op_type, "tiling_data, tiling_params.is_split_axi_reverse = %d.", tiling_params.is_split_axi_reverse);
   OP_LOGD(op_type, "tiling_data, tiling_params.split_part_num = %d.", tiling_params.split_part_num);
   OP_LOGD(op_type, "tiling_data, tiling_params.split_dim = %d.", tiling_params.split_dim);
-  OP_LOGD(op_type, "tiling_data, tiling_key = %d.", tiling_params.tiling_key);
+  OP_LOGD(op_type, "tiling_data, tiling_params.inner_real_dims = %d.", tiling_params.inner_real_dims);
+  OP_LOGD(op_type, "tiling_data, tiling_params.outer_real_dims = %d.", tiling_params.outer_real_dims);
 }
 
 bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
@@ -241,7 +248,9 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
     OP_LOGE(compile_params.op_type, "Get axis values failed");
     return false;
   }
-
+  if (input_shape.empty()) {
+    input_shape.push_back(1);
+  }
   for (size_t i = 0; i < axis_vec.size(); ++i) {
     if (axis_vec[i] < 0) {
       axis_vec[i] = axis_vec[i] + static_cast<int64_t>(input_shape.size());
@@ -275,6 +284,10 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
       modified_axis.push_back(status_vec[i]);
     }
   }
+  if (modified_input.empty() || modified_axis.empty()) {
+    modified_input.push_back(1);
+    modified_axis.push_back(1);
+  }
 
   std::vector<int64_t> merged_shape;
   std::vector<int64_t> merged_axis;
@@ -304,6 +317,13 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
       }
     }
   }
+  if (merged_shape.empty() || merged_axis.empty()) {
+    merged_shape = modified_input;
+    merged_axis = modified_axis;
+  }
+  OP_LOGD(compile_params.op_type, "before split the fisrt dim base on core num");
+  PrintVectorValues(op_type, "merged_shape", merged_shape);
+  PrintVectorValues(op_type, "merged_axis", merged_shape);
   // split dim base on aicore num
   if (merged_shape.size() < 7 && merged_shape.size() > 0) {
     int64_t split_dim = 1;
@@ -325,6 +345,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   int64_t max_len = compile_params.max_elements;
   int64_t max_len_for_last_large_size = compile_params.max_elements_last_large_size;
   ResizeV2TilingParams tiling_params;
+  OP_LOGD(compile_params.op_type, "after split the fisrt dim base on core num");
   PrintVectorValues(op_type, "merged_shape", merged_shape);
   PrintVectorValues(op_type, "merged_axis", merged_axis);
   // charge tiling_key base on last dim size
@@ -358,6 +379,8 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   int64_t count = 0;
   int64_t inner_real_count = 0;
   int64_t inner_first_dim = 0;
+  int64_t mid_inner_loop = 1;
+  int64_t last_align_size = 1;
   for (int64_t i = static_cast<int64_t>(merged_shape.size()) - 1; i >= 0; --i) {
     if (count == 0) {
       inner_real_count = merged_shape[i];
@@ -367,7 +390,13 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
           count = (merged_shape[i] + vnhwc_block_num - 1) / vnhwc_block_num * vnhwc_block_num;
         }
       }
+      last_align_size = count;
       continue;
+    }
+    if ((mid_inner_loop + vnhwc_block_num - 1) / vnhwc_block_num * vnhwc_block_num * last_align_size > max_len
+        && tiling_params.tiling_key == 4) {
+      inner_first_dim = i + 1;
+      break;
     }
     if (count > max_len) {
       inner_first_dim = i + 1;
@@ -377,6 +406,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
       inner_first_dim = 1;
       break;
     }
+    mid_inner_loop = mid_inner_loop * merged_shape[i];
     count = count * merged_shape[i];
     inner_real_count = inner_real_count * merged_shape[i];
   }
@@ -389,28 +419,46 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   int64_t inner_fill_num = 7 - (static_cast<int64_t>(merged_shape.size()) - inner_first_dim);
   int64_t outer_fill_num = 7 - inner_first_dim;
 
+  int64_t inner_real_dims = 0;
   for (int64_t i = 0; i < 7; ++i) {
     if (i < inner_fill_num) {
       inner_shape.push_back(1);
       inner_axis.push_back(0);
     } else {
+      inner_real_dims = inner_real_dims + 1;
       inner_shape.push_back(merged_shape[i - inner_fill_num + inner_first_dim]);
       inner_axis.push_back(merged_axis[i - inner_fill_num + inner_first_dim]);
     }
   }
+  PrintVectorValues(op_type, "inner_shape", inner_shape);
+  PrintVectorValues(op_type, "inner_axis", inner_axis);
+  // modify the inner_shape
+  if (inner_axis[6] == inner_axis[5] && (tiling_params.tiling_key == 4 || tiling_params.tiling_key == 5)) {
+    inner_fill_num = inner_fill_num - 1;
+    inner_axis[4] = inner_axis[5];
+    inner_axis[5] = 0;
+    inner_shape[4] = inner_shape[5];
+    inner_shape[5] = 1;
+    inner_real_dims = inner_real_dims + 1;
+  }
 
+  int64_t outer_real_dims = 0;
   for (int64_t i = 0; i < 7; ++i) {
     if (i < outer_fill_num) {
       outer_shape.push_back(1);
       outer_axis.push_back(0);
     } else {
+      outer_real_dims = outer_real_dims + 1;
       outer_shape.push_back(merged_shape[i - outer_fill_num]);
       outer_axis.push_back(merged_axis[i - outer_fill_num]);
     }
   }
-  PrintVectorValues(op_type, "merged_shape", merged_shape);
-  PrintVectorValues(op_type, "merged_axis", merged_axis);
-
+  PrintVectorValues(op_type, "inner_shape", inner_shape);
+  PrintVectorValues(op_type, "inner_axis", inner_axis);
+  OP_LOGD(compile_params.op_type, "the inner_real_dims = %d", inner_real_dims);
+  OP_LOGD(compile_params.op_type, "the outer_real_dims = %d", outer_real_dims);
+  tiling_params.inner_real_dims = inner_real_dims;
+  tiling_params.outer_real_dims = outer_real_dims;
   tiling_params.inner_shape_0 = inner_shape[0];
   tiling_params.inner_shape_1 = inner_shape[1];
   tiling_params.inner_shape_2 = inner_shape[2];
@@ -444,6 +492,10 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   tiling_params.split_dim = inner_shape[inner_fill_num];
   if (tiling_params.split_part_num > tiling_params.split_dim) {
     tiling_params.split_part_num = tiling_params.split_dim;
+  }
+
+  if (tiling_params.inner_shape_6 == 1) {
+    tiling_params.tiling_key = 0;
   }
 
   SetRuningParams(tiling_params, run_info);
