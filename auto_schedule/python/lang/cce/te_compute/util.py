@@ -19,7 +19,6 @@ util
 from decorator import decorator
 from functools import wraps
 from te import tvm
-from te.lang.base import operation_impl as operation
 from te.platform import intrinsic_check_support
 from te.platform.cce_conf import VERSION_CLOUD
 from te.platform.cce_conf import VERSION_MINI
@@ -938,6 +937,7 @@ def check_input_tensor_shape(tensor_shape):
     """
     check_tensor_shape
     """
+    from tbe.dsl.base import operation
     shape = tensor_shape
     if isinstance(tensor_shape, tvm.tensor.Tensor):
         shape = shape_util.shape_to_list(tensor_shape.shape)
@@ -1033,5 +1033,6 @@ def in_dynamic_and_static_unify():
     """
     determine whether to perform the unification of dynamic and static shape
     """
+    from tbe.dsl.base import operation
     context = operation.get_context()
     return context is not None and context.get_mode() in ("dynamic", "static")

@@ -21,7 +21,6 @@ from functools import reduce as functools_reduce
 from functools import wraps
 import warnings
 
-from te.lang.base import operation_impl as operation
 from te.utils import shape_util
 
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1
@@ -174,6 +173,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
 
     def _check_input_output_key(op_param, param_name, op_name=OP_NAME):
         # check all necessary information(shape, format, ori_shape, ori_format, dtype)
+        from tbe.dsl.base import operation
         if not isinstance(op_param, dict):
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_003
@@ -244,6 +244,7 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
                                    % (error_info['op_name'], error_info['param_name'], error_info['key']))
 
     def _check_input_output_dict(op_param, param_name, op_name=OP_NAME):
+        from tbe.dsl.base import operation
         _check_input_output_key(op_param, param_name, op_name)
         if operation.in_dynamic():
             check_range(op_param[OpParamInfoKey.SHAPE], op_param[OpParamInfoKey.RANGE], param_name=param_name)
@@ -728,6 +729,7 @@ def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT,  # pylint: disable=too-many
     """
     check shape size
     """
+    from tbe.dsl.base import operation
     if not isinstance(shape, (tuple, list)):
 
         error_info = {}
@@ -867,6 +869,7 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
     :param inputs: list, all inputs of operator
     :return:
     """
+    from tbe.dsl.base import operation
     def _has_intersection(range0, range1):
         _range0 = list(range0)
         _range1 = list(range1)
@@ -1030,14 +1033,3 @@ def _parse_mul(expr, elements: dict):
     warnings.warn("_parse_mul is deprecated, replace it with the same func in shape_util",
                   DeprecationWarning)
     return shape_util._parse_mul(expr, elements)
-
-
-def variable_shape(inputs: list, op_mode="elewise"):
-    """
-    :param inputs: all inputs
-    :param support_broadcast: whether to support broadcast
-    :return:
-    """
-    warnings.warn("variable_shape is deprecated, replace it with the same func in shape_util",
-                  DeprecationWarning)
-    return shape_util.variable_shape(inputs, op_mode)

@@ -16,4 +16,3 @@
 compute schedule init
 """
 from . import schedule
-from .schedule.auto_schedule import build

@@ -93,19 +93,6 @@ def refine_shapes_for_broadcast(shape1, shape2):
     return refine_shapes_for_broadcast(shape1, shape2)
 
 
-def variable_shape(inputs: list, op_mode="elewise"):
-    """
-    :param inputs: all inputs
-    :param op_mode: elewise or reduce
-    :param support_broadcast: whether to support broadcast
-    :return:
-    """
-    warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
-    from tbe.common.utils import variable_shape
-    return variable_shape(inputs, op_mode)
-
-
 def simplify_axis_shape(shape, axis):
     """
     simplify the shape and aixs

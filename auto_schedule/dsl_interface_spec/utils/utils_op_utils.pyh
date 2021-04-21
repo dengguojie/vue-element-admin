@@ -139,5 +139,3 @@ def refine_shape_axes(shape, axes):
 def broadcast_shapes(shape1, shape2, op_name=OP_NAME, param_name_input1='', param_name_input2=''):
 
 def refine_shapes_for_broadcast(shape1, shape2):
-
-def variable_shape(inputs: list, op_mode="elewise"):

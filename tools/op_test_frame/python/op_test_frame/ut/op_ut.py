@@ -640,7 +640,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
 
     def _do_tiling(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase,
                    input_info_list: List, output_info_list: List):
-        from te.lang.base import op_tiling
+        from tbe.common.utils import op_tiling
         kernel_name = self._get_kernel_name(run_soc_version, case_info)
         compile_info = self._get_compile_info(kernel_name)
         tiling_info = op_tiling.do_op_tiling(self.op_type, compile_info=compile_info,
