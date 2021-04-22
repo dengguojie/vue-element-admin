@@ -16,7 +16,6 @@
 include(ExternalProject)
 ExternalProject_Add(eigen
   URL               https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
-  URL_MD5           9e30f67e8531477de4117506fe44669b
   PREFIX            ${CMAKE_CURRENT_SOURCE_DIR}/../third_party
   CONFIGURE_COMMAND ""
   BUILD_COMMAND     ""

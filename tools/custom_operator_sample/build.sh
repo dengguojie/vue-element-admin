@@ -103,6 +103,7 @@ sed -i 's/#include <utils\/Log.h>/#include <util\/Log.h>/g' ${DST_DIR}/DSL/Tenso
 cp -r ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/cpukernel/impl/utils/log.h ${DST_DIR}/DSL/Tensorflow/op_proto/util
 # copy CMakeLists.txt modified for dependency
 cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/op_proto/CMakeLists.txt ${DST_DIR}/DSL/Tensorflow/op_proto
+cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/framework/tf_plugin/CMakeLists.txt ${DST_DIR}/DSL/Tensorflow/framework/tf_plugin/CMakeLists.txt
 # prepare thirdparty path
 mkdir -p ${DST_DIR}/DSL/Tensorflow/third_party
 cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/secure_c_proto.cmake ${DST_DIR}/DSL/Tensorflow/third_party
@@ -131,6 +132,22 @@ cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/PyTor
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/TIK/Tensorflow/
 cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/TIK/Tensorflow/tbe
 cp ${TF_PLUGIN_CMAKELIST} ${DST_DIR}/TIK/Tensorflow/framework/tf_plugin
+cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_DIR}/TIK/Tensorflow/framework
+cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/TIK/Tensorflow/framework
+cp -r ${CODE_ROOT_DIR}/cann/ops/built-in/op_proto/util ${DST_DIR}/TIK/Tensorflow/op_proto
+cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/op_proto/CMakeLists.txt ${DST_DIR}/TIK/Tensorflow/op_proto
+# prepare thirdparty path
+mkdir -p ${DST_DIR}/TIK/Tensorflow/third_party
+cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/secure_c_proto.cmake ${DST_DIR}/TIK/Tensorflow/third_party
+# copy metadef dependency.
+mkdir -p ${DST_DIR}/TIK/Tensorflow/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/graph ${DST_DIR}/TIK/Tensorflow/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/inc ${DST_DIR}/TIK/Tensorflow/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_DIR}/TIK/Tensorflow/framework
+cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/TIK/Tensorflow/framework
+#copy op_log.h
+mkdir -p ${DST_DIR}/TIK/Tensorflow/log
+cp -r ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/TIK/Tensorflow/log
 #3.2 PyTorch
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/TIK/PyTorch/
 cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/TIK/PyTorch/tbe

@@ -16,7 +16,6 @@
 include(ExternalProject)
 ExternalProject_Add(secure_c_kernel
   URL               https://gitee.com/openeuler/libboundscheck/repository/archive/v1.1.10.tar.gz
-  URL_MD5           193f0ca5246c1dd84920db34d2d8249f
   PREFIX            ${CMAKE_CURRENT_SOURCE_DIR}/../third_party
   CONFIGURE_COMMAND ""
   BUILD_COMMAND     ""

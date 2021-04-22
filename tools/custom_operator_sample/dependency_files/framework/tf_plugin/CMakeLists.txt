@@ -9,6 +9,7 @@ if("x${SRCS}" STREQUAL "x")
     return(0)
 endif()
 
+include_directories(${CMAKE_SOURCE_DIR}/metadef/inc)
 include_directories(${CMAKE_SOURCE_DIR}/log)
 set(LIBRARY_OUTPUT_PATH ${TF_PLUGIN_TARGET_OUT_DIR})
 
