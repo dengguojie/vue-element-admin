@@ -469,18 +469,20 @@ namespace optiling {
         int32_t ho_every = 0;
         int32_t ho_last = 0;
 
-        if (hoverlap == 0) {
-            ho_every = dyh / ho_count;
-            ho_last = dyh - ho_every * (ho_count - 1);
-        } else {
-            ho_every = (dyh + ho_count - 1) / ho_count;
-            if (ho_every == 1) {
-                ho_count = ho_count / 2;
+        if (ho_count != 0) {
+            if (hoverlap == 0) {
+                ho_every = dyh / ho_count;
+                ho_last = dyh - ho_every * (ho_count - 1);
+            } else {
                 ho_every = (dyh + ho_count - 1) / ho_count;
+                if (ho_every == 1) {
+                    ho_count = ho_count / 2;
+                    ho_every = (dyh + ho_count - 1) / ho_count;
+                }
+                ho_last = dyh + ho_count - 1 - ho_every * (ho_count - 1);
             }
-            ho_last = dyh + ho_count - 1 - ho_every * (ho_count - 1);
         }
-
+        
         tiling_params.ho_count = ho_count;
         tiling_params.ho_every = ho_every;
         tiling_params.ho_last = ho_last;
