@@ -128,8 +128,7 @@ class ResizeNearestNeighbor:
         flag = tbe_platform.intrinsic_check_support("Intrinsic_vconv",
                                                     "s322f32")
         with ib.if_scope(flag):
-            mask = 8
-            reset_mask_insn(ib, "float32", bits=mask)
+            reset_mask_insn(ib, "float32", bits=1)
             with ib.new_scope():
                 ib.emit(
                     tvm.call_extern("float32", "vconv_s322f32",
@@ -137,8 +136,7 @@ class ResizeNearestNeighbor:
                                     ub_int32.access_ptr("r", offset=0), 1, 1, 1,
                                     8, 8))
         with ib.else_scope():
-            mask = 16
-            reset_mask_insn(ib, "float16", bits=mask)
+            reset_mask_insn(ib, "float16", bits=1)
             with ib.new_scope():
                 ib.emit(
                     tvm.call_extern("float16", "set_deqscale",

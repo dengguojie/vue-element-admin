@@ -17,24 +17,24 @@ split_v_d
 """
 
 import functools
-from tbe.dsl.compute.array import split_compute_com
-from tbe.dsl.static_schedule.split_schedule import split_schedule_com
 from te import tik
 from te import tvm
 from te import platform as tbe_platform
+from te.platform.cce_build import build_config
 from te.utils import para_check
 from te.utils import shape_util
-from te.platform.cce_build import build_config
+from te.utils.error_manager import error_manager_vector
+from tbe.dsl.compute.array import split_compute_com
+from tbe.dsl.static_schedule.split_schedule import split_schedule_com
 from impl.split_last_dim import check_use_last_dim_branch
 from impl.split_last_dim import split_last_dim
 from impl.split_last_dim import SplitWith5HD
 from impl.split_d import SplitMov
 from impl.split_d import SplitLastDimVnv
+from impl.copy_only import copy_only
 from impl.util import util_common
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from impl.copy_only import copy_only
-from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -43,7 +43,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 TRANSPOSE_SIZE = 256
 
 
-# pylint: disable = unused-argument
+# pylint: disable = unused-argument,too-many-arguments,too-many-locals
 def get_op_support_info(input_value, output_data, size_splits, split_dim, num_split, kernel_name="split_v_d"):
     """
     get_op_support_info
@@ -55,7 +55,7 @@ def get_op_support_info(input_value, output_data, size_splits, split_dim, num_sp
     shape_value_len = len(input_value.get("shape"))
     if split_dim < 0:
         split_dim += shape_value_len
-    if format_value == "ND" or format_value == "FRACTAL_NZ":
+    if format_value in ("ND", "FRACTAL_NZ"):
         axis_split_matrix = []
         for i in range(0, shape_value_len - 1):
             if i != split_dim:
@@ -137,6 +137,7 @@ class SplitNotEqual():
                                               name="out_ub",
                                               scope=tik.scope_ubuf)
             ub_offset = 0
+            tmp_reg = [self.tik_instance.Scalar(dtype=self.dtype) for i in range(8)]
             for _, i in enumerate(range(len(self.size_splits))):
                 if (ub_offset == 0 or ub_offset % self.block_ele == 0) and \
                         self.size_splits[i] % self.block_ele == 0:
@@ -144,10 +145,18 @@ class SplitNotEqual():
                     ub_burst = ceil(self.size_splits[i], self.block_ele)
                     self.tik_instance.data_move(out_ub, data_ub[ub_offset], 0, loop_ele, ub_burst, src_stride, 0)
                 else:
-                    with self.tik_instance.for_range(0, loop_ele) as idx_1:
-                        with self.tik_instance.for_range(0, self.size_splits[i]) as idx_2:
-                            out_ub[idx_1 * self.size_splits[i] + idx_2].set_as(data_ub[ub_offset +
-                                                                                       idx_1 * self.last_dim + idx_2])
+                    with self.tik_instance.for_range(0, self.size_splits[i]) as idx_2:
+                        with self.tik_instance.for_range(0, loop_ele // 8) as idx_1:
+                            for idx in range(8):
+                                tmp_reg[idx].set_as(data_ub[ub_offset + (idx_1 * 8 + idx) * self.last_dim + idx_2])
+                            for idx in range(8):
+                                out_ub[(idx_1 * 8 + idx) * self.size_splits[i] + idx_2].set_as(tmp_reg[idx])
+                        if loop_ele % 8 != 0:
+                            tail_reg = [self.tik_instance.Scalar(dtype=self.dtype) for i in range(loop_ele % 8)]
+                            for idx in range(loop_ele % 8):
+                                tail_reg[idx] = data_ub[ub_offset + (loop_ele // 8 * 8 + idx) * self.last_dim + idx_2]
+                            for idx in range(loop_ele % 8):
+                                out_ub[(loop_ele // 8 * 8 + idx) * self.size_splits[i] + idx_2].set_as(tail_reg[idx])
 
                 out_offset = core_offset * self.size_splits[i] + loop_idx * max_ele * self.size_splits[i]
                 out_burst = ceil(loop_ele * self.size_splits[i], self.block_ele)
@@ -283,7 +292,7 @@ class SplitNotEqual():
         if self.last_dim % self.block_ele == 0:
             if self.last_dim > 300:
                 return False
-            if (self.size_splits[0] % self.block_ele != 0 or self.size_splits[1] % self.block_ele != 0):
+            if self.size_splits[0] % self.block_ele != 0:
                 return False
         else:
             if self.dtype not in ("float16",):
