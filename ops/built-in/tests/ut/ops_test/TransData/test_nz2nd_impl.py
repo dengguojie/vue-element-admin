@@ -76,6 +76,7 @@ ut_case.add_case("Ascend910A", gen_trans_data_case((1024, 32, 1, 16, 16), (1024,
 ut_case.add_case("Ascend910A", gen_trans_data_case((48, 64, 64, 16, 16), (48, 1024, 1024), "float32", "nz2nd_25", "success"))
 ut_case.add_case("Ascend910A", gen_trans_data_case((48, 64, 8, 16, 16), (48, 128, 1024), "float32", "nz2nd_26", "success"))
 ut_case.add_case("Ascend910A", gen_trans_data_case((64, 32, 16, 16), (512, 1024), "float32", "nz2nd_27", "success"))
+ut_case.add_case("Ascend910A", gen_trans_data_case((16000, 1, 1, 16, 16), (16000, 1, 10), "float16", "nz2nd_28", "success"))
 # ut_case.add_case("Ascend910", gen_trans_data_case((1, 64, 1, 16, 16), (1, 1024, 1, 16), "float32", "nz2nchw_1", "success", "NCHW"))
 
 if __name__ == '__main__':
