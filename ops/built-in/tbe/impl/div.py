@@ -23,10 +23,9 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-from tbe.dsl.compute.gemm_compute import batchmatmul_elem_nd2nz
-from tbe.dsl.compute.gemm_compute import batchmatmul_elem_reshape
-from tbe.dsl.compute.gemm_compute import check_batchmatmul_fuse
-
+from impl.util.util_compute import batchmatmul_elem_nd2nz
+from impl.util.util_compute import batchmatmul_elem_reshape
+from impl.util.util_compute import check_batchmatmul_fuse
 
 def _div_compute_with_batchmatmul(input_x, input_y):
     """

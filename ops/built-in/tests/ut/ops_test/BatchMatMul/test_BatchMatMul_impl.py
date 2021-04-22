@@ -212,7 +212,7 @@ def test_batchmatmul_add_relu(test_arg):
         }
         cce_build_code(sch, config)
 
-def test_batchmatmul_div_fusedmuladd(test_arg):
+def test_batchmatmul_div_fused_mul_add(test_arg):
     with cce():
         x1 = tvm.placeholder((16*4, 5, 6, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 4, 96, 80)}, dtype="float16")
         x2 = tvm.placeholder((16*4, 6, 5, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 4, 80, 96)}, dtype="float16")
@@ -240,7 +240,7 @@ ut_case.add_cust_test_func(test_func=test_batchmatmul_confusion_transpose_710)
 ut_case.add_cust_test_func(test_func=test_batchmatmul_add)
 ut_case.add_cust_test_func(test_func=test_batchmatmul_add_add)
 ut_case.add_cust_test_func(test_func=test_batchmatmul_add_relu)
-ut_case.add_cust_test_func(test_func=test_batchmatmul_div_fusedmuladd)
+ut_case.add_cust_test_func(test_func=test_batchmatmul_div_fused_mul_add)
 
 
 if __name__ == '__main__':

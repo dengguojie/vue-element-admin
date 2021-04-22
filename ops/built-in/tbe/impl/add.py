@@ -23,9 +23,9 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 from impl.util import util_common
-from tbe.dsl.compute.gemm_compute import batchmatmul_elem_nd2nz
-from tbe.dsl.compute.gemm_compute import batchmatmul_elem_reshape
-from tbe.dsl.compute.gemm_compute import check_batchmatmul_fuse
+from impl.util.util_compute import batchmatmul_elem_nd2nz
+from impl.util.util_compute import batchmatmul_elem_reshape
+from impl.util.util_compute import check_batchmatmul_fuse
 
 # constant, value is 16
 SIZE_SIXTEEN = 16

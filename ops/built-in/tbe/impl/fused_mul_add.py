@@ -22,10 +22,10 @@ from te import tvm
 from te.utils import shape_util
 from te.utils import para_check
 from impl.util import util_select_op_base
+from impl.util.util_compute import batchmatmul_elem_nd2nz
+from impl.util.util_compute import batchmatmul_elem_reshape
+from impl.util.util_compute import check_batchmatmul_fuse
 from tbe.dsl import broadcast
-from tbe.dsl.compute.gemm_compute import batchmatmul_elem_nd2nz
-from tbe.dsl.compute.gemm_compute import batchmatmul_elem_reshape
-from tbe.dsl.compute.gemm_compute import check_batchmatmul_fuse
 
 SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
 SIZE_SIXTEEN = 16
