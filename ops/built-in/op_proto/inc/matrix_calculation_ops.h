@@ -444,6 +444,9 @@ REG_OP(ScatterNdUpdate)
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator TensorScatterUpdate.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(TensorScatterUpdate)
     .INPUT(x, TensorType::BasicType())
@@ -565,6 +568,9 @@ REG_OP(ScatterNdAdd)
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator TensorScatterAdd.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(TensorScatterAdd)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
@@ -623,6 +629,9 @@ REG_OP(ScatterNdSub)
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator TensorScatterSub.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(TensorScatterSub)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))

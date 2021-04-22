@@ -1202,35 +1202,6 @@ REG_OP(RpnProposalsD)
     .OUTPUT(sorted_box, TensorType({DT_FLOAT16}))
     .OP_END_FACTORY_REG(RpnProposalsD)
 
-/**
-*@brief Computes Score Filte Pre-Sort function.
-
-*@par Inputs:
-*Inputs include:
-* @li rois: A Tensor. Must be float16. N-D with shape [N, 4].
-* @li cls_bg_prob: A Tensor. Must be float16. N-D with shape [N, 1].
-
-*@par Attributes:
-* @li score_threshold: required, float, threahold of topk process.
-* @li k: required, Int, threahold of topk process.
-* @li score_filter: bool, mark of score_filter. Defaults to "true"
-* @li core_max_num: int, max number of core. Defaults to "8"
-*@par Outputs:
-* @li sorted_proposal: A Tensor. Must be float16.
-*                      N-D with shape [8*6002, 8].
-* @li proposal_num: A Tensor. Must be uint32. N-D with shape [8, 8].
-*/
-
-REG_OP(ScoreFiltePreSort)
-    .INPUT(rois, TensorType({DT_FLOAT16}))
-    .INPUT(cls_bg_prob, TensorType({DT_FLOAT16}))
-    .OUTPUT(sorted_proposal, TensorType({ DT_FLOAT16}))
-    .OUTPUT(proposal_num, TensorType({ DT_UINT32}))
-    .REQUIRED_ATTR(score_threshold, Float)
-    .REQUIRED_ATTR(k, Int)
-    .ATTR(score_filter, Bool, true)
-    .ATTR(core_max_num, Int, 8)
-    .OP_END_FACTORY_REG(ScoreFiltePreSort)
 
 /**
 *@brief Computes Score Filte Pre-Sort function.

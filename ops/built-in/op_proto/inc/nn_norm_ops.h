@@ -1073,26 +1073,6 @@ REG_OP(INInferV2D)
     .OP_END_FACTORY_REG(INInferV2D)
 
 /**
-*@brief Performs instance normalization for inference of InHost part.
-
-*@par Inputs:\n
-* One input, including: (NC1HWC0 supported)
-* variance: A [N, C1, 1, 1, C0] Tensor of type float32, for the variance.
-
-*@par Attributes:
-* epsilon: An optional float32, specifying the small value added to
-variance to avoid dividing by zero. Defaults to "0.00001" . \n
-
-*@par Outputs:\n
-* variance_sqrt: A [N, C1, 1, 1, C0] Tensor of type float32, for the variance_sqrt.
-*/
-REG_OP(InHost)
-     .INPUT(variance, TensorType({DT_FLOAT}))
-     .OUTPUT(variance_sqrt, TensorType({DT_FLOAT}))
-     .ATTR(epsilon, Float, 0.00001)
-     .OP_END_FACTORY_REG(InHost)
-
-/**
 * @brief perform instance normalization to x. \n
 
 * @par Inputs:
