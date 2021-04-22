@@ -103,7 +103,7 @@ bool Eletwise::GenerateOutputShape() {
 }
 
 bool Eletwise::CalcTiling() {
-  // "_base_info": ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
+  // "_base_info": ["_core_num", "_max_dtype", "_max_available_ub", "_max_available_ub_db"]
   std::string pattern_key = "100";
   if (only_const_tiling || !use_special_pattern) {
     pattern_key = "000";
@@ -114,26 +114,18 @@ bool Eletwise::CalcTiling() {
     V_CHECK_EQ(base_info.size(), base_info_size,
                OP_LOGE(op_type.c_str(), "base info must be _ub_size, _max_dtype, _coexisting_quantity"),
                return false);
-    baseInfo.ub_size = base_info[0];
-    baseInfo.max_dtype = base_info[1];
-    baseInfo.coexisting_quantity = base_info[2];
-    baseInfo.core_num = base_info[3];
+    core_num = base_info[0];
+    max_dtype = base_info[1];
+    max_available_ub = base_info[2];
+    max_available_ub_db = base_info[3];
   } catch (const std::exception &e) {
     OP_LOGE(op_type.c_str(), "get compile_info[_base_info] error. Error message: %s", e.what());
     return false;
   }
-  V_CHECK_GT(baseInfo.coexisting_quantity, 0,
-             OP_LOGE(op_type.c_str(), "baseInfo coexisting_quantity error, it is [%d]", baseInfo.coexisting_quantity),
-             return false);
-  V_CHECK_GT(baseInfo.max_dtype, 0,
-             OP_LOGE(op_type.c_str(), "baseInfo max_dtype error, it is [%d]", baseInfo.max_dtype),
-             return false);
-  max_available_ub =
-          (((baseInfo.ub_size / baseInfo.coexisting_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / baseInfo.max_dtype;
   V_CHECK_GT(output_shape.size(), 0,
            OP_LOGE(op_type.c_str(), "output_shape index out of range"),
            return false);
-  const int64_t multi_core_threshold = GetElementByType(out_type) * baseInfo.core_num * DOUBLE_BUFFER_SIZE;
+  const int64_t multi_core_threshold = GetElementByType(out_type) * core_num * DOUBLE_BUFFER_SIZE;
   if (output_shape[0] < multi_core_threshold) {
     need_multi_core = false;
   }
@@ -141,15 +133,15 @@ bool Eletwise::CalcTiling() {
 }
 
 bool Eletwise::DoBlockTiling() {
-  int64_t cur_core = baseInfo.core_num;
+  int64_t cur_core = core_num;
   bool outs_uint1 = op_info.at("_outs_uint1");
   int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
   block_axis = 0;
   V_OP_TILING_CHECK((!output_shape.empty()),
                     OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
                     return false);
-  V_CHECK_GT(baseInfo.core_num, 0,
-             OP_LOGE(op_type.c_str(), "baseInfo core_num error, it is [%d]", baseInfo.core_num),
+  V_CHECK_GT(core_num, 0,
+             OP_LOGE(op_type.c_str(), "baseInfo core_num error, it is [%d]", core_num),
              return false);
   block_factor = std::ceil(output_shape[0] * 1.0 / cur_core);
   block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
@@ -161,7 +153,7 @@ bool Eletwise::DoBlockTiling() {
 bool Eletwise::DoUbTiling() {
   ub_axis = 0;
   ub_factor = block_factor;
-  int64_t limit = std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype));
+  int64_t limit = std::min(max_available_ub, SPLIT_FACTORS.at(max_dtype));
   if (limit < ub_factor) {
     bool outs_uint1 = op_info.at("_outs_uint1");
     int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
@@ -263,14 +255,12 @@ bool Eletwise::DoTiling() {
   if (need_multi_core) {
     // cut block
     ret = ret && DoBlockTiling();
-    V_OP_TILING_CHECK((SPLIT_FACTORS.find(baseInfo.max_dtype) != SPLIT_FACTORS.end()),
+    V_OP_TILING_CHECK((SPLIT_FACTORS.find(max_dtype) != SPLIT_FACTORS.end()),
                       OP_LOGE(op_type.c_str(), "baseInfo max_dtype not in SPLIT_FACTORS"),
                       return false);
-    if (ret && block_factor > std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype))) {
+    if (ret && block_factor > std::min(max_available_ub, SPLIT_FACTORS.at(max_dtype))) {
       need_double_buffer = true;
-      max_available_ub =
-              (((baseInfo.ub_size / DOUBLE_BUFFER_SIZE / baseInfo.coexisting_quantity) / BLOCK_SIZE)
-                * BLOCK_SIZE) / baseInfo.max_dtype;
+      max_available_ub = max_available_ub_db;
     }
     ret = ret && DoUbTiling();
   } else {

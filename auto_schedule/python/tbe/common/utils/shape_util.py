@@ -482,7 +482,6 @@ def variable_shape(inputs: list, op_mode="elewise"):
     if len(inputs) < 1:
         return []
     mode = inputs[0].get("mode") or para_check.ORIGINAL
-    operation.get_context().add("_mode", mode)
     current_compute = operation.get_context().get_current_compute()
     current_compute.add("_mode", mode)
     support_broadcast = operation.get_context().get("_support_broadcast") or False

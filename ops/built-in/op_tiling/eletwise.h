@@ -29,13 +29,6 @@
 
 namespace optiling {
 
-struct BaseInfo {
-  int64_t ub_size{0};
-  int64_t max_dtype{0};
-  int64_t coexisting_quantity{0};
-  int64_t core_num{0};
-};
-
 class Eletwise {
 public:
   static const int64_t ELEWISE_REPEATE_NUMS = 128;
@@ -69,14 +62,16 @@ private:
   std::vector<int64_t> output_shape{};
   int64_t key{-1};
   int64_t max_available_ub{0};
+  int64_t max_available_ub_db{0};
   int64_t block_axis{-1};
   int64_t ub_axis{-1};
   int64_t block_dims{1};
   int64_t ub_factor{1};
   int64_t block_factor{1};
+  int64_t max_dtype{0};
+  int64_t core_num{0};
   std::string in_type;
   std::string out_type;
-  BaseInfo baseInfo;
   bool only_const_tiling{false};
   bool use_special_pattern{false};
   bool need_multi_core{true};

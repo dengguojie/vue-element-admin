@@ -92,7 +92,7 @@ class ElewiseSchedule(Schedule):
         self._tiling_strategy = self._tiling_case.get("tiling_strategy")
         self._is_db = self._tiling_case.get("is_need_db", False)
         self._is_one_dim = self._tiling_case.get("is_one_dim", False)
-        self._mode = operation.get_context().get("_mode")
+        self._mode = operation.get_context().get_current_compute().get("_mode")
 
         self._scope = "local.UB"
 
@@ -296,28 +296,23 @@ class ElewiseSchedule(Schedule):
             self._block_dims = 1
             self._need_do_block = False
             return
-        inputs = []
-        input_shapes = []
+
         max_dim_length = len(output_shape)
-        for _input in self._input_tensors:
-            input_shape = util.shape_to_list(_input.shape)
-            inputs.append({"shape": input_shape, "dtype": _input.dtype})
-            input_shapes.append([1] * (max_dim_length - len(input_shape)) + input_shape)
         outputs = [{"shape": output_shape, "dtype": res.dtype}]
-        if len(inputs) == 0:
-            inputs = deepcopy(outputs)
+        if len(self._input_tensors) == 0:
             max_dim_length = 0
 
-        input_shapes = list(map(list, zip(*input_shapes)))
         broadcast_axis = [False] * max_dim_length
 
         # pure eletwise delete double tmp size
         if len(output_shape) == 1:
             self._is_one_dim = True
-            self._correct_factor = 2
 
-        base_info = {"000": [self._ub_size - self._correct_factor * self._tmp_ub_size,
-                             self._max_dtype_bytes, self._coexisting_quantity, util.get_core_num()]}
+        max_available_ub = ((((self._ub_size - self._tmp_ub_size) // self._coexisting_quantity) // BLOCK_SIZE_BYTE) *
+                            BLOCK_SIZE_BYTE) // self._max_dtype_bytes
+        max_available_ub_db = ((((self._ub_size - 2 * self._tmp_ub_size) // 2 // self._coexisting_quantity)
+                                // BLOCK_SIZE_BYTE) * BLOCK_SIZE_BYTE) // self._max_dtype_bytes
+        base_info = {"000": [util.get_core_num(), self._max_dtype_bytes, max_available_ub, max_available_ub_db]}
 
         outs_contains_uint1 = "uint1" in self._outs_dtypes
 
@@ -661,7 +656,7 @@ class ElewiseSchedule(Schedule):
             self._coexisting_quantity += 1
 
     def _do_storage_bound(self):
-
+        self._correct_factor = 2 if self._is_db else 1
         # delete tmp size
         self._ub_size -= self._correct_factor * self._tmp_ub_size
         tensor_space = self._ub_size // self._coexisting_quantity

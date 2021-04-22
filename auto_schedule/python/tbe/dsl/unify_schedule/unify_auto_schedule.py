@@ -49,7 +49,7 @@ def schedule_cce(outs, option=None):
     original_outs = reget_tensor_list(original_outs)
     pattern = pattern_parser.get_pattern(outs)
     # set compute pattern to compile info because const tiling need pattern
-    operation.add_compile_info_inner("_pattern", pattern)
+    operation.add_compile_info_inner(CompileInfo.PATTERN, pattern)
     # set compute pattern
     operation.get_context().get_current_compute().set_pattern(pattern)
 
@@ -125,7 +125,7 @@ def build(schedules_list, config_map=None):
     pattern = get_op_pattern_from_computes()
     # update op pattern
     operation.get_context().set_pattern(pattern)
-    operation.add_compile_info_inner("_pattern", pattern)
+    operation.add_compile_info_inner(CompileInfo.PATTERN, pattern)
 
     pointcut_func = operation.get_build_pointcut(pattern)
     if pointcut_func is not None:

@@ -37,6 +37,7 @@ STATIC = "static"
 ORIGINAL = "original"
 DB_KEY = 10000
 EMPTY_KEY = -2 ** 31
+BLOCK_SIZE_BYTE = 32
 
 
 class TilingStrategy(Enum):
@@ -56,7 +57,7 @@ class ElewiseComputation(Computation):
         self.option = option
 
     def do_tiling_case(self):
-        mode = operation.get_context().get("_mode")
+        mode = operation.get_context().get_current_compute().get("_mode")
 
         def calc_base_key():
             if mode == SPECIAL:
@@ -190,10 +191,13 @@ def _pre_build(schedules_list):
     cpt_computes = operation.get_context().get_computes()
     use_special_pattern = False
     support_absorbable_broadcast = False
+    is_const = False
     for compute in cpt_computes:
         if compute.get("_mode") != ORIGINAL:
             use_special_pattern = True
-    if operation.get_context().get("_mode") == CONST:
+        if compute.get("_mode") == CONST:
+            is_const = True
+    if is_const:
         const_shapes, const_block_dims = [], []
         for compute in cpt_computes:
             const_shapes.append(compute.get("_const_shape"))
@@ -230,7 +234,11 @@ def _pre_build(schedules_list):
             cores.append(sch_context.get(CompileInfo.CORE_NUM))
             te_vars_list.append(op_vars + cpt_vars + sch_vars)
         pattern_key = _get_pattern_key(cpt.get("_mode"), cpt.get("_pattern"))
-        base_info[pattern_key] = [min(cpt_ub_sizes), max(cpt_max_dtypes), max(cpt_coexisting_quantitys), max(cores)]
+        max_available_ub = (((min(cpt_ub_sizes) // max(cpt_coexisting_quantitys)) // BLOCK_SIZE_BYTE) *
+                            BLOCK_SIZE_BYTE) // max(cpt_max_dtypes)
+        max_available_ub_db = (((min(cpt_ub_sizes) // 2 // max(cpt_coexisting_quantitys)) // BLOCK_SIZE_BYTE) *
+                               BLOCK_SIZE_BYTE) // max(cpt_max_dtypes)
+        base_info[pattern_key] = [max(cores), max(cpt_max_dtypes), max_available_ub, max_available_ub_db]
     operation.add_compile_info_inner(CompileInfo.BASE_INFO, base_info)
 
     compile_vars = {}

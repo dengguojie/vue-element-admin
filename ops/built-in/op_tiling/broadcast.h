@@ -33,9 +33,7 @@ static const size_t B_MAX_DIM_LEN = 16;
 static const size_t B_MAX_INPUT_NUMS = 70;
 
 struct CompileInfo {
-  int64_t ub_size{0};
   int64_t max_dtype{0};
-  int64_t coexisting_quantity{0};
   int64_t core_num{0};
   bool is_support_broadcast{false};
   bool is_support_absorbable_broadcast{false};
@@ -119,6 +117,7 @@ private:
   int64_t ub_factor{1};
   int64_t block_factor{1};
   int64_t max_available_ub{0};
+  int64_t max_available_ub_db{0};
   Pattern s_pattern{Pattern::ORIGINAL};
   std::string in_type;
   std::string out_type;

@@ -358,28 +358,19 @@ bool Broadcast::CalcTiling() {
   std::string pattern_key = keys;
   try {
     const auto& base_info = op_info.at("_base_info").at(pattern_key);
-    // "_base_info": ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
+    // "_base_info": ["_core_num", "_max_dtype", "_max_available_ub", "_max_available_ub_db"]
     const size_t base_info_size = 4;
     V_CHECK_EQ(base_info.size(), base_info_size,
                OP_LOGE(op_type.c_str(), "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
                return false);
-    compileInfo.ub_size = base_info[0];
+    compileInfo.core_num = base_info[0];
     compileInfo.max_dtype = base_info[1];
-    compileInfo.coexisting_quantity = base_info[2];
-    compileInfo.core_num = base_info[3];
+    max_available_ub = base_info[2];
+    max_available_ub_db = base_info[3];
   } catch (const std::exception &e) {
     OP_LOGE(op_type.c_str(), "get compile_info[_base_info] error. Error message: %s", e.what());
     return false;
   }
-  V_CHECK_GT(compileInfo.coexisting_quantity, 0,
-             OP_LOGE(op_type.c_str(), "compileInfo coexisting_quantity error, it is [%d]",
-                     compileInfo.coexisting_quantity),
-             return false);
-  V_CHECK_GT(compileInfo.max_dtype, 0,
-             OP_LOGE(op_type.c_str(), "compileInfo max_dtype error, it is [%d]", compileInfo.max_dtype),
-             return false);
-  max_available_ub =
-          (((compileInfo.ub_size / compileInfo.coexisting_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / compileInfo.max_dtype;
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
   V_CHECK_LE(output_size, INT32_MAX,
              OP_LOGE(op_type.c_str(), "The output shape is too large"),
@@ -711,9 +702,7 @@ bool Broadcast::DoTiling() {
     ret = ret && DoBlockTiling();
     if (ret && IsNeedDoubleBuffer()) {
       need_double_buffer = true;
-      max_available_ub =
-              (((compileInfo.ub_size / DOUBLE_BUFFER_SIZE / compileInfo.coexisting_quantity) / BLOCK_SIZE)
-                * BLOCK_SIZE) / compileInfo.max_dtype;
+      max_available_ub = max_available_ub_db;
     }
     // cut ub
     ret = ret && DoUbTiling();

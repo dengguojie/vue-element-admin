@@ -27,7 +27,6 @@ from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
 
 from . import util
-from .broadcast_tilingcase import TilingStrategy
 from .constants import BroadcastPattern
 from .constants import CompileInfo
 from .constants import DTYPE_BYTE_MAPPING
@@ -44,15 +43,12 @@ DEFAULT = "default"
 
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
-MULTI_CORE_THRESHOLD = 1024
 ONE_DIM_ALIGN = 128
-N_LAST_BROADCAST_THRESHOLD = 512
 
 # temp space for last axis broadcast use vtranspose
 VTRANSPOSE_TEMP_SPACE = 8192
 
 CONST = "const"
-VECTOR = "vector"
 BROADCAST = "broadcast"
 VECTOR_BROADCAST = "vector_broadcast"
 UNKNOWN_BROADCAST = "unknown_broadcast"
@@ -119,7 +115,7 @@ class BroadcastSchedule(Schedule):
         self._tiling_strategy = self._tiling_case.tiling_strategy
         self._enable_db = self._tiling_case.enable_db
         self._is_one_dim = self._tiling_case.is_one_dim
-        self._mode = operation.get_context().get("_mode")
+        self._mode = operation.get_context().get_current_compute().get("_mode")
 
         self._scope = "local.UB"
 
@@ -167,9 +163,10 @@ class BroadcastSchedule(Schedule):
 
         self._need_do_block = False
         self._block_dims = 1
-        self._block_split_axis = self._tiling_case.block_split_axis or -1
+        self._block_split_axis = -1 if self._tiling_case.block_split_axis is None \
+            else self._tiling_case.block_split_axis
         self._block_factor = 1
-        self._ub_split_axis = self._tiling_case.ub_split_axis or 0
+        self._ub_split_axis = 0 if self._tiling_case.ub_split_axis is None else self._tiling_case.ub_split_axis
         self._ub_factor = 1
 
         self._block_tiling_vars = {}
@@ -283,7 +280,7 @@ class BroadcastSchedule(Schedule):
             if match_scalar_scene(tensor_i):
                 self._absorbable_broadcast_tensors.add(tensor_i)
 
-        ub_idx = self._tiling_case.ub_split_axis
+        ub_idx = self._ub_split_axis
         for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
             if util.get_dsl_insn(tensor_i) != BROADCAST:
                 src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
@@ -343,8 +340,8 @@ class BroadcastSchedule(Schedule):
     def _calc_tiling_one_cut(self):
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_i = self._tiling_case.block_split_axis
-        u_i = self._tiling_case.ub_split_axis
+        b_i = self._block_split_axis
+        u_i = self._ub_split_axis
         b_bound = (1, util.get_bound(shape[b_i])[1])
         u_bound = self._tiling_case.ub_factor_bound
         if u_bound is None:
@@ -357,8 +354,8 @@ class BroadcastSchedule(Schedule):
     def _calc_tiling_static(self):
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_i = self._tiling_case.block_split_axis
-        u_i = self._tiling_case.ub_split_axis
+        b_i = self._block_split_axis
+        u_i = self._ub_split_axis
         b_bound = (1, util.get_bound(shape[b_i])[1])
         self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
         self._ub_tiling_vars[u_i] = self._tiling_case.ub_factor_bound
@@ -379,16 +376,13 @@ class BroadcastSchedule(Schedule):
             return origin_inputs
 
         def _get_const_tiling():
-            inputs = []
             input_shapes = []
             max_dim_length = len(output_shape)
             for _input in self._input_tensors:
                 input_shape = util.shape_to_list(_input.shape)
-                inputs.append({"shape": input_shape, "dtype": _input.dtype})
                 input_shapes.append([1] * (max_dim_length - len(input_shape)) + input_shape)
             outputs = [{"shape": output_shape, "dtype": res.dtype}]
-            if len(inputs) == 0:
-                inputs = deepcopy(outputs)
+            if len(input_shapes) == 0:
                 max_dim_length = 0
 
             input_shapes = list(map(list, zip(*input_shapes)))
@@ -397,14 +391,11 @@ class BroadcastSchedule(Schedule):
                 if any([input_shapes[i][0] != s for s in input_shapes[i]]):
                     broadcast_axis[i] = True
 
-            # pure eletwise delete double tmp size
-            if len(output_shape) == 1:
-                self._is_one_dim = True
-                if True not in broadcast_axis:
-                    self._correct_factor = 2
-
-            base_info = {"000": [self._ub_size - self._correct_factor * self._tmp_ub_size,
-                                 self._max_dtype_bytes, self._coexisting_quantity, util.get_core_num()]}
+            max_available_ub = ((((self._ub_size - self._tmp_ub_size) // self._coexisting_quantity) //
+                                 BLOCK_SIZE_BYTE) * BLOCK_SIZE_BYTE) // self._max_dtype_bytes
+            max_available_ub_db = ((((self._ub_size - 2 * self._tmp_ub_size) // 2 // self._coexisting_quantity) //
+                                    BLOCK_SIZE_BYTE) * BLOCK_SIZE_BYTE) // self._max_dtype_bytes
+            base_info = {"000": [util.get_core_num(), self._max_dtype_bytes, max_available_ub, max_available_ub_db]}
 
             const_compile_info = {
                 CompileInfo.FLAG_INFO: [True],
@@ -485,8 +476,8 @@ class BroadcastSchedule(Schedule):
         sch = self._schedule
         res = self._out
         shape = util.shape_to_list(res.shape)
-        b_idx = self._tiling_case.block_split_axis
-        u_idx = self._tiling_case.ub_split_axis
+        b_idx = self._block_split_axis
+        u_idx = self._ub_split_axis
         block_axes = []
         ub_axes = []
         inner_axes = []
@@ -747,7 +738,7 @@ class BroadcastSchedule(Schedule):
             attrs = {}
             tensor_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
             if param[1] == UNKNOWN_BROADCAST:
-                u_idx = self._tiling_case.ub_split_axis
+                u_idx = self._ub_split_axis
                 src_shapes = tensor_i.op.input_tensors[0].shape[u_idx:]
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                           tvm.expr.Call.PureIntrinsic, None, 0)
@@ -835,7 +826,7 @@ class BroadcastSchedule(Schedule):
             if len(tensor_i.op.input_tensors) != 1:
                 return False
             if self._tiling_strategy == TilingStrategy.ONE_CUT:
-                u_i = self._tiling_case.ub_split_axis
+                u_i = self._ub_split_axis
                 src_shape = tensor_i.op.input_tensors[0].shape
                 dst_shape = tensor_i.shape
                 return expr_equal(1, src_shape[u_i]) and not expr_equal(1, dst_shape[u_i])
@@ -956,11 +947,12 @@ class BroadcastSchedule(Schedule):
 
         if self._coexisting_quantity == 1:
             self._tmp_ub_size += BLOCK_SIZE_BYTE
-        if len(self._broadcast_tensors - self._compute_inline_tensors) > 0:
+        if len(self._broadcast_tensors - self._absorbable_broadcast_tensors) > 0:
             self._tmp_ub_size += BLOCK_SIZE_BYTE
 
     def _calc_tensor_space(self):
         # minus tmp size
+        self._correct_factor = 2 if self._enable_db else 1
         self._ub_size -= self._correct_factor * self._tmp_ub_size
         tensor_space = self._ub_size // self._coexisting_quantity
         if self._enable_db:
