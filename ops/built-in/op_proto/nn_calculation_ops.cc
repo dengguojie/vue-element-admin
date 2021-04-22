@@ -872,6 +872,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInputD, DepthwiseConv2DBackpropInputDVer
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter DepthwiseConv2DBackpropInputD inferfunction!");
   std::vector<int64_t> input_size;
   input_size = GetAttrValue(op, "input_size");
 
@@ -1229,9 +1230,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerif
     }
   }
 
-  if (VerifyDepthwiseConv2DbpPadding(op) == GRAPH_SUCCESS || VerifyDepthwiseConv2DbpPads(op) == GRAPH_SUCCESS) {
-    return GRAPH_SUCCESS;
-  } else {
+  if (VerifyDepthwiseConv2DbpPadding(op) != GRAPH_SUCCESS && VerifyDepthwiseConv2DbpPads(op) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 

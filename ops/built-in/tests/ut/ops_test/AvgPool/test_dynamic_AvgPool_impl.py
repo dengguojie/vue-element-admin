@@ -4,16 +4,66 @@
 from op_test_frame.ut import OpUT
 ut_case = OpUT("AvgPool", "impl.dynamic.avg_pool", "avg_pool")
 
-case1 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
-                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+# dynamic nw SAME NCHW range None
+case1 = {"params": [{"shape": (-1,2,1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,32,1,-1), "ori_format": "NCHW",
+                     "range":[(1, None), (32, 32), (1, 100), (1, None)]},
                     {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
                      "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
                     None,
-                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
-                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
-                    [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+                    {"shape": (-1, 2, 1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 32, 1, -1),"ori_format": "NCHW",
+                     "range":[(1, None), (32, 32), (1, 99), (1, None)]},
+                    [1,1,2,2], [1,1,2,2], "SAME", "NCHW"],
          "expect": "success",
          "support_expect": True}
+
+# kernel_h/w > 21
+case4 = {"params": [{"shape": (-1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,16,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (16, 16), (30, 100), (30, 100)]},
+                    {"shape": (441,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 1, 21, 21),"ori_format": "NCHW",
+                     "range":[(16, 16), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (-1, 1, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 16, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (16, 16), (30, 100), (30, 100)]},
+                    [1,1,21,21], [1,1,1,1], "SAME", "NCHW"],
+         "expect": "success",
+         "support_expect": True}
+
+# dynamic hw VALID NHWC
+case17 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,32), "ori_format": "NHWC",
+                     "range":[(1, 1), (3, 100), (3, 100), (32, 32)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, -1, -1, 32),"ori_format": "NHWC",
+                     "range":[(1, 1), (2, 99), (2, 99), (32, 32)]},
+                    [1,2,2,1], [1,1,2,1], "VALID", "NHWC"],
+         "expect": "success",
+         "support_expect": True}
+
+# dynamic n SAME NCHW
+case33 = {"params": [{"shape": (-1,2,2,2,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,32,1,1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (1, 100), (1, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (-1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 32, 1, 1),"ori_format": "NCHW",
+                     "range":[(1, 10), (32, 32), (1, 99), (1, 99)]},
+                    [1,1,2,2], [1,1,2,1], "SAME", "NCHW"],
+         "expect": "success",
+         "support_expect": True}
+
+# dynamic h VALID NHWC 
+case34 = {"params": [{"shape": (1,2,-1,2,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,2,32), "ori_format": "NHWC",
+                     "range":[(1, 1), (3, 100), (2, 100), (32, 32)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, -1, 1, 32),"ori_format": "NHWC",
+                     "range":[(1, 1), (1, 99), (1, 99), (32, 32)]},
+                    [1,2,2,1], [1,2,1,1], "VALID", "NHWC"],
+         "expect": "success",
+         "support_expect": True}
+
 
 # filter_h/w !=ksize_h/w
 case2 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
@@ -37,18 +87,6 @@ case3 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1
                      "range":[(1, 1), (32, 32), (1, 2), (1, 2)]},
                     [1,1,2,2], [1,1,64,64], "SAME", "NCHW"],
          "expect": RuntimeError,
-         "support_expect": True}
-
-# kernel_h/w > 21
-case4 = {"params": [{"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1), "ori_format": "NCHW",
-                     "range":[(1, 1), (16, 16), (30, 100), (30, 100)]},
-                    {"shape": (441,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 1, 21, 21),"ori_format": "NCHW",
-                     "range":[(16, 16), (1, 1), (2, 2), (2, 2)]},
-                    None,
-                    {"shape": (1, 1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 16, -1, -1),"ori_format": "NCHW",
-                     "range":[(1, 1), (16, 16), (30, 100), (30, 100)]},
-                    [1,1,21,21], [1,1,1,1], "SAME", "NCHW"],
-         "expect": "success",
          "support_expect": True}
 
 # filter N != fmap Cin error
@@ -194,17 +232,6 @@ case16 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                      "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
                     [1,2,2,1], [1,1,1,1], "VALID", "NHWC"],
          "expect": RuntimeError,
-         "support_expect": True}
-
-case17 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,32), "ori_format": "NHWC",
-                     "range":[(1, 1), (3, 100), (3, 100), (32, 32)]},
-                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
-                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
-                    None,
-                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, -1, -1, 32),"ori_format": "NHWC",
-                     "range":[(1, 1), (2, 99), (2, 99), (32, 32)]},
-                    [1,2,2,1], [1,1,1,1], "VALID", "NHWC"],
-         "expect": "success",
          "support_expect": True}
 
 # unknown rank error
@@ -403,6 +430,8 @@ ut_case.add_case(["Ascend910A"], case29)
 ut_case.add_case(["Ascend910A"], case30)
 ut_case.add_case(["Ascend910A"], case31)
 ut_case.add_case(["Ascend910A"], case32)
+ut_case.add_case(["Ascend910A"], case33)
+ut_case.add_case(["Ascend910A"], case34)
 
 
 if __name__ == '__main__':

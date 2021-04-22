@@ -4854,6 +4854,7 @@ IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
   }
   if (strides.size() < 4) {
     OP_LOGE(op.GetName().c_str(), "Attr strides(%u) is too small", strides.size());
+    return GRAPH_FAILED;
   }
 
   std::string padding;
@@ -4914,7 +4915,7 @@ IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
-  OP_LOGD(op.GetName().c_str(), "Enter AvgPoolGrad inferfunction!");
+  OP_LOGI(op.GetName().c_str(), "Enter AvgPoolGrad inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_sizes_desc = op_desc->MutableInputDesc("orig_input_shape");
   auto input_grad_desc = op_desc->MutableInputDesc("input_grad");

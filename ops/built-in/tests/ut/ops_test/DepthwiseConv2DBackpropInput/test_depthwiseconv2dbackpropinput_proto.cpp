@@ -18,22 +18,19 @@ class DepthwiseConv2dBackpropInputProtoTest : public testing::Test {
   }
 };
 
-// Base_Pass_Case
-TEST_F(DepthwiseConv2dBackpropInputProtoTest, Base_Pass_Case){
+// fix Const
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2dBackpropInputFix){
     ge::op::DepthwiseConv2DBackpropInput op;
     op.UpdateInputDesc("out_backprop",
-                       create_desc_shape_range({-1, 32, -1, -1},
-                                               ge::DT_FLOAT16,
-                                               ge::FORMAT_NCHW,
-                                               {-1, 32, -1, -1},
-                                               ge::FORMAT_NCHW,
-                                               {{1, 3}, {32, 32}, {63, 65}, {63, 65}}));
+                       create_desc_with_ori({1, 32, 31, 31}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 32, 31, 31}, ge::FORMAT_NCHW));
     op.UpdateInputDesc("filter",
                        create_desc_with_ori({1, 32, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
                                             {1, 32, 3, 3}, ge::FORMAT_NCHW));
-
+    op.UpdateOutputDesc("input_grad", create_desc_with_ori({1, 32, 64, 64}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 32, 64, 64}, ge::FORMAT_NCHW));
     ge::Tensor constTensor;
-    std::vector<int64_t> dims_input_size{1 ,32 ,64 , 64};
+    std::vector<int64_t> dims_input_size{1, 32, 64, 64};
     ge::TensorDesc tensor_desc_input_size(ge::Shape(),
       ge::FORMAT_NCHW, ge::DT_INT32);
     int element_size = dims_input_size.size();
@@ -48,9 +45,58 @@ TEST_F(DepthwiseConv2dBackpropInputProtoTest, Base_Pass_Case){
       element_size * sizeof(int32_t));
     auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
     op.set_input_input_size(const0);
-
     delete[] conv_input_size_tensor_value;
-      
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("data_format", "NCHW");
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic n Const range -1
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, Base_Pass_Case){
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, 32, 64, 64},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, 32, 64, 64},
+                                               ge::FORMAT_NCHW,
+                                               {{1, -1}, {32, 32}, {63, 65}, {63, 65}}));
+    op.UpdateInputDesc("filter",
+                       create_desc_with_ori({1, 32, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 32, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("input_grad",
+                    create_desc_shape_range({-1, 32, 64, 64},
+                                            ge::DT_FLOAT16,
+                                            ge::FORMAT_NCHW,
+                                            {-1, 32, 64, 64},
+                                            ge::FORMAT_NCHW,
+                                            {{1, 2}, {32, 32}, {63, 65}, {63, 65}}));
+    ge::Tensor constTensor;
+    std::vector<int64_t> dims_input_size{1, 32, 64, 64};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
+
+    int *conv_input_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+    op.set_input_input_size(const0);
+    delete[] conv_input_size_tensor_value;
     op.UpdateInputDesc("input_size", tensor_desc_input_size);
 
     op.SetAttr("dilations", {1, 1, 1, 1});
@@ -68,7 +114,7 @@ TEST_F(DepthwiseConv2dBackpropInputProtoTest, Base_Pass_Case){
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
 }
 
-// Input_Size
+// dynamic nhw SAME Var
 TEST_F(DepthwiseConv2dBackpropInputProtoTest, Input_Size){
     ge::op::DepthwiseConv2DBackpropInput op;
     op.UpdateInputDesc("out_backprop",
@@ -110,7 +156,7 @@ TEST_F(DepthwiseConv2dBackpropInputProtoTest, Input_Size){
 }
 
 
-// dynamic nwc ut
+// dynamic nwc VALID Var
 TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2dBackpropInputDynamicNWC) {
     ge::op::DepthwiseConv2DBackpropInput op;
     op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
@@ -191,4 +237,351 @@ TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2dBackpropInputDynami
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic general ut with dilations<0
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2dbackpropinputGeneWithDilation) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("out_backprop", 
+                       create_desc_with_ori({1, 32, 64, 64}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 32, 64, 64}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter",
+                       create_desc_with_ori({1, 32, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 32, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("input_grad", 
+                       create_desc_with_ori({1, 32, 64, 64}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 32, 64, 64}, ge::FORMAT_NCHW));
+    ge::Tensor constTensor;
+    std::vector<int64_t> dims_input_size{1, 32, 64, 64};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
+
+    int *conv_input_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+    op.set_input_input_size(const0);
+    delete[] conv_input_size_tensor_value;
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("padding", "SAME");
+    op.SetAttr("pads", {-1, -1, -1, -1});
+    op.SetAttr("data_format", "NCHW");
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// dtype
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2DBackpropInputVerifyDtypeTest) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_INT8, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// strides
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2DBackpropInputVerifyStridesDimTest) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// strides
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2DBackpropInputVerifyNoStridesTest) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// dilations
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2DBackpropInputVerifyDilationsDimTest) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// data_format
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2DBackpropInputVerifyDataFormatTest) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "HWCN");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// padding
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2DBackpropInputVerifyPaddingTest) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "LIST");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// pads
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2DBackpropInputVerifyPadsDimTest) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// pads
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2DBackpropInputVerifyPadsTest) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, -1});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
 }

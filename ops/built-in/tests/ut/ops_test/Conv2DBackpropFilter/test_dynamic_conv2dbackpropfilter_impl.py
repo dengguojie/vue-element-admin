@@ -23,33 +23,33 @@ def gen_dynamic_conv2d_backprop_filter_case(shape_filter, shape_dedy, shape_x,
         # filter
         {"ori_shape": shape_filter, "ori_format": format_filter,
          "dtype": dtype_filter, "range": range_filter, "shape": shape_filter, "format": format_filter},
-        strides, pads, dilations, 1, "NCHW"],
+        strides, pads, dilations, 1, format_x],
         "case_name": kernel_name_val,
         "expect": expect
         }
 
-# dynamic_hw
+# dynamic_nhw VALID NHWC 
 ut_case.add_case(
     "all",
-    gen_dynamic_conv2d_backprop_filter_case([64, 64, 1, 1], [128, 64, -1, -1], [128, 64, -1, -1],
+    gen_dynamic_conv2d_backprop_filter_case([3, 3, 64, 64], [-1, -1, -1, 64], [-1, -1, -1, 64],
                                         "float32", "float16", "float16",
-                                        "NCHW", "NCHW", "NCHW",
-                                        [(64, 64), (64, 64), (1, 1), (1, 1)],
-                                        [(128, 128), (64, 64), (56, 71), (56, 71)],
-                                        [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "HWCN", "NHWC", "NHWC",
+                                        [(1, 1), (1, 1), (64, 64), (64, 64)],
+                                        [(64, 128), (50, 71), (50, 71), (64, 64)],
+                                        [(64, 128), (56, 142), (112, 142), (64, 64)],
+                                        (1, 1, 2, 1), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1",
                                         "success"))
 
-#dynamic_batch
+#dynamic_batch SAME NCHW
 ut_case.add_case(
     "all",
-    gen_dynamic_conv2d_backprop_filter_case((64, 3, 3, 3), (-1, 64, 112, 112), (-1, 3, 112, 112),
+    gen_dynamic_conv2d_backprop_filter_case((64, 3, 3, 3), (-1, 64, 1, 2), (-1, 3, 1, 2),
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(64, 64), (3, 3), (3, 3), (3, 3)],
-                                        [(128, 158), (64, 64), (112, 112), (112, 112)],
-                                        [(128, 158), (3, 3), (112, 112), (112, 112)],
+                                        [(128, 158), (64, 64), (1, 1), (2, 2)],
+                                        [(128, 158), (3, 3), (1, 1), (2, 2)],
                                         (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case2",
                                         "success"))
@@ -57,9 +57,9 @@ ut_case.add_case(
 # dynamic_rank
 ut_case.add_case(
     "all",
-    gen_dynamic_conv2d_backprop_filter_case([64, 64, 1, 1], [-2], [-2],
+    gen_dynamic_conv2d_backprop_filter_case([1, 1, 64, 64], [-2], [-2],
                                         "float32", "float16", "float16",
-                                        "NCHW", "NCHW", "NCHW",
+                                        "HWCN", "NHWC", "NHWC",
                                         [(64, 64), (64, 64), (1, 1), (1, 1)],
                                         [],
                                         [],
@@ -67,17 +67,82 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_filter_case3",
                                         "success"))
 
-#dynamic_nwc
+#dynamic_nwc SAME NCHW range None
 ut_case.add_case(
     "all",
     gen_dynamic_conv2d_backprop_filter_case([64, 3, 3, 3], [-1, -1, 112, -1], [-1, -1, 112, -1],
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(64, 64), (3, 3), (3, 3), (3, 3)],
-                                        [(128, 158), (64, 128), (112, 112), (112, 142)],
-                                        [(128, 158), (1, 16), (112, 112), (112, 142)],
+                                        [(128, None), (64, 128), (112, 112), (112, None)],
+                                        [(128, None), (1, 16), (112, 112), (112, None)],
                                         (1, 1, 1, 1), (-1, -1, -1, -1), (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case4",
+                                        "success"))
+
+# dynamic hw SAME NHWC
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([3, 3, 64, 64], [7, -1, -1, 64], [7, -1, -1, 64],
+                                        "float32", "float16", "float16",
+                                        "HWCN", "NHWC", "NHWC",
+                                        [(3, 3), (3, 3), (64, 64), (64, 64)],
+                                        [(7, 7), (1, 71), (1, 71), (64, 64)],
+                                        [(7, 7), (1, 142), (1, 142), (64, 64)],
+                                        (1, 1, 2, 1), [-1, -1, -1, -1], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case5",
+                                        "success"))
+
+# dynamic h VALID NHWC 
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([2, 2, 64, 64], [7, -1, 2, 64], [7, -1, 3, 64],
+                                        "float32", "float16", "float16",
+                                        "HWCN", "NHWC", "NHWC",
+                                        [(2, 2), (2, 2), (64, 64), (64, 64)],
+                                        [(7, 7), (2, 71), (2, 2), (64, 64)],
+                                        [(7, 7), (2, 142), (3, 3), (64, 64)],
+                                        (1, 2, 1, 1), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case6",
+                                        "success"))
+
+# dynamic_nh hw VALID NHWC 
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([3, 3, 64, 64], [-1, -1, 50, 64], [64, -1, -1, 64],
+                                        "float32", "float16", "float16",
+                                        "HWCN", "NHWC", "NHWC",
+                                        [(1, 1), (1, 1), (64, 64), (64, 64)],
+                                        [(64, 128), (50, 71), (50, 71), (64, 64)],
+                                        [(64, 128), (56, 142), (112, 142), (64, 64)],
+                                        (1, 1, 2, 1), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case7",
+                                        "success"))
+
+#dynamic_w hw SAME NCHW
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case((64, 3, 3, 3), (128, 64, 1, -1), (128, 3, -1, -1),
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(64, 64), (3, 3), (3, 3), (3, 3)],
+                                        [(128, 158), (64, 64), (1, 1), (2, 4)],
+                                        [(128, 158), (3, 3), (1, 10), (2, 6)],
+                                        (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case8",
+                                        "success"))
+
+#dynamic_hw w SAME NCHW
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case((64, 3, 3, 3), (128, 64, -1, -1), (128, 3, 1, -1),
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(64, 64), (3, 3), (3, 3), (3, 3)],
+                                        [(128, 158), (64, 64), (1, 10), (2, 4)],
+                                        [(128, 158), (3, 3), (1, 1), (2, 8)],
+                                        (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case9",
                                         "success"))
 
 # dynamic_hw, x shape is not list or tuple
@@ -323,7 +388,7 @@ ut_case.add_case(
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
                                         (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
-                                        "dynamic_conv2d_backprop_filter_case3_3",
+                                        "dynamic_conv2d_backprop_filter_case3_4",
                                         "success"))
 
 if __name__ == '__main__':

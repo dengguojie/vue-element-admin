@@ -325,8 +325,8 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
         _check_attr_range_dw("pad's bottom", pads[1], PAD_MIN, PAD_MAX)
         _check_attr_range_dw("pad's left", pads[2], PAD_MIN, PAD_MAX)
         _check_attr_range_dw("pad's right", pads[3], PAD_MIN, PAD_MAX)
-        fmap_h_min = max(fmap_h_min, shape_dedw[2] - pads[0], pads[1])
-        fmap_w_min = max(fmap_w_min, shape_dedw[3] - pads[2], pads[3])
+        fmap_h_min = max(fmap_h_min, shape_dedw[2] - pads[0] - pads[1])
+        fmap_w_min = max(fmap_w_min, shape_dedw[3] - pads[2] - pads[3])
         padding = pads
    
     if unknown_rank_flag or None in [*in_range[0], *in_range[2], *in_range[3]]:
@@ -444,6 +444,7 @@ def depthwise_conv2d_backprop_filter(input_fm,
     -------
     None
     """
+    
     with tbe.compute():
         res = _depthwise_conv2dbp_filter_compute(
             input_fm, filter_size, out_backprop, filter_grad, strides, dilations,

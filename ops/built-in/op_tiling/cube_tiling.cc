@@ -206,8 +206,8 @@ string CubeTilingCostModel(const std::vector<int32_t>& curShape, const nlohmann:
 }
 
 string CubeTilingNHW(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  int32_t seedHDim = 0;
-  int32_t seedWDim = 1;
+  int32_t seedHDim = 1;
+  int32_t seedWDim = 2;
   int32_t minDist = 1000000;
 
   std::string tilingID("");
