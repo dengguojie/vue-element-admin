@@ -578,8 +578,15 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "w, b shape is wrong, please check!")
 
     # seq_length
-    if seq_length is not None and (seq_length["shape"] != output_h["shape"]):
-        error_manager_vector.raise_err_check_params_rules("DynamicRNN: seq_length.shape != output_h.shape")
+    if seq_length is not None: 
+        if seq_length.get("dtype").lower() == "int32":
+            if (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
+                error_manager_vector.raise_err_check_params_rules("DynamicRNN",
+                                                          "(seq_length.shape[0] + 15)/16 != output_h.shape[2]",
+                                                          "seq_length.shape[0]", output_h["shape"][2])
+        else:
+            if seq_length["shape"] != output_h["shape"]:
+                error_manager_vector.raise_err_check_params_rules("DynamicRNN: seq_length.shape != output_h.shape")
 
     # check init
     if (init_h is None and init_c is not None) or (
@@ -753,10 +760,16 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                dtype=bias_dtype, name='bias')
     
     is_using_seq_mask = False
+    is_valid_mask = False
     if seq_length is not None:
         is_using_seq_mask = True
-        seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
-                                      dtype="float16", name='seq_mask_gm')
+        if seq_length.get("dtype").lower() == "int32":
+            seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
+                                              dtype="int32", name='seq_mask_gm')
+        else:
+            is_valid_mask = True
+            seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
+                                          dtype="float16", name='seq_mask_gm')
     else:
         seq_mask_gm = None
 
@@ -898,7 +911,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 j_t_tanh_gm_var = None
                 c_t_tanh_gm_var = None
                 
-            if is_using_seq_mask:
+            if is_valid_mask:
                 seq_mask_gm_var = seq_mask_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                               :,
                                               loop_j * cut_m: loop_j * cut_m + cut_m,
