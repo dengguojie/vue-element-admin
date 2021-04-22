@@ -7330,12 +7330,13 @@ def nz_2_nd(src, dst, src_format, dst_format, kernel_name="Nz2ND"):
         raise RuntimeError("The dst_format of Nz2Nd only support"
                            "ND, NHWC, NCHW.")
 
-    better_perf_shapes = [[5, 10000, 16, 16], [3, 10000, 16, 16],
-    [16000, 8, 1, 16, 16], [16000, 1, 1, 16, 16], [1, 1000, 16, 16]]
+    better_perf_shapes = [[5, 10000, 16, 16], [3, 10000, 16, 16], [16000, 8, 1, 16, 16], [16000, 1, 1, 16, 16],
+                          [1, 1000, 16, 16], [4, 1, 1, 16, 16], [4, 1, 2, 16, 16], [4, 1, 3, 16, 16], [4, 1, 4, 16, 16],
+                          [4, 1, 5, 16, 16], [4, 1, 6, 16, 16], [4, 1, 7, 16, 16], [4, 1, 8, 16, 16], [4, 1, 9, 16, 16],
+                          [4, 1, 10, 16, 16], [4, 1, 11, 16, 16], [4, 1, 12, 16, 16]]
     if list(input_shape) in better_perf_shapes and dtype == "float16":
         from impl import trans_data_negative_target_tc
-        trans_data_negative_target_tc.trans_data_negative_target_tc(src,
-        dst, src_format, dst_format, kernel_name)
+        trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
     else:
         result = Nz2NDCompute(input_shape, output_shape, dtype, kernel_name)
         return result.get_tik_instance()
