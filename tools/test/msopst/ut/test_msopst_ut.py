@@ -1,1 +1,0 @@
-../st/test_msopst_st.py

@@ -9,25 +9,25 @@ sys.path.append(os.path.dirname(__file__)+"/../../")
 from util import test_utils
 
 
-OUT_PATH_VALID = './msopgen/res/tmp'
-IR_JSON_PATH = './msopgen/res/IR_json.json'
-MS_JSON_PATH = './msopgen/res/MS_json.json'
-IR_EXCEL_PATH = './msopgen/res/IR_excel.xlsx'
+OUT_PATH_VALID = './st/msopgen/res/tmp'
+IR_JSON_PATH = './st/msopgen/res/IR_json.json'
+MS_JSON_PATH = './st/msopgen/res/MS_json.json'
+IR_EXCEL_PATH = './st/msopgen/res/IR_excel.xlsx'
 
-IR_JSON_GOLDEN_OUTPUT = './msopgen/golden/golden_from_json/golden_output'
-IR_JSON_OUTPUT = './msopgen/golden/golden_from_json/output'
+IR_JSON_GOLDEN_OUTPUT = './st/msopgen/golden/golden_from_json/golden_output'
+IR_JSON_OUTPUT = './st/msopgen/golden/golden_from_json/output'
 
-MS_JSON_GOLDEN_OUTPUT = './msopgen/golden/golden_from_ms_json/golden_output'
-MS_JSON_OUTPUT = './msopgen/golden/golden_from_ms_json/output'
+MS_JSON_GOLDEN_OUTPUT = './st/msopgen/golden/golden_from_ms_json/golden_output'
+MS_JSON_OUTPUT = './st/msopgen/golden/golden_from_ms_json/output'
 
-MS_SQUARE_INPUT = './msopgen/golden/golden_from_ms_txt/input/square.txt'
-MS_SUM_INPUT = './msopgen/golden/golden_from_ms_txt/input/sum.txt'
+MS_SQUARE_INPUT = './st/msopgen/golden/golden_from_ms_txt/input/square.txt'
+MS_SUM_INPUT = './st/msopgen/golden/golden_from_ms_txt/input/sum.txt'
 
-MS_TXT_GOLDEN_OUTPUT = './msopgen/golden/golden_from_ms_txt/golden_output'
-MS_TXT_OUTPUT = './msopgen/golden/golden_from_ms_txt/output'
+MS_TXT_GOLDEN_OUTPUT = './st/msopgen/golden/golden_from_ms_txt/golden_output'
+MS_TXT_OUTPUT = './st/msopgen/golden/golden_from_ms_txt/output'
 
-IR_EXCEL_GOLDEN_OUTPUT = './msopgen/golden/golden_from_excel/golden_output'
-IR_EXCEL_OUTPUT = './msopgen/golden/golden_from_excel/output'
+IR_EXCEL_GOLDEN_OUTPUT = './st/msopgen/golden/golden_from_excel/golden_output'
+IR_EXCEL_OUTPUT = './st/msopgen/golden/golden_from_excel/output'
 
 
 class TestUtilsMethods(unittest.TestCase):

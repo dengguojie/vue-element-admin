@@ -6,13 +6,13 @@ import os
 import sys
 import subprocess
 
-opgen_flag = False
-opst_flag = False
+ut_flag = False
 
-# run msopgen ut
-msopgen_ut_path = os.path.abspath("./msopgen/ut")
+# run ut
+ut_path = os.path.abspath("ut/")
 msopgen_source_code = os.path.abspath("../msopgen/op_gen")
-gen_cmd = ['python3.7', '-m', 'pytest', msopgen_ut_path, '--cov=' + msopgen_source_code]
+msopst_source_code = os.path.abspath("../op_test_frame/python/op_test_frame/st")
+gen_cmd = ['python3.7', '-m', 'pytest', ut_path, '--cov=' + msopgen_source_code, '--cov=' + msopst_source_code, "--cov-report=html"]
 result_opgen = subprocess.Popen(gen_cmd, shell=False,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT)
@@ -22,31 +22,12 @@ while result_opgen.poll() is None:
     if line:
         print(line)
 if result_opgen.returncode == 0:
-    opgen_flag = True
-    print("run msopgen ut success")
+    ut_flag = True
+    print("run ut success")
 else:
-    print("run msopgen ut failed")
+    print("run ut failed")
 
-# run msopst ut
-msopst_ut_path = os.path.abspath("./msopst/ut")
-msopst_source_code = os.path.abspath("../op_test_frame/python/op_test_frame/st")
-st_cmd = ['python3.7', '-m', 'pytest', msopst_ut_path, '--cov=' + msopst_source_code]
-result_opst = subprocess.Popen(st_cmd, shell=False,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-while result_opst.poll() is None:
-    line = result_opst.stdout.readline()
-    line = line.strip()
-    if line:
-        print(line)
-if result_opst.returncode == 0:
-    opst_flag = True
-    print("run msopst ut success")
-else:
-    print("run msopst ut failed")
-
-
-if opgen_flag and opst_flag:
+if ut_flag:
     sys.exit(0)
 else:
     sys.exit(1)

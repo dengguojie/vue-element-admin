@@ -19,7 +19,7 @@ class Process():
         return "None"
 
 class TestUtilsMethods(unittest.TestCase):
-    def test_compile1(self):
+    def test_msopst_compile1(self):
         with pytest.raises(utils.OpTestGenException) as error:
             with mock.patch('os.path.exists', return_value=False):
                 runner = AclOpRunner('/home', 'ddd', 'report')
@@ -27,7 +27,7 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertEqual(error.value.args[0],
                          utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
-    def test_compile2(self):
+    def test_msopst_compile2(self):
         report = OpSTReport()
         process = Process()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
@@ -36,7 +36,7 @@ class TestUtilsMethods(unittest.TestCase):
                     runner = AclOpRunner('/home', 'ddd', report)
                     runner.acl_compile()
 
-    def test_compile3(self):
+    def test_msopst_compile3(self):
         report = OpSTReport()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
@@ -45,7 +45,7 @@ class TestUtilsMethods(unittest.TestCase):
                     runner = AclOpRunner('/home', 'ddd', report)
                     runner.acl_compile()
 
-    def test_run1(self):
+    def test_msopst_run1(self):
         report = OpSTReport()
         with pytest.raises(utils.OpTestGenException) as error:
             with mock.patch('os.path.exists', return_value=False):
@@ -54,7 +54,7 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertEqual(error.value.args[0],
                          utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
-    def test_run2(self):
+    def test_msopst_run2(self):
         report = OpSTReport()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
@@ -64,7 +64,7 @@ class TestUtilsMethods(unittest.TestCase):
                     runner = AclOpRunner('/home', 'ddd', report)
                     runner.run()
 
-    def test_run3(self):
+    def test_msopst_run3(self):
         report = OpSTReport()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
@@ -74,7 +74,7 @@ class TestUtilsMethods(unittest.TestCase):
                     runner = AclOpRunner('/home', 'ddd', report)
                     runner.process()
 
-    def test_run4(self):
+    def test_msopst_run4(self):
         report = OpSTReport()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
@@ -85,19 +85,19 @@ class TestUtilsMethods(unittest.TestCase):
                     runner = AclOpRunner('/home', 'ddd', report, advance)
                     runner.process()
 
-    def test_get_atc_cmd(self):
+    def test_msopst_get_atc_cmd(self):
         report = OpSTReport()
         advance = AdvanceIniParser(MSOPST_CONF_INI)
         runner = AclOpRunner('/home', 'ddd', report, advance)
         runner._get_atc_cmd()
 
-    def test_set_log_level_env(self):
+    def test_msopst_set_log_level_env(self):
         report = OpSTReport()
         advance = AdvanceIniParser(MSOPST_CONF_INI)
         runner = AclOpRunner('/home', 'ddd', report, advance)
         runner.set_log_level_env()
 
-    def test_prof_run1(self):
+    def test_msopst_prof_run1(self):
         with mock.patch('os.getenv', return_value="/home"):
             with mock.patch('os.path.exists', return_value=True):
                 with mock.patch(
@@ -107,7 +107,7 @@ class TestUtilsMethods(unittest.TestCase):
                     runner = AclOpRunner('/home', 'ddd', report, advance)
                     runner.prof_run('/home')
 
-    def test_prof_run2(self):
+    def test_msopst_prof_run2(self):
         with mock.patch('os.getenv', return_value="/home"):
             with mock.patch('os.path.exists', return_value=False):
                 report = OpSTReport()
@@ -115,7 +115,7 @@ class TestUtilsMethods(unittest.TestCase):
                 runner = AclOpRunner('/home', 'ddd', report, advance)
                 runner.prof_run('/home')
 
-    def test_prof_get_op_time_from_csv_file_1(self):
+    def test_msopst_prof_get_op_time_from_csv_file_1(self):
         report = OpSTReport()
         runner = AclOpRunner('/home', 'ddd', report)
         runner._prof_get_op_time_from_csv_file(None, ["add"], "soc")

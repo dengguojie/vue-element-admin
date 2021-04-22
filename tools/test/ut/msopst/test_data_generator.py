@@ -9,7 +9,7 @@ from op_test_frame.st.interface.st_report import OpSTReport
 
 class TestUtilsMethods(unittest.TestCase):
 
-    def test_generate1(self):
+    def test_msopst_generate1(self):
         report = OpSTReport()
         data_generator = DataGenerator([], '/home', True, report)
         distribution_list = ['normal', 'beta', 'laplace', 'triangular', 'relu',
@@ -17,7 +17,7 @@ class TestUtilsMethods(unittest.TestCase):
         for i in distribution_list:
             data_generator.gen_data((64,6), 1, 10, np.bool, i)
 
-    def test_generate_error(self):
+    def test_msopst_generate_error(self):
         report = OpSTReport()
         with pytest.raises(utils.OpTestGenException) as error:
             data_generator = DataGenerator([], '/home', True, report)

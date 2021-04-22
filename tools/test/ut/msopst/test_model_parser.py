@@ -12,14 +12,14 @@ class Args:
         self.quiet = False
 
 class TestUtilsMethods(unittest.TestCase):
-    def test_get_model_nodes1(self):
+    def test_msopst_get_model_nodes1(self):
         args = Args('./a.json', '', './a.pbv')
         with pytest.raises(utils.OpTestGenException) as error:
             model_parser.get_model_nodes(args,'')
         self.assertEqual(error.value.args[0],
                          utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
 
-    def test_get_model_nodes2(self):
+    def test_msopst_get_model_nodes2(self):
         args = Args('./a.json', '', './a.pb')
         with pytest.raises(utils.OpTestGenException) as error:
             model_parser.get_model_nodes(args,'')

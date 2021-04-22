@@ -35,52 +35,52 @@ msopst = importlib.util.module_from_spec(spec)
 loader.exec_module(msopst)
 
 # TBE OPERATOR INPUT/OUTPOUT
-ST_GOLDEN_OUTPUT = './msopst/golden/base_case/golden_output/tbe'
-ST_OUTPUT = './msopst/golden/base_case/output/'
-INI_INPUT = './msopst/golden/base_case/input/conv2_d.ini'
-MODEL_ARGS = './msopst/golden/base_case/input/add.pb'
-ST_GOLDEN_OP_RESULT_TXT = './msopst/golden/base_case/input' \
+ST_GOLDEN_OUTPUT = './st/msopst/golden/base_case/golden_output/tbe'
+ST_OUTPUT = './st/msopst/golden/base_case/output/'
+INI_INPUT = './st/msopst/golden/base_case/input/conv2_d.ini'
+MODEL_ARGS = './st/msopst/golden/base_case/input/add.pb'
+ST_GOLDEN_OP_RESULT_TXT = './st/msopst/golden/base_case/input' \
                           '/result.txt'
 
 # AICPU_PARSE_HEAD_FILE OUTPUT
-BUCKETIZE_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
+BUCKETIZE_INI_INPUT = './st/msopst/golden/base_case/golden_output/aicpu' \
                           '/cpukernel/op_info_cfg/aicpu_kernel/bucketize.ini'
-TOPK_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
+TOPK_INI_INPUT = './st/msopst/golden/base_case/golden_output/aicpu' \
                           '/cpukernel/op_info_cfg/aicpu_kernel/top_k.ini'
-LESS_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
+LESS_INI_INPUT = './st/msopst/golden/base_case/golden_output/aicpu' \
                           '/cpukernel/op_info_cfg/aicpu_kernel/less.ini'
-CAST_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
+CAST_INI_INPUT = './st/msopst/golden/base_case/golden_output/aicpu' \
                           '/cpukernel/op_info_cfg/aicpu_kernel/cast.ini'
-AICPU_CASE_JSON_GOLDEN_OUTPUT = './msopst/golden/base_case/golden_output' \
+AICPU_CASE_JSON_GOLDEN_OUTPUT = './st/msopst/golden/base_case/golden_output' \
                                 '/aicpu/json'
 
 # paramType: optional OUTPUT
-OPTIONAL_INI_INPUT = './msopst/golden/base_case/input/Pooling.ini'
-OPTIONAL_ST_GOLDEN_OUTPUT = './msopst/golden/base_case/' \
+OPTIONAL_INI_INPUT = './st/msopst/golden/base_case/input/Pooling.ini'
+OPTIONAL_ST_GOLDEN_OUTPUT = './st/msopst/golden/base_case/' \
                             'golden_output/optional_input'
-ST_GOLDEN_OP_CASE_JSON_INPUT = './msopst/golden/base_case/input' \
+ST_GOLDEN_OP_CASE_JSON_INPUT = './st/msopst/golden/base_case/input' \
                                '/Pooling_case_20210225145706.json'
-ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC = './msopst/golden/base_case/golden_output' \
+ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC = './st/msopst/golden/base_case/golden_output' \
                                    '/gen_optional_acl_prj/Pooling/src'
-ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN = './msopst/golden/base_case/golden_output' \
+ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN = './st/msopst/golden/base_case/golden_output' \
                                    '/gen_optional_acl_prj/Pooling/run/out'\
                                    '/test_data/config/'
-MSOPST_CONF_INI = './msopst/golden/base_case/input/msopst.ini'
+MSOPST_CONF_INI = './st/msopst/golden/base_case/input/msopst.ini'
 
 # dynamic shape
-ST_GOLDEN_OP_DYNAMIC_SHAPE_INI_INPUT = './msopst/golden/base_case/input' \
+ST_GOLDEN_OP_DYNAMIC_SHAPE_INI_INPUT = './st/msopst/golden/base_case/input' \
                                        '/add.ini'
 
-ST_GOLDEN_OP_DYNAMIC_SHAPE_JSON_INPUT = './msopst/golden/base_case/input' \
+ST_GOLDEN_OP_DYNAMIC_SHAPE_JSON_INPUT = './st/msopst/golden/base_case/input' \
                                         '/add_case.json'
-ST_GOLDEN_DYNAMIC_SHAPE_ACL_PROJECT_OUTPUT = './msopst/golden/base_case' \
+ST_GOLDEN_DYNAMIC_SHAPE_ACL_PROJECT_OUTPUT = './st/msopst/golden/base_case' \
                                              '/golden_output/' \
                                              'gen_optional_acl_prj/Add/src'
 
 # MINDSPORE OPERATOR INPUT/OUTPOUT
-ST_MS_GOLDEN_JSON_OUTPUT = './msopst/golden/base_case/golden_output' \
+ST_MS_GOLDEN_JSON_OUTPUT = './st/msopst/golden/base_case/golden_output' \
                            '/mindspore/json'
-ST_MS_GOLDEN_INPUT_JSON = './msopst/golden/base_case/input/ms_case.json'
+ST_MS_GOLDEN_INPUT_JSON = './st/msopst/golden/base_case/input/ms_case.json'
 
 
 class NumpyArrar:
@@ -505,7 +505,7 @@ class TestUtilsMethods(unittest.TestCase):
         verify the normal scene of _prof_get_op_time_from_csv_file function
         in acl_op_runner.py
         """
-        csv_file = "./msopst/golden/base_case/input/task_time_0_1.csv"
+        csv_file = "./st/msopst/golden/base_case/input/task_time_0_1.csv"
         op_name_list = ["Less", "Less"]
         soc_version = "Ascend310"
         report = OpSTReport()
