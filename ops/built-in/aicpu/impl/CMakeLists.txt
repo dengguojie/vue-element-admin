@@ -1,46 +1,46 @@
 set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
 
 set(local_kernels_src_files
-    kernels/normalized/expanddims.cc
-    kernels/normalized/less.cc
-    kernels/normalized/top_k.cc
-    kernels/normalized/get_dynamic_dims.cc
-    kernels/normalized/identity.cc
+    kernels/normalized/adaptive_max_pool_2d.cc
+    kernels/normalized/add.cc
+    kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
-    kernels/normalized/reshape.cc
+    kernels/normalized/concatv2.cc
+    kernels/normalized/equal.cc
+    kernels/normalized/expanddims.cc
+    kernels/normalized/fill.cc
+    kernels/normalized/get_dynamic_dims.cc
+    kernels/normalized/less.cc
+    kernels/normalized/identity.cc
+    kernels/normalized/logging.cc
+    kernels/normalized/mul.cc
+    kernels/normalized/not_equal.cc
+    kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
+    kernels/normalized/reshape.cc
+    kernels/normalized/round.cc
+    kernels/normalized/split_v.cc
     kernels/normalized/sparse_to_dense.cc
     kernels/normalized/strided_slice.cc
-    kernels/normalized/logging.cc
-    kernels/normalized/concatv2.cc
-    kernels/normalized/round.cc
-    kernels/normalized/cast.cc
-    kernels/normalized/add.cc
-    kernels/normalized/mul.cc
     kernels/normalized/strided_slice_v2.cc
-    kernels/normalized/split_v.cc
-    kernels/normalized/random_uniform.cc
-    kernels/normalized/fill.cc
-    kernels/normalized/equal.cc
-    kernels/normalized/not_equal.cc
-    kernels/normalized/adaptive_max_pool_2d.cc
-    utils/sparse_group.cc
+    kernels/normalized/top_k.cc
+    utils/bcast.cc
     utils/eigen_tensor.cc
     utils/kernel_util.cc
+    utils/sparse_group.cc
     utils/sparse_tensor.cc
-    utils/bcast.cc
 )
 
 set(local_host_kernels_src_files
     kernels/host/transdata.cc
-    kernels/host/format_transfer/register_format_transfer.cc
-    kernels/host/format_transfer/format_transfer_utils.cc
     kernels/host/format_transfer/format_transfer_fractal_nz.cc
     kernels/host/format_transfer/format_transfer_hwcn_fractal_zn_lstm.cc
+    kernels/host/format_transfer/format_transfer_utils.cc
+    kernels/host/format_transfer/register_format_transfer.cc
 )
 set(local_device_kernels_src_files
-    kernels/device/where.cc
     kernels/device/avg_pool1d_avg_matrix.cc
+    kernels/device/where.cc
 )
 
 if(BUILD_OPEN_PROJECT)

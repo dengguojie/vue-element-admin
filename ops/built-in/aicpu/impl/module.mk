@@ -1,24 +1,24 @@
 LOCAL_PATH := $(call my-dir)
 
-local_normalized_kernels := kernels/normalized/expanddims.cc \
-                            kernels/normalized/less.cc \
-                            kernels/normalized/logging.cc \
-                            kernels/normalized/top_k.cc \
+local_normalized_kernels := kernels/normalized/cast_kernels.cc \
+                            kernels/normalized/ceil.cc \
+                            kernels/normalized/concatv2.cc \
+                            kernels/normalized/expanddims.cc \
                             kernels/normalized/get_dynamic_dims.cc \
                             kernels/normalized/identity.cc \
-                            kernels/normalized/ceil.cc \
+                            kernels/normalized/less.cc \
+                            kernels/normalized/logging.cc \  
                             kernels/normalized/reshape.cc \
                             kernels/normalized/realdiv.cc \
+                            kernels/normalized/round.cc \
                             kernels/normalized/sparse_to_dense_kernels.cc \
                             kernels/normalized/strided_slice.cc \
-                            kernels/normalized/cast_kernels.cc \
-                            kernels/normalized/concatv2.cc \
-                            kernels/normalized/round.cc \
-                            utils/sparse_group.cc \
+                            kernels/normalized/top_k.cc \
+                            utils/bcast.cc \
                             utils/eigen_tensor.cc \
                             utils/kernel_util.cc \
+                            utils/sparse_group.cc \
                             utils/sparse_tensor.cc \
-                            utils/bcast.cc \
 
 local_host_kernels := kernels/host/add_kernel.cc \
                       kernels/host/mul_kernel.cc \

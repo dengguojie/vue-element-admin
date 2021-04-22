@@ -410,10 +410,9 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType type = DT_INT64;
+  DataType type = DT_FLOAT;
   if (op.GetAttr("Tsplits", type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[Tsplits] failed"));
-    return GRAPH_FAILED;
+    type = DT_INT64;
   }
 
   TensorDesc row_splits_desc = op.GetOutputDesc("row_splits");
@@ -469,19 +468,18 @@ IMPLEMT_INFERFUNC(UnicodeDecode, UnicodeDecodeInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType type = DT_INT64;
+  DataType type = DT_FLOAT;
   if (op.GetAttr("Tsplits", type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[Tsplits] failed"));
-    return GRAPH_FAILED;
+    type = DT_INT64;
   }
 
   TensorDesc row_splits_desc = op.GetOutputDesc("row_splits");
   Shape row_splits_shape({row_splits_num});
   row_splits_desc.SetDataType(type);
   row_splits_desc.SetShape(row_splits_shape);
-  std::vector<std::pair<int64_t, int64_t>> row_splits_shape_range;
-  (void) op.GetInputDesc(0).GetShapeRange(row_splits_shape_range);
-  row_splits_desc.SetShapeRange(row_splits_shape_range);
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  (void) op.GetInputDesc(0).GetShapeRange(shape_range);
+  row_splits_desc.SetShapeRange(shape_range);
   if (op.UpdateOutputDesc("row_splits", row_splits_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         op.GetName(), string("update output[row_splits] desc failed."));
