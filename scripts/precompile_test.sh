@@ -83,7 +83,7 @@ install_sch_script() {
   echo "[INFO] install run_ops_test.sh"
   cp -f "${CUR_PATH}/util/run_sch_st.sh" "${TEST_BIN_PATH}/run_ops_st.sh"
   cp -f "${CANN_ROOT}/auto_schedule/python/tests/sch_run_st.py" "${TEST_BIN_PATH}"
-  cp -r "${CANN_ROOT}/tools/sch_test_frame/python/sch_test_frame" "${TEST_BIN_PATH}"
+  cp -r "${CANN_ROOT}/auto_schedule/python/tests/sch_test_frame" "${TEST_BIN_PATH}"
 }
 
 install_package() {

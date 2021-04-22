@@ -57,8 +57,8 @@ def main(argv):
 
     if sch_tag:
         print("[INFO]Run schedule ut case!!!")
-        frame_path = os.path.join(root_path, 'tools', 'sch_test_frame',
-                                  'python')
+        frame_path = os.path.join(root_path, 'auto_schedule', 'python',
+                                  'tests')
         case_path = os.path.join(root_path, 'auto_schedule', 'python', 'tests',
                                  'ut')
         os.environ['PYTHONPATH'] = ':'.join(

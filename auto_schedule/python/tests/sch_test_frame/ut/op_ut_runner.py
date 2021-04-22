@@ -148,7 +148,9 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     logger.log_info("start run: %s" % run_arg.case_file)
     res = True
     if run_arg.cov_report:
-        ut_cover = coverage.Coverage(source=[run_arg.op_module_name, "tbe.dsl"], data_file=run_arg.cov_data_path)
+        ut_cover = coverage.Coverage(source=["tbe.common.context", "tbe.common.utils", 
+            "tbe.dsl", "te.lang","te.utils"],
+                                     data_file=run_arg.cov_data_path)
         ut_cover.start()
 
     try:
@@ -327,7 +329,8 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
 
     if cov_report and len(multiprocess_run_args) > 0:
         total_cov_data_file = os.path.join(cov_report_path, ".coverage")
-        cov = coverage.Coverage(source="tbe.dsl", data_file=total_cov_data_file)
+        cov = coverage.Coverage(source=["tbe.common.context", "tbe.common.utils", 
+            "tbe.dsl", "te.lang","te.utils"], data_file=total_cov_data_file)
         combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in os.listdir(cov_combine_dir)]
         cov.combine(combine_files)
         cov.save()

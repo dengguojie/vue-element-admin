@@ -29,7 +29,7 @@ OPS_UT_COV_REPORT="${CANN_UT_OUT}/cov_report/ops"
 SCH_ST_DIR="${CANN_ROOT}/auto_schedule/python/tests/st"
 SCH_UT_DIR="${CANN_ROOT}/auto_schedule/python/tests/ut"
 
-SCH_TEST_FRAME_INSTALL_HOME="${CANN_ROOT}/tools/sch_test_frame/python"
+SCH_TEST_FRAME_INSTALL_HOME="${CANN_ROOT}/auto_schedule/python/tests"
 
 set_ut_env() {
   local install_path="$1"
