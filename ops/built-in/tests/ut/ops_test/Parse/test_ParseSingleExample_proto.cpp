@@ -32,7 +32,7 @@ TEST_F(parsesingleexample, parsesingleexample_infer_shape_01) {
   op.SetAttr("sparse_types", sparse_types);
   
   std::vector<ge::DataType> dense_types={DT_FLOAT};
-  op.SetAttr("dense_types", dense_types);
+  op.SetAttr("Tdense", dense_types);
 
   std::vector<std::vector<int64_t>> dense_shapes = {{-1}};
   op.SetAttr("dense_shapes", dense_shapes);
@@ -65,7 +65,7 @@ TEST_F(parsesingleexample, parsesingleexample_infer_shape_03) {
   op.SetAttr("sparse_types", sparse_types);
   
   std::vector<ge::DataType> dense_types={DT_FLOAT};
-  op.SetAttr("dense_types", dense_types);
+  op.SetAttr("Tdense", dense_types);
 
   std::vector<std::vector<int64_t>> dense_shapes = {{-1}};
   op.SetAttr("dense_shapes", dense_shapes);
@@ -74,4 +74,5 @@ TEST_F(parsesingleexample, parsesingleexample_infer_shape_03) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
   
 }
+
 

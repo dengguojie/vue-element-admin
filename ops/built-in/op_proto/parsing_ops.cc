@@ -167,17 +167,17 @@ IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
     return GRAPH_FAILED;
   }
   
-  std::vector<ge::DataType> dense_types;
-  if (op.GetAttr("dense_types", dense_types) != GRAPH_SUCCESS) {
+  std::vector<ge::DataType> tdense_type;
+  if (op.GetAttr("Tdense", tdense_type) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-                                       string("get attr[dense_types] failed"));
+                                       string("get attr[Tdense] failed"));
     return GRAPH_FAILED;
   }
 
   for (int i = 0; i < size; ++i) {
     TensorDesc output_desc = op.GetDynamicOutputDesc("dense_values", i);
     output_desc.SetShape(Shape(std::vector<int64_t>({dense_shapes[i]})));
-    output_desc.SetDataType(dense_types[i]);
+    output_desc.SetDataType(tdense_type[i]);
     op.UpdateDynamicOutputDesc("dense_values", i, output_desc);
   }
   return GRAPH_SUCCESS;
