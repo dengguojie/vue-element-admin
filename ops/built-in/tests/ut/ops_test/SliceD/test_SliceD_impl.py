@@ -154,6 +154,18 @@ case13 = {"params": [
     "expect": "success",
     "support_expect": True}
 
+case14 = {"params": [
+    {"shape": (16000, 3121), "dtype": "float16", "format": "NCHW", "ori_shape": (16000, 3121),
+     "ori_format": "NCHW"},
+    # x
+    {"shape": (16000, 1), "dtype": "int64", "format": "NCHW", "ori_shape": (16000, 1),
+     "ori_format": "NCHW"},
+    (0, 3120), (16000, 1),
+],
+    "case_name": "SliceD_13",
+    "expect": "success",
+    "support_expect": True}
+
 
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
@@ -168,6 +180,7 @@ ut_case.add_case("Ascend910A", case10)
 ut_case.add_case("Ascend910A", case11)
 ut_case.add_case("Ascend910A", case12)
 ut_case.add_case("Ascend910A", case13)
+ut_case.add_case("Ascend910A", case14)
 
 case_fz = {"params": [
     {"shape": (1 * 16 * 16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),

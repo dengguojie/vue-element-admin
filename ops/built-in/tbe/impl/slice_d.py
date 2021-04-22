@@ -7430,6 +7430,23 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
     return param_dynamic_in_json
 
 
+def _use_strided_slice(ori_x, ori_begin, ori_size):
+    """
+    can use strided_slice
+    """
+    dtype = ori_x.get("dtype")
+    input_shape = list(ori_x.get("ori_shape"))
+    if len(input_shape) != len(ori_begin) or len(input_shape) != len(ori_size):
+        return False
+
+    output_shape = list(ori_size)
+
+    # dtype, input_shape, output_shape
+    supported_params = [["float16", [128, 80, 896], [128, 80, 1]]]
+
+    return [dtype, input_shape, output_shape] in supported_params
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def slice_d(x, y, begin, size, kernel_name="slice_d"):
@@ -7921,7 +7938,7 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
             sch = tvm.create_schedule(res.op)
             with build_config:
                 tvm.build(sch, tensor_list, "cce", name=kernel_name)
-        elif input_format in ("NDC1HWC0", "NHWC", "NCHW", "ND"):
+        elif input_format in ("NDC1HWC0", "NHWC", "NCHW", "ND") and _use_strided_slice(ori_x, ori_begin, ori_size):
             strides = [1] * len(ori_begin)
             end_new = _get_end(ori_x.get("ori_shape"), ori_begin, ori_size)
             strided_slice_d(ori_x, ori_y, ori_begin, end_new, strides, 0, 0, 0, 0, 0, kernel_name)
