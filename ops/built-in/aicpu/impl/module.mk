@@ -7,7 +7,7 @@ local_normalized_kernels := kernels/normalized/cast_kernels.cc \
                             kernels/normalized/get_dynamic_dims.cc \
                             kernels/normalized/identity.cc \
                             kernels/normalized/less.cc \
-                            kernels/normalized/logging.cc \  
+                            kernels/normalized/logging.cc \
                             kernels/normalized/reshape.cc \
                             kernels/normalized/realdiv.cc \
                             kernels/normalized/round.cc \
