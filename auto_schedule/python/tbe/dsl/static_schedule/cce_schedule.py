@@ -1470,8 +1470,9 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     tensor_list = tensor_list + l1_fusion_tensors
     _build(sch, tensor_list, local_config_map["name"])
 
-    if fusion_manager.get_build_cfg() != "disable":
-        _write_workspace_info(special_tensor_list, local_config_map["name"])
+    with local_build_config:
+        if fusion_manager.get_build_cfg() != "disable":
+            _write_workspace_info(special_tensor_list, local_config_map["name"])
 
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
 
