@@ -19,6 +19,7 @@ from te import tvm
 from topi import generic
 from topi.cce import util
 from te.platform.fusion_manager import fusion_manager
+from impl.util.platform_adapter import error_manager_vector
 
 
 STRIDED_WRITE_TAG = "strided_write"
@@ -30,27 +31,26 @@ def check_params(x, y, axis):
     check the parameters including x, y, axis.
     """
     if len(x.get("shape")) != 5:
-        raise RuntimeError("x's length must be 5 while length is "
-                           "{}.".format(len(x.get("shape"))))
+        error_manager_vector.raise_err_specific_reson("strided_read", "x's length must be 5 \
+                                                      while length is{}.".format(len(x.get("shape"))))
     if len(y.get("shape")) != 5:
-        raise RuntimeError("y's length must be 5 while length is "
-                           "{}.".format(len(y.get("shape"))))
+        error_manager_vector.raise_err_specific_reson("strided_read", "y's length must be 5 \
+                                                      while length is{}.".format(len(y.get("shape"))))
     if x.get("dtype") not in ("float16", "int8"):
-        raise RuntimeError("x dtype should be float16 or int8 while dtype is "
-                           "{}.".format(x.get("dtype")))
+        error_manager_vector.raise_err_input_dtype_not_supported("strided_read", "x", "float16 or int8",
+                                                                 x.get("dtype"))
     if y.get("dtype") not in ("float16", "int8"):
-        raise RuntimeError("y dtype should be float16 or int8 while dtype is "
-                           "{}.".format(y.get("dtype")))
+        error_manager_vector.raise_err_input_dtype_not_supported("strided_read", "y", "float16 or int8",
+                                                                 y.get("dtype"))
     if x.get("format") != "NC1HWC0":
-        raise RuntimeError("input x's format must be NC1HWC0 while format is "
-                           "{}.".format(x.get("format")))
+        error_manager_vector.raise_err_input_format_invalid("strided_read", "x", "NC1HWC0", x.get("format"))
     if y.get("format") != "NC1HWC0":
-        raise RuntimeError("output y's format must be NC1HWC0 while format is "
-                           "{}.".format(y.get("format")))
+        error_manager_vector.raise_err_input_format_invalid("strided_read", "y", "NC1HWC0", y.get("format"))
     if x.get("dtype") != y.get("dtype"):
-        raise RuntimeError("x's dtype must be equal to y's dtype.")
+        error_manager_vector.raise_err_inputs_dtype_not_equal("strided_read", "x", "y",
+                                                              x.get("dtype"), y.get("dtype"))
     if axis != 1:
-        raise RuntimeError("Only support axis = 1 now.")
+        error_manager_vector.raise_err_input_value_invalid("strided_read", "axis", "1", str(axis))
 
 
 @fusion_manager.register("strided_write")

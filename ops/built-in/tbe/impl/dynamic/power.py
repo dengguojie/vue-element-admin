@@ -28,6 +28,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=unused-argument,too-many-locals
@@ -295,13 +296,8 @@ def power(input_x, output_y, power=1.0, scale=1.0,
                                          dtype=input_dtype)
             if cur_cce_product in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
                 if input_dtype == "float32":
-                    error_info = {'errCode': 'E80008', 'param_name': 'input_x',
-                                  'op_name': 'power', 'expect_value': "float16",
-                                  'real_value': input_dtype}
-                    raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype "
-                                                   "should be [%s], but actually is [%s]."
-                                       % (error_info['op_name'], error_info['param_name'],
-                                          error_info['expect_value'], error_info['real_value']))
+                    error_manager_vector.raise_err_input_dtype_not_supported("power", "input_x",
+                                                                             "float16", str(input_dtype))
 
                 res = power_compute(data_input, output_y, power, scale, shift, kernel_name)
             else:

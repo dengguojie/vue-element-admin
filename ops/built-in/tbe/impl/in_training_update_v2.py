@@ -24,6 +24,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.platform_adapter import error_manager_vector
 
 NONETYPE = type(None)
 
@@ -96,18 +97,8 @@ def check_rule(data, rule_desc, param_name=para_check.PARAM_NAME):
     """
     if data is None or rule_desc is None:
         return
-    error_info = {}
-    error_info['errCode'] = para_check.OP_ERROR_CODE_009
-    error_info['op_name'] = para_check.OP_NAME
-    error_info['param_name'] = param_name
-    error_info['rule_desc'] = rule_desc
-    error_info['param_value'] = data
-    raise RuntimeError(error_info,
-                       "Op[%s] has rule: %s, but [%s] is [%s]." \
-                       % (error_info['op_name'],
-                          error_info['rule_desc'],
-                          error_info['param_name'],
-                          error_info['param_value']))
+    error_manager_vector.raise_err_check_params_rules("in_training_update_v2", str(rule_desc),
+                                                      param_name, str(data))
 
 
 def _check_dims_equal(shape_x, shape):

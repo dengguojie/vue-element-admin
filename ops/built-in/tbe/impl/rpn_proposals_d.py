@@ -26,6 +26,7 @@ from impl import topk
 from impl import nms
 from impl import rpn_proposals_d_mdc_v200 as rpn_v200
 from te import platform as tbe_platform
+from te.utils.error_manager import error_manager_vector
 
 
 SHAPE_SIZE_LIMIT = 709920
@@ -585,8 +586,9 @@ class TilingParam(MultiCoreParam):
         # obtain the UB size  Bytes
         size_of_ub = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
         if CONFIG_UNIT * CONFIG_SIXTEEN * CONFIG_THREE > size_of_ub:
-            raise RuntimeError("The proposals numbers is too lager,"
-                               " please reset one according to the UB size!")
+            error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "The proposals numbers \
+                                                          is too lager, please reset one according to \
+                                                          the UB size!")
 
         self.one_core_num = CONFIG_UNIT
         self.cycle_times = self.proposal_num // CONFIG_UNIT
@@ -1515,7 +1517,8 @@ def check_input_param(input_para, kernel_name):
     """
 
     if len(input_para[0]) != CONFIG_TWO:
-        raise RuntimeError("The length of img_size should be 2!")
+        error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "The length of \
+                                                      img_size should be 2!")
 
     img_height, img_width = input_para[0]
 
@@ -1529,7 +1532,8 @@ def check_input_param(input_para, kernel_name):
         check whether min_limit<=input_para<=max_limit
         """
         if input_x < min_limit or input_x > max_limit:
-            raise RuntimeError("The %s should be in [%d, %d]!" % (input_name, min_limit, max_limit))
+            error_manager_vector.raise_err_input_value_invalid("rpn_proposals_d", input_name, "more than {} and \
+                                                               less than {}".format(min_limit, max_limit))
 
     def _check_input_dtype(input_x, input_name):
         """
@@ -1540,7 +1544,8 @@ def check_input_param(input_para, kernel_name):
         return: None
         """
         if not isinstance(input_x, int):
-            raise RuntimeError("%s should be type of float or int!" % input_name)
+            error_manager_vector.raise_err_input_dtype_not_supported("rpn_proposals_d", input_name, "float or int",
+                                                                     type(input_x))
 
     _check_input_dtype(img_height, "img_height")
     _check_input_dtype(img_width, "img_width")
@@ -1552,10 +1557,12 @@ def check_input_param(input_para, kernel_name):
     _check_range_of_input(k, 0, MAX_TOPK, "k")
 
     if k % CONFIG_SIXTEEN:
-        raise RuntimeError("K should be times of 16!")
+        error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "K should be times of 16!")
 
     if min_size > min(img_height, img_width):
-        raise RuntimeError("min_size should be less than min(img_height, img_width)!")
+        error_manager_vector.raise_err_input_dtype_not_supported("rpn_proposals_d", "min_size",
+                                                                 "less than min(img_height, img_width)",
+                                                                 str(min_size))
 
     util.check_kernel_name(kernel_name)
 
@@ -1585,9 +1592,8 @@ def check_input_dict(rois, cls_bg_prob, sorted_box, post_nms_num):
         """
         for key in input_key:
             if key not in input_dict.keys():
-                raise RuntimeError(
-                    "the input parameter %s must have arrt <%s>" %
-                    (input_name, key))
+                error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "the input parameter \
+                                                              {} must have arrt <{}>".format(input_name, key))
 
     def _check_shape_size_limit(input_shape, input_name, shape_para=4, output_flag=True):
         """
@@ -1597,8 +1603,8 @@ def check_input_dict(rois, cls_bg_prob, sorted_box, post_nms_num):
         n_x = CONFIG_ONE
         if len(input_shape) > CONFIG_ONE:
             if input_shape[-1] != shape_para:
-                raise RuntimeError("The last dimension of %s should be %d!" %
-                                   (input_name, shape_para))
+                error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "The last dimension of \
+                                                              {} should be {}!".format(input_name, shape_para))
 
             for loop_i in range(len(input_shape) - CONFIG_ONE):
                 n_x = n_x * input_shape[loop_i]
@@ -1607,17 +1613,19 @@ def check_input_dict(rois, cls_bg_prob, sorted_box, post_nms_num):
 
         if output_flag:
             if n_x % CONFIG_SIXTEEN != 0:
-                raise RuntimeError("N of input %s should be times of 16!" % input_name)
+                error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "N of input {} should be \
+                                                              times of 16!".format(input_name))
 
     def _check_dtype_rule_local(dtype, check_list):
         """
         The common check rule for tensor dtype
         """
         if dtype is None:
-            raise RuntimeError("dtype is None")
+            error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "dtype is None")
 
         if dtype.lower() not in check_list:
-            raise RuntimeError("Dtype only supports %s" % check_list)
+            error_manager_vector.raise_err_input_dtype_not_supported("rpn_proposals_d", "dtype", ", ".join(check_list),
+                                                                     dtype)
 
     # check whether both "shape" and "dtype" is included and following the rule
     input_key = ("shape", "dtype")
@@ -1668,11 +1676,12 @@ def check_input_dict(rois, cls_bg_prob, sorted_box, post_nms_num):
                             output_flag=True)
 
     if input_rois_shape[0] != input_prob_shape[0]:
-        raise RuntimeError("n dimension of inputs rois and cls_bg_prob should be consistent")
+        error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "n dimension of inputs \
+                                                      rois and cls_bg_prob should be consistent")
 
     if post_nms_num != output_box_shape[0]:
-        raise RuntimeError("post_nms_num should be consistent with"
-                           " n dimension of inputs sorted_box")
+        error_manager_vector.raise_err_specific_reson("rpn_proposals_d", "post_nms_num should be \
+                                                      consistent with n dimension of inputs sorted_box")
 
 
 @util.check_input_type(dict, dict, dict,
@@ -1718,7 +1727,8 @@ def rpn_proposals_d(rois, cls_bg_prob, sorted_box,
                        nms_threshold), kernel_name)
 
     if score_threshold < 0:
-        raise RuntimeError("score_threshold should be large than 0!")
+        error_manager_vector.raise_err_input_value_invalid("rpn_proposals_d", "score_threshold",
+                                                           "more than 0", str(score_threshold))
 
     if k == 0:
         if rois.get("shape")[0] > MAX_TOPK:

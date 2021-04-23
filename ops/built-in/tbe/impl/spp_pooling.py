@@ -18,6 +18,7 @@ spp_pooling
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
+from impl.util.platform_adapter import error_manager_vector
 
 
 FP16_MINI = -65504
@@ -59,56 +60,26 @@ def check_param(x_dic, y_dic, param_dic, kernel_name):
         para_check.check_dtype(dtype_val.lower(), ["float16", "float32"], param_name="input_x")
 
     if param_dic['window'][0] < 1 or param_dic['window'][1] < 1:
-        error_info = {'errCode': 'E80002',
-                      'opname': 'spp_pooling',
-                      'param_name': 'window',
-                      'min_value': '1',
-                      'max_value': 'inf',
-                      'real_value': str(param_dic['window'])}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s),"
-                                       " but actually is [%s]."
-                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-                              error_info['max_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("spp_pooling", "window", "1", "inf",
+                                                                 str(param_dic['window']))
                              
     if param_dic['stride'][0] < 1 or param_dic['stride'][1] < 1:
-        error_info = {'errCode': 'E80002',
-                      'opname': 'spp_pooling',
-                      'param_name': 'stride',
-                      'min_value': '1',
-                      'max_value': 'inf',
-                      'real_value': str(param_dic['stride'])}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s),"
-                                       " but actually is [%s]."
-                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-                              error_info['max_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("spp_pooling", "stride", "1", "inf",
+                                                                 str(param_dic["stride"]))
 
     if param_dic['pad'][0] > param_dic['window'][0] or \
             param_dic['pad'][2] > param_dic['window'][1]:
-        error_info = {'errCode': 'E81006',
-                      'opname': 'spp_pooling',
-                      'real_pad_value': str(param_dic['pad']),
-                      'real_window_value': str(param_dic['window'])}
-        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[pad]'s value[%s] should be"
-                                       " not greater than parameter[window]'s value[%s]."
-                           % (error_info['real_pad_value'], error_info['real_window_value']))
+        error_manager_vector.raise_err_input_value_invalid("spp_pooling", "pad", "not greater than" + \
+                                                           str(param_dic['window']), str(param_dic['pad']))
 
     if param_dic["mode"] != AVG_POOLING and \
             param_dic["mode"] != MAX_POOLING:
-        error_info = {'errCode': 'E81007',
-                      'opname': 'spp_pooling',
-                      'real_mode': str(param_dic["mode"])}
-        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[mode] only support AVG and MAX,"
-                                       " but actually is [%s]."
-                           % error_info['real_mode'])
+        error_manager_vector.raise_err_input_value_invalid("spp_pooling", "mode", "AVG or MAX", str(param_dic["mode"]))
 
     if param_dic["ceil_mode"] != POOLING_CEIL and \
             param_dic["ceil_mode"] != POOLING_FLOOR:
-        error_info = {'errCode': 'E81008',
-                      'opname': 'spp_pooling',
-                      'real_ceil_mode': str(param_dic["ceil_mode"])}
-        raise RuntimeError(error_info, "In op[spp_pooling], the parameter[ceil_mode] only support CEIL and FLOOR,"
-                                       " but actually is [%s]."
-                           % error_info['real_ceil_mode'])
+        error_manager_vector.raise_err_input_value_invalid("spp_pooling", "ceil_mode", "CEIL or FLOOR",
+                                                           str(param_dic["ceil_mode"]))
 
 
 class BaseParam:
@@ -256,7 +227,7 @@ class PoolingCommon(PoolingParam):
 
         if self.window[1] * self.shape[4] > \
                 (self.ubuf['avail'] - 256) // self.dtype_size:
-            RuntimeError("(window_w*c0) must be less than Available UB")
+            error_manager_vector.raise_err_specific_reson("spp_pooling", "(window_w*c0) must be less than Available UB")
 
     def set_pooling_pos(self, cur_ph, cur_pw):
         """
@@ -593,26 +564,16 @@ def pooling_compute(x_param, pooling_attr):
         if (out['w'] - 1) * stride[1] >= shape_in[3] + pad[2]:
             out['w'] = out['w'] - 1
         if (out['h'] - 1) * stride[0] >= shape_in[2] + pad[0]:
-            error_info = {'errCode': 'E81009',
-                          'op_name': 'spp_pooling',
-                          'image_size': str(shape_in[2]),
-                          'stride': str(stride[0]),
-                          'pad': str(pad[0])}
-            raise RuntimeError(error_info,
-                               "In op[spp_pooling], the last pooling(height direction) must start strictly inside"
-                               " the image. Image height is %s, stride_h is %s, pad_h is %s.",
-                               (str(shape_in[2]), str(stride[0]), str(pad[0])))
+            error_manager_vector.raise_err_specific_reson("spp_pooling", "the last pooling(height direction) \
+                                                          must start strictly inside the image. Image height \
+                                                          is {}, stride_h is {}, pad_h is {}.".format(
+                                                          str(shape_in[2]), str(stride[0]), str(pad[0])))
             
         if (out['w'] - 1) * stride[1] >= shape_in[3] + pad[2]:
-            error_info = {'errCode': 'E81009',
-                          'op_name': 'spp_pooling',
-                          'image_size': str(shape_in[3]),
-                          'stride': str(stride[1]),
-                          'pad': str(pad[2])}
-            raise RuntimeError(error_info,
-                               "In op[spp_pooling], the last pooling(width direction) must start strictly inside"
-                               " the image. Image width is %s, stride_w is %s, pad_w is %s.",
-                               (str(shape_in[3]), str(stride[1]), str(pad[2])))
+            error_manager_vector.raise_err_specific_reson("spp_pooling", "the last pooling(width direction) must \
+                                                          start strictly inside the image. Image width is {}, \
+                                                          stride_w is {}, pad_w is {}.".format(str(shape_in[3]),
+                                                          str(stride[1]), str(pad[2])))
 
     if pooling_attr['global_pooling'] is True:
         out = {'h': 1, 'w': 1}

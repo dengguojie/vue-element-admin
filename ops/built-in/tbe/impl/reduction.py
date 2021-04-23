@@ -163,37 +163,17 @@ def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="re
     inp_dtype = input_x.get("dtype").lower()
     para_check.check_dtype(inp_dtype, ("float16", "float32"), param_name="input_x")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and inp_dtype == "float32":
-        error_info = {'errCode': 'E81006',
-                      'param_name': 'dtype',
-                      'op_name': 'reduction',
-                      'real_value': inp_dtype}
-        raise RuntimeError("In op[%s], ES is not supported while the [%s] of input is [%s]."
-                           % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+        error_manager_vector.raise_err_specific_reson("reduction", "ES is not supported while the x's dtype\
+                                                      of input is [{}].".format(inp_dtype))
 
     # axis parameter check
     if axis >= len(ori_shape) or axis < -len(ori_shape):
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                      'param_name': 'axis',
-                      'op_name': 'reduction',
-                      'min_value': -len(ori_shape),
-                      'max_value': len(ori_shape) - 1,
-                      'real_value': axis}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be " 
-                                       "in the range of (%s,%s), but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['min_value'], error_info['max_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("reduction", "axis", str(-len(ori_shape)),
+                                                                 str(len(ori_shape) - 1), str(axis))
 
     # operation parameter check
     if operation not in (1, 2, 3, 4):
-        error_info = {'errCode': 'E80002',
-                      'param_name': 'operation',
-                      'op_name': 'reduction',
-                      'expect_value_list': (1, 2, 3, 4),
-                      'real_value': operation}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should "
-                                       "only be one of [%s], but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['expect_value_list'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("reduction", "operation", "1, 2, 3 or 4", str(operation))
 
     # Preprocess
     if axis < 0:

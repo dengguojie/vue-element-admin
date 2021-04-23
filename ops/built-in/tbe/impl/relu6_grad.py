@@ -21,6 +21,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,unused-argument
@@ -97,7 +98,8 @@ def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_grad, param_name="input_grad")
     if list(shape_x) != list(shape_grad):
-        raise RuntimeError("input_grad and input_x must have the same shape.")
+        error_manager_vector.raise_err_inputs_shape_not_equal("relu6_grad", "input_grad", "input_x",
+                                                              str(shape_x), str(shape_grad), str(shape_grad))
 
     # check input tensor data_type and kernel_name
     check_list = ("float16", "float32")
@@ -106,7 +108,7 @@ def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     para_check.check_dtype(grad_dtype, check_list, param_name="input_grad")
     if input_dtype == "float32" and not tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
-        raise RuntimeError("Input dtype only support float16 while input dtype is float32")
+         error_manager_vector.raise_err_input_dtype_not_supported("relu6_grad", "input_x", "float16", input_dtype)
 
     shape_x = [functools.reduce(lambda x, y: x * y, shape_x[:])]
     input_data_orginal = tvm.placeholder(shape_x, name="input_data", dtype=input_dtype)

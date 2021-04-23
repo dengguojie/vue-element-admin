@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from impl.util import util_select_op_base
+from te.utils.error_manager import error_manager_vector
 
 RESV_UB = 512
 FP16_MINI = -65504
@@ -76,26 +77,12 @@ def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     dtype = check_dic_dic.get("in_dic").get("dtype")
 
     if param_dic['boxes'] <= 0:
-        error_info = {'errCode': 'E80002', 'opname': 'yolo', 'param_name': 'boxes',
-                      'min_value': '1', 'max_value': 'inf', 'real_value': str(param_dic['boxes'])}
-        raise RuntimeError(
-            error_info,
-            "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-            % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-               error_info['max_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("yolo", "boxes", "1", "inf", str(param_dic['boxes']))
     if param_dic['coords'] != 4:
-        error_info = {'errCode': 'E80017', 'opname': 'yolo', 'param_name': 'coords', 'expect_value': '4',
-                      'real_value': str(param_dic['coords'])}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-                           % (error_info['opname'], error_info['param_name'],
-                              error_info['expect_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("yolo", "coords", "4", str(param_dic['coords']))
 
     if param_dic['classes'] <= 0:
-        error_info = {'errCode': 'E80002', 'opname': 'yolo', 'param_name': 'classes', 'min_value': '1',
-                      'max_value': 'inf', 'real_value': str(param_dic['classes'])}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s), but actually is [%s]."
-                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-                              error_info['max_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("yolo", "classes", "1", "inf", str(param_dic['classes']))
 
     para_check.check_shape(in_shape, param_name="input")
     para_check.check_shape(out1_shape, param_name="output1")
@@ -541,7 +528,7 @@ class SoftmaxComputer(ComputerCommon):
         # consider calc buf
         dlen = available_ub // (self.sfmx_num + 4)
         if dlen < 32:
-            raise RuntimeError("Classes num overflow")
+            error_manager_vector.raise_err_specific_reson("yolo", "Classes num overflow")
         chn_ceil_len = ceil_x(self.hw_size * self.dtype_size, 32)
         if dlen > chn_ceil_len:
             dlen = chn_ceil_len+31
@@ -930,9 +917,7 @@ class YoloOp(InitTikAndTensor):
         elif yolo_ver.lower() == "v3":
             yolo_mode = 'YOLO_MODE_1'
         else:
-            error_info = {'errCode': 'E81010', 'opname': 'yolo', 'real_verison': yolo_ver.lower()}
-            raise RuntimeError(error_info,
-                               "In op[yolo], only v2 ro v3 is supported, but actually is [%s]." % error_info['real_verison'])
+            error_manager_vector.raise_err_input_value_invalid("yolo", "yolo_ver", "v2 or v3", yolo_ver.lower())
 
         return yolo_mode
 

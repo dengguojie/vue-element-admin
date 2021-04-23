@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 from impl import roi_align_vbi
+from te.utils.error_manager import error_manager_vector
 
 
 NoneType = type(None)
@@ -133,39 +134,22 @@ class RoiAlign:
         if ub_size_bytes != ES_UB_SIZE:
             if self.sample_ratio * self.pooled_h > COM_LIMIT_SAMPLE_NUM or \
                     self.sample_ratio * self.pooled_w > COM_LIMIT_SAMPLE_NUM:
-                error_info = {'errCode': 'E80002',
-                              'param_name1': 'sample_ratio * pooled_h',
-                              'param_name2': 'sample_ratio * pooled_w',
-                              'op_name': 'roi_align',
-                              'min_value': '-inf',
-                              'max_value': '128',
-                              'param_value1': self.sample_ratio * self.pooled_h,
-                              'param_value2': self.sample_ratio * self.pooled_w}
-
-                raise RuntimeError(error_info, "In op[%s], the parameter[%s]/[%s] should be "
-                                               "in the range of [%s, %s], but actually is [%s]/[%s]."
-                                   % (error_info['op_name'], error_info['param_name1'], \
-                                      error_info['param_name2'],
-                                      error_info['min_value'], error_info['max_value'], \
-                                      error_info['param_value1'], error_info['param_value2']))
+                error_manager_vector.raise_err_input_param_range_invalid("roi_align", "sample_ratio * pooled_h \
+                                                                         / sample_ratio * pooled_w"
+                                                                         "inf", "128",
+                                                                         str(self.sample_ratio * self.pooled_h) +
+                                                                         " / " +
+                                                                         str(self.sample_ratio * self.pooled_w))
             self.max_fmap_ub_size = 164 * 32
         else:
             if self.sample_ratio * self.pooled_h > ES_LIMIT_SAMPLE_NUM or \
                     self.sample_ratio * self.pooled_w > ES_LIMIT_SAMPLE_NUM:
-                error_info = {'errCode': 'E80002',
-                              'param_name1': 'sample_ratio * pooled_h',
-                              'param_name2': 'sample_ratio * pooled_w',
-                              'op_name': 'roi_align',
-                              'min_value': '-inf',
-                              'max_value': '58',
-                              'param_value1': self.sample_ratio * self.pooled_h,
-                              'param_value2': self.sample_ratio * self.pooled_w}
-                raise RuntimeError(error_info, "In op[%s], the parameter[%s]/[%s] should be "
-                                               "in the range of [%s, %s], but actually is [%s]/[%s]."
-                                   % (error_info['op_name'], error_info['param_name1'], \
-                                      error_info['param_name2'],
-                                      error_info['min_value'], error_info['max_value'], \
-                                      error_info['param_value1'], error_info['param_value2']))
+                error_manager_vector.raise_err_input_param_range_invalid("roi_align", "sample_ratio * pooled_h \
+                                                                         / sample_ratio * pooled_w"
+                                                                         "-inf", "58",
+                                                                         str(self.sample_ratio * self.pooled_h) +
+                                                                         " / " +
+                                                                         str(self.sample_ratio * self.pooled_w))
             self.max_fmap_ub_size = 108 * 32
 
         self.flowtable_scale = [0.0625, 0.0625, 0.0625, 0.0625, 0.0625, 0.0625]

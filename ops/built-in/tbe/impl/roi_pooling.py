@@ -23,6 +23,7 @@ from impl import roi_pooling_1c0_fm_l1
 from impl import roi_pooling_onec0
 from impl import roi_pooling_l1
 from impl import roi_pooling_four_c0
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=C0103
@@ -333,13 +334,8 @@ def _safe_check(dicts, kernel_name):
         para_check.check_dtype(rois_dtype, ["float16", "float32"], param_name="input_rois")
 
     if x_dtype != rois_dtype or x_dtype != y_dtype:
-        error_info = {'errCode': 'E81012',
-                      'op_name': 'roi_pooling',
-                      'real_dtypes': str((x_dtype, rois_dtype, y_dtype))}
-        raise RuntimeError(
-            error_info,
-            "In op[roi_pooling], the dtype of tensor x, rois and y should be the same,"
-            " but actually they are [%s]." % error_info['real_dtypes'])
+        error_manager_vector.raise_err_inputs_dtype_not_equal("roi_pooling", "x", "rois and y",
+                                                              x_dtype, rois_dtype + " and " + y_dtype)
 
     para_check.check_shape(x_shape, min_rank=5, max_rank=5, param_name="input_x")
     para_check.check_shape(rois_shape, min_rank=2, max_rank=3, param_name="input_rois")
@@ -349,11 +345,8 @@ def _safe_check(dicts, kernel_name):
     else:
         roi_max_num = rois_shape[2]
     if roi_max_num > 6000 or roi_max_num % 16 != 0:
-        error_info = {'errCode': 'E81013', 'real_rois_shape[2]': str(rois_shape[2])}
-        raise RuntimeError(
-            error_info,
-            "In op[roi_pooling], the rois_shape[2] should be less than 6000 and can be divided by 16,"
-            " but actually is [%s]." % error_info['real_rois_shape[2]'])
+        error_manager_vector.raise_err_input_value_invalid("roi_pooling", "rois_shape[2]", "less than \
+                                                           6000 and can be divided by 16", str(rois_shape[2]))
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

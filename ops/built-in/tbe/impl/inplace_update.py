@@ -18,6 +18,7 @@ inplace_update
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=unused-argument,invalid-name
@@ -430,21 +431,24 @@ class InplaceUpdate():
         para_check.check_dtype(self.dtype_indices, ("int32",), param_name="indices")
         para_check.check_dtype(self.dtype_v, check_tuple, param_name="v")
         if len(self.shape_x) != len(self.shape_v):
-            raise RuntimeError("The number of dimension x must"
-                               " be same as dimension v")
+            error_manager_vector.raise_err_specific_reson("inplace_update", "The number of dimension x[{}] \
+                                                          must be same as dimension v[{}]".format(len(self.shape_x),
+                                                          len(self.shape_v)))
 
         if self.shape_v[0] != self.shape_indices[0]:
-            raise RuntimeError("The length of rank 0 of tensor v must"
-                               " be the same as length of indices")
+            error_manager_vector.raise_err_specific_reson("inplace_update", "The length of rank 0 of \
+                                                          tensor v[{}] must be the same as length of \
+                                                          indices[{}]".format(self.shape_v[0], self.shape_indices[0]))
 
         if len(self.shape_indices) != 1:
-            raise RuntimeError("The length of indices only support 1")
+            error_manager_vector.raise_err_specific_reson("inplace_update", "The length of indices only support 1")
         for i in range(1, len(self.shape_v)):
             if self.shape_x[i] != self.shape_v[i]:
                 if not self.check_special():
-                    raise RuntimeError("The length of each rank of tensor x"
-                                       " must be the same as length of"
-                                       " each or next rank of tensor v")
+                    error_manager_vector.raise_err_specific_reson("inplace_update", "The length of each \
+                                                                  rank of tensor x[{}] must be the same as \
+                                                                  length of each or next rank of tensor v[{}] \
+                                                                  ".format(self.shape_x[i], self.shape_v[i]))
 
     def check_special(self):
         """check special"""

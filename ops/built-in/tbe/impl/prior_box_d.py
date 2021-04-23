@@ -42,18 +42,8 @@ INDEX_W = 3
 def _check_parameters(min_size, max_size, img_h, img_w,
                       step_h, step_w, variance):
     if len(min_size) <= 0:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                      'op_name': 'prior_box_d',
-                      'param_name': 'min_size',
-                      'min_value': '0',
-                      'max_value': 'inf',
-                      'real_value': str(len(min_size))}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range "
-                           "of [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("prior_box_d", "min_size", "0", "inf",
+                                                                 str(len(min_size)))
 
     min_size_list = list(range(len(min_size)))
     for i in min_size_list:
@@ -75,32 +65,10 @@ def _check_parameters(min_size, max_size, img_h, img_w,
 
     if img_h != 0 or img_w != 0:
         if img_h < 0:
-            error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                          'op_name': 'prior_box_d',
-                          'param_name': 'img_h',
-                          'min_value': '0',
-                          'max_value': 'inf',
-                          'real_value': str(img_h)}
-            raise RuntimeError(error_info,
-                               "In op[%s], the parameter[%s] should be in the range"
-                               " of [%s, %s], but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['min_value'], error_info['max_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_param_range_invalid("prior_box_d", "img_h", "0", "inf", str(img_h))
 
         if img_w < 0:
-            error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                          'op_name': 'prior_box_d',
-                          'param_name': 'img_w',
-                          'min_value': '0',
-                          'max_value': 'inf',
-                          'real_value': str(img_w)}
-            raise RuntimeError(error_info,
-                               "In op[%s], the parameter[%s] should be in the"
-                               " range of [%s, %s], but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['min_value'], error_info['max_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_param_range_invalid("prior_box_d", "img_w", "0", "inf", str(img_w))
     else:
         img_h = 0
         img_w = 0
@@ -596,7 +564,7 @@ def get_compute_axis(schedule, tensor_dic):
 
 def _prior_compute(schedule, ops, axis):
     if not ops:
-        raise RuntimeError("operation list is empty")
+        error_manager_vector.raise_err_specific_reson("prior_box_d", "operation list is empty")
     length = len(ops)
     if length < 2:
         # no op need integrating
@@ -608,7 +576,7 @@ def _prior_compute(schedule, ops, axis):
 
 def _get_ins_emit_axis(ops, last_axis):
     if not ops:
-        raise RuntimeError("operation list is empty")
+        error_manager_vector.raise_err_specific_reson("prior_box_d", "operation list is empty")
     axis_list = []
     length = len(ops)
     for i in range(0, length-1):
@@ -620,7 +588,7 @@ def _get_ins_emit_axis(ops, last_axis):
 # pylint: disable=too-many-branches
 def _double_buf(schedule, ops):
     if not ops:
-        raise RuntimeError("operation list is empty")
+        error_manager_vector.raise_err_specific_reson("prior_box_d", "operation list is empty")
     length = len(ops)
     if length < 2:
         # no op need double buffer
@@ -634,7 +602,7 @@ def _multicore_factor_calculate(shape, element):
     the compute produce, calculate multicore information
     """
     if not shape:
-        raise RuntimeError("input shape is empty")
+        error_manager_vector.raise_err_specific_reson("prior_box_d", "input shape is empty")
 
     device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
@@ -753,7 +721,7 @@ def _tiling_factor_calculate(shape, split_axis_0, split_size, dtype, ub_size_lim
     do tiling calculate
     """
     if not shape:
-        raise RuntimeError("input shape is empty")
+        error_manager_vector.raise_err_specific_reson("prior_box_d", "input shape is empty")
 
     feature_dtype = dtype.lower()
     shape_0 = int(shape[0])
@@ -944,7 +912,7 @@ def _align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
     determine if aligning needs to be enabled
     """
     if not ops:
-        raise RuntimeError("operation list is empty")
+        error_manager_vector.raise_err_specific_reson("prior_box_d", "operation list is empty")
     length = len(ops)
     if length <= 3:
         # no op need aligning

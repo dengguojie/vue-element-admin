@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import tik
 from topi.cce import util
 from functools import reduce as functools_reduce
+from impl.util.platform_adapter import error_manager_vector
 
 PROPOSAL_NUM = 8
 FP16_BYTE = 2
@@ -59,12 +60,12 @@ def check(x, y1, y2, axis, kernel_name):
         axis = len(shape) - 1
 
     if axis != len(shape) - 1:
-        raise RuntimeError("Dim should take the last one.")
+        error_manager_vector.raise_err_specific_reson("sort", "Dim should take the last one.")
 
     num = shape[axis]
 
     if num > MAX_NUM:
-        raise RuntimeError("Num in dim is too big (>7040).")
+        error_manager_vector.raise_err_specific_reson("sort", "Num in dim is too big (>7040).")
 
     return shape, dtype, num
 
@@ -334,7 +335,7 @@ def moveout(tik_instance, descending, num_16, num, data_out, offset_out, input_u
                 tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, 4)
                 tik_instance.vextract(input_ub[src_pos_ub + num_16], input_ub[dest_pos_ub], num_16 // BLOCK, 0)
         else:
-            raise RuntimeError("Unexcepted version.")
+            error_manager_vector.raise_err_specific_reson("sort", "Unexcepted version.")
 
         if num_16 > DATA_MAX:
             tik_instance.vec_conv(BLOCK, "round", int_list, input_ub[src_pos_ub + num_16], REPEAT_MAX, 2, 1)
@@ -383,7 +384,7 @@ def sort_compute(tik_instance, dtype, num_16, i0, descending, num, data_out, dat
             tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
             input_ub[(num - 1 - i2) * PROPOSAL_NUM].set_as(data_out_ub_[0])
     else:
-        raise RuntimeError("Unexcepted version.")
+        error_manager_vector.raise_err_specific_reson("sort", "Unexcepted version.")
 
     if num_16 > DATA_MAX:
         tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], REPEAT_MAX, 4)

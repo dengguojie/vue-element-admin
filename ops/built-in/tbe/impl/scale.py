@@ -30,17 +30,8 @@ NONETYPE = type(None)
 
 
 def check_param_range(param_name, min_value, max_value, real_value, op_name='ssd_detection_output'):
-    
-    error_info = {}
-    error_info['errCode'] = 'E80002'
-    error_info['opname'] = op_name
-    error_info['param_name'] = param_name
-    error_info['min_value'] = str(min_value)
-    error_info['max_value'] = str(max_value)
-    error_info['real_value'] = str(real_value)
-    raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                       % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-                          error_info['max_value'], error_info['real_value']))
+    error_manager_vector.raise_err_input_param_range_invalid("scale", param_name, str(min_value),
+                                                             str(max_value), str(real_value))
                          
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
@@ -167,29 +158,15 @@ def param_scale_check(shape_x, shape_scale):
 
     if not(length_scale == 1 and shape_scale[0] == 1):
         if length_x != length_scale:
-            
-            error_info = {}
-            error_info['errCode'] = 'E81014'
-            error_info['real_x_dims'] = str(length_x)
-            error_info['real_scale_dims'] = str(length_scale)
-            raise RuntimeError(error_info, 
-                "In op[scale], the dims of input tensor x and tensor scale should be equal, but actually are [%s] and [%s]."
-                % (error_info['real_x_dims'], error_info['real_scale_dims']))
+            error_manager_vector.raise_err_specific_reson("scale", "the dims of input tensor x and tensor \
+                                                          scale should be equal, but actually are \
+                                                          [{}] and [{}]".format(str(length_x), str(length_scale)))
         
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
-            
-                error_info = {}
-                error_info['errCode'] = 'E80013'
-                error_info['opname'] = 'scale'
-                error_info['input1_name'] = 'x'
-                error_info['input2_name'] = 'scale'
-                error_info['input1_shape'] = str(shape_x)
-                error_info['input2_shape'] = str(shape_scale)
-                raise RuntimeError(error_info, 
-                    "In op[%s], the inputs[%s][%s] could not be broadcast together with shapes[%s][%s]."
-                    % (error_info['opname'], error_info['input1_name'], error_info['input2_name'],
-                       error_info['input1_shape'], error_info['input2_shape']))
+                error_manager_vector.raise_err_specific_reson("scale", "the inputs[{}][{}}] could not be broadcast \
+                                                              together with shapes[{}][{}].".format("x", "scale",
+                                                              str(shape_x), str(shape_scale)))
 
 
 def get_param_scale_shape(shape_x, shape_scale):
@@ -272,23 +249,10 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
     error_info = {}
 
     if (axis >= length_x) or (axis < (-length_x)):
-        error_info['errCode'] = 'E80002'
-        error_info['opname'] = 'scale'
-        error_info['param_name'] = 'axis'
-        error_info['min_value'] = str(-length_x)
-        error_info['max_value'] = str(length_x - 1)
-        error_info['real_value'] = str(axis)
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in the range of [%s, %s], but actually is [%s]."
-                           % (error_info['opname'], error_info['param_name'], error_info['min_value'],
-                              error_info['max_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("scale", "axis", str(-length_x), str(length_x - 1), str(axis))
 
     if num_axes < -1:
-        error_info['errCode'] = 'E81015'
-        error_info['opname'] = 'scale'
-        error_info['param_name'] = 'num_axes'
-        error_info['real_value'] = str(num_axes)
-        raise RuntimeError(error_info, "In op[scale], the parameter[%s] should be be non-negative or -1, but actually is [%s]."
-                           % (error_info['param_name'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("scale", "num_axes", "non-negative or -1", str(num_axes))
 
     if axis < 0:
         axis_ = length_x + axis
@@ -300,39 +264,37 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
         if num_axes == -1:
             scale_num = length_x - axis_
             if length_scale != scale_num:
-                raise RuntimeError(
-                    "length_scale and scale_num must be equal")
+                    error_manager_vector.raise_err_specific_reson("scale", "length_scale[{}] and scale_num[{}] must be equal \
+                                                                  ".format(length_scale, scale_num))
             for i in range(scale_num):
                 if shape_x[axis_ + i] != shape_scale[i]:
-                    raise RuntimeError(
-                        "Dimensions shape_x and shape_scale must be equal")
+                    error_manager_vector.raise_err_inputs_shape_not_equal("scale", "shape_x", "shape_scale", str(shape_x[axis_ + i]),
+                                                                          str(shape_scale[i]), str(shape_scale[i]))
         if num_axes == 0:
             if length_scale != 1 or shape_scale[0] != 1:
-                raise RuntimeError("scale must be a scalar ")
+                error_manager_vector.raise_err_specific_reson("scale", "scale must be a scalar!")
         if num_axes > 0:
             num_axis = axis_ + num_axes
             if num_axis > length_x:
-                raise RuntimeError(
-                    "scale shape extends x shape when applied")
+                error_manager_vector.raise_err_specific_reson("scale", "scale shape extends x shape when applied")
             if length_scale != num_axes:
-                raise RuntimeError(
-                    "length_scale and num_axes must be equal")
+                error_manager_vector.raise_err_specific_reson("scale", "length_scale[{}] and num_axes[{}] must be equal \
+                                                              ".format(length_scale, num_axes))
             for i in range(num_axes):
                 if shape_x[axis_ + i] != shape_scale[i]:
-                    raise RuntimeError(
-                        "dimensions shape_x and shape_scale must be equal")
+                    error_manager_vector.raise_err_inputs_shape_not_equal("scale", "shape_x", "shape_scale", str(shape_x[axis_ + i]),
+                                                                          str(shape_scale[i]), str(shape_scale[i]))
 
     # from bottom
     if not scale_from_blob:
         if not(length_scale == 1 and shape_scale[0] == 1):
             scale_num = axis_ + length_scale
             if scale_num > length_x:
-                raise RuntimeError(
-                    "scale shape extends x shape when applied")
+                error_manager_vector.raise_err_specific_reson("scale", "scale shape extends x shape when applied")
             for i in range(length_scale):
                 if shape_x[axis_ + i] != shape_scale[i]:
-                    raise RuntimeError(
-                        "Dimensions shape_x and shape_scale must be equal")
+                    error_manager_vector.raise_err_specific_reson("scale", "Dimensions shape_x[{}] and shape_scale[{}] must be equal \
+                                                                  ".format(shape_x[axis_ + i],  shape_scale[i]))
 
 
 def get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob):

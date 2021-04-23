@@ -21,6 +21,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import error_manager_vector
 
 # const value
 CONST_HALF = 0.5
@@ -90,9 +91,8 @@ def _check_dtype(input_dtype):
     if tbe_platform.get_soc_spec("SOC_VERSION") in (
             "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_dtype == "float32":
-            error_info = {'errCode': 'E81006', 'param_name': 'dtype', 'op_name': 'mvn', 'real_value': input_dtype}
-            raise RuntimeError("In op[%s], Hi3796CV300ES is not supported while the [%s] of input is [%s]."
-                               % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
+            error_manager_vector.raise_err_specific_reson("mvn", "Hi3796CV300ES is not supported \
+                                                          while the dtype of input is [{}].".format(input_dtype))
         para_check.check_dtype(input_dtype, ("float16",), param_name="x")
     else:
         para_check.check_dtype(input_dtype, ("float16", "float32",), param_name="x")

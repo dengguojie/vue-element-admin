@@ -18,6 +18,7 @@ internal data move
 from te.utils import para_check
 from impl import load_to_l1
 from impl import store_to_gm
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=invalid-name
@@ -52,4 +53,5 @@ def internal_data_move(x, y, src_buf, dst_buf,
     elif (src_buf.upper() == "L1" and dst_buf.upper() == "GM"):
         store_to_gm(x, y, kernel_name)
     else:
-        raise RuntimeError("not support this kind of data move !")
+        error_manager_vector.raise_err_specific_reson("internal_data_move", "not support \
+                                                      this kind of data move !")

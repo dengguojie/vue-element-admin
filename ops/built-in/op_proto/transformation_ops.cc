@@ -886,9 +886,10 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
   for (size_t i = 0; i < perm_list.size(); ++i) {
     perm_value = perm_list[i] < 0 ? perm_list[i] + input_shape.size() : perm_list[i];
     if (perm_value >= input_shape.size()) {
-      OP_LOGE(op.GetName().c_str(),
-              "The perm value must be less than input shape size, but got perm value %d, input shape size %d",
-              perm_value, input_shape.size());
+      std::string err_msg = GetAttrValueErrMsg("perm", ConcatString(perm_value),
+                                               ConcatString("less than input shape size[",
+                                               input_shape.size(), "]"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }

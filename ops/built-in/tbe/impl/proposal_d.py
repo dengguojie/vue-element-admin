@@ -406,95 +406,47 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
         output_actual_rois_num = 0
 
     if min_size <= 0:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                      'op_name': 'proposal_d',
-                      'param_name': 'min_size',
-                      'min_value': '0',
-                      'max_value': 'inf',
-                      'real_value': min_size}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range"
-                           " of [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("proposal_d", "min_size", "0", "inf",
+                                                                 str(min_size))
 
     min_box_size = [min_size, min_size]
 
     for ratio_value in ratio:
         if ratio_value <= 0:
-            error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                          'op_name': 'proposal_d',
-                          'param_name': 'ratio_value',
-                          'min_value': '0',
-                          'max_value': 'inf',
-                          'real_value': ratio_value}
-            raise RuntimeError(error_info,
-                               "In op[%s], the parameter[%s] should be in the range "
-                               "of [%s, %s], but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['min_value'], error_info['max_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_param_range_invalid("proposal_d", "ratio_value", "0", "inf",
+                                                                 str(ratio_value))
 
     for scale_value in scale:
         if scale_value <= 0:
-            error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                          'op_name': 'proposal_d',
-                          'param_name': 'scale_value',
-                          'min_value': '0',
-                          'max_value': 'inf',
-                          'real_value': scale_value}
-            raise RuntimeError(error_info,
-                               "In op[%s], the parameter[%s] should be in the range"
-                               " of [%s, %s], but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['min_value'], error_info['max_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_param_range_invalid("proposal_d", "scale_value", "0", "inf",
+                                                                 str(scale_value))
 
     if feat_stride <= 0 or base_size <= 0 or \
             pre_nms_topn <= 0 or post_nms_topn <= 0:
-        raise RuntimeError("feat_stride, base_size, pre_nms_topn "
-                           "and post_nms_topn must be greater than 0")
+        error_manager_vector.raise_err_input_value_invalid("proposal_d", "feat_stride, base_size, pre_nms_topn \
+                                                           and post_nms_topn", "greater than 0", "{}, {}, {} \
+                                                           and {}".format(feat_stride, base_size, pre_nms_topn, \
+                                                           post_nms_topn))
 
     if pre_nms_topn > 6000 or post_nms_topn > 6000:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                      'op_name': 'proposal_d',
-                      'param_name': 'pre_nms_topn or post_nms_topn',
-                      'min_value': '0',
-                      'max_value': '6000',
-                      'real_value': ','.join((str(pre_nms_topn), str(post_nms_topn)))}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range"
-                           " of [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("proposal_d", "pre_nms_topn or post_nms_topn", "0",
+                                                                 "6000", str(pre_nms_topn) + ", " + str(post_nms_topn))
 
     if tik_name in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
             (pre_nms_topn > 3000 or post_nms_topn > 3000):
         rule_desc = "pre_nms_topn and post_nms_topn must be <=3000 in HISI"
         param_value = ','.join((str(pre_nms_topn), str(post_nms_topn)))
         error_manager_vector.raise_err_check_params_rules("proposal_d", rule_desc,
-                                                        "pre_nms_topn or post_nms_topn",
-                                                        param_value)
+                                                          "pre_nms_topn or post_nms_topn",
+                                                          param_value)
 
     if channel % 4 != 0:
         error_manager_vector.raise_err_input_value_invalid("proposal_d", "channel",
-                                                        "multiples of 16", channel)
+                                                           "multiples of 16", channel)
 
     if iou_threshold <= 0 or iou_threshold >= 1:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002,
-                      'op_name': 'proposal_d',
-                      'param_name': 'iou_threshold',
-                      'min_value': '0',
-                      'max_value': '1',
-                      'real_value': str(iou_threshold)}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range "
-                           "of (%s, %s), but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("proposal_d", "iou_threshold", "0", "1",
+                                                                 str(iou_threshold))
 
     proposal_result = ProposalProcess((tik_instance, feature_dic, im_info_dic, min_box_size, pre_nms_topn,
                                        post_nms_topn, iou_threshold, output_actual_rois_num))

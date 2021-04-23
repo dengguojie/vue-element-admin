@@ -107,27 +107,12 @@ def _check_param_range(param_name, min_value, max_value, real_value,
     -------
     None
     """
-    error_info = {'errCode': 'E80002',
-                  'op_name': op_name,
-                  'param_name': param_name,
-                  'min_value': str(min_value),
-                  'max_value': str(max_value),
-                  'value': str(real_value)}
     if left_open_interval:
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in "
-                           "the range of (%s, %s], "
-                           "but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['min_value'], error_info['max_value'],
-                              error_info['value']))
+        error_manager_vector.raise_err_input_param_range_invalid(op_name, param_name, str(min_value),
+                                                                 str(max_value), str(real_value))
 
-    raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be in "
-                                   "the range of [%s, %s], "
-                                   "but actually is [%s]."
-                       % (error_info['op_name'], error_info['param_name'],
-                          error_info['min_value'], error_info['max_value'],
-                          error_info['value']))
+    error_manager_vector.raise_err_input_param_range_invalid(op_name, param_name, str(min_value),
+                                                             str(max_value), str(real_value))
 
 
 def _check_input_attr_value(input_dict):
@@ -146,15 +131,8 @@ def _check_input_attr_value(input_dict):
         _check_param_range('num_classes', 1, 1024, input_dict.get("num_classes"))
 
     if not input_dict.get("share_location"):
-        error_info = {'errCode': 'E80000',
-                      'op_name': 'ssd_detection_output',
-                      'param_name': 'share_location',
-                      'expected_value': 'True',
-                      'real_value': str(input_dict.get("share_location"))}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
-                                       " [%s], but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['expected_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("ssd_detection_output", "share_location", "True",
+                                                           str(input_dict.get("share_location")))
 
     if not (input_dict.get("background_label_id") >= -1 and input_dict.get(
             "background_label_id") <= (input_dict.get("num_classes") - 1)):
@@ -169,28 +147,15 @@ def _check_input_attr_value(input_dict):
                            left_open_interval=True)
 
     if not input_dict.get("eta") == 1:
-        error_info = {'errCode': 'E80000',
-                      'op_name': 'ssd_detection_output',
-                      'param_name': 'eta',
-                      'expected_value': '1',
-                      'real_value': str(input_dict.get("eta"))}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
-                                       " [%s], but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['expected_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("ssd_detection_output", "eta", "1",
+                                                           str(input_dict.get("eta")))
 
     if not (1 <= input_dict.get("code_type") <= 3):
         _check_param_range('code_type', 1, 3, input_dict.get("code_type"))
 
     if not ((1024 >= input_dict.get("keep_top_k") > 0) or input_dict.get("keep_top_k") == -1):
-        error_info = {'errCode': 'E80002', 'op_name': 'ssd_detection_output', 'param_name': 'keep_top_k',
-                      'min_value': '0', 'max_value': '1024', 'real_value': str(input_dict.get("keep_top_k"))}
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
-                                       " in the range of [%s, %s] or -1,"
-                                       " but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['min_value'],
-                              error_info['max_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("ssd_detection_output", "keep_top_k", "0", "1024",
+                                                                 str(input_dict.get("keep_top_k")))
 
     if not (0 <= input_dict.get("confidence_threshold") <= 1):
         _check_param_range('confidence_threshold', 0, 1,
