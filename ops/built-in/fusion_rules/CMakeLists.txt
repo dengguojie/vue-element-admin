@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 
-if(BUILD_OPEN_PROJECT)
+if(BUILD_OPEN_PROJECT AND NOT ENABLE_TEST)
   set(FUSION_FULES_INSTALL_PATH "${INSTALL_PATH}/opp/fusion_rules/built-in")
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ai_core")
     add_custom_target(copy_aicore_fusion_rules ALL)

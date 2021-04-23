@@ -172,7 +172,7 @@ if(ENABLE_TEST STREQUAL "")
       LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
     )
   endif()
-else()
+elseif(UT_TEST_ALL OR ONNX_PLUGIN_UT)
   add_library(ops_all_onnx_plugin_llt STATIC
     ${_onnx_plugins}
     ${_proto_h}

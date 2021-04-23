@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
-add_subdirectory(tensorflow)
-
-add_subdirectory(onnx)
+if(UT_TEST_ALL OR PLUGIN_UT)
+  add_subdirectory(tensorflow)
+endif()
+if(UT_TEST_ALL OR ONNX_PLUGIN_UT)
+  add_subdirectory(onnx)
+endif()

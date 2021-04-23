@@ -504,7 +504,7 @@ if(ENABLE_TEST STREQUAL "")
       LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
     )
   endif()
-else()
+elseif(UT_TEST_ALL OR PLUGIN_UT)
   add_library(opsplugin_llt STATIC
     ${_tf_plugins}
     ${_tf_scope_fusion_passes}

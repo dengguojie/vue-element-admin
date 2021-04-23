@@ -183,7 +183,7 @@ if(ENABLE_TEST STREQUAL "")
       LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
     )
   endif()
-else()
+elseif(UT_TEST_ALL OR PROTO_UT OR PASS_UT OR PLUGIN_UT OR ONNX_PLUGIN_UT)
   add_library(opsproto_llt STATIC
     ${_op_proto_srcs}
     ${_op_proto_utils}

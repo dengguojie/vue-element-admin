@@ -19,19 +19,29 @@ if(BUILD_OPEN_PROJECT)
 endif()
 
 else()
-# testcases for op_proto
-add_subdirectory(ops_test)
 
+# testcases for op_proto
+if(UT_TEST_ALL OR PROTO_UT)
+    add_subdirectory(ops_test)
+endif()
 # testcases for op_tiling
-add_subdirectory(op_tiling_test)
+if(UT_TEST_ALL OR TILING_UT)
+    add_subdirectory(op_tiling_test)
+endif()
 
 # testcases for aicore fusion pass
-add_subdirectory(graph_fusion/ai_core)
+if(UT_TEST_ALL OR PASS_UT)
+    add_subdirectory(graph_fusion/ai_core)
+endif()
 
 # testcases for aicpu
-if(BUILD_OPEN_PROJECT)
+if(UT_TEST_ALL OR CPU_UT)
     add_subdirectory(aicpu_test)
 endif()
 
-add_subdirectory(plugin_test)
+# testcases for plugin 
+if(UT_TEST_ALL OR PLUGIN_UT OR ONNX_PLUGIN_UT)
+    add_subdirectory(plugin_test)
+endif()
+
 endif()

@@ -12,25 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+if(NOT ENABLE_TEST)
+  include_directories(
+          ${REPO_ROOT}/ops/built-in
+          ${REPO_ROOT}/inc/external
+          ${REPO_ROOT}/metadef/inc/external
+          ${REPO_ROOT}/ops
+          ${REPO_ROOT}/metadef/inc
+          ${REPO_ROOT}/third_party/protobuf/include
+  )
 
-include_directories(
-        ${REPO_ROOT}/ops/built-in
-        ${REPO_ROOT}/inc/external
-        ${REPO_ROOT}/metadef/inc/external
-        ${REPO_ROOT}/ops
-        ${REPO_ROOT}/metadef/inc
-        ${REPO_ROOT}/third_party/protobuf/include
-)
+  aux_source_directory(. SRCS)
 
-aux_source_directory(. SRCS)
+  if("x${SRCS}" STREQUAL "x")
+      add_custom_target(${TF_SCOPE_FUSION_PASS_TARGET}
+              COMMAND mkdir -p ${TF_SCOPE_FUSION_PASS_TARGET_OUT_DIR}
+              COMMAND echo "no source to make lib${TF_SCOPE_FUSION_PASS_TARGET}.so")
+      return(0)
+  endif()
 
-if("x${SRCS}" STREQUAL "x")
-    add_custom_target(${TF_SCOPE_FUSION_PASS_TARGET}
-            COMMAND mkdir -p ${TF_SCOPE_FUSION_PASS_TARGET_OUT_DIR}
-            COMMAND echo "no source to make lib${TF_SCOPE_FUSION_PASS_TARGET}.so")
-    return(0)
+  set(LIBRARY_OUTPUT_PATH ${TF_SCOPE_FUSION_PASS_TARGET_OUT_DIR})
+
+  add_library(${TF_SCOPE_FUSION_PASS_TARGET} SHARED ${SRCS})
 endif()
-
-set(LIBRARY_OUTPUT_PATH ${TF_SCOPE_FUSION_PASS_TARGET_OUT_DIR})
-
-add_library(${TF_SCOPE_FUSION_PASS_TARGET} SHARED ${SRCS})

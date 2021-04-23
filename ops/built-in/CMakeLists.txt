@@ -18,7 +18,7 @@ add_subdirectory(aicpu)
 
 else()
 message(STATUS "compile all project")
-add_subdirectory(aicpu)
+
 
 add_subdirectory(framework)
 
@@ -30,6 +30,9 @@ add_subdirectory(op_proto)
 
 add_subdirectory(op_tiling)
 
-add_subdirectory(tbe)
+if(NOT ENABLE_TEST)
+  add_subdirectory(tbe)
+  add_subdirectory(aicpu)
+endif()
 
 endif()

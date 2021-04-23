@@ -34,11 +34,36 @@ if (ENABLE_TEST STREQUAL UT)
     set(_ops_cov_html ${_ops_cov_report}/cpp_utest)
     set(_ops_cov_data ${_ops_cov_report}/cpp_utest/ops.info)
     # generate coverage
-    if(AICPU_ONLY)
+    if(AICPU_ONLY OR CPU_UT)
         add_custom_target(generate_ops_cpp_cov ALL
                 DEPENDS cpu_kernels_ut
                 COMMENT "Generate cpp coverage for cpu_kernels utest"
             )
+    elseif(PROTO_UT)
+        add_custom_target(generate_ops_cpp_cov ALL
+                DEPENDS ops_cpp_proto_utest
+                COMMENT "Generate cpp coverage for ops proto utest"
+            )
+    elseif(PASS_UT)
+        add_custom_target(generate_ops_cpp_cov ALL
+                DEPENDS ops_cpp_fusion_pass_aicore_utest
+                COMMENT "Generate cpp coverage for fusion_pass utest"
+        )
+    elseif(TILING_UT)
+        add_custom_target(generate_ops_cpp_cov ALL
+                DEPENDS ops_cpp_op_tiling_utest
+                COMMENT "Generate cpp coverage for tiling utest"
+        )
+    elseif(ONNX_PLUGIN_UT)
+        add_custom_target(generate_ops_cpp_cov ALL
+                DEPENDS ops_cpp_onnx_plugin_utest
+                COMMENT "Generate cpp coverage for ops tf plugin utest"
+        )
+    elseif(PLUGIN_UT)
+        add_custom_target(generate_ops_cpp_cov ALL
+                DEPENDS ops_cpp_plugin_utest
+                COMMENT "Generate cpp coverage for ops tf plugin utest"
+        )
     else()
         add_custom_target(generate_ops_cpp_cov ALL
                 DEPENDS ops_cpp_proto_utest
@@ -47,11 +72,13 @@ if (ENABLE_TEST STREQUAL UT)
                 cpu_kernels_ut
                 ops_cpp_plugin_utest
                 ops_cpp_onnx_plugin_utest
-                COMMENT "Generate cpp coverage for ops utest"
-            )
+                COMMENT "Generate cpp coverage for ops all utest"
+        )
     endif()
-    add_custom_command(
-            TARGET generate_ops_cpp_cov
-            COMMAND ${GENERATE_CPP_COV} ${_ops_builtin_bin_path} ${_ops_cov_data} ${_ops_cov_html}
-    )
+    if(NOT UT_NO_EXEC)
+        add_custom_command(
+                TARGET generate_ops_cpp_cov
+                COMMAND ${GENERATE_CPP_COV} ${_ops_builtin_bin_path} ${_ops_cov_data} ${_ops_cov_html}
+        )   
+    endif()
 endif ()

@@ -35,8 +35,10 @@ target_link_libraries(ops_cpp_op_tiling_utest PRIVATE
         optiling_llt
         -Wl,--no-whole-archive
         )
-add_custom_command(
-        TARGET ops_cpp_op_tiling_utest POST_BUILD
-        COMMAND ops_cpp_op_tiling_utest
-        COMMENT "Run ops op_tiling utest"
-)
+if(NOT UT_NO_EXEC)
+        add_custom_command(
+                TARGET ops_cpp_op_tiling_utest POST_BUILD
+                COMMAND ops_cpp_op_tiling_utest
+                COMMENT "Run ops op_tiling utest"
+        )
+endif()

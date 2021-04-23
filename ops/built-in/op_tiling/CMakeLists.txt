@@ -193,7 +193,7 @@ if(ENABLE_TEST STREQUAL "")
       LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
     )
   endif()
-else()
+elseif(UT_TEST_ALL OR TILING_UT)
   add_library(optiling_llt STATIC ${_optiling_files})
   target_include_directories(optiling_llt PUBLIC
     ${_op_tiling_include}

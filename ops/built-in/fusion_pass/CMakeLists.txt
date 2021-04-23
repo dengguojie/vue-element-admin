@@ -333,7 +333,50 @@ if(ENABLE_TEST STREQUAL "")
       LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
     )
   endif()
-else()
+  set(_vec_srcs
+  ${_common_srcs}
+  )
+
+  add_library(ops_fusion_pass_vectorcore SHARED ${_vec_srcs})
+
+  target_include_directories(ops_fusion_pass_vectorcore PRIVATE
+    ${_common_fusion_pass_inc}
+  )
+
+  target_link_libraries(ops_fusion_pass_vectorcore PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+    ${_common_fusion_pass_dep}
+  )
+
+  # to solve the compile warnings in fp16_t.cc
+  target_compile_options(ops_fusion_pass_vectorcore PRIVATE
+    "-fno-strict-aliasing"
+    -O2
+    -Werror
+    -Wno-deprecated-declarations
+    -Dgoogle=ascend_private
+  )
+
+  target_compile_definitions(ops_fusion_pass_vectorcore PRIVATE
+    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
+    )
+
+  if(BUILD_OPEN_PROJECT)
+    cann_install(
+      TARGET      ops_fusion_pass_vectorcore
+      FILES       $<TARGET_FILE:ops_fusion_pass_vectorcore>
+      DESTINATION "${ops_fusion_pass_path}/vector_core"
+    )
+  else()
+    install(
+      TARGETS ops_fusion_pass_vectorcore OPTIONAL
+      EXPORT  ops_fusion_pass_vectorcore-targets
+      LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+    )
+  endif()
+elseif(UT_TEST_ALL OR PASS_UT)
+  message("UT_TEST_ALL is ${UT_TEST_ALL}")
+  message("PASS_UT is ${PASS_UT}")
   add_library(ops_fusion_pass_aicore_llt STATIC ${_llt_aic_srcs})
   target_include_directories(ops_fusion_pass_aicore_llt PUBLIC
     ${_common_fusion_pass_inc}
@@ -348,48 +391,5 @@ else()
       $<BUILD_INTERFACE:intf_llt_pub>
     PUBLIC
       ${_common_fusion_pass_dep}
-  )
-endif()
-
-
-set(_vec_srcs
-  ${_common_srcs}
-)
-
-add_library(ops_fusion_pass_vectorcore SHARED ${_vec_srcs})
-
-target_include_directories(ops_fusion_pass_vectorcore PRIVATE
-  ${_common_fusion_pass_inc}
-)
-
-target_link_libraries(ops_fusion_pass_vectorcore PRIVATE
-  $<BUILD_INTERFACE:intf_pub>
-  ${_common_fusion_pass_dep}
-)
-
-# to solve the compile warnings in fp16_t.cc
-target_compile_options(ops_fusion_pass_vectorcore PRIVATE
-  "-fno-strict-aliasing"
-  -O2
-  -Werror
-  -Wno-deprecated-declarations
-  -Dgoogle=ascend_private
-)
-
-target_compile_definitions(ops_fusion_pass_vectorcore PRIVATE
-  $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
-  )
-
-if(BUILD_OPEN_PROJECT)
-  cann_install(
-    TARGET      ops_fusion_pass_vectorcore
-    FILES       $<TARGET_FILE:ops_fusion_pass_vectorcore>
-    DESTINATION "${ops_fusion_pass_path}/vector_core"
-  )
-else()
-  install(
-    TARGETS ops_fusion_pass_vectorcore OPTIONAL
-    EXPORT  ops_fusion_pass_vectorcore-targets
-    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
   )
 endif()

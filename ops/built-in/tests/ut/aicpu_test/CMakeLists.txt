@@ -202,17 +202,13 @@ target_compile_definitions(cpu_kernels_ut PUBLIC
   google=ascend_private
   RUN_TEST
 )
-#[[
-set(AICPU_UTEST "${INSTALL_PATH}/tests/ops/ut/aicpu")
-cann_install(
-  TARGET      cpu_kernels_ut
-  FILES       $<TARGET_FILE:cpu_kernels_ut>
-  DESTINATION "${AICPU_UTEST}"
-)
-]]
-add_custom_command(
-  TARGET  cpu_kernels_ut POST_BUILD
-  COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/testcase && python3.7 run_all_gen_data.py
-  COMMAND cpu_kernels_ut
-  COMMENT "Run cpu_kernels_ut"
-)
+
+if(NOT UT_NO_EXEC)
+  add_custom_command(
+    TARGET  cpu_kernels_ut POST_BUILD
+    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/testcase && python3.7 run_all_gen_data.py
+    COMMAND cpu_kernels_ut
+    COMMENT "Run cpu_kernels_ut"
+  )
+endif()
+

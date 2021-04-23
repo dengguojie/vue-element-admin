@@ -36,9 +36,12 @@ if(BUILD_OPEN_PROJECT)
   endif()
 
   # tests flag
-  if(UT_TEST AND ST_TEST)
+  if(UT_TEST_ALL AND ST_TEST)
     set(ENABLE_TEST ALL)
-  elseif(UT_TEST)
+  elseif(UT_TEST_ALL OR  CPU_UT OR
+         PASS_UT OR TILING_UT OR
+         PROTO_UT OR PLUGIN_UT OR
+         ONNX_PLUGIN_UT)
     set(ENABLE_TEST UT)
   elseif(ST_TEST)
     set(ENABLE_TEST ST)
@@ -119,7 +122,7 @@ if(BUILD_OPEN_PROJECT)
   else()
     message("Add host project")
     add_subdirectory(ops)
-    if(("x${AICPU_ONLY}" STREQUAL "xFALSE") AND ("x${UT_TEST}" STREQUAL "xFALSE"))
+    if(("x${AICPU_ONLY}" STREQUAL "xFALSE") AND ("x${ENABLE_TEST}" STREQUAL "x"))
       add_subdirectory(auto_schedule)
       add_subdirectory(tools)
     endif()

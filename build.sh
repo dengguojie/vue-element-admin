@@ -32,12 +32,19 @@ usage() {
   echo "Options:"
   echo "    -h Print usage"
   echo "    -j[n] Set the number of threads used to build CANN, default is 8"
-  echo "    -u Build UT"
+  echo "    -u Build all UT"
   echo "    -s Build ST"
   echo "    -v Verbose"
   echo "    -g GCC compiler prefix, used to specify the compiler toolchain"
   echo "    -a|--aicpu only compile aicpu task"
   echo "    -m|--minirc aicpu only compile aicpu task"
+  echo "    --cpu_kernels_ut Build aicpu ut"
+  echo "    --pass_ut BUild pass ut"
+  echo "    --tiling_ut Build tiling ut"
+  echo "    --proto_ut Build proto ut"
+  echo "    --tf_plugin_ut Build tf plugin ut"
+  echo "    --onnx_plugin_ut Build onnx plugin ut"
+  echo "    --noexec Only compile ut"
 
   echo "to be continued ..."
 }
@@ -47,10 +54,17 @@ checkopts() {
   VERBOSE=""
   THREAD_NUM=8
   GCC_PREFIX=""
-  UT_TEST=FALSE
+  UT_TEST_ALL=FALSE
   ST_TEST=FALSE
   AICPU_ONLY=FALSE
   MINIRC_AICPU_ONLY=FALSE
+  CPU_UT=FALSE
+  PASS_UT=FALSE
+  TILING_UT=FALSE
+  PROTO_UT=FALSE
+  PLUGIN_UT=FALSE
+  ONNX_PLUGIN_UT=FALSE
+  UT_NO_EXEC=FALSE
   # Process the options
   while getopts 'hj:usvg:a-:m-:' opt
   do
@@ -58,7 +72,7 @@ checkopts() {
       h) usage
          exit 0 ;;
       j) THREAD_NUM=$OPTARG ;;
-      u) UT_TEST=TRUE ;;
+      u) UT_TEST_ALL=TRUE ;;
       s) ST_TEST=TRUE ;;
       v) VERBOSE="VERBOSE=1" ;;
       g) GCC_PREFIX=$OPTARG ;;
@@ -67,6 +81,13 @@ checkopts() {
       -) case $OPTARG in
            aicpu) AICPU_ONLY=TRUE ;;
            minirc) MINIRC_AICPU_ONLY=TRUE ;;
+           cpu_kernels_ut) CPU_UT=TRUE ;;
+           pass_ut) PASS_UT=TRUE ;;
+           tiling_ut) TILING_UT=TRUE ;;
+           proto_ut) PROTO_UT=TRUE ;;
+           tf_plugin_ut) PLUGIN_UT=TRUE ;;
+           onnx_plugin_ut) ONNX_PLUGIN_UT=TRUE ;;
+           noexec) UT_NO_EXEC=TRUE ;;
            *) logging "Undefined option: $OPTARG"
               usage
               exit 1 ;;
@@ -79,6 +100,7 @@ checkopts() {
   done
 }
 
+
 # create build path
 build_cann() {
   logging "Create build directory and build CANN"
@@ -86,10 +108,10 @@ build_cann() {
   if [[ "$GCC_PREFIX" != "" ]]; then
     CMAKE_ARGS="$CMAKE_ARGS -DGCC_PREFIX=$GCC_PREFIX"
   fi
-  if [[ "$UT_TEST" == "TRUE" ]]; then
-    CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST=TRUE"
+  if [[ "$UT_TEST_ALL" == "TRUE" ]]; then
+    CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST_ALL=TRUE"
   else
-    CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST=FALSE"
+    CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST_ALL=FALSE"
   fi
   if [[ "$ST_TEST" == "TRUE" ]]; then
     CMAKE_ARGS="$CMAKE_ARGS -DST_TEST=TRUE"
@@ -101,6 +123,12 @@ build_cann() {
   else
     CMAKE_ARGS="$CMAKE_ARGS -DAICPU_ONLY=FALSE"
   fi
+
+  CMAKE_ARGS="$CMAKE_ARGS -DUT_NO_EXEC=$UT_NO_EXEC  \
+            -DCPU_UT=$CPU_UT -DPASS_UT=$PASS_UT \
+            -DTILING_UT=$TILING_UT -DPROTO_UT=$PROTO_UT \
+            -DPLUGIN_UT=$PLUGIN_UT -DONNX_PLUGIN_UT=$ONNX_PLUGIN_UT"
+
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
 
   if [[ "$ST_TEST" == "FALSE" ]]; then
@@ -108,7 +136,7 @@ build_cann() {
     cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
     make ${VERBOSE} -j${THREAD_NUM}
   fi
-  if [[ "$UT_TEST" == "FALSE" ]]; then
+  if [[ "$UT_TEST_ALL" == "FALSE" ]]; then
     CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device"
 
     logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
@@ -127,6 +155,7 @@ minirc(){
   make ${VERBOSE} -j${THREAD_NUM}
 
 }
+
 release_cann() {
   logging "Create output directory"
   mk_dir "${RELEASE_PATH}"
@@ -148,7 +177,12 @@ main() {
     ${GCC_PREFIX}g++ -v
     build_cann
   fi
-  release_cann
+  if [ "$CPU_UT" = "FALSE" -a "$PASS_UT" = "FALSE" \
+    -a "$TILING_UT" = "FALSE" -a "$PROTO_UT" = "FALSE" \
+    -a "$PLUGIN_UT" = "FALSE" -a "$ONNX_PLUGIN_UT" = "FALSE" \
+    -a "$UT_TEST_ALL" = "FALSE" ]; then
+    release_cann
+  fi
   logging "---------------- CANN build finished ----------------"
 }
 

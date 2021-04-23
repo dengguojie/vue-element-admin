@@ -38,8 +38,10 @@ target_link_libraries(ops_cpp_proto_utest PRIVATE
         opsproto_llt
         -Wl,--no-whole-archive
         )
-add_custom_command(
-        TARGET ops_cpp_proto_utest POST_BUILD
-        COMMAND ops_cpp_proto_utest
-        COMMENT "Run ops proto utest"
-)
+if(NOT UT_NO_EXEC)
+        add_custom_command(
+                TARGET ops_cpp_proto_utest POST_BUILD
+                COMMAND ops_cpp_proto_utest
+                COMMENT "Run ops proto utest"
+        )
+endif()
