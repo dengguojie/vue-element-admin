@@ -99,8 +99,6 @@ bool CheckTwoInputDtypeSame(const Operator& op, const string& input_name1, const
   DataType input_type_x1 = op_desc->MutableInputDesc(input_name1)->GetDataType();
   DataType input_type_x2 = op_desc->MutableInputDesc(input_name2)->GetDataType();
   if (input_type_x1 != input_type_x2) {
-    OpsTwoInputDtypeErrReport(op.GetName(), input_name1, input_name2, ConcatString(input_type_x1),
-                              ConcatString(input_type_x2));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("The ", op.GetName(), " op dtype is not same, type1:", ge::TypeUtils::DataTypeToSerialString(input_type_x1), ", type2:", ge::TypeUtils::DataTypeToSerialString(input_type_x2))));
     return false;
   }
