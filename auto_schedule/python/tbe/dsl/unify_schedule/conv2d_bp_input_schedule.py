@@ -51,11 +51,9 @@ class Conv2dBackpropInputSchedule:
         do schedule
         """
 
-        op_info = get_op_info(self._outs)
         self._var_range = self._tiling_case['var_range']
 
-        self._schedule = tvm.create_schedule(
-            [res.op for res in self._outs if res not in op_info['tensor_map']])
+        self._schedule = tvm.create_schedule([res.op for res in self._outs])
         self._schedule.tiling_key = self._tiling_case['key']
         self._tiling_strategy = self._tiling_case['tiling_strategy']
 

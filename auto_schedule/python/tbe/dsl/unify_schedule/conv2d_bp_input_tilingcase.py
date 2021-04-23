@@ -37,6 +37,7 @@ H_LEN = 400
 W_LEN = 400
 LARGE_M = 10000
 MIN_STEP = 16
+FUSED_DOUBLE_OPERAND_MUL = 100.0
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 
@@ -56,6 +57,11 @@ def calc_conv2dbp_input(outs, option=None):
 
     var_names = ("batch_n", "dx_h", "dx_w")
     conv_info = DynamicConv2dBpInputParams.tiling_info_dict
+    if outs[-1].op.tag == "elewise_multiple_sel":
+        conv_info["fused_double_operand_num"] = 1 / 16
+        if "elewise_binary_add" in outs[-1].op.input_tensors[1].op.tag:
+            conv_info["fused_double_operand_num"] += 1
+            conv_info["fusion_type"] = 4
     tgt_area = {}
     shape_dict = {"batch_n": conv_info.get("C_shape")[0],
                   "dx_h": conv_info.get("C_shape")[2],
@@ -140,6 +146,9 @@ class Conv2dBpInputTiling(CubeTilingOp):
         cub_db_flag = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
         cub_dtype_bit = BIT_RATIO_DICT.get(self.c_type)
         cub_size = (reduce(lambda x, y: x * y, tiling.get("CUB_matrix")) * cub_db_flag * cub_dtype_bit)
+        fused_double_operand_num = tiling_mess.get('fused_double_operand_num')
+        fused_double_operand_num = fused_double_operand_num if fused_double_operand_num is not None else 0
+        fused_double_operand_num /= FUSED_DOUBLE_OPERAND_MUL
         ub_size_limit = tbe_platform_info.get_soc_spec("UB_SIZE")
         if (self.stride_h > 1 or self.stride_w > 1):
             if tiling.get("AUB_shape"):
@@ -151,7 +160,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 aub_bit = BIT_RATIO_DICT.get(self.a_type)
                 aub_size = aub_co1 * aub_h * tiling_mess["A_shape"][3] * utils.FP16_K * aub_db * aub_bit
                 aub_filling_size = aub_co1 * aub_tiling_m * aub_w * utils.FP16_K * aub_db * aub_bit
-                if (cub_size + aub_size + aub_filling_size) > ub_size_limit:
+                if (cub_size * (1 + fused_double_operand_num) + aub_size + aub_filling_size) > ub_size_limit:
                     return False
             elif self.k_h == 1 and self.k_w == 1:
                 dedy_h, dedy_w = tiling_mess.get("A_shape")[2:4]
@@ -172,7 +181,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 dilate_l0c_m = dx_w * n_is_hfactor * self.stride_h
                 cub_dilate_size = dilate_l0c_m * nc_factor * n0 * cub_db_flag * cub_dtype_bit
                 zero_and_one = self.stride_h * self.stride_w * utils.FP16_K * cub_dtype_bit
-                if (cub_size + cub_dilate_size + zero_and_one) > ub_size_limit:
+                if (cub_size + cub_dilate_size * (1 + fused_double_operand_num) + zero_and_one) > ub_size_limit:
                     return False
         return True
 

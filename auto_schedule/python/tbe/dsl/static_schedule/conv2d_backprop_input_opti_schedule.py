@@ -1040,7 +1040,8 @@ class Conv2dDxOptiSchedule:
 
                 _handle_elewise_tensor()
                 tensor_dx_gm = fusion_tensor_map["c_ub"].op.input_tensors[0]
-            elif res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+            elif (res.op.tag == "emit_insn_elewise_multiple_sel|bool" or 
+                  (var_range and res.op.tag == "elewise_multiple_sel")):
                 drelu_gm = res
                 # dx+add+drelu
                 if "elewise_binary_add" in drelu_gm.op.input_tensors[1].op.tag:
@@ -1092,20 +1093,19 @@ class Conv2dDxOptiSchedule:
                 tensor_dilate_ub is not None
                 and tensor_dilate_ub.op.tag == "conv2d_backprop_input_opti"
             ):
-                TENSOR_MAP["dilate_ub"] = tensor_dilate_ub
-                sch[tensor_dilate_ub].set_scope(tbe_platform_info.scope_ubuf)
                 if var_map:
-                    tensor_vn = tensor_dilate_ub.op.input_tensors[1]
-                    TENSOR_MAP["tensor_vn"] = tensor_vn
-                    sch[tensor_vn].set_scope(tbe_platform_info.scope_ubuf)
-                    tensor_cub = tensor_dilate_ub.op.input_tensors[0]
-                    tensor_fillling_zero = tensor_vn.op.input_tensors[0]
+                    TENSOR_MAP["tensor_vn"] = tensor_dilate_ub
+                    sch[tensor_dilate_ub].set_scope(tbe_platform_info.scope_ubuf)
+                    tensor_fillling_zero = tensor_dilate_ub.op.input_tensors[0]
                     TENSOR_MAP["tensor_fillling_zero"] = tensor_fillling_zero
                     sch[tensor_fillling_zero].set_scope(tbe_platform_info.scope_ubuf)
-                    tensor_fillling_one = tensor_vn.op.input_tensors[1]
-                    TENSOR_MAP["tensor_fillling_one"] = tensor_fillling_one
-                    sch[tensor_fillling_one].set_scope(tbe_platform_info.scope_ubuf)
+                    tensor_dilate = tensor_dilate_ub.op.input_tensors[1]
+                    TENSOR_MAP["dilate_ub"] = tensor_dilate
+                    sch[tensor_dilate].set_scope(tbe_platform_info.scope_ubuf)
+                    tensor_cub = tensor_dilate.op.input_tensors[0]
                 else:
+                    TENSOR_MAP["dilate_ub"] = tensor_dilate_ub
+                    sch[tensor_dilate_ub].set_scope(tbe_platform_info.scope_ubuf)
                     tensor_cub = tensor_dilate_ub.op.input_tensors[0]
                     tensor_fillling_zero = tensor_dilate_ub.op.input_tensors[1]
                     TENSOR_MAP["tensor_fillling_zero"] = tensor_fillling_zero
@@ -1343,13 +1343,14 @@ class Conv2dDxOptiSchedule:
 
         if "batch_n" in var_map:
             sch.set_var_range(DIM_MAP["img_shape"][0], *var_range.get("batch_n"))
-            sch.set_var_range(cube_util.shape_to_list(res.op.attrs["dx_5D_shape"])[0], *var_range.get("batch_n"))
+            sch.set_var_range(cube_util.shape_to_list(tensor_dx_gm.op.attrs["dx_5D_shape"])[0], 
+                              *var_range.get("batch_n"))
         if "dedy_h" in var_map:
             sch.set_var_range(DIM_MAP["img_shape"][2], *var_range.get("dedy_h"))
-            sch.set_var_range(cube_util.shape_to_list(res.op.attrs["dx_5D_shape"])[2], *var_range.get("dx_h"))
+            sch.set_var_range(cube_util.shape_to_list(tensor_dx_gm.op.attrs["dx_5D_shape"])[2], *var_range.get("dx_h"))
         if "dedy_w" in var_map:
             sch.set_var_range(DIM_MAP["img_shape"][3], *var_range.get("dedy_w"))
-            sch.set_var_range(cube_util.shape_to_list(res.op.attrs["dx_5D_shape"])[3], *var_range.get("dx_w"))
+            sch.set_var_range(cube_util.shape_to_list(tensor_dx_gm.op.attrs["dx_5D_shape"])[3], *var_range.get("dx_w"))
 
         return tensor_dx_gm, var_map
 
@@ -1858,6 +1859,8 @@ class Conv2dDxOptiSchedule:
         if not var_map:
             sch[dilate_ub].unroll(hi_axis)
             sch[dilate_ub].unroll(wi_axis)
+        else:
+            sch[dilate_ub].set_store_predicate(tvm.all(wi_axis.var == 0, hi_axis.var == 0))
         return wo_axis
 
 
@@ -2095,8 +2098,6 @@ class Conv2dDxOptiSchedule:
                 sch[dilate_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 sch[filling_zero_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 if var_map:
-                    filling_one_ub = TENSOR_MAP["tensor_fillling_one"]
-                    sch[filling_one_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                     tensor_vn = TENSOR_MAP["tensor_vn"]
                     sch[tensor_vn].compute_at(sch[c_gm], l0c_m_inner_outer)
             if not self.dx_para.get_para_map("cube_vector_split_flag"):
@@ -2215,8 +2216,10 @@ class Conv2dDxOptiSchedule:
                 if dilate_ub is not None:
                     filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
                     sch[dilate_ub].double_buffer()
-                    if not var_map:
-                        sch[filling_zero_ub].double_buffer()
+                    sch[filling_zero_ub].double_buffer()
+                    if var_map:
+                        tensor_vn = TENSOR_MAP["tensor_vn"]
+                        sch[tensor_vn].double_buffer()
                 if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:
                     sch[fusion_dx_gm].double_buffer()
                     sch[drelu_ub].double_buffer()
@@ -2242,6 +2245,8 @@ class Conv2dDxOptiSchedule:
                     filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
                     sch[filling_zero_ub].reused_by(add_input_ub)
                     sch[dx_output_ub].reused_by(fusion_dx_gm, add_res_ub)
+                    if var_map:
+                        sch[dx_output_ub].reused_by(drelu_ub)
                 else:
                     sch[dx_output_ub].reused_by(fusion_dx_gm, drelu_ub, add_res_ub)
             elif fusion_type == FUSION_DX_DRELU:
@@ -2408,14 +2413,10 @@ class Conv2dDxOptiSchedule:
                     sch[dilate_ub].reused_by(filling_zero_ub, bias_add_vector_ub)
                 else:
                     if var_map:
-                        filling_one_ub = TENSOR_MAP["tensor_fillling_one"]
-                        sch[filling_zero_ub].reused_by(filling_one_ub)
-                        sch[filling_one_ub].emit_insn(
-                            sch[filling_one_ub].op.axis[0], "vector_dup"
-                        )
                         tensor_vn = TENSOR_MAP["tensor_vn"]
-                        sch[filling_zero_ub].reused_by(tensor_vn)
+                        sch[dilate_ub].reused_by(tensor_vn)
                         sch[tensor_vn].emit_insn(sch[tensor_vn].op.axis[0], "phony_insn")
+                        sch[filling_zero_ub].reused_by(dilate_ub)
                     else:
                         sch[dilate_ub].reused_by(filling_zero_ub)
                 if fusion_type in (FUSION_DX_ADD_DRELU,):
@@ -2426,25 +2427,15 @@ class Conv2dDxOptiSchedule:
                     sch[filling_zero_ub].emit_insn(
                         sch[filling_zero_ub].op.axis[0], "vector_dup"
                     )
-                if var_map:
-                    vmul_at_axis = self._dilate_schedule(
-                        sch,
-                        dilate_ub,
-                        DIM_MAP.get("out_hwdim")[1],
-                        DIM_MAP.get("dilate_dim")[1],
-                        DIM_MAP.get("dilate_dim")[0],
-                        var_map
-                    )
-                    sch[dilate_ub].emit_insn(vmul_at_axis, "vector_mul")
-                else:
-                    vadd_at_axis = self._dilate_schedule(
-                        sch,
-                        dilate_ub,
-                        DIM_MAP.get("out_hwdim")[1],
-                        DIM_MAP.get("dilate_dim")[1],
-                        DIM_MAP.get("dilate_dim")[0]
-                    )
-                    sch[dilate_ub].emit_insn(vadd_at_axis, "vector_add")
+                vadd_at_axis = self._dilate_schedule(
+                    sch,
+                    dilate_ub,
+                    DIM_MAP.get("out_hwdim")[1],
+                    DIM_MAP.get("dilate_dim")[1],
+                    DIM_MAP.get("dilate_dim")[0],
+                    var_map
+                )
+                sch[dilate_ub].emit_insn(vadd_at_axis, "vector_add")
             elif bias_add_vector_ub is not None:
                 sch[c_ub].reused_by(bias_add_vector_ub)
 
@@ -2503,7 +2494,12 @@ class Conv2dDxOptiSchedule:
             sch[c_l0c].set_storage_bound(l0c_bound)
             dilate_bound = l0c_factor[1] * nc_factor * tiling_n0
             sch[dilate_ub].set_storage_bound(dilate_bound)
-            sch[dilate_ub].mem_unique()
+            filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
+            sch[filling_zero_ub].set_storage_bound(dilate_bound)
+            if fusion_type == FUSION_DX_ADD_DRELU:
+                sch[add_input_ub].set_storage_bound(dilate_bound)
+                sch[add_res_ub].set_storage_bound(dilate_bound)
+                sch[fusion_dx_gm].set_storage_bound(dilate_bound)
 
         def _is_conv1d():
             return (
@@ -2552,7 +2548,8 @@ class Conv2dDxOptiSchedule:
             sch[b_l1].mem_unique()
             sch[b_l0b].mem_unique()
             sch[c_l0c].mem_unique()
-            sch[c_ub].mem_unique()
+            if fusion_type not in (FUSION_DX_DRELU, FUSION_DX_ADD_DRELU):
+                sch[c_ub].mem_unique()
 
         def _check_overload_dy(overload_flag_gm, overload_flag_l0c):
             """
@@ -2821,7 +2818,7 @@ class Conv2dDxOptiSchedule:
         self._print_ir_conv("reused_by", sch)
 
         # preload
-        if self.dx_para.get_para_map("DATA_AMOUNT_CUB") * (
+        if not var_map and self.dx_para.get_para_map("DATA_AMOUNT_CUB") * (
             1 + 2 * FUSION_TYPE_2_OPERAND_NUM.get(fusion_type)
         ) <= tbe_platform_info.get_soc_spec("UB_SIZE"):
             self._print_debug("dx opti ub preload enable.")

@@ -15,11 +15,27 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import set_default_para
+from impl.util import fusion_util
+from te.platform.fusion_manager import get_fusion_build_cfg
+from impl.util.platform_adapter import register_operator_compute
 
 
 NONETYPE = type(None)
 H_DIM = 2
 W_DIM = 3
+
+
+@register_operator_compute("Conv2DBackpropInput", op_mode="dynamic", support_fusion=True)
+def conv2dbp_input_fusion_compute(input_size,  # pylint: disable=W0622,C0103,R0913,R0914
+                                  filters, out_backprop, y, strides, pads, dilations=(1, 1, 1, 1),
+                                  groups=1, data_format='NHWC', kernel_name='conv2d_backprop_input'):
+    fusion_util.check_fusion_input([input_size, filters, out_backprop])
+    # set fusion build config
+    build_cfg = get_fusion_build_cfg()
+    build_cfg['constant_realize_extent_in_infer_bound'] = False
+    
+    return _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides,
+                                          pads, dilations, groups, data_format, kernel_name)
 
 
 def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides, pads,

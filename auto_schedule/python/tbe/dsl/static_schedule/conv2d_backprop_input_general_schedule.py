@@ -536,7 +536,8 @@ def general_schedule(
 
         def _tensor_setscope():
             fusion_param = 0
-            if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+            if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+                (var_map and deconv_res.op.tag == "elewise_multiple_sel")):
                 fusion_param = 1 / 16
                 if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                     fusion_param += 1
@@ -627,7 +628,8 @@ def general_schedule(
                 sch[c_ub_ddr].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
         if tensor_attr.get("quant_fuse"):
             pass
-        elif deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+        elif (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+              (var_map and deconv_res.op.tag == "elewise_multiple_sel")):
             mask = deconv_res.op.input_tensors[0]
             if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                 vadd_res = deconv_res.op.input_tensors[1]
@@ -636,7 +638,7 @@ def general_schedule(
             else:
                 c_ub_cut = deconv_res.op.input_tensors[1]
             c_ub = c_ub_cut.op.input_tensors[0]
-            output_shape = list(i.value for i in c_ub_cut.op.attrs["output_shape"])
+            output_shape = cube_util.shape_to_list(c_ub_cut.op.attrs["output_shape"])
 
             group_dict = c_ub_cut.op.attrs["group_dict"]
             tensor_attr["group_dict"] = group_dict
@@ -649,7 +651,7 @@ def general_schedule(
             if c_ub.op.name == "bias_add_vector":
                 tensor_map["bias_add_vector"] = c_ub
                 c_ub = c_ub.op.input_tensors[0]
-            output_shape = list(i.value for i in c_ub_cut.op.attrs["output_shape"])
+            output_shape = cube_util.shape_to_list(c_ub_cut.op.attrs["output_shape"])
             group_dict = c_ub_cut.op.attrs["group_dict"]
             tensor_attr["group_dict"] = group_dict
             tensor_map["c_ub_cut"] = c_ub_cut
@@ -688,7 +690,8 @@ def general_schedule(
             else:
                 fusion_type = 1
         # deonv+add+drelu fusion type is 4, deonv+drelu fusion type is 8
-        elif deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+        elif (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+              (var_map and deconv_res.op.tag == "elewise_multiple_sel")):
             if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                 fusion_type = 4
             else:
@@ -1249,7 +1252,8 @@ def general_schedule(
             return status
 
         def _fusion_cub_process():
-            if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+            if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+                (var_map and deconv_res.op.tag == "elewise_multiple_sel")):
                 if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                     sch_agent[c_ub].reused_by(c_ub_cut, vadd_res, c_ub_drelu)
                     sch_agent.same_attach(vadd_res, c_ub)
@@ -1299,7 +1303,8 @@ def general_schedule(
 
         c_ub_nc_factor = cub_tiling_nc_factor
 
-        if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+        if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+            (var_map and deconv_res.op.tag == "elewise_multiple_sel")):
             _, _, dx_h, dx_w, _ = output_shape
             dx_hw = dx_h * dx_w
             tiling_m_axis = cl0_tiling_mc * cl0_tiling_m0
@@ -1381,7 +1386,8 @@ def general_schedule(
                 sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
             else:
                 _raise_dx_general_err("c_col attach error.")
-        if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" \
+        if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+            (var_map and deconv_res.op.tag == "elewise_multiple_sel")) \
                 and "conv2d_backprop_input" in deconv_res.op.input_tensors[1].op.tag \
                 and out_of_order:
             align_buffer = 0
@@ -1748,7 +1754,8 @@ def general_schedule(
 
     def _double_buffer():
         def _fusion_double_buffer():
-            if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+            if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+                (var_map and deconv_res.op.tag == "elewise_multiple_sel")):
                 sch[c_ub_cut].double_buffer()
                 sch[c_ub_drelu].double_buffer()
                 if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
@@ -1878,7 +1885,8 @@ def general_schedule(
         elif not cube_vector_split:
             sch_agent[c_ub].emit_insn(sch_agent[c_ub].op.axis[0], "dma_copy")
 
-        if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
+        if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+            (var_map and deconv_res.op.tag == "elewise_multiple_sel")):
             sch[mask_ub].emit_insn(mask_ub.op.axis[0], "dma_copy")
 
             if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
@@ -2158,7 +2166,8 @@ def general_schedule(
         sch[b_l1].mem_unique()
         sch[b_col].mem_unique()
         sch[c_col].mem_unique()
-        sch[c_ub].mem_unique()
+        if deconv_res.op.tag != "elewise_multiple_sel":
+            sch[c_ub].mem_unique()
 
     def _handle_workspace():
         l1_tensor_map = {}

@@ -26,6 +26,41 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import register_operator_compute
+from impl.util import fusion_util
+
+
+@register_operator_compute("AddN", op_mode="dynamic", support_fusion=True)
+def add_n_fusion_compute(datas, output, tensor_num, kernel_name="add_n"):
+    """
+    calculating data's adds, z = a + b + c...
+
+    Parameters
+    ----------
+    datas : list of placeholders, all input data
+    output : dict, dict of output
+    tensor_num: nums of input
+    kernel_name : string
+        cce kernel name, default value is add_n
+
+    Returns
+    -------
+    res : placeholder and res of the data's add_n
+    """
+    ph_datas = []
+    for i, data_i in enumerate(datas):
+        fusion_util.check_fusion_input([data_i])
+        dict_data_i = fusion_util.extract_dict(data_i)
+        shape_data_i = fusion_util.normalize_shape([dict_data_i])[0]
+        ph_tmp = fusion_util.create_placeholder(data_i, shape_data_i)
+        ph_datas.append(ph_tmp)
+    res = ph_datas[0]
+    for i, data_i in enumerate(ph_datas):
+        if i == 0:
+            continue
+        res = tbe.vadd(res, data_i)
+        
+    return {"op_placeholder": ph_datas, "op_res": [res]}
 
 
 # pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local,unused-variable,too-many-statements

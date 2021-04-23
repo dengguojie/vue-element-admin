@@ -129,34 +129,25 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         )
         if self._var_map:
             # because tvm.select not support dynamic shape
-            dx_zero = tvm.compute(
-                (dilate_h, dilate_w, shape_c0),
-                lambda *indice: tvm.convert(0).astype(raw_tensor.dtype),
-                name=raw_tensor.name + "_dx_zero",
-                tag="init_zero"
-            )
-            dx_one = tvm.compute(
-                (1, 1, shape_c0),
-                lambda *indice: tvm.convert(1).astype(raw_tensor.dtype),
-                name=raw_tensor.name + "_dx_one",
-                tag="init_one"
-            )
-            vn_tensor = tvm.compute(
-                (dilate_h, dilate_w, shape_c0),
-                lambda *indice: dx_zero(*indice) + dx_one(*indice),
-                name="vn_" + raw_tensor.name,
-                tag="conv2d_backprop_input_opti"
-            )
             dilate_tensor = tvm.compute(
                 dilate_shape,
                 lambda n, c1, hw, c0: raw_tensor[
                     n,
                     c1,
-                    ((hw // new_w) // dilate_h) * self._img_w
-                    + (hw % new_w // dilate_w),
+                    ((hw // new_w) // dilate_h) * self._img_w + (hw % new_w // dilate_w),
                     c0
-                ]
-                * vn_tensor[(hw // new_w) % dilate_h, (hw % new_w) % dilate_w, c0],
+                ] + dx_zero[n, c1, hw, c0],
+                name="dx_dilation",
+                tag="dx_dilation",
+                attrs={
+                    "dilate": [dilate_h, dilate_w],
+                    "out_hw": [out_shape_h, out_shape_w],
+                    "img_w": self._img_w
+                }
+            )
+            dx_vn = tvm.compute(
+                dilate_shape,
+                lambda *indice: dx_zero(*indice) + dilate_tensor(*indice),
                 name=raw_tensor.name + "_dilation",
                 tag="conv2d_backprop_input_opti",
                 attrs={
@@ -165,7 +156,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                     "img_w": self._img_w
                 }
             )
-            dilate_tensor_res = dilate_tensor
+            dilate_tensor_res = dx_vn
         else:
             dilate_tensor = tvm.compute(
                 dilate_shape,
