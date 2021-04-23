@@ -30,6 +30,8 @@ struct InputIndexInfo {
   int32_t wIndex = 1;
   int32_t rIndex = 2;
   int32_t biasIndex = 3;
+  int32_t inithIndex = 5;
+  int32_t initcIndex = 6;
 };
 
 class CommonLSTMFusionPass : public PatternFusionBasePass {
@@ -37,8 +39,14 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
   vector<FusionPattern *> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) override;
  private:
-  ge::GeTensorPtr ProcessLSTMWxh(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, int32_t &hiddenSize);
-  ge::GeTensorPtr ProcessLSTMBias(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, int32_t hiddenSize);
+  Status ProcessLSTMWxh(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, int32_t &hiddenSize,
+                        int32_t num_directions, vector<ge::GeTensorPtr> &tensorPtr);
+  Status ProcessLSTMBias(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo,
+                         int32_t num_directions, int32_t hiddenSize, vector<ge::GeTensorPtr> &tensorPtr);
+  Status ProcessLSTMInitH(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, bool hasInitH,
+                          vector<ge::GeTensorPtr> &tensorPtr);
+  Status ProcessLSTMInitC(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, bool hasInitC,
+                          vector<ge::GeTensorPtr> &tensorPtr);
   void SetTensorDescription(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims, const ge::Format &format,
                             const ge::DataType &dtype);
   Status AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
@@ -46,6 +54,9 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
                         int nodeIndex);
   Status AddRNNMaskNode(ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode, ge::ComputeGraph &graph,
                         int32_t hiddenSize, vector<ge::NodePtr> &newNodes);
+  Status AddSliceConcatNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnForwardNode,
+                            ge::NodePtr dynamicRnnReverseNode, ge::GeTensorDesc dynamicRnnOutputDesc,
+                            vector<ge::NodePtr> &newNodes, std::string nodeName, int nodeIndex);
   const string FUSED_OP_TYPE = "CommonLSTM";
 };
 }  // namespace fe
