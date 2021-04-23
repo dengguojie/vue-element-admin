@@ -63,13 +63,16 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   out_name_idx["loss"] = 0;
   sigmoidNoneDesc->UpdateOutputName(out_name_idx);
   // input
-  ge::GeTensorDesc siginputTensorDesc = sigmoidNoneDesc->GetInputDesc(0);
-
+  ge::GeTensorDesc siginput_tensor_desc = sigmoidNoneDesc->GetInputDesc(0);
+  ge::Format input_origin_format = siginput_tensor_desc.GetOriginFormat();
+  ge::Format input_format = siginput_tensor_desc.GetFormat();
   // update output shape
-  ge::GeTensorDesc sigoutputTensorDesc = sigmoidNoneDesc->GetOutputDesc(0);
-  sigoutputTensorDesc.SetOriginShape(siginputTensorDesc.GetShape());
-  sigoutputTensorDesc.SetShape(siginputTensorDesc.GetShape());
-  sigmoidNoneDesc->UpdateOutputDesc("loss", sigoutputTensorDesc);
+  ge::GeTensorDesc sigm_output_tensor_desc = sigmoidNoneDesc->GetOutputDesc(0);
+  sigm_output_tensor_desc.SetOriginShape(siginput_tensor_desc.GetOriginShape());
+  sigm_output_tensor_desc.SetShape(siginput_tensor_desc.GetShape());
+  sigm_output_tensor_desc.SetOriginFormat(input_origin_format);
+  sigm_output_tensor_desc.SetFormat(input_format);
+  sigmoidNoneDesc->UpdateOutputDesc("loss", sigm_output_tensor_desc);
   ge::AttrUtils::SetStr(sigmoidNoneDesc, "reduction", "none");
 
   // create sigmoid_none node
