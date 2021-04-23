@@ -6,6 +6,7 @@ import warnings
 
 from te import tvm
 import te.lang.cce as tbe
+from te.utils import shape_util
 
 
 warnings.filterwarnings("ignore")
@@ -16,9 +17,16 @@ def dsl_vadd(x, y, _, kernel_name='dsl_vadd'):
     input_dtype1 = x.get("dtype")
     input_shape2 = y.get("shape")
     input_dtype2 = y.get("dtype")
+    input_shape1, input_shape2, shape_max = shape_util.broadcast_shapes(input_shape1,input_shape2,
+                                                                        param_name_input1="x",
+                                                                        param_name_input2="y")
     data1 = tvm.placeholder(input_shape1, name='data1', dtype=input_dtype1)
     data2 = tvm.placeholder(input_shape2, name='data2', dtype=input_dtype2)
-    res = tbe.vadd(data1, data2)
+
+    data3 = tbe.broadcast(data1, shape_max)
+    data4 = tbe.broadcast(data2, shape_max)
+
+    res = tbe.vadd(data3, data4)
 
     tensor_list = [data1, data2, res]
     with tvm.target.cce():
@@ -68,9 +76,53 @@ case2 = {
     "support_expect": True
 }
 
+case3 = {
+    "params": [{"shape": (5, 1, 16, 16), "dtype": "float16", "format": "ND"},
+               {"shape": (8, 16, 16), "dtype": "float16", "format": "ND"},
+               {"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND"}
+               ],
+    "case_name": "test_vadd_3",
+    "expect": "success",
+    "support_expect": True
+}
+
+case4 = {
+    "params": [{"shape": (5, 3, 17, 16), "dtype": "float16", "format": "ND"},
+               {"shape": (17, 1), "dtype": "float16", "format": "ND"},
+               {"shape": (5, 3, 16, 16), "dtype": "float16", "format": "ND"}
+               ],
+    "case_name": "test_vadd_4",
+    "expect": "success",
+    "support_expect": True
+}
+
+case5 = {
+    "params": [{"shape": (20, 20, 1, 4), "dtype": "float16", "format": "ND"},
+               {"shape": (20, 20, 2, 4), "dtype": "float16", "format": "ND"},
+               {"shape": (20, 20, 2, 4), "dtype": "float16", "format": "ND"}
+               ],
+    "case_name": "test_vadd_5",
+    "expect": "success",
+    "support_expect": True
+}
+
+case6 = {
+    "params": [{"shape": (32,100, 20), "dtype": "float16", "format": "ND"},
+               {"shape": (32,100, 1), "dtype": "float16", "format": "ND"},
+               {"shape": (32,100, 20), "dtype": "float16", "format": "ND"}
+               ],
+    "case_name": "test_vadd_6",
+    "expect": "success",
+    "support_expect": True
+}
+
 compile_case = [
     case1,
-    case2
+    case2,
+    case3,
+    case4,
+    case5,
+    case6
 ]
 for item in compile_case:
     ut_case.add_case(case=item)

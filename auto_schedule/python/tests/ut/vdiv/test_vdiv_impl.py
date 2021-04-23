@@ -6,6 +6,7 @@ import warnings
 
 from te import tvm
 import te.lang.cce as tbe
+from te.utils import shape_util
 
 warnings.filterwarnings("ignore")
 
@@ -15,9 +16,16 @@ def dsl_vdiv(x, y, _, kernel_name='dsl_vdiv'):
     input1_dtype = x.get("dtype")
     input2_shape = y.get("shape")
     input2_dtype = y.get("dtype")
+    input1_shape, input2_shape, shape_max = shape_util.broadcast_shapes(input1_shape,input2_shape,
+                                                                        param_name_input1="x",
+                                                                        param_name_input2="y")
     data1 = tvm.placeholder(input1_shape, name='data1', dtype=input1_dtype)
     data2 = tvm.placeholder(input2_shape, name='data2', dtype=input2_dtype)
-    res = tbe.vdiv(data1, data2)
+
+    data3 = tbe.broadcast(data1, shape_max)
+    data4 = tbe.broadcast(data2, shape_max)
+
+    res = tbe.vdiv(data3, data4)
 
     tensor_list = [data1, data2, res]
     with tvm.target.cce():
@@ -99,10 +107,20 @@ case2 = {"params": [{"shape": (30000, 1), "dtype": "float16", "format": "ND"},
          "expect": "success",
          "support_expect": True
          }
+    
+case3 = {"params": [{"shape": (1, 3, 1, 1, 16), "dtype": "float32", "format": "ND"},
+                    {"shape": (2, 3, 96, 96, 16), "dtype": "float32", "format": "ND"},
+                    {"shape": (2, 3, 96, 96, 16), "dtype": "float32", "format": "ND"}
+                    ],
+         "case_name": "test_vdiv_3",
+         "expect": "success",
+         "support_expect": True
+         }
 
 compile_case = {
     "1": [case1, "Ascend310"],
-    "2": [case2, "Ascend910A"]
+    "2": [case2, "Ascend910A"],
+    "3": [case3, "all"]
 }
 for _, item in compile_case.items():
     ut_case.add_case(case=item[0], support_soc=item[1])
