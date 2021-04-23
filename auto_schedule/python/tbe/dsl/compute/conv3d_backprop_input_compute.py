@@ -153,7 +153,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
             "stridew_expand": strides[3],
             "dilation": [1, dilations[2], dilations[3]],
             "group": real_g,
-            "fused_coefficient": [0, 0, 0],
+            "fused_coefficient": [0, 0, var_map.get("fused_num", 0)],
             "bias_flag": False,
             "kernel_name": kernel_name,
             "dynamic_shape_flag": True,
@@ -241,7 +241,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
         cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
         ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
 
-        if (aub_dedy_size_min + aub_filling_size_min + cub_size_min) > ub_size:
+        if (aub_dedy_size_min * (fused_num + 1) + aub_filling_size_min + cub_size_min) > ub_size:
             dict_args = {
                 'errCode': 'E60119'
             }
@@ -377,8 +377,9 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
         batch_n_bound = get_te_var("batch_n").get_bound()
         dedy_batch_upper, dedx_batch_upper = batch_n_bound[1], batch_n_bound[1]
     else:
-        dedy_batch_upper, dedx_batch_upper = dedy_batch, fmap_batch   
+        dedy_batch_upper, dedx_batch_upper = dedy_batch, fmap_batch
 
+    fused_num = var_map.get("fused_num", 0)
     # Chip Design demand fmap_w must larger than 2 when fmap_h != 1
     if dedx_h_upper != 1 and dedx_w_upper == 1:
         cube_err.raise_err_one_para(
@@ -501,6 +502,10 @@ def conv3d_dx(filter,
         group_dict["cout_g"] = out_backprop_ndhwc[-1]
         group_dict["cin1_g"] = compute_util.int_ceil_div(filter_dhwcn[-2], tbe_platform.C0_SIZE)
     var_map = _get_var_map(out_backprop)
+
+    if ("fused_num" in para_dict and para_dict["fused_num"] > 0 and
+        "is_dynamic" in para_dict and para_dict["is_dynamic"]):
+        var_map["fused_num"] = para_dict["fused_num"]
 
     _check_conv3dbp_input_params_in_dsl(filter_dhwcn, out_backprop_ndhwc, input_size, strides,
                                         pads, dilations, filter_dtype, out_backprop_dtype,

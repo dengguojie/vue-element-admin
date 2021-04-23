@@ -27,6 +27,7 @@ from .arg_max_v2 import arg_max_v2
 from .arg_min import arg_min
 from .arg_max_with_value import arg_max_with_value
 from .arg_min_with_value import arg_min_with_value
+from .avg_pool3d_grad import avg_pool3d_grad
 from .broadcast_to import broadcast_to
 from .softsign import softsign
 from .softplus_grad import softplus_grad

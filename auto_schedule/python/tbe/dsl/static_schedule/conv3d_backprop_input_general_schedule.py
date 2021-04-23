@@ -181,13 +181,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         sch[a_l1].reorder(a_l1_k_outer, a_l1_h_outer, a_l1_w_outer,
                           sch[a_l1].op.axis[0], sch[a_l1].op.axis[1],
                           a_l1_k_inner, a_l1_h_inner, a_l1_w_inner)
-        if var_map:
+        if var_map and (stride_h > 1 or stride_w > 1):
             sch[a_zero].buffer_tile((None, None), (None, None), (None, None),
                                     (None, aub_tiling_m_factor),
                                     (None, None), (None, None))
             sch[a_vn].buffer_tile((None, None), (None, None), (None, None),
                                   (None, aub_tiling_m_factor),
                                   (None, None), (None, None))
+
         return a_l1_h_outer
 
     def _multi_core():  # pylint:disable=R0914
@@ -284,7 +285,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         if (kernel_w * kernel_h * cout1_g) % al0_tiling_ka != 0:
             cube_err.raise_err_three_paras(
                 'E62305', 'conv3d_backprop_input', 'Co1*Hk*Wk % ka', '0',
-                str((kernel_w * kernel_h * dy_cout1) % al0_tiling_ka))
+                str((kernel_w * kernel_h * cout1_g) % al0_tiling_ka))
 
         if al1_tiling_k % al0_tiling_ka != 0:
             cube_err.raise_err_three_paras(
@@ -324,6 +325,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
     def _fetch_tensor_info(var_map):  # pylint:disable=R0914, R0915
         tensor_attr = {}
+
+        if mean_flag:
+            sch[mean_matrix_init].set_scope(tbe_platform.scope_ubuf)
+            sch[mean_matrix_mul].set_scope(tbe_platform.scope_ubuf)
+            sch[mean_matrix_fp16].set_scope(tbe_platform.scope_ubuf)
 
         stride_d = c_ddr.op.attrs["stride_d"].value
         group_dict = c_ddr.op.attrs["group_dict"]
@@ -400,10 +406,12 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
             tensor_map['a_l1'] = a_l1
             if dsl_flag:
-                tensor_map['a_filling'] = tensor_map['elewise_mul']
+                tensor_map['a_filling'] = tensor_map['elewise_mul'] if not mean_flag else tensor_map['a_ub_mul']
         else:
             if dsl_flag:
-                tensor_map['a_ub'] = tensor_map['elewise_mul']
+                tensor_map['a_ub'] = tensor_map['elewise_mul'] if not mean_flag else tensor_map['a_ub_mul']
+                if var_map:
+                    sch[a_vn].set_scope(tbe_platform.scope_ubuf)
             else:
                 if not var_map:
                     a_ub = sch.cache_read(a_ddr, tbe_platform_info.scope_ubuf, [a_filling])
@@ -563,6 +571,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         howo_deep_outer = compute_util.int_ceil_div(howo_out, m_dim)
         howo_m_outer = al1_tiling_m * al0_tiling_ma * al0_tiling_m0
 
+        if mean_flag:
+            sch[mean_matrix_init].compute_at(sch[compute_at_buffer[0]], compute_at_axis[0])
+            sch[mean_matrix_mul].compute_at(sch[compute_at_buffer[0]], compute_at_axis[0])
+            sch[mean_matrix_fp16].compute_at(sch[compute_at_buffer[0]], compute_at_axis[0])
+
         if var_map:
             sch[a_l1].compute_at(sch[c_col], al1_at_l0c_axis)
         elif (not tiling['AL1_shape'] and not
@@ -678,6 +691,12 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     def _emit_insn_process():
         sch[b_l1].emit_insn(sch[b_l1].op.axis[1], "dma_copy")
         sch[b_col].emit_insn(sch[b_col].op.axis[3], "dma_copy")
+
+        if mean_flag:
+            sch[mean_matrix_init].emit_insn(mean_matrix_init.op.axis[-1], "vector_dup")
+            sch[mean_matrix_mul].emit_insn(mean_matrix_mul.op.axis[-1], "vector_auto")
+            sch[mean_matrix_fp16].emit_insn(mean_matrix_fp16.op.axis[0], "vector_auto")
+            sch[mean_matrix_fp16].reused_by(mean_matrix_mul)
 
         if stride_h > 1 or stride_w > 1:
             if dsl_flag == False and not var_map:
@@ -858,17 +877,24 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                    "conv3d_backprop_input_dy_filling": "a_filling",
                    "conv3d_backprop_input_dy_zero": "a_zero",
                    "conv3d_backprop_input_dy_vn": "a_vn",
-                   "elewise_binary_mul": "elewise_mul"}
+                   "elewise_binary_mul": "elewise_mul",
+                   "mean_matrix_init": "a_ub_init",
+                   "mean_matrix_fp16": "a_ub_fp16",
+                   "mean_matrix_mul": "a_ub_mul"}
 
         for op in color_op.body_ops:
             if op["op"] in tag_map.keys():
                 tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
+            if "mean_matrix_" in op["op"]:
+                continue
             if "conv3d_backprop_input_" not in op["op"] and op["op"] != "c_ddr":
                 sch[op["dst_buffer"]].set_scope(tbe_platform_info.scope_ubuf)
 
         for op in color_op.input_ops:
             if op["op"] in tag_map.keys():
                 tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
+            if "mean_matrix_" in op["op"]:
+                continue
             tmp_read_map = []
             for nop in op["next_op"]:
                 if (nop["op"] in _FUSION_NODE_WHITELIST):
@@ -886,11 +912,15 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     def _emit_insn_fusion_op():
         # emit insn
         for lop in body_ops:
+            if "mean_matrix_" in lop["op"]:
+                continue
             if "conv3d_backprop_input_" not in lop["op"] and lop["op"] != "c_ddr":
                 sch[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0],
                                                  "vector_auto")
 
         for lop in input_ops:
+            if "mean_matrix_" in lop["op"]:
+                continue
             if "conv3d_backprop_input_" in lop["op"]:
                 continue
             if (lop["next_op"][0]["op"] in _FUSION_NODE_WHITELIST):
@@ -901,10 +931,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
     def _fusion_op_compute_at():
         for lop in body_ops:
+            if "mean_matrix_" in lop["op"]:
+                continue
             if "conv3d_backprop_input_" not in lop["op"] and lop["op"] != "c_ddr":
                 sch[lop["dst_buffer"]].compute_at(sch[compute_at_buffer[0]],
                                                   compute_at_axis[0])
         for lop in input_ops:
+            if "mean_matrix_" in lop["op"]:
+                continue
             if "conv3d_backprop_input_" in lop["op"]:
                 continue
             if (lop["next_op"][0]["op"] in _FUSION_NODE_WHITELIST):
@@ -918,6 +952,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     var_map = _get_var_map(var_range)
     tensor_map, body_ops, input_ops = _get_op_infor(color_op)
     dsl_flag = True if "elewise_mul" in tensor_map.keys() else False
+    mean_flag = False
+    if "a_ub_init" in tensor_map.keys():
+        dsl_flag = True
+        mean_flag = True
+        mean_matrix_init = tensor_map.get("a_ub_init")
+        mean_matrix_mul = tensor_map.get("a_ub_mul")
+        mean_matrix_fp16 = tensor_map.get("a_ub_fp16")
+
     tensor_attr, group_dict = _fetch_tensor_info(var_map)
     c_ub_vn = tensor_map.get("c_ub_vn")
     c_ub = tensor_map.get("c_ub")
@@ -1005,7 +1047,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         tiling = get_tiling(info_dict)
     else:
         tiling = tiling_case
-
 
     if tiling["AL0_matrix"][2] == _DEFAULT_TILING_FLAG:
         tiling = _default_tiling()
@@ -1190,8 +1231,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         def _get_al1_m_extent(al0_m):
             al1_h = tvm.select((tvm.floormod(al0_m, output_shape[4]) == 0).asnode(),
                                kernel_h + (al0_m // output_shape[4]) - 1,
-                               tvm.select(tvm.all(tvm.floormod(2*al0_m, output_shape[4]) == 0,
-                                          tvm.floormod(output_shape[4], al0_m) == 0),
+                               tvm.select(tvm.any(tvm.floormod(2*al0_m, output_shape[4]) == 0,
+                                                  tvm.floormod(output_shape[4], al0_m) == 0),
                                           kernel_h + (al0_m // output_shape[4]),
                                           kernel_h + (al0_m // output_shape[4]) + 1))
             al1_w = a_l1.shape[-2]
@@ -1208,14 +1249,17 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
         def _get_al1_bound():
             d_factor = _dfactor_dynamic(var_map)
-            al0_m = cl0_tiling_mc * cl0_tiling_m0
-            al1_h, al1_w = _get_al1_m_extent(al0_m)
             if tiling["AL1_shape"]:
+                al0_m = cl0_tiling_mc * cl0_tiling_m0
+                al1_h, al1_w = _get_al1_m_extent(al0_m)
                 k_al1 = tiling["AL1_shape"][0]
                 al1_c = k_al1 // kernel_h // kernel_w
+                al1_bound = al1_c * al1_h * al1_w * d_factor
             else:
+                al1_m = compute_util.int_ceil_div(a_l1.shape[4] * a_l1.shape[5], cl0_tiling_m0) * cl0_tiling_m0
                 al1_c = al1_co1 * al1_co0
-            al1_bound = al1_c * al1_h * al1_w * d_factor
+                al1_h, al1_w = a_l1.shape[4], a_l1.shape[5]
+                al1_bound = al1_c * al1_m * d_factor
             return al1_bound, al1_h
 
         def _get_bl1_bound():
@@ -1230,13 +1274,13 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             return bl1_bound
 
         def _set_aub_bound(al1_h):
-            if stride_h > 1 or stride_w > 1:
+            if stride_h > 1 or stride_w > 1 or dsl_flag:
                 d_factor = _dfactor_dynamic(var_map)
                 aub_co0 = tbe_platform.CUBE_MKN[c_col.dtype]["mac"][1]
                 aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
                 aub_co1 = aub_tiling_k // (kernel_h * kernel_w * aub_co0)
                 aub_filling_w = dy_w * stride_w
-                aub_h = (aub_tiling_m + stride_h - 1) // stride_h
+                aub_h = (aub_tiling_m + stride_h - 1) // stride_h + 1
                 al1_m = compute_util.int_ceil_div(a_l1.shape[4] * a_l1.shape[5], cl0_tiling_m0) * cl0_tiling_m0
                 if len(tiling["AL1_shape"]) != 0:
                     multi_m_al1 = tiling["AL1_shape"][1]
@@ -1249,9 +1293,16 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                             aub_h,
                             aub_h + 1)
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0 * d_factor
-                sch[a_zero].set_storage_bound(a_filling_bound)
+                dedy_bound = aub_co1 * aub_h * dy_w * aub_co0 * d_factor
+                if stride_h > 1 or stride_w > 1:
+                    sch[a_zero].set_storage_bound(a_filling_bound)
+                    sch[a_vn].set_storage_bound(a_filling_bound)
+                if mean_flag:
+                    sch[mean_matrix_init].set_storage_bound(dedy_bound)
+                    sch[mean_matrix_fp16].set_storage_bound(dedy_bound)
+                    if stride_h > 1 or stride_w > 1:
+                        sch[mean_matrix_mul].set_storage_bound(dedy_bound)
                 sch[a_filling].set_storage_bound(a_filling_bound)
-                sch[a_vn].set_storage_bound(a_filling_bound)
 
         al1_bound, al1_h = _get_al1_bound()
         extent_h = tvm.var("h_buffer_tile")

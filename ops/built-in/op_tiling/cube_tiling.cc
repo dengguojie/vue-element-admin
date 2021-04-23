@@ -32,21 +32,18 @@ namespace {
   const std::vector<std::string> kConv3DVarNames = {"batch_n", "fmap_d", "fmap_h", "fmap_w"};
   const std::vector<std::string> kConv3DBpInputVarNames = {"batch_n", "dedy_d", "dedy_h", "dedy_w"};
   const std::vector<std::string> kConv3DTransposeVarNames = {"batch_n", "dedy_d", "dedy_h", "dedy_w"};
+  const std::vector<std::string> kAvgPool3DGradVarNames = {"batch_n", "dedy_d", "dedy_h", "dedy_w"};
+  const std::map<std::string, std::vector<std::string>> kOpVarNamesMap = {
+    {"Conv3D", kConv3DVarNames},
+    {"Conv3DBackpropFilter", kConv3DVarNames},
+    {"Conv3DBackpropInput", kConv3DBpInputVarNames},
+    {"Conv3DTranspose", kConv3DTransposeVarNames},
+    {"AvgPool3DGrad", kAvgPool3DGradVarNames}
+  };
 
   void GetVarNames(const std::string &op_type, std::vector<std::string> &vars) {
-    if (op_type == "Conv3D" || op_type == "Conv3DBackpropFilter") {
-      vars = kConv3DVarNames;
-      return;
-    }
-
-    if (op_type == "Conv3DTranspose") {
-      vars = kConv3DTransposeVarNames;
-      return;
-    }
-
-    if (op_type == "Conv3DBackpropInput") {
-      vars = kConv3DBpInputVarNames;
-      return;
+    if (kOpVarNamesMap.count(op_type) > 0){
+      vars = kOpVarNamesMap.at(op_type);
     }
   }
 

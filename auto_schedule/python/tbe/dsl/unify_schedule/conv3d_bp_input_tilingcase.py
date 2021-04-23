@@ -460,7 +460,8 @@ class Conv3dBpInputTiling(CubeTilingOp):
         cub_size_min = _C0_SIZE * _C0_SIZE * 2
         ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
 
-        return (aub_dedy_size_min + aub_filling_size_min + cub_size_min) <= ub_size
+        return (aub_dedy_size_min * (self.var_map.get("fused_num", 0) + 1) +
+                aub_filling_size_min + cub_size_min) <= ub_size
 
     def _check_l1_limitation(self, fmap_w_upper):
         w_value = fmap_w_upper * self.stride_w
@@ -488,7 +489,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         # defaut value 16
         k0_size = tbe_platform.CUBE_MKN[self.a_type]["mac"][1]
         k_al1 = self.k_h * self.k_w * k0_size
-        dsl_flag = DynamicConv3dBpInputParams.tiling_info_dict["fused_coefficient"][0]
+        dsl_flag = DynamicConv3dBpInputParams.tiling_info_dict["fused_coefficient"][2]
 
         if self.stride_h > 1 or self.stride_w > 1 or dsl_flag:
             tiling["AUB_shape"] = [k_al1, 1, 1, 1]
@@ -668,7 +669,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         d_factor = self._get_d_factor(tiling, self.stride_d, self.k_d, dy_d)
 
         dedy_ub_size = ((d_factor * aub_tiling_k_factor * dy_w * utils.CUBE_SIZE * utils.FP16_SIZE *
-                        utils.icd(aub_tiling_m_factor, self.stride_h)) *
+                        (utils.icd(aub_tiling_m_factor, self.stride_h))) *
                         tiling["manual_pingpong_buffer"]["AUB_pbuffer"])
 
         dy_filing_size = (d_factor * aub_tiling_k_factor * aub_tiling_m_factor * (dy_w * self.stride_w) *
@@ -677,7 +678,8 @@ class Conv3dBpInputTiling(CubeTilingOp):
         cub_size = (tiling["CUB_matrix"][0] * tiling["CUB_matrix"][1] * utils.CUBE_SIZE**2 * utils.FP16_SIZE *
                      tiling["manual_pingpong_buffer"]["CUB_pbuffer"])
 
-        return (dedy_ub_size + dy_filing_size + cub_size) <= tbe_platform_info.get_soc_spec("UB_SIZE")
+        return (dedy_ub_size * (self.var_map.get("fused_num", 0) + 1) + dy_filing_size +
+                cub_size) <= tbe_platform_info.get_soc_spec("UB_SIZE")
 
 
 

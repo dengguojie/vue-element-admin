@@ -313,12 +313,13 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), (str, list, tuple),
                              (list, tuple), str, str, str, str,
-                             (list, tuple), (list, tuple))
+                             (list, tuple), (list, tuple), dict)
 def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                                 shape_out_backprop,
                                 input_sizes, strides, pads, dilations,
                                 filter_dtype, out_backprop_dtype,
-                                res_dtype, kernel_name, range_input, range_dedy):
+                                res_dtype, kernel_name, range_input, range_dedy,
+                                param_dict={}):
     """
     The params check function of conv3d backprop input
 
@@ -376,7 +377,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         cub_size_min = _C0_SIZE * _C0_SIZE * 2
         ub_size = tbe_platform.get_soc_spec("UB_SIZE")
 
-        if (aub_dedy_size_min + aub_filling_size_min + cub_size_min) > ub_size:
+        if (aub_dedy_size_min * (param_dict.get("fused_num", 0) + 1) +
+                aub_filling_size_min + cub_size_min) > ub_size:
             dict_args = {
                 'errCode': 'E60119'
             }

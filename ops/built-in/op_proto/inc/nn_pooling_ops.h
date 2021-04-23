@@ -237,18 +237,18 @@ REG_OP(AvgPool3DD)
 * @li ceil_mode: When true, will use ceil instead of floor in the formula to compute the output shape.
 * @li count_include_pad: When true, will include the zero-padding in the averaging calculation.
 * @li divisor_override: if specified, it will be used as divisor, otherwise size of the pooling region will be used.
-* @li data_format: A string, format of input data . 
+* @li data_format: A string, format of input data.
 
 * @par Outputs:
-* @output: A mutable tensor with the same shape and type as "orig_input".
+* @output: A mutable tensor with the same shape and type as "orig_input_shape".
 
 * @par Third-party framework compatibility
 * @li Compatible with the TensorFlow operator AvgPoolGrad.
 */
 
 REG_OP(AvgPool3DGrad)
-    .INPUT(orig_input_shape, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
-    .INPUT(grads, TensorType({DT_INT32}))
+    .INPUT(orig_input_shape, TensorType({DT_INT32}))
+    .INPUT(grads, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
     .OUTPUT(output, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
     .REQUIRED_ATTR(ksize, ListInt)
     .REQUIRED_ATTR(strides, ListInt)
