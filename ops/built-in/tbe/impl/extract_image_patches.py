@@ -726,7 +726,7 @@ def _extract_image_patches_schedule(res, sch_list):
             if _could_split_multi_core(val):
                 return val, (out_shape[dma_split_axis_id] % val == 0)
 
-        return out_shape[dma_split_axis_id], False
+        return 1, False
 
     def _cal_multi_core_factor(m, n, m_list, n_list):
         """
