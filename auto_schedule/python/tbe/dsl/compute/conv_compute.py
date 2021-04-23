@@ -326,7 +326,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                     wo_upper = int_ceil_div(fmap_w_upper, stridew)
                 else:
                     wo_upper = math.floor((fmap_w_upper - wk_dilation + pad_left + pad_right) / stridew) + 1
-                ho_upper = math.floor(config['mac'][0] / wo_upper) + 1
+                ho_upper = math.floor(config['mac'][0] / wo_upper) + 2
             l1_m = ((ho_upper - 1) * strideh + hk_dilation) * fmap_w_upper
             max_feature_map_l1 = ci0 * l1_m * m_bit_ratio[w_dtype]
             _l1_buffer_size_check(max_feature_map_l1, ConvParam.dynamic_flag)

@@ -691,7 +691,8 @@ class Conv2dTiling(CubeTilingOp):
         tiling = copy.deepcopy(tiling_in)
         if tiling["AL1_shape"]:
             tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // \
-                (self.k_h * self.k_w * CUBE_INFO["reduce_k0"][self.w_type])
+                (((self.k_h - 1)*ConvParam.dilate_h + 1)*((self.k_w - 1)*ConvParam.dilate_w + 1)*
+                CUBE_INFO["reduce_k0"][self.w_type])
         if tiling["BL1_shape"]:
             tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // \
                 (self.k_h * self.k_w * CUBE_INFO["reduce_k0"][self.w_type])

@@ -71,10 +71,13 @@ class CubeTilingOp:
         """
         if "batch_n" in paras.get("var_map"):
             core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+            batch_max = TilingUtils.NHW_MAX
+            if batch > TilingUtils.NHW_MAX:
+                batch_max = batch
             if batch >= core_num:
-                return core_num, TilingUtils.NHW_MAX
+                return core_num, batch_max
             if core_num == TilingUtils.N_BASE:
-                return 1, TilingUtils.NHW_MAX
+                return 1, batch_max
             batch_log = int(math.log(batch, TilingUtils.N_BASE))
             return TilingUtils.N_BASE ** batch_log, TilingUtils.N_BASE ** (int(batch_log + 1))
         return batch, batch
