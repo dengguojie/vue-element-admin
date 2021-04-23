@@ -21,6 +21,7 @@ from te import tik
 from te.utils import shape_util
 from te.utils import para_check
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import error_manager_vector
 
 # define a scalar for fp16 minimal
 SCALAR_MIN_FP16 = -65500
@@ -298,20 +299,24 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
         length_x = len(shape_x)
 
         if ori_format not in ("NCHW", "NHWC"):
-            raise RuntimeError("x's ori_format is invalid for 5D Tensor")
+            excepted_format_list = ["NCHW", "NHWC"]
+            error_manager_vector.raise_err_input_format_invalid("arg_max_with_kd", "ori_format", excepted_format_list, ori_format)
         if length_x != 5:
-            raise RuntimeError("x's shape is invalid for 5D Tensor")
+            error_manager_vector.raise_err_input_value_invalid("arg_max_with_kd", "length_x", "5", length_x)
         if length_x_ori != 4:
-            raise RuntimeError("x's ori_shape is invalid for 5D Tensor")
+            error_manager_vector.raise_err_input_value_invalid("arg_max_with_kd", "length_x_ori", "4", length_x_ori)
         # only N,H,W axis is valid for 5hd
         if axis != AXIS_DEFAULT:
             axis = shape_util.axis_check(length_x_ori, axis)
             axis = shape_util.axis_transform_5d(axis, ori_format)
             if axis in (1, 4):
-                raise RuntimeError("axis is invalid for 5D Tensor")
+                error_detail = "axis is invalid for 5D Tensor, axis should not in (1, 4), axis:", axis
+                error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
+   
         else:
-            raise RuntimeError("axis is invalid for 5D Tensor")
-
+            error_detail = "axis is invalid for 5D Tensor, axis:", axis
+            error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
+   
     # the element size of axis
     axis_size = 1
 
@@ -333,12 +338,14 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
         axis_size = shape_x[axis]
 
     if topk != 1 or topk > axis_size:
-        raise RuntimeError("topk is out of range")
-
+        error_detail = "topk is out of range, topk:%s, axis_size:%s" % (topk, axis_size)
+        error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
+   
     # check axis size
     if axis_size > AXIS_SIZE_MAX:
-        raise RuntimeError("axis_size is larger than int limit, fail")
-
+        error_detail = "axis_size is larger than int limit, fail. axis_size:%s, limit:%s" % (axis_size, AXIS_SIZE_MAX)
+        error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
+   
     para_check.check_tensor_shape_size(shape_x)
     para_check.check_dtype_rule(dtype_x, ("float16", "float32"))
     para_check.check_kernel_name(kernel_name)
@@ -471,8 +478,9 @@ class ArgMax():
 
         if self.version in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
                 self.dtype_x == "float32":
-            raise RuntimeError("Only support float16 in mini/cloud/hisi-es/hisi-cs")
-
+            error_detail = "Only support float16 in mini/cloud/hisi-es/hisi-cs, self.version:%s, self.dtype_x:%s" % (self.version, self.dtype_x)
+            error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
+   
     def argmax_compute(self):
         """
         argmax_compute

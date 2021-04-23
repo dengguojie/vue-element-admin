@@ -20,6 +20,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from impl.transpose_d import transpose_d
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import error_manager_vector
 
 SIZE_SIXTEEN = 16
 
@@ -58,7 +59,7 @@ def _reshape_frac(shape_in, shape_out):
         as a Reshape + Transpose calculation
     """
     if _prod(shape_in) != _prod(shape_out):
-        raise RuntimeError("Input element number is not equal to output.")
+        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "_prod(shape_in)", "_prod(shape_out)", _prod(shape_in), _prod(shape_out), _prod(shape_out))
     idx_in = len(shape_in) - 1
     idx_out = len(shape_out) - 1
     shape_frac = []
@@ -68,8 +69,9 @@ def _reshape_frac(shape_in, shape_out):
         frac_elmt = min(res_in, res_out)
         shape_frac.insert(0, frac_elmt)
         if res_in % frac_elmt != 0 or res_out % frac_elmt != 0:
-            raise RuntimeError("Two list cannot be split into"
-                               "small granularities.")
+            param_name = "res_in " + "%" + "frac_elmt, res_out" + "%" + "frac_elmt"
+            error_manager_vector.raise_err_input_value_invalid("confusion_transpose_d", param_name,
+                                                               "0", res_in % frac_elmt + ", " + res_out % frac_elmt)
         res_in //= frac_elmt
         res_out //= frac_elmt
         if res_in <= 1:
@@ -309,8 +311,7 @@ def _shape_after_transpose(input_shape, trans_perm):
         transposed perm
     """
     if len(input_shape) != len(trans_perm):
-        raise RuntimeError("Length of transpose perm is not equal to"
-                           "the input shape")
+        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "input_shape", "trans_perm", input_shape, trans_perm, trans_perm)
     transposed_merged_perm = []
     for _, i in enumerate(range(len(trans_perm))):
         transposed_merged_perm.append(input_shape[trans_perm[i]])
@@ -354,7 +355,7 @@ def _shape_before_transpose(merged_frac, transpose_perm):
     """
     shape_before = []
     if len(merged_frac) != len(transpose_perm):
-        raise RuntimeError("Transpose perm is not equal to merged perm")
+        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "merged_frac", "transpose_perm", merged_frac, transpose_perm, transpose_perm)
     for _, i in enumerate(range(len(merged_frac))):
         shape_before.append([])
 
@@ -437,12 +438,14 @@ def _division_sixteen(shape):
 
     if len(shape) < 2:
         if shape[-1] == 0:
-            raise RuntimeError("value of shape is illegal")
+            error_detail = "value of shape is illegal, shape[-1] == 0"
+            error_manager_vector.raise_err_specific_reson("confusion_transpose_d", error_detail)
         return False
 
     if shape[-1] == 0 or shape[-2] == 0:
-        raise RuntimeError("value of shape is illegal")
-
+        error_detail = "value of shape is illegal, shape[-1]:%s, shape[-2]:%s" % (shape[-1], shape[-2])
+        error_manager_vector.raise_err_specific_reson("confusion_transpose_d", error_detail)
+        
     if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
         return True
     else:
@@ -536,7 +539,7 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first):
             (isinstance(perm, (list, tuple))) and \
             (isinstance(shape, (list, tuple))):
         if list(perm) == [0, 2, 1, 3]:
-            if soc_version == "Ascend910" :
+            if soc_version == "Ascend910":
                 if not transpose_first:
                     batch_supported = [i for i in range(16, 176, 16)]
                     if list(y.get("shape"))[1:] == [16, 4, 8, 16, 16] and list(shape)[1:] == [128, 16, 64] and \
@@ -577,8 +580,9 @@ def confusion_transpose_d_compute(x, y, perm, shape, transpose_first,
         setattr(x, "matmul_with_transpose", True)
         setattr(x, "transpose_shape", y.get("shape"))
     else:
-        raise RuntimeError("This case does not support fusion with matmul now.")
-
+        error_detail = "This case does not support fusion with matmul now."
+        error_manager_vector.raise_err_specific_reson("confusion_transpose_d", error_detail)
+ 
     return x
 
 

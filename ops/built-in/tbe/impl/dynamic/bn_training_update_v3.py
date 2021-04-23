@@ -25,6 +25,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util import fusion_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=redefined-builtin
@@ -33,29 +34,20 @@ def _check_shape_5hd(shape_x, shape_sum, shape_square_sum,
     if len(shape_x) != 5 or len(shape_sum) != 5 \
             or len(shape_square_sum) != 5 or len(shape_scale) != 5 \
             or len(shape_offset) != 5:
-        raise RuntimeError(
-            "The data format is 5HD, "
-            "but some input's shape length is not 5")
-
+        param_name = ['len(shape_x), len(shape_sum), len(shape_square_sum), len(shape_scale), len(shape_offset)']
+        real_value = [len(shape_x), len(shape_sum), len(shape_square_sum), len(shape_scale), len(shape_offset)]
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", param_name, 5, real_value)
     dim_c1 = shape_x[1]
     dim_c0 = shape_x[4]
 
     if shape_sum[1] != dim_c1 or shape_sum[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C must be equal, but %s and %s"
-            % (str(shape_x), str(shape_sum)))
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_sum[1], shape_sum[4]", str(dim_c1) + ", " + str(dim_c0), str(shape_sum[1]) + ", " + str(shape_sum[4]))
     if shape_square_sum[1] != dim_c1 or shape_square_sum[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C must be equal, but %s and %s"
-            % (str(shape_x), str(shape_square_sum)))
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_square_sum[1], shape_square_sum[4]", str(dim_c1) + ", " + str(dim_c0), str(shape_square_sum[1]) + ", " + str(shape_square_sum[4]))
     if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C must be equal, but %s and %s"
-            % (str(shape_x), str(shape_scale)))
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_scale[1], shape_scale[4]", str(dim_c1) + ", " + str(dim_c0), str(shape_scale[1]) + ", " + str(shape_scale[4]))
     if shape_offset[1] != dim_c1 or shape_offset[4] != dim_c0:
-        raise RuntimeError(
-            "Dimension C must be equal, but %s and %s"
-            % (str(shape_x), str(shape_offset)))
+        error_manager_vector.raise_err_input_value_invalid("bn_training_update_v3", "shape_offset[1], shape_offset[4]", str(dim_c1) + ", " + str(dim_c0), str(shape_offset[1]) + ", " + str(shape_offset[4]))
 
 
 def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
@@ -293,9 +285,9 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
     check_list = ("NC1HWC0", "NCHW")
     para_check.check_format(data_format, check_list, param_name="x")
     if data_format == "NCHW" and origin_format not in ("NCHW",):
-        raise RuntimeError("The origin format only supports "
-                           "NCHW when format is NCHW")
-
+        error_detail = "The origin format only supports NCHW when format is NCHW, origin_format:", origin_format
+        error_manager_vector.raise_err_specific_reson("bn_training_update_v3", error_detail)
+ 
     # check shape
     if data_format == "NC1HWC0":
         _check_shape_5hd(shape_x, shape_sum, shape_sqrsum,

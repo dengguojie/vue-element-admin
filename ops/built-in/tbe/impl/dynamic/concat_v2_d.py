@@ -26,7 +26,7 @@ from impl.util.platform_adapter import tbe_platform
 
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import error_manager_vector as error_manager
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.util_tik_comm_func import gm2ub
 from impl.util.util_tik_comm_func import ub2gm
 from impl.util.util_tik_comm_func import ceil_div
@@ -162,14 +162,17 @@ def _concat_ub_vadd(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_ind
     _concat_ub_vadd
     """
     if dst.scope != tik.scope_ubuf or src.scope != tik.scope_ubuf:
-        raise RuntimeError("dst and src must be UB, but dst is {} and src is {}.".format(dst.scope, src.scope))
-
+        error_detail = "dst and src must be UB, but dst is {} and src is {}.".format(dst.scope, src.scope)
+        error_manager_vector.raise_err_specific_reson("concat_v2_d", error_detail)
+     
     if dst.dtype != src.dtype:
-        raise RuntimeError("dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype))
-
+        error_detail = "dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype)
+        error_manager_vector.raise_err_specific_reson("concat_v2_d", error_detail)
+     
     if not tbe_platform.api_check_support("tik.vadd", dst.dtype):
-        raise RuntimeError("{} is not supported by vadd.".format(dst.dtype))
-
+        error_detail = "{} is not supported by vadd.".format(dst.dtype)
+        error_manager_vector.raise_err_specific_reson("concat_v2_d", error_detail)
+     
     dtype_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // dtype_size
 
@@ -1243,10 +1246,7 @@ def _check_shape(input_values, shape_name):
     for _, tensor_dict in enumerate(input_values):
         shape_input = tensor_dict.get(shape_name)
         if len(shape_input) != dim_num:
-            error_manager.raise_err_check_params_rules("concat", "The length of each shape must be equal",
-                                                       "input_values",
-                                                       [i.get(shape_name) for i in input_values])
-
+            error_manager_vector.raise_err_inputs_shape_not_equal("concat_v2_d", "shape_input", "dim_num", len(shape_input), dim_num, dim_num)
 
 def _check_params(input_values, axis):
     """
@@ -1258,12 +1258,7 @@ def _check_params(input_values, axis):
     dim_num = len(input_values[0].get("ori_shape"))
 
     if axis >= dim_num or axis < -dim_num:
-        error_manager.raise_err_input_value_invalid("concat",
-                                                    "concat_dim",
-                                                    "between " + str(min(-dim_num, dim_num - 1)) + " and " +
-                                                    str(max(-dim_num, dim_num - 1)),
-                                                    axis)
-
+        error_manager_vector.raise_err_input_param_not_in_range("concat_v2_d", "axis", -dim_num, dim_num - 1, axis)
     shape_value = []
     for _, tensor_dict in enumerate(input_values):
         shape_value.append(tensor_dict.get("ori_shape"))
@@ -1283,11 +1278,9 @@ def _check_params(input_values, axis):
             dim_values.remove(-1)
 
         if len(dim_values) > 1:
-            error_manager.raise_err_check_params_rules("concat",
-                                                       "Dims must be equal except merge concat axis[%s]" % axis,
-                                                       "input_values",
-                                                       shape_value)
-
+            error_detail = "concat Dims must be equal except merge concat axis[%s]" % axis, "input_values", shape_value 
+            error_manager_vector.raise_err_specific_reson("concat_v2_d", error_detail)
+ 
     dtype_lists = []
     for input_value in input_values:
         dtype_lists.append(input_value.get("dtype"))
@@ -1295,7 +1288,7 @@ def _check_params(input_values, axis):
     dtype = dtype_lists[0]
     for index, dtype_ in enumerate(dtype_lists):
         if dtype != dtype_:
-            error_manager.raise_err_inputs_dtype_not_equal("concat",
+            error_manager_vector.raise_err_inputs_dtype_not_equal("concat_v2_d",
                                                            "input_values[0]",
                                                            "input_values[%s]" % index,
                                                            dtype,

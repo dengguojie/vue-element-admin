@@ -40,6 +40,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util import util_compute
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import error_manager_vector
 
 NUM_ONE = 1.0
 NEG_NUM_ONE = -1.0
@@ -199,22 +200,8 @@ def asin(x, y, kernel_name="asin"):
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="x")
     if x_dtype != y_dtype:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_018
-        error_info['op_name'] = 'sin'
-        error_info['param_name1'] = 'x_dtype'
-        error_info['param_name2'] = 'y_dtype'
-        error_info['param1_dtype'] = str(x_dtype)
-        error_info['param2_dtype'] = str(y_dtype)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
-
+        error_manager_vector.raise_err_inputs_dtype_not_equal('asin', 'x_dtype', 'y_dtype', str(x_dtype), str(y_dtype))
+    
     ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 

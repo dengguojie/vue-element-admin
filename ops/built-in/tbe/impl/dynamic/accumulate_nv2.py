@@ -26,6 +26,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import error_manager_vector
 
 MIN_TENSOR_NUM = 1
 MAX_TENSOR_NUM = 40
@@ -126,21 +127,19 @@ def _check_all_dtype_same(input_list):
     """
 
     if input_list is None or len(input_list) < MIN_TENSOR_NUM:
-        raise ValueError(
-            'inputs must be a list of at least one Tensor with the same dtype and shape'
-        )
+        error_detail = 'inputs must be a list of at least one Tensor with the same dtype and shape, MIN_TENSOR_NUM:', MIN_TENSOR_NUM
+        error_manager_vector.raise_err_specific_reson("accumulate_nv2", error_detail)
 
+        
     # ccec compiler does not support more than 40 parameters, so limit it
     if len(input_list) > MAX_TENSOR_NUM:
-        raise RuntimeError('tensor_num need in range [1, 40].')
+        error_manager_vector.raise_err_input_param_not_in_range("accumulate_nv2", "tensor_num", MIN_TENSOR_NUM, MAX_TENSOR_NUM, len(input_list))
 
     dtype = _get_dtype(input_list[0])
 
     if not all(dtype == _get_dtype(x) for x in input_list):
-        raise ValueError(
-            'inputs must be a list of at least one Tensor with the same dtype and shape'
-        )
-
+        error_detail = 'inputs must be a list of at least one Tensor with the same dtype and shape'
+        error_manager_vector.raise_err_specific_reson("accumulate_nv2", error_detail)
     return dtype
 
 
@@ -169,9 +168,9 @@ def accumulate_nv2(input_x, output_y, num, kernel_name="accumulate_nv2"):
     """
 
     if len(input_x) != num:
-        raise RuntimeError(
-            'The size of input and num must be same.'
-        )
+        error_detail = "The size of input and num must be same."
+        error_manager_vector.raise_err_two_input_shape_invalid("accumulate_nv2", len(input_x), num, error_detail)
+    
     dtype = _check_all_dtype_same(input_x)
     ins = classify(input_x, OpPatternMode.ELEWISE)
     schedules, tensors = [], []

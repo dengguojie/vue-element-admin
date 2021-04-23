@@ -19,7 +19,7 @@ from topi.cce import util
 from impl.cum_computer import get_computer_by_ctype
 from impl.util import util_select_op_base
 from te.utils import para_check
-
+from impl.util.platform_adapter import error_manager_vector
 
 # the computer type
 COMPUTE_TYPE = "logsumexp"
@@ -109,5 +109,4 @@ def check_param(input_x, axis, kernel_name):
     para_check.check_dtype(input_dtype, ("float16", "float32"))
 
     if axis < len(input_shape) * (-1) or axis >= len(input_shape):
-        raise RuntimeError("axis must be in the range [%d, %d). but is %d "
-                           % (len(input_shape) * (-1), len(input_shape), axis))
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", len(input_shape) * (-1), len(input_shape), axis)

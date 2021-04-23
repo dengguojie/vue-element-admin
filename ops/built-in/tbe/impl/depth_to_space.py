@@ -1131,7 +1131,7 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
 
     depth_size = input_shape[3]
     if depth_size % (block_size * block_size) != 0:
-        error_detail = "depth size of x should be divisible by the square of block_size"
+        error_detail = "depth size of x should be divisible by the square of block_size, depth_size:%s, block_size:%s" % (depth_size, block_size)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     depth_to_space_template = DepthToSpaceNHWCCompute(input_shape, input_dtype, block_size, data_format, kernel_name)

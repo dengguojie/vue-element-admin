@@ -255,7 +255,8 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
                 l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
                     if "L1_fusion_type" in x.op.attrs else -1
                 if l1_fusion_type == 1:
-                    raise RuntimeError("bninference does not support l1 width fusion")
+                    error_detail = 'bninference does not support l1 width fusion, l1_fusion_type:', l1_fusion_type
+                    error_manager_vector.raise_err_specific_reson("bninference_d", error_detail)
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
             in_l1_flag = x.op.attrs["addr_type"].value == 1 \
                 if "addr_type" in x.op.attrs else False
@@ -398,7 +399,8 @@ def get_l1_paras(x):
     if tbe_platform.fusion_manager.get_build_cfg() != "disable":
         l1_fusion_type = x.get('L1_fusion_type', -1)
         if l1_fusion_type == 1:
-            raise RuntimeError("bninference does not support l1 width fusion")
+            error_detail = 'bninference does not support l1 width fusion, l1_fusion_type:', l1_fusion_type
+            error_manager_vector.raise_err_specific_reson("bninference_d", error_detail)
     addr_type = x.get("addr_type", 0)
     valid_shape = x.get("valid_shape", [])
     slice_offset = x.get("slice_offset", [])

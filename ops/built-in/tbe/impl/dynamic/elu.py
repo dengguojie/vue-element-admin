@@ -40,6 +40,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import error_manager_vector
 
 # shape limit 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -139,16 +140,7 @@ def elu(x, y, alpha=1.0, kernel_name="elu"):
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="x")
     if not tbe_platform.api_check_support("te.lang.cce.sum", "float32") and input_dtype == "float32":
-        error_info = {}
-        error_info['errCode'] = 'E80008'
-        error_info['param_name'] = 'x'
-        error_info['op_name'] = 'elu'
-        error_info['expect_value'] = "float16"
-        error_info['real_value'] = input_dtype
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype "
-                                       "should be [%s], but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'], \
-                              error_info['expect_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_dtype_not_supported("elu", "x", "float16", input_dtype)
     schedules, tensors = [], []
     ins = classify([x], OpPatternMode.ELEWISE)
 

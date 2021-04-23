@@ -36,6 +36,7 @@ import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
+from impl.util.platform_adapter import error_manager_vector
 
 # shape limit 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -150,17 +151,7 @@ def elu(x, y, alpha=1.0, kernel_name="elu"):
     para_check.check_dtype(dtype_input, check_list, param_name="x")
 
     if not tbe_platform.cce_conf.api_check_support("te.lang.cce.sum", "float32") and dtype_input == "float32":
-        error_info = {}
-        error_info['errCode'] = 'E80008'
-        error_info['param_name'] = 'x'
-        error_info['op_name'] = 'elu'
-        error_info['expect_value'] = "float16"
-        error_info['real_value'] = dtype_input
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype "
-                                       "should be [%s], but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'], \
-                              error_info['expect_value'], error_info['real_value']))
-
+        error_manager_vector.raise_err_input_dtype_not_supported("elu", "x", "float16", dtype_input)
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_input)
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)

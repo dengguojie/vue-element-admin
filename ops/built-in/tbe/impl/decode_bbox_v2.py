@@ -23,6 +23,7 @@ import functools
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
+from impl.util.platform_adapter import error_manager_vector
 
 SHAPE_SIZE_ONE = 1
 SHAPE_SIZE_FOUR = 4
@@ -567,41 +568,16 @@ class DecodeBboxV2():
         para_check.check_shape(self.anchors_shape, min_rank=2, max_rank=2,
                                param_name="anchors")
         if self.boxes_shape != self.anchors_shape:
-            error_info = {}
-            error_info['errCode'] = 'E80017'
-            error_info['op_name'] = 'decode_bbox_v2'
-            error_info['param_name1'] = "boxes_shape"
-            error_info['param_name2'] = "anchors_shape"
-            error_info['param1_shape'] = self.boxes_shape
-            error_info['param2_shape'] = self.anchors_shape
-            raise RuntimeError(error_info,
-                               "In op[{op_name}], the parameter[{param_name1}][{param_name2}] "
-                               "is not match with the parameter[{param1_shape}]"
-                               "[{param1_shape}].".format(**error_info))
+            error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape", "anchors_shape", self.boxes_shape, self.boxes_shape, self.anchors_shape)
+        
         if self.reversed_box is False:
             if self.boxes_shape[-1] != SHAPE_SIZE_FOUR:
-                error_info = {}
-                error_info['errCode'] = 'E80000'
-                error_info['op_name'] = 'decode_bbox_v2'
-                error_info['param_name'] = "boxes_shape's last dim"
-                error_info['expected_value'] = SHAPE_SIZE_FOUR
-                error_info['real_value'] = self.boxes_shape[-1]
-                raise RuntimeError(error_info,
-                                   "In op[{op_name}], the parameter[{param_name}] "
-                                   "should be [{expected_value}], "
-                                   "but actually is [{real_value}].".format(**error_info))
+                error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape's last dim", "SHAPE_SIZE_FOUR", self.boxes_shape[-1], SHAPE_SIZE_FOUR, SHAPE_SIZE_FOUR)
+        
         if self.reversed_box is True:
             if self.boxes_shape[0] != SHAPE_SIZE_FOUR:
-                error_info = {}
-                error_info['errCode'] = 'E80000'
-                error_info['op_name'] = 'decode_bbox_v2'
-                error_info['param_name'] = "boxes_shape's first dim"
-                error_info['expected_value'] = SHAPE_SIZE_FOUR
-                error_info['real_value'] = self.boxes_shape[0]
-                raise RuntimeError(error_info,
-                                   "In op[{op_name}], the parameter[{param_name}] "
-                                   "should be [{expected_value}], "
-                                   "but actually is [{real_value}].".format(**error_info))
+                error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape's first dim", "SHAPE_SIZE_FOUR", self.boxes_shape[0], SHAPE_SIZE_FOUR, SHAPE_SIZE_FOUR)
+
         check_list_boxes = ["float16", "float32"]
         check_list_anchors = ["float16", "float32"]
         para_check.check_dtype(self.boxes_dtype, check_list_boxes, param_name="boxes")
@@ -611,42 +587,14 @@ class DecodeBboxV2():
                 "tik.vnchwconv", dtype=self.boxes_dtype):
             para_check.check_dtype(self.boxes_dtype, ["float16"], param_name="boxes")
         if self.boxes_dtype != self.anchors_dtype:
-            error_info = {}
-            error_info['errCode'] = 'E80018'
-            error_info['op_name'] = 'decode_bbox_v2'
-            error_info['param_name1'] = "boxes_dtype"
-            error_info['param_name2'] = "anchors_dtype"
-            error_info['param1_dtype'] = self.boxes_dtype
-            error_info['param2_dtype'] = self.anchors_dtype
-            raise RuntimeError(error_info,
-                               "In op[{op_name}], the parameter[{param_name1}][{param_name2}] "
-                               "are not equal in dtype with dtype[{param1_dtype}]"
-                               "[{param2_dtype}].".format(**error_info))
+            error_manager_vector.raise_err_inputs_dtype_not_equal("decode_bbox_v2", "boxes_dtype", "anchors_dtype", self.boxes_dtype, self.anchors_dtype)
+        
         if self.decode_clip < 0 or self.decode_clip > 10:
-            error_info = {}
-            error_info['errCode'] = 'E80002'
-            error_info['op_name'] = 'decode_bbox_v2'
-            error_info['param_name'] = "decode_clip"
-            error_info['min_value'] = 0
-            error_info['max_value'] = 10
-            error_info['value'] = self.decode_clip
-            raise RuntimeError(error_info,
-                               "In op[{op_name}], the parameter[{param_name}] "
-                               "should be in the range of "
-                               "[{min_value}, {max_value}], but actually "
-                               "is [{value}].".format(**error_info))
-        if len(self.scale_list) != SHAPE_SIZE_FOUR:
-            error_info = {}
-            error_info['errCode'] = 'E80000'
-            error_info['op_name'] = 'decode_bbox_v2'
-            error_info['param_name'] = "length of scale_list"
-            error_info['expected_value'] = SHAPE_SIZE_FOUR
-            error_info['real_value'] = len(self.scale_list)
-            raise RuntimeError(error_info,
-                               "In op[{op_name}], the parameter[{param_name}] "
-                               "should be [{expected_value}], but actually "
-                               "is [{real_value}].".format(**error_info))
+            error_manager_vector.raise_err_input_param_not_in_range("decode_bbox_v2", "decode_clip", 0, 10, self.decode_clip)
 
+        if len(self.scale_list) != SHAPE_SIZE_FOUR:
+            error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "length of scale_list", "SHAPE_SIZE_FOUR", len(self.scale_list), SHAPE_SIZE_FOUR, SHAPE_SIZE_FOUR)
+    
     def isclose(self, valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
         """
         determines whether the values of two floating-point numbers

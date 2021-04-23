@@ -22,7 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from te import platform as cceconf
 from topi import generic
 from topi.cce import util
-
+from impl.util.platform_adapter import error_manager_vector
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def _shape_check(shape_x1, shape_x2, shape_tgt):
@@ -30,14 +30,16 @@ def _shape_check(shape_x1, shape_x2, shape_tgt):
     try:
         _, _, x_shape = util.produce_shapes(shape_x1, shape_x2)
     except RuntimeError:
-        raise RuntimeError("x1 and x2 can't be broadcast")
+        error_detail = "x1 and x2 can't be broadcast"
+        error_manager_vector.raise_err_specific_reson("cosine_embedding_loss", error_detail)
 
     x_shape_reduce = x_shape[:]
     x_shape_reduce.pop(1)
     try:
         _, _, tgt_shape = util.produce_shapes(x_shape_reduce, shape_tgt)
     except RuntimeError:
-        raise RuntimeError("x and target can't be broadcast")
+        error_detail = "x and target can't be broadcast"
+        error_manager_vector.raise_err_specific_reson("cosine_embedding_loss", error_detail)
     min_dim = min(len(shape_x1), len(shape_x2), len(shape_tgt))
     if min_dim >= 3:
         reduce_dim = -1
@@ -72,18 +74,18 @@ def _dtype_check(input_dtype_x1, input_dtype_x2, target_dtype, reduction):
     # cast_to not support "int16", "int64", ISA not support float64(double)
     x_check_list = ["int32", "float16", "float32"]
     if not input_dtype_x1 in x_check_list:
-        raise RuntimeError("x1 dtype %s not support" % input_dtype_x1)
+        error_manager_vector.raise_err_input_dtype_not_supported("cosine_embedding_loss", "input_dtype_x1", x_check_list, input_dtype_x1)
     if not input_dtype_x2 in x_check_list:
-        raise RuntimeError("x2 dtype %s not support" % input_dtype_x2)
+        error_manager_vector.raise_err_input_dtype_not_supported("cosine_embedding_loss", "input_dtype_x2", x_check_list, input_dtype_x2)
 
     # cast_to not support "int16", "int64", "uint8" can't indicate -1
     tgt_check_list = ["int32", "float16", "float32"]
     if not target_dtype in tgt_check_list:
-        raise RuntimeError("target dtype %s not support" % target_dtype)
+        error_manager_vector.raise_err_input_dtype_not_supported("cosine_embedding_loss", "target_dtype", tgt_check_list, target_dtype)
 
     reduce_check_list = ['mean', 'sum', 'none']
     if reduction not in reduce_check_list:
-        raise RuntimeError("reduction method not support")
+        error_manager_vector.raise_err_input_dtype_not_supported("cosine_embedding_loss", "reduction", reduce_check_list, reduction)
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name

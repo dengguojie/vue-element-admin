@@ -22,6 +22,7 @@ import te.lang.cce as tbe
 from te import tvm
 import te.platform as tbe_platform
 from te.utils import para_check
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=too-many-locals
@@ -111,15 +112,8 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     if base <= 0 and (not isclose(base, -1.0)):
-        error_info = {}
-        error_info['errCode'] = 'E80000'
-        error_info['param_name'] = 'base'
-        error_info['op_name'] = 'exp'
-        error_info['expect_value'] = "strictly positive or -1"
-        error_info['real_value'] = base
-        raise RuntimeError("In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['expect_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("exp", "base", "strictly positive or -1", base)
+    
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)

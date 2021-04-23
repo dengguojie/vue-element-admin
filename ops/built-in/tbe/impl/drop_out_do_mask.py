@@ -24,7 +24,7 @@ from te import tvm
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_select_op_base
 
 # elems one batch can process
@@ -42,12 +42,14 @@ def _division_sixteen(shape):
     """
     if len(shape) < 2:
         if shape[-1] == 0:
-            raise RuntimeError("value of shape is illegal")
+            error_detail = "value of shape is illegal, shape[-1] == 0"
+            error_manager_vector.raise_err_specific_reson("dropout_do_mask", error_detail)
         return False
 
     if shape[-1] == 0 or shape[-2] == 0:
-        raise RuntimeError("value of shape is illegal")
-
+        error_detail = "value of shape is illegal, shape[-1]:%s, shape[-2]:%s" % (shape[-1], shape[-2])
+        error_manager_vector.raise_err_specific_reson("dropout_do_mask", error_detail)
+        
     return shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0
 
 
@@ -699,11 +701,11 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
 
     if len(shape_mask) != 1:
         error_detail = "The length of mask shape must be 1"
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_mask", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("dropout_do_mask", "input_mask", error_detail)
 
     if shape_keep_prob not in [(1, ), [1, ]]:
         error_detail = "keep_prob Only support shape (1, ) or [1, ]"
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_keep_prob", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("dropout_do_mask", "input_keep_prob", error_detail)
 
     # functools.reduce: product of all dimension
     # Align to tbe_platform.ELEMENTS_VECTOR_OP_FP16
@@ -713,7 +715,7 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
 
     if product_mask != shape_mask[0]:
         error_detail = "The mask[0] should=%d, but now=%d"%(product_mask, shape_mask[0])
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_mask", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("dropout_do_mask", "input_mask", error_detail)
     data_tensor = tvm.placeholder(
         (functools.reduce(lambda x, y: x*y, shape_tensor), ),
         dtype=dtype,

@@ -115,8 +115,9 @@ def calc_tiling_case(outs, options=None):
     current_compute.add("compute_graph_info", compute_graph_info)
     current_compute.add("single_reduce_info", single_reduce_info)
     if not compute_graph_info.reduce_tensor_set:
-        raise RuntimeError("Couldn't find reduce node for ReduceSchedule")
-
+        error_detail = "Couldn't find reduce node for ReduceSchedule"
+        error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
+ 
     tiling_instance = GenBnReduceTilingCase()
     tiling_case_list = []
     if single_reduce_info.reduce_axis_indices == [0, 2, 3]:
@@ -279,11 +280,13 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
     check_list = ("NC1HWC0",)
     para_check.check_format(data_format, check_list, param_name="x")
     if data_format == "NCHW" and origin_format not in ("NCHW",):
-        raise RuntimeError("The origin format only supports " "NCHW when format is NCHW")
+        error_detail = "The origin format only supports NCHW when format is NCHW, origin_format:", origin_format
+        error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
 
     if data_format == "NC1HWC0" and x['shape'][-1] < 0:
-        raise RuntimeError("The input x dim C0 should be a const value.")
-
+        error_detail = "The input x dim C0 should be a const value. x['shape'][-1]：", x['shape'][-1]
+        error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
+  
     # check dtype
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="x")
@@ -448,8 +451,7 @@ class ComputeGraphInfo:
         elif isinstance(root_tensor, tvm.tensor.Tensor):
             _recursive_func(root_tensor, visited_list, tensor_consumers_map, tensor_producers_map)
         else:
-            raise RuntimeError("dfs_compute_graph() supports list, tuple, Tensor only. Received %s" %
-                               str(type(root_tensor)))
+            error_manager_vector.raise_err_input_format_invalid("bn_training_reduce", "dfs_compute_graph()", ["list, tuple, Tensor"], str(type(root_tensor)))
         return list(visited_list), tensor_consumers_map, tensor_producers_map
 
     def get_all_tensors_before_reduce(self, output_tensors):
@@ -570,7 +572,8 @@ class BNReduceInfo:
         :return:
         """
         if not self.is_reduce_tensor(reduce_tensor):
-            raise RuntimeError("Cannot get reduce axes of non-reduce tensor!")
+            error_detail = 'Cannot get reduce axes of non-reduce tensor!'
+            error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
         reduce_tensor_body = reduce_tensor.op.body
         reduce_tensor_axes = list(reduce_tensor_body[0].axis)
         for idx, axis in enumerate(reduce_tensor_axes):
@@ -938,7 +941,8 @@ class GenBnReduceTilingCase:
         elif dtype in ["int64"]:
             block_size = 4
         else:
-            raise RuntimeError("[%s] is not support type" % dtype)
+            excepted_dtype_list = ["float32", "fp32", "int32", "bool", "int8", "uint8", "float16", "fp16", "int64"]
+            error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "dtype", excepted_dtype_list, dtype)
         return block_size
 
     @staticmethod
@@ -1010,11 +1014,8 @@ class GenBnReduceTilingCase:
             rule = [range(2), range(100), range(9), range(9), range(1000), range(2), range(2)]
             name = ["db_flag", "shape_type", "block_split_axis", "ub_split_axis", "pattern", "customised", "fuse_hn"]
             if value not in rule[idx]:
-                dict_args = dict()
-                dict_args["errCode"] = "E90003"
-                dict_args["detailed_cause"] = "%s should in %s, but is %d" % (name[idx], str(rule[idx]), value)
-                raise RuntimeError(dict_args, error_manager_vector.get_error_message(dict_args))
-
+                error_manager_vector.raise_err_input_value_invalid("bn_training_reduce", name[idx], str(rule[idx]), value)
+        
         def _get_pattern_key(_shape, _reduce_idx_list):
             """
             :param _shape:
@@ -1726,11 +1727,7 @@ class BnReduceCustomisedSchedule:
         """
         valid_types = (int, tvm.expr.Expr)
         if not isinstance(expr, valid_types):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Only accept (int, expr), but now " \
-                                          "is [%s]." % type(expr)
-            raise RuntimeError(dict_args, error_manager_vector.get_error_message(dict_args))
+            error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "expr", "(int, expr)", type(expr))
 
         if isinstance(expr, int):
             return expr, expr
@@ -1770,11 +1767,7 @@ class BnReduceCustomisedSchedule:
                 right_lower, right_upper = _parse(_expr.b)
                 _lower, _upper = _min(left_lower, right_lower), _max(left_upper, right_upper)
             else:
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "Only accept (ConstExpr, Var, Mul, Max), but now " \
-                                              "is [%s]" % type(_expr)
-                raise RuntimeError(dict_args, error_manager_vector.get_error_message(dict_args))
+                error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "_expr", "(ConstExpr, Var, Mul, Max)", type(_expr))
             return _lower, _upper
 
         return _parse(expr)
@@ -2228,7 +2221,9 @@ class BnReduceAtomicSchedule:
             elif _tensor in self.graph_info.tensors_before_reduce:
                 _space = self.graph_info.tensor_ub_size_before_reduce
             else:
-                raise RuntimeError("undefined tensor")
+                error_detail = 'undefined tensor, _tensor:%s' % _tensor
+                error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
+        
             return _space
 
         for tensor in self._cache_read_tensors_and_buffer_map:
@@ -2507,15 +2502,8 @@ class BnReduceAtomicSchedule:
 
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
         if block_split_axis not in reduce_axis_index:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "Atomic schedule block tiling can " \
-                                          "only split reduce axis! " \
-                                          "block_split_axis is [%s], " \
-                                          "while reduce_axis is [%s]" \
-                                          % (block_split_axis, reduce_axis_index)
-            raise RuntimeError(dict_args, error_manager_vector.get_error_message(dict_args))
-
+            error_manager_vector.raise_err_input_value_invalid("bn_training_reduce", "block_split_axis", reduce_axis_index, block_split_axis)
+     
         if "axis_var" in block_tiling_para.keys() and \
                 block_tiling_para["axis_var"] is not None:
             axis_var = block_tiling_para["axis_var"]
@@ -2710,11 +2698,9 @@ class BnReduceAtomicSchedule:
         a1_start_index, a1_end_index = BNReduceInfo.find_last_none_reduce_axis(shape_before_reduce, reduce_axis_index)
 
         if a1_end_index is None:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "a1_end_index can not be none!"
-            raise RuntimeError(dict_args, error_manager_vector.get_error_message(dict_args))
-
+            error_detail = "errCode:E90001, detailed_cause:a1_end_index can not be none!"
+            error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
+   
         # reorder tensor before reduce,
         # for shape (r4,a4,r3,a3,r2,a2,r1,a1),
         # the orignal ir is (r4,a4,r3,a3,r2,a2,r1,a1),
@@ -3194,10 +3180,8 @@ class BnReduceAtomicSchedule:
                 a1_start_index, a1_end_index = BNReduceInfo.find_last_none_reduce_axis(
                     shape_before_reduce, reduce_axis_index)
                 if a1_end_index is None:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90001"
-                    dict_args["detailed_cause"] = "a1_end_index can not be none!"
-                    raise RuntimeError(dict_args, error_manager_vector.get_error_message(dict_args))
+                    error_detail = 'errCode:E90001, detailed_cause:a1_end_index can not be none!'
+                    error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
                 if a1_start_index <= ub_split_axis <= a1_end_index:
                     if len(ub_tiling_tensor.op.reduce_axis) > 1:
                         res_ub_outer = ub_tiling_tensor.op.reduce_axis[-2]
@@ -3289,10 +3273,9 @@ class BnReduceAtomicSchedule:
             a1_start_index, a1_end_index = BNReduceInfo.find_last_none_reduce_axis(shape_before_reduce,
                                                                                    reduce_axis_index)
             if a1_end_index is None:
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "a1_end_index can not be none!"
-                raise RuntimeError(dict_args, error_manager_vector.get_error_message(dict_args))
+                error_detail = "errCode:E90001, detailed_cause:a1_end_index can not be none!"
+                error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
+    
             if ub_split_axis < a1_start_index and \
                     ub_split_axis not in reduce_axis_index:
                 res_ub_inner = ub_tiling_tensor.op.reduce_axis[-1]

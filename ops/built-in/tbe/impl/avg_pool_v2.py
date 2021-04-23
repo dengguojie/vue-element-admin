@@ -21,7 +21,7 @@ from te.utils import para_check
 import te.platform as tbe_platform
 from impl.conv2d import conv2d
 from impl.conv2d import conv2d_compute
-
+from impl.util.platform_adapter import error_manager_vector
 
 AVGV2_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVGV2_KERNEL_SIZE = 20 # maximum ksieze
@@ -137,148 +137,36 @@ def _check_window_rule(ksize, strides, pads, data_format):
     check ksize and strides of window in pooling
     """
     if len(pads) != 4:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'avg_pool_v2'
-        error_info['param_name'] = 'pads'
-        error_info['min_value'] = '4'
-        error_info['max_value'] = '4'
-        error_info['real_value'] = len(pads)
-        raise RuntimeError(error_info,
-                           "In op[%s], the num of dimensions of input[%s] should"
-                           " be in the range of [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "pads", '4', len(pads))
+
     if data_format in ("NHWC",):
         if len(ksize) != 4:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_012
-            error_info['op_name'] = 'avg_pool_v2'
-            error_info['param_name'] = 'ksize'
-            error_info['min_value'] = '4'
-            error_info['max_value'] = '4'
-            error_info['real_value'] = len(ksize)
-            raise RuntimeError(error_info,
-                               "In op[%s], the num of dimensions of input[%s]"
-                               "should be in the range of [%s, %s],"
-                               "but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['min_value'], error_info['max_value'],
-                                error_info['real_value']))
-
+            error_manager_vector.raise_err_input_param_range_invalid("avg_pool_v2", "ksize", '4', '4', len(ksize))
+        
         elif ksize[0] != 1 or ksize[3] != 1:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_000
-            error_info['op_name'] = 'avg_pool_v2'
-            error_info['param_name'] = ",".join(("ksize[1]", "ksize[3]"))
-            error_info['expected_value'] = '1'
-            error_info['real_value'] = ",".join((str(ksize[1]), str(ksize[3])))
-            raise RuntimeError(error_info,
-                               "In op[%s], the parameter[%s] should be [%s], "
-                               "but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['expected_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "ksize[0], ksize[3]", '1', str(ksize[0]) + "," + str(ksize[3]))
+        
         if len(strides) != 4:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_012
-            error_info['op_name'] = 'avg_pool_v2'
-            error_info['param_name'] = 'strides'
-            error_info['min_value'] = '4'
-            error_info['max_value'] = '4'
-            error_info['real_value'] = len(strides)
-            raise RuntimeError(error_info,
-                               "In op[%s], the num of dimensions of input[%s]"
-                               "should be in the range of [%s, %s],"
-                               "but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['min_value'], error_info['max_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "strides", '4', len(strides))
+
         elif strides[0] != 1 or strides[3] != 1:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_000
-            error_info['op_name'] = 'avg_pool_v2'
-            error_info['param_name'] = ",".join(("strides[1]", "strodes[3]"))
-            error_info['expected_value'] = '1'
-            error_info['real_value'] = ",".join((str(strides[1]), str(strides[3])))
-            raise RuntimeError(error_info,
-                               "In op[%s], the parameter[%s] should be [%s],"
-                               " but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['expected_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "strides[0], strides[3]", '1', str(strides[0]) + "," + str(strides[3]))
+
     elif data_format in ("NC1HWC0", "NCHW"):
         if len(ksize) != 4:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_012
-            error_info['op_name'] = 'avg_pool_v2'
-            error_info['param_name'] = 'ksize'
-            error_info['min_value'] = '4'
-            error_info['max_value'] = '4'
-            error_info['real_value'] = len(ksize)
-            raise RuntimeError(error_info,
-                               "In op[%s], the num of dimensions of input[%s]"
-                               "should be in the range of [%s, %s],"
-                               "but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['min_value'], error_info['max_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "ksize", '4', len(ksize))
+
         elif ksize[0] != 1 or ksize[1] != 1:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_000
-            error_info['op_name'] = 'avg_pool_v2'
-            error_info['param_name'] = ",".join(("ksize[0]", "ksize[1]"))
-            error_info['expected_value'] = '1'
-            error_info['real_value'] = ",".join((str(ksize[0]), str(ksize[1])))
-            raise RuntimeError(error_info,
-                               "In op[%s], the parameter[%s] should be [%s],"
-                               " but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['expected_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "ksize[0], ksize[1]", '1', str(ksize[0]) + "," + str(ksize[1]))
+
         if len(strides) != 4:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_012
-            error_info['op_name'] = 'avg_pool_v2'
-            error_info['param_name'] = 'strides'
-            error_info['min_value'] = '4'
-            error_info['max_value'] = '4'
-            error_info['real_value'] = len(strides)
-            raise RuntimeError(error_info,
-                               "In op[%s], the num of dimensions of input[%s]"
-                               "should be in the range of [%s, %s], but"
-                               "actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['min_value'], error_info['max_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "strides", '4', len(strides))
+
         elif strides[0] != 1 or strides[1] != 1:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_000
-            error_info['op_name'] = 'avg_pool_v2'
-            error_info['param_name'] = ",".join(("strides[0]", "strides[1]"))
-            error_info['expected_value'] = '1'
-            error_info['real_value'] = ",".join((str(strides[1]), str(strides[1])))
-            raise RuntimeError(error_info,
-                               "In op[%s], the parameter[%s] should be [%s],"
-                               " but actually is [%s]." %
-                               (error_info['op_name'], error_info['param_name'],
-                                error_info['expected_value'],
-                                error_info['real_value']))
+            error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "strides[0], strides[1]", '1', str(strides[0]) + "," + str(strides[1]))
+  
     else:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_015
-        error_info['op_name'] = 'avg_pool_v2'
-        error_info['param_name'] = 'x'
-        error_info['excepted_format_list'] = ",".join(("NC1HWC0", "NCHW", "NHWC"))
-        error_info['format'] = data_format
-        raise RuntimeError(error_info,
-                           "In op[%s], the format[%s] of input"
-                           "should be one of [%s],"
-                           "but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['excepted_format_list'],
-                              error_info['format']))
+        error_manager_vector.raise_err_input_format_invalid("avg_pool_v2", "x", ["NC1HWC0", "NCHW", "NHWC"], data_format)
 
 
 def _check_pads(pads, ksize_h, ksize_w):
@@ -286,33 +174,10 @@ def _check_pads(pads, ksize_h, ksize_w):
     check pads
     """
     if pads[0] >= ksize_h or pads[1] >= ksize_h:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_002
-        error_info['op_name'] = 'avg_pool_v2'
-        error_info['param_name'] = ",".join(("pads[0]", "pads[1]"))
-        error_info['min_value'] = '0'
-        error_info['max_value'] = str(ksize_h-1)
-        error_info['value'] = ",".join((str(pads[0]), str(pads[1])))
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range of [%s, %s], "
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['value']))
+        error_manager_vector.raise_err_input_param_not_in_range("avg_pool_v2", "pads[0], pads[1]", '0', str(ksize_h-1), str(pads[0]) + "," + str(pads[1]))
+    
     if pads[2] >= ksize_w or pads[3] >= ksize_w:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_002
-        error_info['op_name'] = 'avg_pool_v2'
-        error_info['param_name'] = ",".join(("pads[2]", "pads[3]"))
-        error_info['min_value'] = '0'
-        error_info['max_value'] = str(ksize_w-1)
-        error_info['value'] = ",".join((str(pads[2]), str(pads[3])))
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range of [%s, %s], "
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['value']))
+        error_manager_vector.raise_err_input_param_not_in_range("avg_pool_v2", "pads[2], pads[3]", '0', str(ksize_w-1), str(pads[2]) + "," + str(pads[3]))  
 
 
 def _get_corrected_pad(input_pad):
@@ -684,7 +549,7 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
                groups=filter_n, data_format=data_format, offset_x=0,
                kernel_name=kernel_name)
     else:
-        tensor_in = tvm.placeholder(input_shape , name="tensor_in", dtype=input_dtype, attrs=attr)
+        tensor_in = tvm.placeholder(input_shape, name="tensor_in", dtype=input_dtype, attrs=attr)
         res = avg_pool_v2_compute1(tensor_in, y, ksize, strides, padding, data_format, False, kernel_name, impl_mode)
 
         tensor_list = [tensor_in, res]

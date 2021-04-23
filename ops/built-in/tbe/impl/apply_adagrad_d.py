@@ -43,6 +43,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util.platform_adapter import error_manager_vector
 NUM_ZERO = 0.0
 
 
@@ -168,8 +169,9 @@ def apply_adagrad_d(var,
     lr_shape = lr.get("shape")
     var_dtype = var.get("dtype")
     if len(lr_shape) != 1 or int(lr_shape[0]) != 1:
-        raise RuntimeError("lr shape must be 1")
-
+        param_name = 'len(lr_shape), int(lr_shape[0])'
+        error_manager_vector.raise_err_input_value_invalid("apply_adagrad_d", param_name, "1", len(lr_shape) + "," + int(lr_shape[0]))
+    
     shape_util.compare_tensor_dict_key(var, accum, "shape")
     shape_util.compare_tensor_dict_key(accum, grad, "shape")
     shape_util.compare_tensor_dict_key(var, lr, "dtype")

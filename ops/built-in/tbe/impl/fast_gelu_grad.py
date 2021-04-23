@@ -23,6 +23,7 @@ import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
+from impl.util.platform_adapter import error_manager_vector
 
 CONST_1 = 1
 
@@ -131,8 +132,8 @@ def fast_gelu_grad(input_dy, input_x, output_z, kernel_name="fast_gelu_grad",
     shape_dy = list(shape_dy)
     shape_x = list(shape_x)
     if not operator.eq(shape_dy, shape_x):
-        raise RuntimeError("all input shape must be equal")
-
+        error_manager_vector.raise_err_inputs_shape_not_equal("fast_gelu_grad", "shape_dy", "shape_x", shape_dy, shape_x, shape_x)
+    
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape_dy)
     data_dy = tvm.placeholder(fuseshape, name="data_dy", dtype=input_dtype)

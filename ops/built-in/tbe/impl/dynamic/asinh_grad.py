@@ -42,6 +42,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import error_manager_vector
 
 # scalar in asinh_grad
 NUM_MINUS_ONE = -1
@@ -199,22 +200,8 @@ def asinh_grad(y, dy, z, kernel_name="cce_asinh_grad"):
     para_check.check_dtype(dtype_y, check_list, param_name="y")
     para_check.check_dtype(dtype_dy, check_list, param_name="dy")
     if dtype_y != dtype_dy:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_018
-        error_info['op_name'] = 'asinh_grad'
-        error_info['param_name1'] = 'dtype_y'
-        error_info['param_name2'] = 'dtype_dy'
-        error_info['param1_dtype'] = str(dtype_y)
-        error_info['param2_dtype'] = str(dtype_dy)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
-
+        error_manager_vector.raise_err_inputs_dtype_not_equal('asinh_grad', 'dtype_y', 'dtype_dy', str(dtype_y), str(dtype_dy))
+    
     ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 

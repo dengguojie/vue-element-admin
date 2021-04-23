@@ -21,6 +21,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils.shape_util import refine_shape_axes
 from te.utils.shape_util import broadcast_shapes
+from impl.util.platform_adapter import error_manager_vector
 
 MIN_TENSOR_NUM = 1
 MAX_TENSOR_NUM = 40
@@ -106,8 +107,8 @@ def _check_all_shape_and_dtype_same(x, y, num):
     same_shape = True
     # ccec compiler does not support more than 40 parameters, so limit it
     if num > MAX_TENSOR_NUM or num < MIN_TENSOR_NUM:
-        raise RuntimeError('tensor_num need in range [1, 40].')
-
+        error_manager_vector.raise_err_input_param_not_in_range("accumulate_nv2", "num", MIN_TENSOR_NUM, MAX_TENSOR_NUM, num)
+    
     check_list = ('float32', 'float16', 'int8', 'uint8', 'int32')
     shape_list = []
     out_dtype = y.get('dtype').lower()
@@ -120,8 +121,8 @@ def _check_all_shape_and_dtype_same(x, y, num):
         
         dtype = x[i].get('dtype').lower()
         if dtype != out_dtype:
-            raise RuntimeError('The input and output data types should be the same.')
-
+            error_detail = "The input and output data types should be the same."
+            error_manager_vector.raise_err_two_input_dtype_invalid("accumulate_nv2", "x", "y", error_detail)
     out_shape = shape_list[0]
 
     for i in range(1, num):
@@ -149,8 +150,9 @@ def accumulate_nv2(x, y, num, kernel_name="accumulate_nv2"):
     ----------
     """
     if len(x) != num:
-        raise RuntimeError('The size of input and num must be same.')
-        
+        error_detail = "The size of input and num must be same."
+        error_manager_vector.raise_err_two_input_shape_invalid("accumulate_nv2", len(x), num, error_detail)
+    
     back_dict = _check_all_shape_and_dtype_same(x, y, num)
     shape_list, out_shape, out_dtype, same_shape = back_dict[0], back_dict[1], back_dict[2], back_dict[3]
 
