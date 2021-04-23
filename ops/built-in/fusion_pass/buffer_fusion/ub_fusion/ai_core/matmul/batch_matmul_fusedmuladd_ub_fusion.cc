@@ -30,6 +30,8 @@ namespace {
 static const char PATTERN_BATCH_MATMUL[] = "batchmatmul";
 static const char PATTERN_ELEM[] = "elemwise";
 static const char PATTERN_ELEM_1[] = "elemwise1";
+static vector<string> elem_typelist = {"FusedMulAdd", "Add", "Div"};
+static vector<string> elem1_typelist = {"Add", "Relu", "FusedMulAdd"};
 }  // namespace
 
 /*
@@ -79,10 +81,25 @@ Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMap
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do TbeBatchMatmulFusedMulAddFusionPass!");
 
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
+  vector<ge::NodePtr> elemNode1 = GetMatchedNodesByDescName(PATTERN_ELEM_1, mapping);
 
   FUSION_PASS_CHECK(elemNode.empty(),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
                     return SUCCESS);
+  vector<string>::iterator ret;
+  ret = find(elem_typelist.begin(), elem_typelist.end(), elemNode[0]->GetType());
+  if (ret == elem_typelist.end()) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add, div and muladd in first elemwise");
+    return SUCCESS;
+  }
+
+  if (!elemNode1.empty()) {
+    ret = find(elem1_typelist.begin(), elem1_typelist.end(), elemNode1[0]->GetType());
+    if (ret == elem1_typelist.end()) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add, relu and muladd in second elemwise");
+      return SUCCESS;
+    }
+  }
 
   fusion_nodes = GetMatchedNodes(mapping);
 

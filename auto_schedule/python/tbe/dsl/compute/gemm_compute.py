@@ -646,7 +646,7 @@ def batchmatmul_elem_reshape(batch_matmul, elem_input, batch_shape, para_name):
         return input_tensor(indices[0] // batch_shape[-1] // batch_shape[-2] // batch_shape[-3],
                             indices[0] // batch_shape[-1] // batch_shape[-2] % batch_shape[-3],
                             indices[0] // batch_shape[-1] % batch_shape[-2],
-                            indices[0] % batch_shape[-1]
+                            indices[0] % batch_shape[-1],
                             *indices[-4:])
 
     elem_input = tvm.compute(shape_matmul,
