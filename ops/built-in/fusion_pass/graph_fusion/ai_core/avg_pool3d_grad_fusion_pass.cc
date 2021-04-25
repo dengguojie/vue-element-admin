@@ -338,7 +338,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   vector<int64_t> filter_ori_shape_vec = {ksize[2], ksize[0], ksize[1], 1, grads_ori_shape_vec_formated[4]};
   GeTensorPtr filter_ptr = CreateFilterNode(filter_ori_shape_vec, val);
   FUSION_PASS_CHECK(filter_ptr == nullptr,
-                    CUBE_INNER_ERR_REPORT(kOpType, "create filter tensor ptr failed."),
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "create filter tensor ptr failed."),
                     return NOT_CHANGED);
   weights.push_back(filter_ptr);
   // create mul tensor

@@ -2908,8 +2908,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
      (data_format != "NDHWC" && data_format != "NCDHW")) {
     OpsGetAttrErrReport(op.GetName(), "data_format");
     OP_LOGE(op.GetName().c_str(),
-           "Get op attr:data_format failed, real: %s.",
-            data_format);
+           "Op attr:data_format only support NDHWC and NCDHW.");
     return GRAPH_FAILED;
   }
   // get padding attr
