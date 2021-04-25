@@ -184,7 +184,7 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case2, "success", "dynamic_case2", True))
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
-                 _gen_data_case(case3, NameError, "dynamic_case3", True))
+                 _gen_data_case(case3, RuntimeError, "dynamic_case3", True))
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case4, RuntimeError, "dynamic_case4", True))

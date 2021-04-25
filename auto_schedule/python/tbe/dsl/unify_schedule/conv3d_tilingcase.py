@@ -242,7 +242,9 @@ class Conv3dTiling(CubeTilingOp):
         if tiling["AL0_matrix"][2] == VALID_TILING_NUM:
             batch_size = self.a_info[0]
             device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
-            if te_util.get_and_res(batch_size > 1, device_core_num > 1):
+            if 'batch_n' in self.var_map:
+                block_dims = device_core_num
+            elif te_util.get_and_res(batch_size > 1, device_core_num > 1):
                 if batch_size <= device_core_num:
                     block_dims = batch_size
                 else:

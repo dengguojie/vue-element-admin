@@ -125,7 +125,7 @@ def _common_check(shape_filter, stride_dhw):
             '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX), str(stride_w))
 
 
-def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
+def _check_d_dimension(fmap_d, filter_d, pad_d, dilation_d):
     filter_dilated_d = (filter_d - 1) * dilation_d + 1
     if fmap_d != DYNAMIC_FLAG and ((fmap_d + pad_d[0] + pad_d[1]) < filter_dilated_d):
         error_manager_cube.raise_err_three_paras("E62507", "conv3d", "D",
@@ -142,7 +142,7 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
              actual are {} and {}".format(pad_d[0], pad_d[1]))
 
 
-def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
+def _check_h_dimension(fmap_h, filter_h, pad_h, dilation_h):
     filter_dilated_h = (filter_h - 1) * dilation_h + 1
     if pad_h[0] < PAD_MIN or pad_h[1] < PAD_MIN or pad_h[0] > PAD_MAX or pad_h[1] > PAD_MAX:
         error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'pad', 'H',
@@ -159,7 +159,7 @@ def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
              actual are {} and {}".format(pad_h[0], pad_h[1]))
 
 
-def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
+def _check_w_dimension(fmap_w, filter_w, pad_w, dilation_w):
     filter_dilated_w = (filter_w - 1) * dilation_w + 1
     if pad_w[0] < PAD_MIN or pad_w[1] < PAD_MIN or pad_w[0] > PAD_MAX or pad_w[1] > PAD_MAX:
         error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'pad', 'W',
@@ -177,7 +177,7 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
 
 
 def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
-                       fmp_dtype, w_dtype, groups, fmap_range=None, out_range=None):
+                       fmp_dtype, w_dtype, out_range=None):
     """
     algorithm: check the input params of conv3d
 
@@ -200,10 +200,6 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
 
     w_dtype: the dtype of filter
 
-    groups: The groups for group convolution
-
-    fmap_range: The range of feature map
-
     out_range: The range of output
 
     Returns
@@ -218,11 +214,11 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     pad_w = [pads[4], pads[5]]
 
     if -1 not in pad_d:
-        _check_d_dimension(fmap_d, filter_d, pad_d, stride_dhw[0], dilation_dhw[0])
+        _check_d_dimension(fmap_d, filter_d, pad_d, dilation_dhw[0])
     if -1 not in pad_h:
-        _check_h_dimension(fmap_h, filter_h, pad_h, stride_dhw[1], dilation_dhw[1])
+        _check_h_dimension(fmap_h, filter_h, pad_h, dilation_dhw[1])
     if -1 not in pad_w:
-        _check_w_dimension(fmap_w, filter_w, pad_w, stride_dhw[2], dilation_dhw[2])
+        _check_w_dimension(fmap_w, filter_w, pad_w, dilation_dhw[2])
 
     # C dimension should align 16
     block_size_k = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][1]
@@ -385,7 +381,7 @@ def _get_output(x_in, k_size, pads, stride):
     return (x_in + pads[0] + pads[1] - k_size) // stride + 1
 
 
-def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
+def _get_out_range(fmap_range, w_shape, pads, strides):
     fmap_range_n, fmap_range_d, fmap_range_c, fmap_range_h, fmap_range_w = fmap_range
     w_n, w_c, w_d, w_h, w_w = w_shape
     correct_range_flag = False
@@ -553,10 +549,7 @@ def _check_and_config_para(fmap,
                            strides,
                            pads,
                            dilations,
-                           groups,
-                           data_format,
-                           offset_x,
-                           kernel_name):
+                           groups):
 
     in_shape = list(fmap.get("ori_shape"))
     w_shape = list(weight.get("ori_shape"))
@@ -606,7 +599,7 @@ def _check_and_config_para(fmap,
         para_check.check_dtype_rule(bias_dtype, ('float16'), "bias")
         bias_shape = bias.get("ori_shape")
         if len(bias_shape) != BIAS_LENGTH:
-            cube_err.raise_err_specific_user(
+            error_manager_cube.raise_err_specific_user(
                 'conv3d', "the length of bias is illegal")
 
     if offset_w:
@@ -635,7 +628,7 @@ def _check_and_config_para(fmap,
 
     # calculate out_range
     out_range, fmap_range, correct_range_flag = _get_out_range(fmap_range, shape_filter, pads,
-                                                               stride_dhw, dilation_dhw)
+                                                               stride_dhw)
     _check_groups_validation(shape_fm[1], shape_filter[1], groups)
     # calculate group parameter
     group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0],
@@ -643,8 +636,7 @@ def _check_and_config_para(fmap,
     # C dimension 16 aligned
     _check_conv3d_shape(shape_fm, shape_filter, pads,
                         stride_dhw, dilation_dhw, in_dtype,
-                        w_dtype, groups, fmap_range,
-                        out_range)
+                        w_dtype, out_range)
 
     config_dict = {
         "shape_fm": shape_fm,
@@ -758,7 +750,7 @@ def _conv3d_compute(fmap,
     # shape_fm/shape_filter format is NCDHW, fmap_range/out_range format is NDCHW
     config_dict= \
             _check_and_config_para(fmap, weight, bias, offset_w, output, \
-            strides, pads, dilations, groups, data_format, offset_x, kernel_name)
+            strides, pads, dilations, groups)
     shape_fm = config_dict.get('shape_fm')
     shape_filter = config_dict.get('shape_filter')
     stride_dhw = config_dict.get('stride_dhw')

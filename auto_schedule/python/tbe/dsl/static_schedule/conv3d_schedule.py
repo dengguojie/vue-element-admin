@@ -732,7 +732,9 @@ class CceConv3dOp:
             }
             tiling["block_dim"] = [1, 1, 1]
             device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
-            if compute_util.get_and_res(batch_size > 1, device_core_num > 1):
+            if "batch_n" in self.var_map:
+                tiling["block_dim"][0] = device_core_num
+            elif compute_util.get_and_res(batch_size > 1, device_core_num > 1):
                 if batch_size <= device_core_num:
                     tiling["block_dim"][0] = batch_size
                 else:
