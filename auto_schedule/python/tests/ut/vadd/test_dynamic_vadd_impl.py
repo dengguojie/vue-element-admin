@@ -79,9 +79,100 @@ case2 = {
         True
 }
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend710"], case2)
+case3 = {
+    "params": [{
+        "shape": (30000,),
+        "dtype": "float32",
+        "range": [(30000, 30000),]
+    }, {
+        "shape": (30000,),
+        "dtype": "float32",
+        "range": [(30000, 30000),]
+    }, {
+        "shape": (30000,),
+        "dtype": "float32",
+        "range": [(30000, 30000),]
+    }],
+    "case_name":
+        "test_dync_vadd_3",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
 
+case4 = {
+    "params": [{
+        "shape": (-1,),
+        "dtype": "float16",
+        "range": [(0, 0),]
+    }, {
+        "shape": (-1,),
+        "dtype": "float16",
+        "range": [(0, 0),]
+    }, {
+        "shape": (-1,),
+        "dtype": "float16",
+        "range": [(0, 0),]
+    }],
+    "case_name":
+        "test_dync_vadd_4",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case5 = {
+    "params": [{
+        "shape": (-2,),
+        "dtype": "float16",
+        "range": [(1, None),]
+    }, {
+        "shape": (-2,),
+        "dtype": "float16",
+        "range": [(1, None),]
+    }, {
+        "shape": (-2,),
+        "dtype": "float16",
+        "range": [(1, None),]
+    }],
+    "case_name":
+        "test_dync_vadd_5",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case6 = {
+    "params": [{
+        "shape": (-2, 2),
+        "dtype": "float16",
+        "range": [(1, None), (2, 2),]
+    }, {
+        "shape": (-2, 2),
+        "dtype": "float16",
+        "range": [(1, None), (2, 2),]
+    }, {
+        "shape": (-2, 2),
+        "dtype": "float16",
+        "range": [(1, None), (2, 2),]
+    }],
+    "case_name":
+        "test_dync_vadd_6",
+    "expect":
+        RuntimeError,
+    "support_expect":
+        True
+}
+
+ut_case.add_case(["all",], case1)
+ut_case.add_case(["all",], case2)
+ut_case.add_case(["all",], case3)
+ut_case.add_case(["all",], case4)
+ut_case.add_case(["all",], case5)
+ut_case.add_case(["all",], case6)
 
 def calc_expect_func(x, y, z):
     x_value = x.get("value")
