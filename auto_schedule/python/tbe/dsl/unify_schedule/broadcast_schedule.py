@@ -157,7 +157,6 @@ class BroadcastSchedule(Schedule):
         self._middle_out_cache_write_buffer_map = {}
 
         self._compute_inline_tensors = set()
-        self._compute_inline_broadcast = set()
 
         self._compute_at_map = {}
 
@@ -560,22 +559,26 @@ class BroadcastSchedule(Schedule):
         else:
             for tensor_i in self._broadcast_axis_num:
                 if self._broadcast_axis_num[tensor_i] == 0:
-                    if util.is_unified_broadcast(tensor_i):
-                        self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
-                    else:
-                        self._compute_inline_broadcast.add(self._get_ub_tensor(tensor_i))
+                    self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
 
         self._calc_tensor_space()
 
+        need_update_var_range = False
         for tensor_i in self._broadcast_tensors - self._compute_inline_tensors:
             if util.get_dsl_insn(tensor_i) != BROADCAST:
                 ub_under_shapes = util.shape_to_list(tensor_i.op.input_tensors[0].shape[self._ub_split_axis + 1:])
                 ub_under_size = reduce(lambda x, y: x * y, ub_under_shapes or [1])
                 if (self._min_storage_bound // ub_under_size) == 1 and isinstance(self._ub_factor, tvm.expr.Var):
-                    # now, only handle compile broadcast, unknown broadcast need fix
-                    if util.is_unified_broadcast(tensor_i):
-                        self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
-                        update_store_predicate(tensor_i)
+                    self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
+                    update_store_predicate(tensor_i)
+                    need_update_var_range = True
+
+        if need_update_var_range:
+            self._constraints.add(tvm.expr.EQ(self._ub_factor, 1))
+            out_ub_shapes = util.shape_to_list(self._out.shape[self._ub_split_axis + 1:])
+            for in_var, out_var in zip(ub_under_shapes, out_ub_shapes):
+                if isinstance(out_var, tvm.expr.Var):
+                    self._constraints.add(tvm.expr.EQ(out_var, in_var))
 
     def _do_compute_inline(self):
         sch = self._schedule
@@ -658,8 +661,6 @@ class BroadcastSchedule(Schedule):
                     cond = src_shape <= dst_shape
                     if not expr_equal(src_shape, dst_shape) and isinstance(cond, tvm.expr.Expr):
                         self._constraints.add(cond)
-                # add build args: constant_realize_extent_in_infer_bound
-                operation.add_build_arg("constant_realize_extent_in_infer_bound", False)
 
         shapes = util.shape_to_list(self._out.shape)
         ub_shapes = shapes[self._ub_split_axis + 1:]
@@ -699,13 +700,9 @@ class BroadcastSchedule(Schedule):
 
         for tensor_i in (self._pure_middle_tensors - self._compute_inline_tensors):
             self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], get_insn(tensor_i)]
-            if tensor_i in self._compute_inline_broadcast:
-                self._emit_insn_map[tensor_i].append(PHONY_INSN)
 
-        for source, target in self._cache_write_buffer_tensor_map.items():
+        for source, target in (self._cache_write_buffer_tensor_map.items() - self._compute_inline_tensors):
             self._emit_insn_map[source] = [source.op.axis[0], get_insn(target)]
-            if source in self._compute_inline_broadcast:
-                self._emit_insn_map[source].append(PHONY_INSN)
 
         if len(self._out_tensors) > 1:
             for tensor_i in self._out_tensors:
@@ -740,9 +737,15 @@ class BroadcastSchedule(Schedule):
             if param[1] == UNKNOWN_BROADCAST:
                 u_idx = self._ub_split_axis
                 src_shapes = tensor_i.op.input_tensors[0].shape[u_idx:]
-                src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
-                                          tvm.expr.Call.PureIntrinsic, None, 0)
-                attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
+                is_all_const = all([isinstance(s, int) for s in util.shape_to_list(src_shapes)])
+                if is_all_const:
+                    attrs = dict(storage_bound=[tensor_bound])
+                    param[1] = VECTOR_BROADCAST
+                else:
+                    src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
+                                              tvm.expr.Call.PureIntrinsic, None, 0)
+                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound],
+                                 no_unknown_broadcast_bound_correction=1)
             elif compile_broadcast_no_inline:
                 attrs = dict(storage_bound=[tensor_bound])
             elif tensor_i in self._out_tensors and self._is_one_dim:
@@ -802,19 +805,12 @@ class BroadcastSchedule(Schedule):
             util.merge_value(self._mem_reuse_map,
                              self._middle_out_cache_read_buffer_map[tensor_i],
                              write_buffer)
-        for tensor_i in self._compute_inline_broadcast:
-            input_tensor = self._get_ub_tensor(tensor_i.op.input_tensors[0])
-            util.merge_value(self._data_reuse_map, input_tensor, tensor_i)
 
     def _do_mem_reuse(self):
         sch = self._schedule
         for _a, _b in self._mem_reuse_map.items():
             for b_i in _b:
                 sch[_a].reused_by(b_i)
-        for _a, _b in self._data_reuse_map.items():
-            for b_i in _b:
-                sch[_a].reused_by(b_i)
-                sch[b_i].reused_by(reuse_data=True)
 
     def _calc_store_predicate(self):
         def _dfs_cur_tensor(tensor_i):

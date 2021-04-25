@@ -470,7 +470,8 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                           tvm.expr.Call.PureIntrinsic, None, 0)
                 sch[tensor_i].emit_insn(param[0], param[1],
-                                        attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
+                                        attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound],
+                                                   no_unknown_broadcast_bound_correction=1))
             else:
                 if tensor_i.op.name in ["sub_7.local.UB", "reduce_2.local.UB"] and param[1][0:3] == 'dma':
                     sch[tensor_i].emit_insn(param[0], "phony_insn")

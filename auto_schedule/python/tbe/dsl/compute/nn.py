@@ -442,8 +442,19 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
         _op = 'broadcast_for_tensor'
 
     def lambda_func(*indices):
-        return tensor(*([0 if orig_shape[i] == 1 else
-                         indices[i] for i in range(len(orig_shape))][difference:]))
+        if _op == 'unknown_broadcast':
+            index = []
+            for i in range(len(orig_shape)):
+                if orig_shape[i] == 1:
+                    index.append(0)
+                elif equal(orig_shape[i], shape[i]):
+                    index.append(indices[i])
+                else:
+                    index.append(tvm.select(orig_shape[i] == 1, 0, indices[i]))
+            return tensor(*(index[difference:]))
+        else:
+            return tensor(*([0 if orig_shape[i] == 1 else
+                             indices[i] for i in range(len(orig_shape))][difference:]))
 
     with tvm.tag_scope(_op):
         out = tvm.compute(shape, lambda_func, name=name)

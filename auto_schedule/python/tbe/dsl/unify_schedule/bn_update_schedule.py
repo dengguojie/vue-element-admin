@@ -465,7 +465,8 @@ class BnUpdateSchedule:
                 if compile_broadcast_no_inline:
                     attrs = dict(storage_bound=[tensor_bound])
                 if param[1] == "unknown_broadcast":
-                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
+                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound],
+                                 no_unknown_broadcast_bound_correction=1)
                 sch[tensor_i].emit_insn(param[0], param[1], attrs)
             else:
                 if self._is_db and tensor_i in self._out_tensors and self._is_pure_eletwise:
