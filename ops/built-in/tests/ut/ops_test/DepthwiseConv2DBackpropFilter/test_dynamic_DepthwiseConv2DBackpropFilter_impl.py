@@ -120,10 +120,7 @@ def _gen_case(param):
 
     input_shape = _shape_to_NC1HWC0(input_ori_shape, data_format, dtype)
     out_backprop_shape = _shape_to_NC1HWC0(out_backprop_ori_shape, data_format, dtype)
-    if data_format == 'NHWC':
-        filter_format = "HWCN"
-    else:
-        filter_format = "NCHW"
+    filter_format = 'NCHW' if data_format == 'NCHW' else 'HWCN'
     filter_grad_shape = _shape_to_C1HWNCoC0(filter_size, filter_format, dtype)
     
     x = {

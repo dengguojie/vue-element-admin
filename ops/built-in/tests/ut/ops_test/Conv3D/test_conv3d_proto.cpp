@@ -380,22 +380,22 @@ TEST_F(Conv3DProtoTest, conv3d_Dilation_h_Not_EQ_1_Failed){
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(Conv3DProtoTest, conv3d_dynamic_dhw_normal){
+TEST_F(Conv3DProtoTest, conv3d_dynamic_ncw_normal){
     ge::op::Conv3D op;
     op.UpdateInputDesc("x", create_desc_with_ori(
-      {1, -1, -1, -1, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
-      {1, -1, -1, -1, 32}, ge::FORMAT_NDHWC));
+      {-1, -1, 7, 14, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, -1, 7, 14, -1}, ge::FORMAT_NCDHW));
     op.UpdateInputDesc("filter", create_desc_with_ori(
-      {2, 3, 3, 32, 64}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
-      {2, 3, 3, 32, 64}, ge::FORMAT_DHWCN));
+      {16, 32, 2, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+      {16, 32, 2, 3, 3}, ge::FORMAT_DHWCN));
     op.UpdateOutputDesc("y", create_desc_with_ori(
-      {1, -1, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
-      {1, -1, -1, -1, 64}, ge::FORMAT_NDHWC));
+      {-1, 16, 7, 14, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 16, 7, 14, -1}, ge::FORMAT_NCDHW));
 
     op.SetAttr("strides", {1, 1, 1, 1, 1});
     op.SetAttr("pads", {0, 1, 1, 1, 1, 1});
     op.SetAttr("dilations", {1, 1, 1, 1, 1});
-    std::vector<std::pair<int64_t, int64_t>> fm_range = {{1, 1}, {40, 50}, {10, 20}, {10, 20}, {32, 32}};
+    std::vector<std::pair<int64_t, int64_t>> fm_range = {{1, 10}, {10, 50}, {10, 20}, {10, 20}, {3, 32}};
     auto x_tensor = op.get_input_desc_x();
     x_tensor.SetShapeRange(fm_range);
     op.update_input_desc_x(x_tensor);
@@ -428,6 +428,31 @@ TEST_F(Conv3DProtoTest, conv3d_dynamic_dhw_high_unlimited){
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// -2
+TEST_F(Conv3DProtoTest, conv3d_dyanmic_rank){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {-2}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-2}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {16, 32, 2, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {16, 32, 2, 3, 3}, ge::FORMAT_NCDHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {-1, 16, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 16, -1, -1, -1}, ge::FORMAT_NCDHW));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    auto output_desc = op.GetOutputDesc("y");
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
 }
 
 // infer data slice --- empty query

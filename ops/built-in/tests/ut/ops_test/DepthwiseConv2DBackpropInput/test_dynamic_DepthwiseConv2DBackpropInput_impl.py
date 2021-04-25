@@ -5,31 +5,31 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("DepthwiseConv2DBackpropInput", "impl.dynamic.depthwise_conv2d_backprop_input",
                "depthwise_conv2d_backprop_input")
 dynamic_depthwise_conv2d_bp_input_op_testcase = [
-    ((3, 3, 960, 1), (32, 960, 7, 7), (32, 960, 7, 7), (1, 1), (1, 1, 1, 1), "NCHW", [0], "success"),
-    ((5, 5, 192, 1), (16, 192, 14, 28), (16, 192, 28, 28), (2, 2), (-1, -1, -1, -1), "NCHW", [0, 2], "success"),
-    ((3, 3, 96, 1), (8, 96, 56, 56), (8, 96, 56, 56), (1, 1), (-1, -1, -1, -1), "NCHW", [0, 3], "success"),
-    ((1, 1, 32, 1), (1, 32, 112, 122), (1, 32, 112, 112), (2, 2), (0, 0, 0, 0), "NCHW", [2, 3], "success"),
+    ((1, 192, 5, 5), (16, 192, -1, 28), (16, 192, -1, 28), (2, 2), (-1, -1, -1, -1), "NCHW", [0, 2], "success"),
     ((3, 3, 256, 1), (2, 334, 502, 256), (2, 336, 504, 256), (1, 1), (0, 0, 0, 0), "NHWC", [0, 2, 3], "success"),
-    ((5, 5, 240, 1), (2, 14, 14, 240), (2, 28, 28, 240), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], "success"),
-    ((3, 3, 16, 2), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [0, 2, 3], RuntimeError),
-    ((3, 3, 16, 1), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1], RuntimeError),
+    ((5, 5, 240, 1), (2, 1, 1, 240), (2, 2, 2, 240), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], "success"),
     ((3, 3, 16, 1), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [0, 1], "success"),
-    ((3, 3, 16, 1), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1, 2], "success"),
     ((3, 3, 16, 1), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1, 3], "success"),
-    ((3, 3, 16, 1), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [0, 1, 2, 3], "success"),
-    ((3, 3, 16, 1), [-2], (1, 16, 5, 5), (1, 1), (-1, -1, -1, -1), "NCHW", [0, 1, 2, 3], "success"),
+    ((2, 2, 16, 1), (2, 2, 1, 16), (2, 4, 2, 16), (2, 1), (0, 0, 0, 0), "NHWC", [2], "success"),
+    ((1, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (-1, -1, -1, -1), "NCHW", [0, 3], "success"),
+    ((3, 3, 16, 1), (2, 1, 2, 16), (2, 3, 5, 16), (1, 2), (0, 0, 0, 0), "NHWC", [0, 1, 2, 3], "success"),
+    ((1, 960, 3, 3), (32, 960, 7, 7), (32, 960, 7, 7), (1, 1), (1, 1, 1, 1), "NCHW", [0], "success"),
+    ((1, 1, 32, 1), (1, 1, 1, 32), (1, 2, 2, 32), (2, 2), (0, 0, 0, 0), "NHWC", [2, 3], "success"),
+    ((1, 16, 3, 3), [-2], (1, 16, 5, 5), (1, 1), (-1, -1, -1, -1), "NCHW", [0, 1, 2, 3], "success"),
+    
+    ((3, 3, 16, 2), (2, 3, 3, 16), (2, 5, 5, 16), (2, 2), (-1, -1, -1, -1), "NHWC", [0, 2, 3], RuntimeError),
+    ((3, 3, 16, 1), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", [1], RuntimeError),
 ]
 
-
-def _get_kernel_name(filter_shape, dy_shape, x_shape, strides, pads, dilation, dtype):
+def _get_kernel_name(filter_shape, dy_shape, x_shape, strides, pads):
     padding = "SAME" if -1 in pads else "VALID"
     if dy_shape == [-2]:
         dy_shape_info = "neg_2"
     else:
         dy_shape_info = '_'.join(map(str, dy_shape))
-    kernel_name = 'dynamic_depthwise_conv2d_backprop_input' + '_'.join(map(str, filter_shape)) + '_' + dy_shape_info + '_' + '_'.join(
-        map(str, x_shape)) + '_' + '_'.join(map(str, strides)) + '_' + '_'.join(
-        map(str, dilation)) + "_" + padding + '_' + dtype
+    kernel_name = 'dynamic_dp_conv2dbp_input_' + '_'.join(map(str, filter_shape)) + '_' + dy_shape_info + '_' + '_'.join(
+        map(str, x_shape)) + '_' + '_'.join(map(str, strides)) + "_" + padding
+    kernel_name = kernel_name.replace('-1', 'x')
     return kernel_name
 
 
@@ -53,11 +53,14 @@ def _shape_to_C1HWNCoC0(shape, data_format, dtype):
     return (c1, h, w, n, c0, c0)
 
 
-def _get_range_from_shape(shape, dynamic_dim=[]):
+def _get_range_from_shape(shape, dynamic_dim=None):
     ori_range = [(dim, dim) for dim in shape]
     if dynamic_dim:
         for dim in dynamic_dim:
-            ori_range[dim] = (max(1, shape[dim] // 2), min(4096, shape[dim] * 2))
+            if shape[dim] == -1:
+                ori_range[dim] = (max(1, shape[dim] // 2), None)
+            else:
+                ori_range[dim] = (max(1, shape[dim] // 2), min(4096, shape[dim] * 2))
     return ori_range
 
 
@@ -94,6 +97,7 @@ def _gen_trans_data_case(param):
     dilations = (1, 1, 1, 1)
     dtype = "float16"
     data_format = data_format.upper()
+    filter_format = 'NCHW' if data_format == 'NCHW' else 'HWCN'
     if out_backprop_ori_shape == [-2]:
         input_size_op = [-1, input_size[data_format.index("C")], -1, -1]
         x = {'shape': [4], 'format': 'NC1HWC0', 'ori_shape': [4], 'ori_format': 'NHWC', 'dtype': 'float16',
@@ -105,7 +109,7 @@ def _gen_trans_data_case(param):
         input_grad = {'shape': _shape_to_NC1HWC0(input_size_op, data_format, dtype), 'format': 'NC1HWC0',
                       'ori_shape': input_size_op, 'ori_format': "NCHW", 'dtype': 'float16', 'range': None}
     else:
-        filter_shape = _shape_to_C1HWNCoC0(filter_ori_shape, "HWCN", dtype),
+        filter_shape = _shape_to_C1HWNCoC0(filter_ori_shape, filter_format, dtype),
         out_backprop_shape = _shape_to_NC1HWC0(out_backprop_ori_shape, data_format, dtype)
         input_grad_shape = _shape_to_NC1HWC0(input_size, data_format, dtype)
         x = {
@@ -119,7 +123,7 @@ def _gen_trans_data_case(param):
         filter = {
             "shape": filter_shape,
             "ori_shape": filter_ori_shape,
-            "ori_format": "HWCN",
+            "ori_format": filter_format,
             "format": "C1HWNCoC0",
             "dtype": dtype,
             "range": _get_range_from_shape(filter_shape)
@@ -144,7 +148,7 @@ def _gen_trans_data_case(param):
     strides = [1, stride_h, stride_w, 1] if data_format == "NHWC" else [1, 1, stride_h, stride_w]
 
     kernel_name = _get_kernel_name(
-        filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads, dilations, dtype)
+        filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads)
     return {
         "params": [x, filter, out_backprop, input_grad, strides, dilations, pads, data_format],
         "case_name": kernel_name,

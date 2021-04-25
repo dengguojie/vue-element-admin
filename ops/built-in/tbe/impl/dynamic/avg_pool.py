@@ -108,7 +108,7 @@ def get_op_support_info(x, filter, bias, y, ksize, strides,
         window = [ksize[2], ksize[3]]
 
     if format_x == "NC1HWC0":
-        if (ksize_h == window[0] and ksize_w == window[1]) or padding == "SAME":
+        if padding == "SAME":
             axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
                                  util_select_op_base.SplitOutput([0, [0]])]]
         elif padding == "VALID":

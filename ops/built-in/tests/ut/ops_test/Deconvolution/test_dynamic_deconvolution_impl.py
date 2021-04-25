@@ -5,33 +5,33 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("Deconvolution", "impl.dynamic.deconvolution",
                "deconvolution")
 
-dynamic_deconvolution_testcase = [
-    ((32, 32, 3, 3), (32, 32, 7, 7), (32, 32, 7, 7), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0], "success"),
-    ((192, 192, 5, 5), (1, 192, 14, 28), (1, 192, 28, 28), (2, 1), (2, 2, 2, 2), "NCHW", 1, [0, 2], "success"),
-    ((96, 96, 3, 3), (8, 96, 56, 56), (8, 96, 56, 56), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 3], "success"),
-    ((32, 32, 1, 1), (1, 32, 28, 55), (1, 32, 55, 55), (2, 2), (0, 0, 0, 0), "NCHW", 1, [2, 3], "success"),
+dynamic_deconvolution_testcase = [ 
+    ((192, 192, 5, 5), (1, 192, -1, 28), (1, 192, -1, 28), (2, 1), (2, 2, 2, 2), "NCHW", 1, [0, 2], "success"),
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1], "success"),
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [1, 3], "success"),
+    ((16, 16, 3, 3), (2, 32, 1, 1), (2, 16, 4, 3), (2, 1), (0, 0, 0, 0), "NCHW", 1, [1, 2], "success"),
+    ((96, 96, 3, 3), (-1, 96, 2, -1), (-1, 96, 2, -1), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0, 3], "success"),
     ((256, 256, 3, 3), (2, 256, 34, 32), (2, 256, 36, 34), (1, 1), (0, 0, 0, 0), "NCHW", 1, [0, 2, 3], "success"),
-    ((240, 240, 5, 5), (2, 240, 14, 14), (2, 240, 28, 28), (2, 2), (2, 2, 2, 2), "NCHW", 1, [0, 2, 3], "success"),
+    ((240, 240, 5, 5), (2, 240, 1, 1), (2, 240, 2, 1), (2, 1), (2, 2, 2, 2), "NCHW", 1, [0, 2, 3], "success"),   
+    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1, 2, 3], "success"),
+    ((32, 32, 3, 3), (32, 32, 7, 1), (32, 32, 7, 2), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0], "success"),
+    ((32, 32, 1, 1), (1, 32, 28, 55), (1, 32, 55, 55), (2, 1), (0, 0, 0, 0), "NCHW", 1, [2, 3], "success"), 
+    ((16, 16, 3, 3), [-2], (1, 16, 3, 3), (1, 1), (0, 0, 0, 0), "NCHW", 1, [0, 1, 2, 3], "success"),
+    ((10, 64, 7, 6), [-2], (1, 64, 1, 1), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1, 2, 3], "success"),
+    
     ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 2, 3], RuntimeError),
     ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [1], RuntimeError),
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1], "success"),
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [1, 2], "success"),
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [1, 3], "success"),
-    ((16, 16, 3, 3), (2, 32, 5, 5), (2, 16, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1, 2, 3], "success"),
-    ((16, 16, 3, 3), [-2], (1, 16, 5, 5), (1, 1), (0, 0, 0, 0), "NCHW", 1, [0, 1, 2, 3], "success"),
-    ((10, 64, 6, 6), [-2], (1, 64, 5, 5), (1, 1), (1, 1, 1, 1), "NCHW", 1, [0, 1, 2, 3], "success"),
 ]
 
-
-def _get_kernel_name(filter_shape, dy_shape, x_shape, strides, pads, dilation, dtype):
+def _get_kernel_name(filter_shape, dy_shape, x_shape, strides, pads):
     padding = "SAME" if -1 in pads else "VALID"
     if dy_shape == [-2]:
         dy_shape_info = "neg_2"
     else:
         dy_shape_info = '_'.join(map(str, dy_shape))
     kernel_name = 'dynamic_deconvolution_' + '_'.join(map(str, filter_shape)) + '_' + dy_shape_info + '_' + '_'.join(
-        map(str, x_shape)) + '_' + '_'.join(map(str, strides)) + '_' + '_'.join(
-        map(str, dilation)) + "_" + padding + '_' + dtype
+        map(str, x_shape)) + '_' + '_'.join(map(str, strides)) + "_" + padding
+    kernel_name = kernel_name.replace('-1', 'x')
     return kernel_name
 
 
@@ -55,11 +55,14 @@ def _shape_to_C1HWNCoC0(shape, data_format, dtype):
     return (c1, h, w, n, c0, c0)
 
 
-def _get_range_from_shape(shape, dynamic_dim=[]):
+def _get_range_from_shape(shape, dynamic_dim=None):
     ori_range = [(dim, dim) for dim in shape]
     if dynamic_dim:
         for dim in dynamic_dim:
-            ori_range[dim] = (max(1, shape[dim] // 2), min(4096, shape[dim] * 2))
+            if shape[dim] == -1:
+                ori_range[dim] = (max(1, shape[dim] // 2), None)
+            else:
+                ori_range[dim] = (max(1, shape[dim] // 2), min(4096, shape[dim] * 2))
     return ori_range
 
 
@@ -136,7 +139,7 @@ def _gen_trans_data_case(param):
         }
     bias = None
     offset_w = None
-    kernel_name = _get_kernel_name(filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads, dilations, dtype)
+    kernel_name = _get_kernel_name(filter_ori_shape, out_backprop_ori_shape, input_size, strides, pads)
 
     return {
         "params": [out_backprop, filter, bias, offset_w, dx, strides, pads, dilations, group, data_format],

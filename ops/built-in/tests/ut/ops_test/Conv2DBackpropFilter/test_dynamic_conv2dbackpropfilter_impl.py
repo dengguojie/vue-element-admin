@@ -378,18 +378,25 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_filter_case3_3",
                                         "success"))
 
-# dynamic_nhw in x, dynamic_hw in dedy
 ut_case.add_case(
     "all",
-    gen_dynamic_conv2d_backprop_filter_case([64, 64, 1, 1], [128, 64, -1, -1], [-1, 64, -1, -1],
-                                        "float32", "float16", "float16",
-                                        "NCHW", "NCHW", "NCHW",
-                                        [(64, 64), (64, 64), (1, 1), (1, 1)],
-                                        [(128, 128), (64, 64), (56, 71), (56, 71)],
-                                        [(128, 128), (64, 64), (112, 142), (112, 142)],
-                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
-                                        "dynamic_conv2d_backprop_filter_case3_4",
-                                        "success"))
+    {"params": [
+        # x
+        {"ori_shape": [-1, 64, -1, -1], "ori_format": 'NCHW',
+         "dtype": "float16", "range": [(128, 128), (4, 4), (112, 142), (112, 142), (16, 16)], "shape": [-1, 4, -1, -1, 16], "format": 'NC1HWC0'},
+        # filter_size
+        {"shape": (1,), "ori_shape": (1,), "range": ((1, 1),), 'dtype': "float16", "format": 'NC1HWC0', "ori_format": 'NCHW'},
+        # dedy
+        {"ori_shape": [128, 64, -1, -1], "ori_format": 'NCHW',
+         "dtype": "float16", "range": [(128, 128), (4, 4), (56, 71), (56, 71), (16, 16)], "shape": [128, 4, -1, -1, 16], "format": 'NC1HWC0'},
+        # filter
+        {"ori_shape": [64, 64, 1, 1], "ori_format": 'NCHW',
+         "dtype": 'float32', "range": [(64, 64), (64, 64), (1, 1), (1, 1)], "shape": [64, 64, 1, 1], "format": 'NCHW'},
+        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1), 1, 'NCHW'],
+        "case_name": 'dynamic_conv2d_backprop_filter_case3_4',
+        "expect": 'success'
+        })
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

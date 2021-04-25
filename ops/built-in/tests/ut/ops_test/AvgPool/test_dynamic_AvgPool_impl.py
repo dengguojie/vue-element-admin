@@ -41,24 +41,24 @@ case17 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
          "support_expect": True}
 
 # dynamic n SAME NCHW
-case33 = {"params": [{"shape": (-1,2,2,2,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,32,1,1), "ori_format": "NCHW",
+case33 = {"params": [{"shape": (-1,32,1,1), "format": "NCHW", "dtype": "float16", "ori_shape": (-1,32,1,1), "ori_format": "NCHW",
                      "range":[(1, 1), (32, 32), (1, 100), (1, 100)]},
                     {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
                      "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
                     None,
-                    {"shape": (-1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 32, 1, 1),"ori_format": "NCHW",
+                    {"shape": (-1, 32, 1, 1),"format": "NCHW", "dtype": "float16", "ori_shape": (-1, 32, 1, 1),"ori_format": "NCHW",
                      "range":[(1, 10), (32, 32), (1, 99), (1, 99)]},
                     [1,1,2,2], [1,1,2,1], "SAME", "NCHW"],
          "expect": "success",
          "support_expect": True}
 
 # dynamic h VALID NHWC 
-case34 = {"params": [{"shape": (1,2,-1,2,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,2,32), "ori_format": "NHWC",
+case34 = {"params": [{"shape": (1,-1,2,32), "format": "NHWC", "dtype": "float16", "ori_shape": (1,-1,2,32), "ori_format": "NHWC",
                      "range":[(1, 1), (3, 100), (2, 100), (32, 32)]},
                     {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
                      "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
                     None,
-                    {"shape": (1, 2, -1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, -1, 1, 32),"ori_format": "NHWC",
+                    {"shape": (1, -1, 1, 32),"format": "NHWC", "dtype": "float16", "ori_shape": (1, -1, 1, 32),"ori_format": "NHWC",
                      "range":[(1, 1), (1, 99), (1, 99), (32, 32)]},
                     [1,2,2,1], [1,2,1,1], "VALID", "NHWC"],
          "expect": "success",
@@ -432,6 +432,56 @@ ut_case.add_case(["Ascend910A"], case31)
 ut_case.add_case(["Ascend910A"], case32)
 ut_case.add_case(["Ascend910A"], case33)
 ut_case.add_case(["Ascend910A"], case34)
+
+from impl.dynamic.avg_pool import check_supported, get_op_support_info
+
+def test_check_support(test_arg):
+    check_supported({"shape": (-1,2,1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,32,1,-1), "ori_format": "NCHW",
+                     "range":[(1, None), (32, 32), (1, 100), (1, None)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (-1, 2, 1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 32, 1, -1),"ori_format": "NCHW",
+                     "range":[(1, None), (32, 32), (1, 99), (1, None)]},
+                    [1,1,2,2], [1,1,2,2], "SAME", "NCHW")
+    check_supported({"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,32), "ori_format": "NHWC",
+                     "range":[(1, 1), (3, 100), (3, 100), (32, 32)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, -1, -1, 32),"ori_format": "NHWC",
+                     "range":[(1, 1), (2, 99), (2, 99), (32, 32)]},
+                    [1,2,2,1], [1,1,2,1], "VALID", "NHWC")
+
+def test_get_support(test_arg):
+    get_op_support_info({"shape": (-1,2,1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,32,1,-1), "ori_format": "NCHW",
+                     "range":[(1, None), (32, 32), (1, 100), (1, None)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (-1, 2, 1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 32, 1, -1),"ori_format": "NCHW",
+                     "range":[(1, None), (32, 32), (1, 99), (1, None)]},
+                    [1,1,2,2], [1,1,2,2], "SAME", "NCHW")
+    get_op_support_info({"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,32), "ori_format": "NHWC",
+                     "range":[(1, 1), (3, 100), (3, 100), (32, 32)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, -1, -1, 32),"ori_format": "NHWC",
+                     "range":[(1, 1), (2, 99), (2, 99), (32, 32)]},
+                    [1,2,2,1], [1,1,2,1], "VALID", "NHWC")
+    
+    get_op_support_info({"shape": (-1,32,1,1), "format": "NCHW", "dtype": "float16", "ori_shape": (-1,32,1,1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (1, 100), (1, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (-1, 32, 1, 1),"format": "NCHW", "dtype": "float16", "ori_shape": (-1, 32, 1, 1),"ori_format": "NCHW",
+                     "range":[(1, 10), (32, 32), (1, 99), (1, 99)]},
+                    [1,1,2,2], [1,1,2,1], "SAME", "NCHW")
+
+ut_case.add_cust_test_func(test_func=test_check_support)
+ut_case.add_cust_test_func(test_func=test_get_support)
 
 
 if __name__ == '__main__':
