@@ -12,7 +12,7 @@ st_flag = False
 st_path = os.path.abspath("st/")
 msopgen_source_code = os.path.abspath("../msopgen/op_gen")
 msopst_source_code = os.path.abspath("../op_test_frame/python/op_test_frame/st")
-gen_cmd = ['python3.7', '-m', 'pytest', st_path, '--cov=' + msopgen_source_code, '--cov=' + msopst_source_code, "--cov-report=html"]
+gen_cmd = ['python3.7', '-m', 'pytest', st_path, '--cov=' + msopgen_source_code, '--cov=' + msopst_source_code, "--cov-report=html:st_report"]
 result_opgen = subprocess.Popen(gen_cmd, shell=False,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)

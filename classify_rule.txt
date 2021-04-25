@@ -14,3 +14,6 @@ ops/built-in/fusion_pass/buffer_fusion
 [toolchain_op_test_frame]
 tools/msopgen/
 tools/op_test_frame/python/op_test_frame/st/
+tools/op_test_frame/python/op_test_frame/scripts/
+tools/op_test_frame/python/setup.py
+tools/test/

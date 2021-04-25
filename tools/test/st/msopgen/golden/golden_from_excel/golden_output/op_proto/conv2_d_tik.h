@@ -22,9 +22,9 @@
 namespace ge {
 
 REG_OP(Conv2DTik)
-    .INPUT(x1, TensorType({DT_FLOAT}))
-    .INPUT(x2, TensorType({DT_FLOAT}))
-    .OUTPUT(y, TensorType({DT_FLOAT}))
+    .INPUT(x1, TensorType({DT_FLOAT,DT_FLOAT16}))
+    .INPUT(x2, TensorType({DT_FLOAT,DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT,DT_FLOAT16}))
     .ATTR(strides, ListInt, [1,1,1,1])
     .ATTR(pads, ListInt, [1,1,1,1])
     .ATTR(dilations, ListInt, [1,1,1,1])

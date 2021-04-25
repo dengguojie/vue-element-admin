@@ -19,6 +19,7 @@ except (ImportError,) as import_error:
 CFG_INFO_TYPE_MAP = {
     'DT_FLOAT': 'float',
     'DT_FLOAT16': 'float16',
+    'DT_FLOAT32': 'float32',
     'DT_INT8': 'int8',
     'DT_INT16': 'int16',
     'DT_INT32': 'int32',

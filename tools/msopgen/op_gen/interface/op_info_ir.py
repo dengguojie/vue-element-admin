@@ -260,7 +260,7 @@ class IROpInfo(OpInfo):
                 sys.exit(utils.MS_OP_GEN_INVALID_PARAM_ERROR)
             return self.choose_op
         if len(op_names) > 1:
-            utils.print_info_log("There are more than one ops in the sheet:")
+            utils.print_info_log("There is more than one operator in sheet:")
             i = 1
             for op_name in op_names:
                 print(i, op_name)

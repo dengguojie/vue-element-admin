@@ -24,6 +24,8 @@
     "quint16": "DT_QUINT16",
     "fp16": "DT_FLOAT16",
     "fp32": "DT_FLOAT32",
+    "float16": "DT_FLOAT16",
+    "float32": "DT_FLOAT32",
     "double": "DT_DOUBLE",
     "complex64": "DT_COMPLEX64",
     "complex128": "DT_COMPLEX128",
