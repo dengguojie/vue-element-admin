@@ -37,14 +37,17 @@ class MulCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <typename T>
-  static uint32_t MulCompute(CpuKernelContext &ctx);
+  uint32_t MulCompute(CpuKernelContext &ctx);
 
   /**
    * @brief Check if input&output addr is aligned
    * @param calc_info data used to calculate
    * @return true: aligned, false: not aligned
    */
-  static bool AlignedCheck(const BCalcInfo &calc_info);
+  bool AlignedCheck(const BCalcInfo &calc_info);
+
+  template <int32_t RANK, typename T>
+  uint32_t MulCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calc_info);
 
   /**
    * @brief compute for all types
@@ -52,7 +55,7 @@ class MulCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <int32_t RANK, typename T, int32_t OPTION>
-  static void MulCalculate(BCalcInfo &calc_info);
+  uint32_t MulCalculate(const CpuKernelContext &ctx, BCalcInfo &calc_info);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_MUL_H_

@@ -36,21 +36,24 @@ class AddCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <typename T>
-  static uint32_t AddCompute(CpuKernelContext &ctx);
+  uint32_t AddCompute(CpuKernelContext &ctx);
 
   /**
    * @brief Check if input&output addr is aligned
    * @param calc_info data used to calculate
    * @return true: aligned, false: not aligned
    */
-  static bool AlignedCheck(const BCalcInfo &calc_info);
+  bool AlignedCheck(const BCalcInfo &calc_info);
+  
+  template <int32_t RANK, typename T>
+  uint32_t AddCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calc_info);
 
   /**
    * @brief Eigen calculate for all types
    * @param calc_info data used to calculate
    */
   template <int32_t RANK, typename T, int32_t OPTION>
-  static void AddCalculate(BCalcInfo &calc_info);
+  uint32_t AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc_info);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_ADD_H_

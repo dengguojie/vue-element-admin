@@ -42,6 +42,7 @@ uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calc_info) {
   // resize shape_x or shape_y to make size equal
   std::reverse(x_reshape_.begin(), x_reshape_.end());
   std::reverse(y_reshape_.begin(), y_reshape_.end());
+
   size_t dim_num_x = x_reshape_.size();
   size_t dim_num_y = y_reshape_.size();
   size_t max_size = dim_num_x > dim_num_y ? dim_num_x : dim_num_y;
@@ -52,7 +53,6 @@ uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calc_info) {
   }
   std::reverse(x_reshape_.begin(), x_reshape_.end());
   std::reverse(y_reshape_.begin(), y_reshape_.end());
-
   // Check if shape match
   if (shape_out.size() != max_size) {
     KERNEL_LOG_ERROR("shape mismatch, max_dim_in=%zu, dim_out=%zu.", max_size,
@@ -87,7 +87,6 @@ uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calc_info) {
       return KERNEL_STATUS_PARAM_INVALID;
     }
   }
-
   return KERNEL_STATUS_OK;
 }
 

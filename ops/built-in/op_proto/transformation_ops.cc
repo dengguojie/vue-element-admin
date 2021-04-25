@@ -2144,7 +2144,7 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
     for (int64_t i = 0; i < x_dims; i++) {
       if (i != real_axis) {
         output_vec.push_back(shape_x[i]);
-        if (static_cast<int64_t>(x_range.size()) == x_dims) {
+        if (static_cast<int64_t>(x_range.size()) >= x_dims) {
           out_range.push_back(x_range[i]);
         }
       }
