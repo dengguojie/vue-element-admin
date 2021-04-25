@@ -61,13 +61,12 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
   return GRAPH_SUCCESS;
 }
 
-graphStatus InferMapShapes(Operator& op,
-                           const std::string& dtypes,
+graphStatus InferMapShapes(Operator& op, const std::string& dtypes,
                            const std::string& out_name) {
   std::vector<ge::DataType> list_type;
   if (op.GetAttr(dtypes, list_type) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), dtypes);
-    OP_LOGE(op.GetName().c_str(), "Get attr [%s] failed.", dtypes.c_str());
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), ConcatString("get attr[", dtypes, "] failed"));
     return GRAPH_FAILED;
   }
 
@@ -76,9 +75,9 @@ graphStatus InferMapShapes(Operator& op,
     output_desc.SetShape(Shape(ge::UNKNOWN_RANK));
     output_desc.SetDataType(list_type[i]);
     if (op.UpdateDynamicOutputDesc(out_name, i, output_desc) != GRAPH_SUCCESS) {
-      OpsOPUpdateErrReport(op.GetName(), out_name);
-      OP_LOGE(op.GetName().c_str(),
-              "Update [%s:%zu] desc failed.", out_name.c_str(), i);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+          op.GetName(), ConcatString("update description for [",
+                                     out_name, ":", i, "] failed."));
       return GRAPH_FAILED;
     }
   }
@@ -436,9 +435,7 @@ IMPLEMT_INFERFUNC(Stack, StackInfer) {
 
 INFER_FUNC_REG(Stack, StackInfer);
 
-IMPLEMT_INFERFUNC(MapClear, MapClearInfer) {
-  return GRAPH_SUCCESS;
-}
+IMPLEMT_INFERFUNC(MapClear, MapClearInfer) { return GRAPH_SUCCESS; }
 
 INFER_FUNC_REG(MapClear, MapClearInfer);
 
@@ -449,8 +446,9 @@ IMPLEMT_INFERFUNC(MapIncompleteSize, MapIncompleteSizeInfer) {
   output_desc.SetShape(scalar_shape);
   output_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(), "size");
-    OP_LOGE(op.GetName().c_str(), "Update [size] desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(),
+        std::string("update description for output[size] failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -991,8 +989,9 @@ IMPLEMT_INFERFUNC(MapSize, MapSizeInfer) {
   output_desc.SetDataType(DT_INT32);
   output_desc.SetShape(scalar_shape);
   if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(), "size");
-    OP_LOGE(op.GetName().c_str(), "Update [size] desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(),
+        std::string("update description for output[size] failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
