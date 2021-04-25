@@ -141,26 +141,46 @@ def lp_loss(predict, label, y, p, reduction="mean", kernel_name="lp_loss"):
     schedules = []
     tensors = []
     axes = list(range(len(predict_shape)))
-    predict["rel_pos_to_reduce"] = "before"
-    label["rel_pos_to_reduce"] = "before"
-    input_axis = {"shape":[len(axes), ], "value":axes, "rel_pos_to_reduce":"axis"}
-
     tbe_context.get_context().add_compile_info("reduction", reduction)
 
-    ins = classify([predict, label, input_axis], OpPatternMode.REDUCE, {"keepdims":False})
+    if reduction == "none":
 
-    for (_predict, _label, _input_axis) in ins:
-        with tbe.compute():
-            shape_predict, shape_label = shape_util.variable_shape([_predict, _label,_input_axis], op_mode="reduce")[0:2]
-            predict_data = tvm.placeholder(shape_predict, dtype=predict_dtype, name="predict_data")
-            label_data = tvm.placeholder(shape_label, dtype=label_dtype, name="label_data")
+        ins = classify([predict, label], OpPatternMode.ELEWISE)
 
-            res = lp_loss_compute(predict_data, label_data, _input_axis["value"], p, reduction)
-            tensors.append([predict_data, label_data, res])
+        for (_predict, _label) in ins:
+            with tbe.compute():
+                shape_predict, shape_label = shape_util.variable_shape([_predict, _label])
+                predict_data = tvm.placeholder(shape_predict, dtype=predict_dtype, name="predict_data")
+                label_data = tvm.placeholder(shape_label, dtype=label_dtype, name="label_data")
 
-        with tvm.target.cce():
-            schedule = tbe.auto_schedule(res)
-        schedules.append(schedule)
+                res = lp_loss_compute(predict_data, label_data, axes, p, reduction)
+                tensors.append([predict_data, label_data, res])
+
+            with tvm.target.cce():
+                schedule = tbe.auto_schedule(res)
+            schedules.append(schedule)
+
+    else:
+        predict["rel_pos_to_reduce"] = "before"
+        label["rel_pos_to_reduce"] = "before"
+        input_axis = {"shape":[len(axes), ], "value":axes, "rel_pos_to_reduce":"axis"}
+
+        tbe_context.get_context().add_compile_info("reduction", reduction)
+
+        ins = classify([predict, label, input_axis], OpPatternMode.REDUCE, {"keepdims":False})
+
+        for (_predict, _label, _input_axis) in ins:
+            with tbe.compute():
+                shape_predict, shape_label = shape_util.variable_shape([_predict, _label,_input_axis], op_mode="reduce")[0:2]
+                predict_data = tvm.placeholder(shape_predict, dtype=predict_dtype, name="predict_data")
+                label_data = tvm.placeholder(shape_label, dtype=label_dtype, name="label_data")
+
+                res = lp_loss_compute(predict_data, label_data, _input_axis["value"], p, reduction)
+                tensors.append([predict_data, label_data, res])
+
+            with tvm.target.cce():
+                schedule = tbe.auto_schedule(res)
+            schedules.append(schedule)
 
     config = {"name": kernel_name,
               "tensor_list": tensors}

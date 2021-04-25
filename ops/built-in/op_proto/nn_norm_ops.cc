@@ -1229,22 +1229,29 @@ IMPLEMT_COMMON_INFERFUNC(LpLossInferShape) {
       return GRAPH_FAILED;
     }
   }
-
-  TensorDesc output_y = op.GetOutputDesc("y");
-  auto tensor_predict = op.GetInputDesc("predict");
-  auto shape = tensor_predict.GetShape();
-  auto data_type = tensor_predict.GetDataType();
   if (reduction == "none") {
-    output_y.SetShape(shape);
+    // if reduction == "none" , output shape == x.shape
+    OP_LOGI(op.GetName().c_str(), "the attr reduction = none");
+    if (OneInOneOutDynamicInfer(op, "predict", {"y"})){
+      return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
   } else {
-    std::vector<int64_t> dim_vector;
-    dim_vector.push_back(1);
-    output_y.SetShape(Shape(dim_vector));
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    if (op_info == nullptr) {
+      OP_LOGE(op.GetName().c_str(), "op_info should not be nullptr");
+      return GRAPH_FAILED;
+    }
+    auto outputTensordesc = op_info->MutableOutputDesc("y");
+    auto x_desc = op_info->MutableInputDesc("predict");
+    DataType x_dtype = x_desc->GetDataType();
+    std::vector<int64_t> o_shape;
+    std::vector<std::pair<int64_t, int64_t>> o_range;
+    outputTensordesc->SetShape(GeShape(o_shape));
+    outputTensordesc->SetShapeRange(o_range);
+    outputTensordesc->SetDataType(x_dtype);
+    return GRAPH_SUCCESS;
   }
-
-  output_y.SetDataType(data_type);
-  (void)op.UpdateOutputDesc("y", output_y);
-  return GRAPH_SUCCESS;
 }
 
 // Registered inferfunction

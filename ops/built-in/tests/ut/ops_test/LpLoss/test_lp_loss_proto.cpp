@@ -57,7 +57,7 @@ TEST_F(LpLossTest, lp_loss_test_case1_dynamic) {
 
   auto output_desc = lp_loss_op.GetOutputDescByName("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-  std::vector<int64_t> expected_output_shape ={1};
+  std::vector<int64_t> expected_output_shape ={};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;
@@ -93,7 +93,7 @@ TEST_F(LpLossTest, lp_loss_test_case2_dynamic) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;
-  std::vector<std::pair<int64_t,int64_t>> expected_output_shape_range = {};
+  std::vector<std::pair<int64_t,int64_t>> expected_output_shape_range = shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
   }
