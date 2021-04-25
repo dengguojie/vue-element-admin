@@ -23,6 +23,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -134,21 +135,7 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
     para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
 
     if dtype_x != dtype_y:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_018
-        error_info['op_name'] = 'floor_mod'
-        error_info['param_name1'] = 'dtype_x'
-        error_info['param_name2'] = 'dtype_y'
-        error_info['param1_dtype'] = str(dtype_x)
-        error_info['param2_dtype'] = str(dtype_y)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("floor_mod", 'x1', 'x2', str(dtype_x), str(dtype_y))
 
     ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

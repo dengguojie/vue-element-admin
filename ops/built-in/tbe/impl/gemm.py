@@ -24,7 +24,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-
+from impl.util.platform_adapter import error_manager_vector
 
 
 ALPHA_BETA_SHAPE = [1]
@@ -41,22 +41,13 @@ def _check_param(input_x1, input_x2, bias, trans_a, trans_b):
     bias_shape = bias.get("ori_shape")
 
     if len(shape_a) not in (2, 4):
-        args_dict = {
-            "errCode": "E60006",
-            "param_name": "a",
-            "expected_length": "2 or 4",
-            "length": "{}".format(len(shape_a)),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        error_detail = "len(shape_a) not in (2, 4), len(shape_a)=%s" % len(shape_a)
+        error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
+    
     if len(shape_b) not in (2, 4):
-        args_dict = {
-            "errCode": "E60006",
-            "param_name": "b",
-            "expected_length": "2 or 4",
-            "length": "{}".format(len(shape_b)),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-
+        error_detail = "len(shape_b) not in (2, 4), len(shape_b)=%s" % len(shape_b)
+        error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
+    
     km_shape = shape_a[0] if trans_a else shape_a[1]
     m_shape = shape_a[1] if trans_a else shape_a[0]
     km_shape, m_shape = (m_shape, km_shape) if input_x1.get("ori_format") == "FRACTAL_NZ" else (km_shape, m_shape)
@@ -74,16 +65,10 @@ def _check_param(input_x1, input_x2, bias, trans_a, trans_b):
     bias_shape[0] = ((bias_shape[0] + block_in - 1) // block_in) if bias.get("ori_format") == "ND" else bias_shape[0]
     bias_shape[1] = ((bias_shape[1] + block_out - 1) // block_out) if bias.get("ori_format") == "ND" else bias_shape[1]
     if km_shape != kn_shape:
-        args_dict = {"errCode": "E60009", "a_1d": km_shape, "b_0d": kn_shape}
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        error_manager_vector.raise_err_inputs_shape_not_equal("gemm", "km_shape", "kn_shape",
+                                                                 km_shape, kn_shape, kn_shape)
     if list(bias_shape) != [m_shape, n_shape]:
-        args_dict = {
-                "errCode": "E60000",
-                "param_name": "c shape",
-                "expected_value": str([m_shape, n_shape]),
-                "input_value": "{}".format(bias_shape),
-            }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        error_manager_vector.raise_err_input_value_invalid("gemm", "c shape", str([m_shape, n_shape], bias_shape))
 
 
 def check_supported(  # pylint: disable=I0011, R0913, R0914
@@ -454,94 +439,40 @@ def _shape_check(  # pylint: disable=I0011, R0914, R0912
     """
 
     if alpha_dtype != beta_dtype:
-        args_dict = {
-            "errCode": "E60002",
-            "attr_name": "dtype",
-            "param1_name": "alpha",
-            "param1_value": "{}".format(alpha_dtype),
-            "param2_name": "beta",
-            "param2_value": "{}".format(beta_dtype),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("gemm", "alpha", "beta", alpha_dtype, beta_dtype)
     if alpha_dtype != dst_dtype:
-        args_dict = {
-            "errCode": "E60002",
-            "attr_name": "dtype",
-            "param1_name": "alpha",
-            "param1_value": "{}".format(alpha_dtype),
-            "param2_name": "y",
-            "param2_value": "{}".format(dst_dtype),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("gemm", "alpha", "y", alpha_dtype, dst_dtype)
 
     if src_dtype == "int8":
         if dst_dtype not in ["int32", "float32"]:
-            args_dict = {
-                "errCode": "E60003",
-                "a_dtype": src_dtype,
-                "expected_dtype_list": "int32,float32",
-                "out_dtype": "{}".format(dst_dtype),
-            }
-            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+            error_manager_vector.raise_err_dtype_invalid("gemm", "dst_dtype", "int32, float32", dst_dtype)
     elif src_dtype == "float16":
         if dst_dtype not in ["float16", "float32"]:
-            args_dict = {
-                "errCode": "E60003",
-                "a_dtype": src_dtype,
-                "expected_dtype_list": "float16,float32",
-                "out_dtype": "{}".format(dst_dtype),
-            }
-            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+            error_manager_vector.raise_err_dtype_invalid("gemm", "dst_dtype", "float16, float32", dst_dtype)
 
     src_dtype = src_dtype.lower()
 
     check_list = ("float16", "int8")
 
     if src_dtype not in check_list:
-        args_dict = {
-            "errCode": "E60005",
-            "param_name": "a",
-            "expected_dtype_list": "{}".format(check_list),
-            "dtype": "{}".format(src_dtype),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        error_manager_vector.raise_err_dtype_invalid("gemm", "src_dtype", "float16, int8", src_dtype)
 
     if len(shape_a) != 2 and len(shape_a) != 4:
-        args_dict = {
-            "errCode": "E60006",
-            "param_name": "a",
-            "expected_length": "2 or 4",
-            "length": "{}".format(len(shape_a)),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-
+        error_detail = "len(shape_a) not in (2, 4), len(shape_a)=%s" % len(shape_a)
+        error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
+    
     if len(shape_b) != 2 and len(shape_b) != 4:
-        args_dict = {
-            "errCode": "E60006",
-            "param_name": "b",
-            "expected_length": "2 or 4",
-            "length": "{}".format(len(shape_b)),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-
+        error_detail = "len(shape_b) not in (2, 4), len(shape_b)=%s" % len(shape_b)
+        error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
+    
     if len(shape_a) == 2 and len(shape_b) == 2:
         km_shape = shape_a[0] if trans_a else shape_a[1]
         kn_shape = shape_b[1] if trans_b else shape_b[0]
         if km_shape != kn_shape:
-            args_dict = {"errCode": "E60009", "a_1d": km_shape, "b_0d": kn_shape}
-            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-
+            error_manager_vector.raise_err_inputs_shape_not_equal("gemm", "a_1d", "b_0d", km_shape, kn_shape, kn_shape)
+    
     if bias_dtype != dst_dtype:
-        args_dict = {
-            "errCode": "E60002",
-            "attr_name": "dtype",
-            "param1_name": "c",
-            "param1_value": "{}".format(bias_dtype),
-            "param2_name": "y",
-            "param2_value": "{}".format(dst_dtype),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-
+        error_manager_vector.raise_err_inputs_dtype_not_equal("gemm", "c", "y", bias_dtype, dst_dtype)
 
 def _format_check(
         src_dtype,
@@ -606,7 +537,10 @@ def _format_check(
             "value": "{}".format(format_combine)
         }
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-
+        error_detail = "for src_dtype = %s and dst_type = %s, format need to be %s or %s" % (src_dtype,
+                         dst_dtype, "ND, ND, ND, ND, ND, ND", support_combine[flow_type])
+        error_manager_vector.raise_err_specific_reson("gemm", error_detail)
+  
 
 def _get_bias_element(shape_bias_element):
     bias_length = shape_bias_element
@@ -666,13 +600,9 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b, bias_shape):
         a_m = shape_a[1] if trans_a else shape_a[0]
         b_n = shape_b[0] if trans_b else shape_b[1]
         if shape_bias != [a_m, b_n]:
-            args_dict = {
-                "errCode": "E60000",
-                "param_name": "c shape",
-                "expected_value": str([a_m, b_n]),
-                "input_value": "{}".format(shape_bias),
-            }
-            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+            error_detail = "c shape not in (a_m, b_n), c shape=%s" % shape_bias
+            error_manager_vector.raise_err_input_shape_invalid("gemm", "A", error_detail)
+    
     else:
         shape_a = list(input_x1["shape"])
         shape_b = list(input_x2["shape"])
@@ -685,30 +615,15 @@ def _bias_check(input_x1, input_x2, bias, trans_a, trans_b, bias_shape):
         else:
             shape_bias = shape_bias[:2]
         if input_x2["dtype"] == "int8" and shape_bias != [shape_b[1], shape_a[1]]:
-            args_dict = {
-                "errCode": "E60000",
-                "param_name": "c shape",
-                "expected_value": str([shape_a[1], shape_b[1]]),
-                "input_value": "{}".format(shape_bias),
-            }
-            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+            error_detail = "c shape not in %s, c shape=%s" % (str([shape_a[1], shape_b[1]]), shape_bias)
+            error_manager_vector.raise_err_input_shape_invalid("gemm", "c shape", error_detail)
         if input_x2["dtype"] == "float16" and shape_bias != [shape_b[0], shape_a[1]]:
-            args_dict = {
-                "errCode": "E60000",
-                "param_name": "c shape",
-                "expected_value": str([shape_a[1], shape_b[0]]),
-                "input_value": "{}".format(shape_bias),
-            }
-            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+            error_detail = "c shape not in %s, c shape=%s" % (str([shape_a[1], shape_b[0]]), shape_bias)
+            error_manager_vector.raise_err_input_shape_invalid("gemm", "c shape", error_detail)
     if len(bias_shape) != 2 and len(bias_shape) != 4:
-        args_dict = {
-            "errCode": "E60006",
-            "param_name": "c",
-            "expected_length": "2 or 4",
-            "length": "{}".format(len(bias_shape)),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-
+        error_detail = "len(bias_shape) not in (2, 4), len(bias_shape)=%s" % len(bias_shape)
+        error_manager_vector.raise_err_input_shape_invalid("gemm", "c", error_detail)
+    
 
 @para_check.check_op_params(  # pylint: disable=I0011, R0913, R0914, R0915
     para_check.REQUIRED_INPUT,
@@ -790,15 +705,7 @@ def gemm(  # pylint: disable=I0011, R0913, R0914
     shape_bias = list(shape_bias)
 
     if src_dtype != b_dtype:
-        args_dict = {
-            "errCode": "E60002",
-            "attr_name": "dtype",
-            "param1_name": "a",
-            "param1_value": "{}".format(src_dtype),
-            "param2_name": "b",
-            "param2_value": "{}".format(b_dtype),
-        }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("gemm", "a", "b", src_dtype, b_dtype)
 
     _shape_check(
         shape_a,
@@ -846,9 +753,9 @@ def gemm(  # pylint: disable=I0011, R0913, R0914
             trans_b = bool(1 - trans_b)
 
     if bias is None or not bool(bias):
-        args_dict = {"errCode": "E60108", "reason": "unsupport c is None"}
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-
+        error_detail = 'unsupport c is None'
+        error_manager_vector.raise_err_specific_reson("gemm", error_detail)
+  
     if len(shape_a) == 2:
         m_shape = shape_a[0]
         km_shape = shape_a[1]

@@ -22,6 +22,7 @@ from impl import topk
 from impl import nms
 from impl import constant_util as constant
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=R0913
@@ -1633,7 +1634,8 @@ class PreProcess:
 
         if self.max_rois_num*self.batch_rois != score.shape[0]:
             if self.actual_rois_num_effect == False:
-                raise RuntimeError("the input tensor shape does not match!")
+                error_manager_vector.raise_err_inputs_shape_not_equal("fsr_detection_output", "self.max_rois_num*self.batch_rois", "score.shape[0]",
+                                                                         self.max_rois_num*self.batch_rois, score.shape[0], score.shape[0])
             sum_addr = self.tik_instance.Scalar("int32")
             sum_addr.set_as(0)
             cur_batch_num = self.tik_instance.Scalar("int32")
@@ -2321,66 +2323,25 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
     batch_rois = rois_dic.get("shape")[0]
 
     if im_info_dic.get("shape")[0] != batch_rois:
-        error_info = {'errCode': 'E80000', 'op_name': 'fsr_dection_output', 'param_name': 'im_info_dic',
-                      'expected_value': str(batch_rois), 'real_value': str(im_info_dic.get("shape")[0])}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be"
-                           " [%s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['expected_value'], error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("fsr_dection_output", "im_info_dic", str(batch_rois),
+                                                             str(im_info_dic.get("shape")[0]))
     if num_classes > score_dic.get("shape")[1] * score_dic.get("shape")[4]:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
-                      'param_name': 'num_classes', 'min_value': '0',
-                      'max_value': str(score_dic.get("shape")[1] * score_dic.get("shape")[4]),
-                      'real_value': num_classes}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range of"
-                           " [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_not_in_range("fsr_dection_output", "num_classes", "0",
+                                                                 str(score_dic.get("shape")[1] * score_dic.get("shape")[4]), num_classes)
     if num_classes > bbox_delta_dic.get("shape")[1] * bbox_delta_dic.get("shape")[4] // 4:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
-                      'param_name': 'num_classes', 'min_value': '0', 'max_value': str(bbox_delta_dic.get("shape")[1] *
-                                                                                      bbox_delta_dic.get("shape")[
-                                                                                          4] // 4),
-                      'real_value': num_classes}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the"
-                           " range of [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_not_in_range("fsr_dection_output", "num_classes", "0",
+                                                                 str(bbox_delta_dic.get("shape")[1] * bbox_delta_dic.get("shape")[4] // 4), num_classes)
 
     if iou_threshold <= 0.0 or iou_threshold >= 1.0:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
-                      'param_name': 'iou_threshold', 'min_value': '0.0', 'max_value': '1.0',
-                      'real_value': iou_threshold}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range"
-                           " of [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_not_in_range("fsr_dection_output", "iou_threshold", "0.0", "1.0", iou_threshold)
+
     if score_threshold < 0.0 or score_threshold > 1.0:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
-                      'param_name': 'score_threshold', 'min_value': '0.0', 'max_value': '1.0',
-                      'real_value': score_threshold}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range"
-                           " of [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_not_in_range("fsr_dection_output", "score_threshold",
+                                                                 "0.0", "1.0", score_threshold)
     if num_classes < 1:
-        error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
-                      'param_name': 'num_classes', 'min_value': '1', 'max_value': 'inf', 'real_value': num_classes}
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s] should be in the range"
-                           " of [%s, %s], but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_not_in_range("fsr_dection_output", "score_threshold",
+                                                                 "1", "inf", num_classes)
+
     if actual_rois_num_dic:
         input_list = (rois_dic, bbox_delta_dic, score_dic, im_info_dic,
                       actual_bbox_num_dic, box_dic, actual_rois_num_dic)

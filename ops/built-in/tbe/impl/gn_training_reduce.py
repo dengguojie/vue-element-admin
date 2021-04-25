@@ -22,6 +22,7 @@ from te.utils import para_check
 from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -72,19 +73,9 @@ def _shape_check(shape_x, data_format, num_groups):
 
     para_check.check_shape(shape_x, min_rank=4, max_rank=4, param_name="x")
     if shape_x[c_index_] % num_groups != 0:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_009
-        error_info['op_name'] = para_check.OP_NAME
-        error_info['param_name'] = "channel and num_groups"
-        error_info['rule_desc'] = "num_groups must divide C channel"
-        error_info['param_value'] = "{} and {}".format(
-            shape_x[c_index_], num_groups)
-        raise RuntimeError(error_info,
-                           "Op[%s] has rule: %s, but [%s] is [%s]." \
-                           % (error_info['op_name'],
-                              error_info['rule_desc'],
-                              error_info['param_name'],
-                              error_info['param_value']))
+        error_manager_vector.raise_err_check_params_rules("gn_training_reduce", "num_groups must divide C channel",
+                                                             "channel and num_groups",
+                                                              "{} and {}".format(shape_x[c_index_], num_groups))
 
 
 @fusion_manager.register("gn_training_reduce")

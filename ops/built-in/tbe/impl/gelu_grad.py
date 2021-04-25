@@ -25,7 +25,7 @@ import te.lang.cce as tbe
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
 
 # CSVALUE equals 0.044715
 CSVALUE = tvm.const(0.044715, "float32")
@@ -260,7 +260,7 @@ def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
     shape_y = list(shape_y)
 
     if not (operator.eq(shape_dy, shape_x) and operator.eq(shape_dy, shape_y)):
-        error_detail = "all input shape must be equal"
+        error_detail = "all input shape must be equal, shape_dy:%s, shape_x:%s, shape_y:%s" % shape_dy, shape_x, shape_y
         error_manager_vector.raise_err_two_input_shape_invalid("gelu_grad", "shape_dy or shape_x",
                                                                              "shape_dy or shape_y", error_detail)
 

@@ -20,7 +20,7 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=too-many-locals
@@ -98,9 +98,8 @@ def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
     check_list = ('int8', 'uint8', 'int32', 'float16', 'float32')
     para_check.check_dtype(input_dtype_x, check_list, param_name="input_x")
     if input_dtype_x != input_dtype_y:
-        error_detail = "dtype of input_x and input_y should be same"
-        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "input_x", "input_y", \
-                                                               error_detail)
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "input_x", "input_y",
+                                                                 input_dtype_x, input_dtype_y)
 
     # check shape of input_x/input_y
     shape_x = input_x.get("shape")

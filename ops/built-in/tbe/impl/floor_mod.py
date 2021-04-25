@@ -20,7 +20,7 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 # pylint: disable=unused-variable
@@ -129,8 +129,7 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
     para_check.check_dtype(dtype_y, check_list, param_name="x2")
 
     if dtype_x != dtype_y:
-        error_detail = "dtype of x1 and x2 should be same"
-        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x1", "x2", dtype_x, dtype_y)
 
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
                                                               param_name_input1="x1",

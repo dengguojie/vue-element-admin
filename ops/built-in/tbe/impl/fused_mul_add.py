@@ -26,6 +26,7 @@ from impl.util.util_compute import batchmatmul_elem_nd2nz
 from impl.util.util_compute import batchmatmul_elem_reshape
 from impl.util.util_compute import check_batchmatmul_fuse
 from tbe.dsl import broadcast
+from impl.util.platform_adapter import error_manager_vector
 
 SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
 SIZE_SIXTEEN = 16
@@ -37,11 +38,13 @@ def _division_sixteen(shape):
 
     if len(shape) < 2:
         if shape[-1] == 0:
-            raise RuntimeError("value of shape is illegal")
+            error_detail = 'value of shape is illegal, shape[-1] == 0'
+            error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
         return False
 
     if shape[-1] == 0 or shape[-2] == 0:
-        raise RuntimeError("value of shape is illegal")
+        error_detail = 'value of shape is illegal, shape[-1] == %s, shape[-2] == %s' % (shape[-1], shape[-2])
+        error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
 
     return shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0
 
@@ -351,7 +354,8 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
                                         param_name_input1="input0",
                                         param_name_input2="input1")
     else:
-        raise RuntimeError("shape of input1 or input0 is illegal")
+        error_detail = 'shape of input1 or input0 is illegal'
+        error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
 
     if condition5:
         shape_input2, shape_max_mul, shape_max_add0 = \
@@ -381,7 +385,8 @@ def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
                                         param_name_input1="input2",
                                         param_name_input2="shape_max_mul")
     else:
-        raise RuntimeError("shape of input2 or input0 is illegal")
+        error_detail = 'shape of input2 or input0 is illegal'
+        error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
 
     if format_pattern == 2:
         shape_input0, shape_input1 = shape_input1, shape_input0

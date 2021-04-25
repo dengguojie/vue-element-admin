@@ -23,7 +23,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-
+from impl.util.platform_adapter import error_manager_vector
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,redefined-argument-from-local
 def floor_div_compute(input_x, input_y, output_z, kernel_name='floor_div'):
@@ -105,21 +105,8 @@ def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
     para_check.check_dtype(input_dtype_y, check_list, param_name="input_y")
     para_check.check_elewise_shape_range([input_x, input_y], support_broadcast=True)
     if input_dtype_x != input_dtype_y:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_018
-        error_info['op_name'] = 'floor_div'
-        error_info['param_name1'] = 'input_dtype_x'
-        error_info['param_name2'] = 'input_dtype_y'
-        error_info['param1_dtype'] = str(input_dtype_x)
-        error_info['param2_dtype'] = str(input_dtype_y)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("floor_div", "input_x", "input_y",
+                                                                 str(input_dtype_x), str(input_dtype_y))
 
     ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
