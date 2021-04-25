@@ -4561,4 +4561,56 @@ COMMON_INFER_FUNC_REG(IndexFillD, IndexFillDInferShape);
 VERIFY_FUNC_REG(IndexFillD, IndexFillDVerify);
 //----------------IndexFillD END-------------------
 
+// ----------------AddRowRanges Begin-------------------
+bool InferShapeAndTypeAddRowRanges(Operator& op, const string& input_name1,
+                                      const string& output_name) {
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+
+  ge::Shape output_shape = ge::Shape(dims_x);
+
+  v_output_desc.SetShape(output_shape);
+  v_output_desc.SetDataType(input_dtype);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
+
+  return true;
+}
+
+IMPLEMT_VERIFIER(AddRowRanges, AddRowRangesVerify) {
+  DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  DataType indices_dtype = op.GetInputDesc("indices").GetDataType();
+  DataType src_dtype = op.GetInputDesc("src").GetDataType();
+  DataType x_out_dtype = op.GetOutputDesc("x").GetDataType();
+  if (x_dtype != x_out_dtype || x_dtype != src_dtype) {
+    OP_LOGE(op.GetName().c_str(),
+            "x dtype is not equal to src dtype, please check!");
+    return GRAPH_FAILED;
+  }
+  if (indices_dtype != DT_INT32) {
+    OP_LOGE(op.GetName().c_str(), "indices dtype is not int32, please check!");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(AddRowRangesInferShape) {
+  if (InferShapeAndTypeAddRowRanges(op, "x", "x")) {
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGE(op.GetName().c_str(), "infer shape failed!");
+  return GRAPH_FAILED;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(AddRowRanges, AddRowRangesInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(AddRowRanges, AddRowRangesVerify);
+// ----------------AddRowRanges END---------------------
+
 }  // namespace ge
