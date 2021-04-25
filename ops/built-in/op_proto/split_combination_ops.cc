@@ -747,14 +747,9 @@ static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int6
       OP_LOGD(op.GetName().c_str(), "input shape range:%s", to_string(input_shape_ranges).c_str());
       if (input_shape_ranges.empty()) {
         MakeUpShapeRange(input_desc->MutableShape().GetDims(), input_shape_ranges);
-        auto dim_value = input_desc->MutableShape().GetDim(non_negative_axis);
-        if (dim_value >= 0) {
-          output_concat_dim_range.first += dim_value;
-          if (output_concat_dim_range.second != -1) {
-            output_concat_dim_range.second += dim_value;
-          }
-        }
-      } else {
+      }
+
+      if (input_shape_ranges.size() > non_negative_axis) {
         output_concat_dim_range.first += input_shape_ranges[non_negative_axis].first;
         if (input_shape_ranges[non_negative_axis].second == -1 || output_concat_dim_range.second == -1) {
           output_concat_dim_range.second = -1;
