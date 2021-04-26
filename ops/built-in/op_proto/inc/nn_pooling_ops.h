@@ -888,7 +888,7 @@ REG_OP(AvgPoolV2Grad)
 * @brief Computes gradients of averagev2 pooling function.
 
 * @par Inputs:
-* @li input_grad: An NHWC tensor of type float16, float32, or double.
+*input_grad: An NHWC tensor of type float16, float32, or double.
 
 * @par Attributes:
 * @li orig_input_shape: A required tuple or list of type int32.
@@ -906,10 +906,10 @@ REG_OP(AvgPoolV2Grad)
 * @li data_format: An optional string. Defaults to "NHWC".
 
 * @par Outputs:
-* @out_grad: A mutable tensor with the same shape and type as "orig_input".
+*out_grad: A mutable tensor with the same shape and type as "orig_input".
 
 * @par Third-party framework compatibility
-* @li Compatible with the TensorFlow operator AvgPoolGrad.
+*Compatible with the TensorFlow operator AvgPoolGrad.
 */
 REG_OP(AvgPoolV2GradD)
     .INPUT(input_grad, TensorType({DT_FLOAT16}))
