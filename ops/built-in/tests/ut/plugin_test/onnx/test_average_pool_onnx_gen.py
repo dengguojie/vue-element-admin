@@ -11,8 +11,10 @@ def make_average_pool_1():
     graph = helper.make_graph(
         nodes=[node],
         name="test_average_pool_1",
-        inputs=[helper.make_tensor_value_info("x", onnx.TensorProto.FLOAT, [1, 3, 32, 32])],
-        outputs=[helper.make_tensor_value_info("y", onnx.TensorProto.FLOAT, [1, 3, 31, 31])]
+        inputs=[helper.make_tensor_value_info(
+            "x", onnx.TensorProto.FLOAT, [1, 3, 32, 32])],
+        outputs=[helper.make_tensor_value_info(
+            "y", onnx.TensorProto.FLOAT, [1, 3, 31, 31])]
     )
 
     model = helper.make_model(graph, producer_name="onnx-parser_test_1")
@@ -33,8 +35,10 @@ def make_average_pool_2():
     graph = helper.make_graph(
         nodes=[node],
         name="test_average_pool_2",
-        inputs=[helper.make_tensor_value_info("x", onnx.TensorProto.FLOAT, [1, 3, 32, 32])],
-        outputs=[helper.make_tensor_value_info("y", onnx.TensorProto.FLOAT, [1, 3, 10, 10])]
+        inputs=[helper.make_tensor_value_info(
+            "x", onnx.TensorProto.FLOAT, [1, 3, 32, 32])],
+        outputs=[helper.make_tensor_value_info(
+            "y", onnx.TensorProto.FLOAT, [1, 3, 10, 10])]
     )
 
     model = helper.make_model(graph, producer_name="onnx-parser_test_2")
@@ -52,13 +56,16 @@ def make_average_pool_3():
     graph = helper.make_graph(
         nodes=[node],
         name="test_average_pool_3",
-        inputs=[helper.make_tensor_value_info("x", onnx.TensorProto.FLOAT, [1, 3, 28, 28])],
-        outputs=[helper.make_tensor_value_info("y", onnx.TensorProto.FLOAT, [1, 3, 30, 30])]
+        inputs=[helper.make_tensor_value_info(
+            "x", onnx.TensorProto.FLOAT, [1, 3, 28, 28])],
+        outputs=[helper.make_tensor_value_info(
+            "y", onnx.TensorProto.FLOAT, [1, 3, 30, 30])]
     )
 
     model = helper.make_model(graph, producer_name="onnx-parser_test_3")
     model.opset_import[0].version = 11
     onnx.save(model, "./test_average_pool_case_3.onnx")
+
 
 def make_average_pool_4():
     node = helper.make_node('AveragePool',
@@ -69,8 +76,10 @@ def make_average_pool_4():
     graph = helper.make_graph(
         nodes=[node],
         name="test_average_pool_4",
-        inputs=[helper.make_tensor_value_info("x", onnx.TensorProto.FLOAT, [1, 3, 32, 32, 32])],
-        outputs=[helper.make_tensor_value_info("y", onnx.TensorProto.FLOAT, [1, 3, 31, 31, 31])]
+        inputs=[helper.make_tensor_value_info(
+            "x", onnx.TensorProto.FLOAT, [1, 3, 32, 32, 32])],
+        outputs=[helper.make_tensor_value_info(
+            "y", onnx.TensorProto.FLOAT, [1, 3, 31, 31, 31])]
     )
 
     model = helper.make_model(graph, producer_name="onnx-parser_test_4")
@@ -118,8 +127,8 @@ def make_average_pool_v13():
     model = helper.make_model(graph, producer_name="onnx-parser_test_3")
     model.opset_import[0].version = 13
     onnx.save(model, "./test_average_pool_case_v13.onnx")
-    
-    
+
+
 def make_average_pool_v9():
     node = helper.make_node('AveragePool',
                             inputs=['x'],
@@ -167,6 +176,27 @@ def make_average_pool_input_1d():
     onnx.save(model, "./test_average_pool_case_input_1d.onnx")
 
 
+def make_average_pool_aicpu():
+    node = helper.make_node('AveragePool',
+                            inputs=['x'],
+                            outputs=['y'],
+                            kernel_shape=[65, 65],
+                            pads=[2, 2, 2, 2],
+                            name='test_average_pool_aicpu')
+    graph = helper.make_graph(
+        nodes=[node],
+        name="test_average_pool_aicpu",
+        inputs=[helper.make_tensor_value_info(
+            "x", onnx.TensorProto.FLOAT16, [1, 3, 128, 128])],
+        outputs=[helper.make_tensor_value_info(
+            "y", onnx.TensorProto.FLOAT16, [1, 3, 68, 68])]
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test_3")
+    model.opset_import[0].version = 11
+    onnx.save(model, "./test_average_pool_case_aicpu.onnx")
+
+
 if __name__ == '__main__':
     make_average_pool_1()
     make_average_pool_2()
@@ -176,3 +206,4 @@ if __name__ == '__main__':
     make_average_pool_v12()
     make_average_pool_v13()
     make_average_pool_input_1d()
+    make_average_pool_aicpu()
