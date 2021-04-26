@@ -37,11 +37,11 @@ Status parse_params_pad_v11(const Message* op_src, ge::Operator& op_dest) {
   return SUCCESS;
 }
 
-Status parse_params_pad_v9(const Message *op_src, ge::Operator &op_dest) {
+Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-      OP_LOGE("Pad", "Dynamic cast op_src to NodeProto failed.");
-      return FAILED;
+    OP_LOGE("Pad", "Dynamic cast op_src to NodeProto failed.");
+    return FAILED;
   }
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
@@ -52,22 +52,28 @@ Status parse_params_pad_v9(const Message *op_src, ge::Operator &op_dest) {
   ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::9::Pad");
 
   // attr max and min default value
-  std::vector<int64_t> v_pads;
+  std::vector<int32_t> v_pads;
   bool set_pads_flag = false;
   float value = 0.0;
 
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "pads") {
       set_pads_flag = true;
-      for (int i = 0; i<attr.ints_size(); i++){
-        v_pads.push_back(attr.ints(i));
-    }
+      unsigned int len = attr.ints_size();
+      if (len & 1) {
+        OP_LOGE("Pad", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
+        return FAILED;
+      }
+      for (unsigned int i = 0; i < len / 2; i++) {
+        v_pads.push_back(static_cast<int32_t>(attr.ints(i)));
+        v_pads.push_back(static_cast<int32_t>(attr.ints(i + len / 2)));
+      }
     } else if (attr.name() == "value" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
       value = attr.f();
     }
   }
 
-  if(!set_pads_flag) {
+  if (!set_pads_flag) {
     OP_LOGE("Pad", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
@@ -82,18 +88,17 @@ Status parse_params_pad_v9(const Message *op_src, ge::Operator &op_dest) {
   std::vector<int64_t> value_dims = {1};
   ge::Shape value_shape(value_dims);
   tensorDesc2.SetShape(value_shape);
-  tensorDesc2.SetDataType(DT_INT32);
+  tensorDesc2.SetDataType(DT_FLOAT);
 
   ge::Tensor tensor1(tensorDesc1, reinterpret_cast<uint8_t*>(v_pads.data()), v_pads.size() * sizeof(DT_INT32));
   op_dest.SetAttr("paddings", tensor1);
-  ge::Tensor tensor2(tensorDesc2, reinterpret_cast<uint8_t*>(&value), sizeof(DT_INT32));
+  ge::Tensor tensor2(tensorDesc2, reinterpret_cast<uint8_t*>(&value), sizeof(DT_FLOAT));
   op_dest.SetAttr("constant_values", tensor2);
 
   return SUCCESS;
 }
 
-static Status ParseOpToGraphPad(const Operator& op, Graph& graph)
-{
+static Status ParseOpToGraphPad(const Operator& op, Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
   ge::Tensor value1;
   if (op.GetAttr("paddings", value1) != SUCCESS) {
@@ -116,12 +121,11 @@ static Status ParseOpToGraphPad(const Operator& op, Graph& graph)
 }
 
 REGISTER_CUSTOM_OP("PartitionedCall")
-  .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::Pad",
-                 "ai.onnx::10::Pad"})
-  .ParseParamsFn(parse_params_pad_v9)
-  .ParseOpToGraphFn(ParseOpToGraphPad)
-  .ImplyType(ImplyType::TVM);
+    .FrameworkType(ONNX)
+    .OriginOpType({"ai.onnx::9::Pad", "ai.onnx::10::Pad"})
+    .ParseParamsFn(parse_params_pad_v9)
+    .ParseOpToGraphFn(ParseOpToGraphPad)
+    .ImplyType(ImplyType::TVM);
 
 REGISTER_CUSTOM_OP("PadV3")
     .FrameworkType(ONNX)
