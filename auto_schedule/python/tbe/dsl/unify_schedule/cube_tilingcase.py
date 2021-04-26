@@ -90,10 +90,8 @@ class CubeTilingOp:
         if "dx_h" in paras.get("var_map") or "fmap_h" in paras.get("var_map"):
             if not tiling["AL1_shape"]:
                 return 1, fmap_h
-            hi_min = TilingUtils.HW_MIN
-            if paras.get("pad_mode") != "VAR":
-                hi_min = max(paras.get("k_h") - paras.get("pads")[2] - paras.get("pads")[3], hi_min)
-            hi_min = max(hi_min, fmap_h - H_LEN)
+            hi_min = paras["k_h"] - paras["pads"][2] - paras["pads"][3]
+            hi_min = max(hi_min, fmap_h - H_LEN, TilingUtils.HW_MIN)
             hi_max = min(TilingUtils.NHW_MAX, fmap_h + H_LEN)
             return hi_min, hi_max
         return fmap_h, fmap_h
@@ -105,9 +103,8 @@ class CubeTilingOp:
         if "dx_w" in paras.get("var_map") or "fmap_w" in paras.get("var_map"):
             if not tiling["AL1_shape"]:
                 return 1, fmap_w
-            wi_min = TilingUtils.HW_MIN
-            if paras.get("pad_mode") != "VAR":
-                wi_min = max(paras.get("k_w") - paras.get("pads")[0] - paras.get("pads")[1], wi_min)
+            wi_min = paras["k_w"] - paras["pads"][0] - paras["pads"][1]
+            wi_min = max(wi_min, TilingUtils.HW_MIN)
             support_w_min = wi_min
             cur_w_size = fmap_w
             # searching up-ward fo rw_max
