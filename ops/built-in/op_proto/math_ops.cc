@@ -804,15 +804,11 @@ COMMON_INFER_FUNC_REG(NLLLoss, NLLLossInferShape);
 
 // ----------------------NLLLossGrad------------------------
 IMPLEMT_COMMON_INFERFUNC(NLLLossGradInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td_output_x_grad = op.GetOutputDesc("x_grad");
-
-  td_output_x_grad.SetShape(x_shape);
-  td_output_x_grad.SetDataType(x_dtype);
-
-  (void)op.UpdateOutputDesc("x_grad", td_output_x_grad);
-  return GRAPH_SUCCESS;
+  OP_LOGI(op.GetName().c_str(), "Enter NLLLossGradInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"x_grad"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 COMMON_INFER_FUNC_REG(NLLLossGrad, NLLLossGradInferShape);
 // --------------------NLLLossGrad END----------------------

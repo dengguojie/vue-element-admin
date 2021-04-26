@@ -131,6 +131,7 @@ set(_optiling_files
   bn_update_grad_tiling.cc
   roi_align.cc
   roi_align_grad.cc
+  nll_loss_grad.cc
 )
 
 set(_op_tiling_include
