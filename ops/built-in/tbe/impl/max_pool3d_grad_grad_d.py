@@ -120,7 +120,7 @@ def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
                 break
         except tvm.TVMError as e:
             if str(e).find("VMError: Allocation exceed bound of memory tag:local.UB") != -1:
-                print("shenmin, find: ", str(e).find("VMError: Allocation exceed bound of memory tag:local.UB"))
+                error_manager_vector.raise_err_specific_reson("VMError: Allocation exceed bound of memory tag:local.UB")
                 continue
             raise
             break

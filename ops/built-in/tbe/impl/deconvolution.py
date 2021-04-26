@@ -192,7 +192,6 @@ def check_supported(  # pylint: disable=invalid-name,R0913,R0914,W0613
         _check_param(x, weight, y, strides, pads, dilations, data_format, offset_x)
         return True
     except Exception as e:
-        print(e)
         return False
 
 

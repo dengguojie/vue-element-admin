@@ -76,7 +76,6 @@ def _check_format(format_input0, format_input1, format_input2):
             standard_format.append("ND")
         else:
             standard_format.append(item)
-    print('######standard_format:', standard_format)
 
     list_pattern = [
         ["FRACTAL_NZ", "ND", "ND"],
@@ -89,7 +88,6 @@ def _check_format(format_input0, format_input1, format_input2):
     else:
         format_pattern = 0
 
-    print('######format_pattern:', format_pattern)
     return format_pattern
 
 

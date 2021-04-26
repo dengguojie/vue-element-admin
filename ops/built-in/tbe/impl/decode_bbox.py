@@ -300,7 +300,6 @@ class InitMiddleTensor:
         self.result_gm = tik_instance.Tensor("float16", shape.input_shape,
                                              name="result_gm",
                                              scope=tik.scope_gm)
-        print("shape.input_shape", shape.input_shape)
         if shape.input_shape[NEG_ONE] == CONFIG_FOUR \
                 and len(shape.input_shape) == CONFIG_THREE:
             self.a_buffer_ub = \
@@ -1022,7 +1021,6 @@ def decode_bbox(box_predictions,
         raise RuntimeError(
             "input param decode_clip can't be negtive and shoud be [0,10]! ")
     # init the tiling shape
-    print("shape_box_predictions", shape_box_predictions)
     shape = TilingFunc(shape_box_predictions)
     # calculate the deocede_bbox
     tik_instance = tik.Tik(tik.Dprofile())

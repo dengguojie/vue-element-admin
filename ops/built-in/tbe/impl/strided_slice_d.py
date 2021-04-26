@@ -467,16 +467,13 @@ def _check_parameter(input_shape, begin, end, strides, ellipsis_mask,
     """
     ellipsis_dim = 0
     if len(end) != len(begin):
-        print("end shape,begin shape length mismatch!")
         return False
 
     if strides is not None and new_axis_mask == 0 and shrink_axis_mask == 0:
         if len(end) != len(strides) or len(begin) != len(strides):
-            print("end shape and strides length mismatch!")
             return False
         for i, _ in enumerate(begin):
             if strides[i] == 0:
-                print("strides should be non zero")
                 return False
 
     if ellipsis_mask != 0:
@@ -484,7 +481,6 @@ def _check_parameter(input_shape, begin, end, strides, ellipsis_mask,
             if (ellipsis_mask & 2 ** i) == 2 ** i:
                 ellipsis_dim += 1
         if ellipsis_dim > 1:
-            print("only suppot 1 dim of ellipsis")
             return False
     return True
 

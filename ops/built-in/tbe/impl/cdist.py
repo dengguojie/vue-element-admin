@@ -54,7 +54,6 @@ def cdist_compute(input_x1, input_x2, output_y, p, kernel_name="cdist"):
     :return: TVM tensor
         result tensor
     """
-    print(input_x1.shape)
     dtype = input_x1.dtype
 
     if dtype == 'float16':

@@ -1238,7 +1238,6 @@ class GetCorrectBoxComputer(GetCorrectBoxTensor3):
                         param['out_offset'] + param['w'] * param['h'] * param['box_id'] +
                         param['mov_len'] * loop + tail_idx],
                     SID, NBURST_ONE, VALUE_ONE, GAP_ZERO, GAP_ZERO)
-                print("self.hwtail_len ", self.hwtail_len)
                 with self.instance.for_range(VALUE_ZERO,
                                              self.hwtail_len) as cycle:
                     tmp_scalar = self.instance.Scalar(self.dtype)

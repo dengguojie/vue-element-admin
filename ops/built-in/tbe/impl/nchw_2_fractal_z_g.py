@@ -160,55 +160,10 @@ class Nchw2Fractalzg(object):
                 self._dispatch_loop_c_le_16()
                 self.pcp.composite_c_le_16(self.pf_src_n_base, self.pf_src_n_repeat,
                                            self.pf_src_c_base, self.pf_src_c_repeat)
-                print("\n")
-                print("core".ljust(6), "src_n".ljust(7), "src_c".ljust(7), "kh".ljust(4), "kw".ljust(4),
-                      "groups".ljust(8), "cout_orig".ljust(11),
-                      "cin_orig".ljust(10), "loop_on_src_c".ljust(13),
-                      "src_c_unit".ljust(11), "dst_n".ljust(7),
-                      "vol_chw".ljust(8), "loop_cout_orig".ljust(14), "cout_orig_tail".ljust(14))
-                print("---" * 51)
-                print(str(CORE_NUM).ljust(6), str(self.src_n).ljust(7), str(self.src_c).ljust(7),
-                      str(self.kh).ljust(4), str(self.kw).ljust(4),
-                      str(groups).ljust(8), str(self.cout_orig).ljust(11),
-                      str(self.cin_orig).ljust(10),
-                      str(self.loop_on_src_c).ljust(13), str(self.src_c_unit).ljust(11),
-                      str(self.dst_n).ljust(7),
-                      str(self.vol_chw).ljust(8), str(self.loop_on_cout_orig).ljust(14),
-                      str(self.cout_orig_tail).ljust(14))
-                print("\n")
-                print("core".ljust(4), "src_n_bs".ljust(8), "src_n_rpt".ljust(9),
-                      "src_c_bs".ljust(8), "src_c_rpt".ljust(9))
-                print("---" * 54)
-                for i in range(CORE_NUM):
-                    print(str(i).ljust(4),
-                          str(self.pcp.loop_src_n_base[i]).ljust(8), str(self.pcp.loop_src_n_repeat[i]).ljust(9),
-                          str(self.pcp.loop_src_c_base[i]).ljust(8), str(self.pcp.loop_src_c_repeat[i]).ljust(9))
             else:
                 self._dispatch_loop_c_gt_16()
                 self.pcp.composite_c_gt_16(self.pf_gc_base, self.pf_gc_repeat, self.gc_tail,
                                            self.pf_cout_orig_base, self.pf_cout_orig_repeat, self.cout_orig_tail)
-                print("\n")
-                print("core".ljust(6), "src_n".ljust(7), "src_c".ljust(7), "kh".ljust(4), "kw".ljust(4),
-                      "groups".ljust(8), "cout_orig".ljust(11), "cin_orig".ljust(10), "dst_n".ljust(7),
-                      "vol_chw".ljust(8), "gc_tail".ljust(7), "loop_cout_orig".ljust(14), "cout_orig_tail".ljust(14))
-                print("---" * 41)
-                print(str(CORE_NUM).ljust(6), str(self.src_n).ljust(7), str(self.src_c).ljust(7),
-                      str(self.kh).ljust(4), str(self.kw).ljust(4),
-                      str(groups).ljust(8), str(self.cout_orig).ljust(11),
-                      str(self.cin_orig).ljust(10), str(self.dst_n).ljust(7),
-                      str(self.vol_chw).ljust(8), str(self.gc_tail).ljust(7),
-                      str(self.loop_on_cout_orig).ljust(14), str(self.cout_orig_tail).ljust(14))
-                print("\n")
-                print("core".ljust(4), "loop_gc_bs".ljust(12), "loop_gc_rpt".ljust(13), "loop_gc_tail".ljust(14),
-                      "loop_cout_orig_bs".ljust(18), "loop_cout_orig_rpt".ljust(19), "loop_cout_orig_tail".ljust(20))
-                print("---" * 41)
-                for i in range(CORE_NUM):
-                    print(str(i).ljust(4),
-                          str(self.pcp.loop_gc_base[i]).ljust(12), str(self.pcp.loop_gc_repeat[i]).ljust(13),
-                          str(self.pcp.loop_gc_tail[i]).ljust(14),
-                          str(self.pcp.loop_cout_orig_base[i]).ljust(18),
-                          str(self.pcp.loop_cout_orig_repeat[i]).ljust(19),
-                          str(self.pcp.loop_cout_orig_tail[i]).ljust(20))
 
         def _calc_src_c_unit(self):
             if self.cin_orig <= EPB:

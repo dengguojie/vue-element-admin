@@ -90,7 +90,6 @@ def check_supported(  # pylint: disable=I0011, R0913, R0914
         _check_param(input_x1, input_x2, bias, trans_a, trans_b)
         return True
     except Exception as e:
-        print(e)
         return False
 
 

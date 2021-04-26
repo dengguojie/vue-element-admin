@@ -172,65 +172,10 @@ class Hwcn2Fractalzg(object):
                                            self.pf_src_n_base, self.pf_src_n_repeat, self.pf_src_n_tail)
                 self._calc_init_position()
                 self._calc_init_position_tail()
-                print("\n")
-                print("core".ljust(6), "groups".ljust(8), "cout_orig".ljust(11),
-                      "cin_orig".ljust(10), "kh".ljust(4), "kw".ljust(4),
-                      "src_c".ljust(7), "src_n".ljust(7), "dst_n".ljust(7),
-                      "vol_cn".ljust(8), "vol_gc1".ljust(9), "g".ljust(4),
-                      "c1".ljust(4), "vol_hwnc0".ljust(10),
-                      "src_n_unit".ljust(12), "src_n_tail".ljust(12))
-                print("---" * 51)
-                print(str(CORE_NUM).ljust(6), str(groups).ljust(8), str(self.cout_orig).ljust(11),
-                      str(self.cin_orig).ljust(10), str(self.kh).ljust(4), str(self.kw).ljust(4),
-                      str(self.src_c).ljust(7), str(self.src_n).ljust(7), str(self.dst_n).ljust(7),
-                      str(self.vol_cn).ljust(8), str(self.vol_gc1).ljust(9), str(self.g).ljust(4),
-                      str(self.c1).ljust(4), str(self.vol_hwnc0).ljust(10),
-                      str(self.src_n_unit).ljust(12), str(self.src_n_tail).ljust(12))
-                print("\n")
-                print("core".ljust(4), "k_base".ljust(6), "k_repeat".ljust(8),
-                      "src_c_bs".ljust(8), "src_c_rpt".ljust(10),
-                      "src_n_bs".ljust(8), "src_n_rpt".ljust(10), "src_n_tail".ljust(11),
-                      "left_zero".ljust(9), "top_dist".ljust(8), "nc0_ct".ljust(7),
-                      "left_zero_t".ljust(11), "top_dist_t".ljust(10), "nc0_ct_t".ljust(13))
-                print("---" * 54)
-                for i in range(CORE_NUM):
-                    print(str(i).ljust(4),
-                          str(self.pcp.loop_kernel_base[i]).ljust(6), str(self.pcp.loop_kernel_repeat[i]).ljust(8),
-                          str(self.pcp.loop_src_c_base[i]).ljust(8), str(self.pcp.loop_src_c_repeat[i]).ljust(10),
-                          str(self.pcp.loop_src_n_base[i]).ljust(8), str(self.pcp.loop_src_n_repeat[i]).ljust(10),
-                          str(self.pcp.loop_src_n_tail[i]).ljust(11),
-                          str(self.loop_left_zero[i]).ljust(9), str(self.loop_top_distance[i]).ljust(8),
-                          str(self.loop_nc0_counter[i]).ljust(7),
-                          str(self.loop_left_zero_tail[i]).ljust(11), str(self.loop_top_distance_tail[i]).ljust(10),
-                          str(self.loop_nc0_counter_tail[i]).ljust(13))
-                print("\n")
             else:
                 self._dispatch_loop_c_gt_16()
                 self.pcp.composite_c_gt_16(self.pf_kernel_base, self.pf_kernel_repeat,
                                            self.pf_groups_base, self.pf_groups_repeat)
-                print("\n")
-                print("core".ljust(6), "groups".ljust(8), "cout_orig".ljust(11),
-                      "cin_orig".ljust(10), "kh".ljust(4), "kw".ljust(4),
-                      "src_c".ljust(7), "src_n".ljust(7), "dst_n".ljust(7),
-                      "vol_cn".ljust(8), "vol_gc1".ljust(9), "g".ljust(4),
-                      "c1".ljust(4), "vol_hwnc0".ljust(10),
-                      "src_n_unit".ljust(12), "src_n_tail".ljust(12))
-                print("---" * 51)
-                print(str(CORE_NUM).ljust(6), str(groups).ljust(8), str(self.cout_orig).ljust(11),
-                      str(self.cin_orig).ljust(10), str(self.kh).ljust(4), str(self.kw).ljust(4),
-                      str(self.src_c).ljust(7), str(self.src_n).ljust(7), str(self.dst_n).ljust(7),
-                      str(self.vol_cn).ljust(8), str(self.vol_gc1).ljust(9), str(self.g).ljust(4),
-                      str(self.c1).ljust(4), str(self.vol_hwnc0).ljust(10),
-                      str(self.src_n_unit).ljust(12), str(self.src_n_tail).ljust(12))
-                print("\n")
-                print("core".ljust(4), "k_base".ljust(6), "k_repeat".ljust(8),
-                      "src_g_bs".ljust(8), "src_g_rpt".ljust(10))
-                print("---" * 54)
-                for i in range(CORE_NUM):
-                    print(str(i).ljust(4),
-                          str(self.pcp.loop_kernel_base[i]).ljust(6), str(self.pcp.loop_kernel_repeat[i]).ljust(8),
-                          str(self.pcp.loop_groups_base[i]).ljust(8), str(self.pcp.loop_groups_repeat[i]).ljust(10))
-
         def _ceil(self, m, n):
             return (m + n - 1) // n
 

@@ -804,7 +804,6 @@ class GenBnReduceTilingCase:
         outputs = [{"shape": shape_after_reduce, "dtype": output_dtype}]
         # the flag of invoking op_tiling interface during compilation
         tbe_context.get_context().add_compile_info("_const_shape_post", False)
-        print(tbe_context.get_context().get_compile_info())
         run_info = op_tiling.do_op_tiling(operation.get_context().get_op_type(),
                                           tbe_context.get_context().get_compile_info(), inputs, outputs)
 

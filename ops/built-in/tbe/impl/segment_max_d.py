@@ -103,12 +103,6 @@ def segment_max_d(x, y, segment_ids, kernel_name="segment_max_d"):
         raise RuntimeError(
             "segment_max only support float16, float32, int32")
 
-    # when shape[0] > first_dim_size_threshold,
-    # default stack space may not be enough, we need to prompt the user
-    if shape[0] > FIRST_DIM_SIZE_THRESHOLD:
-        print("Default stack space may not be enough.\
-         You shall increase the stack space.")
-
     dtype = dtype.lower()
 
     _check_segment_ids(shape, segment_ids)

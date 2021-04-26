@@ -1026,7 +1026,6 @@ class CorrectBoxComputer():
                     tail_idx],
                                         SID, NBURST_ONE, VALUE_ONE, GAP_ZERO,
                                         GAP_ZERO)
-                print("self.hwtail_len ", self.hwtail_len)
                 with self.instance.for_range(VALUE_ZERO,
                                              self.hwtail_len) as cycle:
                     tmp_scalar = self.instance.Scalar(self.dtype)

@@ -1137,12 +1137,6 @@ def confusion_matrix(labels,
                     sch, [labels, prediction, weight, res],
                     "cce",
                     name=kernel_name)
-        if need_print:
-            with tbe_platform.cce_build.build_config:
-                print(
-                    tvm.lower(
-                        sch, [labels, prediction, weight, res],
-                        simple_mode=True))
     else:
         res = tvm.extern([out_shape], [labels, prediction], \
                          lambda ins, outs: confusion_matrix_ir_weight_none(ins[0], ins[1],
@@ -1153,7 +1147,3 @@ def confusion_matrix(labels,
             with tbe_platform.cce_build.build_config:
                 mod = tvm.build(
                     sch, [labels, prediction, res], "cce", name=kernel_name)
-        if need_print:
-            with tbe_platform.cce_build.build_config:
-                print(
-                    tvm.lower(sch, [labels, prediction, res], simple_mode=True))
