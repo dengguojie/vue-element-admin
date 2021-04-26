@@ -35,6 +35,7 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.hwc_2_chw import hwc_2_chw
+from impl import transpose_d_014253_big
 
 # General limitation of the size for input shape: 2**31 - 1
 SHAPE_SIZE_LIMIT = 2147483647
@@ -24019,6 +24020,19 @@ def transpose_d(input_x, output_y, perm, kernel_name="transpose_d"):
         shape = [one_dim, two_dim]
         hwc_2_chw(shape, dtype, kernel_name)
         return True
+    elif list(perm) == [0, 1, 4, 2, 5, 3] and dtype == "float16" and list(shape) in (
+            [1, 32, 2, 2, 1024, 768], [1, 32, 2, 2, 2048, 768], [1, 32, 2, 2, 768, 1024], [1, 32, 2, 2, 1536, 1024],
+            [1, 32, 2, 2, 1024, 576], [1, 32, 2, 2, 2048, 576], [1, 32, 2, 2, 576, 1024], [1, 32, 2, 2, 1152, 1024],
+            [1, 32, 2, 2, 960, 720], [1, 32, 2, 2, 1920, 720], [1, 32, 2, 2, 720, 960], [1, 32, 2, 2, 1440, 960],
+            [1, 32, 2, 2, 960, 540], [1, 32, 2, 2, 1920, 540], [1, 32, 2, 2, 540, 960], [1, 32, 2, 2, 1080, 960],
+            [1, 32, 2, 2, 1350, 870], [1, 32, 2, 2, 2700, 870], [1, 32, 2, 2, 1280, 960], [1, 32, 2, 2, 2560, 960],
+            [1, 32, 2, 2, 960, 1280], [1, 32, 2, 2, 1920, 1280], [1, 32, 2, 2, 1280, 720], [1, 32, 2, 2, 2560, 720],
+            [1, 32, 2, 2, 720, 1280], [1, 32, 2, 2, 1440, 1280], [1, 32, 2, 2, 2000, 1500], [1, 32, 2, 2, 4000, 1500],
+            [1, 32, 2, 2, 1500, 2000], [1, 32, 2, 2, 3000, 2000], [1, 32, 2, 2, 2000, 1125], [1, 32, 2, 2, 4000, 1125],
+            [1, 32, 2, 2, 1125, 2000], [1, 32, 2, 2, 2250, 2000], [1, 32, 2, 2, 700, 1100], [1, 32, 2, 2, 1400, 1100],
+            [1, 32, 2, 2, 1200, 1200], [1, 32, 2, 2, 2400, 1200]):
+        transpose_d_014253_big.transpose_d_014253_big(input_x, output_y, perm, kernel_name)
+        return
 
     shape_res = _get_perm_shape(shape, perm)
     shape, perm, shape_res = _check_side_one(shape, perm, shape_res)
