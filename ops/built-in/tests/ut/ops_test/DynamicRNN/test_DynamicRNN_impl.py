@@ -4,7 +4,8 @@
 from op_test_frame.ut import OpUT
 ut_case = OpUT("DynamicRNN", "impl.dynamic_rnn", "dynamic_rnn")
 
-def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, expect, direction, case_name_val, with_seq_mask):
+def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, expect,
+                         direction, case_name_val, with_seq_mask):
     if not init_from_gm:
         init_h = None
         init_c = None
@@ -13,8 +14,10 @@ def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_fr
         for i in range(1, len(shape_output)):
             shape_init.append(shape_output[i])
 
-        init_h = {"shape": shape_init, "dtype": "float16", "ori_shape": shape_init, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-        init_c = {"shape": shape_init, "dtype": dtype, "ori_shape": shape_init, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        init_h = {"shape": shape_init, "dtype": "float16", "ori_shape": shape_init,
+                  "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        init_c = {"shape": shape_init, "dtype": dtype, "ori_shape": shape_init,
+                  "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
     if with_seq_mask:
         seq_mask = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
                     "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
@@ -27,16 +30,23 @@ def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_fr
         o = None
         tanhc = None
     else:
-        i = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-        j = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-        f = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-        o = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-        tanhc = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        i = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
+             "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        j = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
+             "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        f = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
+             "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        o = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
+             "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        tanhc = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
+                 "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
     
-    return {"params": [{"shape": shape_x, "dtype": "float16", "ori_shape": shape_x, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
+    return {"params": [{"shape": shape_x, "dtype": "float16", "ori_shape": shape_x,
+                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
                        {"shape": shape_w, "dtype": "float16", "ori_shape": shape_w,
                         "ori_format": "FRACTAL_ZN_LSTM", "format": "FRACTAL_ZN_LSTM"},
-                       {"shape": shape_b, "dtype": dtype, "ori_shape": shape_b, "ori_format": "ND", "format": "ND"},
+                       {"shape": shape_b, "dtype": dtype, "ori_shape": shape_b,
+                        "ori_format": "ND", "format": "ND"},
                        seq_mask, init_h, init_c, None, None, None, None,
                        {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
@@ -56,12 +66,17 @@ case2 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,
                                             "success", "UNIDIRECTIONAL", "dynamic_rnn_2", True)
 case3 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
                              "success", "REDIRECTIONAL", "dynamic_rnn_3", False)
+case4 = gen_dynamic_rnn_case((1,64,2,16,16), (64,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
+                             RuntimeError, "UNIDIRECTIONAL", "dynamic_rnn_failed_w", False)
+case5 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (96*16,), (1,32,2,16,16), "float16", True, True,
+                             RuntimeError, "UNIDIRECTIONAL", "dynamic_rnn_failed_b", False)
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     exit(0)
-
-

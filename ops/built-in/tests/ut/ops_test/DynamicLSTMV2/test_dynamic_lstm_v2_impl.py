@@ -83,6 +83,28 @@ ut_case.add_case(
     },
 )
 
+ut_case.add_case(
+    'Ascend910A', 
+    {
+        'params': [
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'ori_shape': (t, 1, 512), 'shape': (t, 32, 1, 16, 16), 'param_type': 'input'},
+            {'dtype': 'float16', 'format': 'FRACTAL_ZN_LSTM', 'ori_format': 'ND', 'ori_shape': (1024, 1024), 'shape': (64, 64, 16, 16), 'param_type': 'input'},
+            {'dtype': 'float16', 'format': 'ND', 'ori_format': 'ND', 'ori_shape': (1024, ), 'shape': (1024, ), 'param_type': 'input'},
+            {'dtype': 'float16', 'format': 'ND', 'ori_format': 'ND', 'ori_shape': (1, 1), 'shape': (1, 1), 'param_type': 'input'},
+            None, None, None, None, None, None, None,
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'output'},
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'output_h'},
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'output_c'},
+            None,
+            None
+        ],
+        'addition_params': {'impl_mode': 'high_performance'},
+        'case_name': 'dynamic_lstm_v2_failed',
+        'expect': RuntimeError,
+        'format_expect': [],
+        'support_expect': True,
+    },
+)
 
 
 if __name__ == '__main__':
