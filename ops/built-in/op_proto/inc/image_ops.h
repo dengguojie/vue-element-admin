@@ -1134,7 +1134,7 @@ REG_OP(DecodeBmp)
     .ATTR(channels, Int, 0)
     .OP_END_FACTORY_REG(DecodeBmp)
 
-/*
+/**
 *@brief Function parse image from string to int. \n
 
 *@par Inputs:
