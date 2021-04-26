@@ -19,6 +19,7 @@ try:
     from . import utils
     from . import dynamic_handle
     from .model_parser import get_model_nodes
+    from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
 except ImportError as import_error:
     sys.exit(
         "[case_generator] Unable to import module: %s." % str(import_error))
@@ -29,6 +30,7 @@ PY_INPUT_OUTPUT = ['inputs', 'outputs']
 OP_NAME = 'op_name'
 REQUIRED_OP_INFO_KEYS = ["paramType", "name"]
 PARAM_TYPE_VALID_VALUE = ["dynamic", "optional", "required"]
+WHITE_LISTS = GC.instance().white_lists
 
 
 class CaseGenerator:
@@ -281,11 +283,11 @@ class CaseGenerator:
                     if self.input_file_path.endswith(".py"):
                         self._check_op_info_list_valid(
                             dtype_list,
-                            list(utils.DTYPE_TO_MINDSPORE_MAP.keys()),
+                            WHITE_LISTS.mindspore_type_list,
                             op_info_key + '.dtype')
                     else:
                         self._check_op_info_list_valid(
-                            dtype_list, list(utils.DTYPE_TO_NUMPY_MAP.keys()),
+                            dtype_list, WHITE_LISTS.type_list,
                             op_info_key + '.dtype')
                     current_dtype_count = len(dtype_list)
                     if dtype_count == 0:
@@ -304,7 +306,7 @@ class CaseGenerator:
                 if 'format' in op_info:
                     format_list = op_info["format"].split(",")
                     self._check_op_info_list_valid(
-                        format_list, list(utils.FORMAT_ENUM_MAP.keys()),
+                        format_list, list(WHITE_LISTS.format_map.keys()),
                         op_info_key + '.format')
 
                     if current_dtype_count != len(format_list):
@@ -390,11 +392,11 @@ class CaseGenerator:
         for (key, value) in list(self.op_info.items()):
             if key.startswith(INI_INPUT) or key.startswith(INI_OUTPUT):
                 # check and transform type of Tensor.
-                op_tensor  = self.op_info.get(key)
+                op_tensor = self.op_info.get(key)
                 if op_tensor.get('type') is not None:
                     tensor_type = list(set(op_tensor.get('type').split(',')))
                     self._check_op_info_list_valid(tensor_type, list(
-                        utils.DTYPE_TO_TYPE_MAP.keys()), key + '.type')
+                        WHITE_LISTS.aicpu_ir2ini_type_map.keys()), key + '.type')
                     if tensor_type:
                         self.op_info.get(key)['type'] = op_tensor.get('type')
                     count_ini_with_type += 1
@@ -434,7 +436,7 @@ class CaseGenerator:
                     dtype_list = list(set(input_tensor_type.split(
                         utils.COMMA)))
                     self._check_op_info_list_valid(dtype_list, list(
-                        utils.DTYPE_TO_TYPE_MAP.keys()), INI_INPUT + '.type')
+                        WHITE_LISTS.aicpu_ir2ini_type_map.keys()), INI_INPUT + '.type')
                     self.op_info[op_info_key]['name'] = name
                     self.op_info[op_info_key][
                         'type'] = input_tensor_type.replace(' ', '')
@@ -555,9 +557,9 @@ class CaseGenerator:
             dtype_list = list(set(value.get('type').split(',')))
             trans_dtype_list = []
             for dtype_key in dtype_list:
-                if dtype_key in utils.DTYPE_TO_TYPE_MAP.keys():
+                if dtype_key in WHITE_LISTS.aicpu_ir2ini_type_map.keys():
                     trans_dtype_list.append(
-                        utils.DTYPE_TO_TYPE_MAP.get(dtype_key))
+                        WHITE_LISTS.aicpu_ir2ini_type_map.get(dtype_key))
             op_dtype = trans_dtype_list
 
         if op_key == 'input_desc':

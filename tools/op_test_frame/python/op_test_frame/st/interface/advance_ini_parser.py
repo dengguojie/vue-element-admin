@@ -11,6 +11,10 @@ from io import StringIO
 from configparser import ConfigParser
 from . import utils
 
+ADVANCE_SECTION = 'RUN'
+ASCEND_GLOBAL_LOG_LEVEL_LIST = ['0', '1', '2', '3', '4']
+ASCEND_SLOG_PRINT_TO_STDOUT_LIST = ['0', '1']
+
 
 class AdvanceIniArgs:
     """
@@ -49,10 +53,10 @@ class AdvanceIniParser:
         get value of only_gen_without_run.
         """
         if not self.config.has_option(
-                utils.ADVANCE_SECTION, utils.ONLY_GEN_WITHOUT_RUN):
+                ADVANCE_SECTION, utils.ONLY_GEN_WITHOUT_RUN):
             return
         get_gen_flag = self.config.get(
-            utils.ADVANCE_SECTION, utils.ONLY_GEN_WITHOUT_RUN)
+            ADVANCE_SECTION, utils.ONLY_GEN_WITHOUT_RUN)
         if get_gen_flag in utils.TRUE_OR_FALSE_LIST:
             self.advance_ini_args.only_gen_without_run = get_gen_flag
         else:
@@ -65,10 +69,10 @@ class AdvanceIniParser:
         get value of only_run_without_gen.
         """
         if not self.config.has_option(
-                utils.ADVANCE_SECTION, utils.ONLY_RUN_WITHOUT_GEN):
+                ADVANCE_SECTION, utils.ONLY_RUN_WITHOUT_GEN):
             return
         get_run_flag = self.config.get(
-            utils.ADVANCE_SECTION, utils.ONLY_RUN_WITHOUT_GEN)
+            ADVANCE_SECTION, utils.ONLY_RUN_WITHOUT_GEN)
         if get_run_flag in utils.TRUE_OR_FALSE_LIST:
             self.advance_ini_args.only_run_without_gen = get_run_flag
         else:
@@ -81,11 +85,11 @@ class AdvanceIniParser:
         get ASCEND_GLOBAL_LOG_LEVEL env.
         """
         if not self.config.has_option(
-                utils.ADVANCE_SECTION, utils.ASCEND_GLOBAL_LOG_LEVEL):
+                ADVANCE_SECTION, utils.ASCEND_GLOBAL_LOG_LEVEL):
             return
         get_log_level_env = self.config.get(
-            utils.ADVANCE_SECTION, utils.ASCEND_GLOBAL_LOG_LEVEL)
-        if get_log_level_env in utils.ASCEND_GLOBAL_LOG_LEVEL_LIST:
+            ADVANCE_SECTION, utils.ASCEND_GLOBAL_LOG_LEVEL)
+        if get_log_level_env in ASCEND_GLOBAL_LOG_LEVEL_LIST:
             self.advance_ini_args.ascend_global_log_level = get_log_level_env
         else:
             utils.print_warn_log(
@@ -97,11 +101,11 @@ class AdvanceIniParser:
         get ASCEND_SLOG_PRINT_TO_STDOUT env.
         """
         if not self.config.has_option(
-                utils.ADVANCE_SECTION, utils.ASCEND_SLOG_PRINT_TO_STDOUT):
+                ADVANCE_SECTION, utils.ASCEND_SLOG_PRINT_TO_STDOUT):
             return
         get_slog_flag_env = self.config.get(
-            utils.ADVANCE_SECTION, utils.ASCEND_SLOG_PRINT_TO_STDOUT)
-        if get_slog_flag_env in utils.ASCEND_SLOG_PRINT_TO_STDOUT_LIST:
+            ADVANCE_SECTION, utils.ASCEND_SLOG_PRINT_TO_STDOUT)
+        if get_slog_flag_env in ASCEND_SLOG_PRINT_TO_STDOUT_LIST:
             self.advance_ini_args.ascend_slog_print_to_stdout = get_slog_flag_env
         else:
             utils.print_warn_log(
@@ -113,10 +117,10 @@ class AdvanceIniParser:
         get atc advance arguments.
         """
         if not self.config.has_option(
-                utils.ADVANCE_SECTION, utils.ATC_SINGLEOP_ADVANCE_OPTION):
+                ADVANCE_SECTION, utils.ATC_SINGLEOP_ADVANCE_OPTION):
             return
         get_atc_advance_cmd = self.config.get(
-            utils.ADVANCE_SECTION, utils.ATC_SINGLEOP_ADVANCE_OPTION)
+            ADVANCE_SECTION, utils.ATC_SINGLEOP_ADVANCE_OPTION)
         atc_advance_args = get_atc_advance_cmd.strip('"')
         atc_advance_args_list = atc_advance_args.split()
         self.advance_ini_args.atc_singleop_advance_option = atc_advance_args_list
@@ -126,10 +130,10 @@ class AdvanceIniParser:
         get value of performance_mode.
         """
         if not self.config.has_option(
-                utils.ADVANCE_SECTION, utils.PERFORMACE_MODE):
+                ADVANCE_SECTION, utils.PERFORMACE_MODE):
             return
         get_performance_mode_flag = self.config.get(
-            utils.ADVANCE_SECTION, utils.PERFORMACE_MODE)
+            ADVANCE_SECTION, utils.PERFORMACE_MODE)
         if get_performance_mode_flag in utils.TRUE_OR_FALSE_LIST:
             self.advance_ini_args.performance_mode = get_performance_mode_flag
         else:
@@ -150,7 +154,7 @@ class AdvanceIniParser:
             utils.print_error_log('Failed to add section to config file')
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_AND_RUN_ERROR)
-        advance_ini_option_list = self.config.options(utils.ADVANCE_SECTION)
+        advance_ini_option_list = self.config.options(ADVANCE_SECTION)
         if len(advance_ini_option_list) == 0:
             utils.print_error_log(
                 'The %s is empty, please check the file.' % self.config_file)

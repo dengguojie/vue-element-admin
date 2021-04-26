@@ -268,7 +268,7 @@ class MsOpGenerator:
             outputs = ''
             for output_desc in testcase_struct['output_desc']:
                 output_name = 'output{}'.format(count_output)
-                ms_type = utils.DTYPE_TO_MINDSPORE_MAP[output_desc['type']]
+                ms_type = getattr(np, output_desc.get('type'))
                 outputs += code_snippet.TESTCASE_TEST_NET_OUTPUT.format(
                     output_name=output_name,
                     op_lower=op_name_lower,

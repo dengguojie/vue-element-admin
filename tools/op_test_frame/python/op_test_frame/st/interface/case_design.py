@@ -16,6 +16,7 @@ try:
     from . import st_report
     from . import op_st_case_info
     from . import dynamic_handle
+    from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
 except ImportError as import_error:
     sys.exit("[case_design] Unable to import module: %s." % str(import_error))
 
@@ -34,6 +35,7 @@ INPUT_CROSS_LIST = ['format', 'shape', 'type', 'data_distribute', 'value_range']
 OUTPUT_CROSS_LIST = ['format', 'shape', 'type']
 MS_INPUT_CROSS_LIST = ['type', 'shape', 'data_distribute', 'value_range']
 MS_OUTPUT_CROSS_LIST = ['type', 'shape']
+WHITE_LISTS = GC.instance().white_lists
 
 
 def combine_ori_field_to_cross(tensor, cross_key_list):
@@ -340,9 +342,9 @@ class CaseDesign:
             return input_desc_list
         for input_desc in json_obj[INPUT_DESC]:
             format_list = self._check_list_str_valid(
-                input_desc, 'format', list(utils.FORMAT_ENUM_MAP.keys()), INPUT_DESC)
+                input_desc, 'format', list(WHITE_LISTS.format_map.keys()), INPUT_DESC)
             type_list = self._check_list_str_valid(
-                input_desc, 'type', list(utils.DTYPE_TO_NUMPY_MAP.keys()),
+                input_desc, 'type', WHITE_LISTS.type_list,
                 INPUT_DESC)
             shape_list = self._check_list_list_valid(
                 input_desc, 'shape', INPUT_DESC)
@@ -351,7 +353,7 @@ class CaseDesign:
             if 'data_distribute' in input_desc:
                 data_distribute_list = self._check_list_str_valid(
                     input_desc, 'data_distribute',
-                    utils.DATA_DISTRIBUTION_LIST, INPUT_DESC)
+                    WHITE_LISTS.data_distribution_list, INPUT_DESC)
             else:
                 data_distribute_list = ['uniform']
             if 'value_range' in input_desc:
@@ -398,7 +400,7 @@ class CaseDesign:
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         for input_desc in json_obj[INPUT_DESC]:
             type_list = self._check_list_str_valid(
-                input_desc, 'type', list(utils.DTYPE_TO_MINDSPORE_MAP.keys()),
+                input_desc, 'type', WHITE_LISTS.mindspore_type_list,
                 INPUT_DESC)
             shape_list = self._check_list_list_valid(
                 input_desc, 'shape', INPUT_DESC)
@@ -407,7 +409,7 @@ class CaseDesign:
             if 'data_distribute' in input_desc:
                 data_distribute_list = self._check_list_str_valid(
                     input_desc, 'data_distribute',
-                    utils.DATA_DISTRIBUTION_LIST, INPUT_DESC)
+                    WHITE_LISTS.data_distribution_list, INPUT_DESC)
             else:
                 data_distribute_list = ['uniform']
             if 'value_range' in input_desc:
@@ -436,9 +438,9 @@ class CaseDesign:
             raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         for output_desc in json_obj[OUTPUT_DESC]:
             format_list = self._check_list_str_valid(
-                output_desc, 'format', list(utils.FORMAT_ENUM_MAP.keys()), OUTPUT_DESC)
+                output_desc, 'format', list(WHITE_LISTS.format_map.keys()), OUTPUT_DESC)
             type_list = self._check_list_str_valid(
-                output_desc, 'type', list(utils.DTYPE_TO_NUMPY_MAP.keys()),
+                output_desc, 'type', WHITE_LISTS.type_list,
                 OUTPUT_DESC)
             shape_list = self._check_list_list_valid(
                 output_desc, 'shape', OUTPUT_DESC)
@@ -477,7 +479,7 @@ class CaseDesign:
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         for output_desc in json_obj[OUTPUT_DESC]:
             type_list = self._check_list_str_valid(
-                output_desc, 'type', list(utils.DTYPE_TO_MINDSPORE_MAP.keys()),
+                output_desc, 'type', WHITE_LISTS.mindspore_type_list,
                 OUTPUT_DESC)
             shape_list = self._check_list_list_valid(
                 output_desc, 'shape', OUTPUT_DESC)

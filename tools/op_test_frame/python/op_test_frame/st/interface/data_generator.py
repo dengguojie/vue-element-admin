@@ -50,17 +50,18 @@ class DataGenerator:
         :param distribution: the data distribution
         :return: the numpy data
         """
-        real_dtype = dtype
-        if dtype == np.bool:
+        np_type = getattr(np, dtype)
+        real_dtype = np_type
+        if real_dtype == np.bool:
             min_value = 0
             max_value = 2  # [0, 2) in uniform
-            dtype = np.int8
+            np_type = np.int8
         if distribution == 'uniform':
             # Returns the uniform distribution random value.
             # min indicates the random minimum value,
             # and max indicates the random maximum value.
             data = np.random.uniform(low=min_value, high=max_value,
-                                     size=data_shape).astype(dtype)
+                                     size=data_shape).astype(np_type)
         elif distribution == 'normal':
             # Returns the normal (Gaussian) distribution random value.
             # min is the central value of the normal distribution,
@@ -68,14 +69,14 @@ class DataGenerator:
             # The value must be greater than 0.
             data = np.random.normal(loc=min_value,
                                     scale=abs(max_value) + 1e-4,
-                                    size=data_shape).astype(dtype)
+                                    size=data_shape).astype(np_type)
         elif distribution == 'beta':
             # Returns the beta distribution random value.
             # min is alpha and max is beta.
             # The values of both min and max must be greater than 0.
             data = np.random.beta(a=abs(min_value) + 1e-4,
                                   b=abs(max_value) + 1e-4,
-                                  size=data_shape).astype(dtype)
+                                  size=data_shape).astype(np_type)
         elif distribution == 'laplace':
             # Returns the Laplacian distribution random value.
             # min is the central value of the Laplacian distribution,
@@ -83,7 +84,7 @@ class DataGenerator:
             # distribution.  The value must be greater than 0.
             data = np.random.laplace(loc=min_value,
                                      scale=abs(max_value) + 1e-4,
-                                     size=data_shape).astype(dtype)
+                                     size=data_shape).astype(np_type)
         elif distribution == 'triangular':
             # Return the triangle distribution random value.
             # min is the minimum value of the triangle distribution,
@@ -92,30 +93,30 @@ class DataGenerator:
             mode = np.random.uniform(low=min_value, high=max_value)
             data = np.random.triangular(left=min_value, mode=mode,
                                         right=max_value,
-                                        size=data_shape).astype(dtype)
+                                        size=data_shape).astype(np_type)
         elif distribution == 'relu':
             # Returns the random value after the uniform distribution
             # and relu activation.
             data_pool = np.random.uniform(low=min_value, high=max_value,
-                                          size=data_shape).astype(dtype)
+                                          size=data_shape).astype(np_type)
             data = np.maximum(0, data_pool)
         elif distribution == 'sigmoid':
             # Returns the random value after the uniform distribution
             # and sigmoid activation.
             data_pool = np.random.uniform(low=min_value, high=max_value,
-                                          size=data_shape).astype(dtype)
+                                          size=data_shape).astype(np_type)
             data = 1 / (1 + np.exp(-data_pool))
         elif distribution == 'softmax':
             # Returns the random value after the uniform distribution
             # and softmax activation.
             data_pool = np.random.uniform(low=min_value, high=max_value,
-                                          size=data_shape).astype(dtype)
+                                          size=data_shape).astype(np_type)
             data = np.exp(data_pool) / np.sum(np.exp(data_pool))
         elif distribution == 'tanh':
             # Returns the random value after the uniform distribution
             # and tanh activation.
             data_pool = np.random.uniform(low=min_value, high=max_value,
-                                          size=data_shape).astype(dtype)
+                                          size=data_shape).astype(np_type)
             data = (np.exp(data_pool) - np.exp(-data_pool)) / \
                    (np.exp(data_pool) + np.exp(-data_pool))
         else:
@@ -147,10 +148,7 @@ class DataGenerator:
                 range_min, range_max = input_desc['value_range']
                 if input_desc.get('type') in utils.OPTIONAL_TYPE_LIST:
                     continue
-                if case.get('st_mode') == "ms_python_train":
-                    dtype = utils.DTYPE_TO_MINDSPORE_MAP[input_desc.get('type')]
-                else:
-                    dtype = utils.DTYPE_TO_NUMPY_MAP[input_desc.get('type')]
+                dtype = input_desc.get('type')
                 # consider dynamic shape scenario
                 input_shape = dynamic_handle.replace_shape_to_typical_shape(
                     input_desc)

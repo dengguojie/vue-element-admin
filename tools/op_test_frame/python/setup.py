@@ -30,7 +30,8 @@ class BinaryDistribution(Distribution):
 
 with open("MANIFEST.in", "w") as fo:
     fo.write("recursive-include op_test_frame/st/template *\n"
-             "include op_test_frame/st/interface/framework/framework.json\n")
+             "include op_test_frame/st/interface/framework/framework.json\n"
+             "include op_test_frame/st/config/white_list_config.json\n")
 
 setup_kwargs = {
     "include_package_data": True

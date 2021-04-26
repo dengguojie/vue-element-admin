@@ -20,6 +20,7 @@ try:
     from ..template import code_snippet
     from op_test_frame.common import op_status
     from . import dynamic_handle
+    from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
 except (ImportError,) as import_error:
     sys.exit(
         "[acl_op_generator]Unable to import module: %s." % str(import_error))
@@ -111,6 +112,21 @@ def _append_content_to_file(content, file_path):
     utils.print_info_log("Successfully appended content to " + file_path)
 
 
+def _map_to_acl_format_enum(format_list):
+    """
+    map format to acl format enum
+    :param format_list: input format list
+    :return: acl format enum list str
+    """
+    result_str = ""
+    acl_format_list = []
+    for acl_format in format_list:
+        acl_format_list.append(
+            "(aclFormat)" + str(GC.instance().white_lists.format_map.get(acl_format)))
+    result_str += ", ".join(acl_format_list)
+    return result_str
+
+
 def _create_exact_testcase_content(testcase_struct, device_id):
     input_shape_list = []
     input_data_type_list = []
@@ -132,7 +148,7 @@ def _create_exact_testcase_content(testcase_struct, device_id):
 
     input_shape_data = utils.format_list_str(input_shape_list)
     input_data_type = utils.map_to_acl_datatype_enum(input_data_type_list)
-    input_format = utils.map_to_acl_format_enum(input_format_list)
+    input_format = _map_to_acl_format_enum(input_format_list)
 
     input_file_path_list = []
     input_num = 0
@@ -163,7 +179,7 @@ def _create_exact_testcase_content(testcase_struct, device_id):
 
     output_shape_data = utils.format_list_str(output_shape_list)
     output_data_type = utils.map_to_acl_datatype_enum(output_data_type_list)
-    output_format = utils.map_to_acl_format_enum(output_format_list)
+    output_format = _map_to_acl_format_enum(output_format_list)
 
     output_file_path_list = []
     output_num = 0

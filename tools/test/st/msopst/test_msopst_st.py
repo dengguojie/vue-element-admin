@@ -480,7 +480,7 @@ class TestUtilsMethods(unittest.TestCase):
         with pytest.raises(utils.OpTestGenException) as error:
             data_generator = DataGenerator([], '/home', True, report)
 
-            data_generator.gen_data([1, 4], -10, 4, np.int32, 'xx')
+            data_generator.gen_data([1, 4], -10, 4, 'int32', 'xx')
             self.assertEqual(error.value.args[0],
                              utils.OP_TEST_GEN_WRITE_FILE_ERROR)
 
@@ -491,12 +491,11 @@ class TestUtilsMethods(unittest.TestCase):
         """
         report = OpSTReport()
         data_generator = DataGenerator([], '/home', True, report)
-        data = data_generator.gen_data([1, 4], -10, 4, np.int32)
         data_distribution = ['uniform', 'normal', 'beta', 'laplace',
                              'triangular', 'sigmoid', 'softmax', 'tanh']
         for distribution in data_distribution:
             data = data_generator.gen_data(
-                [2, 4], -10, 400, np.float, distribution)
+                [2, 4], -10, 400, 'float', distribution)
         self.assertEqual(2, len(data.shape))
 
     # ---------------------profiling_analysis-----------------------

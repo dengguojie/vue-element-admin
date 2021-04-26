@@ -78,7 +78,6 @@ INPUT_SUFFIX_LIST = ['.ini', '.py']
 FILE_AUTHORITY = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR
 FOLDER_MASK = 0o700
 TYPE_UNDEFINED = "UNDEFINED"
-ADVANCE_SECTION = 'RUN'
 
 INPUT_DESC = 'input_desc'
 OUTPUT_DESC = 'output_desc'
@@ -117,54 +116,8 @@ IN_OUT_OP_KEY_MAP = {
     'OUTPUT': 'output',
     'DYNAMIC_OUTPUT': 'output'
 }
+
 AICPU_ATTR_LIST = ['ATTR', 'REQUIRED_ATTR']
-DTYPE_TO_NUMPY_MAP = {
-    'float16': np.float16,
-    'float': np.float32,
-    'int8': np.int8,
-    'int16': np.int16,
-    'int32': np.int32,
-    'int64': np.int64,
-    'uint8': np.uint8,
-    'uint16': np.uint16,
-    'uint32': np.uint32,
-    'uint64': np.uint64,
-    'bool': np.bool,
-    'double': np.double,
-    'UNDEFINED': 'UNDEFINED',
-    'RESERVED': 'RESERVED'
-}
-DTYPE_TO_TYPE_MAP = {
-    "DT_FLOAT": "float",
-    "DT_BOOL": "bool",
-    "DT_INT32": "int32",
-    "DT_INT64": "int64",
-    "DT_UINT32": "uint32",
-    "DT_UINT64": "uint64",
-    "DT_INT8": "int8",
-    "DT_INT16": "int16",
-    "DT_UINT8": "uint8",
-    "DT_UINT16": "uint16",
-    "DT_FLOAT16": "float16",
-    "DT_FLOAT32": "float",
-    "DT_DOUBLE": "double"
-}
-
-DTYPE_TO_MINDSPORE_MAP = {
-    'float16': np.float16,
-    'float32': np.float32,
-    'float64': np.float32,
-    'int8': np.int8,
-    'int16': np.int16,
-    'int32': np.int32,
-    'int64': np.int64,
-    'uint8': np.uint8,
-    'uint16': np.uint16,
-    'uint32': np.uint32,
-    'uint64': np.uint64,
-    'bool': np.bool
-}
-
 ATTR_TYPE_MAP = {
     'int': 'int',
     'float': 'float',
@@ -213,61 +166,8 @@ ATTR_MEMBER_VAR_MAP = {
     'list_list_int': 'listIntPtrAttr'
 }
 
-DATA_DISTRIBUTION_LIST = ['uniform', 'normal', 'beta', 'laplace', 'triangular',
-                          'relu', 'sigmoid', 'softmax', 'tanh']
-
-# the map according to graph/types.h
-FORMAT_ENUM_MAP = {
-    "UNDEFINED": -1,
-    "NCHW": 0,  # NCHW
-    "NHWC": 1,  # NHWC
-    "ND": 2,  # Nd Tensor
-    "NC1HWC0": 3,  # NC1HWC0
-    "FRACTAL_Z": 4,  # FRACTAL_Z
-    "NC1C0HWPAD": 5,
-    "NHWC1C0": 6,
-    "FSR_NCHW": 7,
-    "FRACTAL_DECONV": 8,
-    "C1HWNC0": 9,
-    "FRACTAL_DECONV_TRANSPOSE": 10,
-    "FRACTAL_DECONV_SP_STRIDE_TRANS": 11,
-    "NC1HWC0_C04": 12,  # NC1HWC0, C0 is 4
-    "FRACTAL_Z_C04": 13,  # FRACZ, C0 is 4
-    "CHWN": 14,
-    "FRACTAL_DECONV_SP_STRIDE8_TRANS": 15,
-    "HWCN": 16,
-    "NC1KHKWHWC0": 17,  # KH,KW kernel h& kernel w maxpooling max output format
-    "BN_WEIGHT": 18,
-    "FILTER_HWCK": 19,  # filter input tensor format
-    "HASHTABLE_LOOKUP_LOOKUPS": 20,
-    "HASHTABLE_LOOKUP_KEYS": 21,
-    "HASHTABLE_LOOKUP_VALUE": 22,
-    "HASHTABLE_LOOKUP_OUTPUT": 23,
-    "HASHTABLE_LOOKUP_HITS": 24,
-    "C1HWNCoC0": 25,
-    "MD": 26,
-    "NDHWC": 27,
-    "FRACTAL_ZZ": 28,
-    "FRACTAL_NZ": 29,
-    "NCDHW": 30,
-    "DHWCN": 31,  # 3D filter input tensor format
-    "NDC1HWC0": 32,
-    "FRACTAL_Z_3D": 33,
-    "CN": 34,
-    "NC": 35,
-    "DHWNC": 36,
-    "FRACTAL_Z_3D_TRANSPOSE": 37,  # 3D filter(transpose) input tensor format
-    "FRACTAL_ZN_LSTM": 38,
-    "FRACTAL_Z_G": 39,
-    "RESERVED": 40,
-    "ALL": 41,
-    "NULL": 42
-}
-
 OPTIONAL_TYPE_LIST = ['UNDEFINED', 'RESERVED']
 TRUE_OR_FALSE_LIST = ['True', 'False']
-ASCEND_GLOBAL_LOG_LEVEL_LIST = ['0', '1', '2', '3', '4']
-ASCEND_SLOG_PRINT_TO_STDOUT_LIST = ['0', '1']
 
 
 def create_attr_value_str(attr_value):
@@ -350,21 +250,6 @@ def map_to_acl_datatype_enum(dtype_list):
     for dtype in dtype_list:
         acl_dtype_list.append("ACL_" + str(dtype).upper())
     result_str += ", ".join(acl_dtype_list)
-    return result_str
-
-
-def map_to_acl_format_enum(format_list):
-    """
-    map format to acl format enum
-    :param format_list: input format list
-    :return: acl format enum list str
-    """
-    result_str = ""
-    acl_format_list = []
-    for acl_format in format_list:
-        acl_format_list.append(
-            "(aclFormat)" + str(FORMAT_ENUM_MAP.get(acl_format)))
-    result_str += ", ".join(acl_format_list)
     return result_str
 
 
