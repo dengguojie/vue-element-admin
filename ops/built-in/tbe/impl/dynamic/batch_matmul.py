@@ -167,10 +167,10 @@ def _get_dynamic_shape_and_range(input_x1, input_x2, bias):
 
     if list(shape_x1) == DYNAMIC_FLAG_UNRANK:
         shape_x1 = (-1, -1, -1)
-        range_x1 = ((1, None), (1, None), (1, None))
+        range_x1 = ((1, None), (1, None), (1, None), (BLOCK_CUBE, BLOCK_CUBE), (BLOCK_CUBE, BLOCK_CUBE))
     if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
         shape_x2 = (-1, -1, -1)
-        range_x2 = ((1, None), (1, None), (1, None))
+        range_x2 = ((1, None), (1, None), (1, None), (BLOCK_CUBE, BLOCK_CUBE), (BLOCK_CUBE, BLOCK_CUBE))
 
     if bias:
         bias_range = bias.get("range")
@@ -387,7 +387,7 @@ def _generalize_input_keep_rank(input_dict) :
         input_dict["ori_shape"] = _generate_unknown_shape(input_dict["ori_shape"])
         input_dict["shape"][-1] = x_old_1
         input_dict["shape"][-2] = x_old_2
-    
+
 
 @tbe_register.register_param_generalization("BatchMatMul")
 def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z={},
@@ -407,7 +407,7 @@ def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z={},
             "BatchMatMul",
             "Invalid generalize mode, currently only support keep_rank"
         )
-    
+
     match_dict = {}
     shape_a_len = len(input_x1["ori_shape"])
     shape_b_len = len(input_x2["ori_shape"])
@@ -418,7 +418,7 @@ def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z={},
     match_dict["match_dim"] = [
         [
             {
-                "input_index": 0, 
+                "input_index": 0,
                 "dim_index": k_m_index
             },
             {
@@ -428,7 +428,7 @@ def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z={},
         ],
         [
             {
-                "input_index": 0, 
+                "input_index": 0,
                 "dim_index": batch_index
             },
             {

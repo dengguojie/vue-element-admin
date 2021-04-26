@@ -137,10 +137,10 @@ def _get_dynamic_shape_and_range(input_x1, input_x2, bias):
 
     if list(shape_x1) == DYNAMIC_FLAG_UNRANK:
         shape_x1 = (-1, -1)
-        range_x1 = ((1, None), (1, None))
+        range_x1 = ((1, None), (1, None), (BLOCK_CUBE, BLOCK_CUBE), (BLOCK_CUBE, BLOCK_CUBE))
     if list(shape_x2) == DYNAMIC_FLAG_UNRANK:
         shape_x2 = (-1, -1)
-        range_x2 = ((1, None), (1, None))
+        range_x2 = ((1, None), (1, None), (BLOCK_CUBE, BLOCK_CUBE), (BLOCK_CUBE, BLOCK_CUBE))
 
     if bias:
         bias_range = bias.get("range")
@@ -216,7 +216,7 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
         If true, shape_a == transposed before multiplication
     trans_b: bool
         If true, shape_a == transposed before multiplication
-    offset_x: 
+    offset_x:
         offset of x
     kernel_name: str
         cce kernel_name
@@ -364,7 +364,7 @@ def _generalize_input_keep_rank(input_dict):
         input_dict["ori_shape"] = _generate_unknown_shape(input_dict["ori_shape"])
         input_dict["shape"][-1] = x_old_1
         input_dict["shape"][-2] = x_old_2
-    
+
 
 @tbe_register.register_param_generalization("MatMul")
 def  matmul_generalization(input_x1, input_x2, bias, offset_w={}, output_y={},
@@ -377,7 +377,7 @@ def  matmul_generalization(input_x1, input_x2, bias, offset_w={}, output_y={},
         if bias:
             _generalize_input_keep_rank(bias)
         _generalize_input_keep_rank(output_y)
-        result.append([input_x1, input_x2, bias, offset_w, output_y, 
+        result.append([input_x1, input_x2, bias, offset_w, output_y,
                        {"trans_a": trans_a}, {"trans_b": trans_b}, {"offset_x": offset_x}])
     else:
         error_manager_cube.raise_err_one_para(
@@ -385,7 +385,7 @@ def  matmul_generalization(input_x1, input_x2, bias, offset_w={}, output_y={},
             "MatMul",
             "Invalid generalize mode, currently only support keep_rank"
         )
-    
+
     match_dict = {}
     k_m_index = 0 if trans_a else 1
     k_n_index = 1 if trans_b else 0
@@ -393,7 +393,7 @@ def  matmul_generalization(input_x1, input_x2, bias, offset_w={}, output_y={},
     match_dict["match_dim"] = [
         [
             {
-                "input_index": 0, 
+                "input_index": 0,
                 "dim_index": k_m_index
             },
             {
