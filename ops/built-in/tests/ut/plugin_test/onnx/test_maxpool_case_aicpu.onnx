@@ -1,18 +1,21 @@
-onnx-parser_test:ª
-c
+onnx-parser_test:½
+v
 xy"MaxPool*
 auto_pad"NOTSET *
 	dilations@@ *
-kernel_shape@2@2 *
+kernel_shape@2@2 *
+pads@@@@ *
 strides@2@2 MaxPoolZ
 x
-
+
+
 
 
 –
 –b
 y
-
+
+
 
 
 

@@ -205,8 +205,9 @@ def make_max_pool_v9():
 
 def make_max_pool_aicpu():
     """aicpu op"""
-    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3, 150, 150])
-    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 3, 3, 3])
+    x = helper.make_tensor_value_info(
+        'x', TensorProto.FLOAT16, [1, 3, 150, 150])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT16, [1, 3, 3, 3])
     node_def = helper.make_node(
         'MaxPool',
         inputs=['x'],
@@ -214,7 +215,8 @@ def make_max_pool_aicpu():
         kernel_shape=[50, 50],
         strides=[50, 50],
         auto_pad="NOTSET",
-        dilations=[1, 1]
+        dilations=[1, 1],
+        pads=[2, 2, 2, 2],
     )
 
     graph = helper.make_graph(
@@ -256,6 +258,7 @@ def make_max_pool_1d():
     model.opset_import[0].version = 11
     onnx.save(model, "./test_maxpool_case_1d_input.onnx")
     onnx.checker.check_model(model)
+
 
 if __name__ == '__main__':
     make_max_pool()
