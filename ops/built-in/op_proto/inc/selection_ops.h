@@ -2277,7 +2277,7 @@ REG_OP(IndexFillD)
 REG_OP(AddRowRanges)
     .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))
     .INPUT(src, TensorType({DT_FLOAT16,DT_FLOAT}))
-    .INPUT(indices, TensorType({DT_FLOAT16,DT_FLOAT}))
+    .INPUT(indices, TensorType({DT_INT32}))
     .OUTPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))
     .OP_END_FACTORY_REG(AddRowRanges)
 
