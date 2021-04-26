@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 HardtanhGrad ut case
 """
-import te
+
 from op_test_frame.ut import OpUT
 ut_case = OpUT("HardtanhGrad", "impl.dynamic.hardtanh_grad", "hardtanh_grad")
 
@@ -31,5 +31,4 @@ ut_case.add_case(["Ascend910A"], case1)
 
 
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")
