@@ -153,5 +153,7 @@ def assign(ref, value, output, kernel_name="assign"):
     res = tvm.compute(reshape, lambda *i: tensor_val(*i), name='res')
     sch = _assign_schedule(res, tensor_val)
 
-    with tbe_platform.cce_build.build_config:
-        tvm.build(sch, [res, tensor_val], "cce", name=kernel_name)
+    dummy = tvm.placeholder(reshape, dtype=dtype, name='dummy_placeholder')
+    new_config = tbe_platform.build_config_update(tbe_platform.build_config, "dummy_placeholder", True)
+    with new_config:
+        tvm.build(sch, [dummy, tensor_val, res], "cce", name=kernel_name)
