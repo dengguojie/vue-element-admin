@@ -78,7 +78,6 @@ Status ParseParamsRandomuniform(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
-  float temp_num = 1000.;
   ge::Tensor shape;
   if (op.GetAttr("shape", shape) != SUCCESS) {
     OP_LOGE("Randomuniform", "get shape from op failed");
@@ -91,40 +90,12 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
     OP_LOGE("Randomuniform", "get max from op failed");
     return FAILED;
   }
-  int32_t max = max_f * temp_num;
-  ge::TensorDesc tensorDesc1(ge::Shape(), FORMAT_ND, ge::DT_INT32);
-  ge::Tensor max_tensor(tensorDesc1, reinterpret_cast<uint8_t*>(&max), sizeof(ge::DT_INT32));
-  auto data1 = op::Const("data1").set_attr_value(max_tensor);
 
   float min_f = 0.0;
   if (op.GetAttr("min", min_f) != SUCCESS) {
     OP_LOGE("Randomuniform", "get min from op failed");
     return FAILED;
   }
-  int32_t min = min_f * temp_num;
-  ge::TensorDesc tensorDesc2(ge::Shape(), FORMAT_ND, ge::DT_INT32);
-  ge::Tensor min_tensor(tensorDesc2, reinterpret_cast<uint8_t*>(&min), sizeof(ge::DT_INT32));
-  auto data2 = op::Const("data2").set_attr_value(min_tensor);
-
-  int seed = 0;
-  if (op.GetAttr("seed", seed) != SUCCESS) {
-    OP_LOGE("Randomuniform", "get seed from op failed");
-    return FAILED;
-  }
-
-  auto random = op::RandomUniformInt()
-                    .set_input_shape(data0)
-                    .set_input_max(data1)
-                    .set_input_min(data2)
-                    .set_attr_seed(seed)
-                    .set_attr_seed2(seed);
-
-  auto random_fp32 = op::Cast().set_input_x(random).set_attr_dst_type(0);
-
-  ge::TensorDesc tensorDesc3(ge::Shape({1}), FORMAT_ND, ge::DT_FLOAT);
-  ge::Tensor temp_tensor(tensorDesc3, reinterpret_cast<uint8_t*>(&temp_num), sizeof(ge::DT_FLOAT));
-  auto data3 = op::Const("data3").set_attr_value(temp_tensor);
-  auto div = op::Div().set_input_x1(random_fp32).set_input_x2(data3);
 
   int dtype = 1;
   if (op.GetAttr("dtype", dtype) != SUCCESS) {
@@ -132,19 +103,64 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
     return FAILED;
   }
   // cast output to dst_dtype(onnx : Ascend)
-  // float, float16, int8, int32, uint8, uint64, bool
-  std::map<int, int> kvlist = {
-      {1, 0}, {10, 1}, {3, 2}, {6, 3}, {2, 4}, {13, 10}, {9, 12}};
+  // float32, float16, int32, int64
+  std::map<int, int> kvlist = {{1, 0}, {10, 1}, {6, 3}, {2, 9}};
   if (kvlist.find(dtype) == kvlist.end()){
-    OP_LOGE("Randomuniform", "only support float/float16/int8/int32/uint8/uint64/bool, but got %d", dtype);
+    OP_LOGE("Randomuniform", "only support float32/float16/int32/int64, but got %d", dtype);
     return FAILED;
   }
-  auto ret = op::Cast().set_input_x(div).set_attr_dst_type(kvlist[dtype]);
+  ge::DataType temp_type = ge::DT_FLOAT;
+  if (dtype == 1) {
+    temp_type = ge::DT_FLOAT;
+  } else if (dtype == 10) {
+    temp_type = ge::DT_FLOAT16;
+  } else if (dtype == 6) {
+    temp_type = ge::DT_INT32;
+  } else if (dtype == 2) {
+    temp_type = ge::DT_INT64;
+  }
 
-  std::vector<ge::Operator> inputs{data0, data1, data2};
+  int seed = 0;
+  if (op.GetAttr("seed", seed) != SUCCESS) {
+    OP_LOGE("Randomuniform", "get seed from op failed");
+    return FAILED;
+  }
+
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> outputs;
-  outputs.emplace_back(ret, std::vector<std::size_t>{0});
-  graph.SetInputs(inputs).SetOutputs(outputs);
+  if (dtype == 6 || dtype == 2) {
+    int32_t max = max_f;
+    ge::TensorDesc tensorDesc1(ge::Shape(), FORMAT_ND, temp_type);
+    ge::Tensor max_tensor(tensorDesc1, reinterpret_cast<uint8_t*>(&max), sizeof(temp_type));
+    auto data1 = op::Const("data1").set_attr_value(max_tensor);
+
+    int32_t min = min_f;
+    ge::TensorDesc tensorDesc2(ge::Shape(), FORMAT_ND, temp_type);
+    ge::Tensor min_tensor(tensorDesc2, reinterpret_cast<uint8_t*>(&min), sizeof(temp_type));
+    auto data2 = op::Const("data2").set_attr_value(min_tensor);
+
+    auto random_int = op::RandomUniformInt()
+                        .set_input_shape(data0)
+                        .set_input_min(data2)
+                        .set_input_max(data1)
+                        .set_attr_seed(seed)
+                        .set_attr_seed2(seed);
+    std::vector<ge::Operator> inputs{data0, data1, data2};
+    outputs.emplace_back(random_int, std::vector<std::size_t>{0});
+    graph.SetInputs(inputs).SetOutputs(outputs);
+  } else {
+    auto random = op::RandomUniform()
+                    .set_input_shape(data0)
+                    .set_attr_dtype(temp_type)
+                    .set_attr_seed(seed)
+                    .set_attr_seed2(seed);
+    float mul_num = max_f - min_f;
+    auto random_mul = op::Muls().set_input_x(random).set_attr_value(mul_num);
+    auto random_float = op::Adds().set_input_x(random_mul).set_attr_value(min_f);
+    std::vector<ge::Operator> inputs{data0};
+    outputs.emplace_back(random_float, std::vector<std::size_t>{0});
+    graph.SetInputs(inputs).SetOutputs(outputs);
+  }
+
   return SUCCESS;
 }
 
