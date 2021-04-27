@@ -881,11 +881,14 @@ IMPLEMT_COMMON_INFERFUNC(LpNormInfer) {
       y_vec.push_back(x_dim_members[i]);
     }
   }
-
   ge::Shape output_shape(y_vec);
   // update output desc
   ge::TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(output_shape);
+  if (x_axes.empty()) {
+    std::vector<std::pair<int64_t, int64_t>> o_range;
+    output_desc.SetShapeRange(o_range);
+  }
   output_desc.SetDataType(x_type);
   output_desc.SetFormat(x_format);
   (void)op.UpdateOutputDesc("y", output_desc);
