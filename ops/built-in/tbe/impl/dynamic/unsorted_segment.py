@@ -19,6 +19,7 @@ unsorted_segment
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import error_manager_vector
 
 ONE_BLOCK_E = 1
 ONE_DIV_E = 2
