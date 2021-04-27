@@ -115,5 +115,5 @@ def masked_scale(x, mask, y, value=1.0, kernel_name="masked_scale"):
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    config = {"name": kernel_name, "tensor_list": [data_x, data_mask, res]}
-    tbe.build(sch, config)
+    config = {"name": kernel_name, "tensor_list": tensors}
+    tbe.build(schedules, config)
