@@ -130,8 +130,21 @@ def test_conv2d_fuzz_build_tilingcase(test_arg):
                                     "range": [
                                         [16, 32],
                                         [3, 3],
+                                        [256, 512],
+                                        [256, 512]
+                                    ],
+                                    "shape": [-1, 3, -1, -1]
+                                }]
+                            }]
+                        }, {
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
                                         [16, 32],
-                                        [16, 32]
+                                        [3, 3],
+                                        [512, 1024],
+                                        [512, 1024]
                                     ],
                                     "shape": [-1, 3, -1, -1]
                                 }]
@@ -145,7 +158,7 @@ def test_conv2d_fuzz_build_tilingcase(test_arg):
                 'ori_format': 'NCHW',
                 'format': 'NC1HWC0',
                 'dtype': 'float16',
-                'range': ((16, 32), (3, 3), (16, 32), (16, 32))
+                'range': ((16, 32), (3, 3), (256, 1024), (256, 1024))
             }, {
                 'ori_shape': (33, 3, 3, 5),
                 'ori_format': 'NCHW',

@@ -170,14 +170,6 @@ def add_covered_shape_range(compile_info):
     max_id: int
         last kernel id
     """
-
-    valid = isinstance(compile_info, dict) and isinstance(compile_info.get("tgt_area"), list)
-    if not valid:
-       raise RuntimeError("invalid compile info: {}".format(str(compile_info)))
-    tgt_len = 6
-    tgt = compile_info["tgt_area"]
-    if len(tgt) != tgt_len:
-        raise RuntimeError("unsupported tgt_area: {}".format(str(tgt)))
     info_list = []
     id_list = list(compile_info["block_dim"].keys())
     id_list.sort()
@@ -198,20 +190,8 @@ def add_covered_shape_range(compile_info):
         # <<< end: keep only one record
         new_compile["kernelId"] = kernel_id
         new_compile["_vars"] = {kernel_id: var_list}
-        # compile_info = gen_compile_info(ori_index)
         range_x = new_compile["repo_range"].get(kernel_id) or new_compile["cost_range"].get(kernel_id)
-        valid = isinstance(range_x, list) and len(range_x) == tgt_len
-        if not valid:
-            raise RuntimeError("unsupported range_nhw: {}".format(str(range_x)))
-        # >>> start: make sure range is within tgt_area
-        new_range = []
-        for index, value in enumerate(range_x):
-            if index in (0, 2, 4):
-                new_range.append(tgt[index] if value < tgt[index] else value)
-            else:
-                new_range.append(tgt[index] if value > tgt[index] else value)
-        # <<< end: make sure range is within tgt_area
-        new_range = [new_range[:2], new_range[2:4], new_range[4:6]]
+        new_range = [range_x[:2], range_x[2:4], range_x[4:6]]
         new_support = gen_support_info(new_range, ConvParam.para_dict)
         info_list.append({"supportInfo": new_support, "compileInfo": new_compile})
     return info_list, max_id
@@ -307,8 +287,8 @@ def calc_conv2d(outs, option=None):
         else:
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
     tgt_list.append(tgt_area)
-    if fuzz_build: # parse input range
-        # generate tgt_area by format
+    # >>> start: generate tgt_area by format
+    if fuzz_build:
         ori_tensors = ConvParam.para_dict.get("ori_tensors")
         invalid = (not isinstance(ori_tensors, dict)) \
                   or (not isinstance(ori_tensors.get("inputs"), dict))
@@ -331,6 +311,7 @@ def calc_conv2d(outs, option=None):
                 for var, index in zip(var_names, pos_list):
                     fuzz_area[var] = tuple(item[index])
                 tgt_list.append(fuzz_area)
+    # <<< end: generate tgt_area by format
 
     cce_conv_op = CceConvOp()
     op_info = get_op_tensor_map(outs)
@@ -340,18 +321,53 @@ def calc_conv2d(outs, option=None):
     tiling_dict["dynamic_shape_flag"] = True
     add_compile_info("fmap_c1", tiling_dict["a_shape"][1])
 
-    tiling_op = Conv2dTiling(tiling_dict, ConvParam.dynamic_para, outs[0])
-    seletor = TilingSelection(tiling_op)
     tiling_cases = []
+    total_info = {}
+    cnt = None
+    if fuzz_build:
+        # >>> start: get kernel id
+        kernel_id = get_context().get_addition("max_kernel_id")
+        valid = isinstance(kernel_id, int) and kernel_id > -2
+        if valid:
+            cnt = kernel_id + 1
+        # <<< end: get kernel id
     for tgt in tgt_list:
+        tiling_op = Conv2dTiling(tiling_dict.copy(), ConvParam.dynamic_para, outs[0])
+        seletor = TilingSelection(tiling_op, cnt)
         tiling_cases += seletor.calc_tiling(tgt, var_names)
-        # >>> start: for fuzz build op tiling cut shape range in support info
+        cnt = next(seletor.seed_cnt)
+        # >>> start: gather compile_info process
         if fuzz_build:
             tgt_nhw = []
             for var_name in var_names:
                 tgt_nhw.extend(tgt[var_name])
-            add_compile_info("tgt_area", tgt_nhw)
-        # <<< end: for fuzz build op tiling cut shape range in support info
+            current_info = get_compile_info().copy()
+            # >>> start: make sure range is within tgt_nhw
+            for range_key in ["repo_range", "cost_range"]:
+                valid = isinstance(current_info.get(range_key), dict)
+                if valid:
+                    for kernel_id, range_x in current_info[range_key].items():
+                        new_range = []
+                        for index, dim_value in enumerate(range_x):
+                            if index in (0, 2, 4):
+                                new_range.append(tgt_nhw[index] if dim_value < tgt_nhw[index] else dim_value)
+                            else:
+                                new_range.append(tgt_nhw[index] if dim_value > tgt_nhw[index] else dim_value)
+                        current_info[range_key][kernel_id] = new_range
+            # <<< end: make sure range is within tgt_nhw
+            if total_info:
+                # >>> start: add new dict info
+                for key, value in current_info.items():
+                    need_update = isinstance(total_info.get(key), dict) and isinstance(value, dict)
+                    if need_update:
+                        new_item = total_info[key]
+                        new_item.update(value)
+                        total_info[key] = new_item
+                        add_compile_info(key, total_info[key])
+            else:
+                total_info = current_info
+                # <<< end: add new dict info
+        # <<< end: gather compile_info process
     return tiling_cases
 
 
