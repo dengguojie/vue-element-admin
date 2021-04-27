@@ -145,7 +145,7 @@ case1 = {
                [1, 3, 5, 3, 1],
                8
                ],
-    "case_name": "test_unsorted_segment_max_1",
+    "case_name": "test_unsorted_segment_max_1_float16",
     "expect": "success",
     "support_expect": True
 }
@@ -168,7 +168,40 @@ case3 = {
                {"value": [1, 3, 5, 3, 1]},
                6
                ],
-    "case_name": "test_unsorted_segment_max_segment_is_tensor",
+    "case_name": "test_unsorted_segment_max_segment_is_tensor_float16",
+    "expect": "success",
+    "support_expect": True
+}
+
+case4 = {
+    "params": [{"shape": (5, 1024), "dtype": "float32", "format": "ND"},
+               {"shape": (6, 1024), "dtype": "float32", "format": "ND"},
+               {"value": [1, 3, 5, 3, 1]},
+               6
+               ],
+    "case_name": "test_unsorted_segment_max_segment_is_tensor_float32",
+    "expect": "success",
+    "support_expect": True
+}
+
+case5 = {
+    "params": [{"shape": (5, 1024), "dtype": "int32", "format": "ND"},
+               {"shape": (6, 1024), "dtype": "int32", "format": "ND"},
+               {"value": [1, 3, 5, 3, 1]},
+               6
+               ],
+    "case_name": "test_unsorted_segment_max_segment_is_tensor_int32",
+    "expect": "success",
+    "support_expect": True
+}
+
+case6 = {
+    "params": [{"shape": (5, 1024), "dtype": "float32", "format": "ND"},
+               {"shape": (6, 1024), "dtype": "float32", "format": "ND"},
+               [1, 3, 5, 3, 1],
+               8
+               ],
+    "case_name": "test_unsorted_segment_max_2_float32",
     "expect": "success",
     "support_expect": True
 }
@@ -177,6 +210,8 @@ compile_case_list = [
     case1,
     case2,
     case3,
+    case4,
+    case5,
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)

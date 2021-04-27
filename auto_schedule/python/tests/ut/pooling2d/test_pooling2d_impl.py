@@ -53,6 +53,13 @@ def test_pooling2d_para_check_tensor_in(_):
     except RuntimeError as e:
         print(e.args[0].get("detailed_cause"))
 
+    # check length of shape
+    try:
+        input1 = tvm.placeholder((1, 1, -1, -1, 16), name="input1", dtype="float16")
+        tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode)
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+
     # check dtype of shape
     try:
         input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float32")
@@ -78,6 +85,13 @@ def test_pooling2d_para_check_tensor_in(_):
     try:
         input1 = tvm.placeholder((1, 1, 8, 8, 15), name="input1", dtype="float16")
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode)
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+
+    # check avg window * windowh > 255
+    try:
+        input1 = tvm.placeholder((1, 1, 28, 28, 16), name="input1", dtype="float16")
+        tbe.pooling2d(input1, (16, 16), stride, pooling_mode, padding_mode)
     except RuntimeError as e:
         print(e.args[0].get("detailed_cause"))
 
@@ -343,6 +357,42 @@ def test_pooling2d_check_pooling_mode_with_padding_mode(_):
     return True
 
 
+def test_max_pool2d_not_support_kernel_para(_):
+    """
+    @return: Ture
+    """
+    shape = (1, 1, 21, 23, 16)
+    windows = (21, 21)
+    stride = (1, 1)
+    input1 = tvm.placeholder(shape, name="input1", dtype="float16")
+    try:
+        tbe.pooling2d(input1, windows, stride, "MAX", "VALID")
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+
+    return True
+
+def test_check_outsize_pad_with_ceil(_):
+    """
+    @return: Ture
+    """
+    shape = (1, 1, 64, 64, 16)
+    windows = (1, 1)
+    stride = (1, 1)
+    input1 = tvm.placeholder(shape, name="input1", dtype="float16")
+
+    try:
+        tbe.pooling2d(input1, windows, stride, "MAX", "SAME", (1, 2, 1, 1), (1, 1), 0, 1)
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+
+    try:
+        tbe.pooling2d(input1, windows, stride, "MAX", "SAME", (1, 1, 1, 2), (1, 1), 0, 1)
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+
+    return True
+
 test_func_list = [
     test_pooling2d_para_check_tensor_in,
     test_pooling2d_para_check_window,
@@ -354,6 +404,8 @@ test_func_list = [
     test_pooling2d_para_check_data_mode,
     test_pooling2d_para_check_caffe_ceil_mode,
     test_pooling2d_check_pooling_mode_with_padding_mode,
+    test_max_pool2d_not_support_kernel_para,
+    test_check_outsize_pad_with_ceil,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)
@@ -454,6 +506,118 @@ case8 = {
                         "fusion_params": {}, "impl_mode": "high_performance"}
 }
 
+case9 = {
+    "params": [{"shape": (2, 32, 64, 64, 16), "dtype": "float16"},
+               {"shape": (2, 32, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_MAX_CEIL_IS_ONE",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (3, 3), "stride": (1, 1), "pooling_mode": "MAX", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 1, "ceil_mode": 1,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case10 = {
+    "params": [{"shape": (2, 32, 64, 64, 16), "dtype": "float16"},
+               {"shape": (2, 32, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_MAX_KW_IS_ONE",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (1, 1), "stride": (1, 1), "pooling_mode": "MAX", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 1, "ceil_mode": 1,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case11 = {
+    "params": [{"shape": (1, 1, 64, 64, 16), "dtype": "float16"},
+               {"shape": (1, 1, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_AVG_DATA_MODE_ZERO_CEIL_MODE_ZERO",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (3, 3), "stride": (1, 1), "pooling_mode": "AVG", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case12 = {
+    "params": [{"shape": (1, 1, 64, 64, 16), "dtype": "float16"},
+               {"shape": (1, 1, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_AVG_H_NOT_EQ_WINH_AND_W_EQ_WINW_DATA_MODE_ZERO",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (3, 64), "stride": (1, 1), "pooling_mode": "AVG", "padding_mode": "SAME",
+                        "pad": (2, 0, 2, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case13 = {
+    "params": [{"shape": (1, 1, 128, 128, 16), "dtype": "float16"},
+               {"shape": (1, 1, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_AVG_STRIDEH_LARGE_THAN_63_DATA_MODE_ONE",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (3, 3), "stride": (64, 64), "pooling_mode": "AVG", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 1, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case14 = {
+    "params": [{"shape": (1, 1, 10, 10, 16), "dtype": "float16"},
+               {"shape": (1, 1, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_GAP_TO_AVG",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (14, 14), "stride": (64, 64), "pooling_mode": "GAP", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 1, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case15 = {
+    "params": [{"shape": (1, 1, 64, 64, 16), "dtype": "float16"},
+               {"shape": (1, 1, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_MAX_DATA_MODE_ZERO_CEIL_MODE_ZERO",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (1, 1), "stride": (1, 1), "pooling_mode": "MAX", "padding_mode": "SAME",
+                        "pad": (1, 1, 1, 1), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 1,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case16 = {
+    "params": [{"shape": (1, 1, 64, 64, 16), "dtype": "float16"},
+               {"shape": (1, 1, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_MAX_L1_FUSION_TYPE_ZERO_SPLIT_INDEX_3",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (1, 1), "stride": (1, 1), "pooling_mode": "MAX", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 1, "ceil_mode": 1,
+                        "fusion_params": {"out_shape": (1, 1, 64, 64, 16), "l1_fusion_type": 0,
+                                          "in_split_index": 3},
+                        "impl_mode": "high_performance"}
+}
+
+case17 = {
+    "params": [{"shape": (1, 1, 64, 64, 16), "dtype": "float16"},
+               {"shape": (1, 1, 64, 64, 16), "dtype": "float16"}
+               ],
+    "case_name": "test_pooling2d_MAX_L1_FUSION_TYPE_ZERO_SPLIT_INDEX_1",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (1, 1), "stride": (1, 1), "pooling_mode": "MAX", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 1, "ceil_mode": 1,
+                        "fusion_params": {"out_shape": (1, 1, 64, 64, 16), "l1_fusion_type": 0,
+                                          "in_split_index": 1},
+                        "impl_mode": "high_performance"}
+}
+
 compile_case_list = [
     case1,
     case2,
@@ -462,7 +626,16 @@ compile_case_list = [
     case5,
     case6,
     case7,
-    case8
+    case8,
+    case9,
+    case10,
+    case11,
+    case12,
+    case13,
+    case14,
+    case15,
+    case16,
+    case17
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)

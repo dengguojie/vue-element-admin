@@ -91,6 +91,9 @@
     "auto_schedule/python/lang/cce/te_compute/dim_conv.py":[
         "dsl_cpu/test_dim_conv_cpu_impl.py"
     ],
+    "auto_schedule/python/lang/cce/te_compute/pooling2d_compute.py":[
+        "pooling2d_compute"
+    ],
     "auto_schedule/python/tbe/dsl/compute/inplace.py":[
         "dsl_cpu/test_inplace_cpu_impl.py"
     ],
