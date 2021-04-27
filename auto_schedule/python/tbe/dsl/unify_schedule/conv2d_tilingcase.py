@@ -502,8 +502,8 @@ class Conv2dTiling(CubeTilingOp):
 
         paras = {
             "var_map": self.var_map,
-            "k_h": self.k_h_dilation,
-            "k_w": self.k_w_dilation,
+            "k_h": self.k_h,
+            "k_w": self.k_w,
             "pad_mode": self.pad_mode,
             "pads": self.cur_pads
         }
