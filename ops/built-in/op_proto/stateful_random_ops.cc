@@ -22,6 +22,7 @@
 #include "op_log.h"
 #include "util/common_shape_fns.h"
 #include "util/util.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(NonDeterministicInts, NonDeterministicIntsInfer) {
@@ -52,12 +53,18 @@ INFER_FUNC_REG(NonDeterministicInts, NonDeterministicIntsInfer);
 IMPLEMT_INFERFUNC(RngSkip, RngSkipInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(1), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input unused_shape rank must be 0.");
+    std::string err_msg = GetShapeErrMsg(
+        1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
+        "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Shape unused_shape1;
   if (WithRank(op.GetInputDesc(2), 0, unused_shape1, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input unused_shape1 rank must be 0.");
+    std::string err_msg = GetShapeErrMsg(
+        2, DebugString(op.GetInputDesc(2).GetShape().GetDims()),
+        "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

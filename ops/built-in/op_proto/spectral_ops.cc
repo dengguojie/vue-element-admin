@@ -22,6 +22,7 @@
 #include "op_log.h"
 #include "util/common_shape_fns.h"
 #include "util/util.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(IFFT, IFFTInfer) {
@@ -47,20 +48,28 @@ INFER_FUNC_REG(IFFT, IFFTInfer);
 IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
   Shape out;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input out rank must be at least 1.");
+    std::string err_msg = GetShapeErrMsg(
+        0, DebugString(op.GetInputDesc(0).GetShape().GetDims()),
+        "at least 1D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape fft_length_input;
   if (WithRank(op.GetInputDesc(1), 1, fft_length_input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input fft_length_input rank must be 1.");
+    std::string err_msg = GetShapeErrMsg(
+        1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
+        "1D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (fft_length_input.GetDim(0) != 1) {
     if (fft_length_input.GetDim(0) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "The fft_length_input dim-0 must be 1, real value is [%ld].",
-        fft_length_input.GetDim(0));
+      std::string err_msg = ConcatString(
+          "0th dim of input[fft_length] must be 1, real value is ",
+		  fft_length_input.GetDim(0));
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -86,7 +95,8 @@ IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
   y_desc.SetShape(Shape(out));
   y_desc.SetDataType(DT_COMPLEX64);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update output y.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), std::string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -126,7 +136,7 @@ IMPLEMT_INFERFUNC(IRFFT, IRFFTInfer) {
   Tensor fft_length_tensor;
   int status = op.GetInputConstData(kFftLengthField, fft_length_tensor);
   if (status != GRAPH_SUCCESS) {
-    out.SetDim(dim_out, UNKNOWN_DIM); 
+    out.SetDim(dim_out, UNKNOWN_DIM);
   } else {
     const int32_t* fft_length_as_vec = reinterpret_cast<const int32_t*>(fft_length_tensor.GetData());
     auto dim = fft_length_as_vec[0];

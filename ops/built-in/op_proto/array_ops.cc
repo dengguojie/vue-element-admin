@@ -400,8 +400,10 @@ IMPLEMT_INFERFUNC(ReverseSequence, ReverseSequenceInfer) {
 
   // Check whether seq_lengths's rank is equal to 1
   if (WithRank(seq_lengths_desc, 1, seq_lengths_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(seq_lengths_desc.GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "seq_lengths's rank should be equal to 1.");
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[seq_lengths] rank must "
+        "be 1, got rank[", seq_lengths_desc.GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -431,23 +433,22 @@ IMPLEMT_INFERFUNC(ReverseSequence, ReverseSequenceInfer) {
     return GRAPH_FAILED;
   }
   if (batch_dim >= input_rank) {
-    AttrValueErrReport("batch_dim", op.GetName(), ConcatString(batch_dim),
-                       ConcatString("< the rank of 0th input[", input_rank, "], 0th input shape is ",
-                                    DebugString(input_shape.GetDims())));
-    OP_LOGE(op.GetName().c_str(), "batch_dim must be < rank of x: %ld vs. %ld", batch_dim, input_rank);
+    string err_msg = GetAttrValueErrMsg("batch_dim", ConcatString(batch_dim),
+        ConcatString("< the rank of 0th input[", input_rank, "], 0th input shape is ",
+            DebugString(input_shape.GetDims())));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t batch_dim_dim = input_shape.GetDim(batch_dim);
   if (Merge(batch_dim_dim, seq_lengths_shape.GetDim(0), batch_dim_dim) != GRAPH_SUCCESS) {
-    string err_msg = ConcatString("the batch_dim[", batch_dim, "]th dim value[", batch_dim_dim,
-                                  "] of 0th input should be equal to 0th dim value[", seq_lengths_shape.GetDim(0),
-                                  "] of 1th input. 0th input shape", DebugString(input_shape.GetDims()),
-                                  ", 1th input shape", DebugString(seq_lengths_shape.GetDims()));
-    InferShapeOtherErrReport(op.GetName(), err_msg);
-    OP_LOGE(op.GetName().c_str(),
-            "x.dims[batch_dim] and seq_lengths"
-            " should have the same length.");
+    string err_msg = ConcatString(
+        "failed to call Merge function, the batch_dim[", batch_dim, "]th dim "
+        "value[", batch_dim_dim, "] of 0th input should be equal to 0th dim "
+        "value[", seq_lengths_shape.GetDim(0), "] of 1th input. 0th input "
+        "shape", DebugString(input_shape.GetDims()), ", 1th input shape",
+        DebugString(seq_lengths_shape.GetDims()));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1389,7 +1390,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
       continue;
     }
   }
-  
+
   if (SetScalarOutputDesc(string("x"), string("y"), op_desc, output_shape)) {
     return GRAPH_SUCCESS;
   }
@@ -1663,7 +1664,7 @@ IMPLEMT_INFERFUNC(Rank, RankInfer) {
   output_desc_y->SetShape(GeShape(oShapeVector));
   output_desc_y->SetOriginShape(GeShape(oShapeVector));
   output_desc_y->SetDataType(DT_INT32);
-  OP_LOGI(op.GetName().c_str(), "Rank infershape end"); 
+  OP_LOGI(op.GetName().c_str(), "Rank infershape end");
   return GRAPH_SUCCESS;
 }
 
@@ -2219,7 +2220,7 @@ VERIFY_FUNC_REG(SortV2, SortV2Verify);
 
 // ----------------Expand Begin-------------------
 template<typename T> static bool ExpandCalDim(const Tensor &data,
-                                               std::vector<int64_t> &vec_dim, 
+                                               std::vector<int64_t> &vec_dim,
                                                std::vector<int64_t> &vec_x) {
   uint32_t size_shape = data.GetSize() / sizeof(T);
   uint32_t size_x = vec_x.size();

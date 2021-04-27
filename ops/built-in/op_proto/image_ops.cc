@@ -748,6 +748,8 @@ IMPLEMT_INFERFUNC(RGBToHSV, RGBToHSVInfer) {
   TensorDesc desc = op.GetOutputDesc("y");
   desc.SetDataType(op.GetInputDesc(0).GetDataType());
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), std::string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
   return ColorspaceShapeFn(op, "y");
@@ -761,14 +763,20 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
   Shape image_size;
   judge = (WithRank(op.get_input_desc_image_size(), 1, image_size, op.GetName().c_str()) != GRAPH_SUCCESS);
   if (judge) {
-    OP_LOGE(op.GetName().c_str(), "Input image_size must be 1-D");
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[image_size] rank must be 1, "
+        "got rank[", op.get_input_desc_image_size().GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape bounding_boxes;
   judge = (WithRank(op.get_input_desc_bounding_boxes(), 3, bounding_boxes, op.GetName().c_str()) != GRAPH_SUCCESS);
   if (judge) {
-    OP_LOGE(op.GetName().c_str(), "Input bounding_boxes must be 3-D");
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[bounding_boxes] rank must be 3, "
+        "got rank[", op.get_input_desc_bounding_boxes().GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -777,14 +785,18 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
   const int64_t kImageSizeDimValue = image_size.GetDim(0);
   const int64_t kBoundingBoxesDim2Value = bounding_boxes.GetDim(2);
   if (WithValue(kImageSizeDimValue, 3, image_size_unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(),
-            "First dimention of input image_size must be 3, real dim is %lld", kImageSizeDimValue);
+    std::string err_msg = ConcatString(
+        "failed to call WithValue function, input[image_size] first "
+        "dimention must be 3, got dim[", kImageSizeDimValue, "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithValue(kBoundingBoxesDim2Value, 4, bounding_boxes_unused_dim2, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(),
-            "Third dimention of input bounding_boxes must be 4, real dim is %lld", kBoundingBoxesDim2Value);
+    std::string err_msg = ConcatString(
+        "failed to call WithValue function, input[bounding_boxes] third "
+        "dimention must be 4, got dim[", kBoundingBoxesDim2Value, "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -792,7 +804,8 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
   begin_desc.SetShape(Shape({3}));
   begin_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
   if (op.UpdateOutputDesc("begin", begin_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update output begin.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to update output[begin] desc."));
     return GRAPH_FAILED;
   }
 
@@ -800,7 +813,8 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
   size_desc.SetShape(Shape({3}));
   size_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
   if (op.UpdateOutputDesc("size", size_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update output size.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to update output[size] desc."));
     return GRAPH_FAILED;
   }
 
@@ -808,7 +822,8 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
   bboxes_desc.SetShape(Shape({1, 1, 4}));
   bboxes_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("bboxes", bboxes_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update output bboxes.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to update output[bboxes] desc."));
     return GRAPH_FAILED;
   }
 
@@ -823,14 +838,20 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBoxExt2, SampleDistortedBoundingBoxExt2
   Shape image_size;
   judge = (WithRank(op.get_input_desc_image_size(), 1, image_size, op.GetName().c_str()) != GRAPH_SUCCESS);
   if (judge) {
-    OP_LOGE(op.GetName().c_str(), "input image_size must be 1-D");
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[image_size] rank must be 1 ,"
+        "got rank[", op.get_input_desc_image_size().GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape bounding_boxes;
   judge = (WithRank(op.get_input_desc_bounding_boxes(), 3, bounding_boxes, op.GetName().c_str()) != GRAPH_SUCCESS);
   if (judge) {
-    OP_LOGE(op.GetName().c_str(), "input bounding_boxes must be 3-D");
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[bounding_boxes] rank must be 3 ,"
+        "got rank[", op.get_input_desc_image_size().GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -838,16 +859,22 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBoxExt2, SampleDistortedBoundingBoxExt2
   judge =
       (WithRank(op.get_input_desc_min_object_covered(), 0, min_object_covered, op.GetName().c_str()) != GRAPH_SUCCESS);
   if (judge) {
-    OP_LOGE(op.GetName().c_str(), "input min_object_covered must be a scalar");
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[min_object_covered] rank must "
+        "be scalar, got rank[",
+        op.get_input_desc_image_size().GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   const int64_t image_size_dim_value = op.get_input_desc_image_size().GetShape().GetDim(0);
   const int64_t bounding_boxes_dim2_value = op.get_input_desc_bounding_boxes().GetShape().GetDim(2);
   if ((image_size_dim_value != 3) || (bounding_boxes_dim2_value != 4)) {
-    OP_LOGE(op.GetName().c_str(),
-            "DimValue0 of input image_size must be 3 and DimValue2 of "
-            "bounding_boxes must be 4");
+    std::string err_msg = ConcatString(
+        "0th dim of input[image_size] must be 3, got[", image_size_dim_value,
+        "] and 2nd dim of input[bounding_boxes] must be 4, got[",
+        bounding_boxes_dim2_value, "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -855,7 +882,8 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBoxExt2, SampleDistortedBoundingBoxExt2
   begin_desc.SetShape(Shape({3}));
   begin_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
   if (op.UpdateOutputDesc("begin", begin_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output begin.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to update output[begin] desc."));
     return GRAPH_FAILED;
   }
 
@@ -863,7 +891,8 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBoxExt2, SampleDistortedBoundingBoxExt2
   size_desc.SetShape(Shape({3}));
   size_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
   if (op.UpdateOutputDesc("size", size_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output size.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to update output[size] desc."));
     return GRAPH_FAILED;
   }
 
@@ -871,7 +900,8 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBoxExt2, SampleDistortedBoundingBoxExt2
   bboxes_desc.SetShape(Shape({1, 1, 4}));
   bboxes_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("bboxes", bboxes_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output bboxes.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to update output[bboxes] desc."));
     return GRAPH_FAILED;
   }
 
@@ -1205,7 +1235,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
           reinterpret_cast<const int32_t*>(selected_indices_tensor.GetData());
       int32_t selected_indices_data_0 = *selected_indices_data;
       if (selected_indices_data_0 < 0) {
-        std::string err_msg = ConcatString("0th data[", selected_indices_data_0, 
+        std::string err_msg = ConcatString("0th data[", selected_indices_data_0,
                                            "] of input[max_output_size] at least 0.");
         AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
@@ -2112,7 +2142,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV5, NonMaxSuppressionV5Infer) {
     if (op.GetInputConstData("max_output_size", in_tensor) != GRAPH_SUCCESS) {
       out_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
       out_desc_scores.SetShape(Shape({ge::UNKNOWN_DIM}));
-      (void)op.UpdateOutputDesc("selected_indices", out_desc); 
+      (void)op.UpdateOutputDesc("selected_indices", out_desc);
       (void)op.UpdateOutputDesc("selected_scores", out_desc_scores);
     } else {
       const int32_t* size_data = reinterpret_cast<const int32_t*>(in_tensor.GetData());

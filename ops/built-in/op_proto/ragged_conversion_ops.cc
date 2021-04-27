@@ -27,6 +27,7 @@
 #include "util/common_shape_fns.h"
 #include "util/ragged_conversion_ops_shape_fns.h"
 #include "util/util.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
@@ -120,7 +121,8 @@ INFER_FUNC_REG(RaggedTensorToSparse, RaggedTensorToSparseInfer);
 
 IMPLEMT_INFERFUNC(RaggedTensorToTensor, RaggedTensorToTensorInfer) {
   if (RaggedTensorToTensorShapeFn(op) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "infer shape failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+      std::string("failed to call RaggedTensorToTensorShapeFn function"));
     return GRAPH_FAILED;
   }
 

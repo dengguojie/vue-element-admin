@@ -45,3 +45,42 @@ TEST_F(sampledistortedboudingbox, sampledistortedboudingbox_infershape_test) {
   std::vector<int64_t> expected_output_shape2 = {1,1,4};
   EXPECT_EQ(output_desc2.GetShape().GetDims(), expected_output_shape2);
 }
+
+TEST_F(sampledistortedboudingbox, infershape_00) {
+  ge::op::SampleDistortedBoundingBox op;
+  op.UpdateInputDesc("image_size", create_desc({}, ge::DT_INT32));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(sampledistortedboudingbox, infershape_01) {
+  ge::op::SampleDistortedBoundingBox op;
+  op.UpdateInputDesc("image_size", create_desc({3}, ge::DT_INT32));
+  op.UpdateInputDesc("bounding_boxes", create_desc({1,1}, ge::DT_FLOAT));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(sampledistortedboudingbox, infershape_02) {
+  ge::op::SampleDistortedBoundingBox op;
+  op.UpdateInputDesc("image_size", create_desc({3}, ge::DT_INT32));
+  op.UpdateInputDesc("bounding_boxes", create_desc({1,1,2}, ge::DT_FLOAT));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(sampledistortedboudingbox, infershape_03) {
+  ge::op::SampleDistortedBoundingBox op;
+  op.UpdateInputDesc("image_size", create_desc({1}, ge::DT_INT32));
+  op.UpdateInputDesc("bounding_boxes", create_desc({1,1,4}, ge::DT_FLOAT));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(sampledistortedboudingbox, infershape_04) {
+  ge::op::SampleDistortedBoundingBox op;
+  op.UpdateInputDesc("image_size", create_desc({3}, ge::DT_INT32));
+  op.UpdateInputDesc("bounding_boxes", create_desc({1,1,4}, ge::DT_FLOAT));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

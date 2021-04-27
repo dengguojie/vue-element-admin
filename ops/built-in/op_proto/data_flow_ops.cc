@@ -1626,7 +1626,8 @@ IMPLEMT_INFERFUNC(RecordInput, RecordInputInfer) {
   output_desc.SetDataType(DT_STRING);
   status = op.UpdateOutputDesc("records", output_desc);
   if (status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update output desc.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), std::string("update output[records] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1802,22 +1803,24 @@ INFER_FUNC_REG(SparseAccumulatorTakeGradient, SparseAccumulatorTakeGradientInfer
 IMPLEMT_INFERFUNC(ResourceConditionalAccumulator, ResourceConditionalAccumulatorInfer) {
   DataType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(
+        op.GetName(), std::string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
   Shape vector_shape;
   // Set Output as Vector(2) of DT_RESOURCE
   if (Vector(2, vector_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "create output shape failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+      std::string("call Vector function create shape with dim 2 failed"));
     return GRAPH_FAILED;
   }
   auto handle_desc = op.GetOutputDesc("handle");
   handle_desc.SetShape(vector_shape);
   handle_desc.SetDataType(DT_RESOURCE);
 
-
   if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), std::string("update output[handle] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1828,7 +1831,10 @@ INFER_FUNC_REG(ResourceConditionalAccumulator, ResourceConditionalAccumulatorInf
 IMPLEMT_INFERFUNC(ResourceAccumulatorApplyGradient, ResourceAccumulatorApplyGradientInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc("local_step"), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input local_step must be 0-D");
+    std::string err_msg = ConcatString("input[local_step] has wrong shape",
+      DebugString(op.GetInputDesc("local_step").GetShape().GetDims()),
+      ", it should be scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1839,14 +1845,16 @@ INFER_FUNC_REG(ResourceAccumulatorApplyGradient, ResourceAccumulatorApplyGradien
 IMPLEMT_INFERFUNC(ResourceAccumulatorNumAccumulated, ResourceAccumulatorNumAccumulatedInfer) {
   Shape scalar_shape;
   if (Scalar(scalar_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "create scalar shape failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(
+        op.GetName(), std::string("call Scalar function create shape failed"));
     return GRAPH_FAILED;
   }
   auto num_accumulated_sesc = op.GetOutputDesc("num_accumulated");
   num_accumulated_sesc.SetShape(scalar_shape);
   num_accumulated_sesc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("num_accumulated", num_accumulated_sesc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update num_accumulated desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), std::string("update output[num_accumulated] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1857,7 +1865,10 @@ INFER_FUNC_REG(ResourceAccumulatorNumAccumulated, ResourceAccumulatorNumAccumula
 IMPLEMT_INFERFUNC(ResourceAccumulatorSetGlobalStep, ResourceAccumulatorSetGlobalStepInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc("new_global_step"), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input new_global_step must be 0-D");
+    std::string err_msg = ConcatString("input[new_global_step] has wrong shape",
+      DebugString(op.GetInputDesc("new_global_step").GetShape().GetDims()),
+      ", it should be scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1888,7 +1899,7 @@ IMPLEMT_INFERFUNC(ResourceAccumulatorTakeGradient,
   average_desc.SetDataType(dtype);
   if (op.UpdateOutputDesc("average", average_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("fail to update output[average]."));
+        op.GetName(), string("update output[average] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

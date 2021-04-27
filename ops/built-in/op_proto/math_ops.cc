@@ -748,11 +748,14 @@ IMPLEMT_INFERFUNC(Real, RealInfer) {
   TensorDesc out_desc = op.GetOutputDesc("output");
   DataType Tout;
   if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr Tout error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+      op.GetName(), std::string("fail to get attr[Tout]"));
+    return GRAPH_FAILED;
   }
   out_desc.SetDataType(Tout);
   if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), std::string("update output[output] desc failed"));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "input", "output");
@@ -1210,7 +1213,7 @@ bool infer_shape_cdist(Operator& op,
             return false;
         }
     }
-    
+
     dims_x.pop_back();
     ge::Shape output_shape = ge::Shape(dims_x);
     output_desc.SetShape(output_shape);
