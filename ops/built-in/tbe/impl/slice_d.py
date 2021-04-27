@@ -7442,7 +7442,12 @@ def _use_strided_slice(ori_x, ori_begin, ori_size):
     output_shape = list(ori_size)
 
     # dtype, input_shape, output_shape
-    supported_params = [["float16", [128, 80, 896], [128, 80, 1]]]
+    supported_params = [
+        ["float16", [128, 80, 896], [128, 80, 1]],
+        ["float16", [8, 3, 76, 76, 85], [8, 3, 76, 76, 1]],
+        ["float16", [8, 3, 38, 38, 85], [8, 3, 38, 38, 1]],
+        ["float16", [8, 3, 19, 19, 85], [8, 3, 19, 19, 1]],
+    ]
 
     return [dtype, input_shape, output_shape] in supported_params
 
