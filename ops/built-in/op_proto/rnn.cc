@@ -65,16 +65,38 @@ IMPLEMT_INFERFUNC(DynamicRNN, DynamicRNNInferShape) {
     return GRAPH_FAILED;
   }
 
-  vector<int64_t> outputHDims = {num_step, batchSize, hiddenSize};
+  std::string direction = "UNIDIRECTIONAL";
+  vector<int64_t> outputHDims;
+  if (GRAPH_SUCCESS != op.GetAttr("direction", direction)) {
+    OP_LOGD(op.GetName().c_str(), "Direction is UNIDIRECTIONAL.");
+  }
+  if (direction == "BIDIRECTIONAL") {
+    OP_LOGD(op.GetName().c_str(), "Direction is BIDIRECTIONAL.");
 
-  outputYTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputHTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputCTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputITensorDesc.SetShape(ge::Shape(outputHDims));
-  outputJTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputFTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputOTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputTanhcTensorDesc.SetShape(ge::Shape(outputHDims));
+    outputHDims = {num_step, batchSize, 2 * hiddenSize};
+    Shape outputShape(outputHDims);
+    outputYTensorDesc.SetShape(outputShape);
+    outputHTensorDesc.SetShape(outputShape);
+    outputCTensorDesc.SetShape(outputShape);
+    outputHDims = {2 * num_step, batchSize, hiddenSize};
+    Shape outputShape_(outputHDims);
+    outputITensorDesc.SetShape(outputShape_);
+    outputJTensorDesc.SetShape(outputShape_);
+    outputFTensorDesc.SetShape(outputShape_);
+    outputOTensorDesc.SetShape(outputShape_);
+    outputTanhcTensorDesc.SetShape(outputShape_);
+  } else {
+    outputHDims = {num_step, batchSize, hiddenSize};
+    Shape outputShape(outputHDims);
+    outputYTensorDesc.SetShape(outputShape);
+    outputHTensorDesc.SetShape(outputShape);
+    outputCTensorDesc.SetShape(outputShape);
+    outputITensorDesc.SetShape(outputShape);
+    outputJTensorDesc.SetShape(outputShape);
+    outputFTensorDesc.SetShape(outputShape);
+    outputOTensorDesc.SetShape(outputShape);
+    outputTanhcTensorDesc.SetShape(outputShape);
+  }
 
   outputYTensorDesc.SetDataType(inputBDtype);
   outputHTensorDesc.SetDataType(inputXDtype);
