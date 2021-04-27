@@ -919,7 +919,98 @@ COMMON_INFER_FUNC_REG(EmbeddingDenseGrad, g_embeddingDenseGradInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(EmbeddingDenseGrad, EmbeddingDenseGradVerify);
 // ----------------EmbeddingDenseGrad END---------------------
+// ----------------RnnGenMaskV2 Begin-------------------
+bool InferShapeAndTypeRnnGenMaskV2(Operator &op,
+                                         const string &seq_length,
+                                         const string &b,
+                                         const string &x,
+                                         const string &seq_mask)
+{
+  TensorDesc tensordesc_input = op.GetInputDesc("seq_length");
+  TensorDesc tensordesc_input_b = op.GetInputDesc("b");
+  TensorDesc tensordesc_input_x = op.GetInputDesc("x");
+  TensorDesc tensordesc_output = op.GetOutputDesc("seq_mask");
 
+  ge::Shape length_shape = tensordesc_input.GetShape();
+  std::vector<int64_t> dim_length = length_shape.GetDims();
+
+  if(dim_length.size() != 1){
+    OP_LOGE(op.GetName().c_str(), "Unexcepeted Input Shape.");
+    return false;
+  }
+
+  ge::Shape length_input_b = tensordesc_input_b.GetShape();
+  std::vector<int64_t> dim_input_b = length_input_b.GetDims();
+
+  ge::Shape length_input_x = tensordesc_input_x.GetShape();
+  std::vector<int64_t> dim_input_x = length_input_x.GetDims();
+
+  int64_t num_step = dim_input_x[0];
+  int64_t batch_size = dim_input_x[1];
+  int64_t hidden_size;
+
+  if(IsUnknown(dim_input_b))
+  {
+    hidden_size = dim_input_b[0];
+  }
+  else
+  {
+    hidden_size = dim_input_b[0] / 4;
+  }
+
+  std::vector<int64_t> dim_mask = {num_step, batch_size, hidden_size};
+
+  auto input_b_type = tensordesc_input_b.GetDataType();
+  tensordesc_output.SetShape(Shape(dim_mask));
+  tensordesc_output.SetDataType(input_b_type);
+  tensordesc_output.SetFormat(tensordesc_input.GetFormat());
+
+  if (IsUnknown(dim_length))
+  {
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    op.GetInputDesc(seq_length).GetShapeRange(input_range);
+
+    std::vector<std::pair<int64_t, int64_t>> input_b_range;
+    op.GetInputDesc(b).GetShapeRange(input_b_range);
+
+    std::vector<std::pair<int64_t, int64_t>> input_x_range;
+    op.GetInputDesc(x).GetShapeRange(input_x_range);
+
+    std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+    if (input_range.empty()){
+      output_shape_range = {{1, -1},{1, -1},{1, -1}};
+    }
+    else{
+      output_shape_range = {input_x_range[0], input_x_range[1],
+                            {input_b_range[0].first / 4, input_b_range[0].second / 4}};
+    }
+    tensordesc_output.SetShapeRange(output_shape_range);
+  }
+
+  (void)op.UpdateOutputDesc("seq_mask", tensordesc_output);
+
+  return true;
+}
+
+IMPLEMT_VERIFIER(RnnGenMaskV2, RnnGenMaskV2Verify)
+{
+  return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(g_rnnGenMaskV2InferShape)
+{
+  if (InferShapeAndTypeRnnGenMaskV2(op, "seq_length", "b", "x","seq_mask")){
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(RnnGenMaskV2, g_rnnGenMaskV2InferShape);
+// Registered verify function
+VERIFY_FUNC_REG(RnnGenMaskV2, RnnGenMaskV2Verify);
+// ----------------RnnGenMaskV2 END---------------------
 IMPLEMT_VERIFIER(CommonLSTM, CommonLSTMVerify) {
   return GRAPH_SUCCESS;
 }

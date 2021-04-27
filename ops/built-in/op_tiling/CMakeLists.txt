@@ -114,6 +114,7 @@ set(_optiling_files
   trans_data_positive_source_ntc_100.cc
   unpack.cc
   unsorted_segment_sum.cc
+  rnn_gen_mask_v2.cc
   unsorted_segment.cc
   in_top_k.cc
   gemm.cc

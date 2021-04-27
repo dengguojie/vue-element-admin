@@ -986,6 +986,27 @@ REG_OP(CommonLSTM)
     .OP_END_FACTORY_REG(CommonLSTM)
 
 /**
+ * @brief Calculate the mask. According to hidden_size and num_step, convert seq_length to mask.
+ *
+ * @par Inputs:
+ * @li seq_length: A 1D Tensor. Must be one of the following types: int32. Record the current length of each batch. [batch_size].
+ * @li b: A 1D Tensor. Must be one of the following types: fp16/fp32. Record the hidden_size. [4 * hidden_size].
+ * @li x: A 3D Tensor. Must be one of the following types: fp16/fp32. Record the num_step/batch_size/input_size. [num_step, batch_size, input_size].
+ *
+ * @par Outputs:
+ * seq_mask: A 3D Tensor. Must be one of the following types: fp16/fp32. with the shape of [num_step, batch_size, hidden_size]. And has the same type as "b" \n
+ *
+ * @par Restrictions:
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+ */
+REG_OP(RnnGenMaskV2)
+    .INPUT(seq_length, TensorType({DT_INT32}))
+    .INPUT(b, TensorType({{DT_FLOAT16, DT_FLOAT}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(seq_mask, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(RnnGenMaskV2)
+
+/**
 * @brief Common GRU calculation.
 
 * @par Inputs:
