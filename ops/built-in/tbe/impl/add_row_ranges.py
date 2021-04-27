@@ -325,9 +325,9 @@ class AddRowRanges(object):
         add_loop = math.ceil(n_real_size / 64)
         start_index.set_as(indices_ub[indices_index])
         end_index.set_as(indices_ub[indices_index + 1])
+        self.tik_instance.data_move(x_ub, self.x_gm[x_index * self.x_shape[1] + block_index * n_size],
+                                    0, 1, n_real_size // 8, 0, 0)
         with self.tik_instance.if_scope(end_index > start_index):
-            self.tik_instance.data_move(x_ub, self.x_gm[x_index * self.x_shape[1] + block_index * n_size],
-                                        0, 1, n_real_size // 8, 0, 0)
             with self.tik_instance.for_range(start_index, end_index) as index:
                 with self.tik_instance.for_range(0, add_loop) as add_index:
                     with self.tik_instance.if_scope(add_index != add_loop - 1):
@@ -341,8 +341,8 @@ class AddRowRanges(object):
                                                src_ub[index * n_real_size + add_index * 64],
                                                x_ub[add_index * 64],
                                                1, 1, 1, 1, 0, n_real_size // 8, 0)
-            self.tik_instance.data_move(self.x_out_gm[x_index * self.x_shape[1] + block_index * n_size],
-                                        x_ub, 0, 1, n_real_size // 8, 0, 0)
+        self.tik_instance.data_move(self.x_out_gm[x_index * self.x_shape[1] + block_index * n_size],
+                                    x_ub, 0, 1, n_real_size // 8, 0, 0)
 
     def _calc_cut_size(self):
         """
@@ -462,9 +462,9 @@ class AddRowRanges(object):
                 with self.tik_instance.if_scope(n_index_inner == n_loop_num - 2):
                     self.tik_instance.data_move(x_ub_bak, x_ub, 0, 1, n_size // 8, 0, 0)
                 with self.tik_instance.else_scope():
-                        self.tik_instance.data_move(self.x_out_gm[(block_index * 8 + x_index) * self.x_shape[1] +
-                                                                  n_index_inner * n_size],
-                                                    x_ub, 0, 1, n_size // 8, 0, 0)
+                    self.tik_instance.data_move(
+                        self.x_out_gm[(block_index * 8 + x_index) * self.x_shape[1] + n_index_inner * n_size],
+                        x_ub, 0, 1, n_size // 8, 0, 0)
             with self.tik_instance.else_scope():
                 self.tik_instance.data_move(x_ub,
                                             self.x_gm[(block_index * 8 + x_index) * self.x_shape[1] + n_index_inner *
