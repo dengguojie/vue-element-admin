@@ -65,8 +65,9 @@ checkopts() {
   PLUGIN_UT=FALSE
   ONNX_PLUGIN_UT=FALSE
   UT_NO_EXEC=FALSE
+  CHANGED_FILES=""
   # Process the options
-  while getopts 'hj:usvg:a-:m-:' opt
+  while getopts 'hj:usvg:a-:m-:f:' opt
   do
     case "${opt}" in
       h) usage
@@ -78,6 +79,7 @@ checkopts() {
       g) GCC_PREFIX=$OPTARG ;;
       a) AICPU_ONLY=TRUE ;;
       m) MINIRC_AICPU_ONLY=TRUE ;;
+      f) CHANGED_FILES=$OPTARG ;;
       -) case $OPTARG in
            aicpu) AICPU_ONLY=TRUE ;;
            minirc) MINIRC_AICPU_ONLY=TRUE ;;
@@ -98,6 +100,54 @@ checkopts() {
          exit 1 ;;
     esac
   done
+}
+
+parse_changed_files() {
+  CHANGED_FILES=$1
+
+  if [[ "$CHANGED_FILES" != /* ]]; then
+    CHANGED_FILES=$PWD/$CHANGED_FILES
+  fi
+
+  logging "changed files is "$CHANGED_FILES
+  logging '-----------------------------------------------'
+  logging "changed lines:"
+  cat $CHANGED_FILES
+  logging '-----------------------------------------------'
+
+  related_ut=`python3.7 scripts/parse_changed_files.py $1`
+  logging "related ut "$related_ut
+
+  if [[ $related_ut =~ "CPU_UT" ]];then
+    logging "CPU_UT is tirggered!"
+    CPU_UT=TRUE
+  fi
+  if [[ $related_ut =~ "PASS_UT" ]];then
+    logging "PASS_UT is tirggered!"
+    PASS_UT=TRUE
+  fi
+  if [[ $related_ut =~ "TILING_UT" ]];then
+    logging "TILING_UT is tirggered!"
+    TILING_UT=TRUE
+  fi
+  if [[ $related_ut =~ "PROTO_UT" ]];then
+    logging "PROTO_UT is tirggered!"
+    PROTO_UT=TRUE
+  fi
+  if [[ $related_ut =~ "PLUGIN_UT" ]];then
+    logging "PLUGIN_UT is tirggered!"
+    PLUGIN_UT=TRUE
+  fi
+  if [[ $related_ut =~ "ONNX_PLUGIN_UT" ]];then
+    logging "ONNX_PLUGIN_UT is tirggered!"
+    ONNX_PLUGIN_UT=TRUE
+  fi
+  reg='^\{.*?\}$'
+  if [[ ! "$related_ut" =~ $reg ]];then
+    logging "no ut matched! no need to run!"
+    logging "---------------- CANN build finished ----------------"
+    exit 0
+  fi
 }
 
 
@@ -168,6 +218,10 @@ release_cann() {
 
 main() {
   checkopts "$@"
+  if [[ "$CHANGED_FILES" != "" ]]; then
+    UT_TEST_ALL=FALSE
+    parse_changed_files $CHANGED_FILES
+  fi
   # CANN build start
   logging "---------------- CANN build start ----------------"
   if [ "$MINIRC_AICPU_ONLY" = "TRUE" ]; then
