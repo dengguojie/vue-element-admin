@@ -67,9 +67,32 @@ case2 = {
     "support_expect": True
 }
 
+case3 = {
+    "params": [{"shape": (300, 8, 16), "dtype": "float16", "format": "ND"},
+               {"shape": (8, 16), "dtype": "float16", "format": "ND"},
+               [0,],
+               False
+               ],
+    "case_name": "test_reduce_sum_3",
+    "expect": "success",
+    "support_expect": True
+}
+case4 = {
+    "params": [{"shape": (64, 8, 8, 8, 16), "dtype": "float32", "format": "ND"},
+               {"shape": (64,8, 16), "dtype": "float32", "format": "ND"},
+               [2,3],
+               False
+               ],
+    "case_name": "test_reduce_sum_4",
+    "expect": "success",
+    "support_expect": True
+}
+
 compile_case_list = [
     case1,
     case2,
+    case3,
+    case4
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)

@@ -56,9 +56,92 @@ case1 = {
     "support_expect": True
 }
 
+case2 = {
+    "params": [{"shape": (256, 256, 256), "dtype": "float16", "format": "ND"},
+               {"shape": (256, ), "dtype": "float16", "format": "ND"},
+               [0, 2],
+               False
+               ],
+    "case_name": "test_reduce_max_2",
+    "expect": "success",
+    "support_expect": True
+}
+
+case3 = {
+    "params": [{"shape": (32, 32, 256000), "dtype": "float16", "format": "ND"},
+               {"shape": (32, 256000), "dtype": "float16", "format": "ND"},
+               [1],
+               False
+               ],
+    "case_name": "test_reduce_max_3",
+    "expect": "success",
+    "support_expect": True
+}
+
+case4 = {
+    "params": [{"shape": (32, 32, 2, 128000), "dtype": "float16", "format": "ND"},
+               {"shape": (32, 2, 128000), "dtype": "float16", "format": "ND"},
+               [1],
+               False
+               ],
+    "case_name": "test_reduce_max_4",
+    "expect": "success",
+    "support_expect": True
+}
+
+case5 = {
+    "params": [{"shape": (32, 32, 256000, 128), "dtype": "float16", "format": "ND"},
+               {"shape": (32, 256000, 128), "dtype": "float16", "format": "ND"},
+               [1],
+               False
+               ],
+    "case_name": "test_reduce_max_5",
+    "expect": "success",
+    "support_expect": True
+}
+
+case6 = {
+    "params": [{"shape": (11, 11, 9991, 33331), "dtype": "float16", "format": "ND"},
+               {"shape": (11, 9991, 33331), "dtype": "float16", "format": "ND"},
+               [1],
+               False
+               ],
+    "case_name": "test_reduce_max_6",
+    "expect": "success",
+    "support_expect": True
+}
+
+case7 = {
+    "params": [{"shape": (11, 11, 141, 33331), "dtype": "float16", "format": "ND"},
+               {"shape": (11, 141, 33331), "dtype": "float16", "format": "ND"},
+               [1],
+               False
+               ],
+    "case_name": "test_reduce_max_7",
+    "expect": "success",
+    "support_expect": True
+}
+
+case8 = {
+    "params": [{"shape": (32, 32, 2, 99991), "dtype": "float16", "format": "ND"},
+               {"shape": (32, 2, 99991), "dtype": "float16", "format": "ND"},
+               [1],
+               False
+               ],
+    "case_name": "test_reduce_max_8",
+    "expect": "success",
+    "support_expect": True
+}
 
 compile_case_list = [
     case1,
+    case2,
+    case3,
+    case4,
+    case5,
+    case6,
+    case7,
+    case8
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)

@@ -55,10 +55,19 @@ case1 = {
     "expect": "success",
     "support_expect": True
 }
-
+case2 = {
+    "params": [{"shape": (32, 32, 256000), "dtype": "float16", "format": "ND"},
+               {"shape": (32, 32), "dtype": "float16", "format": "ND"},
+               [2],
+               False
+               ],
+    "case_name": "test_reduce_min_2",
+    "expect": "success",
+    "support_expect": True
+}
 
 compile_case_list = [
-    case1,
+    case1, case2,
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)
