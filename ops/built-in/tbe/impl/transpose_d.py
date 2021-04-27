@@ -24640,6 +24640,6 @@ def transpose_d(input_x, output_y, perm, kernel_name="transpose_d"):
         with build_config:
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
-        if num > 0:
-            workspace_dict = {"workspace": {"num": num, "size": total_size}}
-            write_code(workspace_dict, kernel_name)
+            if num > 0:
+                workspace_dict = {"workspace": {"num": num, "size": total_size}}
+                write_code(workspace_dict, kernel_name)

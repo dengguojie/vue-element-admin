@@ -4417,8 +4417,8 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
         with build_config:
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
-        workspace_dict = {"workspace": {"num": num, "size": total_size}}
-        write_code(workspace_dict, kernel_name)
+            workspace_dict = {"workspace": {"num": num, "size": total_size}}
+            write_code(workspace_dict, kernel_name)
 
     else:
         tensor_list = [data_input, res]

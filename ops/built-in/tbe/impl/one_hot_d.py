@@ -2021,5 +2021,5 @@ def one_hot_d(input_x,
     with tbe_platform.build_config:
         tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
-    if 0 <= axis < len(shape):
-        _add_workspace(indices_reshape, depth, dtype, kernel_name)
+        if 0 <= axis < len(shape):
+            _add_workspace(indices_reshape, depth, dtype, kernel_name)

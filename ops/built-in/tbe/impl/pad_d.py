@@ -2289,18 +2289,18 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
         with tbe_platform.build_config:
             tvm.build(sch, build_list, "cce", name=kernel_name)
 
-        if dtype == "int8" or dtype == "uint8":
-            size_align = one_core_align * dtype_size + 32
-            in_shape_size = _prod(shape[:])
-            size_in_cast = in_shape_size * dtype_size + 32
-            size_out_cast = _prod(_get_output_shape(shape, paddings)) * dtype_size + 32
-            total_size = [size_in_cast, size_align, size_out_cast]
-            num_workspace = 3
-            workspace_dict = {"workspace": {"num": num_workspace, "size": total_size}}
-            write_code(workspace_dict, kernel_name)
-        else:
-            size_align = one_core_align * dtype_size + 32
-            total_size = [size_align]
-            num_workspace = 1
-            workspace_dict = {"workspace": {"num": num_workspace, "size": total_size}}
-            write_code(workspace_dict, kernel_name)
+            if dtype == "int8" or dtype == "uint8":
+                size_align = one_core_align * dtype_size + 32
+                in_shape_size = _prod(shape[:])
+                size_in_cast = in_shape_size * dtype_size + 32
+                size_out_cast = _prod(_get_output_shape(shape, paddings)) * dtype_size + 32
+                total_size = [size_in_cast, size_align, size_out_cast]
+                num_workspace = 3
+                workspace_dict = {"workspace": {"num": num_workspace, "size": total_size}}
+                write_code(workspace_dict, kernel_name)
+            else:
+                size_align = one_core_align * dtype_size + 32
+                total_size = [size_align]
+                num_workspace = 1
+                workspace_dict = {"workspace": {"num": num_workspace, "size": total_size}}
+                write_code(workspace_dict, kernel_name)

@@ -107,9 +107,16 @@ Status SoftmaxCrossEntropyWithLogitsGradPass::Fusion(ge::ComputeGraph& graph, Ma
   // get the first input of Reshape_2_grad, if is 4D do fusion; else return
   ge::GeTensorDesc grad_2_input_tensor = reshape_grad_2->GetOpDesc()->GetInputDesc(0);
   ge::GeShape first_input_tensor_shape = grad_2_input_tensor.GetShape();
+  ge::GeTensorDesc grad_output_tensor = reshape_grad->GetOpDesc()->GetOutputDesc(0);
+  ge::GeShape grad_output_shape = grad_output_tensor.GetShape();
   if (first_input_tensor_shape.GetDims().size() != 4) {  // if not 4D, will return
     OP_LOGI(FUSED_OP_TYPE.c_str(),
             "Input shape is not 4D, needn't to fusion, SoftmaxCrossEntropyWithLogitsGradPass fusion end");
+    return SUCCESS;
+  }
+  if (grad_output_shape.GetDims().size() != 4) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(),
+            "output shape is not 4D, needn't to fusion");
     return SUCCESS;
   }
 

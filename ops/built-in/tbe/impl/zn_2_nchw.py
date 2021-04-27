@@ -790,10 +790,10 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
         with tbe_platform.build_config:
             tvm.build(sch, tensor_list, "cce", name=kernel_name)
 
-        float_size = tbe_platform.get_bit_len(dtype) // 8
-        size = 2
-        for item in shape_5hd:
-            size *= item
-        total_size = [size * float_size]
-        workspace_dict = {"workspace": {"num": 1, "size": total_size}}
-        write_code(workspace_dict, kernel_name)
+            float_size = tbe_platform.get_bit_len(dtype) // 8
+            size = 2
+            for item in shape_5hd:
+                size *= item
+            total_size = [size * float_size]
+            workspace_dict = {"workspace": {"num": 1, "size": total_size}}
+            write_code(workspace_dict, kernel_name)

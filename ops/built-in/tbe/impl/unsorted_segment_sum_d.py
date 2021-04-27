@@ -2667,20 +2667,20 @@ def unsorted_segment_sum_d(x,
     with build_config:
         tvm.build(sch, build_list, "cce", name=kernel_name)
 
-    large_flag, align_flag = _is_input_too_large(shape_x, dtype)
-    if (not large_flag) and (dtype == "float32") and \
-            (align_flag or shape_x[-1] == 1):
-        parameter_dict = {"parameters": [0, 0, 1]}
-        write_code(parameter_dict, kernel_name)
-    elif (dtype == "float16") and (shape_x[1] % 128 == 0) and \
-            _is_all_ids_in(shape_x, num_segments, dtype, segment_ids) and \
-            _check_repeat_valid((shape_x[1], ), dtype):
-        parameter_dict = {"parameters": [0, 0, 1]}
-        write_code(parameter_dict, kernel_name)
-    else:
-        size_align = 1 * dtype_size + 32
-        total_size = [size_align]
-        num_workspace = 1
-        workspace_dict = \
-            {"workspace": {"num": num_workspace, "size": total_size}}
-        write_code(workspace_dict,  kernel_name)
+        large_flag, align_flag = _is_input_too_large(shape_x, dtype)
+        if (not large_flag) and (dtype == "float32") and \
+                (align_flag or shape_x[-1] == 1):
+            parameter_dict = {"parameters": [0, 0, 1]}
+            write_code(parameter_dict, kernel_name)
+        elif (dtype == "float16") and (shape_x[1] % 128 == 0) and \
+                _is_all_ids_in(shape_x, num_segments, dtype, segment_ids) and \
+                _check_repeat_valid((shape_x[1], ), dtype):
+            parameter_dict = {"parameters": [0, 0, 1]}
+            write_code(parameter_dict, kernel_name)
+        else:
+            size_align = 1 * dtype_size + 32
+            total_size = [size_align]
+            num_workspace = 1
+            workspace_dict = \
+                {"workspace": {"num": num_workspace, "size": total_size}}
+            write_code(workspace_dict,  kernel_name)
