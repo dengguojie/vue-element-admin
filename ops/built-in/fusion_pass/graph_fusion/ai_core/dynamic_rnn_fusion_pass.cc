@@ -425,7 +425,7 @@ Status DynamicRNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   vector<string> concatNodes = {"y", "output_h", "output_c", "i", "j", "f", "o", "tanhc"};
   for (int64_t index = 0; index < concatNodes.size(); index++) {
     ge::OpDescPtr concatDesc = nullptr;
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "DynamicRNN concatDesc of %s created", concatNodes[index]);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "DynamicRNN concatDesc of %s created", concatNodes[index].c_str());
     FUSION_PASS_MAKE_SHARED((concatDesc = std::make_shared<ge::OpDesc>(
                                  dynamicRNNDesc->GetName() + "/concat_" + concatNodes[index], "ConcatD")),
                             return INTERNAL_ERROR);
@@ -436,7 +436,7 @@ Status DynamicRNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     }
     ge::NodePtr concatNode = graph.AddNode(concatDesc);
     AddConcatEdge(concatNode, dynamicRNNNode, forwardRNNNode, backwardRNNNode, concatNodes[index], index);
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "DynamicRNN AddConcatEdge of %s finished", concatNodes[index]);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "DynamicRNN AddConcatEdge of %s finished", concatNodes[index].c_str());
   }
 
   // unlink all input for dynamicRNNNode
