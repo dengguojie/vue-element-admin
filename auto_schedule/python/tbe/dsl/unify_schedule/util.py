@@ -155,7 +155,15 @@ def is_vtranspose_broadcast(tensor: tvm.tensor.Tensor):
     """
     if not is_broadcast(tensor) or len(tensor.op.input_tensors) != 1:
         return False
-    return tensor.dtype == "float16" and not expr_equal(tensor.shape[-1], tensor.op.input_tensors[0].shape[-1])
+    dtype_no_fp16 = tensor.dtype != "float16"
+    compile_broadcast_no_last = is_unified_broadcast(tensor) and \
+                                expr_equal(tensor.shape[-1], tensor.op.input_tensors[0].shape[-1]) and \
+                                not expr_equal(tensor.shape[-1], 1)
+    runtime_broadcast_no_last = expr_equal(tensor.shape[-1], tensor.op.input_tensors[0].shape[-1]) and \
+                                isinstance(tensor.shape[-1], tvm.expr.ConstExpr) and \
+                                isinstance(tensor.op.input_tensors[0].shape[-1], tvm.expr.ConstExpr) and \
+                                not expr_equal(tensor.shape[-1], 1)
+    return not (dtype_no_fp16 or compile_broadcast_no_last or runtime_broadcast_no_last)
 
 
 def is_broadcast(tensor: tvm.tensor.Tensor):
