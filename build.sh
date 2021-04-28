@@ -146,7 +146,8 @@ parse_changed_files() {
   if [[ ! "$related_ut" =~ $reg ]];then
     logging "no ut matched! no need to run!"
     logging "---------------- CANN build finished ----------------"
-    exit 0
+    #for ci,2 means no need to run c++ ut;then ci will skip check coverage
+    exit 2
   fi
 }
 
