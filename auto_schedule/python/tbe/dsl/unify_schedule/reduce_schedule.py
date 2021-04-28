@@ -24,12 +24,12 @@ from typing import Optional
 from typing import Union
 
 from tbe.dsl.base.operation import get_context
-from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.base.operation import var_inner
 from tbe.tvm.tensor import Tensor
 
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import INSN_MAPPING
+from .constants import ReducePattern
 from .constants import Pattern
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .reduce_tilingcase import ReduceTilingCase
@@ -41,42 +41,63 @@ from .util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
 from .vector_schedule import VectorSchedule
 from .empty_schedule import EmptySchedule
+from .schedule import Schedule
 
 CONST = "const"
+DEFAULT = "default"
 INT32_MAX = 2**31 - 1
-
-
-@register_schedule(pattern=Pattern.REDUCE)
-def schedule(outs, tiling_case: ReduceTilingCase):
-    [outs].clear()
-    # Get Compute Graph Info
-    graph_info = get_context().get_current_compute().get("_compute_graph_info")
-    single_reduce_info: SingleReduceInfo = get_context().get_current_compute().get("_single_reduce_info")
-    if tiling_case.type == tiling_case.Type.EMPTY:
-        reduce_sch: EmptySchedule = EmptySchedule(graph_info)
-        real_schedule = reduce_sch.do_schedule(None)
-        real_schedule.tiling_key = tiling_case.tiling_key
-    elif tiling_case.type == tiling_case.Type.ATOMIC_REDUCE:
-        reduce_sch: ReduceAtomicSchedule = ReduceAtomicSchedule()
-        reduce_sch.init(outs, [])
-        if single_reduce_info.is_reduce_all_axes():
-            reduce_sch._reduce_case = 1
-        elif single_reduce_info.is_reduce_not_last_axis():
-            reduce_sch._reduce_case = 2
-        else:
-            reduce_sch._reduce_case = 3
-        real_schedule = reduce_sch.do_schedule(outs, tiling_case, graph_info, single_reduce_info)
-        real_schedule.tiling_key = tiling_case.tiling_key
-    elif tiling_case.type == tiling_case.Type.NORMAL_REDUCE:
-        reduce_sch: ReduceSchedule = ReduceSchedule(graph_info, single_reduce_info)
-        real_schedule = reduce_sch.do_schedule(tiling_case)
-        real_schedule.tiling_key = tiling_case.tiling_key
-    else:
-        raise NotImplementedError("Reduce schedule received invalid type: %s" % str(tiling_case.type))
-    return real_schedule
-
-
 BLOCK_SIZE_BYTE = 32
+
+
+class EntryReduceSchedule(Schedule):
+    def __init__(self, outs, tiling_case):
+        self.outs = outs
+        self.tiling_case = tiling_case
+
+    @classmethod
+    def get_instance(cls, outs, tiling_case):
+        return cls(outs, tiling_case)
+
+    @classmethod
+    def get_supported_soc(cls):
+        return [DEFAULT]
+
+    @classmethod
+    def get_supported_pattern(cls):
+        return [Pattern.REDUCE]
+
+    @classmethod
+    def get_supported_sub_pattern(cls):
+        return [ReducePattern.R_0]
+
+    def do_schedule(self):
+        outs, tiling_case = self.outs, self.tiling_case
+        [outs].clear()
+        # Get Compute Graph Info
+        graph_info = get_context().get_current_compute().get("_compute_graph_info")
+        single_reduce_info: SingleReduceInfo = get_context().get_current_compute().get("_single_reduce_info")
+        if tiling_case.type == tiling_case.Type.EMPTY:
+            reduce_sch: EmptySchedule = EmptySchedule(graph_info)
+            real_schedule = reduce_sch.do_schedule(None)
+            real_schedule.tiling_key = tiling_case.tiling_key
+        elif tiling_case.type == tiling_case.Type.ATOMIC_REDUCE:
+            reduce_sch: ReduceAtomicSchedule = ReduceAtomicSchedule()
+            reduce_sch.init(outs, [])
+            if single_reduce_info.is_reduce_all_axes():
+                reduce_sch._reduce_case = 1
+            elif single_reduce_info.is_reduce_not_last_axis():
+                reduce_sch._reduce_case = 2
+            else:
+                reduce_sch._reduce_case = 3
+            real_schedule = reduce_sch.do_schedule(outs, tiling_case, graph_info, single_reduce_info)
+            real_schedule.tiling_key = tiling_case.tiling_key
+        elif tiling_case.type == tiling_case.Type.NORMAL_REDUCE:
+            reduce_sch: ReduceSchedule = ReduceSchedule(graph_info, single_reduce_info)
+            real_schedule = reduce_sch.do_schedule(tiling_case)
+            real_schedule.tiling_key = tiling_case.tiling_key
+        else:
+            raise NotImplementedError("Reduce schedule received invalid type: %s" % str(tiling_case.type))
+        return real_schedule
 
 
 class ReduceSchedule(VectorSchedule):

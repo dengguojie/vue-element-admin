@@ -36,7 +36,6 @@ from tbe.dsl.base.operation import add_compile_info_inner
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import register_build_pointcut
-from tbe.dsl.base.operation import register_tiling_case
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
 from tbe.tvm.tensor import Tensor
@@ -44,6 +43,8 @@ from tbe.tvm.tensor import Tensor
 from .constants import CompileInfo
 from .constants import Pattern
 from .constants import DTYPE_BYTE_MAPPING
+from .constants import ReducePattern
+from .computation import Computation
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .util import get_reduce_axis_indices
@@ -55,6 +56,268 @@ from ...common.utils.errormgr import get_error_message
 
 CONST = "const"
 ZERO = "zero"
+DEFAULT = "default"
+
+
+class CalcReduceTilingCase(Computation):
+    def __init__(self, outs, option):
+        self.outs = outs
+        self.option = option
+
+    def get_sub_pattern(self):
+        return ReducePattern.R_0
+
+    @classmethod
+    def get_instance(cls, outs, option):
+        return cls(outs, option)
+
+    @classmethod
+    def get_supported_pattern(cls):
+        return [Pattern.REDUCE]
+
+    @classmethod
+    def get_supported_soc(cls):
+        return [DEFAULT]
+
+    def do_tiling_case(self):
+        # return result
+        return self.calc_tiling_case()
+
+    def calc_tiling_case(self):
+        outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
+        current_compute = get_context().get_current_compute()
+
+        # construct information of graph
+        compute_graph_info = ComputeGraphInfo(outs)
+        single_reduce_info = SingleReduceInfo(compute_graph_info)
+        apply_common_compile_info(compute_graph_info, single_reduce_info)
+        current_compute.add("_compute_graph_info", compute_graph_info)
+        current_compute.add("_single_reduce_info", single_reduce_info)
+        if not compute_graph_info.reduce_tensor_set:
+            raise RuntimeError("Couldn't find reduce node for ReduceSchedule")
+
+        # Different Cases
+        tiling_case_list: List[ReduceTilingCase] = []
+        if current_compute.get("_mode") == CONST:
+            # Get all possible ub_info
+            possible_case_list = []
+            possible_case_list += _calculate_tiling_cases(single_reduce_info)
+            possible_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
+            for _case in possible_case_list:
+                ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
+            apply_dyn_compile_info(single_reduce_info, possible_case_list, model=CONST)
+            # Get Real TilingCase
+            cst_case = ReduceTilingCase()
+            _gen_const_tiling_case(single_reduce_info, compute_graph_info, cst_case)
+            tiling_case_list.append(cst_case)
+        elif current_compute.get("_mode") == ZERO:
+            # SingleCase
+            tiling_case_list += [_gen_zero_tiling_case(), ]
+            ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, tiling_case_list[0])
+            add_compile_info_inner("_zero_ub_factor", tiling_case_list[0].tensor_ub_size_after_reduce)
+        else:
+            tiling_case_list += _calculate_tiling_cases(single_reduce_info)
+            tiling_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
+            for tiling_case in tiling_case_list:
+                _calc_tiling_key(single_reduce_info, tiling_case)
+            # Empty schedule will always be there in the tiling_case_list
+            # noinspection PyProtectedMember
+            if "_empty_schedule_flag" not in get_context()._addition:
+                tiling_case_list.append(ReduceTilingCase())
+                tiling_case_list[-1].type = ReduceTilingCase.Type.EMPTY
+                get_context().add("_empty_schedule_flag", True)
+
+            for _case in tiling_case_list:
+                if _case.type == ReduceTilingCase.Type.EMPTY:
+                    continue
+                ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
+            apply_dyn_compile_info(single_reduce_info, tiling_case_list)
+
+        return tiling_case_list
+
+
+class SingleReduceInfo:
+    def __init__(self, compute_graph_info: ComputeGraphInfo):
+        if len(compute_graph_info.reduce_tensor_set) != 1:
+            raise RuntimeError("ComputeGraph is not in Single Reduce Pattern: %s" %
+                               compute_graph_info.reduce_tensor_set)
+        # Assume only one reduce node
+        self.reduce_tensor: Tensor = tuple(compute_graph_info.reduce_tensor_set)[0]
+        self.all_axes: List[Var] = get_reduce_all_axes(self.reduce_tensor)
+        self.reduce_axes: List[Var] = get_reduce_axes(self.reduce_tensor)
+
+        compute = operation.get_context().get_current_compute()
+        if compute.get("_mode") == "zero" and compute.get("_shape") == (1, -1, 0):
+            self.shape_before_reduce = list(self.reduce_tensor.shape) + [tvm.expr.IntImm("int32", 0)]
+        else:
+            self.shape_before_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.op.input_tensors[0].shape)
+        self.shape_after_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.shape)
+        self.reduce_axis_indices: List[int] = get_reduce_axis_indices(self.reduce_tensor)
+        self.keepdims: bool = len(self.shape_before_reduce) == len(self.shape_after_reduce)
+        self.graph_info: ComputeGraphInfo = compute_graph_info
+
+    def is_reduce_not_last_axis(self) -> bool:
+        compute = operation.get_context().get_current_compute()
+        if compute.get("_mode") == "zero":
+            return False
+
+        is_not_last_axis = self.all_axes[-1] not in self.reduce_axes
+        return is_not_last_axis
+
+    def is_reduce_last_axis(self) -> bool:
+        return self.all_axes[-1] in self.reduce_axes
+
+    def is_reduce_all_axes(self) -> bool:
+        return set(self.all_axes) == set(self.reduce_axes)
+
+    @staticmethod
+    def find_last_reduce_axis(shape, reduce_axis_indices: Iterable[int]):
+        # shape_before_reduce:(ak+1,rk,...,r2,a2,r1,a1) or (ak,rk,...,r2,a1,r1)
+        # find r1 position, r1 may contain continues axis
+        r1_end_index = None
+        for i in range(len(shape) - 1, -1, -1):
+            if i in reduce_axis_indices:
+                r1_end_index = i
+                break
+        r1_start_index = r1_end_index
+        if r1_end_index is None:
+            return r1_start_index, r1_end_index
+        for i in range(r1_end_index, -1, -1):
+            if i not in reduce_axis_indices:
+                r1_start_index = i + 1
+                break
+            if i == 0:
+                r1_start_index = i
+
+        return r1_start_index, r1_end_index
+
+    @staticmethod
+    def find_last_none_reduce_axis(shape_before_reduce: list,
+                                   reduce_axis_index: List[int]) -> Tuple[Optional[int], Optional[int]]:
+        """
+        :param shape_before_reduce
+        :param reduce_axis_index
+        :return the last axis or the last serials axises that are not in reduce_axis
+        """
+        # shape_before_reduce:(ak+1,rk,...,r2,a2,r1,a1) or (ak,rk,...,r2,a1,r1)
+        # find a1 position, a1 may contain continues axis
+        a1_end_index = None
+        for i in range(len(shape_before_reduce) - 1, -1, -1):
+            if i not in reduce_axis_index:
+                a1_end_index = i
+                break
+        a1_start_index = a1_end_index
+        if a1_end_index is None:
+            return a1_start_index, a1_end_index
+        for i in range(a1_end_index, -1, -1):
+            if i in reduce_axis_index:
+                a1_start_index = i + 1
+                break
+            if i == 0:
+                a1_start_index = i
+
+        return a1_start_index, a1_end_index
+
+    @staticmethod
+    def find_none_reduce_axis_map(shape_before_reduce: list, reduce_axis_index: List[int]) -> Dict[int, int]:
+        none_reduce_index_map = {}
+        count = 0
+        for i in range(0, len(shape_before_reduce)):
+            if i not in reduce_axis_index:
+                none_reduce_index_map[i] = count
+                count += 1
+        return none_reduce_index_map
+
+
+class ReduceTilingCase(TilingCaseBase):
+    class Type(Enum):
+        NORMAL_REDUCE = "NORMAL"
+        ATOMIC_REDUCE = "ATOMIC"
+        EMPTY = "EMPTY"
+
+    def __init__(self):
+        self.type: Optional[ReduceTilingCase.Type] = ReduceTilingCase.Type.NORMAL_REDUCE
+        self.block_split_axis_index = None
+        self.block_factor = None
+        self.ub_split_axis_index = None
+        self.ub_factor = None
+        self.multi_core: Optional[bool] = None
+        self.tiling_key = 2**31 - 1
+        self.tensor_ub_size_before_reduce: Optional[int] = None
+        self.tensor_ub_size_after_reduce: Optional[int] = None
+
+    def __repr__(self):
+        segment0 = self.type.value
+        segment1 = "ENABLED" if self.multi_core else "DISABLED"
+        return "%s REDUCE: (%d, %d) with multicore %s" % (segment0,
+                                                          self.block_split_axis_index, self.ub_split_axis_index,
+                                                          segment1)
+
+    def __hash__(self):
+        return hash((self.type.value, self.block_split_axis_index, self.block_factor,
+                     self.ub_split_axis_index, self.ub_factor, self.multi_core))
+
+    def __eq__(self, other) -> bool:
+        condition0 = other.self.type == self.type
+        condition1 = other.block_split_axis == self.block_split_axis_index
+        condition2 = other.block_factor == self.block_factor
+        condition3 = other.ub_split_axis == self.ub_split_axis_index
+        condition4 = other.ub_factor == self.ub_factor
+        condition5 = other.multi_core == self.multi_core
+        return (type(other) == type(self)
+                and condition0 and condition1 and condition2 and condition3 and condition4 and condition5)
+
+    def __ne__(self, other) -> bool:
+        condition0 = other.self.type != self.type
+        condition1 = other.block_split_axis != self.block_split_axis_index
+        condition2 = other.block_factor != self.block_factor
+        condition3 = other.ub_split_axis != self.ub_split_axis_index
+        condition4 = other.ub_factor != self.ub_factor
+        condition5 = other.multi_core != self.multi_core
+        return (type(other) != type(self)
+                or condition0 or condition1 or condition2 or condition3 or condition4 or condition5)
+
+
+@register_build_pointcut(pattern=Pattern.REDUCE)
+def build_pointcut(func, *args, **kwargs):
+    """
+    build pointcut
+    :param func:
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    def _find_idx_in_tensor_list():
+        if len(args) < 2:
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "Size of args should more than 2"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        tensor_list = args[1].get("tensor_list")
+        _before_reduce = operation.get_context().get("_placeholder_before_reduce")
+        _after_reduce = operation.get_context().get("_placeholder_after_reduce")
+
+        if not _before_reduce and not _after_reduce:
+            return
+
+        for tensors in tensor_list:
+            for _idx, _tensor in enumerate(tensors):
+                if _tensor in _before_reduce:
+                    operation.add_compile_info_inner("_idx_before_reduce", _idx)
+                    return
+            for _idx, _tensor in enumerate(tensors):
+                if _tensor in _after_reduce:
+                    operation.add_compile_info_inner("_idx_before_reduce", _idx)
+                    return
+
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "Can not find placeholder_op"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    _find_idx_in_tensor_list()
+    func(*args, **kwargs)
 
 
 def apply_common_compile_info(graph_info, reduce_info):
@@ -210,61 +473,6 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info, const_tiling_
     atomic_flags[str(const_tiling_case.tiling_key)] = run_info["clear_atomic"]
 
 
-@register_tiling_case(pattern=Pattern.REDUCE)
-def calc_tiling_case(outs, options=None):
-    [options].clear()
-    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    current_compute = get_context().get_current_compute()
-
-    # construct information of graph
-    compute_graph_info = ComputeGraphInfo(outs)
-    single_reduce_info = SingleReduceInfo(compute_graph_info)
-    apply_common_compile_info(compute_graph_info, single_reduce_info)
-    current_compute.add("_compute_graph_info", compute_graph_info)
-    current_compute.add("_single_reduce_info", single_reduce_info)
-    if not compute_graph_info.reduce_tensor_set:
-        raise RuntimeError("Couldn't find reduce node for ReduceSchedule")
-
-    # Different Cases
-    tiling_case_list: List[ReduceTilingCase] = []
-    if current_compute.get("_mode") == CONST:
-        # Get all possible ub_info
-        possible_case_list = []
-        possible_case_list += _calculate_tiling_cases(single_reduce_info)
-        possible_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
-        for _case in possible_case_list:
-            ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
-        apply_dyn_compile_info(single_reduce_info, possible_case_list, model=CONST)
-        # Get Real TilingCase
-        cst_case = ReduceTilingCase()
-        _gen_const_tiling_case(single_reduce_info, compute_graph_info, cst_case)
-        tiling_case_list.append(cst_case)
-    elif current_compute.get("_mode") == ZERO:
-        # SingleCase
-        tiling_case_list += [_gen_zero_tiling_case(), ]
-        ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, tiling_case_list[0])
-        add_compile_info_inner("_zero_ub_factor", tiling_case_list[0].tensor_ub_size_after_reduce)
-    else:
-        tiling_case_list += _calculate_tiling_cases(single_reduce_info)
-        tiling_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
-        for tiling_case in tiling_case_list:
-            _calc_tiling_key(single_reduce_info, tiling_case)
-        # Empty schedule will always be there in the tiling_case_list
-        # noinspection PyProtectedMember
-        if "_empty_schedule_flag" not in get_context()._addition:
-            tiling_case_list.append(ReduceTilingCase())
-            tiling_case_list[-1].type = ReduceTilingCase.Type.EMPTY
-            get_context().add("_empty_schedule_flag", True)
-
-        for _case in tiling_case_list:
-            if _case.type == ReduceTilingCase.Type.EMPTY:
-                continue
-            ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
-        apply_dyn_compile_info(single_reduce_info, tiling_case_list)
-
-    return tiling_case_list
-
-
 def _gen_zero_tiling_case():
     zero_tiling_case = ReduceTilingCase()
 
@@ -277,191 +485,6 @@ def _gen_zero_tiling_case():
     zero_tiling_case.tiling_key = _gen_zero_tiling_key()
 
     return zero_tiling_case
-
-
-def _find_idx_in_tensor_list(args: Union[Tuple, List]):
-    if len(args) < 2:
-        dict_args = dict()
-        dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "Size of args should more than 2"
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    tensor_list = args[1].get("tensor_list")
-    _before_reduce = operation.get_context().get("_placeholder_before_reduce")
-    _after_reduce = operation.get_context().get("_placeholder_after_reduce")
-
-    if not _before_reduce and not _after_reduce:
-        return
-
-    for tensors in tensor_list:
-        for _idx, _tensor in enumerate(tensors):
-            if _tensor in _before_reduce:
-                operation.add_compile_info_inner("_idx_before_reduce", _idx)
-                return
-        for _idx, _tensor in enumerate(tensors):
-            if _tensor in _after_reduce:
-                operation.add_compile_info_inner("_idx_before_reduce", _idx)
-                return
-
-    dict_args = dict()
-    dict_args["errCode"] = "E90003"
-    dict_args["detailed_cause"] = "Can not find placeholder_op"
-    raise RuntimeError(dict_args, get_error_message(dict_args))
-
-
-@register_build_pointcut(pattern=Pattern.REDUCE)
-def build_pointcut(func, *args, **kwargs):
-    """
-    build pointcut
-    :param func:
-    :param args:
-    :param kwargs:
-    :return:
-    """
-    _find_idx_in_tensor_list(args)
-    func(*args, **kwargs)
-
-
-class SingleReduceInfo:
-    def __init__(self, compute_graph_info: ComputeGraphInfo):
-        if len(compute_graph_info.reduce_tensor_set) != 1:
-            raise RuntimeError("ComputeGraph is not in Single Reduce Pattern: %s" %
-                               compute_graph_info.reduce_tensor_set)
-        # Assume only one reduce node
-        self.reduce_tensor: Tensor = tuple(compute_graph_info.reduce_tensor_set)[0]
-        self.all_axes: List[Var] = get_reduce_all_axes(self.reduce_tensor)
-        self.reduce_axes: List[Var] = get_reduce_axes(self.reduce_tensor)
-
-        compute = operation.get_context().get_current_compute()
-        if compute.get("_mode") == "zero" and compute.get("_shape") == (1, -1, 0):
-            self.shape_before_reduce = list(self.reduce_tensor.shape) + [tvm.expr.IntImm("int32", 0)]
-        else:
-            self.shape_before_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.op.input_tensors[0].shape)
-        self.shape_after_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.shape)
-        self.reduce_axis_indices: List[int] = get_reduce_axis_indices(self.reduce_tensor)
-        self.keepdims: bool = len(self.shape_before_reduce) == len(self.shape_after_reduce)
-        self.graph_info: ComputeGraphInfo = compute_graph_info
-
-    def is_reduce_not_last_axis(self) -> bool:
-        compute = operation.get_context().get_current_compute()
-        if compute.get("_mode") == "zero":
-            return False
-
-        is_not_last_axis = self.all_axes[-1] not in self.reduce_axes
-        return is_not_last_axis
-
-    def is_reduce_last_axis(self) -> bool:
-        return self.all_axes[-1] in self.reduce_axes
-
-    def is_reduce_all_axes(self) -> bool:
-        return set(self.all_axes) == set(self.reduce_axes)
-
-    @staticmethod
-    def find_last_reduce_axis(shape, reduce_axis_indices: Iterable[int]):
-        # shape_before_reduce:(ak+1,rk,...,r2,a2,r1,a1) or (ak,rk,...,r2,a1,r1)
-        # find r1 position, r1 may contain continues axis
-        r1_end_index = None
-        for i in range(len(shape) - 1, -1, -1):
-            if i in reduce_axis_indices:
-                r1_end_index = i
-                break
-        r1_start_index = r1_end_index
-        if r1_end_index is None:
-            return r1_start_index, r1_end_index
-        for i in range(r1_end_index, -1, -1):
-            if i not in reduce_axis_indices:
-                r1_start_index = i + 1
-                break
-            if i == 0:
-                r1_start_index = i
-
-        return r1_start_index, r1_end_index
-
-    @staticmethod
-    def find_last_none_reduce_axis(shape_before_reduce: list,
-                                   reduce_axis_index: List[int]) -> Tuple[Optional[int], Optional[int]]:
-        """
-        :param shape_before_reduce
-        :param reduce_axis_index
-        :return the last axis or the last serials axises that are not in reduce_axis
-        """
-        # shape_before_reduce:(ak+1,rk,...,r2,a2,r1,a1) or (ak,rk,...,r2,a1,r1)
-        # find a1 position, a1 may contain continues axis
-        a1_end_index = None
-        for i in range(len(shape_before_reduce) - 1, -1, -1):
-            if i not in reduce_axis_index:
-                a1_end_index = i
-                break
-        a1_start_index = a1_end_index
-        if a1_end_index is None:
-            return a1_start_index, a1_end_index
-        for i in range(a1_end_index, -1, -1):
-            if i in reduce_axis_index:
-                a1_start_index = i + 1
-                break
-            if i == 0:
-                a1_start_index = i
-
-        return a1_start_index, a1_end_index
-
-    @staticmethod
-    def find_none_reduce_axis_map(shape_before_reduce: list, reduce_axis_index: List[int]) -> Dict[int, int]:
-        none_reduce_index_map = {}
-        count = 0
-        for i in range(0, len(shape_before_reduce)):
-            if i not in reduce_axis_index:
-                none_reduce_index_map[i] = count
-                count += 1
-        return none_reduce_index_map
-
-
-class ReduceTilingCase(TilingCaseBase):
-    class Type(Enum):
-        NORMAL_REDUCE = "NORMAL"
-        ATOMIC_REDUCE = "ATOMIC"
-        EMPTY = "EMPTY"
-
-    def __init__(self):
-        self.type: Optional[ReduceTilingCase.Type] = ReduceTilingCase.Type.NORMAL_REDUCE
-        self.block_split_axis_index = None
-        self.block_factor = None
-        self.ub_split_axis_index = None
-        self.ub_factor = None
-        self.multi_core: Optional[bool] = None
-        self.tiling_key = 2**31 - 1
-        self.tensor_ub_size_before_reduce: Optional[int] = None
-        self.tensor_ub_size_after_reduce: Optional[int] = None
-
-    def __repr__(self):
-        segment0 = self.type.value
-        segment1 = "ENABLED" if self.multi_core else "DISABLED"
-        return "%s REDUCE: (%d, %d) with multicore %s" % (segment0,
-                                                          self.block_split_axis_index, self.ub_split_axis_index,
-                                                          segment1)
-
-    def __hash__(self):
-        return hash((self.type.value, self.block_split_axis_index, self.block_factor,
-                     self.ub_split_axis_index, self.ub_factor, self.multi_core))
-
-    def __eq__(self, other) -> bool:
-        condition0 = other.self.type == self.type
-        condition1 = other.block_split_axis == self.block_split_axis_index
-        condition2 = other.block_factor == self.block_factor
-        condition3 = other.ub_split_axis == self.ub_split_axis_index
-        condition4 = other.ub_factor == self.ub_factor
-        condition5 = other.multi_core == self.multi_core
-        return (type(other) == type(self)
-                and condition0 and condition1 and condition2 and condition3 and condition4 and condition5)
-
-    def __ne__(self, other) -> bool:
-        condition0 = other.self.type != self.type
-        condition1 = other.block_split_axis != self.block_split_axis_index
-        condition2 = other.block_factor != self.block_factor
-        condition3 = other.ub_split_axis != self.ub_split_axis_index
-        condition4 = other.ub_factor != self.ub_factor
-        condition5 = other.multi_core != self.multi_core
-        return (type(other) != type(self)
-                or condition0 or condition1 or condition2 or condition3 or condition4 or condition5)
 
 
 def _calculate_tiling_cases(info: SingleReduceInfo) -> List[ReduceTilingCase]:
@@ -501,7 +524,7 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
     dtype = reduce_tensor.dtype
     if dtype != "float32":
         return False
-    output_tensors: Tensor = reduce_info.graph_info.output_tensor_set
+    output_tensors = reduce_info.graph_info.output_tensor_set
     for output_tensor in output_tensors:
         dtype = output_tensor.dtype
         if dtype != "float32":
