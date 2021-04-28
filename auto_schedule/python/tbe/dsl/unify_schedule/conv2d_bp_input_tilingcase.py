@@ -16,13 +16,19 @@
 conv2d backprop input tiling case
 """
 import copy
+import json
 from collections import OrderedDict
 from functools import reduce
 
+from tbe.common.context import get_context
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
+from tbe.dsl.base.operation import register_build_pointcut
+from tbe.dsl.base.operation import get_context as op_get_context
+from tbe.dsl.base.operation import add_compile_info
+from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.compute.conv2d_backprop_input_compute import DynamicConv2dBpInputParams
 from tbe.tvm.expr import Expr
 
@@ -30,6 +36,7 @@ from .cube_tilingcase import TilingSelection
 from .cube_tilingcase import CubeTilingOp
 from .cube_tilingcase import TilingUtils as utils
 from .constants import Pattern
+from .tilingcase_util import Conv2dBackpropParaProcess
 
 
 W_DELTA = 1
@@ -40,6 +47,256 @@ MIN_STEP = 16
 FUSED_DOUBLE_OPERAND_MUL = 100.0
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
+DEFAULT_KERNEL_ID = None
+
+
+def parse_fuzz_build_range(info_list):
+    """
+    parse multiple range segment from json string
+
+    Notice
+    ----------
+    for conv2d backprop input only parse input range
+
+    Parameters
+    ----------
+    info_list: list support info
+        [{
+            "inputs": [{
+                "index": 0,
+                "tensor": [{
+                    "range": [
+                        [16, 32],
+                        [3, 3],
+                        [16, 32],
+                        [16, 32]
+                    ],
+                    "shape": [-1, 3, -1, -1]
+                }]
+            }]
+        }]
+
+    Returns
+    -------
+    range_list: list of 4d range
+    """
+    invalid = (not isinstance(info_list, list)) or len(info_list) == 0
+    if invalid:
+        raise RuntimeError("invalid missing support info {}".format(str(info_list)))
+    list_size = 4
+    range_list = []
+    op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
+    if op_type == "Conv2DBackpropInput":
+        target_index = 2
+    elif op_type == "Conv2DTranspose":
+        target_index = 1
+    else:
+        target_index = 0
+    for item in info_list:
+        inputs = item.get("inputs")
+        invalid = (not isinstance(inputs, list)) or len(inputs) == 0
+        if invalid:
+            continue
+        # >>> start: parse range from index [0] input
+        for input_tensor in inputs:
+            invalid = (not isinstance(input_tensor, dict)) or input_tensor.get("index") != target_index
+            if invalid:
+                continue
+            invalid = (not isinstance(input_tensor.get("tensor"), list)) \
+                      or len(input_tensor.get("tensor")) == 0 \
+                      or (not isinstance(input_tensor.get("tensor")[0].get("range"), list)) \
+                      or len(input_tensor.get("tensor")[0].get("range")) != list_size
+            if invalid:
+                raise RuntimeError("invalid support info input {}".format(str(input_tensor)))
+            input_range = input_tensor.get("tensor")[0].get("range")
+            for axis_range in input_range:
+                invalid = (not isinstance(axis_range, list)) \
+                          or len(axis_range) != 2 \
+                          or axis_range[0] < 1 \
+                          or axis_range[0] > axis_range[1]
+                if invalid:
+                    raise RuntimeError("invalid range {}".format(str(axis_range)))
+            range_list.append(input_range)
+            # <<< end: parse range from index [0] input
+    return range_list
+
+
+def gen_support_info(range_x, ori_tensors):
+    """
+    kernel list support info part
+
+    Notice
+    ------
+    only need to set inputs with range
+
+    Parameters
+    ----------
+    range_x: list
+         input x range
+    ori_tensors: dict
+        orginal vaild tensors
+
+    Returns
+    -------
+    support_info: dict
+    """
+    support_info = {}
+    # >>> start: generate input shape and range
+    inputs = []
+    item = {}
+    op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
+    if op_type == "Conv2DBackpropInput":
+        item["index"] = 2
+    elif op_type == "Conv2DTranspose":
+        item["index"] = 1
+    else:
+        item["index"] = 0
+    item["tensor"] = []
+    tensor_info = {}
+    if op_type == "Conv2DBackpropInput":
+        ori_tensors_input = ori_tensors.get("out_backprop")
+    else:
+        ori_tensors_input = ori_tensors.get("x")
+    ori_shape = ori_tensors_input.get("ori_shape")
+    tensor_info["shape"] = ori_shape
+    x_format = ori_tensors_input.get("ori_format")
+
+    # get dy_range depends on dx_range
+    conv_info = DynamicConv2dBpInputParams.tiling_info_dict
+    dx_range = [range_x[0], [ori_shape[x_format.find("C")], ori_shape[x_format.find("C")]], range_x[1], range_x[2]]
+    data_format = x_format
+    ori_paras = {
+        "filters": ori_tensors.get("filters"), "bias": None, "offset_w": None,
+        "strides": (conv_info.get("strideH"), conv_info.get("strideW"), conv_info.get("strideH_expand"),
+                    conv_info.get("strideW_expand")),
+        "pads": (conv_info.get("padu"), conv_info.get("padd"), conv_info.get("padl"), conv_info.get("padr")),
+        "dilations": (1, 1, 1, 1), "groups": conv_info.get("group"), "data_format": data_format,
+        "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": conv_info.get("kernel_name")
+    }
+    conv2d_backprop = Conv2dBackpropParaProcess(ori_paras)
+    filter_shape_nchw = conv2d_backprop.get_input_nchw(ori_tensors.get("filters").get("ori_shape"),
+                                                       ori_tensors.get("filters").get("ori_format"))
+    dx_range_nchw = dx_range
+    dy_range_nchw, _, _ = conv2d_backprop.get_output_range(filter_shape_nchw, dx_range_nchw)
+    range_valid = [[0, 0]] * 4
+    range_valid[x_format.find("N")] = list(dy_range_nchw[0])
+    range_valid[x_format.find("C")] = list(dy_range_nchw[1])
+    range_valid[x_format.find("H")] = list(dy_range_nchw[2])
+    range_valid[x_format.find("W")] = list(dy_range_nchw[3])
+    tensor_info["range"] = range_valid
+    item["tensor"].append(tensor_info)
+    inputs.append(item)
+    support_info["inputs"] = inputs
+    # <<< end: generate input shape and range
+    return support_info
+
+
+def add_covered_shape_range(compile_info):
+    """
+    tiling_case func for dynamic shape conv2d backprop input
+
+    Parameters
+    ----------
+    compile_info: dict
+        tiling range info
+
+    Returns
+    -------
+    info_list: dict
+        support info and compile info pair
+    max_id: int
+        last kernel id
+    """
+    info_list = []
+    id_list = list(compile_info["block_dim"].keys())
+    id_list.sort()
+    max_id = id_list[-1]
+    # >>> start: add compute var for op tiling
+    te_vars = []
+    for cpt in op_get_context().get_computes():
+        te_vars += cpt.get_vars()
+    var_list = [var.get_name() for var in te_vars]
+
+    # <<< end: add compute var for op tiling
+    for kernel_id, block_id in compile_info["block_dim"].items():
+        new_compile = compile_info.copy()
+        # >>> start: keep only one record
+        for keys, value in new_compile.items():
+            if isinstance(value, dict):
+                value = {} if value.get(kernel_id) is None else {kernel_id: value[kernel_id]}
+                new_compile[keys] = value
+        # <<< end: keep only one record
+        new_compile["kernelId"] = kernel_id
+        new_compile["_vars"] = {kernel_id: var_list}
+        # compile_info = gen_compile_info(ori_index)
+        range_x = new_compile["repo_range"].get(kernel_id) or new_compile["cost_range"].get(kernel_id)
+        new_range = [range_x[:2], range_x[2:4], range_x[4:6]]
+        ori_tensors = DynamicConv2dBpInputParams.ori_tensor
+        new_support = gen_support_info(new_range, ori_tensors)
+        info_list.append({"supportInfo": new_support, "compileInfo": new_compile})
+    return info_list, max_id
+
+
+@register_build_pointcut(pattern=Pattern.CONV2D_BACKPROP_INPUT)
+def build_pointcut_conv2d_backprop_input(func, *args, **kwargs):
+    """
+    kernel info process before build
+
+    Notice
+    ------
+    kernel_info: dict with support info and compile info
+        {
+            "supportInfo": {
+                "inputs": [{
+                    "index": 0,
+                    "tensor": [{
+                        "range": [
+                            [16, 32],
+                            [3, 3],
+                            [64, 128],
+                            [64, 128]
+                        ],
+                        "shape": [-1, 3, -1, -1]
+                    }]
+                }]
+            },
+            "compileInfo": {
+                "_pattern": "Conv2d_backprop_input",
+                "tiling_type": "dynamic_tiling",
+                "repo_seeds": {},
+                "repo_range": {},
+                "cost_range": {
+                    1: [16, 32, 64, 128, 64, 128]
+                },
+                "block_dim": {
+                    1: 16
+                },
+                "_vars": {
+                    1: ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]
+                }
+            }
+        }
+
+    Parameters
+    ----------
+    func: funtions
+        build process
+    args: list
+        function input args
+    kwargs: dict
+        function input args and value
+
+    Returns
+    -------
+    None
+    """
+    fuzz_build = get_context().get_build_type() == "fuzzily_build"
+    if fuzz_build:  # set kernel info
+        info_list, max_id = add_covered_shape_range(get_compile_info())
+        get_context().add_build_json_result("kernelList", info_list)
+        get_context().add_build_json_result("maxKernelId", max_id)
+    func(*args, **kwargs)
+
 
 @register_tiling_case(pattern=Pattern.CONV2D_BACKPROP_INPUT)
 def calc_conv2dbp_input(outs, option=None):
@@ -56,12 +313,14 @@ def calc_conv2dbp_input(outs, option=None):
     """
 
     var_names = ("batch_n", "dx_h", "dx_w")
+    fuzz_build = get_context().get_build_type() == "fuzzily_build"
     conv_info = DynamicConv2dBpInputParams.tiling_info_dict
     if outs[-1].op.tag == "elewise_multiple_sel":
         conv_info["fused_double_operand_num"] = 1 / 16
         if "elewise_binary_add" in outs[-1].op.input_tensors[1].op.tag:
             conv_info["fused_double_operand_num"] += 1
             conv_info["fusion_type"] = 4
+    tgt_list = []
     tgt_area = {}
     shape_dict = {"batch_n": conv_info.get("C_shape")[0],
                   "dx_h": conv_info.get("C_shape")[2],
@@ -72,13 +331,110 @@ def calc_conv2dbp_input(outs, option=None):
             tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
         else:
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
+    tgt_list.append(tgt_area)
+    max_id = DEFAULT_KERNEL_ID
+    if fuzz_build:  # parse input range
+        # generate tgt_area by format
+        ori_tensors = DynamicConv2dBpInputParams.ori_tensor
+        op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
+        if op_type == "Conv2DBackpropInput":
+            ori_tensors_input = ori_tensors.get("out_backprop")
+        else:
+            ori_tensors_input = ori_tensors.get("x")
+        invalid = (not isinstance(ori_tensors, dict)) \
+                  or (not isinstance(ori_tensors_input, dict))
+        if invalid:
+            raise RuntimeError("can't get input from para_dict")
+        input_format = ori_tensors_input["ori_format"]
+        pos_list = [input_format.find("N"),
+                    input_format.find("H"),
+                    input_format.find("W")]
+        # te fusion make sure that each range is within the range request
+        range_str = get_context().get_addition("missing_support_info")
+        range_list = []
+        if len(range_str) > 0:
+            range_list = parse_fuzz_build_range(json.loads(range_str))
+        if len(range_list) > 0:
+            tgt_list.clear()
+            for item in range_list:
+                # get dx_range depends on dy_range
+                dy_range = copy.deepcopy(item)
+                data_format = input_format
+                ori_paras = {
+                    "filters": ori_tensors.get("filters"), "bias": None, "offset_w": None,
+                    "strides": (conv_info.get("strideH"), conv_info.get("strideW"), conv_info.get("strideH_expand"),
+                                conv_info.get("strideW_expand")),
+                    "pads": (
+                    conv_info.get("padu"), conv_info.get("padd"), conv_info.get("padl"), conv_info.get("padr")),
+                    "dilations": (1, 1, 1, 1), "groups": conv_info.get("group"), "data_format": data_format,
+                    "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": conv_info.get("kernel_name")
+                }
+                conv2d_backprop = Conv2dBackpropParaProcess(ori_paras)
+                filter_shape_nchw = conv2d_backprop.get_input_nchw(ori_tensors.get("filters").get("ori_shape"),
+                                                                   ori_tensors.get("filters").get("ori_format"))
+                _, dy_range_nchw = conv2d_backprop.get_input_nchw((1, 1, 1, 1), data_format, dy_range)
+                dx_range_nchw, _, _ = conv2d_backprop.get_input_range(filter_shape_nchw, dy_range_nchw)
+                fuzz_area = {}
+                fuzz_area["batch_n"] = tuple(dx_range_nchw[0])
+                fuzz_area["dx_h"] = tuple(dx_range_nchw[2])
+                fuzz_area["dx_w"] = tuple(dx_range_nchw[3])
+                tgt_list.append(fuzz_area)
+        # >>> start: get kernel id
+        kernel_id = get_context().get_addition("max_kernel_id")
+        valid = isinstance(kernel_id, int) and kernel_id > -2
+        if valid:
+            max_id = kernel_id + 1
 
-    tiling_op = Conv2dBpInputTiling(conv_info, DynamicConv2dBpInputParams.var_map)
-    tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)
+    tiling_cases = []
+    total_info = {}
+    for tgt in tgt_list:
+        new_info = copy.deepcopy(conv_info)
+        tiling_op = Conv2dBpInputTiling(new_info, DynamicConv2dBpInputParams.var_map)
+        selector = TilingSelection(tiling_op, max_id)
+        tiling_cases += selector.calc_tiling(tgt, var_names)
+        # >>> start: gather compile_info process
+        if fuzz_build:
+            tgt_nhw = []
+            for var_name in var_names:
+                tgt_nhw.extend(tgt[var_name])
+            current_info = get_compile_info().copy()
+            id_list = list(current_info["block_dim"].keys())
+            id_list.sort()
+            max_id = id_list[-1] + 1
+            # >>> start: make sure range is within tgt_nhw
+            for range_key in ["repo_range", "cost_range"]:
+                valid = isinstance(current_info.get(range_key), dict)
+                if valid:
+                    for kernel_id, range_x in current_info[range_key].items():
+                        new_range = []
+                        for index, dim_value in enumerate(range_x):
+                            if index in (0, 2, 4):
+                                new_range.append(tgt_nhw[index] if dim_value < tgt_nhw[index] else dim_value)
+                            else:
+                                new_range.append(tgt_nhw[index] if dim_value > tgt_nhw[index] else dim_value)
+                        current_info[range_key][kernel_id] = new_range
+            # <<< end: make sure range is within tgt_nhw
+            if total_info:
+                # >>> start: add new dict info
+                for key, value in current_info.items():
+                    need_update = isinstance(total_info.get(key), dict) \
+                                  and isinstance(value, dict)
+                    if need_update:
+                        new_item = total_info[key]
+                        new_item.update(value)
+                        total_info[key] = new_item
+                        add_compile_info(key, total_info[key])
+            else:
+                total_info = current_info
+                # <<< end: add new dict info
+        # <<< end: gather compile_info process
     return tiling_cases
 
 
 class Conv2dBpInputTiling(CubeTilingOp):
+    """
+    get_tiling class for dynamic shape conv2d_bp_input
+    """
     def __init__(self, tiling_info, var_map):
         super().__init__(tiling_info, None, var_map)
         self.a_info = self.tiling_info['A_shape']

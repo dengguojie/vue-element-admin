@@ -51,31 +51,58 @@ bool Conv2DBpInputTiling(const std::string& opType, const TeOpParas& opParas, co
   GELOGD("Current format is %s, Ori format is %s", opParas.outputs[0].tensor[0].format.c_str(),
          opParas.outputs[0].tensor[0].ori_format.c_str());
 
-  int32_t n =  opParas.outputs[0].tensor[0].shape[nDim];
-  int32_t dedyH = opParas.inputs[2].tensor[0].shape[hDim];
-  int32_t dedyW = opParas.inputs[2].tensor[0].shape[wDim];
-  int32_t dxH = opParas.outputs[0].tensor[0].shape[hDim];
-  int32_t dxW = opParas.outputs[0].tensor[0].shape[wDim];
+  if(opCompileInfo.empty()) {
+    GELOGD("op compile info is empty");
+    return false;
+  }
+  // accurate build has only one item
+  // fuzzy build has multiple items
+  std::vector<std::string> varMap;
+  nlohmann::json opInfo;
+  GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
+  if (opCompileInfo.is_array()) {
+    // >>> start: splice compile info
+    opInfo = opCompileInfo[0];
+    varMap = opInfo.at("_vars").begin().value().get<std::vector<std::string>>();
+    nlohmann::json item;
+    for (size_t i = 1; i < opCompileInfo.size(); ++i) {
+      item = opCompileInfo[i];
+      std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
+      for (auto key: key_list) {
+        if (item[key].is_object() && !item[key].empty()) {
+          std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
+          opInfo[key][item[key].begin().key()] = list_value;
+        }
+      }
+      std::vector<std::string> key_int = {"block_dim"};
+      for (auto key: key_int) {
+        if (item[key].is_object() && !item[key].empty()) {
+          int32_t int_value = item[key].begin().value().get<int32_t>();
+          opInfo[key][item[key].begin().key()] = int_value;
+        }
+      }
+    }
+    // <<< end: put together compile info
+    GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
+  } else if (opCompileInfo.is_object()) {
+    varMap = opCompileInfo.at("_vars")["10000"].get<std::vector<std::string>>();
+    opInfo = opCompileInfo;
+  }
 
-  int32_t tilingID = CubeTiling(opType, {n, dxH, dxW}, opCompileInfo, runInfo);
-  GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", tilingID, n, dxH, dxW, dedyH, dedyW);
-
-  runInfo.tiling_key = tilingID;
-  std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
-
+  std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, n);
+    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[nDim]);
   }
   if (std::find(varMap.begin(), varMap.end(), "dx_h") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, dedyH);
-    ByteBufferPut(runInfo.tiling_data, dxH);
+    var_value.insert(var_value.end(), opParas.inputs[2].tensor[0].shape[hDim]);
+    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[hDim]);
   }
   if (std::find(varMap.begin(), varMap.end(), "dx_w") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, dedyW);
-    ByteBufferPut(runInfo.tiling_data, dxW);
+    var_value.insert(var_value.end(), opParas.inputs[2].tensor[0].shape[wDim]);
+    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[wDim]);
   }
 
-  return true;
+  return cube_tiling(opType, opParas.outputs[0].tensor[0].shape, var_value, opInfo, runInfo);
 }
 
 // register tiling interface of the conv2d_backprop_input

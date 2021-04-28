@@ -398,5 +398,36 @@ ut_case.add_case(
         })
 
 
+def test_conv2d_backprop_filter_fuzz_build_generalization(test_arg):
+    from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization
+    input_list = [
+        {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'conv2d_backprop_filter_fuzz_build_generalization']
+    conv2d_bp_filter_generalization(*input_list)
+print("adding conv2d test_conv2d_backprop_filter_fuzz_build_generalization testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_generalization)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

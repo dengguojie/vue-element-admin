@@ -36,8 +36,11 @@ namespace optiling {
  * @param [out] runInfo: result data
  * @return int: tiling id
  */
-int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curShape, const nlohmann::json& opInfo,
-                   OpRunInfo& runInfo);
+bool cube_tiling(const std::string& op_type,
+                const std::vector<int64_t>& input_shape,
+                const std::vector<int64_t>& var_value,
+                const nlohmann::json& compile_info,
+                OpRunInfo& run_info);
 
 /*
 * @brief: tiling function of conv3d forward and backprop

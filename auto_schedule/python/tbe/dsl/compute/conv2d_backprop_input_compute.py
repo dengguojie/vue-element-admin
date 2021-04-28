@@ -28,7 +28,6 @@ from tbe.dsl.compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1
 from tbe.dsl.base.operation import get_te_var
 from tbe.tvm.tensor import Tensor
 
-
 NoneType = type(None)
 
 # shape dim
@@ -137,18 +136,18 @@ def _check_equal_rule(param_1, param_2, param_name1, param_name2):
 
 
 def _check_input_params(  # pylint: disable=R0913,R0914,R0915
-    filters,
-    out_backprop,
-    filter_sizes,
-    input_sizes,
-    strides,
-    padding,
-    dilations,
-    res_dtype,
-    offset_w,
-    group_dict,
-    fusion_para=None,
-    switch_to_general_scheme=False
+        filters,
+        out_backprop,
+        filter_sizes,
+        input_sizes,
+        strides,
+        padding,
+        dilations,
+        res_dtype,
+        offset_w,
+        group_dict,
+        fusion_para=None,
+        switch_to_general_scheme=False
 ):
     """
     check the input params of conv2d_backprop_input_compute
@@ -440,6 +439,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                           "(dx_w_after_pad - filter_w_dilation) // stride_w + 1", "dy_h")
 
         _check_equal_rule(dx_c_ori, filter_c_ori, "dx_cin", "filter_cin")
+
     # strides
     def _check_strides():
         _check_variable_range(stride_h, STRIDE_MIN, STRIDE_MAX, "stride_h")
@@ -486,9 +486,9 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         def _l1fusion_size_limit(l1_size):
             l1fusion_l1_size = 0
             if (
-                list(padding)[::2] != [0, 0]
-                or [filter_h, filter_w] != [1, 1]
-                or switch_to_general_scheme
+                    list(padding)[::2] != [0, 0]
+                    or [filter_h, filter_w] != [1, 1]
+                    or switch_to_general_scheme
             ):
                 if stride_h > 1 or stride_w > 1:
                     l1fusion_l1_size = l1_size
@@ -515,7 +515,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             load3d_stride = 1
             a_l1_m_length = (dy_c0 - 1) * load3d_stride + filter_w_dilation
             al1_size = (
-                a_l1_m_length * c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
+                    a_l1_m_length * c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
             )
         if fusion_para.get("l1_fusion_type") != -1:
             al1_size = _l1fusion_size_limit(al1_size)
@@ -686,7 +686,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             opti_strategy = (1 + strides[0] * strides[1]) * cube_util.shape_to_list(
                 out_backprop.shape)[3] * tbe_platform.CUBE_MKN[res_dtype]["mac"][2] * BIT_RATIO_DICT[res_dtype]
             if (caller_name.endswith("_compute") or is_fusion_flag) or \
-                opti_strategy > tbe_platform_info.get_soc_spec("UB_SIZE"):
+                    opti_strategy > tbe_platform_info.get_soc_spec("UB_SIZE"):
                 return True
         return False
 
@@ -720,6 +720,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     dy_6gd_shape = [g_extend, shape_dy[0], dy_c1_extend] + shape_dy[2:]
     dx_6gd_shape = [g_extend, shape_dx[0], dx_c1_extend] + list(shape_dx)[2:]
 
+    DynamicConv2dBpInputParams.ori_tensor = para_dict.get("ori_tensors")
     DynamicConv2dBpInputParams.tiling_info_dict = {
         "op_type": "conv2d_backprop_input",
         "A_shape": dy_6gd_shape[1:],
@@ -750,7 +751,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         "dynamic_shape_flag": True
     }
     DynamicConv2dBpInputParams.var_map = DeconvParam.var_map
-    DynamicConv2dBpInputParams.dynamic_para = {"correct_range_flag": para_dict.get("correct_range_flag", False)}
+    DynamicConv2dBpInputParams.dynamic_para = {"correct_range_flag": para_dict.get("correct_range_flag", False),
+                                               "op_type": para_dict.get("op_type", "")}
     if pooling_mode is "AVG":
         DynamicConv2dBpInputParams.tiling_info_dict["fused_coefficient"] = [3, 0, 0]
 
@@ -774,9 +776,9 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             mean_matrix_shape = [shape_dy[2], shape_dy[3], shape_dy[4]]
             mean_matrix = tvm.compute(
                 mean_matrix_shape,
-                lambda h, w, c0: 
+                lambda h, w, c0:
                 (tvm.max(
-                    (tvm.min(h * strides[0] - padding[0] + filter_h, dx_h) - tvm.max(h * strides[0] - padding[0], 0)) * 
+                    (tvm.min(h * strides[0] - padding[0] + filter_h, dx_h) - tvm.max(h * strides[0] - padding[0], 0)) *
                     (tvm.min(w * strides[1] - padding[2] + filter_w, dx_w) - tvm.max(w * strides[1] - padding[2], 0)),
                     1)).astype("int"),
                 name="mean_matrix",
@@ -785,7 +787,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                 mean_matrix_shape,
                 lambda *index: mean_matrix(*index).astype(out_backprop.dtype),
                 name="mean_matrix_fp16",
-                tag="mean_matrix_fp16") 
+                tag="mean_matrix_fp16")
             if "Ascend310" in tbe_platform_info.get_soc_spec("SOC_VERSION"):
                 mean_matrix_rec = tvm.compute(
                     mean_matrix_shape,
@@ -794,14 +796,14 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                     tag="mean_matrix_rec")
                 dy_avg = tvm.compute(
                     shape_dy,
-                    lambda n, c1, h, w, c0: 
+                    lambda n, c1, h, w, c0:
                     (out_backprop(n, c1, h, w, c0) * mean_matrix_rec(h, w, c0)).astype(out_backprop.dtype),
                     name="dy_avg",
                     tag="dy_avg")
             else:
                 dy_avg = tvm.compute(
                     shape_dy,
-                    lambda n, c1, h, w, c0: 
+                    lambda n, c1, h, w, c0:
                     tvm.div(out_backprop(n, c1, h, w, c0), mean_matrix_fp16(h, w, c0)).astype(out_backprop.dtype),
                     name="dy_avg",
                     tag="dy_avg")
@@ -838,3 +840,4 @@ class DynamicConv2dBpInputParams:  # pylint: disable=R0903
     tiling_info_dict = {}
     var_map = {}
     dynamic_para = {}
+    ori_tensor = {}

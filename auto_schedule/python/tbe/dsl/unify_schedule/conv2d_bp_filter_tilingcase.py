@@ -16,13 +16,20 @@
 conv2d backprop filter tiling case
 """
 
+import json
+import copy
 from collections import OrderedDict
 from functools import reduce
 
 from tbe import tvm
 from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.context import get_context
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
+from tbe.dsl.base.operation import register_build_pointcut
+from tbe.dsl.base.operation import get_context as op_get_context
+from tbe.dsl.base.operation import add_compile_info
+from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.compute.conv2d_backprop_filter_compute import \
     DynamicConv2dBpFilterParams as DynamicParams
 
@@ -38,11 +45,246 @@ N_RANGE = 1000000
 W_DELTA = 1
 H_LEN = 400
 W_LEN = 400
+MAX_INT64 = 9223372036854775807
+MIN_INT64 = 1
+DEFAULT_KERNEL_ID = None
+
+
+def parse_fuzz_build_range(info_list):
+    """
+    parse multiple range segment from json string
+
+    Notice
+    ----------
+    for conv2d_backprop_filter only parse input range
+
+    Parameters
+    ----------
+    info_list: list support info
+        [{
+            "inputs": [{
+                "index": 0,
+                "tensor": [{
+                    "range": [
+                        [16, 32],
+                        [3, 3],
+                        [16, 32],
+                        [16, 32]
+                    ],
+                    "shape": [-1, 3, -1, -1]
+                }]
+            }]
+        }]
+
+    Returns
+    -------
+    range_list: list of 4d range
+    """
+    invalid = (not isinstance(info_list, list)) or len(info_list) == 0
+    if invalid:
+        raise RuntimeError("invalid missing support info {}".format(str(info_list)))
+    list_size = 4
+    range_list = []
+    for item in info_list:
+        inputs = item.get("inputs")
+        invalid = (not isinstance(inputs, list)) or len(inputs) == 0
+        if invalid:
+            continue
+        # >>> start: parse range from index [0] input
+        for input_tensor in inputs:
+            invalid = (not isinstance(input_tensor, dict)) or input_tensor.get("index") != 0
+            if invalid:
+                continue
+            invalid = (not isinstance(input_tensor.get("tensor"), list)) \
+                      or len(input_tensor.get("tensor")) == 0 \
+                      or (not isinstance(input_tensor.get("tensor")[0].get("range"), list)) \
+                      or len(input_tensor.get("tensor")[0].get("range")) != list_size
+            if invalid:
+                raise RuntimeError("invalid support info input {}".format(str(input_tensor)))
+            input_range = input_tensor.get("tensor")[0].get("range")
+            for axis_range in input_range:
+                invalid = (not isinstance(axis_range, list)) \
+                          or len(axis_range) != 2 \
+                          or axis_range[0] < 1 \
+                          or axis_range[0] > axis_range[1]
+                if invalid:
+                    raise RuntimeError("invalid range {}".format(str(axis_range)))
+            range_list.append(input_range)
+            # <<< end: parse range from index [0] input
+    return range_list
+
+
+def gen_support_info(range_x, ori_tensors):
+    """
+    kernel list support info part
+
+    Notice
+    ------
+    only need to set inputs with range
+
+    Parameters
+    ----------
+    range_x: list
+         input x range
+    ori_tensors: dict
+        orginal vaild tensors
+
+    Returns
+    -------
+    support_info: dict
+    """
+    support_info = {}
+    # >>> start: generate input shape and range
+    inputs = []
+    indexes = [0, 2]
+    input_tensores = ["x", "out_backprop"]
+    for index, input_tensor in zip(indexes, input_tensores):
+        item = {}
+        item["index"] = index
+        item["tensor"] = []
+        tensor_info = {}
+        ori_shape = ori_tensors.get(input_tensor).get("ori_shape")
+        tensor_info["shape"] = ori_shape
+        range_valid = ori_tensors.get(input_tensor).get("range")
+        x_format = ori_tensors.get(input_tensor).get("ori_format")
+        range_valid = [[0, 0]] * 4
+        range_valid[x_format.find("N")] = range_x[0]
+        range_valid[x_format.find("C")] = [ori_shape[x_format.find("C")]] * 2
+        if input_tensor == "out_backprop":
+            range_valid[x_format.find("N")] = [MIN_INT64, MAX_INT64]
+            range_valid[x_format.find("H")] = [MIN_INT64, MAX_INT64]
+            range_valid[x_format.find("W")] = [MIN_INT64, MAX_INT64]
+        else:
+            range_valid[x_format.find("H")] = range_x[1]
+            range_valid[x_format.find("W")] = range_x[2]
+        tensor_info["range"] = range_valid
+        item["tensor"].append(tensor_info)
+        inputs.append(copy.deepcopy(item))
+    support_info["inputs"] = inputs
+    # <<< end: generate input shape and range
+    return support_info
+
+
+def add_covered_shape_range(compile_info):
+    """
+    tiling_case func for dynamic shape conv2d_backprop_filter
+
+    Parameters
+    ----------
+    compile_info: dict
+        tiling range info
+
+    Returns
+    -------
+    info_list: dict
+        support info and compile info pair
+    max_id: int
+        last kernel id
+    """
+    info_list = []
+    id_list = list(compile_info["block_dim"].keys())
+    id_list.sort()
+    max_id = id_list[-1]
+    # >>> start: add compute var for op tiling
+    te_vars = []
+    for cpt in op_get_context().get_computes():
+        te_vars += cpt.get_vars()
+    var_list = [var.get_name() for var in te_vars]
+    # <<< end: add compute var for op tiling
+    for kernel_id, block_id in compile_info["block_dim"].items():
+        new_compile = compile_info.copy()
+        # >>> start: keep only one record
+        for key, value in new_compile.items():
+            if isinstance(value, dict):
+                value = {} if value.get(kernel_id) is None else {kernel_id: value[kernel_id]}
+                new_compile[key] = value
+        # <<< end: keep only one record
+        new_compile["kernelId"] = kernel_id
+        new_compile["_vars"] = {kernel_id: var_list}
+        range_x = new_compile["repo_range"].get(kernel_id) or new_compile["cost_range"].get(kernel_id)
+        new_range = [range_x[:2], range_x[2:4], range_x[4:6]]
+        new_support = gen_support_info(new_range, DynamicParams.ori_tensors)
+        info_list.append({"supportInfo": new_support, "compileInfo": new_compile})
+    return info_list, max_id
+
+
+@register_build_pointcut(pattern=Pattern.CONV2D_BACKPROP_FILTER)
+def build_pointcut_conv2d_bp_filter(func, *args, **kwargs):
+    """
+    kernel info process before build
+
+    Notice
+    ------
+    kernel_info: dict with support info and compile info
+        {
+            "supportInfo": {
+                "inputs": [{
+                    "index": 0,
+                    "tensor": [{
+                        "range": [
+                            [16, 32],
+                            [3, 3],
+                            [64, 128],
+                            [64, 128]
+                        ],
+                        "shape": [-1, 3, -1, -1]
+                    }]
+                }]
+            },
+            "compileInfo": {
+                "_pattern": "Conv2d_backporop_filter",
+                "tiling_type": "dynamic_tiling",
+                "repo_seeds": {},
+                "repo_range": {},
+                "cost_range": {
+                    1: [16, 32, 64, 128, 64, 128]
+                },
+                "block_dim": {
+                    1: 16
+                },
+                "_vars": {
+                    1: ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]
+                }
+            }
+        }
+
+    Parameters
+    ----------
+    func: funtions
+        build process
+    args: list
+        function input args
+    kwargs: dict
+        function input args and value
+
+    Returns
+    -------
+    None
+    """
+    fuzz_build = get_context().get_build_type() == "fuzzily_build"
+    if fuzz_build: # set kernel info
+        info_list, max_id = add_covered_shape_range(get_compile_info())
+        get_context().add_build_json_result("kernelList", info_list)
+        get_context().add_build_json_result("maxKernelId", max_id)
+    func(*args, **kwargs)
 
 
 @register_tiling_case(pattern=Pattern.CONV2D_BACKPROP_FILTER)
 def calc_conv2dbp_filter(outs, option=None):
+    """
+    tiling_case func for dynamic shape conv2d_bp_filter
+
+    Parameters
+    ----------
+    outs : tvm tensor or list of tvm tensor, results for tvm compute
+
+    Returns
+    -------
+    list of dict, each dict for a tiling case
+    """
     var_names = ('batch', 'fmap_h', 'fmap_w')
+    fuzz_build = get_context().get_build_type() == "fuzzily_build"
+    tgt_list = []
     tgt_area = {}
     info = DynamicParams.tiling_info_dict
     shape_dict = {"batch": info.get("B_shape")[0],
@@ -53,12 +295,88 @@ def calc_conv2dbp_filter(outs, option=None):
             tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
         else:
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
-    tiling_op = Conv2dBpFilterTiling(info, DynamicParams.var_map)
-    tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)
+    tgt_list.append(tgt_area)
+    max_id = DEFAULT_KERNEL_ID
+    if fuzz_build: # parse input range
+        # generate tgt_area by format
+        ori_tensors = DynamicParams.ori_tensors
+        invalid = (not isinstance(ori_tensors, dict)) \
+                  or (not isinstance(ori_tensors.get("x"), dict)) \
+                  or (not isinstance(ori_tensors.get("out_backprop"), dict))
+        if invalid:
+            raise RuntimeError("can't get input from para_dict")
+        input_format = ori_tensors["x"]["ori_format"]
+        pos_list = [input_format.find("N"),
+                    input_format.find("H"),
+                    input_format.find("W")]
+        # te fusion make sure that each range is within the range request
+        range_str = get_context().get_addition("missing_support_info")
+        range_list = []
+        if len(range_str) > 0:
+            range_list = parse_fuzz_build_range(json.loads(range_str))
+        if len(range_list) > 0:
+            tgt_list.clear()
+            for item in range_list:
+                fuzz_area = {}
+                for var, index in zip(var_names, pos_list):
+                    fuzz_area[var] = tuple(item[index])
+                tgt_list.append(fuzz_area)
+        # >>> start: get kernel id
+        kernel_id = get_context().get_addition("max_kernel_id")
+        valid = isinstance(kernel_id, int) and kernel_id > -2
+        if valid:
+            max_id = kernel_id + 1
+
+    tiling_cases = []
+    total_info = {}
+    for tgt in tgt_list:
+        new_info = copy.deepcopy(info)
+        tiling_op = Conv2dBpFilterTiling(new_info, DynamicParams.var_map)
+        selector = TilingSelection(tiling_op, max_id)
+        tiling_cases += selector.calc_tiling(tgt, var_names)
+        # >>> start: gather compile_info process
+        if fuzz_build:
+            tgt_nhw = []
+            for var_name in var_names:
+                tgt_nhw.extend(tgt[var_name])
+            current_info = get_compile_info().copy()
+            id_list = list(current_info["block_dim"].keys())
+            id_list.sort()
+            max_id = id_list[-1] + 1
+            # >>> start: make sure range is within tgt_nhw
+            for range_key in ["repo_range", "cost_range"]:
+                valid = isinstance(current_info.get(range_key), dict)
+                if valid:
+                    for kernel_id, range_x in current_info[range_key].items():
+                        new_range = []
+                        for index, dim_value in enumerate(range_x):
+                            if index in (0, 2, 4):
+                                new_range.append(tgt_nhw[index] if dim_value < tgt_nhw[index] else dim_value)
+                            else:
+                                new_range.append(tgt_nhw[index] if dim_value > tgt_nhw[index] else dim_value)
+                        current_info[range_key][kernel_id] = new_range
+            # <<< end: make sure range is within tgt_nhw
+            if total_info:
+                # >>> start: add new dict info
+                for key, value in current_info.items():
+                    need_update = isinstance(total_info.get(key), dict) \
+                                  and isinstance(value, dict)
+                    if need_update:
+                        new_item = total_info[key]
+                        new_item.update(value)
+                        total_info[key] = new_item
+                        add_compile_info(key, total_info[key])
+            else:
+                total_info = current_info
+                # <<< end: add new dict info
+        # <<< end: gather compile_info process
     return tiling_cases
 
 
 class Conv2dBpFilterTiling(CubeTilingOp):
+    """
+    get_tiling class for dynamic shape conv2d_bp_filter
+    """
     def __init__(self, tiling_info, var_map):
         super().__init__(tiling_info, var_map)
         self.a_info = self.tiling_info['A_shape']
@@ -70,6 +388,13 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         self.var_map = var_map
 
     def get_repo_tiling(self):
+        """
+        get tiling from repository
+
+        Returns
+        -------
+        tiling: shape and tiling retrieved from repository
+        """
         tiling_list = get_tiling(self.tiling_info)
         res_list = []
         for tiling in tiling_list:
@@ -110,13 +435,26 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         self.tiling_info["tiling_type"] = "cost_model_tiling"
 
         cost_tiling = get_tiling(self.tiling_info)
-        if cost_tiling:
-            tiling = cost_tiling[0]
-            self._get_attach_flag(tiling)
-        else:
-            tiling = self.get_default_tiling()
-            self._get_attach_flag(tiling)
+        tiling = self._check_and_set_default_tiling(cost_tiling[0])
         return tiling
+    
+    def _check_and_set_default_tiling(self, tiling_in):
+        """
+        get tiling using cost model
+
+        Parameters
+        ----------
+        shape: tiling retrieved by cost model
+
+        Returns
+        -------
+        tiling: tiling retrieved by cost model
+        """        
+        if tiling_in.get("tiling").get("AL0_matrix")[2] == 32:
+            tiling_in = {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
+                        "B_shape":self.b_info, "C_shape": self.c_info}
+        self._get_attach_flag(tiling_in)
+        return tiling_in 
 
     def get_tiling_range(self, tiling, fmap_shape):
         """
@@ -241,8 +579,11 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         ni_min = 1
         ni_max = N_RANGE
 
-        full_k_in_l0a, full_k_in_l0b, grads_l1_tiling_nparts, \
-            fmap_l1_tiling_nparts = self._check_full_k(tiling, dy_shape)
+        full_k_info = self._check_full_k(tiling, dy_shape)
+        full_k_in_l0a = full_k_info.get("full_k_l0a")
+        full_k_in_l0b = full_k_info.get("full_k_l0b")
+        grads_l1_tiling_nparts = full_k_info.get("grads_l1_tiling_nparts")
+        fmap_l1_tiling_nparts = full_k_info.get("fmap_l1_tiling_nparts")
         batch_num_sc = utils.icd(n_i, block_dim_batch)
 
         # based on l0_attach and l1_attach
@@ -256,9 +597,24 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             if batch_num_sc == 1:
                 return [ni_min, block_dim_batch]
             else:
-                return [block_dim_batch+1, ni_max]
+                return [block_dim_batch + 1, ni_max]
 
     def assembly_case(self, tiling, coverage, cnt):
+        """
+        Configure dict of tiling strategy and coverage
+
+        Parameters
+        ----------
+        tiling: dict, tiling from repository or cost model
+
+        coverage: list of tuple, coverage of tiling
+
+        cnt: serial number of tiling
+
+        Returns
+        -------
+        dict: describe a tiling strategy
+        """
         var_range = OrderedDict()
         if 'batch' in self.var_map:
             var_range['batch'] = (utils.trans_to_int(coverage[0]), utils.trans_to_int(coverage[1]))
@@ -290,6 +646,17 @@ class Conv2dBpFilterTiling(CubeTilingOp):
                 "correct_range_flag": correct_range_flag}
 
     def get_default_tiling(self, w_bound=None):
+        """
+        get default tiling for unlimited range or special case
+
+        Parameters
+        ----------
+        w_bound: the min value of w when dynamic w
+
+        Returns
+        -------
+        dict: default tiling for conv2d_bp_filter
+        """
         return {
             'AUB_shape': [1, 0, 0, 0], 'BUB_shape': None,
             'AL1_shape': [utils.CUBE_SIZE, 1, 1],
@@ -537,7 +904,6 @@ class Conv2dBpFilterTiling(CubeTilingOp):
 
         return int(fmap_l1_size + grad_l1_size) <= utils.L1BUFFER
 
-
     def _check_batch_flag(self, tiling, current_n, seed_fmap_shape):
         """
 
@@ -672,8 +1038,8 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         else:
             fmap_l1_tiling_nparts = [1, 1]
 
-        return full_k_l0a, full_k_l0b, \
-               grads_l1_tiling_nparts, fmap_l1_tiling_nparts
+        return {"full_k_l0a": full_k_l0a, "full_k_l0b": full_k_l0b, \
+               "grads_l1_tiling_nparts": grads_l1_tiling_nparts, "fmap_l1_tiling_nparts": fmap_l1_tiling_nparts}
 
     def _get_attach_flag(self, tiling_extend):
         """
@@ -728,8 +1094,11 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         flag_fmap_load2d = True \
             if height_all_one and width_all_one else False
 
-        full_k_in_l0a, full_k_in_l0b, grads_l1_tiling_nparts, \
-            fmap_l1_tiling_nparts = self._check_full_k(tiling, dy_shape)
+        full_k_info = self._check_full_k(tiling, dy_shape)
+        full_k_in_l0a = full_k_info.get("full_k_l0a")
+        full_k_in_l0b = full_k_info.get("full_k_l0b")
+        grads_l1_tiling_nparts = full_k_info.get("grads_l1_tiling_nparts")
+        fmap_l1_tiling_nparts = full_k_info.get("fmap_l1_tiling_nparts")
         l0a_attach, l0b_attach = self._get_l0_attach(
             tiling, batch_num_sc, full_k_in_l0a, full_k_in_l0b)
         al1_attach, bl1_attach = self._get_l1_attach(

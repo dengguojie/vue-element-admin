@@ -2199,6 +2199,102 @@ static graphStatus VerifyConv2dbpPads(ge::Operator& op) {
   }
   return GRAPH_SUCCESS;
 }
+
+/*!
+  * Simply get value range in grade list.
+  */
+static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
+                          const int64_t& value, int64_t& low, int64_t& high) {
+  size_t min_size = 2;
+  if (grade.size() < min_size) {
+    OP_LOGE(op.GetName().c_str(), "input grade size smaller then %u", min_size);
+    return false;
+  }
+  // grade is in ascending order
+  size_t last = grade.size() - 1;
+  if (value > grade[last]) {
+    OP_LOGE(op.GetName().c_str(), "input value %lld is out the range of %lld", value, grade[last]);
+    return false;
+  }
+  // if it is the right boundary value, use the right closed interval
+  if (value == grade[last]) {
+    low = grade[last - 1];
+    high = grade[last];
+    return true;
+  }
+  for (auto n : grade) {
+    if (value >= n) {
+      low = n;
+    }
+    if (value < n) {
+      high = n;
+      break;
+    }
+  }
+  return true;
+}
+
+/*!
+  * Generate NHW shape range
+  */
+static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
+                                std::vector<std::pair<int64_t, int64_t>>& input_range) {
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  // only support 4D shape
+  auto x_format = x_tensor->GetFormat();
+  size_t idx_n = 0;
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  size_t idx_c = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+    idx_c = 3;
+  } else {
+    idx_c = 1;
+    idx_h = 2;
+    idx_w = 3;
+  }
+  std::vector<int64_t> grade_n = {1, 2, 4, 8, 16, 32, ((1 << 31) - 1)};
+  std::vector<int64_t> grade_w = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
+  std::vector<int64_t> grade_h;
+  if (op.GetOpType() == "Conv2D") {
+    grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 100000};
+  } else {
+    grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
+  }
+  // init empty range
+  // shape -1 without set range call "GetShapeRange" will return [1,-1]
+  input_range = {{}, {}, {}, {}};
+  std::vector<std::pair<int64_t, int64_t>> range_set;
+  x_tensor->GetShapeRange(range_set);
+  std::map<size_t, std::vector<int64_t>> grade_map;
+  grade_map[idx_n] = grade_n;
+  grade_map[idx_h] = grade_h;
+  grade_map[idx_w] = grade_w;
+  for (auto item: grade_map) {
+    // allow shape -1 with range
+    if(x_shape[item.first] == -1) {
+      if (range_set.size() > item.first) {
+        input_range[item.first] = range_set[item.first];
+      } else {
+        OP_LOGE(op.GetName().c_str(), "cant't get input index %zu range", item.first);
+        return false;
+      }
+    } else {
+      int64_t low = 1;
+      int64_t high = 1;
+      if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
+        OP_LOGE(op.GetName().c_str(), "failed to get the %zu range", item.first);
+        return false;
+      }
+      input_range[item.first] = std::make_pair(low, high);
+    }
+  }
+  input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
+  return true;
+}
+
 // ----------------Conv2DBackpropInput-------------------
 static graphStatus VerifyConv2dbpInputCommon(const ge::Operator& op) {
   auto filter_desc = op.GetInputDesc("filter");
@@ -2752,6 +2848,24 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     if (!unknown_rank && !IsUnKnownShape(dy_sizes) && !check_conv2d_backprop_input_pads(op, dy_sizes, dy_format,
                                             filter_sizes, filter_format,dx_shape, input_format, attr_param)) {
       return GRAPH_FAILED;
+    }
+  }
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  // fuzz build allow shape dim -1 with range
+  if ((!unknown_rank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // generate range
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    if (!GenConv2dShapeRange(op, x_desc, input_range)){
+        return GRAPH_FAILED;
+    }
+    // only need to set input fuzz build range
+    graphStatus ret = x_desc->SetShapeRange(input_range);
+    if (ret != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "set input range failed");
+        return GRAPH_FAILED;
     }
   }
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropInput inferfunction!");
@@ -3351,6 +3465,26 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     }
   }
   
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  // fuzz build allow shape dim -1 with range
+  if ((!unknown_rank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // generate range
+    std::vector<std::pair<int64_t, int64_t>> x_range;
+    if (!GenConv2dShapeRange(op, x_desc, x_range)){
+      return GRAPH_FAILED;
+    }
+    std::vector<std::pair<int64_t, int64_t>> out_backprop_range;
+    if (!GenConv2dShapeRange(op, dy_desc, out_backprop_range)){
+      return GRAPH_FAILED;
+    }
+    // only need to set input fuzz build range
+    x_desc->SetShapeRange(x_range);
+    dy_desc->SetShapeRange(out_backprop_range);
+  }
+
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
 }
@@ -3849,96 +3983,6 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
     }
   }
   y_tensor->SetShape(GeShape(y_shape));
-  return true;
-}
-
-/*!
-  * Simply get value range in grade list.
-  */
-static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
-                          const int64_t& value, int64_t& low, int64_t& high) {
-  size_t min_size = 2;
-  if (grade.size() < min_size) {
-    OP_LOGE(op.GetName().c_str(), "input grade size smaller then %u", min_size);
-    return false;
-  }
-  // grade is in ascending order
-  size_t last = grade.size() - 1;
-  if (value > grade[last]) {
-    OP_LOGE(op.GetName().c_str(), "input value %lld is out the range of %lld", value, grade[last]);
-    return false;
-  }
-  // if it is the right boundary value, use the right closed interval
-  if (value == grade[last]) {
-    low = grade[last - 1];
-    high = grade[last];
-    return true;
-  }
-  for (auto n : grade) {
-    if (value >= n) {
-      low = n;
-    }
-    if (value < n) {
-      high = n;
-      break;
-    }
-  }
-  return true;
-}
-
-/*!
-  * Generate NHW shape range
-  */
-static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
-                                std::vector<std::pair<int64_t, int64_t>>& input_range) {
-  auto x_shape = x_tensor->MutableShape().GetDims();
-  // only support 4D shape
-  auto x_format = x_tensor->GetFormat();
-  size_t idx_n = 0;
-  size_t idx_h = 0;
-  size_t idx_w = 0;
-  size_t idx_c = 0;
-  if (x_format == FORMAT_NHWC) {
-    idx_h = 1;
-    idx_w = 2;
-    idx_c = 3;
-  } else {
-    idx_c = 1;
-    idx_h = 2;
-    idx_w = 3;
-  }
-  std::vector<int64_t> grade_n = {1, 2, 4, 8, 16, 32, ((1 << 31) - 1)};
-  std::vector<int64_t> grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
-  std::vector<int64_t> grade_w = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
-  // init empty range
-  // shape -1 without set range call "GetShapeRange" will return [1,-1]
-  input_range = {{}, {}, {}, {}};
-  std::vector<std::pair<int64_t, int64_t>> range_set;
-  x_tensor->GetShapeRange(range_set);
-  std::map<size_t, std::vector<int64_t>> grade_map;
-  grade_map[idx_n] = grade_n;
-  grade_map[idx_h] = grade_h;
-  grade_map[idx_w] = grade_w;
-  for (auto item: grade_map) {
-    // allow shape -1 with range
-    if(x_shape[item.first] == -1) {
-      if (range_set.size() > item.first) {
-        input_range[item.first] = range_set[item.first];
-      } else {
-        OP_LOGE(op.GetName().c_str(), "cant't get input index %zu range", item.first);
-        return false;
-      }
-    } else {
-      int64_t low = 1;
-      int64_t high = 1;
-      if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
-        OP_LOGE(op.GetName().c_str(), "failed to get the %zu range", item.first);
-        return false;
-      }
-      input_range[item.first] = std::make_pair(low, high);
-    }
-  }
-  input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
   return true;
 }
 
@@ -5655,6 +5699,21 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
   } else {
     yTensor->SetDataType(xDtype);
   }
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  // fuzz build allow shape dim -1 with range
+  if ((!unknownRank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // generate range
+    std::vector<std::pair<int64_t, int64_t>> x_range;
+    if (!GenConv2dShapeRange(op, xTensor, x_range)){
+      return GRAPH_FAILED;
+    }
+    // only need to set input fuzz build range
+    xTensor->SetShapeRange(x_range);
+  }
+
   OP_LOGD(op.GetName().c_str(), "Leave DeconvolutionInfer.");
   return GRAPH_SUCCESS;
 }
@@ -9086,6 +9145,26 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   }
   std::vector<std::pair<int64_t, int64_t>> yRange;
   yDesc->GetShapeRange(yRange);
+
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  // fuzz build allow shape dim -1 with range
+  if ((!unknownRank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // generate range
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    if (!GenConv2dShapeRange(op, xDesc, input_range)) {
+        return GRAPH_FAILED;
+    }
+    // only need to set input fuzz build range
+    graphStatus ret = xDesc->SetShapeRange(input_range);
+    if (ret != GRAPH_SUCCESS){
+        OP_LOGE(op.GetName().c_str(), "set input range failed");
+        return GRAPH_FAILED;
+    }
+  }
+
   OP_LOGD(op.GetName().c_str(), "Leave Conv2DTransposeInfer.");
   return GRAPH_SUCCESS;
 }

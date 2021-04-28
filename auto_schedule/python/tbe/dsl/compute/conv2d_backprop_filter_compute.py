@@ -1268,6 +1268,7 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
     res_dtype = para_dict.get("res_dtype", "float32")
     kernel_name = para_dict.get("kernel_name", "conv2d_backprop_filter_cce")
     DynamicConv2dBpFilterParams.correct_range_flag = para_dict.get("correct_range_flag", False)
+    DynamicConv2dBpFilterParams.ori_tensors = para_dict.get("ori_tensors")
 
     deconv_dw_object = Conv2dBackpropFilter(input_x, out_backprop,
                                             filter_sizes,
@@ -1286,4 +1287,5 @@ class DynamicConv2dBpFilterParams:
 
     var_map = {}
     correct_range_flag = False
+    ori_tensors = {}
     tiling_info_dict = {}

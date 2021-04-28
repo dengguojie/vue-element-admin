@@ -41,13 +41,13 @@ namespace {
     {"AvgPool3DGrad", kAvgPool3DGradVarNames}
   };
 
-  void GetVarNames(const std::string &op_type, std::vector<std::string> &vars) {
+  void get_var_names(const std::string &op_type, std::vector<std::string> &vars) {
     if (kOpVarNamesMap.count(op_type) > 0){
       vars = kOpVarNamesMap.at(op_type);
     }
   }
 
-  static bool IsShapeInRange(const std::vector<int64_t> &shape, const std::vector<int64_t> &range) {
+  static bool is_shape_in_range(const std::vector<int64_t> &shape, const std::vector<int64_t> &range) {
     // shape: NDHWC, range: NDHW
     if (shape.size() < kConv3dDimSizeLimit || range.size() < (kConv3dVarDimSizeLimit * 2)) {
       return false;
@@ -64,7 +64,27 @@ namespace {
     return true;
   }
 
-  static int64_t CalcDist(const std::vector<int64_t> &shape, const std::vector<int64_t> &seeds) {
+  static bool is_shape_in_range_cube(const std::vector<int64_t> &shape, const std::vector<int64_t> &range) {
+    const std::vector<int32_t> shape_dim = {0, 2, 3};
+    const std::vector<int32_t> range_dim = {0, 1, 2, 3, 4, 5};
+    if (range.size() == range_dim.size()) {
+      for (int32_t i = 0; i < shape_dim.size(); ++i) {
+        if (shape[shape_dim[i]] < range[range_dim[i * 2]] || shape[shape_dim[i]] > range[range_dim[i * 2 + 1]]) {
+          return false;
+        }
+      }
+    } else if (range.size() == 2) {
+      if (shape[shape_dim[0]] < range[0] || shape[shape_dim[0]] > range[1]) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+
+    return true;
+  }
+
+  static int64_t calc_dist(const std::vector<int64_t> &shape, const std::vector<int64_t> &seeds) {
     // shape: NDHWC, range: NDHW
     if (shape.size() < kConv3dDimSizeLimit || seeds.size() < kConv3dVarDimSizeLimit) {
       return std::numeric_limits<int64_t>::max();
@@ -81,7 +101,7 @@ namespace {
     return dist;
   }
 
-  std::string GetConv3DBatchTiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
+  std::string get_conv3D_batch_tiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
                                    const nlohmann::json& compile_info) {
     std::string tiling_id("0");
     if (cur_shape.empty()) {
@@ -105,7 +125,7 @@ namespace {
     return tiling_id;
   }
 
-  std::string GetConv3DNDHWTiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
+  std::string get_conv3D_ndhw_tiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
                                   const nlohmann::json& compile_info) {
     std::string tiling_id("0");
     if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
@@ -119,8 +139,8 @@ namespace {
     for (auto it = tiling_seeds.begin(); it != tiling_seeds.end(); it++) {
       std::vector<int64_t> seed = it.value().get<std::vector<int64_t>>();
       auto& range = repo_range[it.key()];
-      if (IsShapeInRange(cur_shape, range)) {
-        int64_t dist = CalcDist(cur_shape, seed);
+      if (is_shape_in_range(cur_shape, range)) {
+        int64_t dist = calc_dist(cur_shape, seed);
         if (dist < min_dist) {
           tiling_id = it.key();
           min_dist = dist;
@@ -137,7 +157,7 @@ namespace {
       auto& costRange = compile_info.at("cost_range");
       for (auto it = costRange.begin(); it != costRange.end(); it++) {
         auto& range = it.value();
-        if (IsShapeInRange(cur_shape, range)) {
+        if (is_shape_in_range(cur_shape, range)) {
           tiling_id = it.key();
           break;
         }
@@ -147,10 +167,10 @@ namespace {
     return tiling_id;
   }
 
-  void UpdateRunInfo(const std::vector<bool>& dynamic_mode,
-                     const std::vector<int64_t>& input_shape,
-                     const std::vector<int64_t>& output_shape,
-                     optiling::OpRunInfo& run_info) {
+  void update_run_info(const std::vector<bool>& dynamic_mode,
+                      const std::vector<int64_t>& input_shape,
+                      const std::vector<int64_t>& output_shape,
+                      optiling::OpRunInfo& run_info) {
     for (int32_t i = 0; i < kConv3dVarDimSizeLimit; ++i) {
       if (dynamic_mode[i]) {
         int32_t shape_index = kConv3DDynamicShapeDims[i];
@@ -161,102 +181,133 @@ namespace {
       }
     }
   }
+
+  void update_run_info_cube(const std::vector<int64_t> var_value, optiling::OpRunInfo& run_info) {
+    for (int64_t i = 0; i < var_value.size(); ++i) {
+      optiling::ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(var_value[i]));
+    }
+  }
+
+  string cube_tiling_batch(const std::string& op_type, const std::vector<int64_t>& cur_shape,
+                         const nlohmann::json& compile_info, string tiling_id) {
+    if (cur_shape.empty()) {
+      return tiling_id;
+    }
+
+    if (!compile_info.contains("tiling_range")) {
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no tiling_range in compile info json");
+      return tiling_id;
+    }
+    auto& tiling_range = compile_info.at("tiling_range");
+    for (auto it = tiling_range.begin(); it != tiling_range.end(); it++) {
+      auto& range = it.value();
+      if (is_shape_in_range_cube(cur_shape, range)){
+        tiling_id = it.key();
+      }
+    }
+    return tiling_id;
+  }
+
+  string cube_tiling_nhw(const std::string& op_type, const std::vector<int64_t>& cur_shape,
+                       const nlohmann::json& compile_info, string tiling_id) {
+    if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_sends or repo_range in compile info json");
+        return tiling_id;
+    }
+
+    int32_t seedHDim = 1;
+    int32_t seedWDim = 2;
+    int32_t hDim = 1;
+    int32_t wDim = 2;
+
+    auto& repo_range = compile_info.at("repo_range");
+    auto& tiling_seeds = compile_info.at("repo_seeds");
+    int64_t min_dist = std::numeric_limits<int64_t>::max();
+    for (auto it = tiling_seeds.begin(); it != tiling_seeds.end(); it++) {
+      std::vector<int32_t> seed = it.value().get<std::vector<int32_t>>();
+      auto& range = repo_range[it.key()];
+
+      if (is_shape_in_range_cube(cur_shape, range)) {
+        int32_t dist = abs(cur_shape[hDim] - seed[seedHDim]) + abs(cur_shape[wDim] - seed[seedWDim]);
+        if (dist < min_dist) {
+          tiling_id = it.key();
+          min_dist = dist;
+        }
+      }
+    }
+    if (tiling_id.empty()) {
+      if (!compile_info.contains("cost_range")) {
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no cost_range in compile info json");
+        return tiling_id;
+      }
+
+      auto& cost_range = compile_info.at("cost_range");
+      for (auto it = cost_range.begin(); it != cost_range.end(); it++) {
+        auto& range = it.value();
+        if (is_shape_in_range_cube(cur_shape, range)) {
+          tiling_id = it.key();
+          break;
+        }
+      }
+    }
+    return tiling_id;
+  }
 }
 
 namespace optiling {
+ /*
+  * @brief: tiling function of conv2d forward and backprop
+  * @param [in] op_type: op_type of ops
+  * @param [in] input_shape: input shape of ops
+  * @param [in] var_map: variable name and value passed in at runtime
+  * @param [in] compile_info: compilation information includes tiling coverage
+  * @param [out] run_info: runtime information
+  * @return bool: success or not
+  */
+  bool cube_tiling(const std::string& op_type,
+                  const std::vector<int64_t>& input_shape,
+                  const std::vector<int64_t>& var_value,
+                  const nlohmann::json& compile_info,
+                  OpRunInfo& run_info) {
+    try {
+      OP_LOGD(op_type.c_str(), "input compile info: %s", compile_info.dump().c_str());
+      std::vector<std::string> vars = compile_info.at("_vars").begin().value().get<std::vector<std::string>>();
+      std::string tiling_id("");
 
-int32_t g_nDim = 0;
-int32_t g_hDim = 1;
-int32_t g_wDim = 2;
-int32_t g_nMinDim = 0;
-int32_t g_nMaxDim = 1;
-int32_t g_hMinDim = 2;
-int32_t g_hMaxDim = 3;
-int32_t g_wMinDim = 4;
-int32_t g_wMaxDim = 5;
+      if (compile_info["tiling_type"] == "default_tiling") {
+        tiling_id = compile_info["default_range"].begin().key();
+      } else if (vars.size() != 1) {
+        tiling_id = cube_tiling_nhw(op_type, input_shape, compile_info, tiling_id);
+      } else {
+        tiling_id = cube_tiling_batch(op_type, input_shape, compile_info, tiling_id);
+      }
 
-string CubeTilingBatch(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  std::string tilingID("");
-  auto& tilingRange = opInfo.at("tiling_range");
-  for (auto it = tilingRange.begin(); it != tilingRange.end(); it++) {
-    auto& range = it.value();
-    if (curShape[g_nDim] >= range[g_nMinDim] && curShape[g_nDim] <= range[g_nMaxDim]) {
-      tilingID = it.key();
+      if (tiling_id.empty()) {
+          if (compile_info.contains("correct_range_flag") && compile_info["correct_range_flag"]) {
+              CUBE_INNER_ERR_REPORT(op_type.c_str(), "The original range does not meet requirements,"
+                "new range is generated during op compile, but the shape is not covered by new range");
+          }
+          CUBE_INNER_ERR_REPORT(op_type.c_str(), "This shape is not covered by any tiling,"
+                                                 "please modify range and recompile");
+          return false;
+      }
+
+      if (!compile_info.contains("block_dim")) {
+          CUBE_INNER_ERR_REPORT(op_type.c_str(), "no block_dim in compile info json");
+          return false;
+      }
+
+      OP_LOGD(op_type.c_str(), "get tiling_id: %s", tiling_id.c_str());
+      run_info.block_dim = static_cast<uint32_t>(compile_info["block_dim"][tiling_id]);
+      run_info.tiling_key = std::stoi(tiling_id);
+
+      update_run_info_cube(var_value, run_info);
+      return true;
+    } catch (...) {
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "get unknown exception, please check compile info json.");
+      return false;
     }
   }
-  return tilingID;
-}
-
-string CubeTilingCostModel(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  std::string tilingID("");
-  auto& costRange = opInfo.at("cost_range");
-  for (auto it = costRange.begin(); it != costRange.end(); it++) {
-    auto& range = it.value();
-
-    if (curShape[g_nDim] >= range[g_nMinDim] && curShape[g_nDim] <= range[g_nMaxDim] &&
-        curShape[g_hDim] >= range[g_hMinDim] && curShape[g_hDim] <= range[g_hMaxDim] &&
-        curShape[g_wDim] >= range[g_wMinDim] && curShape[g_wDim] <= range[g_wMaxDim]) {
-      tilingID = it.key();
-    }
-  }
-  return tilingID;
-}
-
-string CubeTilingNHW(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  int32_t seedHDim = 1;
-  int32_t seedWDim = 2;
-  int32_t minDist = 1000000;
-
-  std::string tilingID("");
-  auto& repoRange = opInfo.at("repo_range");
-  auto& tilingSeeds = opInfo.at("repo_seeds");
-
-  for (auto it = tilingSeeds.begin(); it != tilingSeeds.end(); it++) {
-    std::vector<int32_t> seed = it.value().get<std::vector<int32_t>>();
-    auto& range = repoRange[it.key()];
-    if (curShape[g_nDim] >= range[g_nMinDim] && curShape[g_nDim] <= range[g_nMaxDim] &&
-        curShape[g_hDim] >= range[g_hMinDim] && curShape[g_hDim] <= range[g_hMaxDim] &&
-        curShape[g_wDim] >= range[g_wMinDim] && curShape[g_wDim] <= range[g_wMaxDim]) {
-        int32_t dist = abs(curShape[g_hDim] - seed[seedHDim]) + abs(curShape[g_wDim] - seed[seedWDim]);
-        if (dist < minDist) {
-          tilingID = it.key();
-          minDist = dist;
-        }
-    }
-  }
-  if (!tilingID.empty()) {
-    return tilingID;
-  }
-
-  tilingID = CubeTilingCostModel(curShape, opInfo);
-  return tilingID;
-}
-
-
-int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curShape, const nlohmann::json& opInfo,
-                   OpRunInfo& runInfo) {
-    std::vector<std::string> varMap = opInfo.at("_vars").begin().value();
-    std::string tilingID("");
-
-    if (opInfo["tiling_type"] == "default_tiling") {
-        tilingID = opInfo["default_range"].begin().key();
-    } else if (varMap.size() != 1) {
-        tilingID = CubeTilingNHW(curShape, opInfo);
-    } else {
-        tilingID = CubeTilingBatch(curShape, opInfo);
-    }
-    if (tilingID.empty()) {
-        if (opInfo.contains("correct_range_flag") && opInfo["correct_range_flag"]) {
-            CUBE_INNER_ERR_REPORT(opType.c_str(), "The original range does not meet requirements,"
-              "new range is generated during op compile, but the shape is not covered by new range");
-        }
-        CUBE_INNER_ERR_REPORT(opType.c_str(), "This shape is not covered by any tiling, "
-          "please modify range and recompile");
-        return false;
-    }
-    runInfo.block_dim = (uint32_t)opInfo["block_dim"][tilingID];
-    return std::stoi(tilingID);
-    }
 
   /*
   * @brief: tiling function of conv3d forward and backprop
@@ -273,7 +324,7 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
                           const nlohmann::json& compile_info,
                           OpRunInfo& run_info) {
     std::vector<std::string> all_vars;
-    GetVarNames(op_type, all_vars);
+    get_var_names(op_type, all_vars);
     if (all_vars.size() != kConv3dVarDimSizeLimit) {
       CUBE_INNER_ERR_REPORT(op_type.c_str(), "found unrecoginzed var name list.");
       return false;
@@ -292,24 +343,24 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
       bool is_dynamic_batch = (dynamic_batch == dynamic_mode);
       if (compile_info["tiling_type"] == "default_tiling") {
         std::vector<int64_t> default_range = compile_info["default_range"].begin().value().get<std::vector<int64_t>>();
-        if (IsShapeInRange(input_shape, default_range)) {
+        if (is_shape_in_range(input_shape, default_range)) {
           tiling_id = compile_info["default_range"].begin().key();
         }
       } else if (is_dynamic_batch) {
-        tiling_id = GetConv3DBatchTiling(op_type, input_shape, compile_info);
+        tiling_id = get_conv3D_batch_tiling(op_type, input_shape, compile_info);
       } else {
-        tiling_id = GetConv3DNDHWTiling(op_type, input_shape, compile_info);
+        tiling_id = get_conv3D_ndhw_tiling(op_type, input_shape, compile_info);
       }
 
       if (tiling_id == "0") {
         if (op_type == "Conv3D") {
           if (compile_info["correct_range_flag"]) {
             CUBE_INNER_ERR_REPORT(op_type.c_str(), "The original range does not meet requirements,"
-              "new range is generated during op compile, but the shape is not covered by new range");
+                                "new range is generated during op compile, but the shape is not covered by new range");
           }
         }
-        CUBE_INNER_ERR_REPORT(op_type.c_str(),
-          "This shape is not covered by any tiling, please modify range and recompile");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), 
+            "This shape is not covered by any tiling, please modify range and recompile");
         return false;
       }
 
@@ -322,10 +373,10 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
       run_info.block_dim = static_cast<uint32_t>(compile_info["block_dim"][tiling_id]);
       run_info.tiling_key = std::stoi(tiling_id);
 
-      UpdateRunInfo(dynamic_mode, input_shape, output_shape, run_info);
+      update_run_info(dynamic_mode, input_shape, output_shape, run_info);
       return true;
     } catch (...) {
-      OP_LOGE(op_type.c_str(), "get unknown exception, please check compile info json.");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "get unknown exception, please check compile info json.");
       return false;
     }
   }

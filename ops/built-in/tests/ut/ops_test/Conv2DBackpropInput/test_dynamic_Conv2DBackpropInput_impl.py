@@ -164,5 +164,37 @@ def _gen_trans_data_case(param):
 for case in dynamic_conv2d_bp_input_op_testcase:
     ut_case.add_case(["Ascend910A"], _gen_trans_data_case(case))
 
+def test_conv2d_backprop_input_fuzz_build_generalization(test_arg):
+    from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(16, 32), (33, 33), (8, 16), (8, 16)]
+        }, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'conv2d_backprop_input_fuzz_build_generalization']
+    conv2d_backprop_input_generalization(*input_list)
+print("adding conv2d test_conv2d_backprop_input_fuzz_build_generalization testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_generalization)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

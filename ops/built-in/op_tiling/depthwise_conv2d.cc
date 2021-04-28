@@ -51,32 +51,22 @@ bool DepthwiseConv2DTiling(const std::string& opType, const TeOpParas& opParas, 
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
-  int32_t n = opParas.inputs[0].tensor[0].shape[nDim];
-  int32_t h = opParas.inputs[0].tensor[0].shape[hDim];
-  int32_t w = opParas.inputs[0].tensor[0].shape[wDim];
-  int32_t outH = opParas.outputs[0].tensor[0].shape[hDim];
-  int32_t outW = opParas.outputs[0].tensor[0].shape[wDim];
 
-  int32_t tilingID = CubeTiling(opType, {n, h, w}, opCompileInfo, runInfo);
-
-  GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", tilingID, n, h, w, outH, outW);
-
-  runInfo.tiling_key = tilingID;
   std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
-
+  std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, n);
+    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[nDim]);
   }
   if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, h);
-    ByteBufferPut(runInfo.tiling_data, outH);
+    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[hDim]);
+    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[hDim]);
   }
   if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, w);
-    ByteBufferPut(runInfo.tiling_data, outW);
+    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[wDim]);
+    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[wDim]);
   }
 
-  return true;
+  return cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opCompileInfo, runInfo);
 }
 
 // register tiling interface of the conv2d

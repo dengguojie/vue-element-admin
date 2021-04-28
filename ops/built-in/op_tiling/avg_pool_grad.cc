@@ -47,35 +47,21 @@ bool AvgPoolGradTiling(const std::string& opType, const TeOpParas& opParas, cons
       opParas.outputs[0].tensor[0].shape.empty() || opParas.outputs[0].tensor[0].shape.size() < 4) {
     return false;
   }
-  GELOGD("Current format is %s", opType.c_str());
-  GELOGD("Current format is %s, Ori format is %s", opParas.outputs[0].tensor[0].format.c_str(),
-         opParas.outputs[0].tensor[0].ori_format.c_str());
-
-  int32_t n =  opParas.outputs[0].tensor[0].shape[nDim];
-  int32_t dedyH = opParas.inputs[1].tensor[0].shape[hDim];
-  int32_t dedyW = opParas.inputs[1].tensor[0].shape[wDim];
-  int32_t dxH = opParas.outputs[0].tensor[0].shape[hDim];
-  int32_t dxW = opParas.outputs[0].tensor[0].shape[wDim];
-
-  int32_t tilingID = CubeTiling(opType, {n, dxH, dxW}, opCompileInfo, runInfo);
-  GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", tilingID, n, dxH, dxW, dedyH, dedyW);
-
-  runInfo.tiling_key = tilingID;
-  std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
-
+  std::vector<std::string>varMap = opCompileInfo.at("_vars")["10000"];
+  std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, n);
+    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[nDim]);
   }
   if (std::find(varMap.begin(), varMap.end(), "dx_h") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, dedyH);
-    ByteBufferPut(runInfo.tiling_data, dxH);
+    var_value.insert(var_value.end(), opParas.inputs[1].tensor[0].shape[hDim]);
+    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[hDim]);
   }
   if (std::find(varMap.begin(), varMap.end(), "dx_w") != varMap.end()) {
-    ByteBufferPut(runInfo.tiling_data, dedyW);
-    ByteBufferPut(runInfo.tiling_data, dxW);
+    var_value.insert(var_value.end(), opParas.inputs[1].tensor[0].shape[wDim]);
+    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[wDim]);
   }
 
-  return true;
+  return cube_tiling(opType, opParas.outputs[0].tensor[0].shape, var_value, opCompileInfo, runInfo);
 }
 
 // register tiling interface of the avg_pool_grad

@@ -152,5 +152,33 @@ def _gen_trans_data_case(param):
 for case in dynamic_deconvolution_testcase:
     ut_case.add_case(["Ascend910A"], _gen_trans_data_case(case))
 
+def test_deconvolution_fuzz_build_generalization(test_arg):
+    from impl.dynamic.deconvolution import deconvolution_generalization
+    input_list = [
+        {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'deconvolution_fuzz_build_generalization']
+    deconvolution_generalization(*input_list)
+
+
+print("adding conv2d test_deconvolution_fuzz_build_generalization testcase")
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_generalization)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

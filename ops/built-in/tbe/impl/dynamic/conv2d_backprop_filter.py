@@ -25,6 +25,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import tbe_register
 
 
 # the dim of shape in conv_backprop must be 4
@@ -87,6 +88,75 @@ W_DIM = 3
 DYNAMIC_FLAG = -1
 DYNAMIC_RANK_FLAG = [-2]
 RANGE_DIM_LEN = 2
+
+ORI_SHAPE_LEN = 4
+SHAPE_LEN = 5
+
+
+@tbe_register.register_param_generalization("Conv2DBackpropFilter")
+def conv2d_bp_filter_generalization(x, filter_size, out_backprop, y, strides, pads, dilations=(1, 1, 1, 1),
+                                    groups=1, data_format='NHWC', kernel_name="conv2d_backprop_filter",
+                                    generalize_config={"mode": "keep_rank"}):
+    """
+    conv2d_backprop_filter generalization
+
+    Notice
+    ------
+    run after infershape and before operator compile
+    only modify input and output tensors with range
+
+    for use:
+        1. te fusion distinguish .o (remove the generalization dim)
+        2. pass them to the operator to follow the dynanmic shape process
+
+    Parameters
+    ----------
+    same to conv2d_backprop_filter
+
+    Returns
+    -------
+    list of params list:
+        single item under "keep_rank" mode and multiple under "all_shape"
+    """
+    support_mode = ["keep_rank"]
+    if generalize_config["mode"] not in support_mode:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                   "invalid generalize mode {}, only support {}".format(
+                                                       str(generalize_config["mode"]), str(support_mode)))
+    result = []
+    if generalize_config["mode"] == "keep_rank":  # fuzz build situation
+        # unknow_rank x ori_shape is [-2], others' shape length is 4
+        unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
+        if unknow_rank:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                       "not support unknow_rank under mode {}".format(
+                                                           generalize_config["mode"]))
+        have_range = {"x": x, "out_backprop": out_backprop}
+        support_format = ["NCHW", "NHWC"]
+        for name, tensor in have_range.items():
+            # modify tesnors have range
+            if tensor.get("ori_format") not in support_format:
+                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                           "invalid {} ori_format {}, only support {}".format(
+                                                               name, str(tensor.get("ori_format")),
+                                                               str(support_format)))
+            # only change shape NHW dim to -1, range is already set at infershape
+            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
+            if not valid:
+                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                           "invalid {} ori_shape {}, only support {}d".format(
+                                                               name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
+            valid = isinstance(tensor.get("shape"), (list, tuple)) and len(tensor["shape"]) == SHAPE_LEN
+            if not valid:
+                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                           "invalid {} ori_shape {}, only support {}d".format(
+                                                               name, str(tensor.get("shape")), str(SHAPE_LEN)))
+            tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
+                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
+            tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
+        result.append([x, filter_size, out_backprop, y, strides, pads, dilations,
+                       groups, data_format, kernel_name])
+    return result
 
 
 def _ceil(x_1, x_2):
@@ -685,6 +755,8 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
 
     pads = _calc_pads(fmap_shape, dedw_nchw, strides, dilations, pads)
 
+    org_tensors = {"x": x, "filter_size": filter_size, "out_backprop": out_backprop, "y": y}
+
     para_dict = {
         "strides": strides,
         "padding": pads,
@@ -693,6 +765,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
         "res_dtype": dedw_dtype,
         "kernel_name": kernel_name,
         "correct_range_flag": correct_range_flag,
+        "ori_tensors": org_tensors,
     }
 
     dedw = tbe.conv2d_backprop_filter(input_x=fmap,
