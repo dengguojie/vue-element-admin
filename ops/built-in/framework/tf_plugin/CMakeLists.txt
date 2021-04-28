@@ -162,6 +162,7 @@ set(_tf_plugins
   dilation2d_backprop_filter_plugin.cc
   dilation2d_backprop_input_plugin.cc
   elu_grad_plugin.cc
+  einsum_plugin.cc
   elu_plugin.cc
   equal_plugin.cc
   erfc_plugin.cc
