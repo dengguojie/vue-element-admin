@@ -4159,11 +4159,72 @@ IMPLEMT_VERIFIER(Addcmul, AddcmulVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(AddcmulInferShape) {
-  if (InferShapeAndTypeAddcdivAndAddcmul(op, "input_data", "x1", "x2", "y") ==
-      GRAPH_SUCCESS) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  
+  string input_name1 = "x1";
+  string input_name2 = "x2";
+  string input_name3 = "input_data";
+  string output_name = "y";
+  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_name);
+  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(input_name1);
+  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(input_name2);
+  GeTensorDescPtr tensordesc_input3 = op_desc->MutableInputDesc(input_name3);
+  CHECK(op_desc == nullptr ||
+        tensordesc_output == nullptr ||
+        tensordesc_input1 == nullptr ||
+        tensordesc_input2 == nullptr ||
+        tensordesc_input3 == nullptr,
+        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
+  DataType input_dtype = tensordesc_input1->GetDataType();
+  
+  // output Desc
+  tensordesc_output->SetDataType(input_dtype);
+  
+  // shape
+  ge::GeShape shapeX = tensordesc_input1->GetShape();
+  ge::GeShape shapeY = tensordesc_input2->GetShape();
+  ge::GeShape shapeZ = tensordesc_input3->GetShape();
+  OP_LOGI(op.GetName().c_str(), "shape %s: %s, shape %s: %s, shape %s: %s.",
+          input_name1.c_str(), to_string(shapeX).c_str(),
+          input_name2.c_str(), to_string(shapeY).c_str(),
+          input_name3.c_str(), to_string(shapeZ).c_str());
+  std::vector<int64_t> dimsX = shapeX.GetDims();
+  std::vector<int64_t> dimsY = shapeY.GetDims();
+  std::vector<int64_t> dimsZ = shapeZ.GetDims();
+  
+  // unknown rank
+  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY) || IsUnknownRankShape(dimsZ)) {
+    tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
+    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.",
+            to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
+            input_dtype);
     return GRAPH_SUCCESS;
   }
-  return GRAPH_FAILED;
+  
+  // range
+  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+  tensordesc_input1->GetShapeRange(shape_range_x);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_y;
+  tensordesc_input2->GetShapeRange(shape_range_y);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_z;
+  tensordesc_input3->GetShapeRange(shape_range_z);
+  
+  std::vector<int64_t> dimVec;
+  std::vector<std::pair<int64_t, int64_t>> Vec_range;
+  dimVec = dimsX;
+  Vec_range = shape_range_x;
+  MakeUpShapeRange(dimsX, shape_range_x);
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsY, shape_range_y, "x1", "x2")) {
+    return GRAPH_FAILED;
+  }
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsZ, shape_range_z,
+                                            "x1_broadcast", "input_data")) {
+    return GRAPH_FAILED;
+  }
+  ge::GeShape outputShape = ge::GeShape(dimVec);
+  tensordesc_output->SetShape(outputShape);
+  tensordesc_output->SetShapeRange(Vec_range);
+  return GRAPH_SUCCESS;
 }
 // Registered inferfunction
 COMMON_INFER_FUNC_REG(Addcmul, AddcmulInferShape);

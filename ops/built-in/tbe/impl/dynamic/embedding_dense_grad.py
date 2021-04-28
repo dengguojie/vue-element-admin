@@ -246,7 +246,7 @@ class EmbeddingDenseGrad():
                                           scalar_float0, 1, 8)
             # Use fill_tensor on ub to fill grad_weight on gm and do 0 initialization
             with self.tik_instance.for_range(self.begin, self.end) as i:
-                self.tik_instance.data_move(self.grad_weight[i * self.embedding_dim + self.embedding_dim],
+                self.tik_instance.data_move(self.grad_weight[i * self.embedding_dim],
                                             fill_tensor, 0, 1, self.embedding_dim // self.grad_each_block, 0, 0)
 
     def ub_to_data_fill_counts(self):
