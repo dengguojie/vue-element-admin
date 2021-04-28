@@ -27,7 +27,7 @@
 #include "graph.h"
 #include "all_ops.h"
 #include "op_log.h"
-#include "operator.h"
+#include "graph/operator.h"
 
 using namespace ge;
 namespace domi {

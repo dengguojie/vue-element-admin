@@ -21,7 +21,7 @@
 #ifndef OPS_BUILT_IN_OP_PROTO_UTIL_RESOURCE_VARIABLE_OPS_SHAPE_FNS_H_
 #define OPS_BUILT_IN_OP_PROTO_UTIL_RESOURCE_VARIABLE_OPS_SHAPE_FNS_H_
 
-#include "operator.h"
+#include "graph/operator.h"
 
 namespace ge {
 /**

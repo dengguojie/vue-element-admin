@@ -28,7 +28,7 @@
 #include <algorithm>
 
 #include "framework/omg/omg_inner_types.h"
-#include "operator.h"
+#include "graph/operator.h"
 #include "graph/operator_reg.h"
 #include "graph/operator_reg.h"
 #include "transfer_shape_according_to_format.h"

@@ -12,7 +12,7 @@
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 #include "proto/tensorflow/node_def.pb.h"
-#include "operator.h"
+#include "graph/operator.h"
 
 #include "tensorflow_fusion_op_parser_util.h"
 #include "op_log.h"

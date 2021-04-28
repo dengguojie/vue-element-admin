@@ -27,7 +27,7 @@
 #include "common/util/error_manager/error_manager.h"
 #include "error_code.h"
 #include "securec.h"
-#include "operator.h"
+#include "graph/operator.h"
 
 #define AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg) \
   do { \

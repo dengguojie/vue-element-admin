@@ -21,7 +21,7 @@
 #include "op_log.h"
 #include "proto/caffe/caffe.pb.h"
 #include "register/register.h"
-#include "operator.h"
+#include "graph/operator.h"
 
 namespace domi {
 

@@ -16,7 +16,7 @@
 
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
-#include "operator.h"
+#include "graph/operator.h"
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
 

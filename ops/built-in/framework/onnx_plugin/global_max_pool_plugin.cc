@@ -23,7 +23,7 @@
 
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
-#include "operator.h"
+#include "graph/operator.h"
 
 #include "op_log.h"
 

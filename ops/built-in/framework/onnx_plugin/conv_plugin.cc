@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "register/register.h"
-#include "operator.h"
+#include "graph/operator.h"
 #include "proto/onnx/ge_onnx.pb.h"
 #include "graph/utils/op_desc_utils.h"
 

@@ -20,7 +20,7 @@
  */
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
-#include "operator.h"
+#include "graph/operator.h"
 
 #include "op_log.h"
 

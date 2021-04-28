@@ -19,7 +19,7 @@
  * \brief
  */
 #include "register/register.h"
-#include "operator.h"
+#include "graph/operator.h"
 
 namespace domi {
 

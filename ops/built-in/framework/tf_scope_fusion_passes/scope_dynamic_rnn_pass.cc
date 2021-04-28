@@ -17,7 +17,7 @@
 #include <set>
 #include "op_log.h"
 #include "graph/utils/op_desc_utils.h"
-#include "operator.h"
+#include "graph/operator.h"
 #include "register/scope/scope_fusion_pass_register.h"
 #include "register/register.h"
 

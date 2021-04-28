@@ -13,7 +13,7 @@
 
 #include <string>
 #include <vector>
-#include "operator.h"
+#include "graph/operator.h"
 #include "op_log.h"
 #include "all_ops.h"
 #include "graph.h"
