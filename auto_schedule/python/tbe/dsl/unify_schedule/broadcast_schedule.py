@@ -828,6 +828,16 @@ class BroadcastSchedule(Schedule):
                 return expr_equal(1, src_shape[u_i]) and not expr_equal(1, dst_shape[u_i])
             return False
 
+        def _has_ternary_insns():
+            for tensor_i in self._out_tensors | self._pure_middle_tensors:
+                insn = util.get_dsl_insn(tensor_i)
+                if insn in TERNARY_INSNS:
+                    return True
+            return False
+
+        if _has_ternary_insns():
+            return
+
         for tensor_i in self._broadcast_tensors:
             if not _is_only_calc_one(tensor_i):
                 continue
