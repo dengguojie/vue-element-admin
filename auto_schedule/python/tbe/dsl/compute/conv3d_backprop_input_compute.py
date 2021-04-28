@@ -241,7 +241,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
         cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
         ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
 
-        if (aub_dedy_size_min * (fused_num + 1) + aub_filling_size_min + cub_size_min) > ub_size:
+        if (aub_dedy_size_min * (var_map.get("fused_num", 0) + 1) + aub_filling_size_min + cub_size_min) > ub_size:
             dict_args = {
                 'errCode': 'E60119'
             }
@@ -379,7 +379,6 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
     else:
         dedy_batch_upper, dedx_batch_upper = dedy_batch, fmap_batch
 
-    fused_num = var_map.get("fused_num", 0)
     # Chip Design demand fmap_w must larger than 2 when fmap_h != 1
     if dedx_h_upper != 1 and dedx_w_upper == 1:
         cube_err.raise_err_one_para(
@@ -503,8 +502,7 @@ def conv3d_dx(filter,
         group_dict["cin1_g"] = compute_util.int_ceil_div(filter_dhwcn[-2], tbe_platform.C0_SIZE)
     var_map = _get_var_map(out_backprop)
 
-    if ("fused_num" in para_dict and para_dict["fused_num"] > 0 and
-        "is_dynamic" in para_dict and para_dict["is_dynamic"]):
+    if ("fused_num" in para_dict and para_dict["fused_num"] > 0 and var_map):
         var_map["fused_num"] = para_dict["fused_num"]
 
     _check_conv3dbp_input_params_in_dsl(filter_dhwcn, out_backprop_ndhwc, input_size, strides,

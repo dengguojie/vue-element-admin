@@ -2858,7 +2858,6 @@ bool IsAllVal(const vector<int64_t> &vec, int64_t val) {
 }
 
 IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter AvgPool3dGrad Infer Shape.");
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto grads_desc = op_info->MutableInputDesc("grads");
   auto orig_shape_desc = op_info->MutableInputDesc("orig_input_shape");
@@ -2913,6 +2912,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   }
   // get padding attr
   std::string padding;
+  bool has_padding_attr = true;
   vector<int64_t> pads(kAvgPool3DGradPadsDim, 0);
   if (op.GetAttr("padding", padding) == GRAPH_SUCCESS) {
     if (padding != "SAME" && padding != "VALID") {
@@ -2926,6 +2926,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
       OP_LOGE(op.GetName().c_str(), "Get attr:pads failed.");
       return GRAPH_FAILED;
     }
+    has_padding_attr = false;
     padding = IsAllVal(pads, 0) ? "VALID" : "SAME";
   }
 
@@ -2945,7 +2946,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
     return GRAPH_FAILED;
   }
 
-  if (padding == "SAME") {
+  if ((is_dynamic || has_padding_attr) && padding == "SAME") {
     if (!is_dynamic || (fmap_shape[orig_shape_format_str.find("D")] != -1 &&
                         fmap_shape[orig_shape_format_str.find("H")] != -1 &&
                         fmap_shape[orig_shape_format_str.find("w")] != -1)){
@@ -2955,6 +2956,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
       pads.assign(kAvgPool3DGradPadsDim, -1);
     }
   }
+
   op.SetAttr("pads", pads);
   return GRAPH_SUCCESS;
 }

@@ -518,8 +518,7 @@ def avg_pool3d_grad(orig_input_shape,
         "res_dtype": fmap_dtype,
         "kernel_name": kernel_name,
         "group_dict": group_dict,
-        "fused_num": _UB_FUSED_OP_NUM,
-        "is_dynamic": True
+        "fused_num": _UB_FUSED_OP_NUM
     }
 
     check_conv3dbp_input_params(filter_ori_shape_formated, dync_grads_ori_shape,

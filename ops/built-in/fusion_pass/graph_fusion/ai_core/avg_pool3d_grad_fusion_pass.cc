@@ -223,7 +223,6 @@ GeTensorPtr CreateFilterNode(const vector<int64_t> &filter_ori_shape_vec, float 
 }
 
 Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& fusion_nodes) {
-  OP_LOGI("get into avg_pool3d_grad fusion pass..");
   GE_DUMP(make_shared<ComputeGraph>(graph), "avg_pool3d_grad_fusion_pass_begin.");
   ge::NodePtr node_ptr = GetNodeFromMapping("AvgPool3DGrad", mapping);
   Operator op = OpDescUtils::CreateOperatorFromNode(node_ptr);
