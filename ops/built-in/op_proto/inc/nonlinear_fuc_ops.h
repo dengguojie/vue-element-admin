@@ -691,6 +691,25 @@ REG_OP(Mish)
     .OP_END_FACTORY_REG(Mish)
 
 /**
+ * @brief: pytorch mish_grad operator.
+ * @par Inputs:
+ * three input, including:
+ * @li grad: A Tensor. shape, datatype and format is same as x
+ * @li x: A Tensor. Must be one of the following types: float16, float32
+ * @li tanhx: A Tensor. shape, datatype and format is same as x
+ * @par Outputs:
+ * 1 output, including:
+ * @li x_grad: A Tensor. shape, datatype and format is same as x
+ */
+
+REG_OP(MishGrad)
+    .INPUT(grad, TensorType({ DT_FLOAT,DT_FLOAT16 }))
+    .INPUT(x, TensorType({ DT_FLOAT,DT_FLOAT16 }))
+    .OPTIONAL_INPUT(tanhx, TensorType({ DT_FLOAT,DT_FLOAT16 }))
+    .OUTPUT(x_grad, TensorType({ DT_FLOAT,DT_FLOAT16 }))
+    .OP_END_FACTORY_REG(MishGrad)
+
+/**
  * @brief pytorch hardtanh_backward operator.
  *
  * @par Inputs:

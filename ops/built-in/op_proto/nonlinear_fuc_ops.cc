@@ -583,6 +583,19 @@ IMPLEMT_COMMON_INFERFUNC(MishInferShape) {
 COMMON_INFER_FUNC_REG(Mish, MishInferShape);
 // ------------Mish Op End----------------
 
+// ------------Mish Grad Op Start----------------
+IMPLEMT_COMMON_INFERFUNC(MishGradInferShape) {
+  TensorDesc tensordesc_output = op.GetOutputDesc("x_grad");
+  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  tensordesc_output.SetShape(tensordesc_input.GetShape());
+  tensordesc_output.SetDataType(tensordesc_input.GetDataType());
+  (void)op.UpdateOutputDesc("x_grad", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MishGrad, MishGradInferShape);
+// ------------Mish Grad Op End----------------
+
 // ----------------HardtanhGrad Begin-------------------
 IMPLEMT_INFERFUNC(HardtanhGrad, HardtanhGradInferShape) {
   auto tensor_result = op.GetInputDesc("result");
