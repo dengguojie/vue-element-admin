@@ -267,18 +267,25 @@ IMPLEMT_INFERFUNC(UpperBound, UpperBoundInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "2D");
-    OP_LOGE(op.GetName().c_str(), "sorted_x input rank must be 2D.");
+    string err_msg = ConcatString(
+        "failed to call WithRank function, input[sorted_x] rank must be 2D, "
+        "got rank[", op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D");
-    OP_LOGE(op.GetName().c_str(), "values input rank must be 2D.");
+    string err_msg = ConcatString(
+        "failed to call WithRank function, input[values] rank must be 2D, "
+        "got rank[", op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   DataType type;
   if (op.GetAttr("out_type", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op get attr out_type failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[out_type] failed"));
     return GRAPH_FAILED;
   }
 

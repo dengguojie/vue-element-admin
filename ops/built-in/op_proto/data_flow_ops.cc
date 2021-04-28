@@ -470,6 +470,8 @@ IMPLEMT_INFERFUNC(Unstage, UnstageInfer) {
     output_desc.SetShape(unknown_shape);
     output_desc.SetDataType(dtypes[i]);
     if (op.UpdateDynamicOutputDesc("y", i, output_desc) != GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString("update desc of ", i, "th output of dynamic output[y] failed.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
