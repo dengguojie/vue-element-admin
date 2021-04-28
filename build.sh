@@ -241,4 +241,5 @@ main() {
   logging "---------------- CANN build finished ----------------"
 }
 
+set -o pipefail
 main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
