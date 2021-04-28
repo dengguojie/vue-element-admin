@@ -33,3 +33,6 @@ Function: Convert a sparse representation into a dense tensor.
 
 TopK
 Function: Find values and indices of "k" largest elements for the last * dimension.
+
+Where
+Function: Returns locations of nonzero/true values in a tensor.

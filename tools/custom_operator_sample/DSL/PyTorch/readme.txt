@@ -33,3 +33,6 @@ Function: Compute the sigmoid cross entropy loss of "predict" and "target".
 
 SigmoidCrossEntropyWithLogitsGrad
 Function: Compute gradients of sigmoid_cross_entropy_with_logits_v2.
+
+Softplus
+Function: Computes softplus: log(exp(x) + 1).

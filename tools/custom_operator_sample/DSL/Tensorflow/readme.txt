@@ -33,3 +33,9 @@ Function: Return x1 * x2 element-wise.
 
 ReduceAll
 Function: Calculate the "logical sum" of elements of a tensor in a dimension.
+
+Conv2D
+Function: Computes a 2D convolution given 4D "x" and "filter" tensors.
+
+Relu
+Function: Computes rectified linear: "max(x, 0)".

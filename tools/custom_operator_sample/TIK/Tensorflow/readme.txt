@@ -27,3 +27,6 @@ Function: Decode the bounding box according to different encoding or decoding me
 
 ScatterNdAdd
 Function: The ScatterNdAdd operator applies the sparse algorithm to a single value or slice in the input data to obtain the output data.
+
+SpaceToDepth
+Function: Outputs a copy of the input tensor where values from the "height" and "width" dimensions are moved to the "depth" dimension.
