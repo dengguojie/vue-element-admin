@@ -139,9 +139,11 @@ class BroadcastElewiseClassifier:
         def fixed_shape_range():
             for _range in self.completed_ranges:
                 for i, (r0, r1) in enumerate(_range):
-                    if r0 is None:
+                    if r0 is None and r1 is None:
+                        _range[i] = (VAR_BOUND_LIMIT, VAR_BOUND_LIMIT)
+                    elif r0 is None:
                         _range[i] = (VAR_BOUND_LIMIT, r1)
-                    if r1 is None:
+                    elif r1 is None:
                         _range[i] = (r0, VAR_BOUND_LIMIT)
                     if r0 == 0:
                         _range[i] = (1, r1)

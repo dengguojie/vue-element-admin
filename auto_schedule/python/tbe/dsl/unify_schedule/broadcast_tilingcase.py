@@ -302,8 +302,6 @@ def _after_build():
     def _name_str_to_int(_var_names):
         new_var_names = []
         for name in _var_names:
-            if name[0] != '_':
-                continue
             names = name[1:].split('_')
             if names[0] == 'dim':
                 new_var_names.append(10000 + int(names[1]) * 100 + int(names[2]))

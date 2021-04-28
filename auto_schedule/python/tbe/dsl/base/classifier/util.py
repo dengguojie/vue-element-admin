@@ -49,7 +49,7 @@ def combine_range(ranges):
         if _a is None or _b is None:
             return None
         _bound = _a * _b
-        return None if _bound > VAR_BOUND_LIMIT else _bound
+        return VAR_BOUND_LIMIT if _bound > VAR_BOUND_LIMIT else _bound
 
     def mul(range1, range2):
         return [mul_ele(a, b) for a, b in zip(range1, range2)]

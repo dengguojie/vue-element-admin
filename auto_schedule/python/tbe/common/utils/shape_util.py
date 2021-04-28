@@ -383,9 +383,11 @@ def variable_shape(inputs: list, op_mode="elewise"):
         def _fixed_shape_range(shapes, ranges):
             for _range in ranges:
                 for i, (r0, r1) in enumerate(_range):
-                    if r0 is None:
+                    if r0 is None and r1 is None:
+                        _range[i] = (para_check.MAX_UNKNOWN_SHAPE_NUM, para_check.MAX_UNKNOWN_SHAPE_NUM)
+                    elif r0 is None:
                         _range[i] = (para_check.MAX_UNKNOWN_SHAPE_NUM, r1)
-                    if r1 is None:
+                    elif r1 is None:
                         _range[i] = (r0, para_check.MAX_UNKNOWN_SHAPE_NUM)
             for _shape, _range in zip(shapes, ranges):
                 for i, (s, (r0, r1)) in enumerate(zip(_shape, _range)):

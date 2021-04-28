@@ -728,7 +728,7 @@ def _fake_node(tensors):
     shape = [1] * dim_length
     for tensor_i in tensors:
         if DTYPE_BYTE_MAPPING[tensor_i.dtype] > DTYPE_BYTE_MAPPING[dtype]:
-            dtype = tensor_i.type
+            dtype = tensor_i.dtype
         shape_i = util.shape_to_list(tensor_i.shape)
         diff = dim_length - len(shape_i)
         shape_i = [1] * diff + shape_i
