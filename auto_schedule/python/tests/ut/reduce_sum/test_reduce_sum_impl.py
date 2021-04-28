@@ -77,6 +77,7 @@ case3 = {
     "expect": "success",
     "support_expect": True
 }
+
 case4 = {
     "params": [{"shape": (64, 8, 8, 8, 16), "dtype": "float32", "format": "ND"},
                {"shape": (64,8, 16), "dtype": "float32", "format": "ND"},
@@ -88,11 +89,79 @@ case4 = {
     "support_expect": True
 }
 
+case5 = {
+    "params": [{"shape": (16, 32, 512, 512), "dtype": "float32", "format": "ND"},
+               {"shape": (32, ), "dtype": "float32", "format": "ND"},
+               [0,2,3],
+               False
+               ],
+    "case_name": "test_reduce_sum_5",
+    "expect": "success",
+    "support_expect": True
+}
+
+case6 = {
+    "params": [{"shape": (16, 31, 511, 511), "dtype": "float32", "format": "ND"},
+               {"shape": (511, ), "dtype": "float32", "format": "ND"},
+               [0,1,2],
+               False
+               ],
+    "case_name": "test_reduce_sum_6",
+    "expect": "success",
+    "support_expect": True
+}
+case7 = {
+    "params": [{"shape": (16, 32, 512, 512), "dtype": "float32", "format": "ND"},
+               {"shape": (512, ), "dtype": "float32", "format": "ND"},
+               [0,1,2,3],
+               False
+               ],
+    "case_name": "test_reduce_sum_7",
+    "expect": "success",
+    "support_expect": True
+}
+case8 = {
+    "params": [{"shape": (3200, 32, 20, 16), "dtype": "float32", "format": "ND"},
+               {"shape": (32, ), "dtype": "float32", "format": "ND"},
+               [0,2,3],
+               False
+               ],
+    "case_name": "test_reduce_sum_8",
+    "expect": "success",
+    "support_expect": True
+}
+case9 = {
+    "params": [{"shape": (32, 32, 1600), "dtype": "float32", "format": "ND"},
+               {"shape": (32, ), "dtype": "float32", "format": "ND"},
+               [0,2],
+               False
+               ],
+    "case_name": "test_reduce_sum_9",
+    "expect": "success",
+    "support_expect": True
+}
+case10 = {
+    "params": [{"shape": (32, 32, 1600), "dtype": "float32", "format": "ND"},
+               {"shape": (1, ), "dtype": "float32", "format": "ND"},
+               [0,1,2],
+               False
+               ],
+    "case_name": "test_reduce_sum_10",
+    "expect": "success",
+    "support_expect": True
+}
+
 compile_case_list = [
     case1,
     case2,
     case3,
-    case4
+    case4,
+    case5,
+    case6,
+    case7,
+    case8,
+    case9,
+    case10,
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)
