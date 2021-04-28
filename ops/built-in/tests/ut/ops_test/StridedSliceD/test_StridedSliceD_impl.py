@@ -170,6 +170,24 @@ case18 = {"params": [{"shape": (49, 1, 1, 1, 64, 2), "dtype": "float32", "format
           "expect": "success",
           "support_expect": True}
 
+case19 = {"params": [{"shape": (16000, 3121), "dtype": "float16", "format": "ND",
+                      "ori_shape": (16000, 3121), "ori_format": "ND"},
+                     {"shape": (16000, 1), "dtype": "float16", "format": "ND",
+                      "ori_shape": (16000, 1), "ori_format": "ND"},
+                     [0, 3120], [16000, 1], [1, 1], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_19",
+          "expect": "success",
+          "support_expect": True}
+
+case20 = {"params": [{"shape": (1, 3, 1344, 2028), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 3, 1344, 2028), "ori_format": "ND"},
+                     {"shape": (1, 3, 1344, 6), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 3, 1344, 6), "ori_format": "ND"},
+                     [0, 0, 0, 0], [1, 3, 1344, 6], [1, 1, 1, 1], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_20",
+          "expect": "success",
+          "support_expect": True}
+
 
 def test_op_select_format(test_arg):
     from impl.strided_slice_d import op_select_format
@@ -214,6 +232,8 @@ ut_case.add_case(["all"], case15)
 ut_case.add_case(["all"], case16)
 ut_case.add_case(["all"], case17)
 ut_case.add_case(["all"], case18)
+ut_case.add_case(["all"], case19)
+ut_case.add_case(["all"], case20)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def calc_expect_func(x, y, begin, end, strides):

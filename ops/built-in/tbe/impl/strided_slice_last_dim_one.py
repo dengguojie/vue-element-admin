@@ -17,6 +17,7 @@ strided_slice_last_dim_one
 """
 from te import tik
 from te import platform as tbe_platform
+from impl.util.util_tik_comm_func import ceil_div
 
 
 # pylint: disable=invalid-name, too-many-locals, unused-argument
@@ -150,10 +151,10 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
 
             last_input_ub_data = len_burst_one - loop_index * use_input_ub_size
 
-            last_input_ub_data_length = last_input_ub_data // type_block_num
+            last_input_ub_data_length = ceil_div(last_input_ub_data, type_block_num)
             max_last_use_number = last_input_ub_data // len_burst
             last_output_ub_data = max_last_use_number * consecutive
-            last_output_ub_data_length = last_output_ub_data // type_block_num
+            last_output_ub_data_length = ceil_div(last_output_ub_data, type_block_num)
 
             last_core_loop_index = tail_num // use_input_ub_size
 
@@ -197,7 +198,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
             tail_len_burst_one = len_burst_one % max_ub_size_last
 
 
-            tail_len_burst_data_length = tail_len_burst_one // type_block_num
+            tail_len_burst_data_length = ceil_div(tail_len_burst_one, type_block_num)
 
             tail_max_both_number = tail_len_burst_one // len_burst
             tail_output_ub_data = tail_max_both_number * consecutive
@@ -265,7 +266,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                                                input_ub_data_one, 0, 1,
                                                max_out_ub_size_stride, 0, 0)
 
-                    with tik_instance.if_scope(tail_len_burst_one > 0):
+                    if tail_len_burst_one > 0:
                         tik_instance.data_move(input_ub_data,
                                                input_data[total_cycle * len_burst_one
                                                           + loop_index * max_ub_size_last],
@@ -294,7 +295,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                                                input_ub_data_one, 0, 1,
                                                max_out_ub_size_stride, 0, 0)
 
-                    with tik_instance.if_scope(last_core_burst_one > 0):
+                    if last_core_burst_one > 0:
                         tik_instance.data_move(input_ub_data,
                                                input_data[(core_num-1) * len_burst_one
                                                           + last_core_loop_index
@@ -327,7 +328,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                                                input_ub_data_one, 0, 1,
                                                use_output_length, 0, 0)
 
-                    with tik_instance.if_scope(last_input_ub_data > 0):
+                    if last_input_ub_data > 0:
                         tik_instance.data_move(input_ub_data,
                                                input_data[total_cycle * len_burst_one
                                                           + loop_index * use_input_ub_size],
@@ -355,7 +356,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                                                            + loop * max_use_number_one],
                                                input_ub_data_one, 0, 1, use_output_length, 0, 0)
 
-                    with tik_instance.if_scope(last_core_input_ub_data > 0):
+                    if last_core_input_ub_data > 0:
                         tik_instance.data_move(input_ub_data,
                                                input_data[total_cycle * len_burst_one
                                                           + last_core_loop_index * use_input_ub_size],

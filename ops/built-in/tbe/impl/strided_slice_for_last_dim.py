@@ -133,7 +133,7 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
     if not find_flag_1:
         return False
 
-    if split_factor_group_2 != 1:
+    if split_factor_group_1 != 1:
         return False
 
     if split_factor_group_2 != 1:
