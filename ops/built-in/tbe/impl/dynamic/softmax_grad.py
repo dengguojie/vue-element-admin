@@ -102,6 +102,7 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
 
     axis = -1
     tbe_context.get_context().add_compile_info("ori_axis", axis)
+    tbe_context.get_context().add_compile_info("kernel_name", "SoftmaxGrad")
     para_check.check_shape(shape, param_name="softmax")
     para_check.check_shape(grad_shape, param_name="grad_softmax")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="softmax")

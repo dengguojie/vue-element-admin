@@ -115,6 +115,7 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
         axis = list(axis)
 
     tbe_context.get_context().add_compile_info("ori_axis", axis)
+    tbe_context.get_context().add_compile_info("kernel_name", "LogSoftmaxGrad")
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
     axis = shape_util.axis_check(len(shape), axis)

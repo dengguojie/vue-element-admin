@@ -971,7 +971,13 @@ class SoftmaxSchedule:
 
 
     def _do_emit_insn(self):
-        self._coexisting_quantity = 4
+        pre_compile_info = get_compile_info()
+        if pre_compile_info["kernel_name"] in ["SoftmaxV2", "SoftmaxGrad"]:
+            is_log = False
+            self._coexisting_quantity = 4
+        else:
+            is_log = True
+            self._coexisting_quantity = 2
         tensor_space = self._ub_tiling_max_size // self._coexisting_quantity
         tensor_space = tensor_space // 2
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
@@ -980,7 +986,10 @@ class SoftmaxSchedule:
             scope_iter_var = self._emit_insn_map[stage]["scope"]
             instruction = self._emit_insn_map[stage]["instruction"]
             if instruction == "vector_reduce_sum" or instruction == "vector_reduce_max":
-                self._schedule[stage].emit_insn(scope_iter_var, instruction, attrs=dict(storage_bound=[self._tensor_space]))
+                if is_log:
+                    self._schedule[stage].emit_insn(scope_iter_var, instruction, attrs=dict(storage_bound=[2048]))
+                else:
+                    self._schedule[stage].emit_insn(scope_iter_var, instruction, attrs=dict(storage_bound=[self._tensor_space]))
             else:
                 self._schedule[stage].emit_insn(scope_iter_var, instruction)
             storage_bound = self._tensor_space // DTYPE_BYTE_MAPPING[stage.dtype]

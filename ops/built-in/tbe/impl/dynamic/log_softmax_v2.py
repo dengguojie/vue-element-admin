@@ -106,6 +106,7 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
         axis = list(axis)
 
     tbe_context.get_context().add_compile_info("ori_axis", axis)
+    tbe_context.get_context().add_compile_info("kernel_name", "LogSoftmaxV2")
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
     axis = shape_util.axis_check(len(shape), axis)
