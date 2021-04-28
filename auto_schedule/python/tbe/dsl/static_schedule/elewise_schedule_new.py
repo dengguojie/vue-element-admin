@@ -1298,6 +1298,61 @@ class ElewiseSchedule(VectorSchedule):
             para = {"parent": self._schedule[res], "scope": res_ub_outer}
             self._compute_at_map[i] = para
 
+
+        self._sub_graph_tensor_list = []
+        if self._need_multi_core and block_split_axis != ub_split_axis and len(
+                self._mid_output_tensors) > 1:
+            for tensor in self._mid_output_tensors:
+                _shape = util.shape_to_list(tensor.shape)
+                _dtype = tensor.dtype.lower()
+
+                _ub_to_gm_size = 1
+                for i in range(ub_split_axis, len(_shape), 1):
+                    _ub_to_gm_size = _ub_to_gm_size * _shape[i]
+
+                _block_factor = self._tiling_para["block_tiling"]["factor"]
+                if self.block_tiling_use_nparts_mode:
+                    _tmp_block_size = math.ceil(_shape[block_split_axis] / _block_factor)
+                else:
+                    _tmp_block_size = _block_factor
+
+                for i in range(block_split_axis + 1, len(_shape), 1):
+                    _tmp_block_size = _tmp_block_size * _shape[i]
+
+                if (_ub_to_gm_size * DTYPE_WIDTH_MAP[_dtype] * 2) < 32 and \
+                        _tmp_block_size < self._max_ub_count:
+                    self._sub_graph_tensor_list.append(tensor)
+                    _is_all_input_tensor = False
+                    while not _is_all_input_tensor:
+                        _tmp_tensor_list = []
+                        for i in self._sub_graph_tensor_list:
+                            for tensor_fwk, tensor_next in self._mid_output_tensors_dst_tensor_map.items():
+                                if i in tensor_next and \
+                                        tensor_fwk not in self._sub_graph_tensor_list and \
+                                        tensor_fwk not in _tmp_tensor_list:
+                                    _tmp_tensor_list.append(tensor_fwk)
+
+                        if len(_tmp_tensor_list) > 0:
+                            self._sub_graph_tensor_list.extend(_tmp_tensor_list)
+                        else:
+                            _is_all_input_tensor = True
+
+                    for i in self._sub_graph_tensor_list:
+                        if i in self._cache_read_tensors_and_buffer_map:
+                            _tmp_tensor = self._cache_read_tensors_and_buffer_map[i]
+                        elif i in self._cache_write_tensors_and_buffer_map:
+                            _tmp_tensor = self._cache_write_tensors_and_buffer_map[i]
+                        elif i in self._cache_write_exclude_tensors:
+                            _tmp_tensor = self._schedule.cache_write(i, self._scope)
+                            self._cache_write_tensors_and_buffer_map[i] = _tmp_tensor
+                        else:
+                            _tmp_tensor = i
+
+                        para = {"parent": self._schedule[res],
+                                 "scope": self._multi_core_fused_axis}
+
+                        self._compute_at_map[_tmp_tensor] = para
+
     def _calculate_double_buffer(self):
         """
         double buffer operations
@@ -1339,6 +1394,8 @@ class ElewiseSchedule(VectorSchedule):
         ub_tiling_result = self._tiling_result["ub_tiling"]
         ub_split_axis = ub_tiling_result["axis"]
         res_ub_inner = ub_tiling_result["inner_itervar"]
+        block_tiling_result = self._tiling_result["block_tiling"]
+        block_split_axis = block_tiling_result["axis"]
 
         self._get_emit_insn_map()
         self._get_reg_emit_insn_map()
@@ -1398,7 +1455,12 @@ class ElewiseSchedule(VectorSchedule):
 
         for i in self._cache_read_tensors_and_buffer_map:
             read_buffer = self._cache_read_tensors_and_buffer_map[i]
-            para = {"scope": read_buffer.op.axis[ub_split_axis],
+            if i in self._sub_graph_tensor_list:
+                emit_insn_axis = block_split_axis
+            else:
+                emit_insn_axis = ub_split_axis
+
+            para = {"scope": read_buffer.op.axis[emit_insn_axis],
                     "instruction": 'dma_copy'}
             self._emit_insn_map[read_buffer] = para
 
@@ -1429,7 +1491,11 @@ class ElewiseSchedule(VectorSchedule):
                 self._emit_insn_map[write_buffer] = para
                 continue
 
-            emit_insn_axis = ub_split_axis
+            if i in self._sub_graph_tensor_list:
+                emit_insn_axis = block_split_axis
+            else:
+                emit_insn_axis = ub_split_axis
+
             if self._special_32align_broadcast_scene:
                 emit_insn_axis = -3
             para = {"scope": write_buffer.op.axis[emit_insn_axis],
@@ -1437,7 +1503,12 @@ class ElewiseSchedule(VectorSchedule):
             self._emit_insn_map[write_buffer] = para
 
         for out_tensor in self._mid_output_tensors:
-            para = {"scope": out_tensor.op.axis[ub_split_axis],
+            if out_tensor in self._sub_graph_tensor_list:
+                emit_insn_axis = block_split_axis
+            else:
+                emit_insn_axis = ub_split_axis
+
+            para = {"scope": out_tensor.op.axis[emit_insn_axis],
                     "instruction": 'dma_copy'}
             self._emit_insn_map[out_tensor] = para
 

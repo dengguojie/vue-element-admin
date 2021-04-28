@@ -222,10 +222,17 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         ub_tiling_result = self._tiling_result["ub_tiling"]
         ub_split_axis = ub_tiling_result["axis"]
         res_ub_inner = ub_tiling_result["inner_itervar"]
+        block_tiling_result = self._tiling_result["block_tiling"]
+        block_split_axis = block_tiling_result["axis"]
 
         # eliminate mid out tensor from gm to ub by fake node
         for tensor in self._mid_output_tensors_in_gm:
-            para = {"scope": tensor.op.axis[ub_split_axis],
+            if tensor in self._sub_graph_tensor_list:
+                emit_insn_axis = block_split_axis
+            else:
+                emit_insn_axis = ub_split_axis
+                
+            para = {"scope": tensor.op.axis[emit_insn_axis],
                     "instruction": 'dma_copy'}
             self._emit_insn_map[tensor] = para
 
