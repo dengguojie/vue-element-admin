@@ -384,6 +384,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/conv3d.cc \
         built-in/op_tiling/conv3d_backprop_input.cc \
         built-in/op_tiling/conv3d_transpose.cc \
+        built-in/op_tiling/avg_pool.cc \
         built-in/op_tiling/avg_pool3d_grad.cc \
         built-in/op_tiling/conv2d_backprop_input.cc \
         built-in/op_tiling/conv2d_backprop_filter.cc \

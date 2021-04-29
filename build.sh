@@ -147,7 +147,7 @@ parse_changed_files() {
     logging "no ut matched! no need to run!"
     logging "---------------- CANN build finished ----------------"
     #for ci,2 means no need to run c++ ut;then ci will skip check coverage
-    exit 2
+    exit 200
   fi
 }
 

@@ -15,8 +15,8 @@
  */
 
 /*!
- * \file conv2d.cpp
- * \brief tiling function of conv2d
+ * \file avg_pool.cc
+ * \brief tiling function of avg_pool
  */
 #include <string>
 #include <nlohmann/json.hpp>
@@ -28,15 +28,15 @@
 using namespace std;
 namespace optiling {
 /*
- * @brief: tiling function of conv2d
- * @param [in] op_type: op_type of the conv2d
- * @param [in] op_paras: inputs/outputs/atts of the conv2d
- * @param [in] op_compile_info: compile time generated info of the conv2d
+ * @brief: tiling function of avg_pool
+ * @param [in] op_type: op_type of the avg_pool
+ * @param [in] op_paras: inputs/outputs/atts of the avg_pool
+ * @param [in] op_compile_info: compile time generated info of the avg_pool
  * @param [out] run_info: result data
  * @return bool: success or not
  */
 
-bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
+bool AvgPoolTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
                   OpRunInfo& runInfo) {
   int32_t nDim = 0;
   int32_t hDim = 2;
@@ -48,11 +48,6 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     return false;
   }
 
-  if (opCompileInfo.contains("fmap_c1") && opParas.inputs[0].tensor[0].shape[1] != opCompileInfo["fmap_c1"]) {
-    OP_LOGE(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups");
-    return false;
-  }
-
   if(opCompileInfo.empty()) {
     GELOGD("op compile info is empty");
     return false;
@@ -60,36 +55,9 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   // accurate build has only one item
   // fuzzy build has multiple items
   std::vector<std::string> varMap;
-  nlohmann::json opInfo;
   GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
-  if (opCompileInfo.is_array()) {
-    // >>> start: splice compile info
-    opInfo = opCompileInfo[0];
-    varMap = opInfo.at("_vars").begin().value().get<std::vector<std::string>>();
-    nlohmann::json item;
-    for (size_t i = 1; i < opCompileInfo.size(); ++i) {
-      item = opCompileInfo[i];
-      std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
-      for (auto key: key_list) {
-        if (item[key].is_object() && !item[key].empty()) {
-          std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
-          opInfo[key][item[key].begin().key()] = list_value;
-        }
-      }
-      std::vector<std::string> key_int = {"block_dim"};
-      for (auto key: key_int) {
-        if (item[key].is_object() && !item[key].empty()) {
-          int32_t int_value = item[key].begin().value().get<int32_t>();
-          opInfo[key][item[key].begin().key()] = int_value;
-        }
-      }
-    }
-    // <<< end: put together compile info
-    GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
-  } else if (opCompileInfo.is_object()) {
-    varMap = opCompileInfo.at("_vars")["10000"].get<std::vector<std::string>>();
-    opInfo = opCompileInfo;
-  }
+
+  varMap = opCompileInfo.at("_vars").begin().value().get<std::vector<std::string>>();
 
   std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
@@ -104,9 +72,8 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[wDim]);
   }
 
-  return cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opInfo, runInfo);
+  return cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opCompileInfo, runInfo);
 }
-
-// register tiling interface of the conv2d
-REGISTER_OP_TILING_FUNC_BUFFERED(Conv2D, Conv2DTiling);
+// register tiling interface of the avgpool
+REGISTER_OP_TILING_FUNC_BUFFERED(AvgPool, AvgPoolTiling);
 }  // namespace optiling

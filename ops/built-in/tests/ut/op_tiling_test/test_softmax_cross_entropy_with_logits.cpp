@@ -276,75 +276,75 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     EXPECT_EQ(to_string(runInfo.tiling_data), "8 80 80 8 8 ");
 }
 
-TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_4)
-{
-    using namespace optiling;
-    std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-    std::string compileInfo = R"({
-                        "_pattern": "SoftmaxCrossEntropyWithLogits",
-                        "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": 1024, "labels_shape1": -1},
-                        "common_info" : {
-                        "ub_size" : 262144,
-                        "core_num" : 32},
-                        "flag_info": [false, false, true, false, false],
-                        "base_info": {
-                        "130": [262144, 4, 10, 32],
-                        "140": [262144, 4, 10, 32],
-                        "230": [262144, 4, 10, 32],
-                        "000": [262144, 4, 10, 32]},
-                        "elewise_vars": {"0": []},
-                        "_vars": {"0": ["dim0_0", "dim1_0", "block_factor_0", "ub_factor_0"]},
-                        "_normal_vars": {"0": []},
-                        "_attr_vars": {"0": []},
-                        "_custom_vars": {"0": ["dim0_0", "dim1_0", "block_factor_0", "ub_factor_0"]}})";
+// TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling_test_4)
+// {
+//     using namespace optiling;
+//     std::string op_name = "SoftmaxCrossEntropyWithLogits";
+//     auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+//     ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//     std::string compileInfo = R"({
+//                         "_pattern": "SoftmaxCrossEntropyWithLogits",
+//                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": 1024, "labels_shape1": -1},
+//                         "common_info" : {
+//                         "ub_size" : 262144,
+//                         "core_num" : 32},
+//                         "flag_info": [false, false, true, false, false],
+//                         "base_info": {
+//                         "130": [262144, 4, 10, 32],
+//                         "140": [262144, 4, 10, 32],
+//                         "230": [262144, 4, 10, 32],
+//                         "000": [262144, 4, 10, 32]},
+//                         "elewise_vars": {"0": []},
+//                         "_vars": {"0": ["dim0_0", "dim1_0", "block_factor_0", "ub_factor_0"]},
+//                         "_normal_vars": {"0": []},
+//                         "_attr_vars": {"0": []},
+//                         "_custom_vars": {"0": ["dim0_0", "dim1_0", "block_factor_0", "ub_factor_0"]}})";
 
-    std::vector<std::vector<int64_t>> inputs{
-        {1024, 4800},
-        {1024, 4800}};
+//     std::vector<std::vector<int64_t>> inputs{
+//         {1024, 4800},
+//         {1024, 4800}};
 
-    std::vector<std::vector<int64_t>> outputs{
-        {1024,},
-        {1024, 4800}};
+//     std::vector<std::vector<int64_t>> outputs{
+//         {1024,},
+//         {1024, 4800}};
 
-    std::vector<std::string> input_types{"float32", "float32"};
-    std::vector<std::string> output_types{"float32", "float32"};
-    std::string data_format = "ND";
+//     std::vector<std::string> input_types{"float32", "float32"};
+//     std::vector<std::string> output_types{"float32", "float32"};
+//     std::string data_format = "ND";
 
-    TeOpParas opParas;
-    for (size_t i = 0; i < inputs.size(); i++)
-    {
-        TeOpTensor tensor_input;
-        TeOpTensorArg tensor_arg;
-        tensor_input.shape = inputs[i];
-        tensor_input.dtype = input_types[i];
-        tensor_input.format = data_format;
-        tensor_arg.tensor.push_back(tensor_input);
-        tensor_arg.arg_type = TA_SINGLE;
-        opParas.inputs.push_back(tensor_arg);
-    }
-    for (size_t i = 0; i < outputs.size(); i++)
-    {
-        TeOpTensor tensor_output;
-        TeOpTensorArg tensor_arg;
-        tensor_output.shape = outputs[i];
-        tensor_output.dtype = output_types[i];
-        tensor_output.format = data_format;
-        tensor_arg.tensor.push_back(tensor_output);
-        tensor_arg.arg_type = TA_SINGLE;
-        opParas.outputs.push_back(tensor_arg);
-    }
-    opParas.op_type = op_name;
+//     TeOpParas opParas;
+//     for (size_t i = 0; i < inputs.size(); i++)
+//     {
+//         TeOpTensor tensor_input;
+//         TeOpTensorArg tensor_arg;
+//         tensor_input.shape = inputs[i];
+//         tensor_input.dtype = input_types[i];
+//         tensor_input.format = data_format;
+//         tensor_arg.tensor.push_back(tensor_input);
+//         tensor_arg.arg_type = TA_SINGLE;
+//         opParas.inputs.push_back(tensor_arg);
+//     }
+//     for (size_t i = 0; i < outputs.size(); i++)
+//     {
+//         TeOpTensor tensor_output;
+//         TeOpTensorArg tensor_arg;
+//         tensor_output.shape = outputs[i];
+//         tensor_output.dtype = output_types[i];
+//         tensor_output.format = data_format;
+//         tensor_arg.tensor.push_back(tensor_output);
+//         tensor_arg.arg_type = TA_SINGLE;
+//         opParas.outputs.push_back(tensor_arg);
+//     }
+//     opParas.op_type = op_name;
 
-    OpCompileInfo op_compile_info;
-    op_compile_info.str = compileInfo;
-    op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_3";
+//     OpCompileInfo op_compile_info;
+//     op_compile_info.str = compileInfo;
+//     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_3";
 
-    OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(runInfo.block_dim, 1);
-    EXPECT_EQ(runInfo.tiling_key, 0);
-    std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
-    EXPECT_EQ(to_string(runInfo.tiling_data), "1024 4800 1024 1 ");
-}
+//     OpRunInfo runInfo;
+//     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//     EXPECT_EQ(runInfo.block_dim, 1);
+//     EXPECT_EQ(runInfo.tiling_key, 0);
+//     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
+//     EXPECT_EQ(to_string(runInfo.tiling_data), "1024 4800 1024 1 ");
+// }

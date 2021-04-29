@@ -23,6 +23,7 @@ set(_optiling_files
   bitwise.cc
   broadcast_to.cc
   assign.cc
+  avg_pool.cc
   avg_pool_1d.cc
   avg_pool_grad.cc
   avg_pool3d_grad.cc
