@@ -3,6 +3,7 @@
 '''
 test_SigmoidCrossEntropyWithLogitsGradV2_dynamic
 '''
+import tbe
 from op_test_frame.ut import OpUT
 ut_case = OpUT("SigmoidCrossEntropyWithLogitsGradV2",
                "impl.dynamic.sigmoid_cross_entropy_with_logits_grad_v2",
@@ -50,20 +51,56 @@ case3 = {"params": [{"shape": (-1,), "dtype": "float16", "format": "ND", "ori_sh
                      "ori_format": "ND", "range": [(1, 100)]},
                     {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
                      "ori_format": "ND", "range": [(1, 100)]},
+                    None,
                     {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
                      "ori_format": "ND", "range": [(1, 100)]},
                     {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
                      "ori_format": "ND", "range": [(1, 100)]},
-                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
-                     "ori_format": "ND", "range": [(1, 100)]},
-                    "sum"
+                    "mean"
                     ],
          "case_name": "case3",
+         "expect": "success",
+         "support_expect": True}
+
+case4 = {"params": [{"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    None,
+                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    "mean"
+                    ],
+         "case_name": "case4",
+         "expect": "success",
+         "support_expect": True}
+
+case5 = {"params": [{"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    None,
+                    None,
+                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (15, 32),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    "mean"
+                    ],
+         "case_name": "case5",
          "expect": "success",
          "support_expect": True}
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
+
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A"])
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run(["Ascend910A"])
