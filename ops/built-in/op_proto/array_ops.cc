@@ -231,33 +231,40 @@ IMPLEMT_INFERFUNC(CheckNumerics, CheckNumericsInfer) {
 INFER_FUNC_REG(CheckNumerics, CheckNumericsInfer);
 
 IMPLEMT_INFERFUNC(UnravelIndex, UnravelIndexInfer) {
-  auto indices_input_dsesc = op.GetInputDesc(0);
-  auto dims_input_desc = op.GetInputDesc(1);
+  auto indices_desc = op.GetInputDesc(0);
+  auto dims_desc = op.GetInputDesc(1);
 
   Shape dims_shape;
-  if (WithRank(dims_input_desc, 1, dims_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "dims input rank must be 1D.");
+  if (WithRank(dims_desc, 1, dims_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    string err_msg = ConcatString("input[dims] must be 1D, real rank is ",
+                     dims_shape.GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-
-  std::vector<int64_t> out_dims;
-  Shape indices_shape = indices_input_dsesc.GetShape();
-  if (indices_shape.GetDims() == ge::UNKNOWN_SHAPE) {
-    // unknown shape
-    out_dims = ge::UNKNOWN_SHAPE;
-    OP_LOGW(op.GetName().c_str(), "Indices input is unknown shape, set output unknown shape.");
-  } else if (indices_shape.GetDimNum() == 0) {
-    out_dims.push_back(dims_shape.GetDim(0));
+  Shape indices_shape;
+  if (WithRankAtMost(indices_desc, 1, indices_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    string err_msg = ConcatString("input[indices] must be less than 1D, real rank is ",
+                     dims_shape.GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> out_dims({-1, -1});
+  std::vector<int64_t> dims_shape_vec = dims_shape.GetDims();
+  std::vector<int64_t> indices_shape_vec = indices_shape.GetDims();
+  if (indices_shape.GetDimNum() == 0) {
+    out_dims[0] = 1;
   } else {
-    int64_t dim_size = indices_shape.GetShapeSize();
-    out_dims.push_back(dims_shape.GetDim(0));
-    out_dims.push_back(dim_size);
+    if (indices_shape_vec != ge::UNKNOWN_RANK && indices_shape_vec != ge::UNKNOWN_SHAPE) {
+      out_dims[0] = indices_shape_vec[0];
+    }
+  }
+  if (dims_shape_vec != ge::UNKNOWN_RANK && dims_shape_vec != ge::UNKNOWN_SHAPE) {
+    out_dims[1] = dims_shape_vec[0];
   }
 
   TensorDesc out_desc = op.GetOutputDesc("y");
   out_desc.SetShape(Shape(out_dims));
-  out_desc.SetDataType(indices_input_dsesc.GetDataType());
+  out_desc.SetDataType(indices_desc.GetDataType());
   return op.UpdateOutputDesc("y", out_desc);
 }
 
@@ -660,8 +667,6 @@ IMPLEMT_INFERFUNC(BroadcastArgs, BroadcastArgsInferFunc) {
   out_range.emplace_back(pair);
   y_desc->SetShapeRange(out_range);
   y_desc->SetDataType(x1_desc->GetDataType());
-
-
   return GRAPH_SUCCESS;
 }
 

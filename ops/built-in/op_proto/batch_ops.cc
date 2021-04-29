@@ -61,16 +61,17 @@ INFER_FUNC_REG(Batch, BatchInfer);
 
 IMPLEMT_INFERFUNC(Unbatch, UnbatchInfer) {
   Shape out_shape;
-  auto x_tensor_tensor = op.get_input_desc_x_tensor();
-  if (ReplaceDim(op.GetInputDesc(0).GetShape(), 0, ge::UNKNOWN_DIM, out_shape, op.GetName().c_str()) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "create y_tensors shape failed");
+  auto x_tensor = op.GetInputDesc(0);
+  if (ReplaceDim(x_tensor.GetShape(), 0, ge::UNKNOWN_DIM, out_shape, op.GetName().c_str()) == GRAPH_FAILED) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        string("failed to call ReplaceDim function, create output[y_tensor] shape failed"));
     return GRAPH_FAILED;
   }
-  TensorDesc outputDesc = op.GetOutputDesc("y_tensor");
-  outputDesc.SetShape(out_shape);
-  outputDesc.SetDataType(x_tensor_tensor.GetDataType());
-  if (op.UpdateOutputDesc("y_tensor", outputDesc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y_tensor desc failed");
+  TensorDesc output_desc = op.GetOutputDesc("y_tensor");
+  output_desc.SetShape(out_shape);
+  output_desc.SetDataType(x_tensor.GetDataType());
+  if (op.UpdateOutputDesc("y_tensor", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update output[y_tensor] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -79,19 +80,22 @@ IMPLEMT_INFERFUNC(Unbatch, UnbatchInfer) {
 INFER_FUNC_REG(Unbatch, UnbatchInfer);
 
 IMPLEMT_INFERFUNC(UnbatchGrad, UnbatchGradInfer) {
-  auto x_input_tensor = op.get_input_desc_x_input();
-  auto grad_tensor = op.get_input_desc_grad();
+  auto x_input_tensor = op.GetInputDesc(0);
+  auto grad_tensor = op.GetInputDesc(2);
   auto grad_rank = grad_tensor.GetShape().GetDimNum();
   if (x_input_tensor.GetDataType() != grad_tensor.GetDataType()) {
-    OP_LOGE(op.GetName().c_str(), "x_input's data type != grad's data type");
+    string err_msg = ConcatString("data type of input[x_input] is not equal to input[grad], data type of input[x_input] is ",
+                                  DTypeStr(x_input_tensor.GetDataType()), ", data type of input[grad] is ",
+                                  DTypeStr(grad_tensor.GetDataType()));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   auto out_shape = UnknownShapeOfRank(grad_rank);
-  TensorDesc outputDesc = op.GetOutputDesc("y_grad");
-  outputDesc.SetShape(out_shape);
-  outputDesc.SetDataType(x_input_tensor.GetDataType());
-  if (op.UpdateOutputDesc("y_grad", outputDesc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y_grad desc failed");
+  TensorDesc output_desc = op.GetOutputDesc("y_grad");
+  output_desc.SetShape(out_shape);
+  output_desc.SetDataType(x_input_tensor.GetDataType());
+  if (op.UpdateOutputDesc("y_grad", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update output[y_grad] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

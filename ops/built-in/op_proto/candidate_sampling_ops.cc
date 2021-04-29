@@ -159,12 +159,12 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   }
   int64_t unused_dim = 0;
   if (WithValue(true_classes.GetDim(1), num_true, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = ConcatString("failed to call WithValue function, 1th dim[", true_classes.GetDim(1), 
-                                        "] of input[true_classes] not equal attr[", num_true, "]");
+    std::string err_msg = ConcatString("failed to call WithValue function, dim[1] of input[true_classes] is [",
+                                       true_classes.GetDim(1), "], it is not equal to attr[", num_true, "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  
+
   auto sampled_candidates_desc = op_desc->MutableInputDesc(1);
   GeShape sampled_candidates;
   if (WithRank(sampled_candidates_desc, 1, sampled_candidates, op.GetName().c_str()) !=

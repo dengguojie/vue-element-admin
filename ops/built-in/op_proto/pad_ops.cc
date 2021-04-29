@@ -792,46 +792,55 @@ COMMON_INFER_FUNC_REG(AscendPadding, AscendPaddingInferShape);
 
 // ---------------------EmbdingRankId-------------------------------------
 IMPLEMT_COMMON_INFERFUNC(EmbeddingRankIdInferShape) {
-  Shape addr_shape;
-  auto addr_desc = op.GetInputDesc(0);
-  if (WithRank(addr_desc, 2, addr_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input addr_table rank must be at least 2, real rank is %lld.",
-            addr_desc.GetShape().GetDimNum());
+  Shape addr_table_shape;
+  auto addr_table_desc = op.GetInputDesc(0);
+  if (WithRank(addr_table_desc, 2, addr_table_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    string err_msg = ConcatString("input[addr_table] rank must be at least 2, real rank is ",
+                     addr_table_desc.GetShape().GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  auto addr_rank = addr_shape.GetDimNum();
-  auto addr_dims = addr_shape.GetDims();
+  auto addr_table_rank = addr_table_shape.GetDimNum();
+  auto addr_table_dims = addr_table_shape.GetDims();
 
-  if (addr_dims[addr_rank - 1] != 3) {
-    OP_LOGE(op.GetName().c_str(), "the last dim of addr_table must be 3, real dim is %lld.", addr_dims[addr_rank - 1]);
+  if (addr_table_dims[addr_table_rank - 1] != 3) {
+    string err_msg = ConcatString("the last dim of input[addr_table] must be 3, real dim is ",
+                     addr_table_dims[addr_table_rank - 1]);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  if (addr_dims[0] <= 0) {
-    OP_LOGE(op.GetName().c_str(), "the first dim of addr_table must be >0, real dim is %lld.", addr_dims[0]);
+  if (addr_table_dims[0] <= 0) {
+    string err_msg = ConcatString("the first dim of input[addr_table] must be > 0, real dim is ",
+                     addr_table_dims[0]);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Shape index_shape;
   auto index_desc = op.GetInputDesc(1);
   if (WithRank(index_desc, 1, index_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input index rank must be at least 1, real rank is %lld.",
-            index_desc.GetShape().GetDimNum());
+    string err_msg = ConcatString("input[index] rank must be at least 1, real rank is ",
+                     index_desc.GetShape().GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int32_t row_memory;
   if (op.GetAttr("row_memory", row_memory) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr row_memory error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[row_memory] failed"));
     return GRAPH_FAILED;
   }
   if (row_memory <= 0) {
-    OP_LOGE(op.GetName().c_str(), "row_memory should be >0 , real value is %d.", row_memory);
+    string err_msg = ConcatString("attr[row_memory] should be > 0 , real value is ",
+                     row_memory);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
   Shape out_shape;
   std::vector<int64_t> dims = index_shape.GetDims();
-  if (ReplaceDim(addr_shape, 0, dims[0], out_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "failed to create rank_id shape.");
+  if (ReplaceDim(addr_table_shape, 0, dims[0], out_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        string("failed to call ReplaceDim function, create output[rank_id] shape failed"));
     return GRAPH_FAILED;
   }
 
@@ -839,7 +848,6 @@ IMPLEMT_COMMON_INFERFUNC(EmbeddingRankIdInferShape) {
   rankid_desc.SetShape(out_shape);
   rankid_desc.SetDataType(DT_UINT64);
   (void)op.UpdateOutputDesc("rank_id", rankid_desc);
-
   return GRAPH_SUCCESS;
 }
 

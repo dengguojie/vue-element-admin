@@ -68,6 +68,7 @@ TEST_F(select, select_infer_shape_fp16) {
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
 TEST_F(select, select_infer_shape_1) {
   ge::op::Select op;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 100}};
@@ -126,4 +127,3 @@ TEST_F(select, select_infer_shape_2) {
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
-

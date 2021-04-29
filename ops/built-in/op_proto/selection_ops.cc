@@ -30,6 +30,7 @@
 #include "strided_slice_infer_shape.h"
 #include "graph/utils/op_desc_utils.h"
 #include "register/infer_data_slice_registry.h"
+#include "util/error_util.h"
 #include "graph/common_error_codes.h"
 #include "graph/debug/ge_attr_define.h"
 #include "axis_util.h"
@@ -600,7 +601,7 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
   if ((op.GetInputConstData("start", input_start_tensor) != GRAPH_SUCCESS) ||
       (op.GetInputConstData("delta", input_delta_tensor) != GRAPH_SUCCESS) ||
       (op.GetInputConstData("limit", input_limit_tensor) != GRAPH_SUCCESS)) {
-    OP_LOGI(op.GetName().c_str(), "Get constValue failed of in [start], [delta],[limit]");
+    OP_LOGI(op.GetName().c_str(), "Get constValue failed of in input[start], input[delta], input[limit]");
     dimsIn.emplace_back(UNKNOWN_DIM);
     y_output->SetShape(GeShape(dimsIn));
     y_output->SetOriginShape(GeShape(dimsIn));
@@ -628,8 +629,8 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
     GetRangeConstValue(op, input_delta_tensor, delta_dtype, delta_multiples);
     if (start_multiples.empty() || limit_multiples.empty() || delta_multiples.empty()) {
       OP_LOGW(op.GetName().c_str(),
-              "the start_multiples_size is %d, the limit_multiples_size is %d,"
-              "the delta_multiples_size is %d",
+              "the start_multiples_size is [%d], the limit_multiples_size is [%d],"
+              "the delta_multiples_size is [%d]",
               start_multiples.size(), limit_multiples.size(), delta_multiples.size());
 
       y_output->SetShape(GeShape({UNKNOWN_DIM}));
@@ -644,7 +645,7 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
     int64_t res = 0;
     DataType input_dtype = ge::DT_FLOAT;
     if (assist_num_one < 1e-6) {
-      OP_LOGE(op.GetName().c_str(), "the value of delta should not be zero");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("the value of input[delta] should not be zero"));
       return GRAPH_FAILED;
     }
     if (start_dtype == ge::DT_INT32 && limit_dtype == ge::DT_INT32 && delta_dtype == ge::DT_INT32) {
@@ -669,7 +670,7 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
     y_output->SetShape(GeShape(dimsIn));
     y_output->SetOriginShape(GeShape(dimsIn));
     y_output->SetDataType(input_dtype);
-    OP_LOGD(op.GetName().c_str(), "output shape:%s.", to_string(dimsIn).c_str());
+    OP_LOGD(op.GetName().c_str(), "output shape: [%s].", to_string(dimsIn).c_str());
     return GRAPH_SUCCESS;
   }
 }
@@ -1706,16 +1707,20 @@ INFER_FUNC_REG(ReverseV2D, ReverseV2DInferShape);
 // ----------------Select----------------------
 IMPLEMT_VERIFIER(Select, SelectVerify) {
   if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        string("call function CheckTwoInputDtypeSame failed, data type of input[x1] is not same as input[x2]"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(SelectInferShape) {
-  if (TwoInOneOutDynamicInferNoBroadcast(op, "x1", "x2", {"y"})) {
-    return GRAPH_SUCCESS;
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "x1", "x2", {"y"})) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        string("call function TwoInOneOutDynamicInferNoBroadcast failed, update output[y] desc failed"));
+    return GRAPH_FAILED;
   }
-  return GRAPH_FAILED;
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(Select, SelectInferShape);

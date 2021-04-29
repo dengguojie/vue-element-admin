@@ -256,7 +256,9 @@ Status BatchMapping(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("x_tensors", "T");
   value["out"] = pair<string, string>("y_tensors", "T");
-  AutoMappingFnDynamic(op_src, op, value);
+  // Add dynamic input/output to ir, if 4th and 5th param is -1 means add input/output from back
+  // if 1 means add input/output from head
+  AutoMappingFnDynamic(op_src, op, value, -1, 1);
   return SUCCESS;
 }
 
