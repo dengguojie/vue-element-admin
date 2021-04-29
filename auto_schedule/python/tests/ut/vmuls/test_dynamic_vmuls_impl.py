@@ -7,7 +7,7 @@ from tbe import tvm
 from tbe.common.register import register_operator
 from tbe.common.utils import shape_util
 from tbe.dsl import classify
-
+from tbe.common.utils import para_check
 
 @register_operator("vmuls")
 def dsl_dync_vmuls(x, y, value, kernel_name="dsl_dync_vmuls"):
@@ -15,6 +15,8 @@ def dsl_dync_vmuls(x, y, value, kernel_name="dsl_dync_vmuls"):
 
     ins = classify([x], "elewise")
     schedules, tensors = [], []
+
+    para_check.check_elewise_shape_range([x,], support_broadcast=False)
 
     for (x,) in ins:
         with tbe.dsl.compute():

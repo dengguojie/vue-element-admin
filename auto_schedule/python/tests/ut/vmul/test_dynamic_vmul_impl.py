@@ -8,6 +8,7 @@ import tbe
 from tbe import tvm
 from tbe.common.utils import shape_util
 from tbe.common.register import register_operator
+from tbe.common.utils import para_check
 
 
 @register_operator("vmul")
@@ -16,6 +17,8 @@ def dsl_dynamic_vmul(x, y, z, kernel_name="dsl_dynamic_vmul"):
 
     ins = tbe.dsl.classify([x, y], "elewise")
     schedules, tensors = [], []
+
+    para_check.check_elewise_shape_range([x, y], support_broadcast=False)
 
     for (x, y) in ins:
         with tbe.dsl.compute():
