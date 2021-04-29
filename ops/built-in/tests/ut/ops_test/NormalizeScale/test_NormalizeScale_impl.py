@@ -30,6 +30,15 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 
+def test_get_op_support_info(test_arg):
+    from impl.normalize_scale import get_op_support_info
+    get_op_support_info({"shape": (15, 80, 38, 38), "dtype": "float16", "format": "NCHW","ori_shape":(15, 80, 2, 32), "ori_format":"NCHW"},
+                        {"shape": (1,), "dtype": "float16", "format": "NCHW","ori_shape":(1,), "ori_format":"NCHW"},
+                        {"shape": (15, 80, 2, 32), "dtype": "float16", "format": "NCHW","ori_shape":(15, 80, 2, 32), "ori_format":"NCHW"},
+                        {"shape": (15, 80, 2, 32), "dtype": "float16", "format": "NCHW","ori_shape":(15, 80, 2, 32), "ori_format":"NCHW"})
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+
 def calc_expect_func(x1, x2, x3, y, across_spatial=True,
                      channel_shared=True, eps=1e-10):
     x1_value = x1.get("value")
