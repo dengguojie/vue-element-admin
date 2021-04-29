@@ -1250,6 +1250,12 @@ IMPLEMT_VERIFIER(BNTrainingUpdateGrad, BNTrainingUpdateGradVerify) {
 IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateGradInferShape) {
   auto shape = op.GetInputDesc("batch_mean").GetShape();
   auto output_dtype = op.GetInputDesc("batch_mean").GetDataType();
+  std::vector<int64_t> shapeVector = shape.GetDims();
+
+  if (shapeVector.empty()) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
+    return GRAPH_FAILED;
+  }
 
   TensorDesc td_diff_scale = op.GetOutputDesc("diff_scale");
   td_diff_scale.SetShape(shape);
