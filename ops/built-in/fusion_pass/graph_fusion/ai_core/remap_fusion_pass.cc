@@ -297,18 +297,19 @@ Status RemapFusionPass::CreateAddNode(const std::string name, ge::NodePtr& add_n
   auto input_desc = temp_desc;
   input_desc.SetDataType(ge::DT_INT32);
   FUSION_PASS_CHECK(add_desc->AddInputDesc("x1", input_desc) != SUCCESS,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add input x for %s fail, fusion failed.", add_desc_name),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add input x for %s fail, fusion failed.", add_desc_name.c_str()),
                     return NOT_CHANGED);
 
   FUSION_PASS_CHECK(add_desc->AddInputDesc("x2", input_desc) != SUCCESS,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add input y for %s fail, fusion failed.", add_desc_name),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add input y for %s fail, fusion failed.", add_desc_name.c_str()),
                     return NOT_CHANGED);
 
   // add output tensorDesc
   auto output_desc = temp_desc;
   output_desc.SetDataType(ge::DT_INT32);
   FUSION_PASS_CHECK(add_desc->AddOutputDesc("y", output_desc) != SUCCESS,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add ouput z for %s after fail, fusion failed.", add_desc_name),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add ouput z for %s after fail, fusion failed.",
+                            add_desc_name.c_str()),
                     return NOT_CHANGED);
 
   add_node = graph.AddNode(add_desc);
@@ -328,14 +329,15 @@ Status RemapFusionPass::CreateCastNode(const std::string name, ge::NodePtr& cast
                     return NOT_CHANGED);
   // cast input tensorDesc
   FUSION_PASS_CHECK(cast_desc->AddInputDesc("x", temp_desc) != SUCCESS,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add input x for %s fail, fusion failed.", cast_desc_name),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add input x for %s fail, fusion failed.", cast_desc_name.c_str()),
                     return NOT_CHANGED);
 
   // cast output tensorDesc
   auto output_desc = temp_desc;
   output_desc.SetDataType(ge::DT_INT32);
   FUSION_PASS_CHECK(cast_desc->AddOutputDesc("y", output_desc) != SUCCESS,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add ouput z for %s after fail, fusion failed.", cast_desc_name),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "add ouput z for %s after fail, fusion failed.",
+                            cast_desc_name.c_str()),
                     return NOT_CHANGED);
 
   AttrUtils::SetInt(cast_desc, "dst_type", DT_INT32);

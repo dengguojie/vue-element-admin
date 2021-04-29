@@ -1,0 +1,31 @@
+[
+    {
+        "op": "Remap",
+        "case_name": "test_remap_001",
+        "calc_expect_func_file": "",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 128, 128, 3],
+                "type": ["float16"],
+                "value_range": [[0, 10]],
+                "data_distribute": "uniform"
+            },
+            {
+                "format": "NHWC",
+                "shape": [1, 64, 64, 2],
+                "type": ["float"],
+                "value_range": [[0, 60]],
+                "data_distribute": "uniform"
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 64, 64, 3],
+                "type": ["float16"]
+            }
+        ]
+    }
+]
