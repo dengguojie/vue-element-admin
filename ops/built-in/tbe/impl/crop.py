@@ -939,40 +939,20 @@ def check_and_adjust_offset(input_dict):
                                                         "y_dtype", y_dtype)
 
     if not check_same_shape(y_shape, x2_shape):
-        errorInfo = {'errCode': 'E80017', 'op_name': 'crop', 'param_name1': 'y_shape', 'param_name2': 'x2_shape',
-                     'param1_shape': ','.join(str(i) for i in y_shape),
-                     'param2_shape': ','.join(str(i) for i in x2_shape)}
-        raise RuntimeError(errorInfo,
-                           "In op[%s], the parameter[%s][%s] are not equal in"
-                           " shape with shapes[%s][%s]." %
-                           (errorInfo['op_name'], errorInfo['param_name1'],
-                            errorInfo['param_name2'], errorInfo['param1_shape'],
-                            errorInfo['param2_shape']))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("crop", "y", "x2", y_shape, x2_shape)
 
     if len(x2_shape) != len(x1_shape):
-        errorInfo = {'errCode': 'E80017', 'op_name': 'crop', 'param_name1': 'x1_shape', 'param_name2': 'x2_shape',
-                     'param1_shape': ','.join(str(i) for i in x1_shape),
-                     'param2_shape': ','.join(str(i) for i in x2_shape)}
-        raise RuntimeError(errorInfo,
-                           "In op[%s], the parameter[%s][%s] are not equal"
-                           " in shape with shapes[%s][%s]." %
-                           (errorInfo['op_name'], errorInfo['param_name1'],
-                            errorInfo['param_name2'], errorInfo['param1_shape'],
-                            errorInfo['param2_shape']))
+        error_detail = "the parameter[%s][%s] are not equal in shape with shapes[%s][%s]." \
+                        % ("x1", "x2", ','.join(str(i) for i in x1_shape),  ','.join(str(i) for i in x2_shape))
+        error_manager_vector.raise_err_specific_reson("crop", error_detail)
+    
     # check his-es check offset
     x1_ori_shape = input_dict.get("x1").get("shape")
     if 'ori_shape' in input_dict.get("x1"):
         x1_ori_shape = input_dict.get("x1").get("ori_shape")
     axis = input_dict.get("axis")
     if axis >= len(x1_ori_shape) or axis < -len(x1_ori_shape):
-        errorInfo = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'crop', 'param_name': 'axis',
-                     'min_value': str(-len(x1_ori_shape)), 'max_value': str(len(x1_ori_shape)), 'real_value': axis}
-        raise RuntimeError(errorInfo,
-                           "In op[%s], the parameter[%s] should be in the range"
-                           " of [%s, %s], but actually is [%s]." %
-                           (errorInfo['op_name'], errorInfo['param_name'],
-                            errorInfo['min_value'], errorInfo['max_value'],
-                            errorInfo['real_value']))
+        error_manager_vector.raise_err_input_param_not_in_range("crop", "axis", str(-len(x1_ori_shape)), str(len(x1_ori_shape)), axis)
 
     if axis < 0:
         input_dict["axis"] = axis + len(x1_ori_shape)

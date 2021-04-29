@@ -278,8 +278,10 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     for _, element_shape in enumerate(shape_value):
         for j, _ in enumerate(first_input_shape):
             if element_shape[j] != first_input_shape[j] and j != axis_new:
-                raise RuntimeError("Axes must equal except merge axis")
-
+                error_detail = "Axes must equal except merge axis, element_shape[j] != first_input_shape[j] and j != axis_new, "\
+                                "element_shape[j]:%s, first_input_shape[j]:%s, j:%s, axis_new:%s" % (element_shape[j], first_input_shape[j], j, axis_new)
+                error_manager_vector.raise_err_specific_reson(kernel_name, error_detail)
+    
     # when format is 5HD check whether concat by C and redefine the axis
     input_format = input_values[0].get("format")
     ori_format = input_values[0].get("ori_format")

@@ -244,8 +244,8 @@ def bn_reduce_sum(stmt_op):
             input_reduce_axis_shape / vector_inst_one_repeat_size - \
             collapse_repeat
         if not out_of_collapse_repeat.is_integer():
-            raise RuntimeError("Input size is not aligned:",
-                               input_reduce_axis_shape)
+            error_detail = "Input size is not aligned:%s" % input_reduce_axis_shape
+            error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
         remain_flag = True
 
     # Do Emit Insn

@@ -24,6 +24,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.platform_adapter import error_manager_vector
 
 # constant, value is 16
 SIZE_SIXTEEN = 16
@@ -73,7 +74,8 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
     """
     def _can_division_sixteen(shape):
         if shape[-1] == 0 or shape[-2] == 0:
-            raise RuntimeError("value of shape is illegal")
+            error_detail = "value of shape is illegal, shape[-1]:%s, shape[-2]:%s" % (shape[-1], shape[-2])
+            error_manager_vector.raise_err_input_shape_invalid("axpy", "shape[-1], shape[-2]", error_detail)
 
         if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
             return True

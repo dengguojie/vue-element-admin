@@ -51,7 +51,7 @@ def get_op_support_info(labels,
                         y,
                         num_classes,
                         dtype,
-                        kernel_name="cce_confusion_matrix",
+                        kernel_name="confusion_matrix",
                         need_build=True,
                         need_print=False):
     """
@@ -114,8 +114,9 @@ def cast_to(ibuilder, data_amounts, src_buf, dst_buf):
     # recheck vconv_instr support
     if not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vconv", \
            vconv_instr.split('_')[1]):
-        raise RuntimeError("This product don't support Intrinsic_vconv " + \
-                           vconv_instr)
+        error_detail = "This product don't support Intrinsic_vconv " + \
+                           vconv_instr
+        error_manager_vector.raise_err_specific_reson("confusion_matrix", error_detail)
 
     repeats = int(data_amounts // vconv_compute_num)
     remain = int(data_amounts % vconv_compute_num)
@@ -257,19 +258,19 @@ def params_check(shape_labels, shape_predictions, out_type, labels_dtype,
         if not tbe_platform.cce_conf.intrinsic_check_support(
                 "Intrinsic_vconv", \
                "s322f32") and weights_dtype == "int32" and out_type != "int32":
-            raise RuntimeError("This product weights don't support \
-            int32(when out_type is not int32)")
+            error_detail = "This product weights don't support int32(when out_type is not int32)"
+            error_manager_vector.raise_err_specific_reson("confusion_matrix", error_detail)
         if not tbe_platform.cce_conf.intrinsic_check_support(\
                 "Intrinsic_vconv", "f322s32f") and weights_dtype == "float32" \
                and out_type == "int32":
-            raise RuntimeError("This product weights don't \
-            support float32(when out_type is int32)")
+            error_detail = "This product weights don't support float32(when out_type is int32)"
+            error_manager_vector.raise_err_specific_reson("confusion_matrix", error_detail)
     if not tbe_platform.cce_conf.intrinsic_check_support(\
             "Intrinsic_vconv", "f322s32f") and labels_dtype == "float32":
-        raise RuntimeError("This product labels don't support float32!")
+        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "labels", "not float32", "float32")
     if not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vconv", \
            "f322s32f") and predictions_dtype == "float32":
-        raise RuntimeError("This product predictions don't support float32!")
+        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "predictions", "not float32", "float32")
 
 
 def compute_ub_length(number, dtype_a, dtype_b):
@@ -1080,7 +1081,7 @@ def confusion_matrix(labels,
                      y,
                      num_classes,
                      dtype,
-                     kernel_name="cce_confusion_matrix",
+                     kernel_name="confusion_matrix",
                      need_build=True,
                      need_print=False):
     """Generate the confusion_matrix op IR
@@ -1094,7 +1095,7 @@ def confusion_matrix(labels,
     w_dtype : int or fp
         the dtype of weight
 
-    kernel_name : cce kernel name, default value is cce_confusion_matrix
+    kernel_name : cce kernel name, default value is confusion_matrix
 
     need_buid : if need to build CCEC kernel, default value is True
 

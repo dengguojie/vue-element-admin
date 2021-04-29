@@ -535,7 +535,6 @@ def _format_check(
             ),
             "value": "{}".format(format_combine)
         }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
         error_detail = "for src_dtype = %s and dst_type = %s, format need to be %s or %s" % (src_dtype,
                          dst_dtype, "ND, ND, ND, ND, ND, ND", support_combine[flow_type])
         error_manager_vector.raise_err_specific_reson("gemm", error_detail)

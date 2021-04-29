@@ -23,10 +23,8 @@ from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
-
+from impl.util.platform_adapter import error_manager_vector
 from topi.cce import util
-
 from impl.util.util_select_op_base import ReduceInput
 from impl.util.util_select_op_base import ReduceOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -433,7 +431,8 @@ def _fuction_data_conv_ir(addr_info_list, data_info_list, params):
 
     if _src_dtype == "int32":
         if params.compile_plat in ("Ascend310",):
-            raise RuntimeError("Can not support int32 input in mini plat")
+            error_detail = "Can not support int32 input in mini plat, _src_dtype:%s" % "int32"
+            error_manager_vector.raise_err_specific_reson("histogram_fixed_width_d", error_detail)
         cce_cmd = "vconv_s322f32"
         fuc_name = kernel_api.kernel_cast_to_fuc
         _run_vconv(fuc_name, cce_cmd)
@@ -995,10 +994,10 @@ def histogram_fixed_width_d(x,
 
     if data_range_shape_size != 2:
         error_detail = "the shape of range must be (2,) or [2]"
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "range", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("histogram_fixed_width_d", "range", error_detail)
 
     if nbins <= 0:
-        error_manager_vector.raise_err_input_value_invalid(kernel_name, "nbins", "larger than 0", nbins)
+        error_manager_vector.raise_err_input_value_invalid("histogram_fixed_width_d", "nbins", "larger than 0", nbins)
 
     data = tvm.placeholder([data_shape_size],
                            dtype=dtype_input,

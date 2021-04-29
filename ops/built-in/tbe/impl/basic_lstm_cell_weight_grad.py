@@ -88,7 +88,8 @@ class LstmCellGradInput():
             para_check.check_shape(shape_check, min_rank=4, max_rank=4, param_name="dgate")
             for check_dim in (shape_check[2], shape_check[3]):
                 if check_dim != 16:
-                    raise RuntimeError("the shape do not match the format!")
+                    error_detail = "the shape do not match the format! check_dim != 16, check_dim=%s" % check_dim
+                    error_manager_vector.raise_err_input_shape_invalid(kernel_name, "check_dim", error_detail)
 
         para_check.check_dtype(self.dgate_dtype.lower(), ("float16",), param_name="dgate")
         para_check.check_dtype(self.x_dtype.lower(), ("float16",), param_name="input_x")
