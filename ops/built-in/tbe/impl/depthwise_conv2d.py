@@ -222,17 +222,6 @@ def _check_stride(strides, dim_n, dim_c, dim_h, dim_w):
 
     if strides[dim_n] != 1 or strides[dim_c] != 1:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d", "stride only support 1 in N axis and C axis.")
-    if strides[dim_h] != strides[dim_w]:
-        dict_args = {
-            'errCode': 'E60002',
-            'op_name': 'depthwise_conv2d',
-            'attr_name': 'stride value',
-            'param1_name': 'strides[dim_h]',
-            'param2_name': 'strides[dim_w]',
-            'param1_value': str(strides[dim_h]),
-            'param2_value': str(strides[dim_w])
-        }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
 def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
@@ -245,17 +234,6 @@ def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
             'op_name': 'depthwise_conv2d',
             'dilation_n': str(dilations[dim_n]),
             'dilation_c': str(dilations[dim_c])
-        }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-    if dilations[dim_h] != dilations[dim_w]:
-        dict_args = {
-            'errCode': 'E60002',
-            'op_name': 'depthwise_conv2d',
-            'attr_name': 'dilations value',
-            'param1_name': 'dilations[dim_h]',
-            'param2_name': 'dilations[dim_w]',
-            'param1_value': str(dilations[dim_h]),
-            'param2_value': str(dilations[dim_w])
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
