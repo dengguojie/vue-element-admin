@@ -243,3 +243,387 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_5) {
   }
   EXPECT_EQ(findOp, true);
 }
+TEST_F(einsum_fusion_test, einsum_fusion_test_6) {
+  ge::Graph graph("einsum_fusion_test_6");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 40};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{30, 40};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{10, 20, 30};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("abd,cd->abc");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "MatMulV2") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}
+TEST_F(einsum_fusion_test, einsum_fusion_test_7) {
+  ge::Graph graph("einsum_fusion_test_7");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 40};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{10, 20, 30};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{30, 40};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("abd,abc->cd");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "MatMulV2") {
+      findOp = true;
+    }
+    if (node->GetType() == "TransposeD") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}
+TEST_F(einsum_fusion_test, einsum_fusion_test_8) {
+  ge::Graph graph("einsum_fusion_test_8");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 50};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{30, 40, 50};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{10, 20, 30, 40};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("abe,cde->abcd");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "MatMulV2") {
+      findOp = true;
+    }
+    if (node->GetType() == "TransposeD") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}
+TEST_F(einsum_fusion_test, einsum_fusion_test_9) {
+  ge::Graph graph("einsum_fusion_test_9");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 50};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{10, 20, 30, 40};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{30, 40, 50};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("abe,abcd->cde");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "MatMulV2") {
+      findOp = true;
+    }
+    if (node->GetType() == "TransposeD") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}
+TEST_F(einsum_fusion_test, einsum_fusion_test_10) {
+  ge::Graph graph("einsum_fusion_test_10");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 30, 40};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{10, 50, 30, 40};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{10, 30, 20, 50};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("BFNH,BTNH->BNFT");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "BatchMatMul") {
+      findOp = true;
+    }
+    if (node->GetType() == "TransposeD") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}
+TEST_F(einsum_fusion_test, einsum_fusion_test_11) {
+  ge::Graph graph("einsum_fusion_test_11");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 30, 40};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{10, 30, 20, 50};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{10, 50, 30, 40};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("BFNH,BNFT->BTNH");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "BatchMatMul") {
+      findOp = true;
+    }
+    if (node->GetType() == "TransposeD") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}
+TEST_F(einsum_fusion_test, einsum_fusion_test_12) {
+  ge::Graph graph("einsum_fusion_test_12");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 40, 50};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{30, 40, 50};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{10, 20, 30};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("abde,cde->abc");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "MatMulV2") {
+      findOp = true;
+    }
+    if (node->GetType() == "TransposeD") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}
+TEST_F(einsum_fusion_test, einsum_fusion_test_13) {
+  ge::Graph graph("einsum_fusion_test_13");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 40, 50};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{10, 20, 30};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{30, 40, 50};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("abde,abc->cde");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "MatMulV2") {
+      findOp = true;
+    }
+    if (node->GetType() == "TransposeD") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}
+TEST_F(einsum_fusion_test, einsum_fusion_test_14) {
+  ge::Graph graph("einsum_fusion_test_14");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::EinSum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 20, 30, 40};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{10, 30, 20, 50};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{10, 40, 20, 50};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("BNFT,BFNH->BTNH");
+  einsum.set_attr_tensor_size(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "BatchMatMul") {
+      findOp = true;
+    }
+    if (node->GetType() == "TransposeD") {
+      findOp = true;
+    }
+  }
+  EXPECT_EQ(findOp, true);
+}

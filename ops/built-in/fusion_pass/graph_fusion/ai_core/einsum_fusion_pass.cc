@@ -128,10 +128,8 @@ Status EinSumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     x1_desc.SetOriginShape(GeShape(tmp_dims));
     matmul_desc->AddInputDesc("x2", x1_desc);
     tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0]);
-    tmp_dims.push_back(x0_dims[1]);
-    tmp_dims.push_back(x1_dims[1]);
-    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x1_dims[1] * x1_dims[2]);
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
     matmul_desc->AddOutputDesc("y", x1_desc);
@@ -424,8 +422,7 @@ Status EinSumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     x1_desc.SetOriginShape(GeShape(tmp_dims));
     matmul_desc->AddInputDesc("x2", x1_desc);
     tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0]);
-    tmp_dims.push_back(x0_dims[1]);
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
     tmp_dims.push_back(x1_dims[2]);
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
@@ -482,8 +479,7 @@ Status EinSumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     matmul_desc->AddInputDesc("x1", x0_desc);
     matmul_desc->AddInputDesc("x2", x1_desc);
     tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0]);
-    tmp_dims.push_back(x0_dims[1]);
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
     tmp_dims.push_back(x1_dims[1]);
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
@@ -520,6 +516,907 @@ Status EinSumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
       FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
                                 matmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "abd,cd->abc") {
+    FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 2),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and two."), return NOT_CHANGED);
+    // create matmul op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/MatMul", MATMUL);
+    // add matmul op input and output desc
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x0_dims[2]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x1_dims[0]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    // create matmul op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set matmul op attr
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("transpose_x1", false);
+    matmul_op.SetAttr("transpose_x2", true);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, matmul_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, matmul_node->GetInDataAnchor(1)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                      return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                matmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "abd,abc->cd") {
+    FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 3),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and three."), return NOT_CHANGED);
+    // create transposed op desc
+    std::shared_ptr<ge::OpDesc> transpose_1_desc = nullptr;
+    transpose_1_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose1", TRANSPOSED);
+    std::shared_ptr<ge::OpDesc> transpose_2_desc = nullptr;
+    transpose_2_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose2", TRANSPOSED);
+    // create matmulv2 op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/MatMul", MATMUL);
+    // add input and output desc
+    transpose_1_desc->AddInputDesc("x", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[1]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_1_desc->AddOutputDesc("y", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[0] * x1_dims[1]);
+    tmp_dims.push_back(x1_dims[2]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x1_dims[2]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    transpose_2_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x0_dims[2]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_2_desc->AddOutputDesc("y", x1_desc);
+    // create transposed op
+    NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
+    NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
+    // create matmulv2 op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set op attr
+    Operator transpose1_op = OpDescUtils::CreateOperatorFromNode(transpose_1_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(1);
+    transpose1_op.SetAttr("perm", tmp_dims);
+    Operator transpose2_op = OpDescUtils::CreateOperatorFromNode(transpose_2_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(1);
+    tmp_dims.push_back(0);
+    transpose2_op.SetAttr("perm", tmp_dims);
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("transpose_x1", false);
+    matmul_op.SetAttr("transpose_x2", false);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, transpose_1_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), transpose_1_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, matmul_node->GetInDataAnchor(1)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), transpose_2_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                matmul_node->GetName().c_str(), transpose_2_node->GetName().c_str()),
+        return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(transpose_2_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                transpose_2_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "abe,cde->abcd") {
+    FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 3),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and three."), return NOT_CHANGED);
+    // create transposed op desc
+    std::shared_ptr<ge::OpDesc> transpose_1_desc = nullptr;
+    transpose_1_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose1", TRANSPOSED);
+    // create matmulv2 op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/MatMul", MATMUL);
+    // add input and output desc
+    transpose_1_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x1_dims[0]);
+    tmp_dims.push_back(x1_dims[1]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_1_desc->AddOutputDesc("y", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x0_dims[2]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x1_dims[0] * x1_dims[1]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x1_dims[0] * x1_dims[1]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    // create transposed op
+    NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
+    // create matmulv2 op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set op attr
+    Operator transpose1_op = OpDescUtils::CreateOperatorFromNode(transpose_1_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(1);
+    transpose1_op.SetAttr("perm", tmp_dims);
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("transpose_x1", false);
+    matmul_op.SetAttr("transpose_x2", false);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, matmul_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, transpose_1_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), transpose_1_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                matmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "abe,abcd->cde") {
+    FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 4),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and four."), return NOT_CHANGED);
+    // create transposed op desc
+    std::shared_ptr<ge::OpDesc> transpose_1_desc = nullptr;
+    transpose_1_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose1", TRANSPOSED);
+    std::shared_ptr<ge::OpDesc> transpose_2_desc = nullptr;
+    transpose_2_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose2", TRANSPOSED);
+    // create matmulv2 op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/MatMul", MATMUL);
+    // add input and output desc
+    transpose_1_desc->AddInputDesc("x", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[1]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_1_desc->AddOutputDesc("y", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[0] * x1_dims[1]);
+    tmp_dims.push_back(x1_dims[2] * x1_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x1_dims[2] * x1_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x1_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_2_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x1_dims[3]);
+    tmp_dims.push_back(x0_dims[2]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_2_desc->AddOutputDesc("y", x1_desc);
+    // create transposed op
+    NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
+    NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
+    // create matmulv2 op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set op attr
+    Operator transpose1_op = OpDescUtils::CreateOperatorFromNode(transpose_1_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(1);
+    transpose1_op.SetAttr("perm", tmp_dims);
+    Operator transpose2_op = OpDescUtils::CreateOperatorFromNode(transpose_2_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(1);
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(0);
+    transpose2_op.SetAttr("perm", tmp_dims);
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("transpose_x1", false);
+    matmul_op.SetAttr("transpose_x2", false);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, transpose_1_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), transpose_1_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, matmul_node->GetInDataAnchor(1)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), transpose_2_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                matmul_node->GetName().c_str(), transpose_2_node->GetName().c_str()),
+        return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(transpose_2_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                transpose_2_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "BFNH,BTNH->BNFT") {
+    FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
+    // create transposed op desc
+    std::shared_ptr<ge::OpDesc> transpose_1_desc = nullptr;
+    transpose_1_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose1", TRANSPOSED);
+    std::shared_ptr<ge::OpDesc> transpose_2_desc = nullptr;
+    transpose_2_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose2", TRANSPOSED);
+    // create batchmatmulv2 op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/BatchMatMul", BATCHMATMUL);
+    // add input and output desc
+    transpose_1_desc->AddInputDesc("x", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[1]);
+    tmp_dims.push_back(x0_dims[3]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_1_desc->AddOutputDesc("y", x0_desc);
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    transpose_2_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[0]);
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x1_dims[3]);
+    tmp_dims.push_back(x1_dims[1]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_2_desc->AddOutputDesc("y", x1_desc);
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[1]);
+    tmp_dims.push_back(x1_dims[1]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    // create transposed op
+    NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
+    NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
+    // create batchmatmulv2 op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set op attr
+    Operator transpose1_op = OpDescUtils::CreateOperatorFromNode(transpose_1_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(1);
+    tmp_dims.push_back(3);
+    transpose1_op.SetAttr("perm", tmp_dims);
+    Operator transpose2_op = OpDescUtils::CreateOperatorFromNode(transpose_2_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(3);
+    tmp_dims.push_back(1);
+    transpose2_op.SetAttr("perm", tmp_dims);
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("adj_x1", false);
+    matmul_op.SetAttr("adj_x2", false);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, transpose_1_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), transpose_1_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, transpose_2_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), transpose_2_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_2_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_2_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                matmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "BFNH,BNFT->BTNH") {
+    FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
+    // create transposed op desc
+    std::shared_ptr<ge::OpDesc> transpose_1_desc = nullptr;
+    transpose_1_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose1", TRANSPOSED);
+    std::shared_ptr<ge::OpDesc> transpose_2_desc = nullptr;
+    transpose_2_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose2", TRANSPOSED);
+    // create batchmatmulv2 op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/BatchMatMul", BATCHMATMUL);
+    // add input and output desc
+    transpose_1_desc->AddInputDesc("x", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[3]);
+    tmp_dims.push_back(x0_dims[1]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_1_desc->AddOutputDesc("y", x0_desc);
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[3]);
+    tmp_dims.push_back(x1_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    transpose_2_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x1_dims[3]);
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_2_desc->AddOutputDesc("y", x1_desc);
+    // create transposed op
+    NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
+    NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
+    // create batchmatmulv2 op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set op attr
+    Operator transpose1_op = OpDescUtils::CreateOperatorFromNode(transpose_1_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(3);
+    tmp_dims.push_back(1);
+    transpose1_op.SetAttr("perm", tmp_dims);
+    Operator transpose2_op = OpDescUtils::CreateOperatorFromNode(transpose_2_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(3);
+    tmp_dims.push_back(1);
+    tmp_dims.push_back(2);
+    transpose2_op.SetAttr("perm", tmp_dims);
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("adj_x1", false);
+    matmul_op.SetAttr("adj_x2", false);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, transpose_1_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), transpose_1_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, matmul_node->GetInDataAnchor(1)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), transpose_2_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                matmul_node->GetName().c_str(), transpose_2_node->GetName().c_str()),
+        return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(transpose_2_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                transpose_2_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "abde,cde->abc") {
+    FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
+    // create transposed op desc
+    std::shared_ptr<ge::OpDesc> transpose_1_desc = nullptr;
+    transpose_1_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose1", TRANSPOSED);
+    // create matmulv2 op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/MatMul", MATMUL);
+    // add input and output desc
+    transpose_1_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[1]);
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x1_dims[0]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_1_desc->AddOutputDesc("y", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x0_dims[2] * x0_dims[3]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[1] * x1_dims[2]);
+    tmp_dims.push_back(x1_dims[0]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x1_dims[0]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    // create transposed op
+    NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
+    // create matmulv2 op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set op attr
+    Operator transpose1_op = OpDescUtils::CreateOperatorFromNode(transpose_1_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(1);
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(0);
+    transpose1_op.SetAttr("perm", tmp_dims);
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("transpose_x1", false);
+    matmul_op.SetAttr("transpose_x2", false);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, matmul_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, transpose_1_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), transpose_1_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                matmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "abde,abc->cde") {
+    FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
+    // create transposed op desc
+    std::shared_ptr<ge::OpDesc> transpose_1_desc = nullptr;
+    transpose_1_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose1", TRANSPOSED);
+    std::shared_ptr<ge::OpDesc> transpose_2_desc = nullptr;
+    transpose_2_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose2", TRANSPOSED);
+    // create matmulv2 op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/MatMul", MATMUL);
+    // add input and output desc
+    transpose_1_desc->AddInputDesc("x", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[3]);
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[1]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_1_desc->AddOutputDesc("y", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2] * x0_dims[3]);
+    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[0] * x1_dims[1]);
+    tmp_dims.push_back(x1_dims[2]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2] * x0_dims[3]);
+    tmp_dims.push_back(x1_dims[2]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[3]);
+    tmp_dims.push_back(x1_dims[2]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_2_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x0_dims[2]);
+    tmp_dims.push_back(x0_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_2_desc->AddOutputDesc("y", x1_desc);
+    // create transposed op
+    NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
+    NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
+    // create matmulv2 op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set op attr
+    Operator transpose1_op = OpDescUtils::CreateOperatorFromNode(transpose_1_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(3);
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(1);
+    transpose1_op.SetAttr("perm", tmp_dims);
+    Operator transpose2_op = OpDescUtils::CreateOperatorFromNode(transpose_2_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(1);
+    transpose2_op.SetAttr("perm", tmp_dims);
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("transpose_x1", false);
+    matmul_op.SetAttr("transpose_x2", false);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, transpose_1_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), transpose_1_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, matmul_node->GetInDataAnchor(1)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), transpose_2_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                matmul_node->GetName().c_str(), transpose_2_node->GetName().c_str()),
+        return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(transpose_2_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                transpose_2_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                        return FAILED);
+    }
+    // remove node
+    FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
+  } else if (equation == "BNFT,BFNH->BTNH") {
+    FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
+    // create transposed op desc
+    std::shared_ptr<ge::OpDesc> transpose_1_desc = nullptr;
+    transpose_1_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose1", TRANSPOSED);
+    std::shared_ptr<ge::OpDesc> transpose_2_desc = nullptr;
+    transpose_2_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose2", TRANSPOSED);
+    std::shared_ptr<ge::OpDesc> transpose_3_desc = nullptr;
+    transpose_3_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/Transpose3", TRANSPOSED);
+    // create batchmatmulv2 op desc
+    std::shared_ptr<ge::OpDesc> matmul_desc = nullptr;
+    matmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/BatchMatMul", BATCHMATMUL);
+    // add input and output desc
+    transpose_1_desc->AddInputDesc("x", x0_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[1]);
+    tmp_dims.push_back(x0_dims[3]);
+    tmp_dims.push_back(x0_dims[2]);
+    x0_desc.SetShape(GeShape(tmp_dims));
+    x0_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_1_desc->AddOutputDesc("y", x0_desc);
+    matmul_desc->AddInputDesc("x1", x0_desc);
+    transpose_2_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x1_dims[0]);
+    tmp_dims.push_back(x1_dims[2]);
+    tmp_dims.push_back(x1_dims[1]);
+    tmp_dims.push_back(x1_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_2_desc->AddOutputDesc("y", x1_desc);
+    matmul_desc->AddInputDesc("x2", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[1]);
+    tmp_dims.push_back(x0_dims[3]);
+    tmp_dims.push_back(x1_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    matmul_desc->AddOutputDesc("y", x1_desc);
+    transpose_3_desc->AddInputDesc("x", x1_desc);
+    tmp_dims.clear();
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[3]);
+    tmp_dims.push_back(x0_dims[1]);
+    tmp_dims.push_back(x1_dims[3]);
+    x1_desc.SetShape(GeShape(tmp_dims));
+    x1_desc.SetOriginShape(GeShape(tmp_dims));
+    transpose_3_desc->AddOutputDesc("y", x1_desc);
+    // create transposed op
+    NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
+    NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
+    NodePtr transpose_3_node = graph.AddNode(transpose_3_desc);
+    // create batchmatmulv2 op
+    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    // set op attr
+    Operator transpose1_op = OpDescUtils::CreateOperatorFromNode(transpose_1_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(1);
+    tmp_dims.push_back(3);
+    tmp_dims.push_back(2);
+    transpose1_op.SetAttr("perm", tmp_dims);
+    Operator transpose2_op = OpDescUtils::CreateOperatorFromNode(transpose_2_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(1);
+    tmp_dims.push_back(3);
+    transpose2_op.SetAttr("perm", tmp_dims);
+    Operator transpose3_op = OpDescUtils::CreateOperatorFromNode(transpose_3_node);
+    tmp_dims.clear();
+    tmp_dims.push_back(0);
+    tmp_dims.push_back(2);
+    tmp_dims.push_back(1);
+    tmp_dims.push_back(3);
+    transpose3_op.SetAttr("perm", tmp_dims);
+    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
+    matmul_op.SetAttr("adj_x1", false);
+    matmul_op.SetAttr("adj_x2", false);
+    // unlink
+    for (auto inAnchor : node->GetAllInDataAnchors()) {
+      if (inAnchor != nullptr) {
+        inAnchor->UnlinkAll();
+      }
+    }
+    for (auto outAnchor : node->GetAllOutDataAnchors()) {
+      if (outAnchor != nullptr) {
+        outAnchor->UnlinkAll();
+      }
+    }
+    // add edge
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, transpose_1_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x0_anchor_peer_node->GetName().c_str(), transpose_1_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, transpose_2_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                              x1_anchor_peer_node->GetName().c_str(), transpose_2_node->GetName().c_str()),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(transpose_2_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                transpose_2_node->GetName().c_str(), matmul_node->GetName().c_str()),
+        return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), transpose_3_node->GetInDataAnchor(0)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                matmul_node->GetName().c_str(), transpose_3_node->GetName().c_str()),
+        return FAILED);
+    for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
+      auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
+      auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(transpose_3_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                transpose_3_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
                         return FAILED);
     }
     // remove node
