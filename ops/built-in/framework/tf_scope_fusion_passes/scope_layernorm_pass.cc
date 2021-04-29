@@ -69,15 +69,15 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
       return FAILED;
     }
     // tf2.x can not do scope fusion
-    if (scope->Name().find("batchnorm/mul") != std::string::npos) {
-      const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
-      for (auto& it : nodes_map) {
-        OP_LOGI(kOpType, "batchnorm/mul Scope has node %s.", it.second->GetName().c_str());
-        if (it.second->GetName().find("mul/ReadVariableOp") != std::string::npos) {
-          return FAILED;
-        }
-      }
-    }
+//    if (scope->Name().find("batchnorm/mul") != std::string::npos) {
+//      const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
+//      for (auto& it : nodes_map) {
+//        OP_LOGI(kOpType, "batchnorm/mul Scope has node %s.", it.second->GetName().c_str());
+//        if (it.second->GetName().find("mul/ReadVariableOp") != std::string::npos) {
+//          return FAILED;
+//        }
+//      }
+//    }
     // Class ScopeTree guarantees scope is not empty.
     if ((scope->SubType() == kScopeTypeBatchnorm)) {
       fusion_scopes_bn.push_back(scope);
