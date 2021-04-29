@@ -1484,6 +1484,55 @@ REG_OP(CombinedNonMaxSuppression)
     .OP_END_FACTORY_REG(CombinedNonMaxSuppression)
 
 /**
+*@brief Resizes "images" with "offset" using bilinear interpolation. \n
+
+*@par Inputs:
+*@li img: input image, A 4-D tensor of shape `[n, h, w, c]`.
+*@li warp_offset: the resize offset A 4-D float tensor of shape `[n, h, w, 2]`, 2 means (x, y) for offset point.
+
+*@par Outputs:
+*warp_img: A Tensor after resize. \n
+*/
+REG_OP(IMGWarp)
+    .INPUT(img, TensorType({DT_UINT8, DT_FLOAT16, DT_FLOAT32}))
+    .INPUT(warp_offset, TensorType({DT_FLOAT32}))
+    .OUTPUT(warp_img, TensorType({DT_UINT8, DT_FLOAT16, DT_FLOAT32}))
+    .OP_END_FACTORY_REG(IMGWarp)
+
+/**
+*@brief Resizes "images" with "offset" using bilinear interpolation. \n
+
+*@par Inputs:
+*@li img: input image, A 4-D tensor of shape `[n, h, w, c]`.
+*@li map_offset: the resize offset A 4-D float tensor of shape `[n, h, w, 2]`, 2 means (x, y) for resize point.
+
+*@par Outputs:
+*map_img: A Tensor after resize. \n
+*/
+REG_OP(Remap)
+    .INPUT(img, TensorType({DT_UINT8, DT_FLOAT16, DT_FLOAT32}))
+    .INPUT(map_offset, TensorType({DT_FLOAT32}))
+    .OUTPUT(map_img, TensorType({DT_UINT8, DT_FLOAT16, DT_FLOAT32}))
+    .OP_END_FACTORY_REG(Remap)
+
+/**
+*@brief Resizes "images" with "offset" using bilinear interpolation. \n
+
+*@par Inputs:
+*@li img: input image, A 5-D tensor of shape `[n, 4, c, h, w]`,
+and 4 mean input[(h_top, w_left), (h_top, w_right), (h_bottom, w_left),  (h_bottom, w_right)].
+*@li warp_index: the resize offset A 4-D float tensor of shape `[n, 2, h, w]`, 2 means (x, y) for resize point.
+
+*@par Outputs:
+*remap_img: A Tensor after ResizeBilinear, A 4-D tensor of shape `[n, c, h, w]`. \n
+*/
+REG_OP(IMGWarpResize)
+    .INPUT(img, TensorType({DT_FLOAT32}))
+    .INPUT(warp_index, TensorType({DT_FLOAT32}))
+    .OUTPUT(warp_img, TensorType({DT_FLOAT32}))
+    .OP_END_FACTORY_REG(IMGWarpResize)
+
+/**
 *@brief Function spatial transformer . \n
 
 *@par Inputs:

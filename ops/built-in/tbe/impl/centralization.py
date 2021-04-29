@@ -15,12 +15,16 @@
 """
 centralization.py
 """
-from te import tvm
-from te import tik
-from te import platform as tbe_platform
 import te.lang.cce as tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
 from impl.util import util_common
 from impl.util import util_select_op_base
+
+
+# C0 value
+SHAPE_C0_VALUE = 16
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals,too-many-statements
@@ -186,11 +190,15 @@ class Centralization:
         self.axes = list(axes)
         self.kernel_name = kernel_name
 
-        self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
         self.vector_num = 64 if self.x_dtype == "float32" else 128
         self.block_num = self.vector_num // 8
+        self.input_ori_n = 0
+        self.input_ori_c = 0
+        self.input_ori_h = 0
+        self.input_ori_w = 0
 
     def check_tik_nz_supported(self):
         """
@@ -198,6 +206,8 @@ class Centralization:
         """
         # nz case supported
         if len(self.x_ori_shape) == 2 and len(self.axes) == 1 and self.axes[0] in (0,):
+            return True
+        if len(self.x_ori_shape) == 2 and len(self.axes) == 1 and self.axes[0] in (1,):
             return True
 
         return False
@@ -217,6 +227,9 @@ class Centralization:
         return False
 
     def _compute_nz_one_core(self, copy_offset_for_one_core):
+        """
+        _compute_nz_one_core
+        """
         process_data = 20480 // 2
         reduce_result_c0 = self.tik_instance.Tensor(self.x_dtype, (self.vector_num,),
                                                     name="reduce_result", scope=tik.scope_ubuf)
@@ -228,9 +241,9 @@ class Centralization:
                                            name="ping_ub", scope=tik.scope_ubuf)
         pang_ub = self.tik_instance.Tensor(self.x_dtype, (process_data,),
                                            name="pang_ub", scope=tik.scope_ubuf)
-
-        sigment_loop = get_all_num(self.x_shape[1:]) // process_data
-        sigment_tail = get_all_num(self.x_shape[1:]) % process_data
+        total_num = self.x_ori_shape[0] * 16
+        sigment_loop = total_num // process_data
+        sigment_tail = total_num % process_data
 
         def _run_sum(_ub, _copy_offset, vector_repeat, copy_block):
             if copy_block % 8 != 0:
@@ -308,6 +321,10 @@ class Centralization:
         """
         # calcu core
         self.x_shape, _ = redifine_reduce_case(self.x_shape, [1, 2])
+        if get_all_num(self.x_shape[1:]) != self.x_ori_shape[0] * 16:
+            self.y_gm = self.tik_instance.Tensor(self.x_dtype, self.x_shape,
+                                                 name="y_gm", scope=tik.scope_gm,
+                                                 is_atomic_add=True)
         first_dim = self.x_shape[0]
         reduce_dim = self.x_shape[1]
         last_dim = self.x_shape[2]
@@ -324,9 +341,43 @@ class Centralization:
                     copy_offset = (_core_idx * one_core_dim + _dim_idx) * reduce_dim * last_dim
                     self._compute_nz_one_core(copy_offset)
 
+    def _do_mask_for_fz(self, mask_ub, mask_ub_offset, pad_first_dim_num):
+        """
+        _do_mask_for_fz
+        """
+        if pad_first_dim_num != 0:
+            pad_c0_num = self.input_ori_h * self.input_ori_w
+            pad_mask_c0 = "1" * (SHAPE_C0_VALUE - pad_first_dim_num) + "0" * pad_first_dim_num
+            pad_mask_vector = pad_mask_c0 * (self.vector_num // SHAPE_C0_VALUE)
+            pad_block_num = pad_c0_num * (SHAPE_C0_VALUE // self.block_num)
+            if pad_block_num // 8 > 0:
+                pad_mask_dec_0 = int(pad_mask_vector, 2)
+                pad_mask_dec_1 = int(pad_mask_vector, 2)
+                if mask_ub.dtype in ("float32",):
+                    pad_mask_dec_0 = 0
+                self.tik_instance.vector_dup([pad_mask_dec_0, pad_mask_dec_1], mask_ub[mask_ub_offset],
+                                             0.0, pad_block_num // 8, 1, 8)
+            if pad_block_num % 8 > 0:
+                mask_ub_offset = mask_ub_offset + (pad_block_num // 8) * self.vector_num
+                tail_pad_c0_num = (pad_block_num % 8) // (SHAPE_C0_VALUE // self.block_num)
+                pad_mask_vector = pad_mask_c0 * tail_pad_c0_num
+                pad_mask_0 = "0"
+                pad_mask_1 = pad_mask_vector
+                if len(pad_mask_vector) > 64:
+                    pad_mask_0 = pad_mask_vector[0:len(pad_mask_vector) - 64]
+                    pad_mask_1 = pad_mask_vector[0:64]
+                pad_mask_dec_0 = int(pad_mask_0, 2)
+                pad_mask_dec_1 = int(pad_mask_1, 2)
+                self.tik_instance.vector_dup([pad_mask_dec_0, pad_mask_dec_1], mask_ub[mask_ub_offset],
+                                             0.0, 1, 1, 8)
+
     def _compute_fz_one_by_one(self, core_pro_dims, copy_offset):
+        """
+        _compute_fz_one_by_one
+        """
         first_dim, second_dim, last_dim = self.x_shape
         process_n_num = 1
+        ori_c_dim = self.input_ori_c
         copy_burst_len = last_dim * process_n_num
         copy_burst_num = first_dim
         copy_burst_offset = second_dim * last_dim - copy_burst_len
@@ -347,6 +398,9 @@ class Centralization:
                                              0.0, 1, 1, 8)
             self.tik_instance.data_move(ping_ub_1, self.x_gm[copy_new_offset],
                                         0, copy_burst_num, copy_burst_len_block, copy_burst_offset_block, 0)
+            # do pad
+            mask_offset = (first_dim - self.input_ori_h * self.input_ori_w) * SHAPE_C0_VALUE
+            self._do_mask_for_fz(ping_ub_1, mask_offset, ori_c_dim % SHAPE_C0_VALUE)
             # add to one vector
             if vector_repeat > 1:
                 reduce_to_64(self.tik_instance, ping_ub_1, vector_repeat, self.vector_num, ping_ub)
@@ -384,6 +438,7 @@ class Centralization:
             scalar_sum.set_as(ping_ub[0])
 
             self.tik_instance.vadds(self.vector_num, ping_ub_1, ping_ub_1, scalar_sum, vector_repeat, 1, 1, 8, 8)
+            self._do_mask_for_fz(ping_ub_1, mask_offset, ori_c_dim % SHAPE_C0_VALUE)
             self.tik_instance.data_move(self.y_gm[copy_new_offset], ping_ub_1,
                                         0, copy_burst_num, copy_burst_len_block, 0, copy_burst_offset_block)
 
@@ -398,9 +453,20 @@ class Centralization:
         """
         compute_fz
         """
+        dict_zip_shape = dict(zip(list(self.input_ori_foramt), self.x_ori_shape))
+        self.input_ori_n = dict_zip_shape["N"]
+        self.input_ori_c = dict_zip_shape["C"]
+        self.input_ori_h = dict_zip_shape["H"]
+        self.input_ori_w = dict_zip_shape["W"]
         # calcu core
         self.x_shape, _ = redifine_reduce_case(self.x_shape, [0, 3])
         second_dim = self.x_shape[1]
+        ori_second_dim = self.input_ori_n
+        if second_dim != ori_second_dim:
+            self.y_gm = self.tik_instance.Tensor(self.x_dtype, self.x_shape,
+                                                 name="y_gm", scope=tik.scope_gm,
+                                                 is_atomic_add=True)
+            second_dim = ori_second_dim
         one_core_dim = (second_dim + self.ai_core_num - 1) // self.ai_core_num
         used_core_num = (second_dim + one_core_dim - 1) // one_core_dim
         tail_core = second_dim - (used_core_num - 1) * one_core_dim
@@ -415,9 +481,18 @@ class Centralization:
         The tik implementation of operator centralization
         """
         if self.input_foramt in ("FRACTAL_Z",):
+            # FRACTAL_Z, mean: C1HWNiNoC0
             self.compute_fz()
         elif self.input_foramt in ("FRACTAL_NZ",):
-            self.compute_nz()
+            # FRACTAL_NZ, mean: [A, B] -> [ceil(B//16), ceil(A//16), 16, 16]
+            # [A, B] with axis = 0 --> nz dim with axis = 1, 2
+            # [A, B] with axis = 1 --> nz dim with axis = 0, 3
+            if self.axes[0] == 0:
+                self.compute_nz()
+            else:
+                self.input_ori_foramt = "NCHW"
+                self.x_ori_shape = list(self.x_ori_shape) + [1, 1]
+                self.compute_fz()
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.x_gm,),
@@ -434,7 +509,7 @@ def centralization_default(x, axes, kernel_name):
     x_data = tvm.placeholder(x_shape, name="x_data", dtype=x_dtype)
     reduce_elts = 1.0
     for axis in axes:
-        reduce_elts = x_shape[axis]
+        reduce_elts = reduce_elts * x_shape[axis]
     cof = reduce_elts ** (-1)
     x_data_vmul = tbe.vmuls(x_data, cof)
     x_reduce = tbe.sum(x_data_vmul, axis=axes, keepdims=True)

@@ -2212,6 +2212,80 @@ IMPLEMT_INFERFUNC(ScaleAndTranslateGrad, ScaleAndTranslateGradInfer) {
 
 INFER_FUNC_REG(ScaleAndTranslateGrad, ScaleAndTranslateGradInfer);
 
+// ---------------IMGWarp Op start-------------------
+IMPLEMT_COMMON_INFERFUNC(IMGWarpInferShape) {
+  OP_LOGI(op.GetName().c_str(), "start to infershape for IMGWarp.");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_info == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")), return GRAPH_FAILED);
+  auto image_desc = op_info->MutableInputDesc("img");
+  auto offset_desc = op_info->MutableInputDesc("warp_offset");
+  auto image_dtype = image_desc->GetDataType();
+  vector<int64_t> image_shape = image_desc->MutableShape().GetDims();
+  vector<int64_t> offset_shape = offset_desc->MutableShape().GetDims();
+
+  // check image_shape//offset_shape must be 4dims
+  if (image_shape.size() != DIM_SIZE4) {
+    std::string err_msg = GetAttrSizeErrMsg("img", ConcatString(image_shape.size()), ConcatString(DIM_SIZE4));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (offset_shape.size() != DIM_SIZE4) {
+    std::string err_msg = GetAttrSizeErrMsg("warp_offset", ConcatString(offset_shape.size()), ConcatString(DIM_SIZE4));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  vector<int64_t> output_shape = image_shape;
+  output_shape[2] = offset_shape[2];
+  output_shape[3] = offset_shape[3];
+  auto output_desc = op_info->MutableOutputDesc("warp_img");
+  output_desc->SetShape(GeShape(output_shape));
+  output_desc->SetOriginShape(GeShape(output_shape));
+  output_desc->SetDataType(image_dtype);
+  OP_LOGI(op.GetName().c_str(), "end to infershape for IMGWarp.");
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(IMGWarp, IMGWarpInferShape);
+// ----------------IMGWarp END---------------------
+
+// ---------------Remap Op start-------------------
+IMPLEMT_COMMON_INFERFUNC(RemapInferShape) {
+  OP_LOGI(op.GetName().c_str(), "start to infershape for Remap.");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_info == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")), return GRAPH_FAILED);
+  auto image_desc = op_info->MutableInputDesc("img");
+  auto offset_desc = op_info->MutableInputDesc("map_offset");
+  auto image_dtype = image_desc->GetDataType();
+  vector<int64_t> image_shape = image_desc->MutableShape().GetDims();
+  vector<int64_t> offset_shape = offset_desc->MutableShape().GetDims();
+
+  // check image_shape//offset_shape must be 4dims
+  if (image_shape.size() != DIM_SIZE4) {
+    std::string err_msg = GetAttrSizeErrMsg("img", ConcatString(image_shape.size()), ConcatString(DIM_SIZE4));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (offset_shape.size() != DIM_SIZE4) {
+    std::string err_msg = GetAttrSizeErrMsg("map_offset", ConcatString(offset_shape.size()), ConcatString(DIM_SIZE4));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  vector<int64_t> output_shape = image_shape;
+  output_shape[1] = offset_shape[1];
+  output_shape[2] = offset_shape[2];
+  auto output_desc = op_info->MutableOutputDesc("map_img");
+  output_desc->SetShape(GeShape(output_shape));
+  output_desc->SetOriginShape(GeShape(output_shape));
+  output_desc->SetDataType(image_dtype);
+  OP_LOGI(op.GetName().c_str(), "end to infershape for Remap.");
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(Remap, RemapInferShape);
+// ----------------Remap END---------------------
+
 IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
   Shape boxes;
   Shape scores;
