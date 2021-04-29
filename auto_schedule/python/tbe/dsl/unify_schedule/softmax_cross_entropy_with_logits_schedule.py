@@ -209,6 +209,8 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
 
         self._do_compute_inline()
 
+        self._storage_align()
+
         self._calc_tiling()
         self._do_tiling()
 
@@ -365,6 +367,25 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
             if tensor not in self._mid_out_tensor_list:
                 sch[tensor].compute_inline()
 
+    def _storage_align(self):
+        block_size_align = 8 if self._out.dtype == "float32" else 16
+
+        # when reduce axis is 32B multiple, the op doesn't need storage align
+        storage_align_flag = 1
+        for i, (tensor_i, param) in enumerate(self._mid_tensor_buffer_tensor_map.items()):
+            if tensor_i.op.name[0:6] != "reduce":
+                shape_i = util.shape_to_list(tensor_i.shape)
+                storage_align_flag = 0 if shape_i[1] % block_size_align == 0 else storage_align_flag
+
+        if storage_align_flag:
+            for i, (tensor_i, param) in enumerate(self._mid_tensor_buffer_tensor_map.items()):
+                if param.op.name[0:6] != "reduce":
+                    self._schedule[param].storage_align(param.op.axis[0], block_size_align, 0)
+
+            for i, (tensor_i, param) in enumerate(self._cache_read_buffer_tensor_map.items()):
+                if tensor_i.op.name[0:6] != "reduce":
+                    self._schedule[tensor_i].storage_align(tensor_i.op.axis[0], block_size_align, 0)
+
     def _calc_multi_core(self):
         pass
 
@@ -470,8 +491,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
                 src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                           tvm.expr.Call.PureIntrinsic, None, 0)
                 sch[tensor_i].emit_insn(param[0], param[1],
-                                        attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound],
-                                                   no_unknown_broadcast_bound_correction=1))
+                                        attrs=dict(src_shape=src_shape, storage_bound=[tensor_bound]))
             else:
                 if tensor_i.op.name in ["sub_7.local.UB", "reduce_2.local.UB"] and param[1][0:3] == 'dma':
                     sch[tensor_i].emit_insn(param[0], "phony_insn")

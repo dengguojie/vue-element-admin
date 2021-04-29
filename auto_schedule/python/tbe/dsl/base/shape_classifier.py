@@ -30,7 +30,7 @@ ELEWISE = "elewise"
 BROADCAST = "broadcast"
 NORM = "norm"
 REDUCE = "reduce"
-SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE = "softmax_cross_entopy_with_logits_with_reduce"
+SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE = "softmax_cross_entropy_with_logits_with_reduce"
 
 
 CLASSIFY_SAME_PATTERN_MAP = {

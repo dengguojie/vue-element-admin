@@ -108,8 +108,6 @@ bool WriteTilingData(const std::string& op_type,
       ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[0]));
       ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
       ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[1]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(output_shape[0]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(output_shape[1]));
     }
   } else if (x1_0 > 0 && x1_0 == x2_0 && x1_1 < 0 && x2_1 < 0) {
     // 3 [5, -1] [5, -1]
@@ -128,7 +126,6 @@ bool WriteTilingData(const std::string& op_type,
   } else if (x1_0 == 1 && x2_0 == 1 && x1_1 < 0 && x2_1 < 0) {
     // 6 [1, -1] [1, -1]
     GELOGI("op [%s]: case6 running", op_type.c_str());
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[1]));
   } else if (x1_0 < 0 && x2_0 < 0 && x1_1 < 0 && x2_1 > 0) {
@@ -142,15 +139,21 @@ bool WriteTilingData(const std::string& op_type,
     GELOGI("op [%s]: case8 running", op_type.c_str());
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-  } else {
+  } else if (x1_0 < 0 && x2_0 > 0 && x1_1 < 0 && x2_1 > 0) {
     // 9 [-1, -1] [5, 5]
     GELOGI("op [%s]: case9 running", op_type.c_str());
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
+  } else if (x1_0 > 0 && x2_0 < 0 && x1_1 > 0 && x2_1 > 0) {
+    // 10 [5, 5] [-1, 5]
+    GELOGI("op [%s]: case10 running", op_type.c_str());
+  } else {
+    // 11 [5, 5] [5, -1]
+    GELOGI("op [%s]: case11 running", op_type.c_str());
   }
 
-  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(tiling_info.ub_factor));
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(tiling_info.block_factor));
+  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(tiling_info.ub_factor));
 
   return true;
 }
@@ -368,13 +371,16 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
     }
     nparts_factor = nparts_factor <= 1 ? 1 : nparts_factor;
     GetUbTiling2D(n_h_w, c_size, nparts_factor, block_split_inner_size, min_num_size_one_core, max_ub_count, split_factor);
-    block_factor = nparts_factor;
-    ub_factor = split_factor;
-  } else {
-    ub_axis = 0;
-    ub_factor = output_shape[0];
-    block_axis = 0;
-    block_factor = output_shape[0];
+  }
+  ub_axis = 0;
+  ub_factor = output_shape[0];
+  block_axis = 0;
+  block_factor = output_shape[0];
+  if (output_shape[1] > (compile_info.ub_size / dtype_size / 10)) {
+      OP_LOGE("SoftmaxCrossEntropyWithLogitsTiling: not supported shape");
+      return false;
+  } else if (ub_factor * output_shape[1] > (compile_info.ub_size / dtype_size / 10)) {
+      ub_factor = max<int32_t>(compile_info.ub_size / (dtype_size * output_shape[1] * 10), 1);
   }
 
   tiling_info.block_factor = block_factor;

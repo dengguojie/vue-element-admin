@@ -25,13 +25,160 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import operation
 
 # compute needed,scalar -1
 SCALAR_MINUS_ONE = -1
 
 # limit of input dimvalue
 MAX_SHAPE_NUM = 10000000
+
+
+def variable_shape(inputs: list, support_broadcast=False):
+    """
+    :param inputs: all inputs
+    :param support_broadcast: whether to support broadcast
+    :return:
+    """
+    def _has_intersection(range0, range1):
+        _range0 = list(range0)
+        _range1 = list(range1)
+        if _range0[1] is None:
+            _range0[1] = para_check.MAX_UNKNOWN_SHAPE_NUM
+        if _range1[1] is None:
+            _range1[1] = para_check.MAX_UNKNOWN_SHAPE_NUM
+        return max(_range0[0], _range1[0]) <= min(_range0[1], _range1[1])
+
+    def _select(cond, then_case, else_case):
+        if cond:
+            return then_case
+        else:
+            return else_case
+
+    def _update_range(shape0, range0, shape1, range1):
+        for index in range(len(range0)):
+            verify_shape = (shape0[index] != -1 and shape1[index] != -1) or \
+                            shape0[index] == 1 or shape1[index] == 1
+            if verify_shape:
+                continue
+            range_x = list(range0[index])
+            range_y = list(range1[index])
+            for j, (_rx, _ry) in enumerate(zip(range_x, range_y)):
+                if _rx is None:
+                    range_x[j] = para_check.MAX_UNKNOWN_SHAPE_NUM
+                if _ry is None:
+                    range_y[j] = para_check.MAX_UNKNOWN_SHAPE_NUM
+            x_const = shape0[index] != -1 and shape1[index] == -1
+            y_const = shape0[index] == -1 and shape1[index] != -1
+            variable_intersection = \
+                _has_intersection(range_x, range_y) and \
+                (range_x[0] > 1) and (range_y[0] > 1)
+            if x_const:
+                range_y = (_select(range_y[0] <= 1, range_y[0],
+                                   shape0[index]),
+                           _select(range_y[1] >= shape0[index],
+                                   shape0[index], 1))
+            elif y_const:
+                range_y = (_select(range_x[0] <= 1, range_x[0],
+                                   shape1[index]),
+                           _select(range_x[1] >= shape1[index],
+                                   shape1[index], 1))
+            elif variable_intersection:
+                range_x = (max(range_x[0], range_y[0]),
+                           min(range_x[1], range_y[1]))
+                range_y = range_x
+            elif not _has_intersection(range_x, range_y):
+                if range_x[0] <= 1:
+                    range_x = (1, 1)
+                if range_y[0] <= 1:
+                    range_y = (1, 1)
+            range0[index] = tuple(range_x)
+            range1[index] = tuple(range_y)
+            if range_x[0] == range_x[1]:
+                shape0[index] = range_x[0]
+            if range_y[0] == range_y[1]:
+                shape1[index] = range_y[0]
+
+    def _fill(_inputs):
+        x_0, x_1 = _inputs
+        shape0, range0 = list(x_0["shape"]), list(x_0["range"])
+        shape1, range1 = list(x_1["shape"]), list(x_1["range"])
+        swapped = False
+        if len(shape0) < len(shape1):
+            shape0, range0, shape1, range1 = shape1, range1, shape0, range0
+            swapped = True
+        d_v = len(shape0) - len(shape1)
+        shape1 = [1] * d_v + shape1
+        range1 = [(1, 1)] * d_v + range1
+        if swapped:
+            shape0, range0, shape1, range1 = shape1, range1, shape0, range0
+        _update_range(shape0, range0, shape1, range1)
+        return [shape0, shape1], [range0, range1]
+
+    def _maybe_broadcast():
+        for _r in ranges:
+            if _r[i][0] <= 1:
+                return True
+        return False
+
+    def _mode_process():
+        if mode == para_check.CONST:
+            input1 = inputs[0]["shape"]
+            input2 = inputs[1]["shape"]
+            const_shape = [a & b for a, b in zip(input1, input2)]
+            operation.get_context().get_current_compute(). \
+                add("const_shape", const_shape)
+        elif mode == para_check.SPECIAL:
+            pattern = inputs[0].get("pattern")
+            operation.get_context().\
+                get_current_compute().add("_pattern", pattern)
+            for i, _pattern in enumerate(pattern):
+                if _pattern != para_check.COMMON:
+                    continue
+                for j in range(len(shapes)):
+                    shapes[j][i] = -77
+
+    mode = inputs[0].get("mode")
+    if mode is None:
+        mode = para_check.ORIGINAL
+    operation.get_context().add("mode", mode)
+    current_compute = operation.get_context().get_current_compute()
+    if current_compute:
+        current_compute.add("_mode", mode)
+        ori_axis = inputs[0].get("ori_axis")
+        if ori_axis is not None:
+            current_compute.add("ori_axis", ori_axis)
+        axis_dtype = inputs[0].get("axis_dtype")
+        if axis_dtype is not None:
+            current_compute.add("axis_dtype", axis_dtype)
+    operation.get_context().add("support_broadcast", support_broadcast)
+
+    shapes, ranges = _fill(inputs)
+    _mode_process()
+
+    d_shapes = [[] for _ in shapes]
+    for i in range(len(shapes[0])):
+        _var = None
+        need_two_vars = _maybe_broadcast()
+        _suffix = 0
+        for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
+            if shape[i] == -1 and _range[i][0] == _range[i][1]:
+                d_shape.append(_range[i][0])
+            elif shape[i] == -1:
+                if _var is None or need_two_vars:
+                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
+                                         _range[i])
+                d_shape.append(_var)
+            elif shape[i] == -77:
+                if _var is None:
+                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
+                                         _range[i])
+                d_shape.append(_var)
+            else:
+                d_shape.append(shape[i])
+            _suffix += 1
+
+    return d_shapes
 
 
 @register_operator_compute("SoftmaxCrossEntropyWithLogits", op_mode="dynamic", support_fusion=False)
@@ -182,8 +329,7 @@ def softmax_cross_entropy_with_logits(
     schedules, tensors = [], []
     for (x1, x2) in ins:
         with tbe.compute():
-            shape_features, shape_labels = shape_util.variable_shape([x1, x2])
-            shape_features, shape_labels = shape_util.refine_shapes_for_broadcast(shape_features, shape_labels)
+            shape_features, shape_labels = variable_shape([x1, x2], support_broadcast=True)
             data_features = tvm.placeholder(shape_features, dtype=input_dtype, name="data_features")
             data_labels = tvm.placeholder(shape_labels, dtype=input_dtype, name="data_labels")
             res = softmax_cross_entropy_with_logits_compute(data_features, data_labels, output_loss, output_backprop)

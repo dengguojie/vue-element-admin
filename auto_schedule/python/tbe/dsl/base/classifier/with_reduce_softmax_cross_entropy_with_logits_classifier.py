@@ -32,7 +32,7 @@ ORIGINAL = "original"
 VAR_BOUND_LIMIT = 2147483647
 
 
-class WithReduceSoftmaxCrossEnTropyWithLogitsClassifier:
+class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
     """
     Elewise with broadcast classifier
     """
@@ -324,7 +324,7 @@ class SpecialMode2D:
                 if normal_shape1[i] != -1 and normal_shape2[i] != -1:
                     shape1[i] = normal_shape1[i]
                     shape2[i] = normal_shape2[i]
-                return [gen_in(shape1), gen_in(shape2)]
+            return [gen_in(shape1), gen_in(shape2)]
 
         shape1, shape2 = [], []
         out = strict_pattern[matched_list.index(True)]

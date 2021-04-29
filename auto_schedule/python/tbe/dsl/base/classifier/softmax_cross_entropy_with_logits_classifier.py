@@ -15,7 +15,7 @@
 """
 classifier of shape in oftmax_cross_entropy_with_logits op
 """
-from .with_reduce_softmax_cross_entropy_with_logits_classifier import WithReduceSoftmaxCrossEnTropyWithLogitsClassifier
+from .with_reduce_softmax_cross_entropy_with_logits_classifier import WithReduceSoftmaxCrossEntropyWithLogitsClassifier
 
 
 def classify(ins: list, support_reduce: bool = False):
@@ -25,4 +25,4 @@ def classify(ins: list, support_reduce: bool = False):
     :param support_reduce:
     :return:
     """
-    return WithReduceSoftmaxCrossEnTropyWithLogitsClassifier(ins).classify()
+    return WithReduceSoftmaxCrossEntropyWithLogitsClassifier(ins).classify()
