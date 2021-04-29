@@ -29,6 +29,7 @@ from te import platform as cce
 from .util import shape_to_list
 from te.platform import cce_emitinsn_params
 BLOCK_SIZE_BYTE = 32
+EXTRA_UB_SIZE = 10240
 
 def get_reduce_axis_num(reduce_tensor):
     """
@@ -971,15 +972,15 @@ class SoftmaxSchedule:
 
 
     def _do_emit_insn(self):
-        pre_compile_info = get_compile_info()
-        if pre_compile_info["kernel_name"] in ["SoftmaxV2", "SoftmaxGrad"]:
+        softmax_compile_info = get_compile_info()
+        self._coexisting_quantity = 4
+        if softmax_compile_info["kernel_name"] in ["SoftmaxV2", "SoftmaxGrad"]:
+            tensor_space = self._ub_tiling_max_size // self._coexisting_quantity
+            tensor_space = tensor_space // 2
             is_log = False
-            self._coexisting_quantity = 4
         else:
+            tensor_space = (self._ub_tiling_max_size - EXTRA_UB_SIZE) // self._coexisting_quantity
             is_log = True
-            self._coexisting_quantity = 2
-        tensor_space = self._ub_tiling_max_size // self._coexisting_quantity
-        tensor_space = tensor_space // 2
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
         for stage in self._emit_insn_map:
