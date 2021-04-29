@@ -212,6 +212,9 @@
         "vcmp/test_vcmp_impl.py",
         "vsel/test_vsel_impl.py",
         "vcmpsel/test_vcmpsel_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier.py":[
+        "reduce_sum",
+        "reduce_classify"
     ]
-
 }

@@ -38,73 +38,38 @@ ut_case = OpUT("reduce_sum", "reduce_sum.test_dynamic_reduce_sum_impl", "dsl_dyn
 case1 = {
     "params": [{
         "shape": (-1, -1, -1, -1),
-        "dtype": "float16",
+        "dtype": "float32",
         "range": [(1, None), (1, None), (1, None), (1, None)]
     }, {
         "shape": (-1, -1),
-        "dtype": "float16",
+        "dtype": "float32",
         "range": [(1, None), (1, None)]
     }, [1, 3], False],
     "case_name":
-    "test_dync_reduce_sum_1",
+        "test_dync_reduce_sum_1",
     "expect":
-    "success",
+        "success",
     "support_expect":
-    True
+        True
 }
 
 case2 = {
     "params": [{
         "shape": (-1, -1, -1, -1),
-        "dtype": "float16",
+        "dtype": "float32",
         "range": [(1, None), (1, None), (1, None), (1, None)]
     }, {
         "shape": (-1, -1),
-        "dtype": "float16",
+        "dtype": "float32",
         "range": [(1, None), (1, None)]
     }, [0, 2], False],
     "case_name":
-    "test_dync_reduce_sum_2",
+        "test_dync_reduce_sum_2",
     "expect":
-    "success",
+        "success",
     "support_expect":
-    True
+        True
 }
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend710"], case2)
-
-
-def calc_expect_func(x, y, axis, keepdims):
-    x_value = x.get("value")
-    res = np.sum(x_value, axis=axis, keepdims=keepdims)
-    return (res, )
-
-
-ut_case.add_precision_case(
-    "all", {
-        "params": [
-            {
-                "shape": (-1, -1),
-                "dtype": "float32",
-                "range": [(1, None), (1, None)],
-                "run_shape": (16, 16),
-                "param_type": "input"
-            },
-            {
-                "shape": (-1, ),
-                "dtype": "float32",
-                "range": [(1, None)],
-                "run_shape": (16, ),
-                "param_type": "output"
-            },
-            (0, ),
-            False
-        ],
-        "calc_expect_func":
-        calc_expect_func,
-        "precision_standard":
-        precision_info.PrecisionStandard(0.0001, 0.0001),
-        "case_name":
-        "test_dync_reduce_sum_prec_01"
-    })
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
