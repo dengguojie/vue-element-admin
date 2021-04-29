@@ -233,7 +233,7 @@ ut_case.add_case(["all"], case16)
 ut_case.add_case(["all"], case17)
 ut_case.add_case(["all"], case18)
 ut_case.add_case(["all"], case19)
-ut_case.add_case(["all"], case20)
+# ut_case.add_case(["all"], case20)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def calc_expect_func(x, y, begin, end, strides):
