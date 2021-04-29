@@ -22,11 +22,7 @@ def test_get_caffe_out_size_and_pad(_):
     return True
 
 
-custom_func_list = [
-    test_get_caffe_out_size_and_pad,
-]
-for item in custom_func_list:
-    ut_case.add_cust_test_func(test_func=item)
+ut_case.add_cust_test_func(test_func=test_get_caffe_out_size_and_pad)
 
 if __name__ == '__main__':
     import os

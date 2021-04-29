@@ -855,22 +855,11 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
     device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
     fused_ascend_quant = pooling_params["fused_ascend_quant"]
 
-    enabler_c1_bind_core = \
-        batch_size < device_core_num and batch_size < c1_value
+    enabler_c1_bind_core = batch_size < device_core_num and batch_size < c1_value
 
     # get tiling params, cutCi_Hi_Wi
     tiling_params = {}
-
-    # Get vadd vmul vconv ability
-    vconv_ability = intrinsic_check_support("Intrinsic_vconv", "f162f32")
-    vadd_ability = intrinsic_check_support("Intrinsic_vadd", "float32")
-    vmul_ability = intrinsic_check_support("Intrinsic_vmul", "float32")
-    use_fp16 = (get_soc_spec(SOC_VERSION) == ASCEND_310) and \
-        (impl_mode == "high_performance")
-    fp32_ability = vconv_ability and \
-        vadd_ability and \
-        vmul_ability and \
-        (not use_fp16)
+    fp32_ability = _check_fp32_ability(pooling_mode, impl_mode)
 
     # pylint: disable=too-many-nested-blocks
     def _try_tiling(ub_size):
@@ -880,23 +869,17 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
             if c1_value % ci_factor != 0:
                 continue
 
-            is_match = fused_ascend_quant and \
-                c1_value != 1 and ci_factor % 2 != 0
+            is_match = fused_ascend_quant and c1_value != 1 and ci_factor % 2 != 0
             if is_match:
                 continue
 
             if pooling_mode == "GAP" and fp32_ability:
                 # fp16 will cast to fp32 compute
-                tensor_in_ub_size = ci_factor * c_block_size *\
-                    in_size_h * in_size_w *\
-                    (SIZE_OF_FP32 + SIZE_OF_FP16)
-                result_in_ub_size = (ci_factor*c_block_size + 128 - 1) // \
-                    128 * 128 * SIZE_OF_FP32
+                tensor_in_ub_size = ci_factor * c_block_size * in_size_h * in_size_w * (SIZE_OF_FP32 + SIZE_OF_FP16)
+                result_in_ub_size = (ci_factor * c_block_size + 128 - 1) // 128 * 128 * SIZE_OF_FP32
             else:
-                tensor_in_ub_size = ci_factor * c_block_size *\
-                    in_size_h * in_size_w * SIZE_OF_FP16
-                result_in_ub_size = (ci_factor * c_block_size + 128 - 1) // \
-                    128 * 128 * SIZE_OF_FP16
+                tensor_in_ub_size = ci_factor * c_block_size * in_size_h * in_size_w * SIZE_OF_FP16
+                result_in_ub_size = (ci_factor * c_block_size + 128 - 1) // 128 * 128 * SIZE_OF_FP16
 
             used_ub_size = tensor_in_ub_size + result_in_ub_size
 
@@ -908,9 +891,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                 continue
 
             if enabler_c1_bind_core:
-                cur_bind_core_gap = \
-                    abs((c1_value + ci_factor - 1) // ci_factor -
-                        device_core_num)
+                cur_bind_core_gap = abs((c1_value + ci_factor - 1) // ci_factor - device_core_num)
                 if cur_bind_core_gap >= bind_core_gap:
                     continue
                 bind_core_gap = cur_bind_core_gap
@@ -923,8 +904,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
             tiling_params["cut_wi_factor"] = cut_wi_factor
             tiling_params["find_tiling"] = True
 
-            if not enabler_c1_bind_core or \
-                    (enabler_c1_bind_core and bind_core_gap == 0):
+            if not enabler_c1_bind_core or (enabler_c1_bind_core and bind_core_gap == 0):
                 break
 
         if fused_ascend_quant and ci_factor == 1:
@@ -939,27 +919,19 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                 if in_size_h % hi_factor != 0:
                     continue
 
-                is_match = fused_ascend_quant and \
-                    c1_value != 1 and ci_factor % 2 != 0
+                is_match = fused_ascend_quant and c1_value != 1 and ci_factor % 2 != 0
                 if is_match:
                     continue
 
                 # occupied ub size
                 if pooling_mode == "GAP" and fp32_ability:
                     # fp16 will cast to fp32 compute
-                    tensor_in_ub_size = \
-                        ci_factor * hi_factor * in_size_w * c_block_size *\
-                        (SIZE_OF_FP32 + SIZE_OF_FP16)
-                    result_in_ub_size = \
-                        ci_factor * ((c_block_size + 128 - 1) // 128) *\
-                        128 * SIZE_OF_FP32
+                    tensor_in_ub_size = ci_factor * hi_factor * in_size_w * c_block_size * \
+                                        (SIZE_OF_FP32 + SIZE_OF_FP16)
+                    result_in_ub_size = ci_factor * ((c_block_size + 128 - 1) // 128) * 128 * SIZE_OF_FP32
                 else:
-                    tensor_in_ub_size = \
-                        ci_factor * hi_factor * in_size_w *\
-                        c_block_size * SIZE_OF_FP16
-                    result_in_ub_size = \
-                        ci_factor * ((c_block_size + 128 - 1) // 128) *\
-                        128 * SIZE_OF_FP16
+                    tensor_in_ub_size = ci_factor * hi_factor * in_size_w * c_block_size * SIZE_OF_FP16
+                    result_in_ub_size = ci_factor * ((c_block_size + 128 - 1) // 128) * 128 * SIZE_OF_FP16
 
                 used_ub_size = tensor_in_ub_size + result_in_ub_size
 
@@ -983,18 +955,11 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                     # occupied ub size
                     if pooling_mode == "GAP" and fp32_ability:
                         # fp16 will cast to fp32 compute
-                        tensor_in_ub_size = ci_factor*wi_factor*c_block_size\
-                            * (SIZE_OF_FP32 + SIZE_OF_FP16)
-                        result_in_ub_size = \
-                            ci_factor*((c_block_size + 128 - 1)
-                                       // 128)*128*SIZE_OF_FP32
+                        tensor_in_ub_size = ci_factor * wi_factor * c_block_size * (SIZE_OF_FP32 + SIZE_OF_FP16)
+                        result_in_ub_size = ci_factor * ((c_block_size + 128 - 1) // 128) * 128 * SIZE_OF_FP32
                     else:
-                        tensor_in_ub_size = ci_factor * wi_factor\
-                            * c_block_size * SIZE_OF_FP16
-                        result_in_ub_size = \
-                            ci_factor * \
-                            ((c_block_size + 128 - 1) // 128) * \
-                            128*SIZE_OF_FP16
+                        tensor_in_ub_size = ci_factor * wi_factor * c_block_size * SIZE_OF_FP16
+                        result_in_ub_size = ci_factor * ((c_block_size + 128 - 1) // 128) * 128 * SIZE_OF_FP16
 
                     used_ub_size = tensor_in_ub_size + result_in_ub_size
 
@@ -1038,11 +1003,9 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
 
     if cut_hi_factor == in_size_h and cut_wi_factor == in_size_w:
         cut_flag = "cutCi"
-    elif cut_hi_factor < in_size_h and \
-            cut_wi_factor == in_size_w:
+    elif cut_hi_factor < in_size_h and cut_wi_factor == in_size_w:
         cut_flag = "cutCiHi"
-    elif cut_hi_factor == 1 and \
-            cut_wi_factor < in_size_w:
+    elif cut_hi_factor == 1 and cut_wi_factor < in_size_w:
         cut_flag = "cutCiHiWi"
 
     cce_params.cceEmitParamsIns.insert_param("cut_flag", cut_flag)
@@ -1208,7 +1171,7 @@ def set_round_emit_insn(round_mode):
 
 def set_quant_emit_insn(sch, quant_tensor_map, c1_value, attr_dic):
     """
-    set quantion emit insn
+    set quantization emit insn
     """
     round_emit_insn = set_round_emit_insn(attr_dic.get("round_mode"))
     in_dma = "dma_copy" if c1_value % 2 == 0 else "dma_padding"
@@ -1271,6 +1234,20 @@ def _copy_item(source_dict, target_dict):
             target_dict[key] = value
 
 
+def _check_fp32_ability(pooling_mode, impl_mode):
+    # Get vadd vmul vconv ability
+    vconv_ability = intrinsic_check_support("Intrinsic_vconv", "f162f32")
+    vadd_ability = intrinsic_check_support("Intrinsic_vadd", "float32")
+    vmul_ability = intrinsic_check_support("Intrinsic_vmul", "float32")
+
+    if pooling_mode == "GAP":
+        use_fp16 = (get_soc_spec(SOC_VERSION) == ASCEND_310) and (impl_mode == "high_performance")
+        is_support_fp32_ability = vconv_ability and vadd_ability and vmul_ability and (not use_fp16)
+    else:
+        is_support_fp32_ability = vconv_ability and vadd_ability and vmul_ability
+    return is_support_fp32_ability
+
+
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-nested-blocks
 def pooling2d_schedule(res, sch_list):
     """
@@ -1281,7 +1258,6 @@ def pooling2d_schedule(res, sch_list):
     """
     sch = sch_list[0]
     pooling_params = {}
-    is_split_hw = False
 
     def _preprocess_fusion():
         fused_select_write = res.op.name.find("write_select") >= 0
@@ -1400,11 +1376,6 @@ def pooling2d_schedule(res, sch_list):
     cce_params.cceEmitParamsIns.insert_params(pooling_params)
     device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
 
-    # Get vadd vmul vconv ability
-    vconv_ability = intrinsic_check_support("Intrinsic_vconv", "f162f32")
-    vadd_ability = intrinsic_check_support("Intrinsic_vadd", "float32")
-    vmul_ability = intrinsic_check_support("Intrinsic_vmul", "float32")
-
     # get pooling mode, out size
     pooling_mode = pooling_params["pooling_mode"]
     padding_mode = pooling_params["padding_mode"]
@@ -1421,23 +1392,6 @@ def pooling2d_schedule(res, sch_list):
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     check_antiquant_gmp()
-
-    def _set_fp32_ability():
-        if pooling_mode == "GAP":
-            impl_mode = pooling2d_res.op.attrs['impl_mode']
-            use_fp16 = (get_soc_spec(SOC_VERSION) == ASCEND_310) and \
-                (impl_mode == "high_performance")
-            fp32_ability = vconv_ability and \
-                vadd_ability and \
-                vmul_ability and \
-                (not use_fp16)
-        else:
-            fp32_ability = vconv_ability and \
-                vadd_ability and \
-                vmul_ability
-        return fp32_ability
-
-    fp32_ability = _set_fp32_ability()
 
     # avg or max pooling
     if pooling_mode in ["AVG", "MAX"]:
@@ -1491,7 +1445,7 @@ def pooling2d_schedule(res, sch_list):
             if pooling_mode == "AVG":
                 sch[pooling_out_ub_mul_factor].set_scope(scope_ubuf)
 
-            # fuse select_wirte op and ascend_quant op
+            # fuse select_write op and ascend_quant op
             if fused_select_write:
                 sch[pooling2d_res].set_scope(scope_ubuf)
 
@@ -1571,14 +1525,10 @@ def pooling2d_schedule(res, sch_list):
                 input_tensor = tensor_in.op.input_tensors[0]
 
             if input_l1_flag == 1:
-                util.L1CommonParam.l1_fusion_tensors_map = {}
-                util.L1CommonParam.l1_fusion_tensors_map[input_tensor] = \
-                    l1_tensor_to_be_map
+                util.L1CommonParam.l1_fusion_tensors_map = {input_tensor: l1_tensor_to_be_map}
                 sch[l1_tensor_to_be_map].set_storage_bound(l1_valid_size)
             elif input_l1_flag == 0:
-                util.L1CommonParam.l1_fusion_tensors_map = {}
-                util.L1CommonParam.l1_fusion_tensors_map[input_tensor] = \
-                    tvm.var("dummy")
+                util.L1CommonParam.l1_fusion_tensors_map = {input_tensor: tvm.var("dummy")}
 
         _put_tensor_into_l1_fusion_list()
 
@@ -2029,215 +1979,206 @@ def pooling2d_schedule(res, sch_list):
 
         check_is_cut_l1(is_cut_l1_to_ub)
         is_split_hw = is_ddr_l1_cut_h_flag
+        cache_read_tensor = res
     # global avg pooling or global max pooling
     elif pooling_mode in ["GAP", "GMP"]:
         impl_mode = pooling2d_res.op.attrs['impl_mode']
         cce_params.cceEmitParamsIns.insert_param("impl_mode", impl_mode)
+        fp32_ability = _check_fp32_ability(pooling_mode, impl_mode)
         # get tiling params
         tiling_params = pooling2d_global_tiling(pooling_params, fusion_params, impl_mode)
         if fused_ascend_quant:
-            sch_list = [sch]
-            return pooling_global_quant_schedule(
-                sch_list, pooling_mode, pooling2d_res, res,
-                tiling_params, pooling_params, fp32_ability,
-                ascend_tensor, fusion_params)
-
-        # get all tensors from compute
-        if pooling_mode == "GAP":
-            if fp32_ability:
-                pooling_out_ub_mul_factor_f16 = \
-                    pooling2d_res.op.input_tensors[0]
-                pooling_out_ub_mul_factor = \
-                    pooling_out_ub_mul_factor_f16.op.input_tensors[0]
-                pooling_out_ub = pooling_out_ub_mul_factor.op.input_tensors[0]
-                tensor_in_ub_f32 = pooling_out_ub.op.input_tensors[0]
-            else:
-                pooling_out_ub_mul_factor = pooling2d_res.op.input_tensors[0]
-                pooling_out_ub = pooling_out_ub_mul_factor.op.input_tensors[0]
-        elif pooling_mode == "GMP":
-            pooling_out_ub = pooling2d_res.op.input_tensors[0]
-
-        is_gloabl_avg_fp32 = (pooling_mode == "GAP" and fp32_ability)
-        if is_gloabl_avg_fp32:
-            tensor_in_ub = tensor_in_ub_f32.op.input_tensors[0]
-            # set scope for each tensor
-            sch[tensor_in_ub].set_scope(scope_ubuf)
-            sch[tensor_in_ub_f32].set_scope(scope_ubuf)
-            sch[pooling_out_ub].set_scope(scope_ubuf)
+            batch_inner, is_split_hw, cache_read_tensor = \
+                pooling_global_quant_schedule([sch], pooling_mode, pooling2d_res, res, tiling_params, pooling_params,
+                                              fp32_ability, ascend_tensor, fusion_params)
         else:
-            tensor_in_ub = pooling_out_ub.op.input_tensors[0]
-            # set scope for each tensor
-            sch[tensor_in_ub].set_scope(scope_ubuf)
-            sch[pooling_out_ub].set_scope(scope_ubuf)
-
-        if in_l1_flag:
-            tensor_in = tensor_in_ub.op.input_tensors[0]
-            if l1_fusion_type == 1:
-                sch[tensor_in].set_scope(scope_cbuf)
-            else:
-                sch[tensor_in].set_scope(scope_cbuf_fusion)
-
-        if pooling_mode == "GAP":
-            if fp32_ability:
-                sch[pooling_out_ub_mul_factor_f16].set_scope(scope_ubuf)
-            sch[pooling_out_ub_mul_factor].set_scope(scope_ubuf)
-
-        if out_l1_flag:
-            sch[res].set_scope(scope_cbuf_fusion)
-
-        cut_ci_factor = tiling_params["cut_ci_factor"]
-        # shedule part
-        ci_outer, ci_inner = sch[pooling2d_res].split(pooling2d_res.op.axis[1],
-                                                      factor=cut_ci_factor)
-
-        pooling_out_ub_ci_outer, pooling_out_ub_ci_inner = \
-            sch[pooling_out_ub].split(pooling_out_ub.op.axis[1],
-                                      factor=cut_ci_factor)
-
-        # use multi block
-        block_tag = None
-        res_c1_outer_value = (c1_value + cut_ci_factor - 1)//cut_ci_factor
-        if is_l1fusion or (batch_size == 1 and res_c1_outer_value == 1):
-            # no bind core
-            batch_outer, batch_inner = \
-                sch[pooling2d_res].split(pooling2d_res.op.axis[0], factor=1)
-            sch[pooling2d_res].reorder(batch_outer, batch_inner,
-                                       ci_outer, ci_inner,
-                                       pooling2d_res.op.axis[2],
-                                       pooling2d_res.op.axis[3])
-        elif batch_size >= device_core_num or batch_size >= res_c1_outer_value:
-            # batch bind core
-            if batch_size >= device_core_num:
-                batch_factor = \
-                    find_bind_core_factor(batch_size, device_core_num)
-                _check_blockdims(batch_size, batch_factor, device_core_num)
-                batch_outer, batch_inner = \
-                    sch[pooling2d_res].split(pooling2d_res.op.axis[0],
-                                             factor=batch_factor)
-            else:
-                batch_outer, batch_inner = \
-                    sch[pooling2d_res].split(pooling2d_res.op.axis[0],
-                                             factor=1)
-            sch[pooling2d_res].reorder(batch_outer, batch_inner,
-                                       ci_outer, ci_inner,
-                                       pooling2d_res.op.axis[2],
-                                       pooling2d_res.op.axis[3])
-            block_tag = "batch"
-            block_axis = batch_outer
-        else:
-            # C1_outer bind core
-            batch_outer, batch_inner = \
-                sch[pooling2d_res].split(pooling2d_res.op.axis[0], factor=1)
-            sch[pooling2d_res].reorder(ci_outer, batch_outer,
-                                       batch_inner, ci_inner,
-                                       pooling2d_res.op.axis[3])
-            block_tag = "c1"
-            block_axis = ci_outer
-
-        if block_tag is not None:
-            thread_block = tvm.thread_axis("blockIdx.x")
-            sch[pooling2d_res].bind(block_axis, thread_block)
-            cce_params.cceEmitParamsIns.insert_param("thread_block",
-                                                     thread_block)
-            cce_params.cceEmitParamsIns.insert_param("block_tag", block_tag)
-
-        cut_hi_factor = tiling_params["cut_hi_factor"]
-        reduce_hi_outer, reduce_hi_inner = sch[pooling_out_ub].split(
-            pooling_out_ub.op.reduce_axis[0], factor=cut_hi_factor)
-
-        cut_wi_factor = tiling_params["cut_wi_factor"]
-        reduce_wi_outer, reduce_wi_inner = sch[pooling_out_ub].split(
-            pooling_out_ub.op.reduce_axis[1], factor=cut_wi_factor)
-
-        # cutCi Hi and Wi reorder
-        # Wi is devided to main part and rest part, so reduce_wi_outer should be
-        # outside of reduce_hi_outer, the same like
-        # reduce_hi_outer is outside of pooling_out_ub_ci_outer
-        block_tag_flag = block_tag is not None and block_tag == "c1"
-        if block_tag_flag:
-            sch[pooling_out_ub].reorder(pooling_out_ub_ci_outer,
-                                        pooling_out_ub.op.axis[0],
-                                        reduce_wi_outer,
-                                        reduce_hi_outer,
-                                        pooling_out_ub_ci_inner,
-                                        pooling_out_ub.op.axis[2],
-                                        pooling_out_ub.op.axis[3],
-                                        reduce_hi_inner,
-                                        reduce_wi_inner,
-                                        pooling_out_ub.op.axis[4])
-        else:
-            sch[pooling_out_ub].reorder(pooling_out_ub.op.axis[0],
-                                        reduce_wi_outer,
-                                        reduce_hi_outer,
-                                        pooling_out_ub_ci_outer,
-                                        pooling_out_ub_ci_inner,
-                                        pooling_out_ub.op.axis[2],
-                                        pooling_out_ub.op.axis[3],
-                                        reduce_hi_inner,
-                                        reduce_wi_inner,
-                                        pooling_out_ub.op.axis[4])
-
-        sch[tensor_in_ub].compute_at(sch[pooling_out_ub], reduce_hi_outer)
-        if pooling_mode == "GAP" and fp32_ability:
-            sch[tensor_in_ub_f32].compute_at(
-                sch[pooling_out_ub], reduce_hi_outer)
-
-        if block_tag is not None and block_tag == "c1":
-            compute_at_axis = batch_outer
-        else:
-            compute_at_axis = ci_outer
-
-        sch[pooling_out_ub].compute_at(sch[pooling2d_res], compute_at_axis)
-
-        if tiling_params["enable_double_buffer"]:
-            sch[tensor_in_ub].double_buffer()
-            sch[tensor_in_ub].preload()
-
-        if pooling_mode == "GAP":
-            if fp32_ability:
-                _, avg_mul_ci_inner_f16 = \
-                    sch[pooling_out_ub_mul_factor_f16].split(
-                        pooling_out_ub_mul_factor_f16.op.axis[1],
-                        factor=cut_ci_factor)
-                sch[pooling_out_ub_mul_factor_f16].compute_at(
-                    sch[pooling2d_res], compute_at_axis)
-
-            _, avg_mul_ci_inner = sch[pooling_out_ub_mul_factor].split(
-                pooling_out_ub_mul_factor.op.axis[1], factor=cut_ci_factor)
-            sch[pooling_out_ub_mul_factor].compute_at(
-                sch[pooling2d_res], compute_at_axis)
-
-        if l1_fusion_type == 1:
-            sch[tensor_in].emit_insn(tensor_in.op.axis[0], 'dma_copy')
-
-        sch[tensor_in_ub].emit_insn(tensor_in_ub.op.axis[0], 'dma_copy')
-
-        if pooling_mode == "GAP" and fp32_ability:
-            sch[tensor_in_ub_f32].emit_insn(
-                tensor_in_ub_f32.op.axis[0], 'vector_conv')
-        if block_tag is not None and block_tag == "c1":
-            sch[pooling_out_ub].emit_insn(
-                pooling_out_ub_ci_inner, 'pooling2d_global_process')
-        else:
-            sch[pooling_out_ub].emit_insn(
-                pooling_out_ub_ci_outer, 'pooling2d_global_process')
-
-        if pooling_mode == "GAP":
-            if fp32_ability:
-                sch[pooling_out_ub_mul_factor_f16].emit_insn(
-                    avg_mul_ci_inner_f16, "vector_conv")
-            sch[pooling_out_ub_mul_factor].emit_insn(
-                avg_mul_ci_inner, "elewise_single_VS_mul")
-
-        sch[pooling2d_res].emit_insn(ci_inner, 'dma_copy')
-
-        is_split_hw = ("loop_cut_hi" in tiling_params and
-                       (tiling_params["loop_cut_hi"] > 1)) or \
-                      ("loop_cut_hw" in tiling_params and
-                       (tiling_params["loop_cut_hw"] > 1))
+            batch_inner, is_split_hw, cache_read_tensor = \
+                _normal_global_pooling_schedule(pooling_params, fp32_ability, fusion_params, pooling2d_res, res, sch,
+                                                tiling_params)
     is_overload = check_overload_status(pooling_params, is_split_hw)
-    set_pragma_for_cache_read_mode(is_overload, sch[res], batch_inner)
+    set_pragma_for_cache_read_mode(is_overload, sch[cache_read_tensor], batch_inner)
     return True
+
+
+def _normal_global_pooling_schedule(pooling_params, fp32_ability, fusion_params, pooling2d_res, res, sch,
+                                    tiling_params):
+    """
+    normal global pooling schedule
+    """
+    pooling_mode = pooling_params["pooling_mode"]
+    batch_size = pooling_params["batch_size"]
+    c1_value = pooling_params["c1_value"]
+
+    in_l1_flag = fusion_params.get("in_l1_flag")
+    out_l1_flag = fusion_params.get("out_l1_flag")
+    l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
+    is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
+    device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
+
+    # get all tensors from compute
+    if pooling_mode == "GAP":
+        if fp32_ability:
+            pooling_out_ub_mul_factor_f16 = pooling2d_res.op.input_tensors[0]
+            pooling_out_ub_mul_factor = pooling_out_ub_mul_factor_f16.op.input_tensors[0]
+            pooling_out_ub = pooling_out_ub_mul_factor.op.input_tensors[0]
+            tensor_in_ub_f32 = pooling_out_ub.op.input_tensors[0]
+        else:
+            pooling_out_ub_mul_factor = pooling2d_res.op.input_tensors[0]
+            pooling_out_ub = pooling_out_ub_mul_factor.op.input_tensors[0]
+    elif pooling_mode == "GMP":
+        pooling_out_ub = pooling2d_res.op.input_tensors[0]
+
+    is_global_avg_fp32 = (pooling_mode == "GAP" and fp32_ability)
+    if is_global_avg_fp32:
+        tensor_in_ub = tensor_in_ub_f32.op.input_tensors[0]
+        # set scope for each tensor
+        sch[tensor_in_ub].set_scope(scope_ubuf)
+        sch[tensor_in_ub_f32].set_scope(scope_ubuf)
+        sch[pooling_out_ub].set_scope(scope_ubuf)
+    else:
+        tensor_in_ub = pooling_out_ub.op.input_tensors[0]
+        # set scope for each tensor
+        sch[tensor_in_ub].set_scope(scope_ubuf)
+        sch[pooling_out_ub].set_scope(scope_ubuf)
+
+    if in_l1_flag:
+        tensor_in = tensor_in_ub.op.input_tensors[0]
+        if l1_fusion_type == L1_BREADTH_FUSION:
+            sch[tensor_in].set_scope(scope_cbuf)
+        else:
+            sch[tensor_in].set_scope(scope_cbuf_fusion)
+
+    if pooling_mode == "GAP":
+        if fp32_ability:
+            sch[pooling_out_ub_mul_factor_f16].set_scope(scope_ubuf)
+        sch[pooling_out_ub_mul_factor].set_scope(scope_ubuf)
+
+    if out_l1_flag:
+        sch[res].set_scope(scope_cbuf_fusion)
+
+    cut_ci_factor = tiling_params["cut_ci_factor"]
+    # schedule part
+    ci_outer, ci_inner = sch[pooling2d_res].split(pooling2d_res.op.axis[1], factor=cut_ci_factor)
+
+    pooling_out_ub_ci_outer, pooling_out_ub_ci_inner = \
+        sch[pooling_out_ub].split(pooling_out_ub.op.axis[1], factor=cut_ci_factor)
+
+    # use multi block
+    block_tag = None
+    res_c1_outer_value = (c1_value + cut_ci_factor - 1)//cut_ci_factor
+    if is_l1fusion or (batch_size == 1 and res_c1_outer_value == 1):
+        # no bind core
+        batch_outer, batch_inner = sch[pooling2d_res].split(pooling2d_res.op.axis[0], factor=1)
+        sch[pooling2d_res].reorder(batch_outer, batch_inner, ci_outer, ci_inner, pooling2d_res.op.axis[2],
+                                   pooling2d_res.op.axis[3])
+    elif batch_size >= device_core_num or batch_size >= res_c1_outer_value:
+        # batch bind core
+        if batch_size >= device_core_num:
+            batch_factor = find_bind_core_factor(batch_size, device_core_num)
+            _check_blockdims(batch_size, batch_factor, device_core_num)
+            batch_outer, batch_inner = sch[pooling2d_res].split(pooling2d_res.op.axis[0], factor=batch_factor)
+        else:
+            batch_outer, batch_inner = sch[pooling2d_res].split(pooling2d_res.op.axis[0], factor=1)
+        sch[pooling2d_res].reorder(batch_outer, batch_inner, ci_outer, ci_inner, pooling2d_res.op.axis[2],
+                                   pooling2d_res.op.axis[3])
+        block_tag = "batch"
+        block_axis = batch_outer
+    else:
+        # C1_outer bind core
+        batch_outer, batch_inner = sch[pooling2d_res].split(pooling2d_res.op.axis[0], factor=1)
+        sch[pooling2d_res].reorder(ci_outer, batch_outer, batch_inner, ci_inner, pooling2d_res.op.axis[3])
+        block_tag = "c1"
+        block_axis = ci_outer
+
+    if block_tag is not None:
+        thread_block = tvm.thread_axis("blockIdx.x")
+        sch[pooling2d_res].bind(block_axis, thread_block)
+        cce_params.cceEmitParamsIns.insert_param("thread_block", thread_block)
+        cce_params.cceEmitParamsIns.insert_param("block_tag", block_tag)
+
+    cut_hi_factor = tiling_params["cut_hi_factor"]
+    reduce_hi_outer, reduce_hi_inner = \
+        sch[pooling_out_ub].split(pooling_out_ub.op.reduce_axis[0], factor=cut_hi_factor)
+
+    cut_wi_factor = tiling_params["cut_wi_factor"]
+    reduce_wi_outer, reduce_wi_inner = \
+        sch[pooling_out_ub].split(pooling_out_ub.op.reduce_axis[1], factor=cut_wi_factor)
+
+    # cutCi Hi and Wi reorder
+    # Wi is divided into main part and rest part, so reduce_wi_outer should be
+    # outside of reduce_hi_outer, the same like
+    # reduce_hi_outer is outside of pooling_out_ub_ci_outer
+    block_tag_flag = block_tag is not None and block_tag == "c1"
+    if block_tag_flag:
+        sch[pooling_out_ub].reorder(pooling_out_ub_ci_outer,
+                                    pooling_out_ub.op.axis[0],
+                                    reduce_wi_outer,
+                                    reduce_hi_outer,
+                                    pooling_out_ub_ci_inner,
+                                    pooling_out_ub.op.axis[2],
+                                    pooling_out_ub.op.axis[3],
+                                    reduce_hi_inner,
+                                    reduce_wi_inner,
+                                    pooling_out_ub.op.axis[4])
+    else:
+        sch[pooling_out_ub].reorder(pooling_out_ub.op.axis[0],
+                                    reduce_wi_outer,
+                                    reduce_hi_outer,
+                                    pooling_out_ub_ci_outer,
+                                    pooling_out_ub_ci_inner,
+                                    pooling_out_ub.op.axis[2],
+                                    pooling_out_ub.op.axis[3],
+                                    reduce_hi_inner,
+                                    reduce_wi_inner,
+                                    pooling_out_ub.op.axis[4])
+
+    sch[tensor_in_ub].compute_at(sch[pooling_out_ub], reduce_hi_outer)
+    if pooling_mode == "GAP" and fp32_ability:
+        sch[tensor_in_ub_f32].compute_at(sch[pooling_out_ub], reduce_hi_outer)
+
+    if block_tag is not None and block_tag == "c1":
+        compute_at_axis = batch_outer
+    else:
+        compute_at_axis = ci_outer
+
+    sch[pooling_out_ub].compute_at(sch[pooling2d_res], compute_at_axis)
+
+    if tiling_params["enable_double_buffer"]:
+        sch[tensor_in_ub].double_buffer()
+        sch[tensor_in_ub].preload()
+
+    if pooling_mode == "GAP":
+        if fp32_ability:
+            _, avg_mul_ci_inner_f16 = sch[pooling_out_ub_mul_factor_f16].split(
+                pooling_out_ub_mul_factor_f16.op.axis[1], factor=cut_ci_factor)
+            sch[pooling_out_ub_mul_factor_f16].compute_at(sch[pooling2d_res], compute_at_axis)
+
+        _, avg_mul_ci_inner = sch[pooling_out_ub_mul_factor].split(pooling_out_ub_mul_factor.op.axis[1],
+                                                                   factor=cut_ci_factor)
+        sch[pooling_out_ub_mul_factor].compute_at(sch[pooling2d_res], compute_at_axis)
+
+    if l1_fusion_type == 1:
+        sch[tensor_in].emit_insn(tensor_in.op.axis[0], 'dma_copy')
+
+    sch[tensor_in_ub].emit_insn(tensor_in_ub.op.axis[0], 'dma_copy')
+
+    if pooling_mode == "GAP" and fp32_ability:
+        sch[tensor_in_ub_f32].emit_insn(tensor_in_ub_f32.op.axis[0], 'vector_conv')
+    if block_tag is not None and block_tag == "c1":
+        sch[pooling_out_ub].emit_insn(pooling_out_ub_ci_inner, 'pooling2d_global_process')
+    else:
+        sch[pooling_out_ub].emit_insn(pooling_out_ub_ci_outer, 'pooling2d_global_process')
+
+    if pooling_mode == "GAP":
+        if fp32_ability:
+            sch[pooling_out_ub_mul_factor_f16].emit_insn(avg_mul_ci_inner_f16, "vector_conv")
+        sch[pooling_out_ub_mul_factor].emit_insn(avg_mul_ci_inner, "elewise_single_VS_mul")
+
+    sch[pooling2d_res].emit_insn(ci_inner, 'dma_copy')
+
+    is_split_hw = ("loop_cut_hi" in tiling_params and (tiling_params["loop_cut_hi"] > 1)) or \
+                  ("loop_cut_hw" in tiling_params and (tiling_params["loop_cut_hw"] > 1))
+    return batch_inner, is_split_hw, pooling2d_res
 
 
 def check_overload_status(pooling_params, is_split_hw):
@@ -2317,17 +2258,15 @@ def pooling_global_quant_schedule(
 
     device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
 
-    def _set_scop_get_rel_tensor():
+    def _set_scope_get_rel_tensor():
         pooling_out_ub_mul_factor_f16 = None
         pooling_out_ub_mul_factor = None
         tensor_in_ub_f32 = None
         tensor_in = None
         if pooling_mode == "GAP":
             if fp32_ability:
-                pooling_out_ub_mul_factor_f16 = pooling2d_res.op.input_tensors[
-                    0]
-                pooling_out_ub_mul_factor = \
-                    pooling_out_ub_mul_factor_f16.op.input_tensors[0]
+                pooling_out_ub_mul_factor_f16 = pooling2d_res.op.input_tensors[0]
+                pooling_out_ub_mul_factor = pooling_out_ub_mul_factor_f16.op.input_tensors[0]
                 pooling_out_ub = pooling_out_ub_mul_factor.op.input_tensors[0]
                 tensor_in_ub_f32 = pooling_out_ub.op.input_tensors[0]
                 tensor_in_ub = tensor_in_ub_f32.op.input_tensors[0]
@@ -2364,53 +2303,44 @@ def pooling_global_quant_schedule(
         return res_list
 
     pooling_out_ub_mul_factor_f16, pooling_out_ub_mul_factor, pooling_out_ub, \
-        tensor_in_ub_f32, tensor_in_ub, tensor_in = _set_scop_get_rel_tensor()
+        tensor_in_ub_f32, tensor_in_ub, tensor_in = _set_scope_get_rel_tensor()
 
     sch[pooling2d_res].compute_inline()
     sch[input_ub].compute_inline()
 
-    # shedule part
-    ci_outer, ci_inner = sch[res].split(res.op.axis[1],
-                                        factor=cut_ci_factor_res)
+    # schedule part
+    ci_outer, ci_inner = sch[res].split(res.op.axis[1], factor=cut_ci_factor_res)
 
     pooling_out_ub_ci_outer, pooling_out_ub_ci_inner = \
-        sch[pooling_out_ub].split(pooling_out_ub.op.axis[1],
-                                  factor=cut_ci_factor)
+        sch[pooling_out_ub].split(pooling_out_ub.op.axis[1], factor=cut_ci_factor)
 
     # use multi block
     block_tag = None
-    res_c1_outer_value = (c1_value + cut_ci_factor - 1)//cut_ci_factor
+    res_c1_outer_value = (c1_value + cut_ci_factor - 1) // cut_ci_factor
 
     is_no_bind = is_l1fusion or (batch_size == 1 and res_c1_outer_value == 1)
-    is_bind_batch = batch_size >= device_core_num or\
-        batch_size >= res_c1_outer_value
+    is_bind_batch = batch_size >= device_core_num or batch_size >= res_c1_outer_value
     if is_no_bind:
         # no bind core
         batch_outer, batch_inner = sch[res].split(res.op.axis[0], factor=1)
-        sch[res].reorder(batch_outer, batch_inner, ci_outer, ci_inner,
-                         res.op.axis[2], res.op.axis[3])
+        sch[res].reorder(batch_outer, batch_inner, ci_outer, ci_inner, res.op.axis[2], res.op.axis[3])
         compute_at_axis = ci_outer
     else:
         if is_bind_batch:
             # batch bind core
             if batch_size >= device_core_num:
-                batch_factor = \
-                    find_bind_core_factor(batch_size, device_core_num)
-                batch_outer, batch_inner = sch[res].split(res.op.axis[0],
-                                                          factor=batch_factor)
+                batch_factor = find_bind_core_factor(batch_size, device_core_num)
+                batch_outer, batch_inner = sch[res].split(res.op.axis[0], factor=batch_factor)
             else:
-                batch_outer, batch_inner = sch[res].split(res.op.axis[0],
-                                                          factor=1)
-            sch[res].reorder(batch_outer, batch_inner, ci_outer, ci_inner,
-                             res.op.axis[3])
+                batch_outer, batch_inner = sch[res].split(res.op.axis[0], factor=1)
+            sch[res].reorder(batch_outer, batch_inner, ci_outer, ci_inner, res.op.axis[3])
             block_tag = "batch"
             block_axis = batch_outer
             compute_at_axis = ci_outer
         else:
             # C1_outer bind core
             batch_outer, batch_inner = sch[res].split(res.op.axis[0], factor=1)
-            sch[res].reorder(ci_outer, batch_outer, batch_inner, ci_inner,
-                             res.op.axis[2], res.op.axis[3])
+            sch[res].reorder(ci_outer, batch_outer, batch_inner, ci_inner, res.op.axis[2], res.op.axis[3])
             block_tag = "c1"
             block_axis = ci_outer
             compute_at_axis = batch_outer
@@ -2421,15 +2351,15 @@ def pooling_global_quant_schedule(
         cce_params.cceEmitParamsIns.insert_param("block_tag", block_tag)
 
     cut_hi_factor = tiling_params["cut_hi_factor"]
-    reduce_hi_outer, reduce_hi_inner = sch[pooling_out_ub].split(
-        pooling_out_ub.op.reduce_axis[0], factor=cut_hi_factor)
+    reduce_hi_outer, reduce_hi_inner = \
+        sch[pooling_out_ub].split(pooling_out_ub.op.reduce_axis[0], factor=cut_hi_factor)
 
     cut_wi_factor = tiling_params["cut_wi_factor"]
-    reduce_wi_outer, reduce_wi_inner = sch[pooling_out_ub].split(
-        pooling_out_ub.op.reduce_axis[1], factor=cut_wi_factor)
+    reduce_wi_outer, reduce_wi_inner = \
+        sch[pooling_out_ub].split(pooling_out_ub.op.reduce_axis[1], factor=cut_wi_factor)
 
     # cutCi Hi and Wi reorder
-    # Wi is devided to main part and rest part, so reduce_wi_outer should be
+    # Wi is divided into main part and rest part, so reduce_wi_outer should be
     # outside of reduce_hi_outer, the same like
     # reduce_hi_outer is outside of pooling_out_ub_ci_outer
     is_bind_c1_axis = block_tag is not None and block_tag == "c1"
@@ -2469,28 +2399,21 @@ def pooling_global_quant_schedule(
         sch[tensor_in_ub].compute_at(sch[pooling_out_ub], reduce_hi_outer)
         is_fp32_mode = pooling_mode == "GAP" and fp32_ability
         if is_fp32_mode:
-            sch[tensor_in_ub_f32].compute_at(
-                sch[pooling_out_ub], reduce_hi_outer)
+            sch[tensor_in_ub_f32].compute_at(sch[pooling_out_ub], reduce_hi_outer)
 
         sch[pooling_out_ub].compute_at(sch[res], compute_at_axis)
 
         if pooling_mode == "GAP":
             if fp32_ability:
-                _, avg_mul_ci_inner_f16 = \
-                    sch[pooling_out_ub_mul_factor_f16].split(
-                        pooling_out_ub_mul_factor_f16.op.axis[1],
-                        factor=cut_ci_factor)
-                sch[pooling_out_ub_mul_factor_f16].compute_at(
-                    sch[res], compute_at_axis)
-                sch[pooling_out_ub_mul_factor_f16].emit_insn(
-                    avg_mul_ci_inner_f16, "vector_conv")
+                _, avg_mul_ci_inner_f16 = sch[pooling_out_ub_mul_factor_f16].split(
+                    pooling_out_ub_mul_factor_f16.op.axis[1], factor=cut_ci_factor)
+                sch[pooling_out_ub_mul_factor_f16].compute_at(sch[res], compute_at_axis)
+                sch[pooling_out_ub_mul_factor_f16].emit_insn(avg_mul_ci_inner_f16, "vector_conv")
 
             avg_mul_ci_outer, _ = sch[pooling_out_ub_mul_factor].split(
                 pooling_out_ub_mul_factor.op.axis[1], factor=cut_ci_factor)
-            sch[pooling_out_ub_mul_factor].compute_at(
-                sch[res], compute_at_axis)
-            sch[pooling_out_ub_mul_factor].emit_insn(
-                avg_mul_ci_outer, "elewise_single_VS_mul")
+            sch[pooling_out_ub_mul_factor].compute_at(sch[res], compute_at_axis)
+            sch[pooling_out_ub_mul_factor].emit_insn(avg_mul_ci_outer, "elewise_single_VS_mul")
 
         if l1_fusion_type == 1:
             sch[tensor_in].emit_insn(tensor_in.op.axis[0], 'dma_copy')
@@ -2498,15 +2421,12 @@ def pooling_global_quant_schedule(
         sch[tensor_in_ub].emit_insn(tensor_in_ub.op.axis[0], 'dma_copy')
 
         if is_fp32_mode:
-            sch[tensor_in_ub_f32].emit_insn(tensor_in_ub_f32.op.axis[0],
-                                            'vector_conv')
+            sch[tensor_in_ub_f32].emit_insn(tensor_in_ub_f32.op.axis[0], 'vector_conv')
 
         if is_bind_c1_axis:
-            sch[pooling_out_ub].emit_insn(pooling_out_ub_ci_inner,
-                                          'pooling2d_global_process')
+            sch[pooling_out_ub].emit_insn(pooling_out_ub_ci_inner, 'pooling2d_global_process')
         else:
-            sch[pooling_out_ub].emit_insn(pooling_out_ub_ci_outer,
-                                          'pooling2d_global_process')
+            sch[pooling_out_ub].emit_insn(pooling_out_ub_ci_outer, 'pooling2d_global_process')
 
         sch[res].emit_insn(ci_inner, 'dma_copy')
 
@@ -2522,11 +2442,6 @@ def pooling_global_quant_schedule(
     }
     set_quant_emit_insn(sch, quant_tensor_map, c1_value, attr_dic)
 
-    is_split_hw = ("loop_cut_hi" in tiling_params and
-                   (tiling_params["loop_cut_hi"] > 1)) or \
-                  ("loop_cut_hw" in tiling_params and
-                   (tiling_params["loop_cut_hw"] > 1))
-    is_overload = check_overload_status(pooling_params, is_split_hw)
-    set_pragma_for_cache_read_mode(is_overload, sch[res], batch_inner)
-
-    return True
+    is_split_hw = ("loop_cut_hi" in tiling_params and (tiling_params["loop_cut_hi"] > 1)) or \
+                  ("loop_cut_hw" in tiling_params and (tiling_params["loop_cut_hw"] > 1))
+    return batch_inner, is_split_hw, res
