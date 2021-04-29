@@ -46,16 +46,7 @@ def get_op_support_info(input_tensor,
     """
     format_x = input_tensor.get("format")
     dims_x = len(input_tensor.get("shape"))
-    support_format = ["NCHW", "NHWC"]
-    if format_x in support_format:
-        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
-                              SplitOutput([0, [0]], [1, [0]])],
-                             [SplitInput([0, [1], [-1], [-1]]),
-                              SplitOutput([0, [1]], [1, [1]])],
-                             [SplitInput([0, [2], [-1], [-1]]),
-                              SplitOutput([0, [2]], [1, [2]])]]
-        axis_reduce_list = None
-    elif format_x == "ND":
+    if format_x == "ND":
         axis_split_matrix = []
         for i in range(dims_x - 1):
             split_info = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]], [1, [i]])]
