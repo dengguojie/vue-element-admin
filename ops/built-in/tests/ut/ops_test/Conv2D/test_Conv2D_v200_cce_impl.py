@@ -33,6 +33,7 @@ def test_conv2d_v200(test_arg):
             # data_flow
             #   10: s8s8->s32                         int8 conv
             #   20: fp16fp16->fp16                    fp16 conv
+            #   30：fp16fp16->fp16                    fp16 group conv
             #   0: s32->s8                            conv + requant
             #   1: s32->s16                           conv + dequants16
             #   2: s32->s16->s8                       conv + dequants16 + requants16(relu) singleout
@@ -45,6 +46,7 @@ def test_conv2d_v200(test_arg):
             "conv_v200_bias_1_flow_10": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 10, 1, 0, 0),
             "conv_v200_bias_0_flow_20": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 20, 0, 0, 0),
             "conv_v200_bias_1_flow_20": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 20, 1, 0, 0),
+            "conv_v200_bias_1_flow_30": ((1, 120, 14, 14), (480, 40, 1, 1), [0, 0, 0, 0], [1, 1, 1, 1], 30, 1, 0, 0, 3),
             "conv_v200_relu_0_bias_0_vector_0_flow_1": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 1, 0, 0, 0),
             "conv_v200_relu_0_bias_0_vector_1_flow_1": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 1, 1, 0, 1),
             "conv_v200_relu_0_bias_1_vector_0_flow_1": ((2, 32, 7, 7), (32, 32, 2, 2), [0, 0, 0, 0], [1, 1, 1, 1], 1, 0, 1, 0),
@@ -289,6 +291,28 @@ def test_conv2d_v200(test_arg):
         _conv_layer_cce(fm_shape, filter, fm_type, weight_type, output_type,
                     padh, padw, strideh, stridew, bias=bias_flag, kernel_name=kernel_name_val)
 
+    def conv_v200_group(fm_shape, filter, pads, strides, data_flow, \
+        bias_flag, relu_flag, vector_flag, groups_num, kernel_name_val):
+        if data_flow == 10:
+            fm_type = "int8"
+            weight_type = "int8"
+            output_type = "int32"
+        else:
+            fm_type = "float16"
+            weight_type = "float16"
+            output_type = "float16"
+        padh = pads[0]
+        padw = pads[2]
+        strideh = strides[2]
+        stridew = strides[3]
+
+        if bias_flag == 1:
+            bias_flag = True
+        else:
+            bias_flag = False
+
+        _conv_layer_cce(fm_shape, filter, fm_type, weight_type, output_type,
+                        padh, padw, strideh, stridew, groups=groups_num, bias=bias_flag, kernel_name=kernel_name_val)
 
     def conv_v200_fusion(fm_shape, filter, pads, strides, data_flow, \
         bias_flag, relu_flag, vector_flag, kernel_name):
@@ -328,7 +352,9 @@ def test_conv2d_v200(test_arg):
     def run_testcase():
         testcases_for_all = testcases["all"]
         for key in testcases_for_all:
-            if testcases_for_all[key][-4] == 10 or testcases_for_all[key][-4] == 20:
+            if testcases_for_all[key][-5] == 30:
+                conv_v200_group(*testcases_for_all[key], key)
+            elif testcases_for_all[key][-4] == 10 or testcases_for_all[key][-4] == 20:
                 conv_v200(*testcases_for_all[key], key)
             else:
                 conv_v200_fusion(*testcases_for_all[key], key)

@@ -2597,6 +2597,13 @@ class CceConvOp:
                 if l0a_load2d_flag:
                     sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy')
                 else:
+                    # select the real k value to participate in the calculation.(fix random result on dc)
+                    if ConvParam.para_dict["group_opt"] > 1 and is_support_v200():
+                        reduce_k1 = weight.shape[0] // ConvParam.para_dict["group_opt"]
+                        reduce_c1hw = ConvParam.para_dict["a_shape"][1]*ConvParam.filter_h*ConvParam.filter_w
+                        mad_select_condition = tvm.any(
+                            tvm.all(fmap_col.op.axis[0].var*reduce_k1 + fmap_col.op.axis[3].var < reduce_c1hw))
+                        sch[fmap_col].set_store_predicate(mad_select_condition, partition=True)
                     if strideh_opti_flag:
                         setfmatrix_dict["conv_stride_h"] = 1
                     if self._l0a_dma_flag:
@@ -5081,6 +5088,13 @@ class CceConvOp:
         self._compute_at_axis.append(c_slice_axis)
         self._compute_at_buffer.append(res_c)
         self._compute_at_axis.append(m_outer_inner_outer)
+        # select the real k value to participate in the calculation.(fix random result on dc)
+        if ConvParam.para_dict["group_opt"] > 1 and is_support_v200() and not l0a_load2d_flag:
+            reduce_k1 = weight.shape[0] // ConvParam.para_dict["group_opt"]
+            reduce_c1hw = ConvParam.para_dict["a_shape"][1]*ConvParam.filter_h*ConvParam.filter_w
+            mad_select_condition = tvm.any(
+                tvm.all(c_col.op.axis[0].var*reduce_k1 + c_col.op.reduce_axis[0].var < reduce_c1hw))
+            sch[c_col].set_store_predicate(mad_select_condition, partition=True)
 
         _, reduce_kk = sch[c_col].op.reduce_axis
 

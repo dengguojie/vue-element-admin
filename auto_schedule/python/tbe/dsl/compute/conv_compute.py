@@ -724,6 +724,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             if ConvParam.l0a_dma_flag:
                 l0a_load2d_flag = False
 
+            _, cin_ori, _, _ = ConvParam.para_dict["weight_ori_shape_nchw"]
+            _, _, _, cin0 = shape_to_list(weight.shape)
+            if ConvParam.para_dict.get("group_opt") > 1 and is_support_v200() and \
+                (ConvParam.para_dict.get("group_opt")*ConvParam.para_dict.get("c1_opt")*cin0 != cin_ori):
+                l0a_load2d_flag = False
+
             return l0a_load2d_flag
 
         def _cal_im2col_res(height_out, width_out):
@@ -1410,17 +1416,35 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         -------
         row_major_reshape tensor
         """
+        fmap_c1 = ConvParam.para_dict["a_shape"][1]
+        fmap_c0 = ConvParam.para_dict["a_shape"][4]
+        kernel_h = ConvParam.para_dict["filter_h"]
+        kernel_w = ConvParam.para_dict["filter_w"]
+        reduce_c1hwc0 = fmap_c1*fmap_c0*kernel_h*kernel_w
         _, _, howo, input_c1, filter_h, filter_w, input_c0 = fmap_row_major.shape
-        row_major_reshape = tvm.compute(
-            fmap_im2col_shape,
-            lambda group, i, j, k:
-            tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo),
-                       fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
-                                      k // (filter_w*input_c0) % filter_h,
-                                      k // (input_c0) % (filter_w),
-                                      k % input_c0), tvm.const(0.0, compute_dtype)),
-            name="row_major_reshape",
-            tag=OP_TAG + 'row_major_reshape')
+        if ConvParam.para_dict["group_opt"] > 1:
+            row_major_reshape = tvm.compute(
+                fmap_im2col_shape,
+                lambda group, i, j, k:
+                tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo,
+                                   group*fmap_im2col_shape[3] + k < reduce_c1hwc0),
+                           fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
+                                          k // (filter_w*input_c0) % filter_h,
+                                          k // (input_c0) % (filter_w),
+                                          k % input_c0), tvm.const(0.0, compute_dtype)),
+                name="row_major_reshape",
+                tag=OP_TAG + 'row_major_reshape')
+        else:
+            row_major_reshape = tvm.compute(
+                fmap_im2col_shape,
+                lambda group, i, j, k:
+                tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo),
+                           fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
+                                          k // (filter_w*input_c0) % filter_h,
+                                          k // (input_c0) % (filter_w),
+                                          k % input_c0), tvm.const(0.0, compute_dtype)),
+                name="row_major_reshape",
+                tag=OP_TAG + 'row_major_reshape')
 
         return row_major_reshape
 
@@ -1494,8 +1518,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1] // 2
 
         offset_d = offset_x if is_support_v200() else 0
-        if TENSOR_MAP["c0_optim_flg"]:
-            reduce_c1hwc0 = fmap_c1*kernel_h*kernel_w*4
+        if TENSOR_MAP["c0_optim_flg"] or \
+            (ConvParam.para_dict["group_opt"] > 1 and is_support_v200() and not TENSOR_MAP["l0a_load2d_flag"]):
             c_col = tvm.compute(
                 mad_shape,
                 lambda group, batch, cout_1, howo, cout_0:
@@ -1911,6 +1935,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                 (para_dict.get("stride_w") == 1) and \
                                 (data.dtype == "float16") and \
                                 (weight.dtype == "float16")
+
+        _, cin_ori, _, _ = para_dict["weight_ori_shape_nchw"]
+        _, _, _, cin0 = shape_to_list(weight.shape)
+        if para_dict.get("group_opt") > 1 and is_support_v200() and \
+            (para_dict.get("group_opt")*para_dict.get("c1_opt")*cin0 != cin_ori):
+            load2d_to_load3d_flag = False
         return load2d_to_load3d_flag
 
     def _conv1d_split_w_flag_set():
