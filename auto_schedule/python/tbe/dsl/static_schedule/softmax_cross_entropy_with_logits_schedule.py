@@ -599,6 +599,10 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
     if is_need_workspace:
         return logits_2d_schedule_large_axis_workspace(res, input_tensors)
 
+    broadcast_b_to_a_flag = any(feature_shape[i] > label_shape[i] for i in range(len(feature_shape)))
+    if broadcast_b_to_a_flag:
+        return None, []
+
     res.append(out)
 
     block_res_outer, block_res_inner = sch[out].split(out.op.axis[0],
