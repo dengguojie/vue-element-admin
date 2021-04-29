@@ -2008,6 +2008,7 @@ def _normal_global_pooling_schedule(pooling_params, fp32_ability, fusion_params,
     pooling_mode = pooling_params["pooling_mode"]
     batch_size = pooling_params["batch_size"]
     c1_value = pooling_params["c1_value"]
+    fused_strided_write = pooling_params["fused_strided_write"]
 
     in_l1_flag = fusion_params.get("in_l1_flag")
     out_l1_flag = fusion_params.get("out_l1_flag")
@@ -2174,7 +2175,20 @@ def _normal_global_pooling_schedule(pooling_params, fp32_ability, fusion_params,
             sch[pooling_out_ub_mul_factor_f16].emit_insn(avg_mul_ci_inner_f16, "vector_conv")
         sch[pooling_out_ub_mul_factor].emit_insn(avg_mul_ci_inner, "elewise_single_VS_mul")
 
-    sch[pooling2d_res].emit_insn(ci_inner, 'dma_copy')
+    if fused_strided_write:
+        if pooling_mode == "GMP":
+            sch[pooling2d_res].set_scope(scope_ubuf)
+            swrite_stride = res.op.attrs["stride"].value
+            _, _, _, swrite_C0 = list(i.value for i in res.shape)
+            sch[res].bind_buffer(res.op.axis[0], swrite_stride * 1 * 1 * swrite_C0, 0)
+            sch[res].emit_insn(res.op.axis[0], 'dma_copy')
+        else:
+            dict_args = dict()
+            dict_args["errCode"] = "E90003"
+            dict_args["detailed_cause"] = "stride_write is not support in GAP mode"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+    else:
+        sch[pooling2d_res].emit_insn(ci_inner, 'dma_copy')
 
     is_split_hw = ("loop_cut_hi" in tiling_params and (tiling_params["loop_cut_hi"] > 1)) or \
                   ("loop_cut_hw" in tiling_params and (tiling_params["loop_cut_hw"] > 1))
