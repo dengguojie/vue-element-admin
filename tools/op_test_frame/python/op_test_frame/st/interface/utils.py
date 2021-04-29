@@ -239,6 +239,31 @@ def format_dict_to_list(dict_input):
     return str(dict_input).replace("{", "[").replace("}", "]")
 
 
+def map_type_to_expect_type(dtype):
+    """
+     mapping float to float32, because of <class 'numpy.float'> is
+     <class 'numpy.float64'>.
+    :param dtype: input dtype
+    :return: dtype
+    """
+    dtype_map = {"float": "float32"}
+    if dtype in dtype_map:
+        dtype = dtype_map.get(dtype)
+    return dtype
+
+
+def adapt_acl_datatype(dtype):
+    """
+    To adapt aclDataType, mapping float32 to float.
+    :param dtype: input dtype
+    :return: dtype
+    """
+    dtype_map = {"float32": "float"}
+    if dtype in dtype_map:
+        dtype = dtype_map.get(dtype)
+    return dtype
+
+
 def map_to_acl_datatype_enum(dtype_list):
     """
     map datatype to acl datatype enum
@@ -248,6 +273,7 @@ def map_to_acl_datatype_enum(dtype_list):
     result_str = ""
     acl_dtype_list = []
     for dtype in dtype_list:
+        dtype = adapt_acl_datatype(dtype)
         acl_dtype_list.append("ACL_" + str(dtype).upper())
     result_str += ", ".join(acl_dtype_list)
     return result_str

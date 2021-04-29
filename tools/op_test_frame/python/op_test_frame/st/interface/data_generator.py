@@ -50,8 +50,10 @@ class DataGenerator:
         :param distribution: the data distribution
         :return: the numpy data
         """
+        dtype = utils.map_type_to_expect_type(dtype)
         np_type = getattr(np, dtype)
         real_dtype = np_type
+
         if real_dtype == np.bool:
             min_value = 0
             max_value = 2  # [0, 2) in uniform
