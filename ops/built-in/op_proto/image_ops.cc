@@ -2794,4 +2794,73 @@ IMPLEMT_INFERFUNC(ImageUnfold, ImageUnfoldInferShape) {
 INFER_FUNC_REG(ImageUnfold, ImageUnfoldInferShape);
 // ----------------ImageUnfold END---------------------
 
+// ---------------IMGWarpOffsets Op start-------------------
+IMPLEMT_INFERFUNC(IMGWarpOffsets, IMGWarpOffsetsInferShape) {
+  std::string op_name = op.GetName();
+  // N,H,W,3
+  vector<int64_t> images_shape =
+      op.GetInputDescByName("images").GetShape().GetDims();
+
+  // N,4,h,w
+  vector<int64_t> offsets_shape =
+      op.GetInputDescByName("offsets").GetShape().GetDims();
+
+  // N,4,h,w,3
+  vector<int64_t> output_shape = UNKNOWN_RANK;
+  if ((images_shape != UNKNOWN_RANK) && (offsets_shape != UNKNOWN_RANK)) {
+    Shape unused;
+    if (WithRank(op.GetInputDesc(0), 4, unused, op_name.c_str()) !=
+        GRAPH_SUCCESS) {
+      std::string err_msg =
+          GetShapeErrMsg(0, DebugString(images_shape), "[N, H, W, 3]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg);
+      return GRAPH_FAILED;
+    }
+    // image channels: 3
+    if ((images_shape[3] != 3) && (images_shape[3] != UNKNOWN_DIM)) {
+      std::string err_msg = ConcatString(
+          "input[0] last dim should be 3, but got [", images_shape[3], "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
+      return GRAPH_FAILED;
+    }
+
+    if (WithRank(op.GetInputDesc(1), 4, unused, op_name.c_str()) !=
+        GRAPH_SUCCESS) {
+      std::string err_msg =
+          GetShapeErrMsg(1, DebugString(offsets_shape), "[N, 4, H, W]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg);
+      return GRAPH_FAILED;
+    }
+    // four points: 4
+    if ((offsets_shape[1] != 4) && (offsets_shape[1] != UNKNOWN_DIM)) {
+      std::string err_msg = ConcatString(
+          "input[1] second dim should be 4, but got [", offsets_shape[1], "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
+      return GRAPH_FAILED;
+    }
+
+    if (images_shape[0] != offsets_shape[0]) {
+      std::string err_msg = ConcatString(
+          "input[0] first dim[", images_shape[0],
+          "] should be equel to input[1] first dim[", offsets_shape[0], "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
+      return GRAPH_FAILED;
+    }
+    output_shape.clear();
+    output_shape.emplace_back(offsets_shape[0]);
+    output_shape.emplace_back(offsets_shape[1]);
+    output_shape.emplace_back(offsets_shape[2]);
+    output_shape.emplace_back(offsets_shape[3]);
+    output_shape.emplace_back(images_shape[3]);
+  }
+
+  DataType images_dtype = op.GetInputDescByName("images").GetDataType();
+  TensorDesc output_desc = op.GetOutputDescByName("warp_images");
+  output_desc.SetShape(ge::Shape(output_shape));
+  output_desc.SetDataType(images_dtype);
+  return op.UpdateOutputDesc("warp_images", output_desc);
+}
+INFER_FUNC_REG(IMGWarpOffsets, IMGWarpOffsetsInferShape);
+// ----------------IMGWarpOffsets END---------------------
+
 }  // namespace ge

@@ -77,6 +77,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/identity.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/image_warp_offsets.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
@@ -180,6 +181,7 @@ set(_cpu_kernels_ut_files
   testcase/top_k/src/top_k_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/where/src/where_utest.cpp
+  testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
 )
 
 add_executable(cpu_kernels_ut

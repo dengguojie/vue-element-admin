@@ -1802,5 +1802,22 @@ REG_OP(ImageUnfold)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .ATTR(padding_mode, String, "zeros")
     .OP_END_FACTORY_REG(ImageUnfold)
+	
+/**
+*@brief This operation select images to warp_images according to offsets.
+
+*@par Inputs:
+*@li images: 4-D Tensor with shape `[batch, height, width, 3]`.
+*@li offsets: 4-D Tensor with shape `[batch, 4, new_height, new_width]`.
+
+*@par Outputs:
+*warp_images: Returns 5-D Tensor with shape
+`[batch, 4, new_height, new_width, 3]` and the same dtype as `images`.
+*/
+REG_OP(IMGWarpOffsets)
+    .INPUT(images, TensorType({DT_UINT8, DT_FLOAT16, DT_FLOAT}))
+    .INPUT(offsets, TensorType({DT_FLOAT, DT_INT32}))
+    .OUTPUT(warp_images, TensorType({DT_UINT8, DT_FLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(IMGWarpOffsets)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_IMAGE_OPS_H_

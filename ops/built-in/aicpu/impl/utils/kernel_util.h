@@ -37,6 +37,26 @@ const uint32_t kDynamicInput = -1;
 const uint32_t kDynamicOutput = -2;
 const uint64_t kEigenAlignmentBytes = 16;
 
+/*
+ * str cat util function
+ * param[in] params need concat to string
+ * return concatted string
+ */
+template <typename T>
+std::string ConcatString(T arg) {
+  std::ostringstream oss;
+  oss << arg;
+  return oss.str();
+}
+
+template <typename T, typename... Ts>
+std::string ConcatString(T arg, Ts... arg_left) {
+  std::ostringstream oss;
+  oss << arg;
+  oss << ConcatString(arg_left...);
+  return oss.str();
+}
+
 /**
  * @brief get debug string of vector
  * @param values values in vector

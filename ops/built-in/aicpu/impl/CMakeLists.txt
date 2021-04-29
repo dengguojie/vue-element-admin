@@ -12,6 +12,7 @@ set(local_kernels_src_files
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/less.cc
     kernels/normalized/identity.cc
+    kernels/normalized/image_warp_offsets.cc
     kernels/normalized/logging.cc
     kernels/normalized/mul.cc
     kernels/normalized/not_equal.cc
