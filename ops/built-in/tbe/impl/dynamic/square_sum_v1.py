@@ -136,6 +136,7 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
     input_dtype = dtype.lower()
 
     input_axis = {"shape": [len(attr1),], "value": attr1, "rel_pos_to_reduce": "axis"}
+    input_x["rel_pos_to_reduce"] = "before"
     ins = classify([input_x, input_axis], OpPatternMode.REDUCE,
                    {"keepdims": attr2 is True})
     schedules, tensors = [], []
