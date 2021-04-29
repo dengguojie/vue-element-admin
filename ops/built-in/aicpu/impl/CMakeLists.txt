@@ -209,7 +209,7 @@ set(local_kernels_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}/utils
     ${TOP_DIR}/inc/aicpu/cpu_kernels
     ${TOP_DIR}/inc/external/aicpu
-    ${TOP_DIR}/third_party/tensorflow/compile_deps/tf-1.15.0/include
+    ${TOP_DIR}/third_party/eigen/src/eigen-3.3.7
     ${TOP_DIR}/inc
     ${TOP_DIR}/libc_sec/include
 )
