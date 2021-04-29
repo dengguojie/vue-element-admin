@@ -53,3 +53,26 @@ TEST_F(arg_min_infer_test, arg_min_infer_test_1) {
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
 }
+
+// input dimension is const
+TEST_F(arg_min_infer_test, arg_min_infer_test_2) {
+  //new op
+  ge::op::ArgMin op;
+  // set input info
+  ge::TensorDesc tensor_desc_x(ge::Shape({1, 5}), ge::FORMAT_ND, ge::DT_INT32);
+  op.UpdateInputDesc("x", tensor_desc_x);
+  op.SetAttr("dtype", ge::DT_INT64);
+
+  ge::Tensor constTensor;
+  ge::TensorDesc constDesc(ge::Shape({1}), ge::FORMAT_ND, ge::DT_INT32);
+  constDesc.SetSize(1 * sizeof(int32_t));
+  constTensor.SetTensorDesc(constDesc);
+  int32_t constData[1] = {3};
+  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
+  auto const0 = ge::op::Constant().set_attr_value(constTensor);
+  op.set_input_dimension(const0);
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

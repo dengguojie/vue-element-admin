@@ -1446,21 +1446,26 @@ INFER_FUNC_REG(OrderedMapUnstage, OrderedMapUnstageInfer);
 IMPLEMT_INFERFUNC(Barrier, BarrierInfer) {
   std::vector<ge::DataType> component_types;
   if (op.GetAttr("component_types", component_types) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr component_types");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("failed to get attr[component_types]."));
     return GRAPH_FAILED;
   }
   if (component_types.size() < 1) {
-    OP_LOGE(op.GetName().c_str(), "The length of component_types should not be less than 1.");
+    string err_msg = ConcatString(
+        "the length of attr[component_types] should not be less than 1, ",
+        "but get ", component_types.size(), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Shape out_shape;
   if (Vector(2, out_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to create vector.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        string("failed to create vector."));
     return GRAPH_FAILED;
   }
   TensorDesc output_desc = op.GetOutputDesc("handle");
-  output_desc.SetShape(out_shape);
   output_desc.SetDataType(DT_STRING_REF);
+  output_desc.SetShape(out_shape);
   op.UpdateOutputDesc("handle", output_desc);
   return GRAPH_SUCCESS;
 }
@@ -1470,22 +1475,36 @@ INFER_FUNC_REG(Barrier, BarrierInfer);
 IMPLEMT_INFERFUNC(BarrierInsertMany, BarrierInsertManyInfer) {
   TensorDesc keys_desc = op.GetInputDesc("keys");
   TensorDesc values_desc = op.GetInputDesc("values");
+  TensorDesc handle_desc = op.GetInputDesc("handle");
   Shape handle_shape, keys_shape, values_shape;
-  if (WithRank(op.GetInputDesc("handle"), 1, handle_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "handle's rank should be 1.");
+  string err_msg;
+  if (WithRank(handle_desc, 1, handle_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      err_msg = ConcatString(
+          "failed to call WithRank function, the rank of input[handle] should be 1, ",
+          "but get ", handle_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
   int64_t unused_dim;
   if (WithValue(handle_shape.GetDim(0), 2, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "handle's dim 0 should be 2.");
+    err_msg = ConcatString(
+        "failed to call WithValue function, dim[0] of input[handle] should be 2, ",
+        "but get ", handle_shape.GetDim(0));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(keys_desc, 1, keys_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "keys' rank should be 1.");
+    err_msg = ConcatString(
+        "failed to call WithRank function, the rank of input[keys] should be 1, ",
+        "but get ", keys_desc.GetShape().GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRankAtLeast(values_desc, 1, values_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "values' rank should be at least 1.");
+    err_msg = ConcatString(
+        "failed to call WithRankAtLeast function, ",
+        "the rank of input[values] should be at least 1, but get ",
+        values_desc.GetShape().GetDimNum());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   graphStatus status;
@@ -1493,7 +1512,10 @@ IMPLEMT_INFERFUNC(BarrierInsertMany, BarrierInsertManyInfer) {
   Vector(values_shape.GetDim(0), values_dim_zero_shape);
   status = Merge(keys_shape, values_dim_zero_shape, handle_shape, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Can't merge keys_shape and the vector with length of vectors.");
+    err_msg = ConcatString(
+        "failed to call Merge function, can't merge the shape of input[keys]'s and ",
+        "the shape whose value is equal to dim[0] of input[values].");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1504,11 +1526,15 @@ INFER_FUNC_REG(BarrierInsertMany, BarrierInsertManyInfer);
 IMPLEMT_INFERFUNC(BarrierTakeMany, BarrierTakeManyInfer) {
   std::vector<ge::DataType> component_types;
   if (op.GetAttr("component_types", component_types) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr component_types");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        string("failed to get attr[component_types]"));
     return GRAPH_FAILED;
   }
   if (component_types.size() < 1) {
-    OP_LOGE(op.GetName().c_str(), "The length of component_types should not be less than 1.");
+    string err_msg = ConcatString(
+        "the length of attr[component_types] should not be less than 1, but get ",
+        component_types.size(), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   bool component_types_flag = true;
@@ -1518,7 +1544,8 @@ IMPLEMT_INFERFUNC(BarrierTakeMany, BarrierTakeManyInfer) {
     }
   }
   if (component_types_flag == false) {
-    OP_LOGE(op.GetName().c_str(), "All menbers of component_types should be the same.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        string("all menbers of attr[component_types] should be the same."));
     return GRAPH_FAILED;
   }
   graphStatus status;
@@ -1532,7 +1559,9 @@ IMPLEMT_INFERFUNC(BarrierTakeMany, BarrierTakeManyInfer) {
     output_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
     status = op.UpdateOutputDesc(outputs_name[i], output_desc);
     if (status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to update %s desc.", outputs_name[i].c_str());
+      string error_msg = ConcatString(
+         "failed to update output[" , outputs_name[i], "] desc");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1544,7 +1573,8 @@ IMPLEMT_INFERFUNC(BarrierTakeMany, BarrierTakeManyInfer) {
     output_desc.SetDataType(component_types[0]);
     status = op.UpdateDynamicOutputDesc("values", i, output_desc);
     if (status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to update output desc.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+          std::string("failed to update output[values] desc."));
       return GRAPH_FAILED;
     }
   }
@@ -1556,13 +1586,21 @@ INFER_FUNC_REG(BarrierTakeMany, BarrierTakeManyInfer);
 IMPLEMT_INFERFUNC(BarrierClose, BarrierCloseInfer) {
   Shape shape;
   int64_t unused_dim;
+  string error_msg;
   for (size_t i = 0; i < op.GetInputsSize(); ++i) {
     if (WithRank(op.GetInputDesc(i), 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "The rank of input %d should be 1.", i);
+      error_msg = ConcatString(
+        "failed to call WithRank function, the rank of input[", i,
+        "] should be 1, but get ",
+        op.GetInputDesc(i).GetShape().GetDimNum(), ".");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
     if (WithValue(shape.GetDim(0), 2, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "dim[0] of handle should be 2.");
+      error_msg = ConcatString(
+        "failed to call WithValue function, dim[0] of handle should be 2, but get ",
+        shape.GetDim(0), ".");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1574,21 +1612,30 @@ INFER_FUNC_REG(BarrierClose, BarrierCloseInfer);
 IMPLEMT_INFERFUNC(BarrierReadySize, BarrierReadySizeInfer) {
   Shape shape;
   int64_t unused_dim;
+  string error_msg;
   for (size_t i = 0; i < op.GetInputsSize(); ++i) {
     if (WithRank(op.GetInputDesc(i), 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "The rank of input %d should be 1.", i);
+      error_msg = ConcatString(
+          "failed to call WithRank function, the rank of input[", i,
+          "] should be 1, but get ",
+          op.GetInputDesc(i).GetShape().GetDimNum(), ".");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
     if (WithValue(shape.GetDim(0), 2, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "dim[0] of handle should be 2.");
+      error_msg = ConcatString(
+          "failed to call WithValue function, the dim[0] of input[",
+          i, "] should be 2, but get ", shape.GetDim(0), ".");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
   }
   TensorDesc output_desc = op.GetOutputDesc("size");
-  output_desc.SetShape(Shape());
   output_desc.SetDataType(DT_INT32);
+  output_desc.SetShape(Shape());
   if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update size desc.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        string("failed to update output[size] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1601,11 +1648,18 @@ IMPLEMT_INFERFUNC(BarrierIncompleteSize, BarrierIncompleteSizeInfer) {
   int64_t unused_dim;
   for (size_t i = 0; i < op.GetInputsSize(); ++i) {
     if (WithRank(op.GetInputDesc(i), 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "The rank of input %d should be 1.", i);
+      string error_msg = ConcatString(
+          "failed to call WithRank function, the rank of input[", i,
+          "] should be 1, but get ",
+          op.GetInputDesc(i).GetShape().GetDimNum(), ".");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
     if (WithValue(shape.GetDim(0), 2, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "dim[0] of handle should be 2.");
+      string error_msg = ConcatString(
+          "failed to call WithValue function, dim[0] of input[",
+          i, "] should be 2, but get ", shape.GetDim(0), ".");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1613,7 +1667,8 @@ IMPLEMT_INFERFUNC(BarrierIncompleteSize, BarrierIncompleteSizeInfer) {
   output_desc.SetShape(Shape());
   output_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update size desc.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        string("failed to update output[size] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

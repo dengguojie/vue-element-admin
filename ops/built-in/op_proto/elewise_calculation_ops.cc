@@ -2182,18 +2182,18 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   auto input_desc = op_info->MutableInputDesc("x");
   auto const_desc = op_info->MutableInputDesc("dimension");
   auto y_desc = op_info->MutableOutputDesc("y");
-  // get x shape
-  auto x_shape = input_desc->MutableShape().GetDims();
 
   // get and set output dtype
   ge::DataType dtype;
   if (op.GetAttr("dtype", dtype) == GRAPH_SUCCESS) {
     y_desc->SetDataType(dtype);
   } else {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
 
+  // get x shape
+  auto x_shape = input_desc->MutableShape().GetDims();
   // if x_shape == -2, set output -2
   if (IsUnknownRankShape(x_shape)) {
       y_desc->SetShape(GeShape(x_shape));
@@ -2210,20 +2210,25 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   // read dimension const value
   GeTensorPtr dimension_tensor = nullptr;
   vector<int64_t> dimension_value;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "dimension", dimension_tensor)) {
+  if (NodeUtils::GetInputConstData(node, "dimension", dimension_tensor) ==
+      GRAPH_SUCCESS) {
     auto const_dtype = const_desc->GetDataType();
     GetConstValue(op, dimension_tensor, const_dtype, dimension_value);
     // verify dimension_value
     if (dimension_value.size() != 1) {
-      OP_LOGE(op.GetName().c_str(), "The length of dimension value must be equal to 1, but got %d.",
-              dimension_value.size());
+      string error_msg = ConcatString(
+          "the element size of input[dimension] should be equal to 1, but get ",
+          dimension_value.size(), ".");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
     int64_t dimension = dimension_value[0] < 0 ? dimension_value[0] + x_shape.size() : dimension_value[0];
     if (dimension >= x_shape.size()) {
-      OP_LOGE(op.GetName().c_str(),
-              "The dimension value must be range at input shape size, but got dimension value %d, input shape size %d.",
-              dimension_value[0], x_shape.size());
+      string error_msg = ConcatString(
+          "the value of input[dimension] must be range at input shape size,",
+          " but get input[dimension] value ", dimension_value[0],
+          ", input[x] shape size ", x_shape.size(), ".");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
       return GRAPH_FAILED;
     }
 
@@ -2243,8 +2248,8 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   }
 
   // dimension is not const, set all output is -1, range is [1, -1]
-  vector<int64_t> output_shape;
   std::vector<std::pair<int64_t, int64_t>> output_range;
+  vector<int64_t> output_shape;
   for (int64_t item = 0; item < (x_shape.size() - 1); ++item) {
     output_shape.push_back(-1);
   }
@@ -3764,12 +3769,12 @@ IMPLEMT_VERIFIER(MulNoNan, MulNoNanVerify) {
 VERIFY_FUNC_REG(MulNoNan, MulNoNanVerify);
 
 IMPLEMT_COMMON_INFERFUNC(MulNoNanInferShape) {
-	bool is_dynamic_output = true;
-	if(InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", 
-											is_dynamic_output)) {
-		return GRAPH_SUCCESS;
-	}
-	return GRAPH_FAILED;
+  bool is_dynamic_output = true;
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y",
+      is_dynamic_output)) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 COMMON_INFER_FUNC_REG(MulNoNan, MulNoNanInferShape);
 // ------------MulNoNan END
@@ -3799,7 +3804,7 @@ IMPLEMT_VERIFIER(CosineEmbeddingLoss, CosineEmbeddingLossVerify) {
   Shape shape_x1 = op.GetInputDesc("x1").GetShape();
   Shape shape_x2 = op.GetInputDesc("x2").GetShape();
   if ((shape_x1.GetDimNum() < 2) && (shape_x2.GetDimNum() < 2)) {
-    string err_msg1 = ConcatString("input x1 or x2 dims must bigger than 1, shape_x1.GetDimNum():",shape_x1.GetDimNum(), ", shape_x2.GetDimNum():",shape_x2.GetDimNum()); 
+    string err_msg1 = ConcatString("input x1 or x2 dims must bigger than 1, shape_x1.GetDimNum():",shape_x1.GetDimNum(), ", shape_x2.GetDimNum():",shape_x2.GetDimNum());
     std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -4712,7 +4717,7 @@ COMMON_INFER_FUNC_REG(Tan, TanInferShape);
 // --------------------Tan Op End----------
 
 // ----------------Lerp Begin-------------------
-bool InferShapeAndTypeLerp(Operator& op, 
+bool InferShapeAndTypeLerp(Operator& op,
                            const string& input_name1, const string& input_name2, 
                            const string& input_name3, const string& output_name) {
   TensorDesc v_output_desc = op.GetOutputDesc(output_name);
@@ -4819,7 +4824,7 @@ IMPLEMT_VERIFIER(Mod, ModVerify) {
 VERIFY_FUNC_REG(Mod, ModVerify);
 
 IMPLEMT_COMMON_INFERFUNC(ModInferShape) {
-  bool is_dynamic_output = true; 
+  bool is_dynamic_output = true;
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
 	}
@@ -4858,7 +4863,7 @@ IMPLEMT_VERIFIER(Xlogy, XlogyVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(XlogyInferShape) {
-  bool is_dynamic_output = true; 
+  bool is_dynamic_output = true;
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
@@ -5190,7 +5195,7 @@ bool IsArgMaxGradCheckPass(Operator& op,
         return false;
     }
 
-    if ((shape_var_list.size() > 1) && 
+    if ((shape_var_list.size() > 1) &&
         (shape_var_list.size() != shape_updates_list.size() + 1)) {
         OP_LOGE("The dim size of var should biger than updates(indices) 1.");
         return false;
@@ -5322,7 +5327,7 @@ bool IsArgMaxGradDCheckPass(Operator& op,
         return false;
     }
 
-    if ((shape_var_list.size() > 1) && 
+    if ((shape_var_list.size() > 1) &&
         (shape_var_list.size() != shape_updates_list.size() + 1)) {
         OP_LOGE("The dim size of var should biger than updates(indices) 1.");
         return false;

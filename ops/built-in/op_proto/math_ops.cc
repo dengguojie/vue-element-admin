@@ -252,11 +252,12 @@ IMPLEMT_INFERFUNC(Betainc, BetaincInfer) {
 INFER_FUNC_REG(Betainc, BetaincInfer);
 
 IMPLEMT_INFERFUNC(Zeta, ZetaInfer) {
-  DataType x_type = op.GetInputDesc("x").GetDataType();
   TensorDesc out_desc = op.GetOutputDesc("z");
+  DataType x_type = op.GetInputDesc("x").GetDataType();
   out_desc.SetDataType(x_type);
-  if (op.UpdateOutputDesc("z", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update z failed");
+  if (GRAPH_SUCCESS != op.UpdateOutputDesc("z", out_desc)) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("failed to update output[z] desc."));
     return GRAPH_FAILED;
   }
   auto lambdaFunc = BROADCAST_INFER("x", "q", "z");

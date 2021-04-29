@@ -23,27 +23,31 @@
 #include "common_shape_fns.h"
 #include "resource_variable_ops_shape_fns.h"
 #include "util/util.h"
+#include "util/error_util.h"
 
 namespace ge {
 
 IMPLEMT_INFERFUNC(VarHandleOp, VarHandleOpInfer) {
   TensorDesc outputDesc = op.GetOutputDesc("y");
-  outputDesc.SetShape(Shape());
   outputDesc.SetDataType(DT_RESOURCE);
-  if (op.UpdateOutputDesc("y", outputDesc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update outputDesc desc failed");
+  outputDesc.SetShape(Shape());
+  if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", outputDesc)) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
 
   Operator::OpType type;
-  if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed");
+  if (GRAPH_SUCCESS != op.GetAttr("dtype", type)) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
 
   Operator::OpListInt dims;
-  if (op.GetAttr("shape", dims) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr shape failed");
+  if (GRAPH_SUCCESS != op.GetAttr("shape", dims)) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get attr[shape] failed."));
     return GRAPH_FAILED;
   }
 

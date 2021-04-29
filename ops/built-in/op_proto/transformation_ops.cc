@@ -1561,9 +1561,9 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchInferShape) {
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
-  auto input_dims = input_desc->MutableShape().GetDims();
-  auto input_dtype = input_desc->GetDataType();
   auto input_format = input_desc->GetFormat();
+  auto input_dtype = input_desc->GetDataType();
+  auto input_dims = input_desc->MutableShape().GetDims();
 
   auto output_desc = op_info->MutableOutputDesc("y");
   output_desc->SetDataType(input_dtype);
@@ -1571,8 +1571,8 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchInferShape) {
   // get attr block_size
   int64_t block_size;
   if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("get attr[block_size] failed."));
     return GRAPH_FAILED;
   }
 
@@ -1592,7 +1592,10 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchInferShape) {
 
   // if paddings are const node, verfify const sizes
   if (padding_done && paddings.size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "The paddings size must be equal to 4, but got %d.", paddings.size());
+    string error_msg = ConcatString(
+        "the element size of input[paddings] must be equal to 4, but get ",
+        paddings.size(), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
@@ -1698,21 +1701,24 @@ IMPLEMT_VERIFIER(SpaceToBatch, SpaceToBatchVerify) {
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
   if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
-    OpsAttrValueErrReport(op.GetName(), "input shape size", "greater than or equal to 4",
-                          ConcatString(input_dims.size()));
-    OP_LOGE(op.GetName().c_str(), "Input shape size must be greater than or equal to 4, but got %d.", input_dims.size());
+    string error_msg = ConcatString(
+        "the rank of input[x] must be greater than or equal to 4, but get ",
+        input_dims.size(), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
   // check block size
   int64_t block_size;
   if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[block_size] failed."));
     return GRAPH_FAILED;
   }
   if (block_size < 2) {
-    OpsAttrValueErrReport(op.GetName(), "block_size", "greater than or equal to 2", ConcatString(block_size));
-    OP_LOGE(op.GetName().c_str(), "The block_size must be greater than or equal to 2, but got %d.", block_size);
+    string error_msg = ConcatString(
+        "the block_size must be greater than or equal to 2, but get ",
+        block_size, ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2849,9 +2855,9 @@ IMPLEMT_INFERFUNC(Col2im, Col2imInferShape) {
   Format input_format = input_desc.GetFormat();
   output_desc.SetFormat(input_format);
 
-  Shape input_shape = input_desc.GetShape();  
+  Shape input_shape = input_desc.GetShape();
   vector<int64_t> input_size = input_shape.GetDims();
-  
+
   Tensor output_size_tensor;
   if (op.GetInputConstData("output_size", output_size_tensor) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input[output_size], get failed.");
@@ -2882,7 +2888,7 @@ IMPLEMT_INFERFUNC(Col2im, Col2imInferShape) {
   vector<int64_t> output_shape(
     {input_size[0], input_size[1], output_size_value[0], output_size_value[1]}
   );
-  
+
   output_desc.SetShape(Shape(output_shape));
 
   (void)op.UpdateOutputDesc("y", output_desc);

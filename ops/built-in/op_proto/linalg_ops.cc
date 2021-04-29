@@ -686,44 +686,62 @@ INFER_FUNC_REG(MatrixSquareRoot, MatrixSquareRootInfer);
 
 IMPLEMT_INFERFUNC(TridiagonalSolve, TridiagonalSolveInfer) {
   Shape lhs;
-  if (WithRankAtLeast(op.GetInputDesc(0), 2, lhs, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input diagonals must be at least 2.");
+  std::string error_msg;
+  TensorDesc diagonals_desc = op.GetInputDesc(0);
+  if (WithRankAtLeast(diagonals_desc, 2, lhs, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRankAtLeast function, ",
+        "the rank of input[diagonals] must be at least 2, but get ",
+        diagonals_desc.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
   Shape rhs;
-  if (WithRankAtLeast(op.GetInputDesc(1), 2, rhs, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input rhs must be at least 2.");
+  TensorDesc rhs_desc = op.GetInputDesc(1);
+  if (WithRankAtLeast(rhs_desc, 2, rhs, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRankAtLeast function, ",
+        "the rank of input[rhs] must be at least 2, but get ",
+        rhs_desc.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
   Shape lhs_batch_shape;
   if (SubShape(lhs, 0, -2, 1, lhs_batch_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Get lhs_batch_shape Failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        std::string("fialed to call SubShape function, get input[lhs] shape failed."));
     return GRAPH_FAILED;
   }
   Shape rhs_batch_shape;
   if (SubShape(rhs, 0, -2, 1, rhs_batch_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Get rhs_batch_shape Failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        std::string("fialed to call SubShape function, get input[rhs] shape failed."));
     return GRAPH_FAILED;
   }
 
   if (Merge(lhs_batch_shape, rhs_batch_shape, lhs_batch_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Merge lhs_batch_shape Failed.");
+    error_msg = ConcatString("fialed to call Merge function, ",
+        "merge the shape of input[rhs] and input[rhs] failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
-  int64_t existing_lhs = lhs.GetDimNum();
   int64_t existing_rhs = rhs.GetDimNum();
-  int64_t m_lhs = lhs.GetDim(existing_lhs - 1);
+  int64_t existing_lhs = lhs.GetDimNum();
   int64_t m_rhs = rhs.GetDim(existing_rhs - 2);
+  int64_t m_lhs = lhs.GetDim(existing_lhs - 1);
   if (Merge(m_lhs, m_rhs, m_lhs) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Merge two dimension failed.");
+    error_msg = ConcatString("fialed to call Merge function, merge dim[",
+        (existing_rhs - 2), "] of input[rhs] and dim[", (existing_lhs - 1),
+        "] of input[diagonals] failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
   int64_t lhs_dim = lhs.GetDim(existing_lhs - 2);
   if (lhs_dim != 3) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "The value of lhs_dim must be 3.");
+    error_msg = ConcatString("the dim[", (existing_lhs - 2),
+        "] of input[diagonals] should be 3, but get ", lhs_dim, ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
@@ -732,7 +750,8 @@ IMPLEMT_INFERFUNC(TridiagonalSolve, TridiagonalSolveInfer) {
   DataType type = op.GetInputDesc("diagonals").GetDataType();
   y_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output y.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("fail to update output[y] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

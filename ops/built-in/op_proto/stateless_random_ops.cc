@@ -21,6 +21,7 @@
 #include "inc/stateless_random_ops.h"
 #include "op_log.h"
 #include "util/common_shape_fns.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(StatelessMultinomial, StatelessMultinomialInfer) {
@@ -29,40 +30,57 @@ IMPLEMT_INFERFUNC(StatelessMultinomial, StatelessMultinomialInfer) {
   auto seedTensor = op.get_input_desc_seed();
 
   Shape seed;
+  std::string error_msg;
   if (WithRank(seedTensor, 1, seed, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input seed rank must be 1.");
+    error_msg = ConcatString("failed to call WithRank function, ",
+        "the rank of input[seed] must be 1, but get ",
+        seedTensor.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
   if (seed.GetDim(0) != 2) {
-    OP_LOGE(op.GetName().c_str(), "The value of dim-0 for seed must be 2, real value is %ld.", seed.GetDim(0));
+    error_msg = ConcatString("the value of dim[0] for input[seed] ",
+        "must be 2, but the real value is", seed.GetDim(0), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
   Shape logits_shape;
   Shape unused;
   if (WithRank(logitsTensor, 2, logits_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input logits_shape rank must be 2.");
+    error_msg = ConcatString("failed to call WithRank function, ",
+        "the rank of input[logits] must be 2, but get ",
+        logitsTensor.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(num_samplesTensor, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input num_samples rank must be 0.");
+    error_msg = ConcatString("failed to call WithRank function, ",
+        "the rank of input[num_samples] must be 0, but get ",
+        num_samplesTensor.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
   DataType dtype = op.get_input_desc_num_samples().GetDataType();
   if (dtype != DT_INT32) {
-    OP_LOGE(op.GetName().c_str(), "input num_samples must be DT_INT32.");
+    error_msg = ConcatString("the dtype of input[num_samples] must be DT_INT32,",
+        " but get ", DTypeStr(dtype), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
   Tensor numSamplesTensor;
   if (op.GetInputConstData("num_samples", numSamplesTensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetInputConstData error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get input[num_samples] const data fialed."));
     return GRAPH_FAILED;
   }
   int64_t numSamples;
   if (MakeDimForScalarInput(numSamplesTensor, numSamples, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input numSamples MakeDimForScalarInput error.");
+    error_msg = ConcatString("failed to call MakeDimForScalarInput function ",
+        "make dim for input[num_samples] failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
@@ -72,7 +90,8 @@ IMPLEMT_INFERFUNC(StatelessMultinomial, StatelessMultinomialInfer) {
   TensorDesc outputDesc = op.GetOutputDesc("y");
   DataType output_type;
   if (op.GetAttr("output_dtype", output_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr output_dtype error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get attr[output_dtype] fialed."));
   }
 
   outputDesc.SetDataType(output_type);
@@ -84,33 +103,51 @@ INFER_FUNC_REG(StatelessMultinomial, StatelessMultinomialInfer);
 
 IMPLEMT_INFERFUNC(StatelessRandomUniformInt, StatelessRandomUniformIntInfer) {
   Shape unused;
-  if (WithRank(op.GetInputDesc(2), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input minval rank must be 0");
+  std::string error_msg;
+  TensorDesc minval_desc = op.GetInputDesc(2);
+  if (WithRank(minval_desc, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRank function, ",
+        "the rank of input[minval] must be 0, but get ",
+        minval_desc.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(3), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input maxval rank must be 0");
+  TensorDesc maxval_desc = op.GetInputDesc(3);
+  if (WithRank(maxval_desc, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRank function, ",
+        "the rank of input[maxval] must be 0, but get ",
+        maxval_desc.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
   Shape seed;
-  if (WithRank(op.GetInputDesc(1), 1, seed, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input seed rank must be 1.");
+  TensorDesc seed_desc = op.GetInputDesc(1);
+  if (WithRank(seed_desc, 1, seed, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    error_msg = ConcatString("failed to call WithRank function, ",
+        "the rank of input[seed] must be 1, but get ",
+        seed_desc.GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
   if (seed.GetDim(0) != 2) {
-    OP_LOGE(op.GetName().c_str(), "The value of dim-0 for seed must be 2, real value is %ld.", seed.GetDim(0));
+    error_msg = ConcatString("the value of dim[0] for input[seed] must be 2, ",
+        "but the real value is ", seed.GetDim(0), ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
   Shape shape;
   Tensor shape_tensor;
   if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get shape_tensor error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("failed to get input[shape] const data."));
     return GRAPH_FAILED;
   }
   if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get shape error.");
+    error_msg = ConcatString("failed to call MakeShapeFromShapeTensor function,",
+        " make shape for output[y] failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
