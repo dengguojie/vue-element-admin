@@ -45,7 +45,7 @@ run_ut() {
   local pr_file="$1"
   local supported_soc="Ascend910A,Ascend310"
 
-  python3.7 "${CANN_ROOT}/auto_schedule/python/tests/sch_run_ut.py"                     \
+  python3 "${CANN_ROOT}/auto_schedule/python/tests/sch_run_ut.py"                     \
                 --soc_version="${supported_soc}"                            \
                 --simulator_lib_path="${BASE_HOME}/toolkit/tools/simulator" \
                 --pr_changed_file="${pr_file}"                              \

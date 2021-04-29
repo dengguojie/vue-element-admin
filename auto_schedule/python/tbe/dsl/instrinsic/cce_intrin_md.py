@@ -3218,13 +3218,14 @@ def vec_cmd_factory(ir_builder, op_cmd, src_buffers, dst_buffers, op_length,
     if repeat_cal_dtype is None:
         repeat_cal_dtype = src_dtype
 
-    cal_bit_len = cce_util.get_bits_of(repeat_cal_dtype)
-
     # logic use vmul vadd vsub vcmp vsel, only support float16, so
     # 1. int8 -> float16 2.  mul vadd vsub vcmp vsel 3. float16 ->int8
     # bit len use float16 length
     if op_cmd == 'vlogic':
         cal_bit_len = 16
+    else:
+        cal_bit_len = cce_util.get_bits_of(repeat_cal_dtype)
+
     cal_once_len = block_len*8//cal_bit_len
 
     # in reduce last axis case , we add pad for speel_num so that speel_num = iter_var*op_length
