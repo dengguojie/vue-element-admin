@@ -67,6 +67,43 @@ def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segme
 
 
 # pylint: disable=unused-argument,invalid-name
+def check_supported_with_reason(x, segment_ids, y, num_segments, kernel_name="unsorted_segment_min_d"):
+    """
+    fusion pass test if num_segments is int32
+    num_segments should > 0 and x's first dim != segment_ids's first dim
+    (num_segments + x's first dim) * BLOCK_LENGTH + (
+        (BLOCK_LENGTH / 2 - x's first dim % (BLOCK_LENGTH / 4)) + x's first dim) * (BLOCK_LENGTH / 8)
+    should <= UB_SIZE_MAX / 2
+    """
+    shape = x.get("ori_shape")
+    dtype = x.get("dtype").lower()
+    segment_ids_shape = segment_ids.get("ori_shape")
+    segment_ids_dtype = segment_ids.get("dtype").lower()
+    check_list = ("float16", "float32", "int32", "int16")
+    para_check.check_dtype(dtype, check_list, param_name="x")
+    check_list_ids = ("int32")
+    para_check.check_dtype(segment_ids_dtype, check_list_ids, param_name="segment_ids")
+    if num_segments <= 0:
+        error_manager_vector.raise_err_check_params_rules(kernel_name, 'num_segments must greater than 0',
+                                                          "num_segments", num_segments)
+    first_shape = int(shape[0])
+    ids_length = int(segment_ids_shape[0])
+    if first_shape != ids_length:
+        error_manager_vector.raise_err_specific_reson(
+            kernel_name,
+            "only supported x.shape[0] equals to segment_ids.shape[0], while x.shape[0] is %d, segment_ids.shape[0] is %d"\
+            % (first_shape, ids_length))
+    total_ub_size = (num_segments + first_shape) * BLOCK_LENGTH + (
+        (BLOCK_LENGTH // 2 - first_shape % (BLOCK_LENGTH // 4)) + first_shape) * (BLOCK_LENGTH // 8)
+    # not supported in aicore now
+    if total_ub_size > UB_SIZE_MAX // 2:
+        reason = "total_ub_size is bigger than (UB_SIZE_MAX // 2), not supported in aicore now, "\
+                 "total_ub_size:%s, UB_SIZE_MAX:%s" % (total_ub_size, UB_SIZE_MAX)
+        return False, reason
+    return True
+
+
+# pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("unsorted_segment_min_d")
 def unsorted_segment_min_d_compute(x, segment_ids, y, num_segments, kernel_name="unsorted_segment_min_d"):
     """

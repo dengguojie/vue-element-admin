@@ -273,6 +273,79 @@ def check_supported(x, segment_ids, num_segments, y,
     return True
 
 
+def check_supported_with_reason(x, segment_ids, num_segments, y,
+                                kernel_name="unsorted_segment_sum"):
+    """
+    dynamic -2 not support
+    dynamic -1 support
+    segment_ids int64 not support
+    static shape x_shape ends with 1 or lens equals 1 not support
+    temporary support x_dtype of "float32" in compilestatic process
+    """
+    shapex = x.get("ori_shape")
+    shapeid = segment_ids.get("ori_shape")
+    shape_seg = num_segments.get("ori_shape")
+    shapey = y.get("ori_shape")
+    id_dtype = segment_ids.get("dtype").lower()
+    x_dtype = x.get("dtype").lower()
+    dynamic_x = True
+    dynamic_id = True
+    dynamic_seg = True
+    dynamic_y = True
+
+    if id_dtype != "int32":
+        reason = "the segment_ids's dytpe not equeal int32, segment_ids_dtype=%s" % id_dtype
+        return False, reason
+    if x_dtype in ("int8", "uint8"):
+        reason = "the x_dtype in (\"int8\", \"uint8\"), x_dtype=%s" % x_dtype
+        return False, reason
+
+    for i in range(len(shapex)):
+        if shapex[i] == -2:
+            reason = "dynamic shape is not supported by aicore, shapex[%s] == -2" % i
+            return False, reason
+        if shapex[i] == -1:
+            reason = "dynamic shape is not supported by aicore, shapex[%s] == -1" % i
+            dynamic_x = False, reason
+            break
+    for i in range(len(shapeid)):
+        if shapeid[i] == -2:
+            reason = "dynamic shape is not supported by aicore, shapeid[%s] == -2" % i
+            return False, reason 
+        if shapeid[i] == -1:
+            reason = "dynamic shape is not supported by aicore, shapeid[%s] == -1" % i
+            dynamic_id = False, reason
+            break
+    for i in range(len(shape_seg)):
+        if shape_seg[i] == -2:
+            reason = "dynamic shape is not supported by aicore, shape_seg[%s] == -2" % i
+            return False, reason
+        if shape_seg[i] == -1:
+            reason = "dynamic shape is not supported by aicore, shape_seg[%s] == -1" % i
+            dynamic_seg = False, reason
+            break
+    for i in range(len(shapey)):
+        if shapey[i] == -2:
+            reason = "dynamic shape is not supported by aicore, shapey[%s] == -2" % i
+            return False, reason
+        if shapey[i] == -1:
+            dynamic_y = False
+            break
+
+    if dynamic_x and dynamic_id and dynamic_seg and dynamic_y:
+        if x_dtype in ("float16", "int32"):
+            reason = "the x_dtype  in (\"int8\", \"uint8\"), x_dtype=%s" % x_dtype
+            return False, reason
+        # when the input0_shape ends wtih 1, the compilestatic process dose not support
+        if shapex[-1] == 1 or len(shapex) == 1:
+            reason = "when the input0_shape ends wtih 1, the compilestatic process dose not support, "\
+                     "shapex[-1]:%s, len(shapex):%s" % (shapex[-1], len(shapex))
+            return False, reason
+
+    return True, ""
+
+
+
 class UnsortedSegmentSum():
     """
         Function: use to store concat base parameters

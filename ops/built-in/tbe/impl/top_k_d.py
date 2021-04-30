@@ -1520,6 +1520,68 @@ def check_supported(input_tensor,
     return True
 
 
+# pylint: disable=unused-argument,redefined-builtin
+def check_supported_with_reason(input_tensor,
+                                indices_tensor,
+                                out_tensor,
+                                out_indices_tensor,
+                                k,
+                                sorted=True,
+                                dim=-1,
+                                largest=True,
+                                kernel_name='top_k'):
+    """
+    check whether ai_core is supported
+    max last dim should exist and max last dim of input_tensor should <= 1024 * 2048 and k
+    should <= 4096 and last dim of input_tensor should <= 1458176 and k should <= 5120
+    sorted should == True
+    input size > 32768 and k > 0 and k < 16 three conditions cannot be met at the same time
+    """
+    unknown_shape = input_tensor.get('shape')
+    unknwon_dim_status = unknown_shape[0]
+    if unknwon_dim_status == -2:
+        reason = "dynamic shape is not supported by aicore. unknwon_dim_status == -2"
+        return False, reason
+
+    shape = input_tensor.get("ori_shape")
+    sorted_axis = dim
+    if (sorted_axis < 0):
+        sorted_axis = sorted_axis + len(shape)
+
+    shape_range = input_tensor.get("range")
+    if shape_range:
+        max_last_dim = shape_range[sorted_axis][-1]
+        if not max_last_dim:
+            reason = "get shape_range[sorted_axis][-1] failed, shape_range: %s, sorted_axis:%s"\
+                      % (shape_range, sorted_axis)
+            return False, reason
+        if max_last_dim > 1024 * 2048:
+            reason = "input_tensor is too big, max_last_dim:%s" % max_last_dim
+            return False, reason
+        if k > 4096:
+            reason = "k is too big, k:%s" % k
+            return False, reason
+        return True, ""
+
+    input_size = functools.reduce(lambda x, y: x * y, shape)
+    # 1458176 indicates max size of the last dimension.
+    # Due to the UB memory limitation, the value of k must be less than or equal to 5120.
+    if shape[sorted_axis] > 1458176 or k > 5120:
+        reason = "shape[sorted_axis] or k are too big, shape[sorted_axis]:%s, k:%s"\
+                  % (shape[sorted_axis], k)
+        return False, reason
+    # Special adaptation to pytorch ("sorted" is false indicates the pytorch operator)
+    if sorted is not True:
+        return True, ""
+    # When input_size > 32768 and k < 16, the AICPU performance is better than the AICore performance.
+    # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
+    if input_size > 32768 and k > 0 and k < 16:
+        reason = "input_size is too big, and k is in (0-16), input_size:%s, k:%s"\
+                  % (input_size, k)
+        return False, reason
+    return True, ""
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
