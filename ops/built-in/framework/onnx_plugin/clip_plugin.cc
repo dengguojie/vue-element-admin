@@ -91,8 +91,9 @@ static Status ParseOpToGraphClipV9(const Operator& op, Graph& graph) {
 
   auto data1 = op::Const("data1").set_attr_value(value1);
   auto data2 = op::Const("data2").set_attr_value(value2);
+  auto cast_op = op::Cast("cast").set_input_x(data0).set_attr_dst_type(DT_FLOAT);
   auto clip_by_value =
-      op::ClipByValue().set_input_x(data0).set_input_clip_value_min(data2).set_input_clip_value_max(data1);
+      op::ClipByValue().set_input_x(cast_op).set_input_clip_value_min(data2).set_input_clip_value_max(data1);
 
   std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
@@ -177,10 +178,23 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
     max_op = op::Data("max").set_attr_index(index);
     index++;
   }
+  
+  Operator input_op1 = data0;
+  Operator input_op2 = min_op;
+  Operator input_op3 = max_op;
+  auto clip_by_value = op::ClipByValue();
+  if (no_max || no_min) {
+    input_op1 = op::Cast("cast").set_input_x(data0).set_attr_dst_type(DT_FLOAT);
 
-  auto clip_by_value =
-      op::ClipByValue().set_input_x(data0).set_input_clip_value_min(min_op).set_input_clip_value_max(max_op);
+    if (!no_max) {
+      input_op3 = op::Cast("cast1").set_input_x(max_op).set_attr_dst_type(DT_FLOAT);
+    }
 
+    if (!no_min) {
+      input_op2 = op::Cast("cast2").set_input_x(min_op).set_attr_dst_type(DT_FLOAT);
+    } 
+  } 
+  clip_by_value.set_input_x(input_op1).set_input_clip_value_min(input_op2).set_input_clip_value_max(input_op3);
   std::vector<Operator> inputs{data0, min_op, max_op};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
   output_indexs.emplace_back(clip_by_value, vector<std::size_t>{0});
@@ -191,7 +205,8 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
 // register Clip op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Clip",
+    .OriginOpType({"ai.onnx::8::Clip",
+                   "ai.onnx::9::Clip",
                    "ai.onnx::10::Clip"})
     .ParseParamsFn(ParseParamsClipV9)
     .ParseOpToGraphFn(ParseOpToGraphClipV9)

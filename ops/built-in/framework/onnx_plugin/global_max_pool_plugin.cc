@@ -56,7 +56,8 @@ Status ParseParamsGlobalMaxPool(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("MaxPool")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::GlobalMaxPool",
+    .OriginOpType({"ai.onnx::8::GlobalMaxPool",
+                   "ai.onnx::9::GlobalMaxPool",
                    "ai.onnx::10::GlobalMaxPool",
                    "ai.onnx::11::GlobalMaxPool",
                    "ai.onnx::12::GlobalMaxPool",

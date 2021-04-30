@@ -343,7 +343,7 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
 }
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::AveragePool", "ai.onnx::10::AveragePool", "ai.onnx::11::AveragePool",
+    .OriginOpType({"ai.onnx::8::AveragePool","ai.onnx::9::AveragePool", "ai.onnx::10::AveragePool", "ai.onnx::11::AveragePool",
                    "ai.onnx::12::AveragePool", "ai.onnx::13::AveragePool"})
     .ParseParamsFn(ParseParamsAveragePool)
     .ParseOpToGraphFn(ParseOpToGraphAveragePool)

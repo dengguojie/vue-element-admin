@@ -1,6 +1,8 @@
-onnx-parser_test:{
--
-XYtest_hard_sigmoid_case_1"HardSigmoidtest_hard_sigmoid_case_1Z
+onnx-parser_test:œ
+N
+XYtest_hard_sigmoid_case_1"HardSigmoid*
+alphaÍÌÌ= *
+betaÍÌÌ= test_hard_sigmoid_case_1Z
 X
 
 

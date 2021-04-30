@@ -51,10 +51,12 @@ REGISTER_CUSTOM_OP("HardSigmoid")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::1::HardSigmoid",
                  "ai.onnx::6::HardSigmoid",
+                 "ai.onnx::8::HardSigmoid",
                  "ai.onnx::9::HardSigmoid",
                  "ai.onnx::10::HardSigmoid",
                  "ai.onnx::11::HardSigmoid",
-                 "ai.onnx::12::HardSigmoid"})
+                 "ai.onnx::12::HardSigmoid",
+                 "ai.onnx::13::HardSigmoid"})
   .ParseParamsFn(parse_params_hard_sigmoid)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

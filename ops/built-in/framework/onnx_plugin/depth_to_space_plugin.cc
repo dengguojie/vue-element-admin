@@ -51,10 +51,12 @@ Status ParseParamsDepthToSpace(const Message* op_src, ge::Operator& op_dest) {
 // register DepthToSpace op info to GE
 REGISTER_CUSTOM_OP("DepthToSpace")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::DepthToSpace",
+    .OriginOpType({"ai.onnx::8::DepthToSpace",
+                   "ai.onnx::9::DepthToSpace",
                    "ai.onnx::10::DepthToSpace",
                    "ai.onnx::11::DepthToSpace",
-                   "ai.onnx::12::DepthToSpace"})
+                   "ai.onnx::12::DepthToSpace",
+                   "ai.onnx::13::DepthToSpace"})
     .ParseParamsFn(ParseParamsDepthToSpace)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

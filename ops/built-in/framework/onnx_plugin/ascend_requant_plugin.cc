@@ -44,10 +44,12 @@ Status ParseParamsAscendRequant(const Message* op_src, ge::Operator& op_dest) {
 // register AscendRequant op info to GE
 REGISTER_CUSTOM_OP("AscendRequant")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::AscendRequant",
+    .OriginOpType({"ai.onnx::8::AscendRequant",
+                   "ai.onnx::9::AscendRequant",
                    "ai.onnx::10::AscendRequant",
                    "ai.onnx::11::AscendRequant",
-                   "ai.onnx::12::AscendRequant"})
+                   "ai.onnx::12::AscendRequant",
+                   "ai.onnx::13::AscendRequant",})
     .ParseParamsFn(ParseParamsAscendRequant)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

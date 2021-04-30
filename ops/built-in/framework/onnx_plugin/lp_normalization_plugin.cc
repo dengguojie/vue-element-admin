@@ -92,10 +92,12 @@ Status parse_op_to_graph_lp_normalization(const Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::1::LpNormalization",
+                 "ai.onnx::8::LpNormalization",
                  "ai.onnx::9::LpNormalization",
                  "ai.onnx::10::LpNormalization",
                  "ai.onnx::11::LpNormalization",
-                 "ai.onnx::12::LpNormalization"})
+                 "ai.onnx::12::LpNormalization",
+                 "ai.onnx::13::LpNormalization"})
   .ParseParamsFn(parse_params_lp_normalization)
   .ParseOpToGraphFn(parse_op_to_graph_lp_normalization)
   .ImplyType(ImplyType::TVM);

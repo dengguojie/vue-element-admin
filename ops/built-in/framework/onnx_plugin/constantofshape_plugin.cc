@@ -151,7 +151,8 @@ static Status ParseOpToGraphConstantOfShape(const Operator &op, Graph &graph)
 
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::ConstantOfShape",
+  .OriginOpType({"ai.onnx::8::ConstantOfShape",
+                 "ai.onnx::9::ConstantOfShape",
                  "ai.onnx::10::ConstantOfShape",
                  "ai.onnx::11::ConstantOfShape",
                  "ai.onnx::12::ConstantOfShape",

@@ -9,6 +9,7 @@ def make_celu(version_number):
     node_def = helper.make_node('Celu',
                                 inputs=['X'],
                                 outputs=['Y'],
+                                alpha=1.0,
                                 )
     graph = helper.make_graph(
         [node_def],
@@ -19,9 +20,9 @@ def make_celu(version_number):
 
     model = helper.make_model(graph, producer_name="onnx-celu_test")
     model.opset_import[0].version = version_number
-    onnx.save(model, "./test_relu_case_version_{}.onnx".format(version_number))
+    onnx.save(model, "./test_celu_case_version_{}.onnx".format(version_number))
 
 if __name__ == '__main__':
-    celu_list = (12)
+    celu_list = [12]
     for i in celu_list:
         make_celu(i)

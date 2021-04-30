@@ -1,7 +1,8 @@
-onnx-parser_test_1:Œ
-;
+onnx-parser_test_1:œ
+K
 xytest_depthtospace_1"DepthToSpace*
-	blocksize test_depthtospace_1Z
+	blocksize *
+mode"DCR test_depthtospace_1Z
 x
 
 

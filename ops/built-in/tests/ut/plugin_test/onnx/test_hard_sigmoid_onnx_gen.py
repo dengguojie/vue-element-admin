@@ -5,6 +5,8 @@ def make_hard_sigmoid_case_1():
     node = helper.make_node('HardSigmoid',
                             inputs=['X'],
                             outputs=['Y'],
+                            alpha=0.1,
+                            beta=0.1,
                             name='test_hard_sigmoid_case_1')
     graph = helper.make_graph(
         nodes=[node],

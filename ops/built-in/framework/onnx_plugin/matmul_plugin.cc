@@ -51,7 +51,8 @@ Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest) {
 // register MatMul op info to GE
 REGISTER_CUSTOM_OP("BatchMatMulV2")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::MatMul",
+    .OriginOpType({"ai.onnx::8::MatMul",
+                   "ai.onnx::9::MatMul",
                    "ai.onnx::10::MatMul",
                    "ai.onnx::11::MatMul",
                    "ai.onnx::12::MatMul",

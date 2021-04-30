@@ -371,7 +371,11 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
 
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::MaxPool", "ai.onnx::10::MaxPool", "ai.onnx::11::MaxPool", "ai.onnx::12::MaxPool",
+    .OriginOpType({"ai.onnx::8::MaxPool",
+                   "ai.onnx::9::MaxPool",
+                   "ai.onnx::10::MaxPool",
+                   "ai.onnx::11::MaxPool",
+                   "ai.onnx::12::MaxPool",
                    "ai.onnx::13::MaxPool"})
     .ParseParamsFn(ParseParamsMaxPool)
     .ParseOpToGraphFn(ParseOpToGraphMaxPool)

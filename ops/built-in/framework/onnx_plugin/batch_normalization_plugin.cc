@@ -57,7 +57,8 @@ Status ParseParamsBatchNorm(const Message* op_src, ge::Operator& op_dest) {
 // register ReduceMean op info to GE
 REGISTER_CUSTOM_OP("BatchNorm")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::BatchNormalization",
+    .OriginOpType({"ai.onnx::8::BatchNormalization",
+                   "ai.onnx::9::BatchNormalization",
                    "ai.onnx::10::BatchNormalization",
                    "ai.onnx::11::BatchNormalization",
                    "ai.onnx::12::BatchNormalization",

@@ -37,10 +37,12 @@ Status ParseParamsLeakyRelu(const Message *op_src, ge::Operator &op_dst) {
 
 REGISTER_CUSTOM_OP("LeakyRelu")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::LeakyRelu",
+  .OriginOpType({"ai.onnx::8::LeakyRelu",
+                 "ai.onnx::9::LeakyRelu",
                  "ai.onnx::10::LeakyRelu",
                  "ai.onnx::11::LeakyRelu",
-                 "ai.onnx::12::LeakyRelu"})
+                 "ai.onnx::12::LeakyRelu",
+                 "ai.onnx::13::LeakyRelu"})
   .ParseParamsFn(ParseParamsLeakyRelu)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

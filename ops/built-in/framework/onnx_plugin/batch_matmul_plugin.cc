@@ -30,10 +30,12 @@ Status ParseParamsBatchMatMul(const Message *opSrc, ge::Operator &opDst) {
 
 REGISTER_CUSTOM_OP("BatchMatMul")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::BatchMatMul",
+  .OriginOpType({"ai.onnx::8::BatchMatMul",
+                 "ai.onnx::9::BatchMatMul",
                  "ai.onnx::10::BatchMatMul",
                  "ai.onnx::11::BatchMatMul",
-                 "ai.onnx::12::BatchMatMul"})
+                 "ai.onnx::12::BatchMatMul",
+                 "ai.onnx::13::BatchMatMul"})
   .ParseParamsFn(ParseParamsBatchMatMul)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

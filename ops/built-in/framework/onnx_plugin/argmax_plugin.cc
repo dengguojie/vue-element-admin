@@ -97,7 +97,8 @@ static Status ParseOpToGraphArgMax(const Operator& op, Graph& graph) {
 // register ArgMax op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::ArgMax",
+    .OriginOpType({"ai.onnx::8::ArgMax",
+                   "ai.onnx::9::ArgMax",
                    "ai.onnx::10::ArgMax",
                    "ai.onnx::11::ArgMax",
                    "ai.onnx::12::ArgMax",

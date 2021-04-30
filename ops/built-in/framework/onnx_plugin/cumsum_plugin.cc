@@ -44,7 +44,8 @@ Status ParseParamsCumSum(const Message *op_src, ge::Operator &op_dest) {
 // register CumSum op info to GE
 REGISTER_CUSTOM_OP("Cumsum")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::CumSum",
+  .OriginOpType({"ai.onnx::8::CumSum",
+                 "ai.onnx::9::CumSum",
                  "ai.onnx::10::CumSum",
                  "ai.onnx::11::CumSum",
                  "ai.onnx::12::CumSum",

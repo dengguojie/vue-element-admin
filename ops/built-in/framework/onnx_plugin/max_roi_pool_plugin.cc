@@ -59,10 +59,12 @@ Status ParseParamsMaxRoiPool(const Message* op_src, ge::Operator& op_dest) {
 REGISTER_CUSTOM_OP("ROIPooling")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::1::MaxRoiPool",
+                   "ai.onnx::8::MaxRoiPool",
                    "ai.onnx::9::MaxRoiPool",
                    "ai.onnx::10::MaxRoiPool",
                    "ai.onnx::11::MaxRoiPool",
-                   "ai.onnx::12::MaxRoiPool"})
+                   "ai.onnx::12::MaxRoiPool",
+                   "ai.onnx::13::MaxRoiPool"})
     .ParseParamsFn(ParseParamsMaxRoiPool)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

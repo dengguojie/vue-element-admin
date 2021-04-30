@@ -7,6 +7,7 @@ def make_depthtospace_1():
                             inputs=['x'],
                             outputs=['y'],
                             blocksize=2,
+                            mode="DCR",
                             name='test_depthtospace_1')
     graph = helper.make_graph(
         nodes=[node],

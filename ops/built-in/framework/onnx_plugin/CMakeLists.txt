@@ -32,7 +32,6 @@ set(_onnx_plugins
   batch_normalization_plugin.cc
   batch_multi_class_non_max_suppression_plugin.cc
   concat_plugin.cc
-  lpnormalization_plugin.cc
   conv_plugin.cc
   gather_plugin.cc
   gather_nd_plugin.cc

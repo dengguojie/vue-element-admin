@@ -26,28 +26,33 @@
 #include "op_log.h"
 
 namespace domi {
-    using NodeProto = ge::onnx::NodeProto;
+using NodeProto = ge::onnx::NodeProto;
 
-    Status ParseParamsAffineGrid(const Message *op_src, ge::Operator &op_dest) {
-        const NodeProto *node = dynamic_cast<const NodeProto *>(op_src);
-        if (node == nullptr) {
-            OP_LOGE("AffineGrid", "Dynamic cast op_src to NodeProto failed.");
-            return FAILED;
-        }
-        bool align_corners = false;
-        for (const auto &attr : node->attribute()) {
-            if (attr.name() == "align_corners" && attr.i() != 0) {
-                align_corners = true;
-                break;
-            }
-        }
-        op_dest.SetAttr("align_corners", align_corners);
-        return SUCCESS;
+Status ParseParamsAffineGrid(const Message *op_src, ge::Operator &op_dest) {
+  const NodeProto *node = dynamic_cast<const NodeProto *>(op_src);
+  if (node == nullptr) {
+    OP_LOGE("AffineGrid", "Dynamic cast op_src to NodeProto failed.");
+    return FAILED;
+  }
+  bool align_corners = false;
+  for (const auto &attr : node->attribute()) {
+    if (attr.name() == "align_corners" && attr.i() != 0) {
+        align_corners = true;
+        break;
     }
+  }
+  op_dest.SetAttr("align_corners", align_corners);
+  return SUCCESS;
+}
 
-    REGISTER_CUSTOM_OP("AffineGrid")
-        .FrameworkType(ONNX)
-        .OriginOpType("ai.onnx::11::AffineGrid")
-        .ParseParamsFn(ParseParamsAffineGrid)
-        .ImplyType(ImplyType::TVM);
+REGISTER_CUSTOM_OP("AffineGrid")
+  .FrameworkType(ONNX)
+  .OriginOpType({"ai.onnx::8::AffineGrid",
+                 "ai.onnx::9::AffineGrid",
+                 "ai.onnx::10::AffineGrid",
+                 "ai.onnx::11::AffineGrid",
+                 "ai.onnx::12::AffineGrid",
+                 "ai.onnx::13::AffineGrid"})
+  .ParseParamsFn(ParseParamsAffineGrid)
+  .ImplyType(ImplyType::TVM);
 } // namespace domi

@@ -55,7 +55,8 @@ Status ParseSubgraphPostFnIf(const std::string& subgraph_name, const ge::Graph& 
 // register if op info to GE
 REGISTER_CUSTOM_OP("If")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::If",
+  .OriginOpType({"ai.onnx::8::If",
+                 "ai.onnx::9::If",
                  "ai.onnx::10::If",
                  "ai.onnx::11::If",
                  "ai.onnx::12::If",
