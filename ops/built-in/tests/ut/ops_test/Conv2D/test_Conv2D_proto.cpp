@@ -481,3 +481,30 @@ TEST_F(Conv2DProtoTest, conv2dFuzzBuildAllStaticShapeWithPadding) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     EXPECT_EQ((pads_list == expect_pads), true);
 }
+
+// fuzz build correct left range
+TEST_F(Conv2DProtoTest, conv2dFuzzBuildCorrectLeftRange) {
+    ge::op::Conv2D conv2d;
+    conv2d.SetAttr("_fuzz_build", true);
+    conv2d.UpdateInputDesc("x", create_desc_with_ori(
+        {1, 93, 47, 452}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 93, 47, 452}, ge::FORMAT_NCHW));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori(
+        {27, 31, 31, 97}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {27, 31, 31, 97}, ge::FORMAT_NCHW));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori(
+        {-1, 27, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-1, 27, -1, -1}, ge::FORMAT_NCHW));
+    conv2d.SetAttr("strides", {1, 1, 4, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("groups", 3);
+    conv2d.SetAttr("dilations", {1, 1, 1, 4});
+    auto status = conv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = conv2d.InferShapeAndType();
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv2d);
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    tensor_desc_x->GetShapeRange(input_range);
+    std::vector<std::pair<int64_t, int64_t>> expect_x_range = {{1, 2}, {93, 93}, {32, 64}, {385, 512}};
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    EXPECT_EQ((input_range == expect_x_range), true);
+}

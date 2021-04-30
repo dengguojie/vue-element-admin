@@ -2257,12 +2257,7 @@ static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
   }
   std::vector<int64_t> grade_n = {1, 2, 4, 8, 16, 32, ((1 << 31) - 1)};
   std::vector<int64_t> grade_w = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
-  std::vector<int64_t> grade_h;
-  if (op.GetOpType() == "Conv2D") {
-    grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 100000};
-  } else {
-    grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
-  }
+  std::vector<int64_t> grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
   // init empty range
   // shape -1 without set range call "GetShapeRange" will return [1,-1]
   input_range = {{}, {}, {}, {}};
@@ -2292,6 +2287,59 @@ static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
     }
   }
   input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
+  return true;
+}
+
+/*!
+  * Make sure that output shape is larger than 0
+  */
+bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
+                             std::vector<std::pair<int64_t, int64_t>>& input_range,
+                             int32_t kh_dilate, int32_t kw_dilate) {
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  // only support 4D shape
+  auto x_format = x_tensor->GetFormat();
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+  } else {
+    idx_h = 2;
+    idx_w = 3;
+  }
+  std::vector<int32_t> pads_list;
+  op.GetAttr("pads", pads_list);
+  if (pads_list.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "size of pads list(%zu) is not 4", pads_list.size());
+    return false;
+  }
+
+  int64_t low_h = kh_dilate;
+  int64_t low_w = kw_dilate;
+  // get the smallest shape value allowed
+  if (pads_list[0] == -1) {
+    // pad is dynamic, get value from shape or range
+    if (x_shape[idx_h] != -1) {
+      // shape is static
+      low_h = x_shape[idx_h] < low_h ? x_shape[idx_h] : low_h;
+    } else {
+      // shape is dynamic
+      low_h = input_range[idx_h].first < low_h ? input_range[idx_h].first : low_h;
+    }
+    if (x_shape[idx_w] != -1) {
+      low_w = x_shape[idx_w] < low_w ? x_shape[idx_w] : low_w;
+    } else {
+      low_w = input_range[idx_w].first < low_w ? input_range[idx_w].first : low_w;
+    }
+  } else {
+    // pad is static, get value from kernel
+    low_h = low_h - pads_list[0] - pads_list[1];
+    low_w = low_w - pads_list[2] - pads_list[3];
+  }
+  // get larger one for left range
+  input_range[idx_h].first = input_range[idx_h].first > low_h ? input_range[idx_h].first : low_h;
+  input_range[idx_w].first = input_range[idx_w].first > low_w ? input_range[idx_w].first : low_w;
   return true;
 }
 
@@ -4252,7 +4300,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   // set Range
   if (is_dynamic) {
     OP_LOGD(op.GetName().c_str(), "start accurate build.");
-    vector<int32_t> attr_params = {strh, strw,dilh, dilw,
+    vector<int32_t> attr_params = {strh, strw, dilh, dilw,
                                    padt, padb, padl, padr,
                                    kn, kh, kw};
     if (!SetConv2dOutShapeRange(op, attr_params, y_shape, x_tensor, y_tensor)) {
@@ -4273,6 +4321,12 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     if (pad_str == "SAME") {
       op.SetAttr("pads", {-1, -1, -1, -1});
       OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build");
+    }
+    int32_t kh_dilate = dilh * (kh - 1) + 1;
+    int32_t kw_dilate = dilw * (kw - 1) + 1;
+    // left range should ensure output >= 1
+    if (!CorrectConv2DRangeStart(op, x_tensor, input_range, kh_dilate, kw_dilate)){
+      return GRAPH_FAILED;
     }
     // only need to set input fuzz build range
     graphStatus ret = x_tensor->SetShapeRange(input_range);
