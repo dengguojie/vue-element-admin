@@ -14,6 +14,7 @@
 #include "op_log.h"
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
+
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsIf(const Message *op_src, ge::Operator &op_dest) {
@@ -34,7 +35,13 @@ Status ParseParamsIf(const Message *op_src, ge::Operator &op_dest) {
   return SUCCESS;
 }
 Status ParseSubgraphPostFnIf(const std::string& subgraph_name, const ge::Graph& graph) {
-  return AutoMappingSubgraphIndexByDataNodeAndOutputNodesInfo(graph,
+  AutoMappingSubgraphIOIndexFunc auto_mapping_subgraph_index_func =
+    FrameworkRegistry::Instance().GetAutoMappingSubgraphIOIndexFunc(ONNX);
+  if (auto_mapping_subgraph_index_func == nullptr) {
+    OP_LOGE("If", "auto mapping subgraph func is nullptr!");
+    return FAILED;
+  }
+  return auto_mapping_subgraph_index_func(graph,
       [&](int data_index, int &parent_index) -> Status {
         parent_index = data_index + 1;
         return SUCCESS;

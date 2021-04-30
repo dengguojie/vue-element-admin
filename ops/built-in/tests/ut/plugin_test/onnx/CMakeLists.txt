@@ -22,6 +22,7 @@ add_executable(ops_cpp_onnx_plugin_utest
 target_include_directories(ops_cpp_onnx_plugin_utest PRIVATE
         ${GTEST_INCLUDE}
         ${METADEF_INCLUDE}/graph
+        ${METADEF_INCLUDE}/inc/external
         ${ATC_INCLUDE}/parser
         )
 
