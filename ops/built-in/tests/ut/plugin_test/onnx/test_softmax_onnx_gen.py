@@ -75,7 +75,31 @@ def make_softmax_v9():
     onnx.checker.check_model(model)
 
 
+def make_softmax_v13():
+    """v9"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 3])
+    node_def = helper.make_node(
+        'Softmax',
+        inputs=['x'],
+        outputs=['y'],
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'Softmax_v13',
+        [x],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 13
+    onnx.save(model, "./test_softmax_case_v13.onnx")
+    onnx.checker.check_model(model)
+
+
 if __name__ == '__main__':
     make_softmax_v9()
     make_softmax_v11()
     make_softmax_v12()
+    make_softmax_v13()

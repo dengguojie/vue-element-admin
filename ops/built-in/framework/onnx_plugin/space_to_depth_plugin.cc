@@ -39,7 +39,8 @@ Status ParseParamsSpaceToDepth(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("SpaceToDepth")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::SpaceToDepth",
+  .OriginOpType({"ai.onnx::8::SpaceToDepth",
+                 "ai.onnx::9::SpaceToDepth",
                  "ai.onnx::10::SpaceToDepth",
                  "ai.onnx::11::SpaceToDepth",
                  "ai.onnx::12::SpaceToDepth",

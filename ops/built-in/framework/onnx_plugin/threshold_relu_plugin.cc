@@ -39,10 +39,10 @@ Status ParseParamsThresholdedRelu(const Message* op_src,
 
 REGISTER_CUSTOM_OP("ThresholdedRelu")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::ThresholdedRelu",
-                 "ai.onnx::10::ThresholdedRelu",
+  .OriginOpType({"ai.onnx::10::ThresholdedRelu",
                  "ai.onnx::11::ThresholdedRelu",
-                 "ai.onnx::12::ThresholdedRelu"})
+                 "ai.onnx::12::ThresholdedRelu",
+                 "ai.onnx::13::ThresholdedRelu"})
   .ParseParamsFn(ParseParamsThresholdedRelu)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

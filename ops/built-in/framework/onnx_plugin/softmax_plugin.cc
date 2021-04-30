@@ -20,24 +20,46 @@
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
-Status ParseParamsSoftmax(const Message *op_src, ge::Operator &op_dest) {
+Status ParseParamsSoftmax(const Message *op_src, ge::Operator &op_dest, std::vector<int> &v_axis) {
   const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
     OP_LOGE("Softmax", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
-  std::vector<int> v_axis;
-  bool set_axes_flag = false;
-
   for (const auto &attr : node->attribute()) {
     if (attr.name() == "axis" && attr.type() == ge::onnx::AttributeProto::INT) {
       v_axis.push_back(attr.i());
-      set_axes_flag = true;
     }
   }
-  if (!set_axes_flag) {
-    // default value in version 9,11,12.
+  
+  return SUCCESS;
+}
+
+Status ParseParamsSoftmaxV11(const Message *op_src, ge::Operator &op_dest) {
+  std::vector<int> v_axis;
+  auto ret = ParseParamsSoftmax(op_src, op_dest, v_axis);
+  if (ret != SUCCESS) {
+    OP_LOGE("Softmax", "acquire attr from NodeProto failed.");
+    return FAILED;
+  }
+  if (v_axis.empty()) {
+    // default value in version 8 9 10 11 12.
     v_axis.push_back(1);
+  }
+  op_dest.SetAttr("axes", v_axis);
+  return SUCCESS;
+}
+
+Status ParseParamsSoftmaxV13(const Message *op_src, ge::Operator &op_dest) {
+  std::vector<int> v_axis;
+  auto ret = ParseParamsSoftmax(op_src, op_dest, v_axis);
+  if (ret != SUCCESS) {
+    OP_LOGE("Softmax", "acquire attr from NodeProto failed.");
+    return FAILED;
+  }
+  if (v_axis.empty()) {
+    // default value in version 13.
+    v_axis.push_back(-1);
   }
   op_dest.SetAttr("axes", v_axis);
   return SUCCESS;
@@ -45,10 +67,17 @@ Status ParseParamsSoftmax(const Message *op_src, ge::Operator &op_dest) {
 
 REGISTER_CUSTOM_OP("SoftmaxV2")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::Softmax",
+  .OriginOpType({"ai.onnx::8::Softmax",
+                 "ai.onnx::9::Softmax",
                  "ai.onnx::10::Softmax",
                  "ai.onnx::11::Softmax",
                  "ai.onnx::12::Softmax"})
-  .ParseParamsFn(ParseParamsSoftmax)
+  .ParseParamsFn(ParseParamsSoftmaxV11)
+  .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("SoftmaxV2")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::13::Softmax")
+  .ParseParamsFn(ParseParamsSoftmaxV13)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

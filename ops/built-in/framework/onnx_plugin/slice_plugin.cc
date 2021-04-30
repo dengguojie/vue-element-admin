@@ -119,7 +119,7 @@ Status ParseOpToGraphSlice(const ge::Operator& op, Graph& graph) {
 
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::9::Slice")
+    .OriginOpType({"ai.onnx::8::Slice","ai.onnx::9::Slice"})
     .ParseParamsFn(ParseParamSliceCall)
     .ParseOpToGraphFn(ParseOpToGraphSlice)
     .ImplyType(ImplyType::TVM);

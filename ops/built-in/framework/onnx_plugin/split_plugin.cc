@@ -187,7 +187,8 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
 
 REGISTER_CUSTOM_OP("SplitVD")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::Split",
+  .OriginOpType({"ai.onnx::8::Split",
+                 "ai.onnx::9::Split",
                  "ai.onnx::10::Split",
                  "ai.onnx::11::Split",
                  "ai.onnx::12::Split"})
