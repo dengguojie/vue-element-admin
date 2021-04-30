@@ -39,6 +39,22 @@ def check_supported(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
             return False
     return True
 
+
+def check_supported_with_reason(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
+    """
+    check the op support situation.
+    Go to AICPU when doing reduction with float32 type on the last axis. 
+    """
+    input_shape = x.get("shape")
+    input_dtype = x.get("dtype").lower()
+    dim_num = len(input_shape)
+    for axis in axes:
+        if axis in [-1, dim_num - 1] and input_dtype == "float32" and input_shape[-1] == 1:
+            reason = "the axis is not supported, axis:%s" % axis
+            return False, reason
+    return True, ""
+
+
 # pylint: disable=locally-disabled, unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_prod_d")
 def reduce_prod_d_compute(data_input, output_y, axes,

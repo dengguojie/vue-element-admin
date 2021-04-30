@@ -137,6 +137,51 @@ def check_supported(grads, images, y, align_corners=False,
 
     return True
 
+# pylint: disable=unused-argument,invalid-name, unused-variable
+def check_supported_with_reason(grads, images, y, align_corners=False,
+                                kernel_name="resize_bilinear_v2_grad"):
+    """
+    To check whether the AICORE operator can support
+    1. when the shape of input images is unrank shape or dim size not equal 4, will change to aicpu
+    2. when the format of input images is not in "NHWC,NCHW", AICORE do not support, will change to aicpu
+    3. when the height/weight of input images or output images is more than 10000 or less than 1, will change to aicpu
+    """
+    grads_shape = grads.get("ori_shape")
+    images_shape = images.get("ori_shape")
+    format_grads = grads.get("ori_format")
+    if len(grads_shape) != 4 or len(images_shape) != 4:
+        # the size of image_shape must be 4
+        reason = "the size of grads_shape and image_shape must be 4, len(grads_shape):%s, len(images_shape)%s"\
+                  % (len(grads_shape), len(images_shape))
+        return False, reason
+
+    if format_grads == "NHWC":
+        in_size_h = grads_shape[1]
+        in_size_w = grads_shape[2]
+    elif format_grads in ("NCHW", "NC1HWC0"):
+        in_size_h = grads_shape[2]
+        in_size_w = grads_shape[3]
+    else:
+        # format is not in "NHWC,NCHW,NC1HWC0", not suppord
+        reason = "format is not in \"NHWC,NCHW,NC1HWC0\" not suppord, format:%s" % image_format
+        return False, reason
+
+    try:
+        if in_size_h > 10000 or in_size_w > 10000:
+            reason = "the size of grads_shape is too big, grads_shape[1]:%s, grads_shape[2]:%s"\
+                      % (in_size_h, in_size_w)
+            return False, reason
+        if in_size_h < 1 or in_size_w < 1:
+            reason = "the size of grads_shape is too small, grads_shape[1]:%s, grads_shape[2]:%s"\
+                      % (in_size_h, in_size_w)
+            return False, reason
+
+    except RuntimeError as e:
+        return False, e.args
+
+    return True, ""
+
+
 # pylint: disable=unused-argument,too-many-lines,invalid-name,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

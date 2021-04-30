@@ -452,6 +452,85 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     return True
 
+
+# pylint: disable=locally-disabled,too-many-arguments
+# pylint: disable=too-many-arguments, no-member,no-else-return
+# pylint: disable=too-many-statements, unused-argument,too-many-return-statements
+def check_supported_with_reason(input_x, input_y, bias=None, output_z={}, trans_a=False,
+                                trans_b=False, kernel_name="matmul"):
+    """
+    get the op supported situation
+    """
+
+    shape_a = input_x.get("shape")
+    shape_b = input_y.get("shape")
+    src_dtype = input_x.get("dtype")
+    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
+    if not dynamic_flag:
+        para_check.check_shape(shape_a, param_name="input_x")
+        para_check.check_shape(shape_b, param_name="input_y")
+    else:
+        if not _check_batch_range(input_x, input_y):
+            reason = "input_x, input_y out of batch range"
+            return False, reason
+
+    src_dtypes = ["float32", "int32"]
+    if src_dtype in src_dtypes and not dynamic_flag:
+        shape_length = len(shape_a)
+        shape_length_b = len(shape_b)
+        if shape_length != shape_length_b:
+            reason = "shape_length != shape_length_b, shape_length:%s, shape_length_b:%s"\
+                      % (shape_length, shape_length_b)
+            return False, reason
+        elif trans_b:
+            if shape_b[shape_length - 2] == 1:
+                reason = "the shape_b[shape_length - 2] is not supported, shape_b[shape_length - 2] == 1"
+                return False, reason
+        elif bool(1-trans_b):
+            if shape_b[shape_length - 1] == 1:
+                reason = "the shape_b[shape_length - 1] is not supported, shape_b[shape_length - 1] == 1"
+                return False, reason
+        elif trans_a:
+            if trans_b:
+                if shape_a[shape_length - 2] != shape_b[shape_length - 1]:
+                    reason = "shape_a[shape_length - 2] != shape_b[shape_length - 1], shape_a[shape_length - 2]:%s, shape_b[shape_length - 1]:%s"\
+                              % (shape_a[shape_length - 2], shape_b[shape_length - 1])
+                    return False, reason
+            else:
+                if shape_a[shape_length - 2] != shape_b[shape_length - 2]:
+                    reason = "shape_a[shape_length - 2] != shape_b[shape_length - 2], shape_a[shape_length - 2]:%s, shape_b[shape_length - 2]:%s"\
+                              % (shape_a[shape_length - 2], shape_b[shape_length - 2])
+                    return False, reason
+        else:
+            if trans_b:
+                if shape_a[shape_length - 1] != shape_b[shape_length - 1]:
+                    reason = "shape_a[shape_length - 1] != shape_b[shape_length - 1], shape_a[shape_length - 1]:%s, shape_b[shape_length - 1]:%s"\
+                              % (shape_a[shape_length - 1], shape_b[shape_length - 1])
+                    return False, reason
+            else:
+                if shape_a[shape_length - 1] != shape_b[shape_length - 2]:
+                    reason = "shape_a[shape_length - 1] != shape_b[shape_length - 2], shape_a[shape_length - 1]:%s, shape_b[shape_length - 2]:%s"\
+                              % (shape_a[shape_length - 1], shape_b[shape_length - 2])
+                    return False, reason
+    elif src_dtype == "float16" and not dynamic_flag:
+        shape_length = len(shape_a)
+        if trans_a:
+            k_shape = shape_a[shape_length - 2]
+        else:
+            k_shape = shape_a[shape_length - 1]
+
+        shape_length_b = len(shape_b)
+        if trans_b:
+            k_b_shape = shape_b[shape_length_b - 1]
+        else:
+            k_b_shape = shape_b[shape_length_b - 2]
+
+        if k_shape != k_b_shape:
+            reason = "k_shape != k_b_shape, k_shape:%s, k_b_shape:%s" % (k_shape, k_b_shape)
+            return False, reason
+
+    return True, ""
+
 # pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 @tbe_platform.fusion_manager.register("batch_matmul")
 def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False,

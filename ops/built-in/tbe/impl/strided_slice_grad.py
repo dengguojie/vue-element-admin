@@ -45,6 +45,33 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
     return check_result
 
 
+# pylint: disable=unused-argument
+# pylint: disable=consider-using-in,unnecessary-pass
+def check_supported_with_reason(shape, begin, end, strides, dy, output, begin_mask=0,
+                                end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
+                                kernel_name="strided_slice_grad"):
+    """
+    verify the types of cast supported by tbe
+    """
+    check_result = True, ""
+
+    if (new_axis_mask != 0) or (shrink_axis_mask != 0 and
+                                shrink_axis_mask != 2):
+        reason = "the axis is not supported, new_axis_mask:%s, shrink_axis_mask:%s, shrink_axis_mask:%s"\
+                  % (new_axis_mask, shrink_axis_mask, shrink_axis_mask)
+        check_result = False, reason
+
+    strides_size = strides.get("shape")[0]
+    shape_size = shape.get("shape")[0]
+    if shrink_axis_mask == 2 and (ellipsis_mask != 1 or
+                                  strides_size != 2 or shape_size <= 2):
+        reason = "the axis is not supported, new_axis_mask:%s, ellipsis_mask:%s, strides_size:%s, shape_size:%s"\
+                  % (new_axis_mask, ellipsis_mask, strides_size, shape_size)
+        check_result = False, reason
+
+    return check_result
+
+
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
                        end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,

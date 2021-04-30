@@ -93,6 +93,30 @@ def check_supported(  # pylint: disable=I0011, R0913, R0914
         return False
 
 
+def check_supported_with_reason(  # pylint: disable=I0011, R0913, R0914
+    input_x1,
+    input_x2,
+    bias,
+    alpha,
+    beta,
+    output_y=None,
+    trans_a=False,
+    trans_b=False,
+    kernel_name="gemm"):
+    """
+    the k-dims of input_x1 must be equal with that of input_x2
+    the m-dims of input_x1 must be equal with that of bias
+    the n-dims of input_x2 must be equal with that of bias
+    """
+    try:
+        _check_param(input_x1, input_x2, bias, trans_a, trans_b)
+        return True, ""
+    except Exception as e:
+        reason = "the input_shape is not supported, input_x1_shape:%s, input_x2_shape:%s, bias_shape:%s, trans_a:%s, trans_b:%s"\
+                 % (input_x1.get("ori_shape"), input_x2.get("ori_shape"), bias.get("ori_shape"), trans_a, trans_b)
+        return False, reason
+
+
 def op_select_format(  # pylint: disable=too-many-arguments
     input_x1,
     input_x2,
@@ -524,17 +548,6 @@ def _format_check(
     }
     if (support_combine[flow_type] is not None
             and support_combine[flow_type] != format_combine):
-        args_dict = {
-            "errCode": "E60114",
-            "reason": "for src_dtype = {src_dtype} and dst_type = {dst_dtype} ,"
-                      "format need to be {format_nd} or {format_fractal}".format(
-                src_dtype=src_dtype,
-                dst_dtype=dst_dtype,
-                format_nd=["ND", "ND", "ND", "ND", "ND", "ND"],
-                format_fractal=support_combine[flow_type]
-            ),
-            "value": "{}".format(format_combine)
-        }
         error_detail = "for src_dtype = %s and dst_type = %s, format need to be %s or %s" % (src_dtype,
                          dst_dtype, "ND, ND, ND, ND, ND, ND", support_combine[flow_type])
         error_manager_vector.raise_err_specific_reson("gemm", error_detail)

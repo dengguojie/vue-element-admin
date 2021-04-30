@@ -38,6 +38,15 @@ def check_supported(x, y, axis, kernel_name="pack"):
         return False
     return True
 
+def check_supported_with_reason(x, y, axis, kernel_name="pack"):
+    """
+    support aicpu route
+    """
+    if axis == -1 or axis == len((x[0].get("shape"))):
+        reason = "the axis is not supported, axis:%s" % str(axis)
+        return False, reason
+    return True, ""
+
 
 # pylint: disable = unused-argument
 def get_op_support_info(x, y, axis, kernel_name="pack"):
