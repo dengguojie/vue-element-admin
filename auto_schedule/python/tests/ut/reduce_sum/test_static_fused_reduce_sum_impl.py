@@ -100,6 +100,55 @@ def test_cast_sum_fused(input, output, axis, keep_dims, kernel_name="test_cast_s
     }
     tbe.cce_build_code(sch, config)
 
+def test_vmadd_sum_fused(input0, input1, input2, axis, keep_dims, kernel_name="test_vmadd_sum_fused"):
+    try:
+        shape_input0 = input0.get("shape")
+        dtype_input0 = input0.get("dtype")
+        shape_input1 = input1.get("shape")
+        dtype_input1 = input1.get("dtype")
+        shape_input2 = input2.get("shape")
+        dtype_input2 = input2.get("dtype")
+
+        data_input0 = tvm.placeholder(shape_input0, name="data_input0", dtype=dtype_input0)
+        data_input1 = tvm.placeholder(shape_input1, name="data_input1", dtype=dtype_input1)
+        data_input2 = tvm.placeholder(shape_input2, name="data_input2", dtype=dtype_input2)
+
+        data_input0 = tbe.broadcast(data_input0, shape_input1, dtype_input0)
+        res = tbe.vmadd(data_input0, data_input1, data_input2)
+        res = tbe.sum(res, axis=axis, keepdims=keep_dims)
+        tensor_list = [data_input0, data_input1, data_input2, res]
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        config = {
+            "print_ir": False,
+            "name": kernel_name,
+            "tensor_list": tensor_list
+        }
+        tbe.cce_build_code(sch, config)
+    except:
+        print("atomic schedule vmultiple error, abandoned")
+
+def test_broadcast_sum_fused(input0, axis, keep_dims, kernel_name="test_broadcast_sum_fused"):
+    shape_input0 = input0.get("shape")
+    dtype_input0 = input0.get("dtype")
+
+    data_input0 = tvm.placeholder(shape_input0, name="data_input0", dtype=dtype_input0)
+
+    shape = (shape_input0[0], shape_input0[1], shape_input0[2], shape_input0[2])
+
+    b_res = tbe.broadcast(data_input0, shape, dtype_input0)
+    res = tbe.sum(b_res, axis=axis, keepdims=keep_dims)
+    tensor_list = [data_input0, res]
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(res)
+    config = {
+        "print_ir": False,
+        "name": kernel_name,
+        "tensor_list": tensor_list
+    }
+    tbe.cce_build_code(sch, config)
+
+
 def dsl_fused_reduce_sum(fuse_type, op_args, kernel_name):
     if fuse_type == "confusion_mul_grad":
         input0 = op_args.get("input0")
@@ -114,6 +163,18 @@ def dsl_fused_reduce_sum(fuse_type, op_args, kernel_name):
         axis = op_args.get("axis")
         keep_dims = op_args.get("keep_dims")
         test_cast_sum_fused(input, output, axis, keep_dims, kernel_name)
+    elif fuse_type == "vmadd_sum_fused":
+        input0 = op_args.get("input0")
+        input1 = op_args.get("input1")
+        input2 = op_args.get("input2")
+        axis = op_args.get("axis")
+        keep_dims = op_args.get("keep_dims")
+        test_vmadd_sum_fused(input0, input1, input2, axis, keep_dims, kernel_name)
+    elif fuse_type == "broadcast_sum_fused":
+        input0 = op_args.get("input0")
+        axis = op_args.get("axis")
+        keep_dims = op_args.get("keep_dims")
+        test_broadcast_sum_fused(input0, axis, keep_dims, kernel_name)
 
 ut_case = OpUT("reduce_sum", "reduce_sum.test_static_fused_reduce_sum_impl", "dsl_fused_reduce_sum")
 
@@ -132,7 +193,6 @@ case1 = {
     "expect": "success",
     "support_expect": True
 }
-
 case2 = {
     "params": [
         "confusion_mul_grad",
@@ -148,7 +208,6 @@ case2 = {
     "expect": "success",
     "support_expect": True
 }
-
 case3 = {
     "params": [
         "cast_sum_fused",
@@ -163,11 +222,41 @@ case3 = {
     "expect": "success",
     "support_expect": True
 }
+case4 = {
+    "params": [
+        "vmadd_sum_fused",
+        {
+            "input0": {"shape":[16,32,1,1], "dtype":"float32"},
+            "input1": {"shape":[16,32,512,512], "dtype":"float32"},
+            "input2": {"shape":[16,32,512,512], "dtype":"float32"},
+            "axis": (0,2,3),
+            "keep_dims": False,
+        }
+    ],
+    "case_name": "test_vmadd_sum_fused_1",
+    "expect": "success",
+    "support_expect": True
+}
+case5 = {
+    "params": [
+        "broadcast_sum_fused",
+        {
+            "input0": {"shape":[16,32,511,1], "dtype":"float32"},
+            "axis": (0,2,3),
+            "keep_dims": False,
+        }
+    ],
+    "case_name": "test_broadcast_sum_fused_1",
+    "expect": "success",
+    "support_expect": True
+}
 
 compile_case_list = [
     case1,
     case2,
     case3,
+    case4,
+    case5,
 ]
 
 for item in compile_case_list:
