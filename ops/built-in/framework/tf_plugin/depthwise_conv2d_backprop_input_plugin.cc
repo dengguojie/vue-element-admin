@@ -35,23 +35,13 @@ Status DepthwiseConv2DBackpropInputMappingFn(const Message* op_src, ge::Operator
     CUBE_CALL_ERR_REPORT(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
     return FAILED;
   }
-  ge::GeTensorDesc tensorDescW = op_dsc->GetInputDesc(1);
-  tensorDescW.SetOriginFormat(ge::FORMAT_HWCN);
-  tensorDescW.SetFormat(ge::FORMAT_HWCN);
-  auto ret = op_dsc->UpdateInputDesc(1, tensorDescW);
-  if (ret != ge::GRAPH_SUCCESS) {
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["param_name"] = "updating filter's format";
-    err_map["rule_desc"] = "update filter's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    OP_LOGE("[Plugin][ERROR]update filter format failed\n");
-    return FAILED;
-  }
+  auto tensorDescW = op_dsc->MutableInputDesc("filter");
+  tensorDescW->SetOriginFormat(ge::FORMAT_HWCN);
+  tensorDescW->SetFormat(ge::FORMAT_HWCN);
+  OP_LOGD(op.GetName().c_str(), "update filter format success.");
   std::vector<int32_t> padList = {0, 0, 0, 0};
   op.SetAttr("pads", padList);
+  OP_LOGD(op.GetName().c_str(), "update pads success.");
   return SUCCESS;
 }
 
