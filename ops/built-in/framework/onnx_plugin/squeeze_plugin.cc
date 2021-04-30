@@ -46,7 +46,8 @@ Status ParseParamsSqueeze(const Message* op_src, ge::Operator& op_dest) {
 // register Add op info to GE
 REGISTER_CUSTOM_OP("Squeeze")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Squeeze",
+    .OriginOpType({"ai.onnx::8::Squeeze",
+                   "ai.onnx::9::Squeeze",
                    "ai.onnx::10::Squeeze",
                    "ai.onnx::11::Squeeze",
                    "ai.onnx::12::Squeeze"})

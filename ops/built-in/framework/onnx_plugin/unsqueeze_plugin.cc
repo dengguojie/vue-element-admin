@@ -58,7 +58,8 @@ Status ParseParamsUnsqueeze(const Message* op_src, ge::Operator& op_dest) {
 // register Add op info to GE
 REGISTER_CUSTOM_OP("Unsqueeze")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Unsqueeze",
+    .OriginOpType({"ai.onnx::8::Unsqueeze",
+                   "ai.onnx::9::Unsqueeze",
                    "ai.onnx::10::Unsqueeze",
                    "ai.onnx::11::Unsqueeze",
                    "ai.onnx::12::Unsqueeze"})

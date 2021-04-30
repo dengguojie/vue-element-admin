@@ -109,14 +109,16 @@ static Status ParseOpToGraphTopKV9(const ge::Operator& op, ge::Graph& graph) {
 
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::9::TopK")
+  .OriginOpType({"ai.onnx::8::TopK",
+                 "ai.onnx::9::TopK"})
   .ParseParamsFn(ParseParamsTopKV9)
   .ParseOpToGraphFn(ParseOpToGraphTopKV9)
   .ImplyType(ImplyType::TVM);
 
 REGISTER_CUSTOM_OP("TopK")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::11::TopK",
+  .OriginOpType({"ai.onnx::10::TopK",
+                "ai.onnx::11::TopK",
                 "ai.onnx::12::TopK",
                 "ai.onnx::13::TopK"})
   .ParseParamsFn(ParseParamsTopK)

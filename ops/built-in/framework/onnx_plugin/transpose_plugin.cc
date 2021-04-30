@@ -54,7 +54,8 @@ Status ParseParamsTransposeD(const Message *op_src, ge::Operator &op_dest) {
 // register Transpose op info to GE
 REGISTER_CUSTOM_OP("TransposeD")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::Transpose",
+  .OriginOpType({"ai.onnx::8::Transpose",
+                 "ai.onnx::9::Transpose",
                  "ai.onnx::10::Transpose",
                  "ai.onnx::11::Transpose",
                  "ai.onnx::12::Transpose",
