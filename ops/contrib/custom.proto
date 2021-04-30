@@ -1,0 +1,135 @@
+syntax = "proto2";
+
+package domi.caffe;
+
+message NetParameter {
+  optional string name = 1; // consider giving the network a name
+  // The layers that make up the net.  Each of their configurations, including
+  // connectivity and behavior, is specified as a LayerParameter.
+  repeated LayerParameter layer = 100;  // ID 100 so layers are printed last.
+
+}
+// Update the next available ID when you add a new LayerParameter field.
+//
+// LayerParameter next available layer-specific ID: 151 (last added: smooth_l1_loss_param)
+message LayerParameter {
+  optional string name = 1; // the layer name
+  optional string type = 2; // the layer type
+  // Add new LayerParameter here.
+
+  optional AxpyParameter axpy_param = 2000;
+  optional ClipParameter clip_param = 2001;
+  optional Heatmap2CoordParameter heatmap2coord_param = 2002;
+  optional InterpParameter interp_param = 2003;
+  optional Interpv2Parameter interpv2_param = 2004;
+  optional L2NormalizeParameter l2_normalize_param = 2005;
+  optional PadChannelParameter pad_channel_param = 2006;
+  optional ResampleParameter resample_param = 2007; 
+  optional SReLUParameter srelu_param = 2008;
+  optional TileParameter tile_param = 2009;
+  optional WarpPerspectiveParameter warp_perspective_param = 2010; 
+  optional ImagePadParameter image_pad_param = 2011;
+  optional PSROIAlignParameter psroi_align_param = 2012;
+  optional ROIAlignParameter  roi_align_param = 2013;
+}
+
+// Add the definition of LayerParameter here.
+message AxpyParameter {
+}
+
+message ClipParameter {
+  required float min = 1;
+  required float max = 2;
+}
+
+message Heatmap2CoordParameter {
+}
+
+message InterpParameter {
+  optional int32 height = 1 [default = 0];//Height of output
+  optional int32 width = 2 [default = 0];//Width of output
+  optional int32 zoom_factor = 3 [default = 1];//zoom factor
+  optional int32 shrink_factor = 4 [default = 1];//shrink factor
+  optional int32 pad_beg = 5 [default = 0];//padding at begin of input
+  optional int32 pad_end = 6 [default = 0];//padding at end of input
+}
+
+message Interpv2Parameter{
+  optional int32 height = 1 [default = 0];//Height of output
+  optional int32 width = 2 [default = 0];//Width of output
+  optional int32 zoom_factor = 3 [default = 1];//zoom factor
+  optional int32 shrink_factor = 4 [default = 1];//shrink factor
+  optional int32 pad_beg = 5 [default = 0];//padding at begin of input
+  optional int32 pad_end = 6 [default = 0];//padding at end of input
+}
+
+message L2NormalizeParameter {
+  optional float eps = 4 [default = 1e-10];
+}
+
+message PadChannelParameter {
+  optional uint32 num_channels_to_pad = 1 [default = 0];
+}
+
+message ResampleParameter {
+  enum ResampleType {
+    NEAREST = 1;
+    LINEAR = 2;
+    CUBIC = 3;
+    AREA = 4;
+  };
+  optional bool antialias = 4 [ default = true ];
+  optional uint32 width  = 1;
+  optional uint32 height = 2;
+  optional ResampleType mode = 3 [ default = LINEAR ];
+  optional float factor = 5 [ default = 1.0 ];
+}
+
+message SReLUParameter {
+  // Initial value of threshold_right_i. Default is threshold_right_i=1. for all i.
+  optional FillerParameter tr_filler = 1;
+  // Initial value of a_right_i. Default is a_right_i=1. for all i.
+  optional FillerParameter ar_filler = 2;
+  // Initial value of threshold_left_i. Default is threshold_left_i=0. for all i.
+  optional FillerParameter tl_filler = 3;
+  // Initial value of a_left_i. Default is threshold_left_i=0.25 for all i.
+  optional FillerParameter al_filler = 4;
+  // Whether or not paramters are shared across channels.
+  optional bool channel_shared = 5 [default = false];
+}
+
+message TileParameter {
+  // The index of the axis to tile.
+  optional int32 axis = 1 [default = 1];
+  // The number of copies (tiles) of the blob to output.
+  optional int32 tiles = 2;
+}
+
+message WarpPerspectiveParameter {
+  // Initial value of constant_value. Default is constant_value=0
+  optional uint32 constant_value = 1 [default = 0];
+  // Initial value of interpolation. Default is constant_value="INTER_LINEAR"
+  optional string interpolation = 2 [default = "INTER_LINEAR"];
+  // Initial value of dst_height.
+  optional uint32 dst_height = 3;
+  // Initial value of dst_width.
+  optional uint32 dst_width = 4;
+}
+
+message ImagePadParameter {
+  required int32 pad_value = 1;
+  repeated int32 dim = 2;
+}
+
+message PSROIAlignParameter {
+  required float spatial_scale = 1;
+  required int32 output_dim = 2;// output channel number
+  required int32 group_size = 3;// number of groups to encode position-sensitive score maps
+  optional int32 sample_num = 4 [default = 2];
+}
+
+message ROIAlignParameter { 
+  optional uint32 pooled_h = 1 [default = 0]; // The pooled output height
+  optional uint32 pooled_w = 2 [default = 0]; // The pooled output width
+  optional float spatial_scale = 3 [default = 1];
+}
