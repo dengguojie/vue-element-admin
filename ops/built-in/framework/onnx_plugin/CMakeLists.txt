@@ -42,12 +42,10 @@ set(_onnx_plugins
   max_pool_plugin.cc
   mean_variance_normalization_plugin.cc
   mod_plugin.cc
-  mul_plugin.cc
   onehot_plugin.cc
   pad_plugin.cc
   reduce_mean_plugin.cc
   reduce_sum_plugin.cc
-  relu_plugin.cc
   reshape_plugin.cc
   shape_plugin.cc
   topk_plugin.cc

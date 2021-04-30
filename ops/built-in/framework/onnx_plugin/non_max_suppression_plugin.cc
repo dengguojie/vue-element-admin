@@ -46,33 +46,12 @@ Status ParseParamsNonMaxSuppression(const Message *op_src, ge::Operator &op_dest
     return SUCCESS;
 }
 
-
 REGISTER_CUSTOM_OP("NonMaxSuppressionV6")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::NonMaxSuppression",
-                   "ai.onnx::10::NonMaxSuppression",
+    .OriginOpType({"ai.onnx::10::NonMaxSuppression",
                    "ai.onnx::11::NonMaxSuppression",
-                   "ai.onnx::12::NonMaxSuppression"})
+                   "ai.onnx::12::NonMaxSuppression",
+                   "ai.onnx::13::NonMaxSuppression"})
     .ParseParamsFn(ParseParamsNonMaxSuppression)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

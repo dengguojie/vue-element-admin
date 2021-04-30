@@ -44,7 +44,8 @@ Status ParseParamsReshape(const Message* op_src, ge::Operator& op_dest) {
 // register Add op info to GE
 REGISTER_CUSTOM_OP("Reshape")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Reshape",
+    .OriginOpType({"ai.onnx::8::Reshape",
+                   "ai.onnx::9::Reshape",
                    "ai.onnx::10::Reshape",
                    "ai.onnx::11::Reshape",
                    "ai.onnx::12::Reshape",

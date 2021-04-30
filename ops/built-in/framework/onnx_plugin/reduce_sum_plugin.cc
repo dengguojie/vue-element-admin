@@ -32,7 +32,6 @@ using namespace ge;
 using ge::Operator;
 
 namespace domi {
-
 Status parse_params_reduce_sum(const Message* op_src, ge::Operator& op_dest)
 {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
@@ -101,14 +100,110 @@ static Status ParseOpToGraphReduceSum(const Operator& op, Graph& graph)
   return SUCCESS;
 }
 
+Status ParseParamsReduceSum13(const Message* op_src, ge::Operator& op_dest)
+{
+  const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
+  if (node == nullptr) {
+      OP_LOGE("ReduceSum13", "Dynamic cast op_src to NodeProto failed.");
+      return FAILED;
+  }
+  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::13::ReduceSum");
+
+  int input_size = node->input_size();
+  bool keep_dims = true;
+  int noop_with_empty_axes = 0;
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
+      keep_dims = (attr.i() == 1);
+    } else if (attr.name() == "noop_with_empty_axes" && attr.type() == ge::onnx::AttributeProto::INT) {
+      noop_with_empty_axes = attr.i();
+    }
+  }
+
+  op_dest.SetAttr("input_size", input_size);
+  op_dest.SetAttr("keep_dims", keep_dims);
+  op_dest.SetAttr("noop_with_empty_axes", noop_with_empty_axes);
+  return SUCCESS;
+}
+
+static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
+{
+  auto data0 = op::Data("data0").set_attr_index(0);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr){
+    OP_LOGE("Resize", "Get op desc failed.");
+    return FAILED;
+  }
+  bool flag = false;
+  if (op.GetAttr("keep_dims", flag) != SUCCESS) {
+    OP_LOGE("Reducesum", "get keep_dims from op failed");
+    return FAILED;
+  }
+  int input_num = 1;
+  if (op.GetAttr("input_size", input_num) != SUCCESS) {
+    OP_LOGE("Reducesum", "get input_num from op failed");
+    return FAILED;
+  }
+  if (input_num == 1) {
+    int empty_axes = 0;
+    if (op.GetAttr("noop_with_empty_axes", empty_axes) != SUCCESS) {
+      OP_LOGE("ReduceSum", "get attribute noop_with_empty_axes failed");
+      return FAILED;
+    }
+    std::vector<Operator> inputs{data0};
+    std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
+    if (empty_axes == 0) {
+      ge::GeTensorDesc input_x_desc = op_desc->GetInputDesc(0);
+      int64_t input_x_dims = input_x_desc.GetShape().GetDims().size();
+      std::vector<int64_t> v_axes;
+      for (int i = 0; i < input_x_dims; i++) {
+        v_axes.push_back(i);
+      }
+      auto reducesum = op::ReduceSumD()
+                      .set_input_x(data0)
+                      .set_attr_axes(v_axes)
+                      .set_attr_keep_dims(flag);
+      output_indexs.emplace_back(reducesum, vector<std::size_t>{0});
+      graph.SetInputs(inputs).SetOutputs(output_indexs);
+    } else {
+      auto reducesum = op::Identity().set_input_x(data0);
+      output_indexs.emplace_back(reducesum, vector<std::size_t>{0});
+      graph.SetInputs(inputs).SetOutputs(output_indexs);
+    }
+  } else if (input_num == 2) {
+    auto data1 = op::Data("data1").set_attr_index(1);
+    auto reducesum13 = op::ReduceSum()
+                        .set_input_x(data0)
+                        .set_input_axes(data1)
+                        .set_attr_keep_dims(flag);
+    std::vector<Operator> inputs{data0, data1};
+    std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
+    output_indexs.emplace_back(reducesum13, vector<std::size_t>{0});
+    graph.SetInputs(inputs).SetOutputs(output_indexs);
+  } else {
+    OP_LOGE("ReduceSum", "Input num is error");
+    return FAILED;
+  }
+  return SUCCESS;
+}
+
 // register ReduceSum op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::ReduceSum",
+  .OriginOpType({"ai.onnx::8::ReduceSum",
+                 "ai.onnx::9::ReduceSum",
                  "ai.onnx::10::ReduceSum",
                  "ai.onnx::11::ReduceSum",
                  "ai.onnx::12::ReduceSum"})
   .ParseParamsFn(parse_params_reduce_sum)
   .ParseOpToGraphFn(ParseOpToGraphReduceSum)
+  .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("ReduceSum")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::13::ReduceSum")
+  .ParseParamsFn(ParseParamsReduceSum13)
+  .ParseOpToGraphFn(ParseOpToGraphReduceSum13)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

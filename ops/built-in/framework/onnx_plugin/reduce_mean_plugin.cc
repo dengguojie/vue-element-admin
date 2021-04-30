@@ -90,7 +90,8 @@ static Status ParseOpToGraphReduceMean(const ge::Operator& op, Graph& graph) {
 // register ReduceMean op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::ReduceMean",
+    .OriginOpType({"ai.onnx::8::ReduceMean",
+                   "ai.onnx::9::ReduceMean",
                    "ai.onnx::10::ReduceMean",
                    "ai.onnx::11::ReduceMean",
                    "ai.onnx::12::ReduceMean",

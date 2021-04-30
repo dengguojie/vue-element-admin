@@ -89,7 +89,12 @@ static Status ParseOpToGraphReduceProd(const ge::Operator& op, Graph& graph) {
 // register ReduceProd op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::ReduceProd")
+    .OriginOpType({"ai.onnx::8::ReduceProd",
+                   "ai.onnx::9::ReduceProd",
+                   "ai.onnx::10::ReduceProd",
+                   "ai.onnx::11::ReduceProd",
+                   "ai.onnx::12::ReduceProd",
+                   "ai.onnx::13::ReduceProd"})
     .ParseParamsFn(ParseParamsReduceProd)
     .ParseOpToGraphFn(ParseOpToGraphReduceProd)
     .ImplyType(ImplyType::TVM);

@@ -36,6 +36,8 @@ REGISTER_CUSTOM_OP(#ATC_OPP)                            \
     .ParseParamsFn(ParseParams##FUN)                \
     .ImplyType(ImplyType::TVM);
 
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Relu, Relu, ReluV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Mul, Mul, MulV8);
 
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Acos, Acos, AcosV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Acosh, Acosh, AcoshV11);
@@ -82,6 +84,8 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Sub, Sub, SubV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Sqrt, Sqrt, SqrtV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Div, RealDiv, DivV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Abs, Abs, AbsV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Relu, Relu, ReluV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Mul, Mul, MulV11);
 
 //onnx::9
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Acos, Acos, AcosV9);
@@ -128,6 +132,8 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Sub, Sub, SubV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Sqrt, Sqrt, SqrtV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Div, RealDiv, DivV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Abs, Abs, AbsV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Relu, Relu, ReluV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Mul, Mul, MulV9);
 
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Acos, Acos, AcosV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Acosh, Acosh, AcoshV10);
@@ -174,6 +180,8 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Sub, Sub, SubV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Sqrt, Sqrt, SqrtV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Div, RealDiv, DivV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Abs, Abs, AbsV10);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Relu, Relu, ReluV10);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Mul, Mul, MulV10);
 
 //onnx::12
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Acos, Acos, AcosV12);
@@ -221,6 +229,8 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Sub, Sub, SubV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Sqrt, Sqrt, SqrtV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Div, RealDiv, DivV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Abs, Abs, AbsV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Relu, Relu, ReluV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Mul, Mul, MulV12);
 
 //onnx::13
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Acos, Acos, AcosV13);
@@ -267,4 +277,6 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Sub, Sub, SubV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Sqrt, Sqrt, SqrtV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Div, RealDiv, DivV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Abs, Abs, AbsV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Relu, Relu, ReluV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Mul, Mul, MulV13);
 }  // namespace domi

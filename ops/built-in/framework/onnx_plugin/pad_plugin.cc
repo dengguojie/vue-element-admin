@@ -122,15 +122,18 @@ static Status ParseOpToGraphPad(const Operator& op, Graph& graph) {
 
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Pad", "ai.onnx::10::Pad"})
+    .OriginOpType({"ai.onnx::8::Pad",
+                   "ai.onnx::9::Pad",
+                   "ai.onnx::10::Pad"})
     .ParseParamsFn(parse_params_pad_v9)
     .ParseOpToGraphFn(ParseOpToGraphPad)
     .ImplyType(ImplyType::TVM);
 
 REGISTER_CUSTOM_OP("PadV3")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::Pad")
-    .OriginOpType("ai.onnx::12::Pad")
+    .OriginOpType({"ai.onnx::11::Pad",
+                   "ai.onnx::12::Pad",
+                   "ai.onnx::13::Pad"})
     .ParseParamsFn(parse_params_pad_v11)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

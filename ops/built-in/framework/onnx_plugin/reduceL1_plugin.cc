@@ -58,7 +58,8 @@ Status ParseParamsReduceL1(const Message* op_src, ge::Operator& op_dest) {
 // register ReduceMean op info to GE
 REGISTER_CUSTOM_OP("LpNorm")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::ReduceL1",
+    .OriginOpType({"ai.onnx::8::ReduceL1",
+                   "ai.onnx::9::ReduceL1",
                    "ai.onnx::10::ReduceL1",
                    "ai.onnx::11::ReduceL1",
                    "ai.onnx::12::ReduceL1",

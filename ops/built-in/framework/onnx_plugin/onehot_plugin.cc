@@ -97,11 +97,11 @@ Status ParseOpToGraphOnehot(const ge::Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::9::OneHot",
+                 "ai.onnx::10::OneHot",
                  "ai.onnx::11::OneHot",
                  "ai.onnx::12::OneHot",
                  "ai.onnx::13::OneHot"})
   .ParseParamsFn(ParseParamsOnehotCall)
   .ParseOpToGraphFn(ParseOpToGraphOnehot)
   .ImplyType(ImplyType::TVM);
-
 }  // namespace domi

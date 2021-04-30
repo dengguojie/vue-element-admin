@@ -82,10 +82,12 @@ Status ParseOpToGraphMean(const ge::Operator& op, Graph& graph) {
 
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::Mean",
-                "ai.onnx::11::Mean",
-                "ai.onnx::12::Mean",
-                "ai.onnx::13::Mean"})
+  .OriginOpType({"ai.onnx::8::Mean",
+                 "ai.onnx::9::Mean",
+                 "ai.onnx::10::Mean",
+                 "ai.onnx::11::Mean",
+                 "ai.onnx::12::Mean",
+                 "ai.onnx::13::Mean"})
   .ParseParamsFn(ParseParamsMean)
   .ParseOpToGraphFn(ParseOpToGraphMean)
   .ImplyType(ImplyType::TVM);

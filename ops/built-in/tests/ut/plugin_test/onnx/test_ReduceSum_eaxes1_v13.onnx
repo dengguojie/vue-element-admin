@@ -1,0 +1,16 @@
+zyw-ReduceSum-onnx:‘
+H
+datareduced"	ReduceSum*
+keepdims *
+noop_with_empty_axes 
+test-modelZ
+data
+
+
+
+b
+reduced
+
+
+
+B

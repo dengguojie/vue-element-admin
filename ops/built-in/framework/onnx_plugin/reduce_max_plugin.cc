@@ -89,7 +89,8 @@ static Status ParseOpToGraphReduceMax(const ge::Operator& op, Graph& graph) {
 // register ReduceMax op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::ReduceMax",
+    .OriginOpType({"ai.onnx::8::ReduceMax",
+                   "ai.onnx::9::ReduceMax",
                    "ai.onnx::10::ReduceMax",
                    "ai.onnx::11::ReduceMax",
                    "ai.onnx::12::ReduceMax",

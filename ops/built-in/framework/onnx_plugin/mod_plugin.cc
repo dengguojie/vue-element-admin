@@ -48,7 +48,10 @@ Status ParseParamsMod(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("Mod")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Mod", "ai.onnx::10::Mod", "ai.onnx::11::Mod", "ai.onnx::12::Mod", "ai.onnx::13::Mod"})
+    .OriginOpType({"ai.onnx::10::Mod",
+                   "ai.onnx::11::Mod",
+                   "ai.onnx::12::Mod",
+                   "ai.onnx::13::Mod"})
     .ParseParamsFn(ParseParamsMod)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

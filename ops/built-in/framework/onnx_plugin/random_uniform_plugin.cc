@@ -167,7 +167,8 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
 // register Addcmul op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::RandomUniform",
+    .OriginOpType({"ai.onnx::8::RandomUniform",
+                   "ai.onnx::9::RandomUniform",
                    "ai.onnx::10::RandomUniform",
                    "ai.onnx::11::RandomUniform",
                    "ai.onnx::12::RandomUniform",
