@@ -55,7 +55,8 @@ Status ParseParamsSelu(const Message* op_src, ge::Operator& op_dest) {
 // register Add op info to GE
 REGISTER_CUSTOM_OP("Selu")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Selu",
+    .OriginOpType({"ai.onnx::8::Selu",
+                   "ai.onnx::9::Selu",
                    "ai.onnx::10::Selu",
                    "ai.onnx::11::Selu",
                    "ai.onnx::12::Selu",

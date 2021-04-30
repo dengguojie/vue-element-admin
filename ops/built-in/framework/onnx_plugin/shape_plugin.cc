@@ -37,7 +37,8 @@ Status ParseParamsShape(const Message* op_src, ge::Operator& op_dest) {
 // register Add op info to GE
 REGISTER_CUSTOM_OP("Shape")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Shape",
+    .OriginOpType({"ai.onnx::8::Shape",
+                   "ai.onnx::9::Shape",
                    "ai.onnx::10::Shape",
                    "ai.onnx::11::Shape",
                    "ai.onnx::12::Shape",

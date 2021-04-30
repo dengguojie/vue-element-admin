@@ -49,8 +49,7 @@ Status ParseParamsReverseSequence(const Message *op_src,
 // register ReverseSequence op info to GE
 REGISTER_CUSTOM_OP("ReverseSequence")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::ReverseSequence",
-                 "ai.onnx::10::ReverseSequence",
+  .OriginOpType({"ai.onnx::10::ReverseSequence",
                  "ai.onnx::11::ReverseSequence",
                  "ai.onnx::12::ReverseSequence",
                  "ai.onnx::13::ReverseSequence"})
