@@ -44,7 +44,7 @@ case3 = {"params": [
      "ori_format": "NCHW", "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
     {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (35, 2, 1, 1, 16),
      "ori_format": "NCHW", "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
-    [1, 3, 3, 1], [1, 2, 2, 1], [1, 1, 1, 1]],
+    [1, 3, 3, 1], [1, 1, 2, 1], [1, 1, 1, 1]],
     "case_name": "dynamic_max_pool_grad_with_argmaxv1_02",
     "expect": "success",
     "format_expect": [],

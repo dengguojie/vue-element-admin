@@ -162,7 +162,7 @@ namespace optiling {
         }
 
         if (woverlap == 0) {
-            col2img_w = wo_max * kernel_w;
+            col2img_w = wo_max * stride_w;
         }
 
         if (kernel_h > 2 * stride_h || kernel_w > 2 * stride_w) {
@@ -178,7 +178,7 @@ namespace optiling {
             }
             return 2;
         }
-
+        
         if (col2img_w * col2img_h * channel * dtype_size > ub_limit) {
             if (col2img_w * col2img_one_h * channel * dtype_size < ub_limit) {
                 return 3;
@@ -482,7 +482,7 @@ namespace optiling {
                 ho_last = dyh + ho_count - 1 - ho_every * (ho_count - 1);
             }
         }
-        
+
         tiling_params.ho_count = ho_count;
         tiling_params.ho_every = ho_every;
         tiling_params.ho_last = ho_last;
