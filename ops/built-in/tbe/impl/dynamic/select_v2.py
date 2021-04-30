@@ -20,6 +20,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
@@ -57,22 +58,40 @@ def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
         the result of compute
     """
     num_dtype = x1.dtype
-    x1 = tbe.cast_to(x1, "float32")
-    x2 = tbe.cast_to(x2, "float32")
-    condition = tbe.cast_to(condition, "float32")
-    shape_x1list = shape_util.shape_to_list(x1.shape)
-    shape_x2list = shape_util.shape_to_list(x2.shape)
-    con_shapelist = shape_util.shape_to_list(condition.shape)
-    shape_x1list, con_shapelist, shape_max_x1 = shape_util.broadcast_shapes(shape_x1list, con_shapelist)
-    shape_x2list, shape_max_x1, shape_max = shape_util.broadcast_shapes(shape_x2list, shape_max_x1)
-    x1 = tbe.broadcast(x1, shape_max)
-    x2 = tbe.broadcast(x2, shape_max)
-    condition = tbe.broadcast(condition, shape_max)
-
-    ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float32"), shape_max, output_dtype="float32")
-
-    res = tbe.vcmpsel(condition, rhs=ones, operation='eq', slhs=x1, srhs=x2)
-    res = tbe.cast_to(res, num_dtype)
+    if tbe_platform.api_check_support("te.lang.cce.vcmpsel", "float32"):
+        if num_dtype != "float32":
+            x1 = tbe.cast_to(x1, "float32")
+            x2 = tbe.cast_to(x2, "float32")
+        condition = tbe.cast_to(condition, "float32")
+        shape_x1list = shape_util.shape_to_list(x1.shape)
+        shape_x2list = shape_util.shape_to_list(x2.shape)
+        con_shapelist = shape_util.shape_to_list(condition.shape)
+        shape_x1list, con_shapelist, shape_max_x1 = shape_util.broadcast_shapes(shape_x1list, con_shapelist)
+        shape_x2list, shape_max_x1, shape_max = shape_util.broadcast_shapes(shape_x2list, shape_max_x1)
+        x1 = tbe.broadcast(x1, shape_max)
+        x2 = tbe.broadcast(x2, shape_max)
+        condition = tbe.broadcast(condition, shape_max)
+        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float32"), shape_max, output_dtype="float32")
+        res = tbe.vcmpsel(condition, rhs=ones, operation='eq', slhs=x1, srhs=x2)
+        if num_dtype != "float32":
+            res = tbe.cast_to(res, num_dtype)
+    else:
+        if num_dtype != "float16":
+            x1 = tbe.cast_to(x1, "float16")
+            x2 = tbe.cast_to(x2, "float16")
+        condition = tbe.cast_to(condition, "float16")
+        shape_x1list = shape_util.shape_to_list(x1.shape)
+        shape_x2list = shape_util.shape_to_list(x2.shape)
+        con_shapelist = shape_util.shape_to_list(condition.shape)
+        shape_x1list, con_shapelist, shape_max_x1 = shape_util.broadcast_shapes(shape_x1list, con_shapelist)
+        shape_x2list, shape_max_x1, shape_max = shape_util.broadcast_shapes(shape_x2list, shape_max_x1)
+        x1 = tbe.broadcast(x1, shape_max)
+        x2 = tbe.broadcast(x2, shape_max)
+        condition = tbe.broadcast(condition, shape_max)
+        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float16"), shape_max, output_dtype="float16")
+        res = tbe.vcmpsel(condition, rhs=ones, operation='eq', slhs=x1, srhs=x2)
+        if num_dtype != "float16":
+            res = tbe.cast_to(res, num_dtype)
     return res
 
 
