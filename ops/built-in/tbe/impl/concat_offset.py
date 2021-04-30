@@ -34,6 +34,24 @@ def check_supported(concat_dim, x, y, kernel_name="concat_offset"):
 
     return True
 
+    
+# pylint: disable=unused-argument,invalid-name,unnecessary-pass
+def check_supported_with_reason(concat_dim, x, y, kernel_name="concat_offset"):
+    """
+    if the inputs is dynamic case, and the all num of x is <= 95, will support the aicore Op
+    """
+    if not util_common.is_dynamic_input(x) and not util_common.is_dynamic_input([concat_dim]):
+        reason = "dynamic shape is not supported"
+        return False, reason
+
+    # when input is more than 95, changed to aicpu
+    # because the system only support 192 gm num for one Op
+    if len(x) > 95:
+        reason = "aicore only support cases that all num of x is <= 95"
+        return False, reason
+
+    return True, ""
+
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_INPUT,
                             para_check.DYNAMIC_OUTPUT, para_check.KERNEL_NAME)
