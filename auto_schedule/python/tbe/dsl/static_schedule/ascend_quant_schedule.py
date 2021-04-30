@@ -77,7 +77,7 @@ def _tilling_axis(shape, dtype_size, tensor_num, res):
             break
 
     block_size = val_cnt // block_num * \
-        function_reduce(lambda x, y: x * y, shape_new[index_cnt + 1:])
+                 function_reduce(lambda x, y: x * y, shape_new[index_cnt + 1:])
     if 256 <= block_size <= total_ele:
         total_ele = block_size
 
@@ -133,20 +133,9 @@ def _reorder_by_split_c0(tensor):
     num = len(tensor.op.axis)
     factor = 16
     if num == 4:
-        c0o, c0i = tensor.split(tensor.op.axis[3], factor)
-        tensor.reorder(tensor.op.axis[0],
-                       tensor.op.axis[1],
-                       tensor.op.axis[2],
-                       c0o,
-                       c0i)
+        tensor.split(tensor.op.axis[3], factor)
     else:
-        c0o, c0i = tensor.split(tensor.op.axis[4], factor)
-        tensor.reorder(tensor.op.axis[0],
-                       tensor.op.axis[1],
-                       tensor.op.axis[2],
-                       tensor.op.axis[3],
-                       c0o,
-                       c0i)
+        tensor.split(tensor.op.axis[4], factor)
 
 
 def _reorder_by_split_c1(tensor):
@@ -221,11 +210,8 @@ def _reorder_buffer(sch, res, tensor_map):
     None
     """
     for key, value in tensor_map.items():
-        if key in [INPUT_NAME, CAST_F16_NAME]:
-            _reorder_by_split_c1(sch[value])
-        else:
+        if key in [VMULS_REFORM_NAME, VADDS_REFORM_NAME]:
             _reorder_by_split_c0(sch[value])
-    _reorder_by_split_c0(sch[res])
 
 
 def _set_buffer_emit_insn(sch, tensor_list, axis_inner, attr_dic):
@@ -352,16 +338,12 @@ def _bind_core(out_shape, sch, res, tensor_map):
     -------
     axis_outer, axis_inner
     """
-    res_split_shape = (out_shape[0],
-                       out_shape[1],
-                       out_shape[2],
-                       2,
-                       out_shape[3] // 2)
+    res_split_shape = out_shape
     core_num = _get_block_num(res)
     split_axis, split_factor = _tilling_axis(
         res_split_shape,
         DTYPE_SIZE_MAP.get(tensor_map.get(INPUT_NAME).dtype.lower()),
-        4, res)
+        2, res)
     axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
                                             factor=split_factor)
     bind_axis = 0

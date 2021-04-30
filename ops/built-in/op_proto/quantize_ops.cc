@@ -159,12 +159,12 @@ IMPLEMT_COMMON_INFERFUNC(AscendRequantInferShape) {
 COMMON_INFER_FUNC_REG(AscendRequant, AscendRequantInferShape);
 
 IMPLEMT_COMMON_INFERFUNC(AscendRequantS16InferShape) {
-  TensorDesc x_desc = op.GetInputDesc("x");
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc x_desc = op.GetInputDesc("x0");
+  TensorDesc y_desc = op.GetOutputDesc("y0");
   y_desc.SetDataType(DT_INT8);
   Shape shape = x_desc.GetShape();
   y_desc.SetShape(shape);
-  (void)op.UpdateOutputDesc("y", y_desc);
+  (void)op.UpdateOutputDesc("y0", y_desc);
   bool dual_output = false;
   if (op.GetAttr("dual_output", dual_output) == GRAPH_SUCCESS) {
     if (dual_output == true) {

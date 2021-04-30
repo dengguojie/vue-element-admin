@@ -28,16 +28,16 @@ from impl import ascend_quant_util as util
 
 # pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
 @fusion_manager.register("ascend_requant_s16")
-def ascend_requant_s16_compute(x, req_scale, x1, y, y1, dual_output, relu_flag, kernel_name='ascend_requant_s16'):
+def ascend_requant_s16_compute(x0, req_scale, x1, y0, y1, dual_output, relu_flag, kernel_name='ascend_requant_s16'):
     """
     int16 -> int8
 
     Parameters:
     ----------
-    x: the placeholder of input
+    x0: the placeholder of input
     req_scale: the placeholder of req_scale
     x1: the placeholder of x1
-    y: the dict of output.
+    y0: the dict of output.
     y1: the dict of output1.
     dual_output: dual output flag, default value is False
     relu_flag: the relu mode, default value is False
@@ -47,7 +47,7 @@ def ascend_requant_s16_compute(x, req_scale, x1, y, y1, dual_output, relu_flag, 
     -------
     res : the result of ascend_requant_s16 which is list
     """
-    x_shape = x.shape
+    x_shape = x0.shape
     x_shape_list = shape_util.shape_to_list(x_shape)
     align_shape = x_shape_list.copy()
 
@@ -59,15 +59,15 @@ def ascend_requant_s16_compute(x, req_scale, x1, y, y1, dual_output, relu_flag, 
         tensor_flag = True
 
     c1_index = 1
-    if util.is_nz_format(x):
+    if util.is_nz_format(x0):
         c1_index = len(x_shape) - 4
 
     align_shape[c1_index] = (align_shape[c1_index] + 1) // 2 * 2
-    res_s16, res_ub = _s16_to_s8_normal_compute(x, x1, req_scale, x_shape, align_shape, c1_index, tensor_flag,
+    res_s16, res_ub = _s16_to_s8_normal_compute(x0, x1, req_scale, x_shape, align_shape, c1_index, tensor_flag,
                                                 relu_flag)
 
     res = _format_transfer(align_shape, res_ub, c1_index)
-    if util.is_nz_format(x):
+    if util.is_nz_format(x0):
         res = tvm.compute(align_shape, lambda *i: res[i], name="res", tag="requant_s16_NZ")
 
     if dual_output:
@@ -160,13 +160,13 @@ def _format_transfer(shape, x, c1_index):
     return res
 
 
-def _check_params(x, req_scale, x1, y, y1, dual_output, relu_flag, kernel_name):
+def _check_params(x0, req_scale, x1, y0, y1, dual_output, relu_flag, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr
     """
-    shape_x = x.get("shape")
-    format_x = x.get("format")
-    dtype_x = x.get("dtype")
+    shape_x = x0.get("shape")
+    format_x = x0.get("format")
+    dtype_x = x0.get("dtype")
 
     shape_req = req_scale.get("shape")
     format_req = req_scale.get("format")
@@ -193,26 +193,27 @@ def _check_params(x, req_scale, x1, y, y1, dual_output, relu_flag, kernel_name):
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "req_scale", detail)
 
 
-def get_op_support_info(x, req_scale, x1, y, y1, dual_output=False, relu_flag=False, kernel_name="ascend_requant_s16"):
+def get_op_support_info(x0, req_scale, x1, y0, y1, dual_output=False, relu_flag=False,
+                        kernel_name="ascend_requant_s16"):
     """
     get split info
     """
-    return util.get_quant_support_info(x, x1=x1, dual_output=dual_output)
+    return util.get_quant_support_info(x0, x1=x1, dual_output=dual_output)
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def ascend_requant_s16(x, req_scale, x1, y, y1, dual_output=False, relu_flag=False, kernel_name="ascend_requant_s16"):
+def ascend_requant_s16(x0, req_scale, x1, y0, y1, dual_output=False, relu_flag=False, kernel_name="ascend_requant_s16"):
     """
     int16 -> int8
 
     Parameters:
     ----------
-    x: the placeholder of input
+    x0: the placeholder of input
     req_scale: the placeholder of req_scale
     x1: the placeholder of x1
-    y: the dict of output.
+    y0: the dict of output.
     y1: the dict of output1.
     dual_output: dual output flag, default value is False
     relu_flag: the relu mode, default value is False
@@ -222,10 +223,10 @@ def ascend_requant_s16(x, req_scale, x1, y, y1, dual_output=False, relu_flag=Fal
     -------
     None
     """
-    _check_params(x, req_scale, x1, y, y1, dual_output, relu_flag, kernel_name)
-    shape_x = x.get("shape")
-    format_x = x.get("format")
-    dtype_x = x.get("dtype")
+    _check_params(x0, req_scale, x1, y0, y1, dual_output, relu_flag, kernel_name)
+    shape_x = x0.get("shape")
+    format_x = x0.get("format")
+    dtype_x = x0.get("dtype")
     shape_req = req_scale.get("shape")
     dtype_req = req_scale.get("dtype")
 
@@ -243,5 +244,5 @@ def ascend_requant_s16(x, req_scale, x1, y, y1, dual_output=False, relu_flag=Fal
         input_x1 = None
 
     with tvm.target.cce():
-        res = ascend_requant_s16_compute(input_x, input_req, input_x1, y, y1, dual_output, relu_flag, kernel_name)
+        res = ascend_requant_s16_compute(input_x, input_req, input_x1, y0, y1, dual_output, relu_flag, kernel_name)
         generic.auto_schedule(res)
