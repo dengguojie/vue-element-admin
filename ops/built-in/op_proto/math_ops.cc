@@ -779,28 +779,45 @@ INFER_FUNC_REG(Conj, ConjInfer);
 // ----------------------NLLLoss------------------------
 IMPLEMT_COMMON_INFERFUNC(NLLLossInferShape) {
   std::string reduction;
-  (void)op.GetAttr("reduction", reduction);
-  std::vector<int64_t> output_scalar;
-
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  TensorDesc td_output_y = op.GetOutputDesc("y");
-  TensorDesc td_output2_total_weight = op.GetOutputDesc("total_weight");
-
-  if (x_shape.GetDimNum() == 2 && reduction == "none") {
-    auto x_dim = op.GetInputDesc("x").GetShape().GetDim(0);
-    std::vector<int64_t> y_new_shape;
-    y_new_shape.push_back(x_dim);
-    td_output_y.SetShape(ge::Shape(y_new_shape));
-  } else {
-    td_output_y.SetShape(ge::Shape(output_scalar));
+  if (op.GetAttr("reduction", reduction) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr reduction failed.");
+    return GRAPH_FAILED;
   }
-  td_output_y.SetDataType(op.GetInputDesc("x").GetDataType());
+  
+  std::vector<int64_t> scalar;
+  std::vector<int64_t> y_shape;
+  std::vector<std::pair<int64_t, int64_t>> y_range;
 
-  td_output2_total_weight.SetShape(ge::Shape(output_scalar));
-  td_output2_total_weight.SetDataType(op.GetInputDesc("weight").GetDataType());
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+  auto weight_desc = op_desc->MutableInputDesc(2);
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  auto total_weight_desc = op_desc->MutableOutputDesc(1);
+  std::vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
 
-  (void)op.UpdateOutputDesc("y", td_output_y);
-  (void)op.UpdateOutputDesc("total_weight", td_output2_total_weight);
+  y_desc->SetDataType(x_desc->GetDataType());
+  total_weight_desc->SetShape(GeShape(scalar));
+  total_weight_desc->SetDataType(weight_desc->GetDataType());
+  
+  if (reduction == "none") {
+    if (IsUnknownRankShape(x_shape) || x_shape.size() == 2) {
+      y_shape.push_back(x_shape[0]);
+      y_desc->SetShape(GeShape(y_shape));
+    
+      if (IsUnKnownShape(x_shape)) {
+        std::vector<std::pair<int64_t, int64_t>> x_range;
+        x_desc->GetShapeRange(x_range);
+        MakeUpShapeRange(x_shape, x_range);
+        y_range.push_back(x_range[0]);
+        y_desc->SetShapeRange(y_range);
+      }
+
+      return GRAPH_SUCCESS;
+    }
+  }
+  
+  // reduction "mean" or "sum" or 1D, output y is scalar
+  y_desc->SetShape(GeShape(scalar));
   return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(NLLLoss, NLLLossInferShape);
