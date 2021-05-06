@@ -133,6 +133,7 @@ set(_optiling_files
   roi_align.cc
   roi_align_grad.cc
   smooth_l1_loss_v2.cc
+  nll_loss.cc
   nll_loss_grad.cc
 )
 
