@@ -87,11 +87,38 @@ case3 = {
                         "fusion_params": {}, "impl_mode": "high_performance"}
 }
 
+case4 = {
+    "params": [{"shape": (1, 4, 16, 16, 16), "dtype": "float16"},
+               {"shape": (1, 1, 1, 1, 1), "dtype": "float16"},
+               4
+               ],
+    "case_name": "test_pooling2d_gmp_strided_write",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (16, 16), "stride": (2, 2), "pooling_mode": "GMP", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case5 = {
+    "params": [{"shape": (4, 8, 28, 28, 32), "dtype": "int8"},
+               {"shape": (4, 15, 28, 28, 16), "dtype": "float16", "ori_shape": (4, 280, 28, 28)},
+               3
+               ],
+    "case_name": "test_pooling2d_anti_quant_gmp_quant",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (28, 28), "stride": (2, 2), "pooling_mode": "GMP", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
 
 compile_case_list = [
     case1,
     case2,
     case3,
+    case4,
+    case5,
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)

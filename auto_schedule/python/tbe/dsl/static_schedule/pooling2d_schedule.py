@@ -854,6 +854,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
     ub_size = get_soc_spec("UB_SIZE")
     device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
     fused_ascend_quant = pooling_params["fused_ascend_quant"]
+    fused_anti_quant = pooling_params["fused_anti_quant"]
 
     enabler_c1_bind_core = batch_size < device_core_num and batch_size < c1_value
 
@@ -869,7 +870,8 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
             if c1_value % ci_factor != 0:
                 continue
 
-            is_match = fused_ascend_quant and c1_value != 1 and ci_factor % 2 != 0
+            is_match = (fused_ascend_quant and c1_value != 1 and ci_factor % 2 != 0) or \
+                       (fused_anti_quant and ci_factor % 2 != 0)
             if is_match:
                 continue
 
@@ -885,6 +887,10 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
 
             if fused_ascend_quant:
                 used_ub_size += result_in_ub_size
+
+            if fused_anti_quant:
+                antiquant_res_ub = (ci_factor // 2) * c_block_size * in_size_h * in_size_w * SIZE_OF_FP16
+                used_ub_size += antiquant_res_ub
 
             # srcStride of copy_gm_to_ubuf is uint16
             if used_ub_size > ub_size or in_size_h * in_size_w > 4096:
@@ -907,7 +913,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
             if not enabler_c1_bind_core or (enabler_c1_bind_core and bind_core_gap == 0):
                 break
 
-        if fused_ascend_quant and ci_factor == 1:
+        if (fused_ascend_quant and ci_factor == 1) or fused_anti_quant:
             ci_factor = 2
 
         if "find_tiling" not in tiling_params:
@@ -919,7 +925,8 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
                 if in_size_h % hi_factor != 0:
                     continue
 
-                is_match = fused_ascend_quant and c1_value != 1 and ci_factor % 2 != 0
+                is_match = (fused_ascend_quant and c1_value != 1 and ci_factor % 2 != 0) or \
+                           (fused_anti_quant and ci_factor % 2 != 0)
                 if is_match:
                     continue
 
@@ -937,6 +944,10 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
 
                 if fused_ascend_quant:
                     used_ub_size += result_in_ub_size
+
+                if fused_anti_quant:
+                    antiquant_res_ub = (ci_factor // 2) * c_block_size * in_size_h * in_size_w * SIZE_OF_FP16
+                    used_ub_size += antiquant_res_ub
 
                 # lenBurst of copy_gm_to_ubuf is uint16
                 if used_ub_size < ub_size and hi_factor * in_size_w <= 4096:
@@ -965,6 +976,10 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
 
                     if fused_ascend_quant:
                         used_ub_size += result_in_ub_size
+
+                    if fused_anti_quant:
+                        antiquant_res_ub = (ci_factor // 2) * c_block_size * in_size_h * in_size_w * SIZE_OF_FP16
+                        used_ub_size += antiquant_res_ub
 
                     # lenBurst of copy_gm_to_ubuf is uint16
                     if used_ub_size < ub_size and wi_factor <= 4096:
@@ -1383,15 +1398,6 @@ def pooling2d_schedule(res, sch_list):
     out_size_w = pooling_params["out_size_w"]
     batch_size = pooling_params["batch_size"]
     c1_value = pooling_params["c1_value"]
-
-    def check_antiquant_gmp():
-        if fused_anti_quant and pooling_mode == "GMP":
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "Pool antiquant cannot support GMP mode now!"
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    check_antiquant_gmp()
 
     # avg or max pooling
     if pooling_mode in ["AVG", "MAX"]:
@@ -1987,7 +1993,8 @@ def pooling2d_schedule(res, sch_list):
         fp32_ability = _check_fp32_ability(pooling_mode, impl_mode)
         # get tiling params
         tiling_params = pooling2d_global_tiling(pooling_params, fusion_params, impl_mode)
-        if fused_ascend_quant:
+        is_fused_antiquant_quant = (fused_anti_quant or fused_ascend_quant)
+        if is_fused_antiquant_quant:
             batch_inner, is_split_hw, cache_read_tensor = \
                 pooling_global_quant_schedule([sch], pooling_mode, pooling2d_res, res, tiling_params, pooling_params,
                                               fp32_ability, ascend_tensor, fusion_params)
@@ -2258,17 +2265,20 @@ def pooling_global_quant_schedule(
 
     batch_size = pooling_params["batch_size"]
     c1_value = pooling_params["c1_value"]
+    fused_ascend_quant = pooling_params["fused_ascend_quant"]
+    fused_anti_quant = pooling_params["fused_anti_quant"]
 
-    sch[pooling2d_res].set_scope(scope_ubuf)
-    set_ascend_buffer_scope(sch, quant_tensor_map)
-    input_ub = quant_tensor_map['input_ub']
-    del quant_tensor_map['input_ub']
+    if fused_ascend_quant:
+        sch[pooling2d_res].set_scope(scope_ubuf)
+        set_ascend_buffer_scope(sch, quant_tensor_map)
+        input_ub = quant_tensor_map['input_ub']
+        del quant_tensor_map['input_ub']
 
     cut_ci_factor = tiling_params["cut_ci_factor"]
-
-    cut_ci_factor_res = cut_ci_factor // 2 if cut_ci_factor > 1 else 1
-
-    set_ascend_buffer_scope(sch, quant_tensor_map)
+    cut_ci_factor_res = cut_ci_factor
+    if fused_ascend_quant:
+        cut_ci_factor_res = (cut_ci_factor + 1) // 2
+        set_ascend_buffer_scope(sch, quant_tensor_map)
 
     device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
 
@@ -2319,8 +2329,9 @@ def pooling_global_quant_schedule(
     pooling_out_ub_mul_factor_f16, pooling_out_ub_mul_factor, pooling_out_ub, \
         tensor_in_ub_f32, tensor_in_ub, tensor_in = _set_scope_get_rel_tensor()
 
-    sch[pooling2d_res].compute_inline()
-    sch[input_ub].compute_inline()
+    if fused_ascend_quant:
+        sch[pooling2d_res].compute_inline()
+        sch[input_ub].compute_inline()
 
     # schedule part
     ci_outer, ci_inner = sch[res].split(res.op.axis[1], factor=cut_ci_factor_res)
@@ -2446,15 +2457,67 @@ def pooling_global_quant_schedule(
 
     _do_compute_at_and_emitinsn()
 
-    set_ascend_compute_at(sch, res, quant_tensor_map, compute_at_axis)
+    if fused_ascend_quant:
+        set_ascend_compute_at(sch, res, quant_tensor_map, compute_at_axis)
+        attr_dic = {
+            "scale": res.op.attrs['scale'],
+            "sqrt_mode": res.op.attrs['sqrt_mode'],
+            "offset": res.op.attrs['offset'],
+            "round_mode": res.op.attrs['round_mode'],
+        }
+        set_quant_emit_insn(sch, quant_tensor_map, c1_value, attr_dic)
 
-    attr_dic = {
-        "scale": res.op.attrs['scale'],
-        "sqrt_mode": res.op.attrs['sqrt_mode'],
-        "offset": res.op.attrs['offset'],
-        "round_mode": res.op.attrs['round_mode'],
-    }
-    set_quant_emit_insn(sch, quant_tensor_map, c1_value, attr_dic)
+    if fused_anti_quant:
+        def _is_placeholder(tensor):
+            return isinstance(tensor.op, tvm.tensor.PlaceholderOp)
+
+        def _crawl_antiquant_tensor(res):
+            tensors = {}
+            queue = [res]
+            visited = []
+            while queue:
+                head = queue.pop(0)
+                for tensor in head.op.input_tensors:
+                    if tensor in visited or _is_placeholder(tensor):
+                        continue
+                    tensors[tensor.op.name] = tensor
+                    visited.append(tensor)
+                    queue.append(tensor)
+            return tensors
+
+        antiquant_res = tensor_in_ub.op.input_tensors[0]
+        antiquant_tensors = _crawl_antiquant_tensor(antiquant_res)
+
+        def _set_scope(sch, tensors, scope):
+            for tensor in tensors:
+                sch[tensor].set_scope(scope)
+
+        input_ub = antiquant_tensors["input_ub"]
+        sch[input_ub].buffer_align((1, 1),
+                                   (1, 1),
+                                   (1, 1),
+                                   (1, 1),
+                                   (1, INT8_ALIGN))
+        if tiling_params["enable_double_buffer"]:
+            sch[input_ub].preload()
+            sch[input_ub].double_buffer()
+
+        # emit insn
+        for tensor in antiquant_tensors.values():
+            if tensor.op.name == "input_ub":
+                sch[tensor].emit_insn(tensor.op.axis[0], 'dma_copy')
+            else:
+                sch[tensor].emit_insn(tensor.op.axis[0], 'vector_auto')
+
+        def _compute_at(sch, tensors, target_tensor, axis):
+            for tensor in tensors:
+                sch[tensor].compute_at(sch[target_tensor], axis)
+
+        _compute_at(sch, antiquant_tensors.values(), antiquant_res, antiquant_res.op.axis[0])
+        _set_scope(sch, antiquant_tensors.values(), scope_ubuf)
+        _set_scope(sch, [antiquant_res], scope_ubuf)
+        sch[antiquant_res].compute_at(sch[res], compute_at_axis)
+        sch[antiquant_tensors["reform_by_vmuls"]].reused_by(antiquant_res)
 
     is_split_hw = ("loop_cut_hi" in tiling_params and (tiling_params["loop_cut_hi"] > 1)) or \
                   ("loop_cut_hw" in tiling_params and (tiling_params["loop_cut_hw"] > 1))
