@@ -2171,7 +2171,8 @@ IMPLEMT_INFERFUNC(ScaleAndTranslate, ScaleAndTranslateInfer) {
   TensorDesc desc = op.GetOutputDesc("y");
   desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output y.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        string("update description for output[y] failed."));
     return GRAPH_FAILED;
   }
   return ResizeShapeFn(op, "images", "size", "y");
@@ -2196,13 +2197,25 @@ IMPLEMT_INFERFUNC(ScaleAndTranslateGrad, ScaleAndTranslateGradInfer) {
     y_shape.push_back(org_images_shape[2]);
     y_shape.push_back(org_images_shape[3]);
   } else {
-    CHECK(grads_shape.size() < 4 || org_images_shape.size() < 2,
-          OP_LOGE(op.GetName().c_str(), "invalid inputs shape dims."), return GRAPH_FAILED);
+    if (grads_shape.size() < 4) {
+      std::string err_msg = ConcatString(
+        "the 0th input[grads]'s shape should not be less than 4, ",
+        "current shape is ", grads_shape.size());
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
+    if (org_images_shape.size() < 2) {
+      std::string err_msg = ConcatString(
+        "the 1th input[original_images]'s shape should not be less than 2, ",
+        "current shape is ", org_images_shape.size());
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(org_images_shape[1]);
     y_shape.push_back(org_images_shape[2]);
     y_shape.push_back(grads_shape[3]);
-    OP_LOGE(op.GetName().c_str(), "Real format is %d", input_format);
+    OP_LOGI(op.GetName().c_str(), "Real format is %d", input_format);
   }
 
   desc.SetShape(ge::Shape(y_shape));

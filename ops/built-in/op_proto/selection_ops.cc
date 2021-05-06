@@ -1856,7 +1856,7 @@ IMPLEMT_VERIFIER(SegmentMax, SegmentMaxVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(SegmentMaxInferShape) {
-  auto input_desc = op.GetInputDesc("x");
+  auto x_input_desc = op.GetInputDesc("x");
   const std::string segment_ids_name = "segment_ids";
   Tensor segment_ids;
   int64_t first_axis_dims;
@@ -1867,27 +1867,28 @@ IMPLEMT_COMMON_INFERFUNC(SegmentMaxInferShape) {
     auto data_type = op.GetInputDesc(segment_ids_name).GetDataType();
     std::vector<int64_t> const_data;
     if (!GetConstIntData(segment_ids, data_type, const_data)) {
-      OP_LOGE("segment_max",
-              "invalid data type of segment_ids,"
-              "data_type is %d.",
-              (int)data_type);
+      std::string err_msg = ConcatString("failed to call GetConstIntData function ",
+          "due to invalid data type of input[segment_ids]. data_type is ",
+          static_cast<int>(data_type));
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     first_axis_dims = (*std::max_element(const_data.begin(), const_data.end())) + 1;
   }
 
-  auto output_shape_dims = input_desc.GetShape().GetDims();
+  auto output_shape_dims = x_input_desc.GetShape().GetDims();
   if (output_shape_dims.empty()) {
-    OP_LOGE(op.GetName().c_str(), "The dims of input is empty!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("the 0th input[x]'s shape should not be empty."));
     return GRAPH_FAILED;
   }
   output_shape_dims[0] = first_axis_dims;
   Shape output_shape(output_shape_dims);
-  DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(output_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  DataType input_dtype = x_input_desc.GetDataType();
+  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+  tensor_desc_output.SetShape(output_shape);
+  tensor_desc_output.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", tensor_desc_output);
   return GRAPH_SUCCESS;
 }
 
@@ -2880,7 +2881,7 @@ IMPLEMT_VERIFIER(CumprodD, CumprodDVerify) {
     string dim_range = ConcatString(-dimnum,",", dimnum);
     std::string err_msg = GetParamOutRangeErrMsg("axis", dim_range, std::to_string(axis));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    
+
     return GRAPH_FAILED;
   }
 
@@ -2928,7 +2929,7 @@ IMPLEMT_VERIFIER(CumsumD, CumsumDVerify) {
     string dim_range = ConcatString(-dimnum,",", dimnum);
     std::string err_msg = GetParamOutRangeErrMsg("axis", dim_range, std::to_string(axis));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    
+
     return GRAPH_FAILED;
   }
 
@@ -3547,7 +3548,7 @@ IMPLEMT_INFERFUNC(TileWithAxis, TileWithAxisInferShape) {
     if (axis < 0) {
       axis = axis + 5;
     }
-    
+
     if (axis == 1 || axis == 4) {
       std::string err_msg = OtherErrMsg("5D tensor's axis is invalid");
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -3739,7 +3740,7 @@ IMPLEMT_VERIFIER(CumulativeLogsumexpD, CumulativeLogsumexpDVerify) {
     string dim_range = ConcatString(-dimnum,",", dimnum);
     std::string err_msg = GetParamOutRangeErrMsg("axis", dim_range, std::to_string(axis));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    
+
     return GRAPH_FAILED;
   }
 

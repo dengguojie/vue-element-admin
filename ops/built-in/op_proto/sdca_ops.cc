@@ -24,6 +24,7 @@
 #include "common_shape_fns.h"
 #include "util/util.h"
 #include "graph/operator.h"
+#include "util/error_util.h"
 
 namespace ge {
 
@@ -31,11 +32,13 @@ IMPLEMT_INFERFUNC(SdcaOptimizerV2, SdcaOptimizerV2Infer) {
   int num_sparse_features;
   int num_dense_features;
   if (op.GetAttr("num_sparse_features", num_sparse_features) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr num_sparse_features failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get attr[num_sparse_features] failed."));
     return GRAPH_FAILED;
   }
   if (op.GetAttr("num_dense_features", num_dense_features) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr num_dense_features failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get attr[num_dense_features] failed."));
     return GRAPH_FAILED;
   }
 
@@ -47,7 +50,8 @@ IMPLEMT_INFERFUNC(SdcaOptimizerV2, SdcaOptimizerV2Infer) {
     desc.SetShape(shape);
     output_status = op.UpdateDynamicOutputDesc("out_delta_sparse_weights", i, desc);
     if (output_status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "update out_delta_sparse_weights:%d failed", i);
+      std::string err_msg = ConcatString("update description for output out_delta_sparse_weights[", i, "] failed.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -58,7 +62,8 @@ IMPLEMT_INFERFUNC(SdcaOptimizerV2, SdcaOptimizerV2Infer) {
     desc.SetDataType(DT_FLOAT);
     desc.SetShape(shape);
     if (op.UpdateDynamicOutputDesc("out_delta_dense_weights", i, desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "update out_delta_dense_weights failed");
+      std::string err_msg = ConcatString("update description for output out_delta_dense_weights[", i, "] failed.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -68,11 +73,12 @@ IMPLEMT_INFERFUNC(SdcaOptimizerV2, SdcaOptimizerV2Infer) {
   dims.push_back(UNKNOWN_DIM);
   dims.push_back(4);
   Shape sec_shape(dims);
-  TensorDesc state_desc = op.GetOutputDesc("out_example_state_data");
-  state_desc.SetShape(sec_shape);
-  state_desc.SetDataType(DT_FLOAT);
-  if (op.UpdateOutputDesc("out_example_state_data", state_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update out_example_state_data.");
+  TensorDesc state_tensor_desc = op.GetOutputDesc("out_example_state_data");
+  state_tensor_desc.SetShape(sec_shape);
+  state_tensor_desc.SetDataType(DT_FLOAT);
+  if (op.UpdateOutputDesc("out_example_state_data", state_tensor_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update description for output[out_example_state_data] failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

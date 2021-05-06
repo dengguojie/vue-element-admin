@@ -307,20 +307,21 @@ IMPLEMT_INFERFUNC(StageClear, StageClearInfer) {
 INFER_FUNC_REG(StageClear, StageClearInfer);
 
 IMPLEMT_INFERFUNC(StagePeek, StagePeekInfer) {
-  Shape unknown_shape(ge::UNKNOWN_SHAPE);
+  Shape shape(ge::UNKNOWN_SHAPE);
 
   Operator::OpListType dtypes;
   if (op.GetAttr("dtypes", dtypes) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op get attr dtypes failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get attr[dtypes] failed."));
     return GRAPH_FAILED;
   }
 
-  size_t size = dtypes.size();
-  for (size_t i = 0; i < size; ++i) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc("y", i);
-    output_desc.SetShape(unknown_shape);
-    output_desc.SetDataType(dtypes[i]);
-    op.UpdateDynamicOutputDesc("y", i, output_desc);
+  size_t dtypes_size = dtypes.size();
+  for (size_t i = 0; i < dtypes_size; ++i) {
+    TensorDesc y_output_desc = op.GetDynamicOutputDesc("y", i);
+    y_output_desc.SetShape(shape);
+    y_output_desc.SetDataType(dtypes[i]);
+    op.UpdateDynamicOutputDesc("y", i, y_output_desc);
   }
   return GRAPH_SUCCESS;
 }
