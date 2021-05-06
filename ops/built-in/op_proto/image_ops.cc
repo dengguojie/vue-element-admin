@@ -2199,15 +2199,15 @@ IMPLEMT_INFERFUNC(ScaleAndTranslateGrad, ScaleAndTranslateGradInfer) {
   } else {
     if (grads_shape.size() < 4) {
       std::string err_msg = ConcatString(
-        "the 0th input[grads]'s shape should not be less than 4, ",
-        "current shape is ", grads_shape.size());
+        "the 0th input[grads]'s rank should not be less than 4, ",
+        "current rank is ", grads_shape.size());
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     if (org_images_shape.size() < 2) {
       std::string err_msg = ConcatString(
-        "the 1th input[original_images]'s shape should not be less than 2, ",
-        "current shape is ", org_images_shape.size());
+        "the 1th input[original_images]'s rank should not be less than 2, ",
+        "current rank is ", org_images_shape.size());
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }

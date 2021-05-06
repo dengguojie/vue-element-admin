@@ -34,6 +34,7 @@
 #include "graph/common_error_codes.h"
 #include "graph/debug/ge_attr_define.h"
 #include "axis_util.h"
+#include "common_shape_fns.h"
 
 #define ELLIPSIS_MASK_UPDATE(mask, new_mask, bit_ellipsis, i, pow_table, \
                              right_mov)                                  \
@@ -1856,7 +1857,7 @@ IMPLEMT_VERIFIER(SegmentMax, SegmentMaxVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(SegmentMaxInferShape) {
-  auto x_input_desc = op.GetInputDesc("x");
+  auto input_desc = op.GetInputDesc("x");
   const std::string segment_ids_name = "segment_ids";
   Tensor segment_ids;
   int64_t first_axis_dims;
@@ -1869,22 +1870,22 @@ IMPLEMT_COMMON_INFERFUNC(SegmentMaxInferShape) {
     if (!GetConstIntData(segment_ids, data_type, const_data)) {
       std::string err_msg = ConcatString("failed to call GetConstIntData function ",
           "due to invalid data type of input[segment_ids]. data_type is ",
-          static_cast<int>(data_type));
+          DTypeStr(data_type));
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     first_axis_dims = (*std::max_element(const_data.begin(), const_data.end())) + 1;
   }
 
-  auto output_shape_dims = x_input_desc.GetShape().GetDims();
+  auto output_shape_dims = input_desc.GetShape().GetDims();
   if (output_shape_dims.empty()) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-        std::string("the 0th input[x]'s shape should not be empty."));
+        std::string("the input[x]'s shape should not be empty."));
     return GRAPH_FAILED;
   }
   output_shape_dims[0] = first_axis_dims;
   Shape output_shape(output_shape_dims);
-  DataType input_dtype = x_input_desc.GetDataType();
+  DataType input_dtype = input_desc.GetDataType();
   TensorDesc tensor_desc_output = op.GetOutputDesc("y");
   tensor_desc_output.SetShape(output_shape);
   tensor_desc_output.SetDataType(input_dtype);
@@ -2366,7 +2367,7 @@ static void TopKGetShapeRange(std::vector<std::pair<int64_t, int64_t>> &shape_ra
     } else {
       shape_range.push_back(pair<int64_t, int64_t>(dims_in[i], dims_in[i]));
     }
-  }  
+  }
 }
 
 static bool TopKInferCommon(Operator &op, int64_t k) {
