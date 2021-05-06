@@ -33,37 +33,7 @@ class SparseCross : public testing::Test {
   }
 };
 
-TEST_F(SparseCross, sparse_cross_infer_01) {
-  ge::op::SparseCross op;
-
-  op.SetAttr("out_type", ge::DT_INT64);
-  op.SetAttr("internal_type", ge::DT_INT64);
-  const int32_t size = 2;
-  op.create_dynamic_input_indices(size);
-  for (int i = 0; i < size; ++i) {
-    op.UpdateDynamicInputDesc("indices", i, create_desc({2, 2}, ge::DT_INT64));
-  }
-
-  op.create_dynamic_input_values(size);
-  for (int i = 0; i < size; ++i) {
-    op.UpdateDynamicInputDesc("values", i, create_desc({2}, ge::DT_INT64));
-  }
-
-  op.create_dynamic_input_shapes(size);
-  for (int i = 0; i < size; ++i) {
-    op.UpdateDynamicInputDesc("shapes", i, create_desc({2}, ge::DT_INT64));
-  }
-
-  op.create_dynamic_input_dense_inputs(size);
-  for (int i = 0; i < size; ++i) {
-    op.UpdateDynamicInputDesc("dense_inputs", i, create_desc({2}, ge::DT_INT64));
-  }
-
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}
-
-TEST_F(SparseCross, sparse_cross_infer_shape_02) {
+TEST_F(SparseCross, sparse_cross_infer_shape_01) {
   ge::op::SparseCross op;
 
   op.SetAttr("out_type", ge::DT_INT64);
@@ -93,7 +63,7 @@ TEST_F(SparseCross, sparse_cross_infer_shape_02) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(SparseCross, sparse_cross_infer_shape_03) {
+TEST_F(SparseCross, sparse_cross_infer_shape_02) {
   ge::op::SparseCross op;
 
   op.SetAttr("out_type", ge::DT_INT64);
@@ -123,7 +93,7 @@ TEST_F(SparseCross, sparse_cross_infer_shape_03) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(SparseCross, sparse_cross_infer_shape_04) {
+TEST_F(SparseCross, sparse_cross_infer_shape_03) {
   ge::op::SparseCross op;
 
   op.SetAttr("out_type", ge::DT_INT64);
@@ -153,37 +123,7 @@ TEST_F(SparseCross, sparse_cross_infer_shape_04) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(SparseCross, sparse_cross_infer_shape_05) {
-  ge::op::SparseCross op;
-
-  op.SetAttr("out_type", ge::DT_INT64);
-  op.SetAttr("internal_type", ge::DT_INT64);
-  const int32_t size = 2;
-  op.create_dynamic_input_indices(size);
-  for (int i = 0; i < size; ++i) {
-    op.UpdateDynamicInputDesc("indices", i, create_desc({2, 2}, ge::DT_INT64));
-  }
-
-  op.create_dynamic_input_values(size);
-  for (int i = 0; i < size; ++i) {
-    op.UpdateDynamicInputDesc("values", i, create_desc({2}, ge::DT_INT64));
-  }
-
-  op.create_dynamic_input_shapes(size);
-  for (int i = 0; i < size; ++i) {
-    op.UpdateDynamicInputDesc("shapes", i, create_desc({2}, ge::DT_INT64));
-  }
-
-  op.create_dynamic_input_dense_inputs(size);
-  for (int i = 0; i < size; ++i) {
-    op.UpdateDynamicInputDesc("dense_inputs", i, create_desc({2, 2}, ge::DT_INT64));
-  }
-
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}
-
-TEST_F(SparseCross, sparse_cross_infer_06) {
+TEST_F(SparseCross, sparse_cross_infer_04) {
   ge::op::SparseCross op;
 
   op.SetAttr("out_type", ge::DT_FLOAT);
@@ -213,7 +153,7 @@ TEST_F(SparseCross, sparse_cross_infer_06) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(SparseCross, sparse_cross_infer_07) {
+TEST_F(SparseCross, sparse_cross_infer_05) {
   ge::op::SparseCross op;
 
   op.SetAttr("out_type", ge::DT_INT64);
