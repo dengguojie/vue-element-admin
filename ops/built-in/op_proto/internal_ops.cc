@@ -25,6 +25,7 @@
 
 #include "common/inc/op_log.h"
 #include "common_shape_fns.h"
+#include "util/error_util.h"
 
 namespace ge {
 
@@ -57,7 +58,7 @@ IMPLEMT_INFERFUNC(AssistHelp, AssistHelpInfer) {
   const std::map<std::string, uint32_t> func_name_map = {{"topkv2", 1}};
   std::string func_name;
   if (op.GetAttr("func_name", func_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op get attr func_name failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[func_name] failed."));
     return GRAPH_FAILED;
   }
   uint32_t func_id = 0;
@@ -69,7 +70,8 @@ IMPLEMT_INFERFUNC(AssistHelp, AssistHelpInfer) {
     case 1:
       return FunctionTopkV2(op);
     default:
-      OP_LOGE(op.GetName().c_str(), "Op don't have func_name:%s", func_name.c_str());
+      std::string err_msg = GetAttrValueErrMsg("func_name", func_name, "topkv2");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
   }
 }

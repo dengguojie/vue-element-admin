@@ -482,7 +482,8 @@ INFER_FUNC_REG(Unstage, UnstageInfer);
 IMPLEMT_INFERFUNC(TensorArray, TensorArrayInfer) {
   Shape unused;
   if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArray: size must be 0-D");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -490,7 +491,7 @@ IMPLEMT_INFERFUNC(TensorArray, TensorArrayInfer) {
   handle_desc.SetShape(Shape());
   handle_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArray: update handle desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[handle] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -498,38 +499,42 @@ IMPLEMT_INFERFUNC(TensorArray, TensorArrayInfer) {
   flow_desc.SetShape(Shape());
   flow_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("flow", flow_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArray: update flow desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow] desc failed."));
     return GRAPH_FAILED;
   }
 
   bool identical_shapes;
   if (op.GetAttr("identical_element_shapes", identical_shapes) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArray: get attr identical_element_shapes failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[identical_element_shapes] failed."));
     return GRAPH_FAILED;
   }
 
-  Operator::OpType type;
-  if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArray: get attr dtype failed");
+  Operator::OpType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
 
   Operator::OpListInt elem_dims;
   if (op.GetAttr("element_shape", elem_dims) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArray: get attr element_shape failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[element_shape] failed."));
     return GRAPH_FAILED;
   }
 
   Shape elemShape(std::move(elem_dims));
   if (ShapeFullDefined(elemShape) || identical_shapes) {
-    ShapeAndType shape_and_type(elemShape, type);
+    ShapeAndType shape_and_type(elemShape, dtype);
     std::vector<ShapeAndType> handle_shapes_and_types;
     handle_shapes_and_types.reserve(1);
     handle_shapes_and_types.emplace_back(shape_and_type);
     std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
     shapes_and_types[0] = handle_shapes_and_types;
-    auto context = op.GetInferenceContext();
-    context->SetOutputHandleShapesAndTypes(shapes_and_types);
+    auto infer_context = op.GetInferenceContext();
+    if (infer_context == nullptr) {
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
+      return GRAPH_FAILED;
+    }
+    infer_context->SetOutputHandleShapesAndTypes(shapes_and_types);
   }
   return GRAPH_SUCCESS;
 }
@@ -539,7 +544,8 @@ INFER_FUNC_REG(TensorArray, TensorArrayInfer);
 IMPLEMT_INFERFUNC(TensorArrayClose, TensorArrayCloseInfer) {
   Shape unused;
   if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayClose: handle must be 0-D");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -550,25 +556,27 @@ INFER_FUNC_REG(TensorArrayClose, TensorArrayCloseInfer);
 IMPLEMT_INFERFUNC(TensorArrayConcat, TensorArrayConcatInfer) {
   Shape unused;
   if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayConcat: handle must be 0-D");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayConcat: flow_in must be 0-D");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  Operator::OpType type;
-  if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayConcat: get attr dtype failed");
+  Operator::OpType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
   TensorDesc value_desc = op.GetOutputDesc("value");
-  value_desc.SetDataType(type);
+  value_desc.SetDataType(dtype);
   // unknown rank
   value_desc.SetShape(Shape(ge::UNKNOWN_RANK));
   if (op.UpdateOutputDesc("value", value_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayConcat: update value desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[value] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -577,7 +585,7 @@ IMPLEMT_INFERFUNC(TensorArrayConcat, TensorArrayConcatInfer) {
   // 1-D, unknown dim
   lengths_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
   if (op.UpdateOutputDesc("lengths", lengths_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayConcat: update lengths desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[lengths] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -589,50 +597,56 @@ IMPLEMT_INFERFUNC(TensorArrayGather, TensorArrayGatherInfer) {
   Shape unused;
   Shape indices_shape;
   if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGather: handle must be 0-D");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 1, indices_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGather: indices must be 1-D");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(2), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGather: flow_in must be 0-D");
+    std::string err_msg = GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  auto context = op.GetInferenceContext();
-  if (context == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGather: inference context is nullptr");
+  auto infer_context = op.GetInferenceContext();
+  if (infer_context == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
-  std::vector<std::vector<ShapeAndType>> shapes_and_types = context->GetInputHandleShapesAndTypes();
+  std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
   Shape input_or_attr_shape;
   if ((!shapes_and_types.empty()) && (!shapes_and_types.at(0).empty())) {
     input_or_attr_shape = shapes_and_types.at(0).at(0).GetShape();
   } else {
     Operator::OpListInt elem_dims;
     if (op.GetAttr("element_shape", elem_dims) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "TensorArrayGather: get attr element_shape failed");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[element_shape] failed."));
       return GRAPH_FAILED;
     }
     input_or_attr_shape = Shape(std::move(elem_dims));
   }
   Shape output_shape;
   if (Concatenate(indices_shape, input_or_attr_shape, output_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGather: concatenate failed, please check indices shape");
+    std::string err_msg = ConcatString("failed to call Concatenate function, 1th shape",
+                                       DebugString(indices_shape.GetDims()), " of input[indices] can't concatenate context' shape",
+                                       DebugString(input_or_attr_shape.GetDims()));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  Operator::OpType type;
-  if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGather: get attr dtype failed");
+  Operator::OpType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
   TensorDesc value_desc = op.GetOutputDesc("value");
-  value_desc.SetDataType(type);
+  value_desc.SetDataType(dtype);
   value_desc.SetShape(output_shape);
   if (op.UpdateOutputDesc("value", value_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGather: update value desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[value] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -643,11 +657,13 @@ INFER_FUNC_REG(TensorArrayGather, TensorArrayGatherInfer);
 IMPLEMT_INFERFUNC(TensorArrayGrad, TensorArrayGradInfer) {
   Shape unused;
   if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGrad: handle must be 0-D");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGrad: flow_in must be 0-D");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -655,7 +671,7 @@ IMPLEMT_INFERFUNC(TensorArrayGrad, TensorArrayGradInfer) {
   grad_handle_desc.SetShape(Shape());
   grad_handle_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("grad_handle", grad_handle_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGrad: update grad_handle desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[grad_handle] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -663,12 +679,13 @@ IMPLEMT_INFERFUNC(TensorArrayGrad, TensorArrayGradInfer) {
   flow_out_desc.SetShape(Shape());
   flow_out_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("flow_out", flow_out_desc) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "TensorArrayGrad: update flow_out desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow_out] desc failed."));
+    return GRAPH_FAILED;
   }
 
   auto context = op.GetInferenceContext();
   if (context == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayGrad: inference context is nullptr");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
   std::vector<std::vector<ShapeAndType>> input_shapes_and_types = context->GetInputHandleShapesAndTypes();
@@ -689,21 +706,24 @@ INFER_FUNC_REG(TensorArrayGrad, TensorArrayGradInfer);
 IMPLEMT_INFERFUNC(TensorArrayWrite, TensorArrayWriteInfer) {
   Shape unused;
   if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayWrite: handle must be 0-D");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayWrite: index must be 0-D");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(3), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayWrite: flow_in must be 0-D");
+    std::string err_msg = GetShapeErrMsg(3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto context = op.GetInferenceContext();
   if (context == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayWrite: inference context is nullptr");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
   std::vector<std::vector<ShapeAndType>> shapes_and_types = context->GetInputHandleShapesAndTypes();
@@ -713,7 +733,10 @@ IMPLEMT_INFERFUNC(TensorArrayWrite, TensorArrayWriteInfer) {
     Shape value_shape = op.GetInputDesc(2).GetShape();
 
     if (Merge(shape_and_type.GetShape(), value_shape, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "TensorArrayWrite: merge failed, please check the shape of 'value'");
+      std::string err_msg = ConcatString("failed to call Merge function, 2th shape",
+                                         DebugString(value_shape.GetDims()), " of input[value] can't merge context' shape",
+                                         DebugString(shape_and_type.GetShape().GetDims()));
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -722,7 +745,7 @@ IMPLEMT_INFERFUNC(TensorArrayWrite, TensorArrayWriteInfer) {
   flow_out_desc.SetShape(Shape());
   flow_out_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("flow_out", flow_out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArrayWrite: update flow_out desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow_out] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -733,11 +756,16 @@ INFER_FUNC_REG(TensorArrayWrite, TensorArrayWriteInfer);
 IMPLEMT_INFERFUNC(TensorArrayGradWithShape, TensorArrayGradWithShapeInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input handle must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto context = op.GetInferenceContext();
+  if (context == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
+    return GRAPH_FAILED;
+  }
   std::vector<std::vector<ShapeAndType>> input_shapes_and_types = context->GetInputHandleShapesAndTypes();
   if ((!input_shapes_and_types.empty()) && (!input_shapes_and_types.at(0).empty())) {
     Shape input_shape = input_shapes_and_types.at(0).at(0).GetShape();
@@ -775,7 +803,7 @@ IMPLEMT_INFERFUNC(TensorArrayGradWithShape, TensorArrayGradWithShapeInfer) {
   grad_output_desc.SetShape(Shape());
   grad_output_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("grad_handle", grad_output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update grad_handle desc failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[grad_handle] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -783,7 +811,7 @@ IMPLEMT_INFERFUNC(TensorArrayGradWithShape, TensorArrayGradWithShapeInfer) {
   flow_output_desc.SetShape(Shape());
   flow_output_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("flow_out", flow_output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update flow_out desc failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow_out] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -795,30 +823,37 @@ INFER_FUNC_REG(TensorArrayGradWithShape, TensorArrayGradWithShapeInfer);
 IMPLEMT_INFERFUNC(TensorArrayRead, TensorArrayReadInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input handle must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(1), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input index must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(2), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input flow_in must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  auto context = op.GetInferenceContext();
-  std::vector<std::vector<ShapeAndType>> shapes_and_types = context->GetInputHandleShapesAndTypes();
+  auto infer_context = op.GetInferenceContext();
+  if (infer_context == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
+    return GRAPH_FAILED;
+  }
+  std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
 
-  Operator::OpType type;
-  if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "TensorArray: get attr dtype failed");
+  Operator::OpType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
   TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetDataType(type);
+  output_desc.SetDataType(dtype);
   if ((!shapes_and_types.empty()) && (!shapes_and_types.at(0).empty())) {
     Shape output_shape = shapes_and_types.at(0).at(0).GetShape();
     output_desc.SetShape(output_shape);
@@ -827,7 +862,7 @@ IMPLEMT_INFERFUNC(TensorArrayRead, TensorArrayReadInfer) {
   }
 
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update y desc failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -839,58 +874,64 @@ INFER_FUNC_REG(TensorArrayRead, TensorArrayReadInfer);
 IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(unused_shape.GetDims()), "scalar");
-    OP_LOGE(op.GetName().c_str(), "Input handle must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(3), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(3, op.GetName(), DebugString(unused_shape.GetDims()), "scalar");
-    OP_LOGE(op.GetName().c_str(), "Input flow_in must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape indices_shape;
   if (WithRank(op.GetInputDesc(1), 1, indices_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(indices_shape.GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "Input indices must be 1-D.");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape value_shape;
   int indices_rank = indices_shape.GetDimNum();
+  std::string err_msg;
   if (WithRankAtLeast(op.GetInputDesc(2), indices_rank, value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(2, op.GetName(), DebugString(indices_shape.GetDims()), ConcatString("at least ", indices_rank, "D"));
-    OP_LOGE(op.GetName().c_str(), "Input indices must be at least %dD.", indices_rank);
+    std::string err_msg = ConcatString("at least [", indices_rank, "D].");
+    err_msg = GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), err_msg.c_str());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  std::string err_msg;
   for (int i = 0; i < indices_rank; i++) {
     if ((value_shape.GetDim(i) >= 0) && (indices_shape.GetDim(i) >= 0) &&
         (value_shape.GetDim(i) != indices_shape.GetDim(i))) {
-      err_msg = ConcatString(i, "th dim of input value shape", DebugString(value_shape.GetDims()),
-                             " must equal to that of input indices shape", DebugString(indices_shape.GetDims()));
+      err_msg = ConcatString(i, "th dim[", value_shape.GetDim(i), "] of input[value]",
+                             " must equal to that dim[", indices_shape.GetDim(i), "] of input[indices].");
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
 
-  auto context = op.GetInferenceContext();
-  std::vector<std::vector<ShapeAndType>> shapes_and_types = context->GetInputHandleShapesAndTypes();
+  auto infer_context = op.GetInferenceContext();
+  if (infer_context == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
+    return GRAPH_FAILED;
+  }
+  std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
   if ((!shapes_and_types.empty()) && (!shapes_and_types.at(0).empty())) {
     Shape tensor_shape = shapes_and_types.at(0).at(0).GetShape();
     Shape fed_shape;
     if (SubShape(value_shape, 1, value_shape.GetDimNum(), 1, fed_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
       err_msg = ConcatString("failed to call SubShape function to subshape from 1 to ",
-          value_shape.GetDimNum(), " of value shape", DebugString(value_shape.GetDims()));
+          value_shape.GetDimNum(), " of input[value] shape", DebugString(value_shape.GetDims()));
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("get ", err_msg));
       return GRAPH_FAILED;
     }
 
     if (Merge(tensor_shape, fed_shape, fed_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      err_msg = ConcatString("failed to call Merge function to merge element shape",
-          DebugString(tensor_shape.GetDims()), " and value subshape", DebugString(fed_shape.GetDims()));
+      std::string err_msg = ConcatString("failed to call Merge function, sub shape",
+                                         DebugString(fed_shape.GetDims()), " of input[value] can't merge context' shape",
+                                         DebugString(tensor_shape.GetDims()));
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
@@ -900,7 +941,7 @@ IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
   output_desc.SetShape(Shape());
   output_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("flow_out", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update flow_out desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow_out] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -912,17 +953,20 @@ INFER_FUNC_REG(TensorArrayScatter, TensorArrayScatterInfer);
 IMPLEMT_INFERFUNC(TensorArraySplit, TensorArraySplitInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input handle must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(2), 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input lengths must be 1-D.");
+    std::string err_msg = GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "1D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(3), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input flow_in must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -930,7 +974,7 @@ IMPLEMT_INFERFUNC(TensorArraySplit, TensorArraySplitInfer) {
   output_desc.SetShape(Shape());
   output_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("flow_out", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update flow_out desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow_out] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -942,7 +986,8 @@ INFER_FUNC_REG(TensorArraySplit, TensorArraySplitInfer);
 IMPLEMT_INFERFUNC(TensorArraySize, TensorArraySizeInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input handle must be Scalar.");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -950,7 +995,7 @@ IMPLEMT_INFERFUNC(TensorArraySize, TensorArraySizeInfer) {
   output_desc.SetShape(Shape());
   output_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update size desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[size] desc failed."));
     return GRAPH_FAILED;
   }
 

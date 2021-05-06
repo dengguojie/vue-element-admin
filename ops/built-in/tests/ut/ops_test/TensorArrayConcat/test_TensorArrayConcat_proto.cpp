@@ -14,7 +14,7 @@ class tensorArrayConcat : public testing::Test {
   }
 };
 
-TEST_F(tensorArrayConcat, tensorArrayConcat_infershape_diff_test){
+TEST_F(tensorArrayConcat, tensorArrayConcat_infershape_success){
   ge::op::TensorArrayConcat op;
   op.SetAttr("dtype", ge::DT_INT64);
   op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
@@ -22,4 +22,31 @@ TEST_F(tensorArrayConcat, tensorArrayConcat_infershape_diff_test){
   
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(tensorArrayConcat, tensorArrayConcat_infershape_input0_rank_failed){
+  ge::op::TensorArrayConcat op;
+  op.SetAttr("dtype", ge::DT_INT64);
+  op.UpdateInputDesc("handle", create_desc({2}, ge::DT_RESOURCE));
+  
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(tensorArrayConcat, tensorArrayConcat_infershape_input1_rank_failed){
+  ge::op::TensorArrayConcat op;
+  op.SetAttr("dtype", ge::DT_INT64);
+  op.UpdateInputDesc("flow_in", create_desc({2}, ge::DT_FLOAT));
+  
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(tensorArrayConcat, tensorArrayConcat_infershape_attr_dtype_failed){
+  ge::op::TensorArrayConcat op;
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op.UpdateInputDesc("flow_in", create_desc({}, ge::DT_FLOAT));
+  
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }

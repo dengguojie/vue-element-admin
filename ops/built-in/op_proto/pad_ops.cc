@@ -753,7 +753,8 @@ IMPLEMT_COMMON_INFERFUNC(AscendPaddingInferShape) {
   Shape x_shape;
   auto x_desc = op.GetInputDesc(0);
   if (WithRankAtLeast(x_desc, 2, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input x rank must be at least 2, real rank is %lld.", x_desc.GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "at least 2D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -761,22 +762,24 @@ IMPLEMT_COMMON_INFERFUNC(AscendPaddingInferShape) {
   auto x_dims = x_shape.GetDims();
 
   if (x_dims[x_rank - 1] != 1) {
-    OP_LOGE(op.GetName().c_str(), "the last dim of x must be 1, real dim is %lld.", x_dims[x_rank - 1]);
+    std::string err_msg = ConcatString(x_rank - 1, "th dim[", x_dims[x_rank - 1], "] of input[x] is not equal to 1.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int32_t pad_dim_size;
   if (op.GetAttr("pad_dim_size", pad_dim_size) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr pad_dim_size error.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[pad_dim_size] failed."));
     return GRAPH_FAILED;
   }
   if (pad_dim_size < 1) {
-    OP_LOGE(op.GetName().c_str(), "pad_dim_size should be a positive value, real value is %d.", pad_dim_size);
+    std::string err_msg = GetAttrValueErrMsg("pad_dim_size", std::to_string(pad_dim_size), "greater than or equal to 1.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
   if (ReplaceDim(x_shape, x_rank - 1, pad_dim_size, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "failed to create y shape.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("failed to call ReplaceDim function."));
     return GRAPH_FAILED;
   }
   auto y_desc = op.GetOutputDesc(0);

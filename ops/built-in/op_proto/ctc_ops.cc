@@ -31,19 +31,23 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
   Shape labels_values;
   Shape sequence_length;
   if (WithRank(op.GetInputDesc(0), 3, inputs, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input inputs rank must be 3");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "3D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 2, labels_indices, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input labels_indices rank must be 2");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(2), 1, labels_values, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input labels_values rank must be 1");
+    std::string err_msg = GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "1D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(3), 1, sequence_length, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input sequence_length rank must be 1");
+    std::string err_msg = GetShapeErrMsg(3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "1D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -51,14 +55,20 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
   int64_t dim2 = labels_values.GetDim(0);
   int64_t unused = 0;
   if (Merge(dim1, dim2, unused) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Merge labels_indices and labels_values failed.");
+    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
+                                       dim1, "] of input[labels_indices] not equal 0th dim[",
+                                       dim2, "] of input[labels_values]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t dim3 = inputs.GetDim(1);
   int64_t dim4 = sequence_length.GetDim(0);
   int64_t batch_size = 0;
   if (Merge(dim3, dim4, batch_size) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Merge inputs and sequence_length failed.");
+    std::string err_msg = ConcatString("failed to call Merge function, 1th dim[",
+                                       dim3, "] of input[inputs] not equal 0th dim[",
+                                       dim4, "] of input[sequence_length]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   inputs.SetDim(1, batch_size);
@@ -68,14 +78,14 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
   loss_desc.SetShape(Shape({batch_size}));
   loss_desc.SetDataType(type);
   if (op.UpdateOutputDesc("loss", loss_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output loss.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[loss] desc failed."));
     return GRAPH_FAILED;
   }
   TensorDesc gradient_desc = op.GetOutputDesc("gradient");
   gradient_desc.SetShape(Shape(inputs));
   gradient_desc.SetDataType(type);
   if (op.UpdateOutputDesc("gradient", gradient_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output gradient.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[gradient] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -89,24 +99,25 @@ IMPLEMT_INFERFUNC(CTCGreedyDecoder, CTCGreedyDecoderInfer) {
   auto inputs_desc = op_desc->MutableInputDesc(0);
   GeShape inputs_shape;
   if (WithRank(inputs_desc, 3, inputs_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input inputs rank must be 3, got rank %lld",
-            inputs_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "3D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto sequence_length_desc = op_desc->MutableInputDesc(1);
   GeShape sequence_length_shape;
   if (WithRank(sequence_length_desc, 1, sequence_length_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input sequence_length rank must be 1, got rank %lld",
-            sequence_length_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t batch_size = UNKNOWN_DIM;
   if (Merge(inputs_shape.GetDim(1), sequence_length_shape.GetDim(0), batch_size) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(),
-            "merge inputs dim[1] value %lld and sequence_length dim[0] value %lld faild",
-            inputs_shape.GetDim(1), sequence_length_shape.GetDim(0));
+    std::string err_msg = ConcatString("failed to call Merge function, 1th dim[",
+                                       inputs_shape.GetDim(1), "] of input[inputs] not equal 0th dim[",
+                                       sequence_length_shape.GetDim(0), "] of input[sequence_length]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

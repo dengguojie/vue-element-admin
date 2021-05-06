@@ -2354,6 +2354,20 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
 COMMON_INFER_FUNC_REG(OneHot, OneHotInferShape);
 // ----------------OneHot END----------------------
 
+static void TopKGetShapeRange(std::vector<std::pair<int64_t, int64_t>> &shape_range,
+                              const std::vector<int64_t> &dims_in, int64_t k,
+                              uint32_t sorted_axis) {
+  for (size_t i = 0; i < dims_in.size(); i++) {
+    if (i == sorted_axis && k > 0) {
+      shape_range.push_back(pair<int64_t, int64_t>(k, k));
+    } else if (dims_in[i] == UNKNOWN_DIM) {
+      shape_range.push_back(pair<int64_t, int64_t>(1, -1));
+    } else {
+      shape_range.push_back(pair<int64_t, int64_t>(dims_in[i], dims_in[i]));
+    }
+  }  
+}
+
 static bool TopKInferCommon(Operator &op, int64_t k) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
@@ -2388,13 +2402,7 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
     }
   } else {
     // input is static shape
-    for (int i = 0; i < dims_in.size(); i++) {
-      if (i == sorted_axis && k > 0) {
-        shape_range.push_back(pair<int64_t, int64_t>(k, k));
-      } else {
-        shape_range.push_back(pair<int64_t, int64_t>(dims_in[i], dims_in[i]));
-      }
-    }
+    TopKGetShapeRange(shape_range, dims_in, k, static_cast<uint32_t>(sorted_axis));
   }
 
   bool unknown_rank = IsUnknownRankShape(dims_in);
@@ -2731,17 +2739,17 @@ IMPLEMT_COMMON_INFERFUNC(InTopKInferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_prediction = op_info->MutableInputDesc("x1");
   if (input_prediction == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [x1].");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get input[x1] desc failed, input[x1] desc is nullptr."));
     return GRAPH_FAILED;
   }
   auto input_target = op_info->MutableInputDesc("x2");
   if (input_target == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [x2].");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get input[x2] desc failed, input[x2] desc is nullptr."));
     return GRAPH_FAILED;
   }
   auto output_desc = op_info->MutableOutputDesc("y");
   if (output_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [y].");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get output[y] desc failed, output[y] desc is nullptr."));
     return GRAPH_FAILED;
   }
   std::vector<std::pair<int64_t, int64_t>> input1_range;
@@ -2761,8 +2769,8 @@ IMPLEMT_COMMON_INFERFUNC(InTopKInferShape) {
     if (input_target->GetShape().GetDim(0) == -1 || input_prediction->GetShape().GetDim(0) == -1 ||
         input_prediction->GetShape().GetDim(1) == -1) {
       if (output_desc->SetShapeRange(input1_range) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "SetShapeRange return failed.");
-	return GRAPH_FAILED;
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("set output[y] shape range failed."));
+	      return GRAPH_FAILED;
       }
     }
   }
