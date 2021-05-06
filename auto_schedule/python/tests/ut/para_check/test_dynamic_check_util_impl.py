@@ -9,47 +9,41 @@ def test_check_dtype_None(_):
     try:
         para_check.check_dtype(None, ("float16", "float32"))
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80007"
     return False
     
 def test_check_dtype_not_str(_):
     try:
         para_check.check_dtype(1, ("float16", "float32"))
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80003"
     return False
 
 def test_check_dtype_not_contains(_):
     try:
         para_check.check_dtype("int8", ("float16", "float32"))
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80008"
     return False
 
 def test_check_format_None(_):
     try:
         para_check.check_dtype(None)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80007"
     return False
 
 def test_check_format_XXXX(_):
     try:
         para_check.check_dtype("XXXX")
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80008"
     return False
 
 def test_check_elewise_shape_range_static(_):
     try:
         para_check.check_elewise_shape_range([])
     except RuntimeError as e:
-        print(e)
         return False
     return True
 
@@ -62,8 +56,7 @@ def test_check_elewise_shape_range_not_dict(_):
         with tbe.common.context.op_context.OpContext("dynamic"):
             para_check.check_elewise_shape_range(input_list)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80003"
     return False
 
 def test_check_elewise_shape_range_dict_key(_):
@@ -75,8 +68,7 @@ def test_check_elewise_shape_range_dict_key(_):
         with tbe.common.context.op_context.OpContext("dynamic"):
             para_check.check_elewise_shape_range(input_list)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80004"
     return False
 
 def test_check_elewise_shape_range_range_len(_):
@@ -88,8 +80,7 @@ def test_check_elewise_shape_range_range_len(_):
         with tbe.common.context.op_context.OpContext("dynamic"):
             para_check.check_elewise_shape_range(input_list)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80023"
     return False
 
 def test_check_elewise_shape_range_range_intersetctions(_):
@@ -101,8 +92,7 @@ def test_check_elewise_shape_range_range_intersetctions(_):
         with tbe.common.context.op_context.OpContext("dynamic"):
             para_check.check_elewise_shape_range(input_list)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80024"
     return False
 
 def test_check_elewise_shape_range_range_intersetctions_broadcast(_):
@@ -114,8 +104,7 @@ def test_check_elewise_shape_range_range_intersetctions_broadcast(_):
         with tbe.common.context.op_context.OpContext("dynamic"):
             para_check.check_elewise_shape_range(input_list, support_broadcast=True)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80024"
     return False
 
 @para_check.check_input_type(dict, dict, dict, str)
@@ -126,23 +115,20 @@ def test_check_input_type(_):
     try:
         test_inner_function_len("a", "a", "a")
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60038"
     return False
 
 def test_check_input_kw_type(_):
     try:
         test_inner_function_len({"a":1}, {"a":1}, {"a":1}, k=7)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60038"
     return False
 
 def test_check_input_inside_pass(_):
     try:
         para_check._check_input_type_dict({"shape":[7, -1], "dtype":"float16"}, ["shape", "dtype"], "input0")
     except RuntimeError as e:
-        print(e)
         return False
     return True
 
@@ -150,104 +136,91 @@ def test_check_input_inside_dtype_type(_):
     try:
         para_check._check_input_type_dict({"shape":[7, -1], "dtype":16}, ["shape", "dtype"], "input0")
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60037"
     return False
 
 def test_check_input_inside(_):
     try:
         para_check._check_input_type_dict({"shape":[7, -1], "dtype":"float16"}, ["shape", "value"], "input0")
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60038"
     return False
 
 def test_check_dtype_rule_None(_):
     try:
         para_check.check_dtype_rule(None, ("float16", "float32"), "input")
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60038"
     return False
 
 def test_check_dtype_rule_error(_):
     try:
         para_check.check_dtype_rule("None", ("float16", "float32"), "input")
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60005"
     return False
 
 def test_check_dtype_rule_error_default(_):
     try:
         para_check.check_dtype_rule("None", ("float16", "float32"),)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60038"
     return False
 
 def test_check_shape_rule_None(_):
     try:
         para_check.check_shape_rule("None",)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60037"
     return False
 
 def test_check_shape_rule_type(_):
     try:
         para_check.check_shape_rule({"None":1},)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60037"
     return False
 
 def test_check_shape_rule_len(_):
     try:
         para_check.check_shape_rule([1, 2, 3, 4, 5, 6, 7, 8, 9],)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60011"
     return False
 
 def test_check_shape_rule_value_not_int(_):
     try:
         para_check.check_shape_rule(["1", 2, 3, 4, 5,],)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60037"
     return False
 
 def test_check_shape_rule_value_out_of_range(_):
     try:
         para_check.check_shape_rule([-7, 2, 3, 4, 5,],)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60039"
     return False
 
 def test_check_kernel_name_None(_):
     try:
         para_check.check_kernel_name(None)
     except RuntimeError as e:
-        print(e)
-        return False
+        return True
     return True
 
 def test_check_kernel_name_len(_):
     try:
         para_check.check_kernel_name("7"*300)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60039"
     return False
 
 def test_check_kernel_name_value(_):
     try:
         para_check.check_kernel_name("xxxxx+-[")
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60038"
     return False
 
 def test_check_and_init_5hdc_reduce_support_true(_):
@@ -261,8 +234,7 @@ def test_check_and_init_5hdc_reduce_support_value(_):
     try:
         para_check.check_and_init_5hdc_reduce_support({"format":"NC1HWC0", "dtype":"float16"},(1, 4))
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60040"
     return False
 
 def test_is_scalar_true(_):
@@ -275,8 +247,7 @@ def test_check_shape_size(_):
     try:
         para_check.check_shape_size((4, 2, 100),200)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E60039"
     return False
 
 def test_check_tensor_shape_size(_):
@@ -291,48 +262,42 @@ def test_outer_check_format_None(_):
     try:
         para_check.check_format(None)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80017"
     return False
 
 def test_outer_check_format_XXXX(_):
     try:
         para_check.check_format("XXXX")
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80015"
     return False
 
 def test_outer_check_shape_type(_):
     try:
         para_check.check_shape(7)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80003"
     return False
 
 def test_outer_check_shape_rank(_):
     try:
         para_check.check_shape((1, 2, 3, 4, 5, 6, 7, 8, 9))
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80012"
     return False
 
 def test_outer_check_shape_value(_):
     try:
         para_check.check_shape((1, 2, -3,))
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80002"
     return False
 
 def test_outer_check_shape_min_size(_):
     try:
         para_check.check_shape((1, 2, 3,), min_size=100)
     except RuntimeError as e:
-        print(e)
-        return True
+        return e.args[0].get("errCode") == "E80011"
     return False
 
 ut_case.add_cust_test_func(test_func=test_outer_check_shape_rank)
