@@ -71,6 +71,8 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   int32_t depth_size = dimInfo[1];
   int32_t labels_size = dimInfo[0];
 
+  FUSION_PASS_CHECK(depth_size < 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "cannot support dynamic input."),
+                    return NOT_CHANGED);
 
   // Add the description (input, output, name, attribute) of the Onehot node
   ge::OpDescPtr OneHot;
