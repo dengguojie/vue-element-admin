@@ -175,7 +175,7 @@ class StridedSliceCpuKernel : public CpuKernel {
       }
       begin_tmp[i] = std::max(begin_tmp[i], int64_t(0));
       begin_tmp[i] = std::min(begin_tmp[i], x_shape[i] - 1);
-      if (end_tmp[i] < 0) {
+      if (end_tmp[i] <= 0) {
         end_tmp[i] += x_shape[i];
       }
       end_tmp[i] = std::max(end_tmp[i], int64_t(-1));
