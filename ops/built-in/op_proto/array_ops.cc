@@ -2334,6 +2334,49 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
 INFER_FUNC_REG(Expand, ExpandInferShape);
 // ----------------Expand END---------------------
 
+// ----------------NonZero Begin-------------------
+IMPLEMT_INFERFUNC(NonZero, NonZeroInfer) {
+  OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr x_input = op_desc->MutableInputDesc(0);
+  GeShape x_shape = x_input->GetShape();
+  GeTensorDescPtr y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetDataType(x_input->GetDataType());
+  bool transpose = false;
+  if (op.GetAttr("transpose", transpose) != GRAPH_SUCCESS) {
+    OP_LOGW(op.GetName().c_str(), "Failed to get attr[transpose]. Set attr[transpose] to false.");
+  }
+  if (x_shape.GetDims() == UNKNOWN_RANK) {
+    y_desc->SetShape(x_shape);
+    y_desc->SetOriginShape(x_shape);
+  } else {
+    std::vector<std::pair<int64_t, int64_t>> range;
+    if (transpose == false) {
+      y_desc->SetShape(GeShape({UNKNOWN_DIM, x_shape.GetDimNum()}));
+      y_desc->SetOriginShape(GeShape({UNKNOWN_DIM, x_shape.GetDimNum()}));
+      if (x_shape.GetShapeSize() == UNKNOWN_DIM) {
+        range.emplace_back(std::make_pair(1, -1));
+      } else {
+        range.emplace_back(std::make_pair(1, x_shape.GetShapeSize()));
+      }
+      range.emplace_back(std::make_pair(x_shape.GetDimNum(), x_shape.GetDimNum()));
+    } else {
+      y_desc->SetShape(GeShape({x_shape.GetDimNum(), UNKNOWN_DIM}));
+      y_desc->SetOriginShape(GeShape({x_shape.GetDimNum(), UNKNOWN_DIM}));
+      range.emplace_back(std::make_pair(x_shape.GetDimNum(), x_shape.GetDimNum()));
+      if (x_shape.GetShapeSize() == UNKNOWN_DIM) {
+        range.emplace_back(std::make_pair(1, -1));
+      } else {
+        range.emplace_back(std::make_pair(1, x_shape.GetShapeSize()));
+      }
+    }
+    y_desc->SetShapeRange(range);
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(NonZero, NonZeroInfer);
+// ----------------NonZero End-------------------
+
 // ----------------ExpandD Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
   Shape x_shape = op.GetInputDesc("x").GetShape();
