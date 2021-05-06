@@ -34,7 +34,7 @@ class SparseFillEmptyRowsTest : public testing::Test {
   }
 };
 
-TEST_F(SparseFillEmptyRowsTest, InferShape) {
+TEST_F(SparseFillEmptyRowsTest, InferShape_01) {
   ge::op::SparseFillEmptyRows op;
   op.UpdateInputDesc("indices", create_desc({5, 2}, ge::DT_INT64));
   op.UpdateInputDesc("values", create_desc({5}, ge::DT_INT64));
@@ -63,5 +63,49 @@ TEST_F(SparseFillEmptyRowsTest, InferShape) {
   EXPECT_EQ(reverse_desc.GetDataType(), ge::DT_INT64);
   std::vector<int64_t> expected_reverse_shape = {5};
   EXPECT_EQ(reverse_desc.GetShape().GetDims(), expected_reverse_shape);
+}
+
+TEST_F(SparseFillEmptyRowsTest, InferShape_02) {
+  ge::op::SparseFillEmptyRows op;
+  op.UpdateInputDesc("indices", create_desc({5}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({5}, ge::DT_INT64));
+  op.UpdateInputDesc("dense_shape", create_desc({2}, ge::DT_INT64));
+  op.UpdateInputDesc("default_value", create_desc({}, ge::DT_INT64));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SparseFillEmptyRowsTest, InferShape_03) {
+  ge::op::SparseFillEmptyRows op;
+  op.UpdateInputDesc("indices", create_desc({5,2}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({5,2}, ge::DT_INT64));
+  op.UpdateInputDesc("dense_shape", create_desc({2}, ge::DT_INT64));
+  op.UpdateInputDesc("default_value", create_desc({}, ge::DT_INT64));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SparseFillEmptyRowsTest, InferShape_04) {
+  ge::op::SparseFillEmptyRows op;
+  op.UpdateInputDesc("indices", create_desc({5,2}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({5}, ge::DT_INT64));
+  op.UpdateInputDesc("dense_shape", create_desc({5,2}, ge::DT_INT64));
+  op.UpdateInputDesc("default_value", create_desc({}, ge::DT_INT64));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SparseFillEmptyRowsTest, InferShape_05) {
+  ge::op::SparseFillEmptyRows op;
+  op.UpdateInputDesc("indices", create_desc({5,2}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({5}, ge::DT_INT64));
+  op.UpdateInputDesc("dense_shape", create_desc({2}, ge::DT_INT64));
+  op.UpdateInputDesc("default_value", create_desc({2}, ge::DT_INT64));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 

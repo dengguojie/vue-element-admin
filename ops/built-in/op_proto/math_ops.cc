@@ -292,16 +292,19 @@ INFER_FUNC_REG(SparseSegmentMean, SparseSegmentMeanInfer);
 
 IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
   const size_t INPUT_NUM = 4;
+  std::string err_msg;
   if (INPUT_NUM != op.GetInputsSize()) {
-    OP_LOGE(op.GetName().c_str(), "the SparseSegmentMeanGrad op's input_num should be %zu, real input_num is %zu",
-            INPUT_NUM, op.GetInputsSize());
+    err_msg =
+        ConcatString("input size should be 4, got[", op.GetInputsSize(), "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   const size_t OUTPUT_NUM = 1;
   if (OUTPUT_NUM != op.GetOutputsSize()) {
-    OP_LOGE(op.GetName().c_str(), "the SparseSegmentMeanGrad op's output_num should be %zu, real output_num is %zu",
-            OUTPUT_NUM, op.GetOutputsSize());
+    err_msg =
+        ConcatString("output size should be 4, got[", op.GetOutputsSize(), "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -312,35 +315,56 @@ IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
 
   auto x_desc = op_desc->MutableInputDesc(0);
   GeShape x_ge_shape;
-  if (WithRankAtLeast(x_desc, 1, x_ge_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input x should be at least 1-D, real rank is %lld", x_desc->GetShape().GetDimNum());
+  if (WithRankAtLeast(x_desc, 1, x_ge_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    err_msg = GetShapeErrMsg(0, DebugString(x_desc->GetShape().GetDims()),
+                             "at least 1D");
+    err_msg = string("failed to call WithRankAtLeast function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto indices_desc = op_desc->MutableInputDesc(1);
   GeShape indices_shape;
-  if (WithRank(indices_desc, 1, indices_shape, op.GetName().c_str())
-      != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input indices must be 1-D, real rank is %lld", indices_desc->GetShape().GetDimNum());
+  if (WithRank(indices_desc, 1, indices_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    err_msg = GetShapeErrMsg(1, DebugString(indices_desc->GetShape().GetDims()),
+                             "1D");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape unused;
   GeShape segment_ids_shape(op_desc->MutableInputDesc(2)->GetShape());
-  if (Merge(segment_ids_shape, indices_shape, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (Merge(segment_ids_shape, indices_shape, unused, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    err_msg = ConcatString(
+        "failed to call Merge function to merge input[segment_ids]'s shape",
+        DebugString(op_desc->MutableInputDesc(2)->GetShape().GetDims()),
+        " and input[indices]'s shape", DebugString(indices_shape.GetDims()));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   auto unused_desc = op_desc->MutableInputDesc(3);
   if (WithRank(unused_desc, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input output_dim0 must be scalar, real rank is %lld",
-            unused_desc->GetShape().GetDimNum());
+    err_msg = GetShapeErrMsg(3, DebugString(unused_desc->GetShape().GetDims()),
+                             "scalar");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto x_shape_dims = x_ge_shape.GetDims();
   Shape x_shape(x_shape_dims);
   Shape subshape;
-  if (SubShape(x_shape, 1, x_shape.GetDimNum(), 1, subshape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (SubShape(x_shape, 1, x_shape.GetDimNum(), 1, subshape,
+               op.GetName().c_str()) != GRAPH_SUCCESS) {
+    err_msg =
+        ConcatString("failed to call SubShape function to get subshape from ",
+                     x_shape.GetDimNum(), " to 1 in input[x] shape",
+                     DebugString(x_shape.GetDims()));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Tensor dims0_tensor;
