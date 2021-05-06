@@ -282,7 +282,7 @@ int32_t GetUnblockAxisOutputMul(int32_t block_axis,
                                 std::vector<int64_t> input_x,
                                 std::vector<int32_t> reduce_axis) {
   int32_t mul_num = 1;
-  for (size_t i = 0; i < input_x.size(); i++) {
+  for (int32_t i = 0; i < input_x.size(); i++) {
     if (!IsInVector(reduce_axis, i) && (block_axis != i)) {
       mul_num *= input_x[i];
     }
@@ -341,7 +341,7 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
                                        ? input_x[i] / core_num
                                        : (input_x[i] + core_num + 1) / core_num;
         if (block_inner_core * mul_num < block) {
-          for (size_t i = 0; i < block; i++) {
+          for (int32_t i = 0; i < block; i++) {
             block_inner_core += 1;
             if (block_inner_core * mul_num >= block) {
               break;
@@ -437,7 +437,7 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
         int32_t mul_num = GetUnblockAxisOutputMul(i, input_x, reduce_axis);
         int32_t block_inner_core = 1;
         if (block_inner_core * mul_num < block) {
-          for (size_t i = 0; i < block; i++) {
+          for (int32_t i = 0; i < block; i++) {
             block_inner_core += 1;
             if (block_inner_core * mul_num >= block) {
               break;
