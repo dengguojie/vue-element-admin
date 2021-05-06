@@ -116,3 +116,116 @@ TEST_F(QueueTest, queue_dequeue_many_infershape_test_fail) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+
+TEST_F(QueueTest, queue_dequeue_many_infershape_test_fail2) {
+  ge::op::QueueDequeueMany op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  ge::ShapeAndType shape_and_type(ge::Shape({2}), ge::DT_INT32);
+  std::vector<ge::ShapeAndType> handle_shapes_and_types{shape_and_type, shape_and_type};
+  std::vector<std::vector<ge::ShapeAndType>> shapes_and_types(2);
+  shapes_and_types[0] = handle_shapes_and_types;
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(shapes_and_types));
+  op.SetInferenceContext(inferCtxPtr);
+
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op.UpdateInputDesc("n", create_desc({}, ge::DT_INT32));
+  std::vector<ge::DataType> component_types{ ge::DT_INT32, ge::DT_INT32 };
+  op.SetAttr("component_types", component_types);
+  // op.create_dynamic_output_components(2);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(QueueTest, queue_dequeue_many_infershape_test_fail3) {
+  ge::op::QueueDequeueMany op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  ge::ShapeAndType shape_and_type(ge::Shape({2}), ge::DT_INT32);
+  std::vector<ge::ShapeAndType> handle_shapes_and_types{shape_and_type, shape_and_type};
+  std::vector<std::vector<ge::ShapeAndType>> shapes_and_types(2);
+  shapes_and_types[0] = handle_shapes_and_types;
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(shapes_and_types));
+  op.SetInferenceContext(inferCtxPtr);
+
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  op.UpdateInputDesc("n", create_desc({}, ge::DT_INT32));
+  std::vector<ge::DataType> component_types{ ge::DT_INT32, ge::DT_INT32 };
+  op.SetAttr("component_types", component_types);
+  op.create_dynamic_output_components(2);
+
+  ge::Tensor constTensor;
+  ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  constDesc.SetSize(1 * sizeof(int32_t));
+  constTensor.SetTensorDesc(constDesc);
+  int32_t constData[1] = {-1};
+  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
+  auto concat_dim = ge::op::Constant().set_attr_value(constTensor);
+  op.set_input_n(concat_dim);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(QueueTest, padding_fifo_queue_infershape_test) {
+  ge::op::PaddingFIFOQueue op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  op.SetInferenceContext(inferCtxPtr);
+  std::vector<ge::DataType> component_types{ ge::DT_FLOAT, ge::DT_FLOAT };
+  op.SetAttr("component_types", component_types);
+  std::vector<int64_t> shape{16, 16, 3};
+  ge::Operator::OpListListInt elem_shapes{shape, shape};
+  op.SetAttr("shapes", elem_shapes);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(QueueTest, queueDequeue_infershape_test) {
+  ge::op::QueueDequeue op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  op.SetInferenceContext(inferCtxPtr);
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+
+  std::vector<ge::DataType> component_types{ ge::DT_INT32, ge::DT_INT32 };
+  op.SetAttr("component_types", component_types);
+  op.create_dynamic_output_components(2);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(QueueTest, queueDequeue_infershape_test_failed) {
+  ge::op::QueueDequeue op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  op.SetInferenceContext(inferCtxPtr);
+  op.UpdateInputDesc("handle", create_desc({}, ge::DT_RESOURCE));
+  // std::vector<ge::DataType> component_types{ ge::DT_FLOAT, ge::DT_FLOAT };
+  // op.SetAttr("component_types", component_types);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(QueueTest, priority_queue_infershape_test) {
+  ge::op::PriorityQueue op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  op.SetInferenceContext(inferCtxPtr);
+  std::vector<ge::DataType> component_types{ ge::DT_FLOAT, ge::DT_FLOAT };
+  op.SetAttr("component_types", component_types);
+  std::vector<int64_t> shape{16, 16, 3};
+  ge::Operator::OpListListInt elem_shapes{shape, shape};
+  op.SetAttr("shapes", elem_shapes);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(QueueTest, random_shuffle_queue_infershape_test) {
+  ge::op::RandomShuffleQueue op;
+  ge::InferenceContextPtr inferCtxPtr = std::move(ge::InferenceContext::Create());
+  op.SetInferenceContext(inferCtxPtr);
+  std::vector<ge::DataType> component_types{ ge::DT_FLOAT, ge::DT_FLOAT };
+  op.SetAttr("component_types", component_types);
+  std::vector<int64_t> shape{16, 16, 3};
+  ge::Operator::OpListListInt elem_shapes{shape, shape};
+  op.SetAttr("shapes", elem_shapes);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
