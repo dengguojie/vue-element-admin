@@ -317,7 +317,12 @@ def calc_conv2d(outs, option=None):
     op_info = get_op_tensor_map(outs)
     schedule = tvm.create_schedule(
                 [res.op for res in outs if res not in op_info])
-    tiling_dict = cce_conv_op.schedule(outs[0], outs, [schedule], tilingdict_flag=True)
+    if ConvParam.convbn1_flag:
+        res_out = outs[-1]
+    else:
+        res_out = outs[0]
+    tiling_dict = cce_conv_op.schedule(res_out, outs, [schedule], convbn1_flag=ConvParam.convbn1_flag,
+                                       tilingdict_flag=True)
     tiling_dict["dynamic_shape_flag"] = True
     add_compile_info("fmap_c1", tiling_dict["a_shape"][1])
 
@@ -332,7 +337,7 @@ def calc_conv2d(outs, option=None):
             cnt = kernel_id + 1
         # <<< end: get kernel id
     for tgt in tgt_list:
-        tiling_op = Conv2dTiling(tiling_dict.copy(), ConvParam.dynamic_para, outs[0])
+        tiling_op = Conv2dTiling(tiling_dict.copy(), ConvParam.dynamic_para, res_out)
         seletor = TilingSelection(tiling_op, cnt)
         tiling_cases += seletor.calc_tiling(tgt, var_names)
         cnt = next(seletor.seed_cnt)
@@ -708,7 +713,7 @@ class Conv2dTiling(CubeTilingOp):
         if tiling["AL1_shape"]:
             tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // \
                 (((self.k_h - 1)*ConvParam.dilate_h + 1)*((self.k_w - 1)*ConvParam.dilate_w + 1)*
-                CUBE_INFO["reduce_k0"][self.w_type])
+                 CUBE_INFO["reduce_k0"][self.w_type])
         if tiling["BL1_shape"]:
             tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // \
                 (self.k_h * self.k_w * CUBE_INFO["reduce_k0"][self.w_type])

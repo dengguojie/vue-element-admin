@@ -20,6 +20,7 @@ from tbe.dsl.static_schedule.util import gen_dfs_tensor_map
 
 from tbe.tvm import schedule as tvm
 from tbe.dsl.base.operation import register_schedule
+from tbe.dsl.compute.conv_compute import ConvParam
 from .constants import Pattern
 
 
@@ -67,7 +68,13 @@ class Conv2dSchedule:
         self._schedule.tiling_key = self._tiling_case['key']
         self._tiling_strategy = self._tiling_case['tiling_strategy']
 
-        self._cce_conv_op.schedule(self._outs[0], self._outs, [self._schedule],
-                                   convbn1_flag=False, tiling_case=self._tiling_strategy, var_range=self._var_range)
-
-        return self._schedule
+        sch_list = [self._schedule]
+        if ConvParam.convbn1_flag:
+            res_out = self._outs[-1]
+        else:
+            res_out = self._outs[0]
+        self._cce_conv_op.schedule(res_out, self._outs, sch_list, convbn1_flag=ConvParam.convbn1_flag,
+                                   tiling_case=self._tiling_strategy, var_range=self._var_range)
+        if len(sch_list) > 1:
+            return self._schedule, sch_list[1:]
+        return self._schedule, self._outs

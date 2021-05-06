@@ -177,7 +177,7 @@ def check_conv_bn1(outs):
         return False
 
     conv_out, reduce_0, reduce_1 = outs
-    if "convolution_" not in conv_out.op.tag or ("reduce_sum" not in reduce_0.op.tag) or \
+    if ("reduce_sum" not in reduce_0.op.tag) or \
             ("reduce_sum" not in reduce_1.op.tag):
         return False
 
@@ -295,10 +295,12 @@ def check_doubleout_reluv2(outs):
     if isinstance(outs, (list, tuple)) and len(outs) == 2:
         reluv2, mask = outs
         src_input_constraint = reluv2.op.input_tensors[0].op.name == "C"
-        dtype_constraint = reluv2.dtype == "float16" and mask.dtype == "uint8"
+        dtype_constraint = reluv2.dtype == "float16" and (mask.dtype == "uint8" or \
+            mask.dtype == "uint1")
         tag_constraint = reluv2.op.tag == "elewise_single_relu" \
-            and mask.op.tag == "emit_insn_elewise_binary_cmp|gt|bit"
-        if src_input_constraint and dtype_constraint and tag_constraint:
+            and (mask.op.tag == "emit_insn_elewise_binary_cmp|gt|bit" or \
+            mask.op.tag == "elewise_binary_vcmpv_gt")
+        if (src_input_constraint or ConvParam.dynamic_flag) and dtype_constraint and tag_constraint:
             return True
     return False
 
@@ -556,6 +558,9 @@ def check_dyn_quantfuse_doubleout(tensor_list, outs):
     if ConvParam.conv_reluv2_flag:
         tensor_list = tensor_list[: -2]
         tensor_list.extend(outs[1:])
+    if ConvParam.convbn1_flag:
+        tensor_list = tensor_list[: -3]
+        tensor_list.extend(outs)
     for tensor in tensor_list:
         if "conv_virtual_res" in tensor.op.name:
             tensor_list.remove(tensor)
@@ -4121,8 +4126,11 @@ class CceConvOp:
                     sch[sum_x_global].emit_insn(c_rf_outer_inner, "dma_copy")
                 else:
                     sch[sum_x_global].emit_insn(c_rf_outer_outer_inner, "dma_copy")
-                sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner,
-                                           "vector_dichotomy_add_for_bn_reduce")
+                if self._dynamic_flag:
+                    sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner, "vector_reduce_sum")
+                else:
+                    sch[sum_x_ub_rf].emit_insn(m_outer_inner_inner,
+                                               "vector_dichotomy_add_for_bn_reduce")
 
         def _handle_bias_compute_at():
             """
@@ -4205,7 +4213,7 @@ class CceConvOp:
             if tiling["BL1_shape"] is not None:
                 sch[bl1].mem_unique()
             sch[bl0].mem_unique()
-            if "int32_bias" not in tensor_map.keys():
+            if "int32_bias" not in tensor_map.keys() and not ConvParam.convbn1_flag:
                 sch[c_col].mem_unique()
 
         def _l0a_dma_load3d_support_check():
@@ -5389,7 +5397,7 @@ class CceConvOp:
                         out_extract_axis = noo
 
         if "fmap_h" in self._dyn_var_map or "fmap_w" in self._dyn_var_map:
-            sch[res].pragma(c_pragma_axis, "gm_no_sync", 1)
+            sch[res_c].pragma(c_pragma_axis, "gm_no_sync", 1)
 
         # parser the tbe compile parameter
         self._compile_para = tiling.get("compile_para")
@@ -5459,11 +5467,11 @@ class CceConvOp:
         util.L1CommonParam.l1_fusion_tensors_map = l1_tensor_map
 
         _conv_pooling_optm()
+        _remove_padded_column()
         if self._dynamic_flag:
             _handle_dynamic_scope()
             return True
 
-        _remove_padded_column()
         tensor_map.clear()
         dim_map.clear()
         tiling.clear()
@@ -6461,6 +6469,7 @@ class AutoScheduleOp:
             "fusion_type_4_2_1_3": 18,
             "fusion_type_5_4_2_1_3": 19,
             "fusion_type_5_4_1_2_3": 19,
+            # Conv2d + bn_reduce
             "fusion_type_11_3_3_3_1_5_4": 20,
             "fusion_type_11_3_3_3_1_5_9_4": 20,
             # Conv2d+Eltwise

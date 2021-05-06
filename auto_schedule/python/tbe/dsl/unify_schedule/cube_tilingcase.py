@@ -870,7 +870,8 @@ class TilingSelection:
                         gen_rects = _cut_rectangle(cut_range, seed_range)
                         cost_cases.extend(gen_rects)
                     else:
-                        raise RuntimeError("totally uncovered!!!")
+                        raise RuntimeError("totally uncovered, need_range is {}".format(str(cut_range)),
+                                           "seed_range is {}".format(str(seed_range)))
 
                     cur_seed_cnt = next(self.seed_cnt)
                     cost_tilings.append(

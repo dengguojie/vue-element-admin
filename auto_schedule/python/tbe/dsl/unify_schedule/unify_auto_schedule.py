@@ -81,9 +81,15 @@ def schedule_cce(outs, option=None):
     for tiling_case in tiling_case_ret:
         param_outs = original_outs.copy()
         with operation.schedule() as context:
-            sch = schedule_func(param_outs, tiling_case)
+            if Pattern.CONV2D == pattern:
+                sch, real_outs = schedule_func(param_outs, tiling_case)
+                ori_outs = real_outs
+                param_outs = real_outs
+            else:
+                sch = schedule_func(param_outs, tiling_case)
+                ori_outs = original_outs
             if sch is not None:
-                util.add_sch_additional_entry(sch, "original_outs", original_outs)
+                util.add_sch_additional_entry(sch, "original_outs", ori_outs)
                 util.add_sch_additional_entry(sch, "real_outs", param_outs)
                 util.add_sch_additional_entry(sch, "context", context)
         schedules.append(sch)
