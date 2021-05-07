@@ -197,12 +197,12 @@ class MaxpoolGradBase(object):
             max_mem_size4 = 14592
             max_mem_size5 = 14592
         elif stridehw < 4:
-            max_mem_size0 = 10752
-            max_mem_size1 = 21600
-            max_mem_size2 = 21664
+            max_mem_size0 = 10880
+            max_mem_size1 = 21920
+            max_mem_size2 = 22632
             max_mem_size3 = 1024
-            max_mem_size4 = 10752
-            max_mem_size5 = 10752
+            max_mem_size4 = 10880
+            max_mem_size5 = 10880
         else:
             max_mem_size0 = 8064
             max_mem_size1 = 32560
