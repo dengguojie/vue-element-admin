@@ -26,7 +26,7 @@ from tbe import tvm
 from tbe.common.platform import scope_ubuf
 from tbe.dsl.instrinsic.cce_intrin import get_bit_len
 from tbe.common.platform.platform_info import get_soc_spec
-from te.platform.fusion_manager import fusion_manager
+from tbe.common.rl_bank import bank_manager
 from tbe.common.rl_bank import rl_bank
 
 
@@ -198,7 +198,7 @@ def split_schedule_com(data, split_dim, shape_list, tensor_list):
                               tag='split_com|schedule_' + str(i))
         res.append(data_gm)
     # for RL tune getting res
-    fusion_manager.set_op_res(res)
+    bank_manager.set_op_res(res)
 
     res_op = []
     build_list = [data]

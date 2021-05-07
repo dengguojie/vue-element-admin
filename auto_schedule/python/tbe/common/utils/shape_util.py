@@ -266,8 +266,8 @@ def refine_shapes_for_broadcast(shape1, shape2):
 
         return fused_shape1, fused_shape2
 
-    from te.platform.fusion_manager import fusion_manager
-    if fusion_manager.get_build_cfg() == "disable":
+    from tbe.common.buildcfg import get_current_build_config
+    if get_current_build_config("enable_op_prebuild"):
         return shape1, shape2
 
     shape1, shape2 = list(shape1), list(shape2)

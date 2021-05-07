@@ -32,8 +32,10 @@ from tbe.common.platform import scope_cbuf_fusion
 from tbe.common.buildcfg import get_L1_info
 from tbe.common.utils import log
 from tbe.common.platform.platform_info import get_soc_spec
-from te.platform.cce_conf import get_kernel_meta_dir
+from tbe.common.buildcfg import get_current_build_config
 from te.platform.fusion_manager import fusion_manager
+from tbe.common.rl_bank import bank_manager
+from tbe.common import buildcfg
 from tbe.dsl.compute.conv_compute import ConvParam  # pylint: disable=C0412
 from tbe.common.rl_bank import rl_bank
 from tbe.common.utils.errormgr import get_error_message
@@ -286,7 +288,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     # for RL tune getting res
     ConvParam.conv_deq_req_double_out = False
     ConvParam.conv_reluv2_flag = False
-    fusion_manager.set_op_res(outs)
+    bank_manager.set_op_res(outs)
 
     outs = reget_tensor_list(outs)
     outs = reget_layernorm_multioutput(outs)
@@ -390,7 +392,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
 
     # retry use rl infer
     schedule = None
-    if fusion_manager.get_build_cfg() != "disable":
+    if not get_current_build_config("enable_op_prebuild"):
         try:
             if option is not None and isinstance(option, dict):
                 schedule, tensor_list, real_outs = rl_search_proc(outs, option)
@@ -1280,7 +1282,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     """
     warnings.warn("cce_build_code is expired, please replace it with the func build in cce",
                   DeprecationWarning)
-    if fusion_manager.get_build_cfg() == "disable" and \
+    if get_current_build_config("enable_op_prebuild") and \
             not get_soc_spec("CUBE_VECTOR_SPLIT"):
         te_util.L1CommonParam.l1_fusion_tensors_map = None
         return
@@ -1349,16 +1351,11 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
                                           "size": total_size,
                                           "type": addr_type_list}}
 
-            kernel_meta_dir = get_kernel_meta_dir()
+            kernel_meta_dir = get_current_build_config("kernel_meta_parent_dir") + "/kernel_meta/"
             write_code(wkspace_dict,
                        os.path.join(kernel_meta_dir, "%s.json" % kernel_name))
 
-    def _update_build_config():
-        """
-        update build config
-        """
-        from te import platform as cceconf
-        config = cceconf.cce_build.build_config
+    def _gen_build_map():
         fusion_config_map = config_map.get("fusion_build_config", {})
         build_map = {}
         for attr, value in itertools.chain(config_map.items(),
@@ -1372,8 +1369,8 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
             for para in para_list:
                 if para in sch.tbe_compile_para:
                     build_map[para] = sch.tbe_compile_para[para]
-        config = cceconf.cce_build.build_config_update_list(config, build_map)
-        return config
+
+        return build_map
 
     def get_l1_tensors(input_tensors, l1_tensors_map):
         """
@@ -1402,7 +1399,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
         """
         device = "cce"
 
-        with local_build_config:
+        with buildcfg.build_config(**build_map):
             tvm.build(sch, tensor_list, device, name=name)
 
     if config_map is None:
@@ -1411,13 +1408,13 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
         util.check_kernel_name(config_map["name"])
 
     # for RL tune getting tensor_list
-    fusion_manager.set_tensor_list(config_map.get("tensor_list", []))
+    bank_manager.set_tensor_list(config_map.get("tensor_list", []))
 
     config_map.setdefault("l1_fusion_option",
                           get_L1_info("L1_fusion_enabled"))
     config_map.setdefault("l2_fusion_option",
                           get_L1_info("L2_fusion_enabled"))
-    local_build_config = _update_build_config()
+    build_map = _gen_build_map()
     local_config_map = {"print_ir": False,
                         "need_build": True,
                         "name": "cce_op",
@@ -1470,8 +1467,8 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     tensor_list = tensor_list + l1_fusion_tensors
     _build(sch, tensor_list, local_config_map["name"])
 
-    with local_build_config:
-        if fusion_manager.get_build_cfg() != "disable":
+    with buildcfg.build_config(**build_map):
+        if not get_current_build_config("enable_op_prebuild"):
             _write_workspace_info(special_tensor_list, local_config_map["name"])
 
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
