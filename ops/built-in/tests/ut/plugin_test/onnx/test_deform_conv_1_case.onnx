@@ -1,0 +1,39 @@
+onnx-defrom_conv_1:¼
+ž
+input
+weight
+offsetY"DeformableConv2D*
+deformable_groups *
+	dilations@@ *
+groups  *
+im2col_step  *
+pads@@ *
+strides@@ test_defrom_conv_1Z"
+input
+
+
+
+€
+Ð
+°Z!
+weight
+
+
+€
+
+
+Z 
+offset
+
+
+
+6
+f
+Jb
+Y
+
+
+
+€
+f
+JB

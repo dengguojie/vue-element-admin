@@ -103,6 +103,7 @@ set(_onnx_plugins
   selu_plugin.cc
   if_plugin.cc
   random_uniform_plugin.cc
+  deformable_conv_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
