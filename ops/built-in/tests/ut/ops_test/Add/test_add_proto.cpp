@@ -25,6 +25,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "utils/op_desc_utils.h"
 #include "utils/attr_utils.h"
+
 class add : public testing::Test {
  protected:
   static void SetUpTestCase() {
@@ -126,7 +127,6 @@ TEST_F(add, add_data_slice_infer2) {
   EXPECT_EQ(excepted_x2_data_slice, x2_data_slice);
 }
 
-
 TEST_F(add, add_data_slice_infer4) {
   ge::op::Add op;
   std::vector<std::pair<int64_t, int64_t>> shape_range = {{1, 100}, {1, 100}, {1, 100}, {1, 100}, {1, 100}, {1, 100}};
@@ -159,7 +159,6 @@ TEST_F(add, add_data_slice_infer4) {
   EXPECT_EQ(excepted_x2_data_slice, x2_data_slice);
 }
 
-
 TEST_F(add, add_data_slice_infer5) {
   ge::op::Add op;
   std::vector<std::pair<int64_t, int64_t>> shape_range = {{1, 100}, {1, 100}, {1, 100}, {1, 100}, {1, 100}, {1, 100}};
@@ -191,7 +190,6 @@ TEST_F(add, add_data_slice_infer5) {
   EXPECT_EQ(excepted_x1_data_slice, x1_data_slice);
   EXPECT_EQ(excepted_x2_data_slice, x2_data_slice);
 }
-
 
 TEST_F(add, add_data_slice_infer6) {
   ge::op::Add op;
@@ -338,9 +336,38 @@ TEST_F(add, add_data_slice_infer9) {
   EXPECT_EQ(excepted_x2_data_slice, x2_data_slice);
 }
 
+TEST_F(add, add_data_slice_infer10) {
+  ge::op::Add op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 100}};
+  auto tensor_desc_x1 = create_desc_shape_range({-1},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {64},
+                                             ge::FORMAT_ND, shape_range);
+  auto tensor_desc_x2 = create_desc_shape_range({-1},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {64},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("x1", tensor_desc_x1);
+  op.UpdateInputDesc("x2", tensor_desc_x2);
+  
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
 
-
-
-
-
-
+TEST_F(add, add_data_slice_infer11) {
+  ge::op::Add op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 100}};
+  auto tensor_desc_x1 = create_desc_shape_range({-1},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {64},
+                                             ge::FORMAT_ND, shape_range);
+  auto tensor_desc_x2 = create_desc_shape_range({-1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {64},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("x1", tensor_desc_x1);
+  op.UpdateInputDesc("x2", tensor_desc_x2);
+  
+  auto ret = op.VerifyAllAttr(true);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

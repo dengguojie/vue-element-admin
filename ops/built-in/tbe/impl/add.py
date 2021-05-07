@@ -15,6 +15,7 @@
 """
 add
 """
+import functools
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -26,6 +27,9 @@ from impl.util import util_common
 from impl.util.util_compute import batchmatmul_elem_nd2nz
 from impl.util.util_compute import batchmatmul_elem_reshape
 from impl.util.util_compute import check_batchmatmul_fuse
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
+
 
 # constant, value is 16
 SIZE_SIXTEEN = 16
@@ -88,6 +92,84 @@ def _can_broadcast(shape1, shape2):
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,too-many-locals,too-many-branches,unused-variable
 # pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
+def op_sub_select_format(x1, x2, y, kernel_name="add"):
+    """
+    Dynamic matching format
+
+    Parameters
+    ----------
+    x1 : dict
+        shape and dtype of input0
+    x2 : dict
+        shape and dtype of input1
+    y : dict
+        shape and dtype of output, should be same type as input0
+
+    kernel_name : str
+        kernel name, default value is "add"
+
+    Returns 
+    -------
+    None
+    """
+    shape_x1 = x1.get("ori_shape")
+    shape_x2 = x2.get("ori_shape")
+
+    shape_x1 = shape_util.scalar2tensor_one(shape_x1)
+    shape_x2 = shape_util.scalar2tensor_one(shape_x2)
+
+    enum_x1 = functools.reduce(lambda x, y: x * y, shape_x1)
+    enum_x2 = functools.reduce(lambda x, y: x * y, shape_x2)
+
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+        dtype_list = ["float16", "int32", "int8", "uint8"]
+    else:
+        dtype_list = ["float32", "float16", "int32", "int8", "uint8"]
+
+    # 5HD + scalar
+    if len(shape_x2) == 1 and enum_x2 == 1:
+        format_list = ("ND", "NCHW", "NHWC", "FRACTAL_NZ", "NC1HWC0", "FRACTAL_Z", "C1HWNCoC0")
+        dtype_list_total = functools.reduce(lambda x, y: x + y, [[ele] * len(format_list) for ele in dtype_list])
+        format_list_for_non_one = format_list * len(dtype_list)
+        unknownshape_format_list = ["ND"] * len(format_list) * len(dtype_list)
+        format_list_for_one = [x2.get("format")] * len(format_list) * len(dtype_list)
+    else:
+        return None
+
+    if -1 in shape_x1 or -1 in shape_x2:
+        input0 = gen_param(classify="input0", name="x1",
+                           datatype=",".join(dtype_list_total),
+                           format=",".join(format_list_for_non_one),
+                           unknownshape_format=",".join(unknownshape_format_list))
+        input1 = gen_param(classify="input1", name="x2",
+                           datatype=",".join(dtype_list_total),
+                           format=",".join(format_list_for_one),
+                           unknownshape_format=",".join(unknownshape_format_list))
+        output0 = gen_param(classify="output0", name="y",
+                            datatype=",".join(dtype_list_total),
+                            format=",".join(format_list_for_non_one),
+                            unknownshape_format=",".join(unknownshape_format_list))
+    else:
+        input0 = gen_param(classify="input0", name="x1",
+                           datatype=",".join(dtype_list_total),
+                           format=",".join(format_list_for_non_one))
+        input1 = gen_param(classify="input1", name="x2",
+                           datatype=",".join(dtype_list_total),
+                           format=",".join(format_list_for_one))
+        output0 = gen_param(classify="output0", name="y",
+                            datatype=",".join(dtype_list_total),
+                            format=",".join(format_list_for_non_one))
+
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=invalid-name,too-many-locals,too-many-branches,unused-variable
+# pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
 def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     """
     select format dynamically
@@ -112,6 +194,11 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
            outputs:
              y        ori shape = [2] ori_format = "ND"
     """
+    # do this scene like:input_x shape=[2,3,4] input_y shape=[1,] 
+    param_dynamic_in_json = op_sub_select_format(input_x, input_y, output_z, kernel_name)
+    if param_dynamic_in_json is not None:
+        return param_dynamic_in_json
+
     shape_x = input_x.get("ori_shape")
     shape_y = input_y.get("ori_shape")
 
@@ -561,7 +648,7 @@ def _add_compute_with_batchmatmul(lhs_tensor, rhs_tensor):
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("add")
-def add_compute(input_x, input_y, output_z, kernel_name="add"):
+def add_compute(input_x, input_y, output_z, is_scene_1D=False, broadcast_flag=True, kernel_name="add"):
     """
     calculating data's add, c = a + b
 
@@ -580,28 +667,37 @@ def add_compute(input_x, input_y, output_z, kernel_name="add"):
     -------
     res : output of the data's add
     """
-    batch_matmul_flag_lhs = check_batchmatmul_fuse(input_x)
-    batch_matmul_flag_rhs = check_batchmatmul_fuse(input_y)
-    if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
-        if batch_matmul_flag_rhs:
-            input_x, input_y = input_y, input_x
-        return _add_compute_with_batchmatmul(input_x, input_y)
-
-    shape_x = shape_util.shape_to_list(input_x.shape)
-    shape_y = shape_util.shape_to_list(input_y.shape)
-
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
-                                                              param_name_input2="input_y")
-
     x_dtype = input_x.dtype.lower()
     if x_dtype in ("uint8", "int8"):
         input_x = tbe.cast_to(input_x, "float16")
         input_y = tbe.cast_to(input_y, "float16")
 
-    input_x = tbe.broadcast(input_x, shape_max)
-    input_y = tbe.broadcast(input_y, shape_max)
-    res = tbe.vadd(input_x, input_y)
+    if is_scene_1D == True:
+        shape_x = tbe.util.shape_to_list(input_x.shape)
+        shape_y = tbe.util.shape_to_list(input_y.shape)
+        if shape_x != shape_y:
+            if broadcast_flag:
+                # if shape not equal, then apply broadcast.
+                shape_x, shape_y, shape_max = para_check.produce_shapes(shape_x, shape_y)
+                input_x = tbe.broadcast(input_x, shape_max)
+                input_y = tbe.broadcast(input_y, shape_max)
+            else:
+                input_y = tbe.broadcast(input_y, shape_x)
+    else:
+        batch_matmul_flag_lhs = check_batchmatmul_fuse(input_x)
+        batch_matmul_flag_rhs = check_batchmatmul_fuse(input_y)
+        if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
+            if batch_matmul_flag_rhs:
+                input_x, input_y = input_y, input_x
+            return _add_compute_with_batchmatmul(input_x, input_y)
+        shape_x = shape_util.shape_to_list(input_x.shape)
+        shape_y = shape_util.shape_to_list(input_y.shape)
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
+                                                                  param_name_input2="input_y")
+        input_x = tbe.broadcast(input_x, shape_max)
+        input_y = tbe.broadcast(input_y, shape_max)
 
+    res = tbe.vadd(input_x, input_y)
     if x_dtype in ("uint8", "int8"):
         res = util_common.uint8_int8_overflow_proc(res, x_dtype)
 
@@ -630,31 +726,50 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     -------
     None
     """
-    # format_pattern = 1  Nz and vector
-    # format_pattern = 2  vector and Nz
-    # format_pattern = 0  Nz scalar  Nz Nz  ND ND
-    format_pattern = _add_check_format(input_x, input_y)
-    shape_x, shape_y = _infer_shape(format_pattern, input_x, input_y)
-    shape_x = shape_util.scalar2tensor_one(shape_x)
-    shape_y = shape_util.scalar2tensor_one(shape_y)
-    para_check.check_shape(shape_x, param_name="input_x")
-    para_check.check_shape(shape_y, param_name="input_y")
-
+    # check dtype
     check_tuple = ("float16", "float32", "int32", "int8", "uint8")
     input_data_type = input_x.get("dtype").lower()
     para_check.check_dtype(input_data_type, check_tuple, param_name="input_x")
 
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
-                                                              param_name_input2="input_y")
-    if shape_x[-1] == 1 and shape_y[-1] == 1 and shape_max[-1] == 1:
-        shape_x = shape_x if len(shape_x) == 1 else shape_x[:-1]
-        shape_y = shape_y if len(shape_y) == 1 else shape_y[:-1]
-        shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
+    # check shape 
+    shape_x = input_x.get("shape")
+    shape_y = input_y.get("shape")
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
+    if shape_y[0] == 1 and len(shape_y) == 1:
+        broadcast_flag = True
+        is_scene_1D = True
 
-    data_x = tvm.placeholder(shape_x, name="data_1", dtype=input_data_type)
-    data_y = tvm.placeholder(shape_y, name="data_2", dtype=input_data_type)
+        # check x2 is 1D or not
+        if para_check.is_scalar(shape_y):
+            broadcast_flag = False
+            shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
+    else:
+        is_scene_1D = False
+        broadcast_flag = True
 
-    res = add_compute(data_x, data_y, output_z, kernel_name)
+        # format_pattern = 1  Nz and vector
+        # format_pattern = 2  vector and Nz
+        # format_pattern = 0  Nz scalar  Nz Nz  ND ND
+        format_pattern = _add_check_format(input_x, input_y)
+        shape_x, shape_y = _infer_shape(format_pattern, input_x, input_y)
+        shape_x = shape_util.scalar2tensor_one(shape_x)
+        shape_y = shape_util.scalar2tensor_one(shape_y)
+        para_check.check_shape(shape_x, param_name="input_x")
+        para_check.check_shape(shape_y, param_name="input_y")
+
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                                  shape_y,
+                                                                  param_name_input1="input_x",
+                                                                  param_name_input2="input_y")
+        if shape_x[-1] == 1 and shape_y[-1] == 1 and shape_max[-1] == 1:
+            shape_x = shape_x if len(shape_x) == 1 else shape_x[:-1]
+            shape_y = shape_y if len(shape_y) == 1 else shape_y[:-1]
+            shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
+
+    data_x = tvm.placeholder(shape_x, dtype=input_data_type, name="data_1")
+    data_y = tvm.placeholder(shape_y, dtype=input_data_type, name="data_2")
+    res = add_compute(data_x, data_y, output_z, is_scene_1D, broadcast_flag, kernel_name)
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
