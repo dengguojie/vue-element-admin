@@ -2120,10 +2120,17 @@ class GEMM_Schedule:
                 fused_num += 1
             if self.gemm_params.TENSOR_MAP["fusion_input"]:
                 fused_num += 1
+            rec_num = 0
+            fp32_ub_flag = False
             for ub_tensor in self.gemm_params.TENSOR_MAP.get("fusion_ub", []):
                 if ub_tensor.dtype == "float32":
-                    fused_num *= 2
-                    break
+                    fp32_ub_flag = True
+                if "rec" in ub_tensor.op.name:
+                    rec_num += 1
+            if rec_num >= 5:
+                fused_num += 2
+            if fp32_ub_flag:
+                fused_num *= 2
         if self.gemm_params.fusion_type == FusionType.REDUCE_FUSION:
             fused_num = 1
         return a_shape, b_shape, pad_l, pad_r, fused_num

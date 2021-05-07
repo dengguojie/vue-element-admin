@@ -230,7 +230,7 @@ def test_batchmatmul_div_fused_mul_add(test_arg):
         config = {
             "print_ir": False,
             "need_build": True,
-            "name": "batch_matmul_div_fusedmuladd",
+            "name": "batch_matmul_div_fused_mul_add",
             "tensor_list": tensor_list,
         }
         cce_build_code(sch, config)
