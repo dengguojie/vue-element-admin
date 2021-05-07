@@ -93,72 +93,6 @@ ORI_SHAPE_LEN = 4
 SHAPE_LEN = 5
 
 
-@tbe_register.register_param_generalization("Conv2DBackpropFilter")
-def conv2d_bp_filter_generalization(x, filter_size, out_backprop, y, strides, pads, dilations=(1, 1, 1, 1),
-                                    groups=1, data_format='NHWC', kernel_name="conv2d_backprop_filter",
-                                    generalize_config={"mode": "keep_rank"}):
-    """
-    conv2d_backprop_filter generalization
-
-    Notice
-    ------
-    run after infershape and before operator compile
-    only modify input and output tensors with range
-
-    for use:
-        1. te fusion distinguish .o (remove the generalization dim)
-        2. pass them to the operator to follow the dynanmic shape process
-
-    Parameters
-    ----------
-    same to conv2d_backprop_filter
-
-    Returns
-    -------
-    list of params list:
-        single item under "keep_rank" mode and multiple under "all_shape"
-    """
-    support_mode = ["keep_rank"]
-    if generalize_config["mode"] not in support_mode:
-        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
-                                                   "invalid generalize mode {}, only support {}".format(
-                                                       str(generalize_config["mode"]), str(support_mode)))
-    result = []
-    if generalize_config["mode"] == "keep_rank":  # fuzz build situation
-        # unknow_rank x ori_shape is [-2], others' shape length is 4
-        unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
-        if unknow_rank:
-            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
-                                                       "not support unknow_rank under mode {}".format(
-                                                           generalize_config["mode"]))
-        have_range = {"x": x, "out_backprop": out_backprop}
-        support_format = ["NCHW", "NHWC"]
-        for name, tensor in have_range.items():
-            # modify tesnors have range
-            if tensor.get("ori_format") not in support_format:
-                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
-                                                           "invalid {} ori_format {}, only support {}".format(
-                                                               name, str(tensor.get("ori_format")),
-                                                               str(support_format)))
-            # only change shape NHW dim to -1, range is already set at infershape
-            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
-            if not valid:
-                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
-                                                           "invalid {} ori_shape {}, only support {}d".format(
-                                                               name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            valid = isinstance(tensor.get("shape"), (list, tuple)) and len(tensor["shape"]) == SHAPE_LEN
-            if not valid:
-                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
-                                                           "invalid {} ori_shape {}, only support {}d".format(
-                                                               name, str(tensor.get("shape")), str(SHAPE_LEN)))
-            tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
-            tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
-        result.append([x, filter_size, out_backprop, y, strides, pads, dilations,
-                       groups, data_format, kernel_name])
-    return result
-
-
 def _ceil(x_1, x_2):
     if x_2 == 0:
         error_manager_cube.raise_err_specific("conv2d_backprop_filter", "Division by zero")
@@ -170,8 +104,8 @@ def _align(x_1, x_2):
 
 
 def _get_pos_from_format(format_in):
-    return format_in.find("N"), format_in.find("C"), format_in.find("H"), \
-        format_in.find("W")
+    return {"pos_n": format_in.find("N"), "pos_c": format_in.find("C"), "pos_h": format_in.find("H"), \
+        "pos_w": format_in.find("W")}
 
 
 def _check_equal(x_1, x_2, param_1, param_2):
@@ -184,6 +118,7 @@ def _check_dimensions(shape, name, dimension):
     if len(shape) != dimension:
         error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
             "{} should be {}d list".format(name, dimension))
+
 
 def _check_type(shape, name, type_set):
     if not isinstance(shape, type_set):
@@ -213,7 +148,11 @@ def _get_nchw_shape(fmap, out_backprop, filters, groups):
         _check_dimensions(dedw_shape, "y", CONV_BACKPROP_SHAPE_DIM)
 
     def _get_shape(shape, ori_format):
-        pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(ori_format)
+        pos = _get_pos_from_format(ori_format)
+        pos_n = pos.get("pos_n")
+        pos_c = pos.get("pos_c")
+        pos_h = pos.get("pos_h")
+        pos_w = pos.get("pos_w")
         return [shape[pos_n], shape[pos_c], shape[pos_h], shape[pos_w]]
 
     x_shape = fmap.get("ori_shape")
@@ -245,7 +184,11 @@ def _get_nchw_shape(fmap, out_backprop, filters, groups):
 
         # get range
         if len(x_range) == 4:
-            pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(x_format)
+            pos = _get_pos_from_format(x_format)
+            pos_n = pos.get("pos_n")
+            pos_c = pos.get("pos_c")
+            pos_h = pos.get("pos_h")
+            pos_w = pos.get("pos_w")
             x_range = [x_range[pos_n], x_range[pos_c], x_range[pos_h], x_range[pos_w]]
         elif len(x_range) == 5:
             x_range = [x_range[0], (x_shape[1], x_shape[1]), x_range[2], x_range[3]]
@@ -258,7 +201,11 @@ def _get_nchw_shape(fmap, out_backprop, filters, groups):
 
 
 def _get_attrs(strides, pads, dilations, data_format):
-    pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(data_format)
+    pos = _get_pos_from_format(data_format)
+    pos_n = pos.get("pos_n")
+    pos_c = pos.get("pos_c")
+    pos_h = pos.get("pos_h")
+    pos_w = pos.get("pos_w")
     dilations = [dilations[pos_n], dilations[pos_c],
                  dilations[pos_h], dilations[pos_w]]
 
@@ -634,7 +581,8 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
     fmap_shape = [fmap_n, _ceil(fmap_c, C0_SIZE), fmap_h, fmap_w, C0_SIZE]
     dedy_shape = [fmap_n, _ceil(dedy_c, C0_SIZE), dedy_h, dedy_w, C0_SIZE]
-    results = (fmap_shape, dedy_shape, dedy_range, fmap_range, correct_range_flag)
+    results = {"fmap_shape": fmap_shape, "dedy_shape": dedy_shape, "dedy_range": dedy_range, 
+               "fmap_range": fmap_range, "correct_range_flag": correct_range_flag}
     return results
 
 
@@ -677,9 +625,6 @@ def _check_and_config_para(x, out_backprop, y,
 
     para_check.check_shape_rule(dedw_ori_shape, min_dim=CONV_BACKPROP_SHAPE_DIM,
                                 max_dim=CONV_BACKPROP_SHAPE_DIM)
-    if groups != 1:
-        error_manager_cube.raise_err_specific_user(
-            'conv2d_backprop_filter', "group != 1 is not supported yet in dynamic conv2d_backprop_filter")
     ret_nchw = _get_nchw_shape(x, out_backprop, y, groups)
     x_nchw = ret_nchw.get("x_shape")
     dedy_nchw = ret_nchw.get("dedy_shape")
@@ -690,10 +635,14 @@ def _check_and_config_para(x, out_backprop, y,
         _get_input_shape(x_nchw, dedy_nchw, dedw_nchw)
 
     strides, pads, dilations = _get_attrs(strides, pads, dilations, data_format)
-    fmap_shape, dedy_shape, dedy_range, fmap_range, correct_range_flag = _check_conv2dbp_filter_params(
-        fmap_shape, dedy_shape, dedw_nchw, strides, pads, dilations,
-        groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name,
-        fmap_range)
+    results = _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides, pads, dilations,
+                                            groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name,
+                                            fmap_range)
+    fmap_shape = results.get("fmap_shape")
+    dedy_shape = results.get("dedy_shape")
+    dedy_range = results.get("dedy_range")
+    fmap_range = results.get("fmap_range")
+    correct_range_flag = results.get("correct_range_flag")
 
     config_dict = {
         "fmap_shape": fmap_shape,
@@ -776,6 +725,133 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res': [dedw]}
 
 
+def _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_format):
+    """
+    modify max grade point, when exceed L1 size
+
+    Parameters
+    ----------
+    same to conv2d_backprop_filter
+
+    Returns
+    -------
+    modified dedx's w_range
+    """
+    ret_nchw = _get_nchw_shape(x, out_backprop, y, groups)
+    x_nchw = ret_nchw.get("x_shape")
+    dedy_nchw = ret_nchw.get("dedy_shape")
+    dedw_nchw = ret_nchw.get("dedw_shape")
+    strides, pads, dilations = _get_attrs(strides, pads, dilations, data_format)
+    pad_up, pad_down, pad_left, pad_right = pads
+    stride_h, stride_w = strides
+    dilation_h, dilation_w = dilations[H_DIM], dilations[W_DIM]
+    al1_min_byte = C0_SIZE * C0_SIZE * 2
+    fmap_h_padding = x_nchw[H_DIM] + pad_up + pad_down
+    filter_h_dilation = (dedw_nchw[H_DIM] - 1) * dilation_h + 1
+    filter_w_dilation = (dedw_nchw[W_DIM] - 1) * dilation_w + 1
+    is_conv1d_situation = fmap_h_padding == 1 and filter_h_dilation == 1 and stride_h == 1
+    l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
+    bl1_min_byte = l1_size - al1_min_byte
+    w_index = x.get("ori_format").find("W")
+    x_w_range = x.get("ori_range")[w_index]
+    if not is_conv1d_situation:
+        kl1_min = bl1_min_byte // ((filter_h_dilation + stride_h) * C0_SIZE * 2)
+        kl1_min_devided_sixteen = bl1_min_byte // (filter_h_dilation * C0_SIZE * 2)
+        max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + pad_right - filter_w_dilation) // stride_w + 1
+        if kl1_min >= x_w_range[1]:
+            x_w_range = x.get("ori_range")[w_index]
+        elif x_nchw[W_DIM] <= kl1_min:
+            x_w_range = (x_w_range[0], kl1_min)
+        elif dedy_nchw[W_DIM] % C0_SIZE == 0 and dedy_nchw[W_DIM] <= max_dedy_devided_sixteen:
+            x_w_range_low = (dedy_nchw[W_DIM] - 1) * stride_w + filter_w_dilation - pad_left - pad_right
+            x_w_range_high = (dedy_nchw[W_DIM] - 1) * stride_w + \
+                             filter_w_dilation - pad_left - pad_right + stride_w - 1
+            if x_w_range_high > x_w_range[1]:
+                x_w_range_high = x_w_range[1]                   
+            x_w_range = (x_w_range_low, x_w_range_high)
+        else:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                        "Input is too large, the minimum tiling may exceed L1_Buffer")
+    return x_w_range
+
+
+@tbe_register.register_param_generalization("Conv2DBackpropFilter")
+def conv2d_bp_filter_generalization(x, filter_size, out_backprop, y, strides, pads, dilations,
+                                    groups=1, data_format='NHWC', kernel_name="conv2d_backprop_filter",
+                                    generalize_config=None):
+    """
+    conv2d_backprop_filter generalization
+
+    Notice
+    ------
+    run after infershape and before operator compile
+    only modify input and output tensors with range
+
+    for use:
+        1. te fusion distinguish .o (remove the generalization dim)
+        2. pass them to the operator to follow the dynanmic shape process
+
+    Parameters
+    ----------
+    same to conv2d_backprop_filter
+
+    Returns
+    -------
+    list of params list:
+        single item under "keep_rank" mode and multiple under "all_shape"
+    """
+    if generalize_config is None:
+        generalize_config = {"mode": "keep_rank"}
+    support_mode = ["keep_rank"]
+    if generalize_config["mode"] not in support_mode:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                   "invalid generalize mode {}, only support {}".format(
+                                                       str(generalize_config["mode"]), str(support_mode)))
+    result = []
+    if generalize_config["mode"] == "keep_rank":  # fuzz build situation
+        # unknow_rank x ori_shape is [-2], others' shape length is 4
+        unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
+        if unknow_rank:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                       "not support unknow_rank under mode {}".format(
+                                                           generalize_config["mode"]))
+        have_range = {"x": x, "out_backprop": out_backprop}
+        support_format = ["NCHW", "NHWC"]
+        for name, tensor in have_range.items():
+            # modify tesnors have range
+            if tensor.get("ori_format") not in support_format:
+                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                           "invalid {} ori_format {}, only support {}".format(
+                                                               name, str(tensor.get("ori_format")),
+                                                               str(support_format)))
+            # only change shape NHW dim to -1, range is already set at infershape
+            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
+            if not valid:
+                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                           "invalid {} ori_shape {}, only support {}d".format(
+                                                               name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
+            valid = isinstance(tensor.get("shape"), (list, tuple)) and len(tensor["shape"]) == SHAPE_LEN
+            if not valid:
+                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                                                           "invalid {} ori_shape {}, only support {}d".format(
+                                                               name, str(tensor.get("shape")), str(SHAPE_LEN)))
+            if name == "x":
+                x_w_range = _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_format)
+                if x_w_range[0] < FMAP_HW_MAX:
+                    tensor["ori_range"] = (tensor["ori_range"][0], tensor["ori_range"][1], tensor["ori_range"][2], 
+                                        x_w_range) if tensor.get("ori_format") == "NCHW" else (tensor["ori_range"][0],
+                                        tensor["ori_range"][1], x_w_range, tensor["ori_range"][3])
+                    # default format is NC1HWC0
+                    tensor["range"] = (tensor["range"][0], tensor["range"][1], tensor["range"][2],
+                                       x_w_range, tensor["range"][4])
+            tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
+                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
+            tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
+        result.append([x, filter_size, out_backprop, y, strides, pads, dilations,
+                       groups, data_format, kernel_name])
+    return result
+
+
 @register_operator('Conv2DBackpropFilter')
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT,
@@ -790,7 +866,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
     para_check.KERNEL_NAME,
 )
 def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
-                           dilations=(1, 1, 1, 1), groups=1,
+                           dilations, groups=1,
                            data_format='NHWC',
                            kernel_name="conv2d_backprop_filter"):
     """
