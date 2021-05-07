@@ -33,6 +33,33 @@ namespace {
 }
 
 namespace optiling {
+void deal_with_compile_info(const nlohmann::json& compile_info, nlohmann::json &opInfo)
+{
+  if (compile_info.is_object()) {
+    opInfo = compile_info;
+  } else if (compile_info.is_array()) {
+    nlohmann::json item;
+    opInfo = compile_info[0];
+    for (size_t i = 1; i < compile_info.size(); i++) {
+      item = compile_info[i];
+      std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
+      for (auto key : key_list) {
+        if (item[key].is_object() && !item[key].empty()) {
+          std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
+          opInfo[key][item[key].begin().key()] = list_value;
+        }
+      }
+      std::vector<std::string> key_int = {"block_dim"};
+      for (auto key: key_int) {
+        if (item[key].is_object() && !item[key].empty()) {
+          int32_t int_value = item[key].begin().value().get<int32_t>();
+          opInfo[key][item[key].begin().key()] = int_value;
+        }
+      }
+    }
+  }
+}
+
 /*
  * @brief: tiling function of conv3d_backprop_input
  * @param [in] op_type: op_type of the conv3d_backprop_input
@@ -51,15 +78,23 @@ bool Conv3DBackpropInputTiling(const std::string& op_type, const TeOpParas& op_p
     return false;
   }
 
+  if (compile_info.empty()) {
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "op compile info is empty");
+    return false;
+  }
+
   if (compile_info.contains("dedy_c1") &&
       op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape[2] != compile_info["dedy_c1"]) {
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "not support, input dedy channel should be equal to filter");
     return false;
   }
 
+  nlohmann::json opInfo;
+  deal_with_compile_info(compile_info, opInfo);
+
   return Conv3DCommonTiling("Conv3DBackpropInput", op_paras.outputs[0].tensor[0].shape,
                             op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape,
-                            compile_info, run_info);
+                            opInfo, run_info);
 }
 
 REGISTER_OP_TILING_FUNC_BUFFERED(Conv3DBackpropInput, Conv3DBackpropInputTiling);

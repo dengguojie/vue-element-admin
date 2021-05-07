@@ -103,7 +103,7 @@ namespace {
 
   std::string get_conv3D_batch_tiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
                                    const nlohmann::json& compile_info) {
-    std::string tiling_id("0");
+    std::string tiling_id;
     if (cur_shape.empty()) {
       return tiling_id;
     }
@@ -127,7 +127,7 @@ namespace {
 
   std::string get_conv3D_ndhw_tiling(const std::string& op_type, const std::vector<int64_t>& cur_shape,
                                   const nlohmann::json& compile_info) {
-    std::string tiling_id("0");
+    std::string tiling_id;
     if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
       CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_sends or repo_range in compile info json");
       return tiling_id;
@@ -148,7 +148,7 @@ namespace {
       }
     }
 
-    if (tiling_id == "0") {
+    if (tiling_id.empty()) {
       if (!compile_info.contains("cost_range")) {
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "no cost_range in compile info json");
         return tiling_id;
@@ -339,7 +339,7 @@ namespace optiling {
         dynamic_mode[i] = std::find(vars.begin(), vars.end(), all_vars[i]) != vars.end();
       }
 
-      std::string tiling_id("0");
+      std::string tiling_id;
       bool is_dynamic_batch = (dynamic_batch == dynamic_mode);
       if (compile_info["tiling_type"] == "default_tiling") {
         std::vector<int64_t> default_range = compile_info["default_range"].begin().value().get<std::vector<int64_t>>();
@@ -352,7 +352,7 @@ namespace optiling {
         tiling_id = get_conv3D_ndhw_tiling(op_type, input_shape, compile_info);
       }
 
-      if (tiling_id == "0") {
+      if (tiling_id.empty()) {
         if (op_type == "Conv3D") {
           if (compile_info["correct_range_flag"]) {
             CUBE_INNER_ERR_REPORT(op_type.c_str(), "The original range does not meet requirements,"

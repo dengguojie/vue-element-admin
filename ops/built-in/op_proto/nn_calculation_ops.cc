@@ -67,6 +67,9 @@ namespace {
   const int64_t kDynamicRangeUpperBound = 4096;
   const char* const kPreOpInputShapeRange = "_pre_op_in_range";
   const char* const kForceInfershapeWhenRunning = "_force_infershape_when_running";
+  const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
+  const std::vector<int64_t> BATCH_GEAR = {0, 1, 3, 7, 15, 31, MAX_RANGE};
+  const std::vector<int64_t> SHAPE_GEAR = {0, 3, 7, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4095, MAX_RANGE};
 }
 
 // ----------------LSTM begin-------------------
@@ -7267,6 +7270,86 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
   return true;
 }
 
+static void GetShapeGear(int64_t dim_val,
+                         const std::vector<int64_t> &shape_gear,
+                         std::pair<int64_t, int64_t> &range)
+{
+  int pos = 1;
+  while (pos < shape_gear.size() && shape_gear[pos] < dim_val) {
+    pos++;
+  }
+  range = std::make_pair(shape_gear[pos - 1] + 1, shape_gear[pos]);
+}
+
+static int32_t CalcShapeGear(const GeTensorDescPtr& obj_desc,
+                             const std::vector<int64_t> &dim_ops,
+                             std::vector<std::pair<int64_t, int64_t>> &single_point_range)
+{
+  std::vector<int64_t> obj_sizes = obj_desc->MutableShape().GetDims();
+
+  for (int i = 0; i < dim_ops.size(); i++) {
+    if (obj_sizes[dim_ops[i]] > MAX_RANGE) {
+      return -1;
+    }
+    if (i == 0) { // deal with dim N
+      GetShapeGear(obj_sizes[dim_ops[i]], BATCH_GEAR, single_point_range[dim_ops[i]]);
+    } else if (i == 1) { // deal with dim C
+      single_point_range[dim_ops[i]] = std::make_pair(obj_sizes[dim_ops[i]], obj_sizes[dim_ops[i]]);
+    } else {
+      GetShapeGear(obj_sizes[dim_ops[i]], SHAPE_GEAR, single_point_range[dim_ops[i]]);
+    }
+  }
+
+  return 0;
+}
+
+static int32_t CalcConv3dBackpropShapeRange(const GeTensorDescPtr& obj_desc,
+                                            std::vector<std::pair<int64_t, int64_t>> &single_point_range)
+{
+  Format obj_format = obj_desc->GetFormat();
+  std::string obj_format_str = format2str[obj_format];
+  int32_t n_pos = obj_format_str.find("N");
+  int32_t c_pos = obj_format_str.find("C");
+  int32_t d_pos = obj_format_str.find("D");
+  int32_t h_pos = obj_format_str.find("H");
+  int32_t w_pos = obj_format_str.find("W");
+  std::vector<int64_t> dim_ops;
+  dim_ops.push_back(n_pos);
+  dim_ops.push_back(c_pos);
+  dim_ops.push_back(d_pos);
+  dim_ops.push_back(h_pos);
+  dim_ops.push_back(w_pos);
+
+  return CalcShapeGear(obj_desc, dim_ops, single_point_range);
+}
+
+bool DealWithFuzzyCompile(ge::Operator& op, GeTensorDescPtr& dy_desc)
+{
+  std::vector<int64_t> dy_sizes = dy_desc->MutableShape().GetDims();
+
+  std::vector<std::pair<int64_t, int64_t>> single_point_range_out_backprop(dy_sizes.size());
+  int32_t calc_range_out_backprop = CalcConv3dBackpropShapeRange(dy_desc, single_point_range_out_backprop);
+  if (calc_range_out_backprop < 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "shape of out_backprop is too large.");
+    return false;
+  }
+  if (ge::GRAPH_SUCCESS != dy_desc->SetShapeRange(single_point_range_out_backprop)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "do set out_backprop shape range failed.");
+    return false;
+  }
+
+  bool unkown_rank = IsUnknownRankShape(dy_sizes);
+  std::vector<std::pair<int64_t, int64_t>> dx_range;
+  std::vector<std::pair<int64_t, int64_t>> dy_range;
+  dy_desc->GetShapeRange(dy_range);
+  if (!SetConv3dBpInputOutShapeRange(op, unkown_rank, dy_range, dx_range)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "do set y shape range failed.");
+    return false;
+  }
+
+  return true;
+}
+
 IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv3DBackpropInput inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -7327,6 +7410,21 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   // set dtype of output desc
   auto out_backprop_dtype = op.GetInputDesc("out_backprop").GetDataType();
   y_desc->SetDataType(out_backprop_dtype);
+
+  // fuzzy compile
+  bool is_static_shape = !IsUnknownRankShape(input_sizes) &&
+                         !IsUnknownRankShape(op.GetInputDesc("filter").GetShape().GetDims()) &&
+                         !IsUnknownRankShape(dy_sizes) &&
+                         !IsUnknownRankShape(op.GetOutputDesc("y").GetShape().GetDims());
+  bool fuzzy_flag = false;
+  if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzzy_flag) &&
+    fuzzy_flag &&
+    is_static_shape &&
+    !DealWithFuzzyCompile(op, dy_desc)) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "do fuzzy compile failed.");
+      return GRAPH_FAILED;
+  }
+  OP_LOGI(op.GetName().c_str(), "is_static_shape : %d, fuzzy_flag : %d", is_static_shape, fuzzy_flag);
 
   OP_LOGI(op.GetName().c_str(), "Leaving Conv3DBackpropInput inferfunction!");
   return GRAPH_SUCCESS;

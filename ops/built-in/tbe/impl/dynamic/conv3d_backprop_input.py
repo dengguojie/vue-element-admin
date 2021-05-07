@@ -24,6 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+from tbe.common.register import register_param_generalization
 
 
 # the dim of shape in conv_backprop must be 5
@@ -84,6 +85,8 @@ _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 _C0_SIZE = tbe_platform.C0_SIZE
 _DIM_STR = "NDHW"
 _DIM_MAP = {"N": [0, 0], "D": [1, 1], "H": [2, 3], "W": [3, 4]}
+
+_DYNAMIC_DIM_VAL = -1
 
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
@@ -695,7 +698,12 @@ def _conv3d_backprop_input_compute(filters, out_backprop, y_input, input_size, s
         "dilations": dilations,
         "res_dtype": res_dtype,
         "kernel_name": kernel_name,
-        "group_dict": group_dict
+        "group_dict": group_dict,
+        "groups": groups,
+        "ori_tensors": {"filter": filters,
+                        "out_backprop": out_backprop,
+                        "y": y_input,
+                        "input_size": input_size}
     }
 
     dedx = tbe.conv3d_backprop_input(filter=filter_frac,
@@ -705,6 +713,84 @@ def _conv3d_backprop_input_compute(filters, out_backprop, y_input, input_size, s
                                      para_dict=para_dict)
 
     return {'op_placeholder': [dx_shape, filter_frac, dedy], 'op_res': [dedx]}
+
+def _generate_unkown_shape(obj_shape, obj_format):
+    if obj_format == "NDC1HWC0":
+        idx_tup = (0, 1, 3 ,4)
+    else:
+        idx_n = obj_format.find('N')
+        idx_d = obj_format.find('D')
+        idx_h = obj_format.find('H')
+        idx_w = obj_format.find('W')
+        idx_tup = (idx_n, idx_d, idx_h, idx_w)
+    obj_shape = list(obj_shape)
+    for idx in idx_tup:
+        obj_shape[idx] = _DYNAMIC_DIM_VAL
+    return tuple(obj_shape)
+
+def _generalize_input_keep_rank(param_dict):
+    param_dict["ori_shape"] = _generate_unkown_shape(param_dict["ori_shape"], param_dict["ori_format"])
+    param_dict["shape"] = _generate_unkown_shape(param_dict["shape"], param_dict["format"])
+
+@register_param_generalization("Conv3DBackpropInput")
+def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R0913,R0914
+                                         out_backprop, y, strides,
+                                         pads, dilations=(1, 1, 1, 1, 1), groups=1,
+                                         data_format="NDHWC",
+                                         kernel_name="conv3d_backprop_input",
+                                         generalize_config={"mode": "keep_rank"}):
+    """
+    algorithm: Conv3d_backprop_input
+
+    Parameters
+    ----------
+    input_size: dict, will not be used
+            input tensor size.
+
+    filter: A dict with keys(shape and dtype)
+        Input weight tensor
+
+    out_backprop: A dict with keys(shape and dtype)
+        Gradients tensor
+
+    y: A dict with keys(shape and dtype)
+        Conv3d_backprop_input output tensor, dtype must be assigned
+
+    strides: A tuple/list of 5 integers
+        Filter move stride
+
+    pads: A tuple/list of 6 integers: [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+          str: "SAME" or "VALID"
+
+    dilations: A tuple/list of 5 integers
+        filter expand size of dilated conv3d_backprop_input, default value (1, 1, 1, 1, 1)
+
+    groups: Int of blocked connections from input channels to output channels
+        Default value 1
+
+    data_format: The data format of the input and output data
+        Default format "NDHWC"
+
+    kernel_name: Str
+        Kernel name, default value is "conv3d_backprop_input"
+
+    generalize_config: dict
+        support keep_rank
+
+    Returns
+    -------
+    None
+    """
+    result = []
+    if generalize_config["mode"] == "keep_rank":
+        _generalize_input_keep_rank(out_backprop)
+        _generalize_input_keep_rank(y)
+    else:
+        error_manager_cube.raise_err_one_para("E2306",
+                                              "Conv3DBackpropInput",
+                                              "Invalid generalize mode, currently only support keep_rank")
+    result.append([input_size, filter, out_backprop, y, strides, pads, dilations, groups, data_format, kernel_name])
+    return result
 
 @register_operator("Conv3DBackpropInput")
 @para_check.check_input_type(dict, dict, dict, dict,

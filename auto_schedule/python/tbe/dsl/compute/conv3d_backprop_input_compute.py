@@ -83,13 +83,13 @@ def _get_var_map(out_backprop):
 
 @tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
                              (list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), str, str, dict, dict)
+                             (list, tuple), str, str, dict, dict, dict)
 def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
                                    out_backprop, filter_sizes,
                                    input_sizes, strides, padding,
                                    dilations, res_dtype="float16",
                                    kernel_name="conv3d_backprop_input_cce",
-                                   group_dict=None, var_map={}):
+                                   group_dict=None, var_map={}, para_dict=None):
     """
     DSL interface of conv3d backprop input
 
@@ -160,6 +160,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
             "ori_cout": ori_cout
         }
         DynamicConv3dBpInputParams.var_map = var_map
+        DynamicConv3dBpInputParams.para_dict = para_dict
     pattc = conv3d_bp_gen_dx.DeConvPattern(filter_sizes, strides=strides,
                                            pad=padding, output_shape=shape_dx,
                                            dilations=dilations,
@@ -514,7 +515,8 @@ def conv3d_dx(filter,
                                           input_size, strides, pads,
                                           dilations, res_dtype,
                                           kernel_name,
-                                          group_dict, var_map=var_map)
+                                          group_dict, var_map=var_map,
+                                          para_dict=para_dict)
 
 class DynamicConv3dBpInputParams: # pylint: disable=R0903
     """
@@ -523,3 +525,4 @@ class DynamicConv3dBpInputParams: # pylint: disable=R0903
 
     var_map = {}
     tiling_info_dict = {}
+    para_dict = {}

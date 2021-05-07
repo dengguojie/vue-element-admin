@@ -32,6 +32,37 @@ def _run_api(
     return [input_size, filter, out_backprop, y, strides, pads, dilations, groups, data_format]
 
 
+def test_conv3d_backprop_input_fuzz_build_generalization(test_arg):
+    from impl.dynamic.conv3d_backprop_input import conv3d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (5,),
+            'ori_shape': (5,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (16, 4, 16, 16),
+            'ori_format': 'DHWCN',
+            'format': 'FRACTAL_Z_3D',
+            'dtype': 'float16'
+        }, {
+            'shape': (1, 8, 4, 56, 56, 16),
+            'ori_shape': (1, 8, 56, 56, 64),
+            'ori_format': 'NDHWC',
+            'format': 'NDC1HWC0',
+            'dtype': 'float16',
+            'range': [(1, 1), (8, 15), (4, 4), (32, 63), (32, 63), (16, 16)]
+        }, {
+            'shape': (1, 8, 16, 56, 56, 16),
+            'ori_shape': (1, 8, 56, 56, 256),
+            'ori_format': 'NDHWC',
+            'format': 'NDC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 'conv3d_backprop_input_generalization']
+    conv3d_backprop_input_generalization(*input_list)
+
+
 # test_conv3dbp_succ_dynamic
 case1 = _run_api()
 
@@ -80,6 +111,9 @@ ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case4, RuntimeError, "dynamic_case4_error_dilation", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case5, RuntimeError, "dynamic_case5_error_minus_2", True))
+# test_conv3d_backprop_input_fuzz_build_generalization
+print("adding conv3d test_conv3d_backprop_input_fuzz_build_generalization testcase")
+ut_case.add_cust_test_func(test_func=test_conv3d_backprop_input_fuzz_build_generalization)
 
 if __name__ == '__main__':
     ut_case.run()
