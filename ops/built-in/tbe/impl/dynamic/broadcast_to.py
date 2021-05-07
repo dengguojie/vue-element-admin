@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -88,58 +88,41 @@ def broadcast_to(x, shape, y, kernel_name="broadcast_to"):
     input_shape_shape = list(shape.get("shape"))
 
     check_list = ('float16', 'float32', 'int8', 'uint8', 'int32')
-    para_check.check_dtype(input_x_dtype, check_list, param_name = "x")
+    para_check.check_dtype(input_x_dtype, check_list, param_name="x")
     check_list = ('int32', 'int64')
-    para_check.check_dtype(input_shape_dtype, check_list, param_name = "shape")
+    para_check.check_dtype(input_shape_dtype, check_list, param_name="shape")
 
     if len(input_shape_shape) > 1:
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape should be 1D")
-    
+
     input_x_range = list(x.get("range"))
     dims_value = input_shape_shape[0]
 
     if dims_value < -1:
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape[0] should be more than -1")
-    
+
     if dims_value == -1:
         dims_value = len(input_x_shape)
-    
+
     if len(input_x_shape) > dims_value:
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "shape", \
             "the dimensions of x should not be bigger than shape[0]")
-    if len(input_x_shape) < dims_value:
-        len_diff = dims_value - len(input_x_shape)
-        input_x_shape = [1] * len_diff + input_x_shape
-        input_x_range = [(1, 1)] * len_diff + input_x_range
-    
-    x_shape_adapt = []
+
     shape_shape_adapt = []
-    x_range_adapt = []
     shape_range_adapt = []
 
-    for shape_i, range_i in zip(input_x_shape, input_x_range):
-        if shape_i == 1:
-            x_shape_adapt.append(1)
-            x_range_adapt.append((1, 1))
-            shape_shape_adapt.append(-1)
-            shape_range_adapt.append((1, None))
-        else:
-            x_shape_adapt.append(shape_i)
-            x_range_adapt.append(range_i)
-            shape_shape_adapt.append(shape_i)
-            shape_range_adapt.append(range_i)
-    
-    x["shape"] = x_shape_adapt
-    x["range"] = x_range_adapt
+    shape_shape_adapt = [-1] + input_x_shape
+    shape_range_adapt = [(1, None)] + input_x_range
+
     shape["shape"] = shape_shape_adapt
     shape["range"] = shape_range_adapt
-    
-    extra_params = {"disable_optimization":True}
-    ins = classify([shape, x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
+
+    extra_params = {"disable_optimization": True}
+    ins = classify([x, shape], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
-    for (_shape, _x) in ins:
+    for (_x, _shape) in ins:
         with tbe.compute():
-            shape_shape, shape_x = shape_util.variable_shape([_shape, _x])
+            shape_x, shape_shape = shape_util.variable_shape([_x, _shape])
             shape_input = tvm.placeholder(shape_shape, name="shape_input", dtype=input_shape_dtype)
             x_input = tvm.placeholder(shape_x, name="x_input", dtype=input_x_dtype)
             res = broadcast_to_compute(x_input, shape_shape, y, kernel_name=kernel_name)
