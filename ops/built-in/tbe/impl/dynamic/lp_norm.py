@@ -221,7 +221,7 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
     schedules = []
     tensors = []
-    ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": keepdim})
+    ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": keepdim is True})
     
     for (_x, axes) in ins:
         with tbe.compute():

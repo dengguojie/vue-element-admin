@@ -155,7 +155,7 @@ def reduce_mean(x, axes, y,
 
     schedules = []
     tensors = []
-    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims})
+    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
 
     for (_x, _axes) in ins:
         with tbe.compute():

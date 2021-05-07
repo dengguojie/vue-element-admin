@@ -100,7 +100,7 @@ def reduce_max(x, axes, y, keepdims=False, kernel_name="reduce_max"):
 
     schedules = []
     tensors = []
-    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims})
+    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
 
     for (x, axes) in ins:
         with tbe.compute():

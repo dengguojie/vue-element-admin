@@ -99,7 +99,7 @@ def reduce_sum(x, axes, y, keepdims=False, kernel_name="reduce_sum"):
     axes["rel_pos_to_reduce"] = "axis"
 
     schedules = []
-    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims})
+    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
     tensors = []
 
     for (x, axes) in ins:
