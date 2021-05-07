@@ -32,6 +32,15 @@ Status parse_params_pad_v11(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      std::string mode_value = attr.s();
+      if (mode_value == "reflect" || mode_value == "edge") {
+        OP_LOGE("Pad", "Mode attr of Pad only supports constant, current is %s .", mode_value.c_str());
+        return FAILED;
+      }
+    }
+  }
   op_dest.SetAttr("paddings_contiguous", false);
 
   return SUCCESS;
@@ -57,7 +66,13 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
   float value = 0.0;
 
   for (const auto& attr : node->attribute()) {
-    if (attr.name() == "pads") {
+    if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      std::string mode_value = attr.s();
+      if (mode_value == "reflect" || mode_value == "edge") {
+        OP_LOGE("Pad", "Mode attr of Pad only supports constant, current is %s .", mode_value.c_str());
+        return FAILED;
+      }
+    } else if (attr.name() == "pads") {
       set_pads_flag = true;
       unsigned int len = attr.ints_size();
       if (len & 1) {
