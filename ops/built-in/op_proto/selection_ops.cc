@@ -4536,37 +4536,39 @@ VERIFY_FUNC_REG(SliceLastDim, SliceLastDimVerify);
 // ----------------IndexFillD-------------------
 bool InferShapeAndTypeIndexFillD(Operator &op, const string &input_name, const string &output_name)
 {
-    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-    DataType input_dtype = op.GetInputDesc(input_name).GetDataType();
-    Format input_format = op.GetInputDesc(input_name).GetFormat();
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+  DataType input_dtype = op.GetInputDesc(input_name).GetDataType();
+  Format input_format = op.GetInputDesc(input_name).GetFormat();
 
-    //shape of output y is the same as input x
-    ge::Shape shape_input = op.GetInputDesc(input_name).GetShape();
-    v_output_desc.SetShape(shape_input);
-    v_output_desc.SetDataType(input_dtype);
-    v_output_desc.SetFormat(input_format);
-    op.UpdateOutputDesc(output_name, v_output_desc);
+  //shape of output y is the same as input x
+  ge::Shape shape_input = op.GetInputDesc(input_name).GetShape();
+  v_output_desc.SetShape(shape_input);
+  v_output_desc.SetDataType(input_dtype);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
 
-    return true;
+  return true;
 }
 
 IMPLEMT_VERIFIER(IndexFillD, IndexFillDVerify)
 {
-    // check whether the dtype of x and assist1 is the same
-    if (op.GetInputDesc("x").GetDataType() != op.GetInputDesc("assist1").GetDataType()
-        || op.GetInputDesc("x").GetDataType() != op.GetInputDesc("assist2").GetDataType())
-    {
-	OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
-        return GRAPH_FAILED;
-    }
-    return GRAPH_SUCCESS;
+  std::vector<std::string> vec_input;
+  vec_input.push_back("x");
+  vec_input.push_back("assist1");
+  vec_input.push_back("assist2");
+  // check whether the dtype of x and assist1 is the same
+  if  (!CheckInputDtypeSame(op, vec_input)){
+    OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
 }
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(IndexFillDInferShape)
 {
-    InferShapeAndTypeIndexFillD(op, "x", "y");
-    return GRAPH_SUCCESS;
+  InferShapeAndTypeIndexFillD(op, "x", "y");
+  return GRAPH_SUCCESS;
 }
 
 //Registered inferfunction
