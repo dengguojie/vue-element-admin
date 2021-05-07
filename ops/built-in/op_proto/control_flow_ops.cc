@@ -21,97 +21,49 @@
 #include "inc/control_flow_ops.h"
 #include "common/inc/op_log.h"
 #include "common_shape_fns.h"
-#include "./util/error_util.h"
+#include "util/error_util.h"
 #include "util/util.h"
+#include "graph/utils/tensor_adapter.h"
+#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
-
 namespace {
-graphStatus MergeInferImpl(Operator& op) {
-  GE_OP_LOGD(op.GetName().c_str(), "Begin to infer merge node shape");
-  TensorDesc td = op.GetOutputDesc("value_index");
-  TensorDesc td_y = op.GetOutputDesc("y");
-  td.SetShape(ge::Shape());
-  td.SetDataType(DT_INT32);
-  auto ret = op.UpdateOutputDesc("value_index", td);
-  if (ret != GRAPH_SUCCESS) {
-    GE_OP_LOGE(op.GetName().c_str(), "Failed to update value_index tensor");
-    return GRAPH_FAILED;
-  }
-  GE_OP_LOGD(op.GetName().c_str(), "Update value_index shape info ok");
+struct DimGroup {
+  int64_t dim_value_min{INT64_MAX};
+  int64_t dim_value_max{INT64_MIN};
+  bool is_unknown_shape{false};
+  bool is_max_unknown{false};
+};
 
-  // check N of "x" >= 1
-  size_t in_num = op.GetInputsSize();
-  if (in_num < 1) {
-    string reason = "inputs size[" + std::to_string(in_num) + "] must be greater than or equal to 1";
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "input", reason);
-    GE_OP_LOGE(op.GetName().c_str(), "Check inputs size[%zu] failed, it must be greater than or equal to 1 ", in_num);
-    return GRAPH_FAILED;
-  } else if (in_num == 2) {
-    // Check is loop_merge, order of InferShape: Enter->Merge->NextIteration
-    // So when processing InferShape on Merge op, shape & datatype of NextIteration op is set as default.
-    // Therefore, shape & datatype of Merge op should be set as the Enter op.
-    auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
-    auto x0_dims = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
-    bool not_handle_flag0 = (x0_type == DT_FLOAT) && (x0_dims.size() == 0);
-    auto x1_type = op.GetDynamicInputDesc("x", 1).GetDataType();
-    auto x1_dims = op.GetDynamicInputDesc("x", 1).GetShape().GetDims();
-    bool not_handle_flag1 = (x1_type == DT_FLOAT) && (x1_dims.size() == 0);
-    if ((x0_type != x1_type) && (not_handle_flag0 || not_handle_flag1)) {
-      GE_OP_LOGD(
-          op.GetName().c_str(),
-          "Maybe is loop_merge node, input_0: data_type[%u] dim_count[%zu], input_1: data_type[%u] dim_count[%zu].",
-          x0_type, x0_dims.size(), x1_type, x1_dims.size());
-      if (not_handle_flag0) {
-        td_y.SetShape(ge::Shape(x1_dims));
-        td_y.SetDataType(x1_type);
-      } else {
-        td_y.SetShape(ge::Shape(x0_dims));
-        td_y.SetDataType(x0_type);
-      }
-      (void)op.UpdateOutputDesc("y", td_y);
-      return GRAPH_SUCCESS;
-    }
-  }
+static graphStatus MergeAsMaxInput(Operator &op) {
+  const auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
+  const auto x0_dims = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
 
-  // check "x" be same type
-  auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
-  for (size_t i = 1; i < op.GetInputsSize(); i++) {
-    auto xi_type = op.GetDynamicInputDesc("x", i).GetDataType();
+  // find the input with the max size from all inputs, and set it's data type/shape to the output
+  OP_LOGD(op.GetName(), "Begin to calculate the shape of merge node, input size %zu", op.GetInputsSize());
+  std::map<int64_t, size_t> size_to_index;
+  for (size_t i = 0; i < op.GetInputsSize(); ++i) {
+    // check "x" be same type.
+    const auto xi_type = op.GetDynamicInputDesc("x", i).GetDataType();
     if (xi_type != x0_type) {
       string reason = "x[0]'s dtype[" + std::to_string(x0_type) + "] must be equal to x[" + std::to_string(i) +
                       "]'s dtype[" + std::to_string(xi_type) + "]";
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
-      GE_OP_LOGE(op.GetName().c_str(), "Check type failed: x[0]'s dtype[%u] must be equal to x[%zu]'s dtype[%u]",
-                 x0_type, i, xi_type);
+      OP_LOGE(op.GetName(), "Check type failed: x[0]'s dtype[%u] must be equal to x[%zu]'s dtype[%u]",
+              x0_type, i, xi_type);
       return GRAPH_FAILED;
     }
-  }
 
-  // infer "y" be unknown shape
-  auto x0_dims = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
-  bool x0_unknown = (x0_dims.size() == 1) && (x0_dims[0] == 0);
-  if (x0_unknown) {
-    Shape unknown_shape(ge::UNKNOWN_SHAPE);
-    td_y.SetShape(unknown_shape);
-    td_y.SetDataType(x0_type);
-    (void)op.UpdateOutputDesc("y", td_y);
-    return GRAPH_SUCCESS;
-  }
-
-  // find the input with the max size from all inputs, and set it's data type/shape to the output
-  GE_OP_LOGD(op.GetName().c_str(), "Begin to calculate the shape of merge node, input size %zu", op.GetInputsSize());
-  std::map<int64_t, size_t> size_to_index;
-  for (size_t i = 0; i < op.GetInputsSize(); i++) {
-    auto xi_dims = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+    // find "x" the max dims.
+    const auto xi_dims = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
     bool xi_unknown = (xi_dims.size() == 1) && (xi_dims[0] == 0);
     if (xi_unknown) {
-      GE_OP_LOGW(op.GetName().c_str(), "Check shape size failed: 0:%zu, %zu:%zu.", x0_dims.size(), i, xi_dims.size());
+      OP_LOGW(op.GetName(), "Check shape size failed: 0:%zu, %zu:%zu.", x0_dims.size(), i, xi_dims.size());
       continue;
     }
     int64_t size = static_cast<int64_t>(GetSizeByDataType(op.GetDynamicInputDesc("x", i).GetDataType()));
     if (size < 0) {
-      GE_OP_LOGW(op.GetName().c_str(), "Invalid data type in input %zu.", i);
+      OP_LOGW(op.GetName(), "Invalid data type in input %zu.", i);
       continue;
     }
 
@@ -119,12 +71,12 @@ graphStatus MergeInferImpl(Operator& op) {
       for (auto& dim : xi_dims) {
         if (dim <= 0) {
           size = -1;
-          GE_OP_LOGW(op.GetName().c_str(), "Invalid dim found %d", dim);
+          OP_LOGW(op.GetName(), "Invalid dim found %d", dim);
           break;
         }
         if (size != 0 && INT64_MAX / size < dim) {
           GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dim", "the dim size is overflow");
-          GE_OP_LOGE(op.GetName().c_str(), "The dim size is overflow");
+          OP_LOGE(op.GetName(), "The dim size is overflow");
           return GRAPH_FAILED;
         }
         size *= dim;
@@ -134,24 +86,178 @@ graphStatus MergeInferImpl(Operator& op) {
       }
     }
 
-    GE_OP_LOGD(op.GetName().c_str(), "Input index %zu, size %ld", i, size);
-
+    OP_LOGD(op.GetName(), "Input index %zu, size %ld", i, size);
     if (size_to_index.count(size) == 0) {
       size_to_index[size] = i;
     }
   }
   if (size_to_index.empty()) {
-    GE_OP_LOGE(op.GetName().c_str(), "No valid input shape");
+    OP_LOGE(op.GetName(), "No valid input shape");
     return GRAPH_FAILED;
   }
   auto index = size_to_index.rbegin()->second;
-  GE_OP_LOGD(op.GetName().c_str(), "The max size of index is %zu, size %ld, data type %u, dim count %zu", index,
-             size_to_index.rbegin()->first, op.GetDynamicInputDesc("x", index).GetDataType(),
-             op.GetDynamicInputDesc("x", index).GetShape().GetDims().size());
+  OP_LOGD(op.GetName(), "The max size of index is %zu, size %ld, data type %u, dim count %zu", index,
+          size_to_index.rbegin()->first, op.GetDynamicInputDesc("x", index).GetDataType(),
+          op.GetDynamicInputDesc("x", index).GetShape().GetDims().size());
+
+  TensorDesc td_y = op.GetOutputDescByName("y");
   td_y.SetShape(ge::Shape(op.GetDynamicInputDesc("x", index).GetShape().GetDims()));
   td_y.SetDataType(op.GetDynamicInputDesc("x", index).GetDataType());
-  (void)op.UpdateOutputDesc("y", td_y);
-  return GRAPH_SUCCESS;
+  return op.UpdateOutputDesc("y", td_y);
+}
+
+static graphStatus MergeAsRunInput(Operator &op, int merge_index) {
+  size_t in_num = op.GetInputsSize();
+  if (0 <= merge_index && static_cast<uint32_t>(merge_index) < in_num) {
+    OP_LOGD(op.GetName(), "Update output shape by merge input index: %d", merge_index);
+    TensorDesc td_x = op.GetDynamicInputDesc("x", merge_index);
+    (void)td_x.SetShapeRange({});
+    return op.UpdateOutputDesc("y", td_x);
+  }
+  string reason = "merge index[" + std::to_string(merge_index) + "] not in range [0, " + std::to_string(in_num) + ")";
+  GeInfershapeErrReport(op.GetName(), op.GetOpType(), "input", reason);
+  OP_LOGE(op.GetName(), "Invalid merge index: %s", reason.c_str());
+  return GRAPH_FAILED;
+}
+
+graphStatus MergeInferImpl(Operator &op) {
+  size_t in_num = op.GetInputsSize();
+  OP_LOGD(op.GetName(), "Begin to infer merge node shape, input size %zu", in_num);
+  // Check N of "x" >= 1
+  if (in_num < 1) {
+    string reason = "inputs size[" + std::to_string(in_num) + "] must be greater than or equal to 1";
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "input", reason);
+    OP_LOGE(op.GetName(), "Check inputs failed: %s", reason.c_str());
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc td_v = op.GetOutputDescByName("value_index");
+  td_v.SetShape(Shape());
+  td_v.SetDataType(DT_INT32);
+  if (op.UpdateOutputDesc("value_index", td_v) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName(), "Failed to update value_index tensor.");
+    return GRAPH_FAILED;
+  }
+
+  // For dynamic shape running calculation.
+  int merge_index = -1;
+  if (op.GetAttr("_merge_input_index", merge_index) == GRAPH_SUCCESS) {
+    return MergeAsRunInput(op, merge_index);
+  }
+
+  // For dynamic multi batch.
+  bool is_multi_batch = false;
+  if (op.GetAttr(ATTR_INSERT_BY_MBATCH, is_multi_batch) == GRAPH_SUCCESS) {
+    return MergeAsMaxInput(op);
+  }
+
+  // check N of "x" == 2
+  const auto &node = NodeUtils::GetNodeFromOperator(op);
+  if (in_num == 2 && node != nullptr) {
+    // Check is while_loop, order of InferShape: Enter -> Merge -> Switch -> NextIteration -> Merge -> Switch -> Exit
+    // So when processing InferShape on Merge op, shape & datatype of NextIteration op is set as default.
+    // Therefore, shape & datatype of Merge op should be set as the Enter op.
+    const auto &node_x1 = node->GetInDataNodes().at(1); // NextIteration
+    if (node_x1->GetType() == "NextIteration" || node_x1->GetType() == "RefNextIteration") {
+      bool need_infer_again = false;
+      if (op.GetAttr(ATTR_NAME_NEED_INFER_AGAIN, need_infer_again) != GRAPH_SUCCESS) {  // first time infer.
+        OP_LOGD(op.GetName(), "Update output shape by merge input enter");
+        TensorDesc td_x = op.GetDynamicInputDesc("x", 0);
+        return op.UpdateOutputDesc("y", td_x);
+      }
+    }
+  }
+
+  auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
+  auto x0_dims = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
+  std::vector<std::pair<int64_t, int64_t>> x0_shape_range;
+  op.GetDynamicInputDesc("x", 0).GetShapeRange(x0_shape_range);
+  auto td_y = op.GetOutputDescByName("y");
+  td_y.SetDataType(x0_type);
+
+  // Infer "y": Find the input with the max size from all inputs, and set it`s data type/shape to the output
+  OP_LOGD(op.GetName(), "Begin to calculate the shape of merge node, input size: %zu", in_num);
+  std::vector<DimGroup> dims_to_range(x0_dims.size());
+  for (size_t i = 0; i < in_num; ++i) {
+    // check "x" be same data type
+    const auto xi_type = op.GetDynamicInputDesc("x", i).GetDataType();
+    if (xi_type != x0_type) {
+      string reason = "x[0]'s dtype[" + std::to_string(x0_type) + "] must be equal to x[" + std::to_string(i) +
+                      "]'s dtype["  + std::to_string(xi_type) + "]";
+      GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
+      OP_LOGE(op.GetName(), "Check dtype failed: %s", reason.c_str());
+      return GRAPH_FAILED;
+    }
+
+    const auto xi_dims = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+    if (x0_dims.size() != xi_dims.size() || xi_dims == UNKNOWN_RANK) {
+      OP_LOGW(op.GetName(), "Check dims failed: x[0]'s dim size[%zu] not equal to x[%zu]'s dim size[%zu]",
+              x0_dims.size(), i, xi_dims.size());
+      td_y.SetShape(Shape(UNKNOWN_RANK));
+      return op.UpdateOutputDesc("y", td_y);
+    }
+
+    std::vector<std::pair<int64_t, int64_t>> xi_range;
+    op.GetDynamicInputDesc("x", i).GetShapeRange(xi_range);
+    for (size_t j = 0; j < xi_dims.size(); ++j) {
+      DimGroup &dim_group = dims_to_range[j];
+      if (xi_dims[j] >= 0) {
+        if (xi_dims[j] < dim_group.dim_value_min) {
+          dim_group.dim_value_min = xi_dims[j];
+        }
+        if (xi_dims[j] > dim_group.dim_value_max) {
+          dim_group.dim_value_max = xi_dims[j];
+        }
+      } else {
+        dim_group.is_unknown_shape = true;
+      }
+
+      if (j < xi_range.size()) {
+        if (xi_range[j].second >= 0) {
+          if (dim_group.dim_value_min > xi_range[j].first) {
+            dim_group.dim_value_min = xi_range[j].first;
+          }
+          if (dim_group.dim_value_max < xi_range[j].second) {
+            dim_group.dim_value_max = xi_range[j].second;
+          }
+        } else {
+          dim_group.is_unknown_shape = true;
+          dim_group.is_max_unknown = true;
+        }
+      }
+    }
+  }
+
+  // calculation final shape
+  bool is_unknown_shape = false;
+  std::vector<int64_t> out_dims(x0_dims.size());
+  std::vector<std::pair<int64_t, int64_t>> out_shape_range(x0_dims.size());
+  for (size_t i = 0; i < dims_to_range.size(); ++i) {
+    DimGroup &dim_group = dims_to_range[i];
+    if (dim_group.is_unknown_shape) {
+      is_unknown_shape = true;
+      out_dims[i] = -1;
+    } else {
+      if (dim_group.dim_value_min == dim_group.dim_value_max) {
+        out_dims[i] = dim_group.dim_value_min;
+      } else {
+        is_unknown_shape = true;
+        out_dims[i] = -1;
+      }
+    }
+
+    out_shape_range[i].first = dim_group.dim_value_min < 0 ? 0 : dim_group.dim_value_min;
+    out_shape_range[i].second = dim_group.is_max_unknown ? -1 : dim_group.dim_value_max;
+  }
+
+  // Update output shape
+  td_y.SetShape(Shape(out_dims));
+  if (is_unknown_shape) {
+    (void)td_y.SetShapeRange(out_shape_range);
+  }
+  OP_LOGD(op.GetName(), "data type: %u, dims size %zu, is unknown shape: %s",
+          x0_type, out_dims.size(), is_unknown_shape ? "Yes" : "No");
+  return op.UpdateOutputDesc("y", td_y);
 }
 
 graphStatus SwitchInferImpl(Operator& op) {
@@ -168,13 +274,13 @@ graphStatus SwitchInferImpl(Operator& op) {
   auto pred_dims = pred_desc->GetShape().GetDims();
   if (pred_dims.size() != 0) {
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "pred dims", "pred should be a scalar");
-    GE_OP_LOGE(op.GetName().c_str(), "pred should be a scalar, actually size=%zu", pred_dims.size());
+    OP_LOGE(op.GetName(), "pred should be a scalar, actually size=%zu", pred_dims.size());
     return GRAPH_FAILED;
   }
   DataType pred_type = pred_desc->GetDataType();
   if (pred_type != DT_BOOL) {
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", "pred should be bool type");
-    GE_OP_LOGE(op.GetName().c_str(), "pred should be bool type, actually type=%u", pred_type);
+    OP_LOGE(op.GetName(), "pred should be bool type, actually type=%u", pred_type);
     return GRAPH_FAILED;
   }
 
@@ -256,7 +362,7 @@ graphStatus LoopCondInferImpl(Operator& op) {
   auto input_dims = op.GetInputDesc("x").GetShape().GetDims();
   if (input_dims.size() != 0) {
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "x dims", "x should be a scalar");
-    GE_OP_LOGE(op.GetName().c_str(), "x should be a scalar, actually size=%zu", input_dims.size());
+    OP_LOGE(op.GetName(), "x should be a scalar, actually size=%zu", input_dims.size());
     return GRAPH_FAILED;
   }
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
@@ -264,7 +370,7 @@ graphStatus LoopCondInferImpl(Operator& op) {
   DataType input_type = op.GetInputDesc("x").GetDataType();
   if (input_type != DT_BOOL) {
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", "x should be bool type");
-    GE_OP_LOGE(op.GetName().c_str(), "x should be bool type, actually type=%u", input_type);
+    OP_LOGE(op.GetName(), "x should be bool type, actually type=%u", input_type);
     return GRAPH_FAILED;
   }
   tensordesc_output.SetDataType(input_type);
