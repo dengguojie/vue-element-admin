@@ -1012,6 +1012,30 @@ REG_OP(HardSigmoidGrad)
     .ATTR(beta, Float, 0.5)
     .OP_END_FACTORY_REG(HardSigmoidGrad)
 
+/**
+* @brief Calculate the shrink function. \n
+
+* @par Inputs:
+* One inputs, including:
+* @li input_x: A tensor. Must be one of the following types:
+*     float16, float32. \n
+
+* @par Attributes:
+* @li lambd: An optional float. Defaults to 0.5. \n
+* @li bias: An optional float. Defaults to 0.0. \n
+
+* @par Outputs:
+* y: A Tensor with the same dtype and shape of input_x's. \n
+
+* @par Third-party framework compatibility
+* Compatible with the ONNX operator Shrink. \n
+*/
+REG_OP(Shrink)
+    .INPUT(input_x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(output_y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(lambd, Float, 0.5)
+    .ATTR(bias, Float, 0.0)
+    .OP_END_FACTORY_REG(Shrink)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NONLINEAR_FUC_OPS_H_
