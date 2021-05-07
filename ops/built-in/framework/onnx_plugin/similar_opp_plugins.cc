@@ -36,8 +36,6 @@ REGISTER_CUSTOM_OP(#ATC_OPP)                            \
     .ParseParamsFn(ParseParams##FUN)                \
     .ImplyType(ImplyType::TVM);
 
-REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Relu, Relu, ReluV8);
-REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Mul, Mul, MulV8);
 
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Acos, Acos, AcosV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Acosh, Acosh, AcoshV11);
@@ -86,6 +84,57 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Div, RealDiv, DivV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Abs, Abs, AbsV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Relu, Relu, ReluV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Mul, Mul, MulV11);
+
+//onnx::8
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Acos, Acos, AcosV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Acosh, Acosh, AcoshV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Atan, Atan, AtanV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Ceil, Ceil, CeilV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Cos, Cos, CosV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Cosh, Cosh, CoshV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Equal, Equal, EqualV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Floor, Floor, FloorV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Less, Less, LessV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Neg, Neg, NegV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Not, LogicalNot, NotV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Pow, Pow, PowV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Round, Round, RoundV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Erf, Erf, ErfV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Softplus, Softplus, SoftplusV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Softsign, Softsign, SoftsignV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Tanh, Tanh, TanhV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Reciprocal, Reciprocal, ReciprocalV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Asin, Asin, AsinV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Asinh, Asinh, AsinhV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Exp, Exp, ExpV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Sin, Sin, SinV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Sinh, Sinh, SinhV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Atanh, Atanh, AtanhV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Greater, Greater, GreaterV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Or, LogicalOr, OrV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Log, Log, LogV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::And, LogicalAnd, AndV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::PRelu, PRelu, PReluV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Sign, Sign, SignV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Det, MatrixDeterminant, DetV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::LessOrEqual, LessEqual, LessEqualV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Identity, Identity, IdentityV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Where, SelectV2, WhereV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Range, Range, RangeV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Expand, Expand, ExpandV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Dropout, Dropout, DropoutV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::ScatterND, TensorScatterUpdate, ScatterNDV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::GreaterOrEqual, GreaterEqual, GreaterOrEqualV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Add, Add, AddV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Sigmoid, Sigmoid, SigmoidV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Tile, Tile, TileV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Sub, Sub, SubV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Sqrt, Sqrt, SqrtV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Div, RealDiv, DivV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Abs, Abs, AbsV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Relu, Relu, ReluV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Mul, Mul, MulV8);
+
 
 //onnx::9
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Acos, Acos, AcosV9);
