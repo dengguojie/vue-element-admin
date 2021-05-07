@@ -52,6 +52,17 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
 Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& outputIndex, const vector<int64_t>& permList,
                              ge::ComputeGraph& graph);
 
+/**
+ * Insert a cast after one output of one op
+ * @param [in] fusedNode which node will be inserted
+ * @param [in] outputIndex which output index will be inserted
+ * @param [in] dst_type cast dst_type
+ * @param [in] graph
+ * @return status whether insert success
+ */
+Status AddCastAfterNode(const ge::NodePtr& fusedNode, const int64_t& outputIndex, const ge::DataType& dst_type,
+                        ge::ComputeGraph& graph);
+
 class TbeFusionPassUtil {
  public:
   /**

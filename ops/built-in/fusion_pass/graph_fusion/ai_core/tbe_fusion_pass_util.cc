@@ -25,6 +25,7 @@
 #include <map>
 #include <algorithm>
 #include <functional>
+#include <memory>
 
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -39,6 +40,7 @@ using namespace std;
 
 namespace fe {
 static const string FUSED_TRANSPOSE_NODE = "TransposeD";
+static const string FUSED_CAST_NODE = "Cast";
 
 Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& inputIndex, const vector<int64_t>& permList,
                               ge::ComputeGraph& graph) {
@@ -133,14 +135,55 @@ Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& output
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(outputIndex), inDataAnchor) != SUCCESS,
                       OP_LOGE(fuseNodeType.c_str(), "Remove edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(fuseNodeType.c_str(), , "Add edge failed."), return FAILED);
+                      OP_LOGE(fuseNodeType.c_str(), "Add edge failed."), return FAILED);
   }
 
   // add input for transpose
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(fusedNode->GetOutDataAnchor(outputIndex), transposeNode->GetInDataAnchor(0)) != SUCCESS,
-      OP_LOGE(fuseNodeType.c_str(), , "AddEdge edge failed."), return FAILED);
+      OP_LOGE(fuseNodeType.c_str(), "Add edge failed."), return FAILED);
   OP_LOGI(fuseNodeType.c_str(), "end to insert Transpose after %s.", fusedNode->GetName().c_str());
+
+  return SUCCESS;
+}
+
+Status AddCastAfterNode(const ge::NodePtr& fused_node, const int64_t& output_index, const ge::DataType& dst_type,
+                        ge::ComputeGraph& graph) {
+  string fuse_nodetype = fused_node->GetType();
+  OP_LOGI(fuse_nodetype.c_str(), "begin to insert Cast after %s.", fused_node->GetName().c_str());
+
+  std::shared_ptr<ge::OpDesc> after_cast_desc = nullptr;
+  std::string CastName = fused_node->GetName() + "_Output" + to_string(output_index) + "CastAfter";
+  after_cast_desc = std::make_shared<ge::OpDesc>(CastName, FUSED_CAST_NODE);
+  FUSION_PASS_CHECK(after_cast_desc == nullptr,
+                    OP_LOGE(fuse_nodetype.c_str(), "after_cast_desc is null, fusion failed."), return FAILED);
+  ge::GeTensorDesc output_desc = fused_node->GetOpDesc()->GetOutputDesc(output_index);
+  FUSION_PASS_CHECK(after_cast_desc->AddInputDesc("x", output_desc) != SUCCESS,
+                    OP_LOGE(fuse_nodetype.c_str(), "add after cast of %s failed.", fused_node->GetName().c_str()),
+                    return FAILED);
+
+  ge::GeTensorDesc aftercast_output_desc = fused_node->GetOpDesc()->GetOutputDesc(output_index).Clone();
+  aftercast_output_desc.SetDataType(dst_type);
+  FUSION_PASS_CHECK(after_cast_desc->AddOutputDesc("y", aftercast_output_desc) != SUCCESS,
+                    OP_LOGE(fuse_nodetype.c_str(), "add after cast of %s failed.", fused_node->GetName().c_str()),
+                    return FAILED);
+  ge::AttrUtils::SetInt(after_cast_desc, "dst_type", dst_type);
+  // add node to graph
+  ge::NodePtr cast_node = graph.AddNode(after_cast_desc);
+
+  // add edge cast output with other node input
+  for (auto in_data_anchor : fused_node->GetOutDataAnchor(output_index)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(output_index), in_data_anchor) != SUCCESS,
+                      OP_LOGE(fuse_nodetype.c_str(), "Remove edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(cast_node->GetOutDataAnchor(0), in_data_anchor) != SUCCESS,
+                      OP_LOGE(fuse_nodetype.c_str(), "Add edge failed."), return FAILED);
+  }
+
+  // add input for cast
+  FUSION_PASS_CHECK(
+      ge::GraphUtils::AddEdge(fused_node->GetOutDataAnchor(output_index), cast_node->GetInDataAnchor(0)) != SUCCESS,
+      OP_LOGE(fuse_nodetype.c_str(), "Add edge failed."), return FAILED);
+  OP_LOGI(fuse_nodetype.c_str(), "end to insert cast after %s.", fused_node->GetName().c_str());
 
   return SUCCESS;
 }
