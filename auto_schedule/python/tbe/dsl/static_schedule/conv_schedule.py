@@ -1973,6 +1973,9 @@ class CceConvOp:
                         sch[bias_l0c].double_buffer()
                         sch[c_col_bias].double_buffer()
                         sch[bias_l0c].preload()
+                        if is_support_v200():
+                            sch[fmap_col_before].double_buffer()
+                            sch[fmap_col_before].preload()
                         if bias_optimize_flag:
                             sch[bias_ub_brc].double_buffer()
                             sch[bias_ub_brc].preload()
