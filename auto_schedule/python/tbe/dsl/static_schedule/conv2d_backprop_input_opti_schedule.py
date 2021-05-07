@@ -567,7 +567,7 @@ class Conv2dDxOptiSchedule:
                     # add one is needed by buffer_tile of ub
                     m_al0 = m_cl0 = int_ceil_div(dy_w, block_m) + 1
             if l0c_multi_group_flag:
-                n_min = DIM_MAP["dy_c1_extend"]
+                n_min = DIM_MAP["dx_c1_extend"]
                 group_cl0 = 2
             else:
                 n_min = 1
