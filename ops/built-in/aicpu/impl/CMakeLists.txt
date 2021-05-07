@@ -212,6 +212,7 @@ set(local_kernels_inc_path
     ${TOP_DIR}/third_party/eigen/src/eigen-3.3.7
     ${TOP_DIR}/inc
     ${TOP_DIR}/libc_sec/include
+    ${TOP_DIR}/abl/libc_sec/include
 )
 
 add_library(cpu_kernels SHARED
