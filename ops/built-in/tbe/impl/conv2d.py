@@ -150,10 +150,10 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
 
     - minimum size calculation:
 
-        `m_limit_out_v200 = lcm(out_width, 16) // out_width ("lcm": least common multiple)`
-        `in_height_need = (m_limit_out_v200 - 1) * stride_h- pad_left - pad_right +
-         (dilation_w * (filter_width - 1) + 1)`
-        `minimum_load_size = in_height_need * in_width * 8 ("8": comes from 2btype*C0=4)`
+        `limit_out_height = lcm(out_width, 16) // out_width ("lcm": least common multiple)`
+        `dilated_filter_h = dilation_h * (filter_height - 1) + 1`
+        `limit_in_height = (limit_out_height - 1) * stride_h + dilated_filter_h - pad_left - pad_right`
+        `minimum_size = limit_in_height * in_width * 8 ("8": comes from 2btype*C0=4)`
     """
     def _select_format(params):
         inputs = params[0]

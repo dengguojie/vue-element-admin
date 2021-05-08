@@ -173,7 +173,57 @@ def test_conv2d_fuzz_build_tilingcase(test_arg):
             }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_conv2d_fuzz_build_tilingcase']
         conv2d(*input_list)
 print("adding conv2d test_conv2d_fuzz_build_tilingcase testcase")
-# ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_tilingcase)
+ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_tilingcase)
+
+def test_conv2d_fuzz_build_correct_range(test_arg):
+    import json
+    from impl.dynamic.conv2d import conv2d
+    from impl.dynamic.conv2d import conv2d_generalization
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [1, 2],
+                                        [3, 3],
+                                        [1024, 4096],
+                                        [1024, 4096]
+                                    ],
+                                    "shape": [-1, 3, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (1, 1, 1080, 1080, 16),
+                'ori_shape': (1, 3, 1080, 1080),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((1, 2), (1, 1), (1024, 4096), (1024, 4096), (16, 16)),
+                'ori_range': ((1, 2), (3, 3), (1024, 4096), (1024, 4096))
+            }, {
+                'ori_shape': (64, 3, 7, 7),
+                'ori_format': 'NCHW',
+                'format': 'FRACTAL_Z',
+                'dtype': 'float16'
+            }, None, None, {
+                'shape': (-1, 4, -1, -1, 16),
+                'ori_shape': (-1, 64, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16'
+            }, (1, 1, 2, 2), (3, 3, 3, 3), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_conv2d_fuzz_build_correct_range']
+        ret = conv2d_generalization(*input_list)
+        conv2d(*(ret[0]))
+print("adding conv2d test_conv2d_fuzz_build_correct_range testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_correct_range)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310"])

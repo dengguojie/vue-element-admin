@@ -18,6 +18,9 @@ dynamic conv2d
 from __future__ import absolute_import
 
 import math
+import re
+import copy
+import warnings
 import te.lang.dynamic as dynamic
 import tbe.dsl as tbe_base
 from tbe import tvm
@@ -34,12 +37,80 @@ from tbe.common.utils.errormgr import error_manager_util
 from impl.util import fusion_util
 from impl.util import util_conv2d
 from impl.util.util_cube_dynamic import Conv2dParaProcess
+from impl.util.platform_adapter import tbe_platform
 
 NONETYPE = type(None)
 H_DIM = 2
 W_DIM = 3
 SHAPE_LEN = 5
 ORI_SHAPE_LEN = 4
+
+
+def correct_fuzz_build_range(inputs, weights, strides, pads, dilations):
+    """
+    get input w range within L1 size
+
+    Notice
+    ------
+    the proper range are not smaller then shape value
+
+    Parameters
+    ----------
+    same to conv2d
+
+    Returns
+    -------
+    None
+    """
+    valid = isinstance(inputs.get("range"), (list, tuple)) and len(inputs["range"]) >= 4
+    if not valid:
+        return
+    proper_range = list(map(list, inputs["range"]))
+    pos_h = inputs["ori_format"].find("H")
+    pos_w = inputs["ori_format"].find("W")
+    pos_range_h = pos_h
+    pos_range_w = pos_w
+    if len(proper_range) > 4:
+        pos_range_h = 2
+        pos_range_w = 3
+    # -1 shape range is set by user, should not change
+    invaild = (None in proper_range[pos_range_h]) \
+              or (None in proper_range[pos_range_w]) \
+              or inputs["ori_shape"][pos_w] == -1
+    if invaild:
+        return
+    # >>> start: get the max proper w right range, at least same to shape value
+    type_byte = int(re.findall(r'\d+', inputs["dtype"])[0]) // 8
+    pad_top, pad_bottom, pad_left, pad_right = pads
+    filter_h_dilation = (weights["ori_shape"][weights["ori_format"].find("H")] - 1) * dilations[pos_h] + 1
+    filter_w_dilation = (weights["ori_shape"][weights["ori_format"].find("W")] - 1) * dilations[pos_w] + 1
+    l1_size = tbe_platform.get_soc_spec("L1_SIZE")
+    proper_w = proper_range[pos_range_w][1]
+    for i in list(range(proper_w, inputs["ori_shape"][pos_w] - 1, -1)):
+        if -1 in pads:
+            w_out = i + strides[pos_w] - 1 // strides[pos_w]
+        else:
+            w_out = (i + (pad_left + pad_right) - filter_w_dilation) // strides[pos_w] + 1
+        limit_h_out = math.floor(tbe_platform.CUBE_MKN[inputs["dtype"]]['mac'][0] / w_out) + 2
+        limit_size = ((limit_h_out - 1) * strides[pos_h] + filter_h_dilation) * i
+        limit_size = limit_size * tbe_platform.CUBE_MKN[inputs["dtype"]]['mac'][1] * type_byte
+        proper_w = i
+        if limit_size < l1_size:
+            break
+    # <<< end: get the max proper w right range, at least same to shape value
+    # >>> start: change input range and ori_range if exists
+    if proper_w != proper_range[pos_range_w][1]:
+        proper_range[pos_range_w][1] = proper_w
+        to_print = "conv2d fuzz build range changed from {} to {}".format(inputs["range"], proper_range)
+        inputs["range"] = proper_range
+        valid = isinstance(inputs.get("ori_range"), (list, tuple)) and len(inputs["ori_range"]) == 4
+        if valid:
+            ori_range = list(map(list, inputs["ori_range"]))
+            ori_range[pos_w][1] = proper_w
+            to_print = "{}, ori_range changed from {} to {}".format(to_print, inputs["ori_range"], proper_range)
+            inputs["ori_range"] = ori_range
+        warnings.warn(to_print)
+    # <<< end: change input range and ori_range if exists
 
 
 @register_param_generalization("Conv2D")
@@ -80,6 +151,7 @@ def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pad
         if unknow_rank:
             err_man.raise_err_specific_user("conv2d", "not support unknow_rank under mode {}".format(
                 generalize_config["mode"]))
+        correct_fuzz_build_range(inputs, weights, strides, pads, dilations)
         have_range = {"inputs": inputs, "outputs": outputs}
         support_format = ["NCHW", "NHWC"]
         for name, tensor in have_range.items():
