@@ -890,6 +890,55 @@ def check_supported(fmap,
         return False
 
 
+def check_supported_with_reason(fmap,
+                                weight,
+                                bias,
+                                offset_w,
+                                output,
+                                strides,
+                                pads,
+                                dilations=(1, 1, 1, 1, 1),
+                                groups=1,
+                                data_format="NDHWC",
+                                offset_x=0,
+                                kernel_name="conv3d"):
+    """
+    The H and W dimension of dilation should be in range [1, 255]
+    The D,H or W dimension of the filter should be in range [1, 255]
+    The padding in each dimension should be in range [0, 255]
+    The D,H or W dimension of the stride should be in range [1, 63]
+
+    The groups should <= the feature map's and the filter's channel dimension
+    Feature map's channel dimension or filter's channel dimension must be divisible by groups
+    The channel dimension of the feature map should = filter's channel dimension * groups
+    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation
+    The padding in each dimension should < the filter's corresponding dimension after dilation
+    
+    If the output H dimension is not 1, the output W dimension should >= 2
+    The feature map size in L1 buffer should <= the chip's L1 buffer size
+    """
+    fmp_shape = fmap.get("ori_shape")
+    fmp_dtype = fmap.get("dtype")
+    fmp_format = data_format
+    w_shape = weight.get("ori_shape")
+    w_dtype = weight.get("dtype")
+    w_format = weight.get("ori_format")
+    res_dtype = output.get("dtype")
+
+    fmp_dtype = fmp_dtype.lower()
+    w_dtype = w_dtype.lower()
+    res_dtype = res_dtype.lower()
+
+    # normalized format as NCDHW
+    try:
+        _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype, fmp_format, w_format, bias,
+                           strides, pads, dilations, groups)
+        return True, ""
+    except Exception as e:
+        reason = e.args[1]
+        return False, reason
+
+
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
     para_check.OPTION_INPUT, para_check.OPTION_INPUT,

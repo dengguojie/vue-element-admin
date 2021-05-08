@@ -506,6 +506,96 @@ def check_supported(input_x, input_y, bias=None, offset_w={}, output_z={}, trans
                 return False
     return True
 
+
+def check_supported_with_reason(input_x,
+                                input_y,
+                                bias=None,
+                                offset_w={},
+                                output_z={},
+                                trans_a=False,
+                                trans_b=False,
+                                offset_x=0,
+                                kernel_name="matmul"):
+    """
+    get the op supported situation
+    """
+
+    shape_a = input_x.get("ori_shape")
+    shape_b = input_y.get("ori_shape")
+    src_dtype = input_x.get("dtype")
+    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
+    if not dynamic_flag:
+        para_check.check_shape(shape_a, param_name="input_x")
+        para_check.check_shape(shape_b, param_name="input_y")
+    else:
+        if not _check_batch_range(input_x, input_y):
+            reason = "The batch range or shape of inputs is illegal"
+            return False, reason
+
+    src_dtypes = ["float32", "int32"]
+    if src_dtype in src_dtypes and not dynamic_flag:
+        shape_length = len(shape_a)
+        shape_length_b = len(shape_b)
+        if shape_length != shape_length_b:
+            reason = "The dimensions of TensorA and TensorB are not equal"
+            return False, reason
+        elif trans_b:
+            if shape_b[shape_length - 2] == 1:
+                reason = "When trans_b is True and src_dtypes is float32 or int32," \
+                    "the shape_b[{}] cannot be equal to 1".format(shape_length - 2)
+                return False, reason
+        elif bool(1 - trans_b):
+            if shape_b[shape_length - 1] == 1:
+                reason = "When trans_b is False and src_dtypes is float32 or int32," \
+                    "the shape_b[{}] cannot be equal to 1".format(shape_length - 1)
+                return False, reason
+        elif trans_a:
+            if trans_b:
+                if shape_a[shape_length - 2] != shape_b[shape_length - 1]:
+                    reason = "The shape_a[{}] and shape_b[{}] are not equal".format(
+                        shape_length - 2, shape_length - 1)
+                    return False, reason
+            else:
+                if shape_a[shape_length - 2] != shape_b[shape_length - 2]:
+                    reason = "The shape_a[{0}] and shape_b[{0}] are not equal".format(shape_length - 2)
+                    return False, reason
+        else:
+            if trans_b:
+                if shape_a[shape_length - 1] != shape_b[shape_length - 1]:
+                    reason = "The shape_a[{0}] and shape_b[{0}] are not equal".format(shape_length - 1)
+                    return False, reason
+            else:
+                if shape_a[shape_length - 1] != shape_b[shape_length - 2]:
+                    reason = "The shape_a[{0}] and shape_b[{1}] are not equal".format(
+                        shape_length - 1, shape_length - 2)
+                    return False, reason
+    elif src_dtype in ["float16", "int8"] and not dynamic_flag:
+        shape_length = len(shape_a)
+        if trans_a:
+            k_shape = shape_a[shape_length - 2]
+        else:
+            k_shape = shape_a[shape_length - 1]
+
+        shape_length_b = len(shape_b)
+        if trans_b:
+            k_b_shape = shape_b[shape_length_b - 1]
+        else:
+            k_b_shape = shape_b[shape_length_b - 2]
+
+        if k_shape != k_b_shape:
+            reason = "The K of TensorA and TensorB should be equal," \
+                "but actually K of TensorA is {} and K of TensorB is {}".format(k_shape, k_b_shape)
+            return False, reason
+
+        if len(shape_a) == len(shape_b):
+            if shape_a[:shape_length - 2] != shape_b[:shape_length_b - 2]:
+                reason = "The batch of TensorA and TensorB should be equal," \
+                    "but actually batch of TensorA is {} and batch of TensorA is {}".format(
+                    shape_a[:shape_length - 2], shape_b[:shape_length_b - 2])
+                return False, reason
+    return True, ""
+
+
 # pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 @tbe_platform.fusion_manager.register("batch_matmul")
 def batch_matmul_compute(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,

@@ -19,6 +19,8 @@ import time
 import unittest
 ut_case = OpUT("BatchMatmulV2", None, None)
 
+from tbe import tvm
+from impl.batch_matmul_v2 import check_supported_with_reason
 from impl.batch_matmul_v2 import get_op_support_info
 
 case1 = {"params": [{"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"}, #x
@@ -87,6 +89,41 @@ case6 = {"params": [{"shape": (4, 1, 13, 11, 1, 1, 16, 32), "dtype": "int8", "fo
          "expect": "success",
          "support_expect": True}
 
+case7 = {"params": [{"shape": (4, 3, 96, 32), "dtype": "float32", "format": "NHWC", "ori_shape": (4, 3,96, 32),"ori_format": "NHWC"}, #x
+                    {"shape": (3, 64, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (3,64, 96),"ori_format": "NHWC"},
+                    {"shape": (64,), "dtype": "float32", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
+                     None,
+                    {"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
+                    True,True
+                    ],
+         "case_name": "BatchMatmul_support_check1"}
+
+case8 = {"params": [{"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 96, 32),"ori_format": "NHWC"}, #x
+                    {"shape": (1, 1, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 1, 96),"ori_format": "NHWC"},
+                    {"shape": (64,), "dtype": "float32", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
+                     None,
+                    {"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
+                    False,True
+                    ],
+         "case_name": "BatchMatmul_support_check2"}
+
+case9 = {"params": [{"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 96, 32),"ori_format": "NHWC"}, #x
+                    {"shape": (1, 32, 1), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 32, 1),"ori_format": "NHWC"},
+                    {"shape": (64,), "dtype": "float32", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
+                     None,
+                    {"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
+                    True, False
+                    ],
+         "case_name": "BatchMatmul_support_check3"}
+
+case10 = {"params": [{"shape": (3, 32, 64), "dtype": "float16", "format": "NHWC", "ori_shape": (3, 32, 64),"ori_format": "NHWC"}, #x
+                     {"shape": (3, 64, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (3, 64, 96),"ori_format": "NHWC"},
+                     {"shape": (64,), "dtype": "float16", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
+                      None,
+                     {"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
+                     True,False
+                     ],
+          "case_name": "BatchMatmul_support_check4"}
 
 
 # TODO fix me, this comment, run failed
@@ -105,7 +142,25 @@ def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
     x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
     get_op_support_info(x1, x2, None, trans_b=True)
+
+
+def test_op_check_supported(test_arg):
+    def _test_supported(case):
+        input_x, input_y, bias, offset_w, output_z, trans_a, trans_b = case["params"]
+        try:
+            print(check_supported_with_reason(input_x, input_y, bias, offset_w, output_z, trans_a, trans_b, kernel_name="batch_matmul"))
+        except RuntimeError:
+            print("The case is not supported!")
+            pass
+
+    _test_supported(case7)
+    _test_supported(case8)
+    _test_supported(case9)
+    _test_supported(case10)
+
+
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2)
+ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])
