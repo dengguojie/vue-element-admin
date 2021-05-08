@@ -182,7 +182,7 @@ namespace {
     }
   }
 
-  void update_run_info_cube(const std::vector<int64_t> var_value, optiling::OpRunInfo& run_info) {
+  void update_run_info_cube(const std::vector<int64_t>& var_value, optiling::OpRunInfo& run_info) {
     for (int64_t i = 0; i < var_value.size(); ++i) {
       optiling::ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(var_value[i]));
     }
@@ -211,14 +211,14 @@ namespace {
   string cube_tiling_nhw(const std::string& op_type, const std::vector<int64_t>& cur_shape,
                        const nlohmann::json& compile_info, string tiling_id) {
     if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
-        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_sends or repo_range in compile info json");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_seeds or repo_range in compile info json");
         return tiling_id;
     }
 
     int32_t seedHDim = 1;
     int32_t seedWDim = 2;
-    int32_t hDim = 1;
-    int32_t wDim = 2;
+    int32_t hDim = 2;
+    int32_t wDim = 3;
 
     auto& repo_range = compile_info.at("repo_range");
     auto& tiling_seeds = compile_info.at("repo_seeds");
