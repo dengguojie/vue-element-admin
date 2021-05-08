@@ -53,7 +53,7 @@ REG_OP(Resample)
     .ATTR(height, Int, 1)
     .ATTR(width, Int, 1)
     .ATTR(antialias, Bool, true)
-    .ATTR(type, Int, 1)
+    .ATTR(mode, Int, 1)
     .OP_END_FACTORY_REG(Resample)
 }
 #endif // GE_OP_RESAMPLE_H

@@ -19,7 +19,7 @@ namespace domi {
         bool antialias = true;
         int width = 1;
         int height = 1;
-        int type = 1;
+        int mode = 1;
         if (ge::GRAPH_SUCCESS == op_src.GetAttr("antialias", antialias)) {
             op_dst.SetAttr("antialias", antialias);
         }
@@ -29,8 +29,8 @@ namespace domi {
         if (ge::GRAPH_SUCCESS == op_src.GetAttr("height", height)) {
             op_dst.SetAttr("height", height);
         }
-        if (ge::GRAPH_SUCCESS == op_src.GetAttr("type", type)) {
-            op_dst.SetAttr("type", type);
+        if (ge::GRAPH_SUCCESS == op_src.GetAttr("mode", mode)) {
+            op_dst.SetAttr("mode", mode);
         }
         return SUCCESS;
     }
