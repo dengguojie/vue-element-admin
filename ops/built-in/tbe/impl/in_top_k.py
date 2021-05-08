@@ -81,7 +81,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     para_check.check_shape(predictions_shape, param_name="predictions")
     para_check.check_shape(target_shape, param_name="targets")
     para_check.check_dtype(prediction_dtype, ('float32', ), param_name="predictionsx")
-    para_check.check_dtype(target_dtype, ('int32', ), param_name="targets")
+    para_check.check_dtype(target_dtype, ('int32', 'int64'), param_name="targets")
 
     if not tbe_platform.api_check_support("tik.vconv", "f322f16"):
         error_manager_vector.raise_err_specific_reson(kernel_name, "this product does not supported float32")
@@ -146,7 +146,7 @@ def _in_top_k_special_k(predictions, targets, k, kernel_name):
     predictions_shape = predictions.get("shape")
     row = target_shape[0]
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = targets.get("dtype").lower()
     precision_dtype = "uint8"
     column = predictions_shape[1]
     if k <= 0:
@@ -183,7 +183,7 @@ def _in_top_k_special_k(predictions, targets, k, kernel_name):
     if k >= column:
         src = tik_instance.Tensor(shape=(16, ), dtype="float16", scope=tik.scope_ubuf, name="src")
         tik_instance.vector_dup(16, src, 0, 1, 1, 8)
-        dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="int32", scope=tik.scope_ubuf, name="dst_ub")
+        dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype=target_dtype, scope=tik.scope_ubuf, name="dst_ub")
         dst_ub1 = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="float16", scope=tik.scope_ubuf, name="dst_ub1")
     else:
         tik_instance.data_move(target_ub, target_tensor, 0, 1, 1, 0, 0)
@@ -279,7 +279,7 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
     block_element = BLOCK_SIZE // element_bytes
     shape = (row_nums, column_aligned)
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = shape_info.get("target_dtype")
     core_row_num = tik_instance.Scalar("int64")
 
     # step 0: set some shape value of tensor in UB.
@@ -578,7 +578,7 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
     cmp_rem = int(row_nums % BLOCK_SIZE)
     src = tik_instance.Tensor(shape=(16, ), dtype="float16", scope=tik.scope_ubuf, name="src")
     tik_instance.vector_dup(16, src, 0, 1, 1, 8)
-    dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="int32", scope=tik.scope_ubuf, name="dst_ub")
+    dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype=target_dtype, scope=tik.scope_ubuf, name="dst_ub")
     dst_ub1 = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="float16", scope=tik.scope_ubuf, name="dst_ub1")
     if cmp_times > 0:
         with tik_instance.for_range(0, cmp_times) as i:
@@ -844,7 +844,7 @@ def _in_top_k_single_core(predictions, targets, k, kernel_name):
     row_nums = (row + split_row_times - 1) // split_row_times
     row_remainder = row - (split_row_times - 1) * row_nums
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = targets.get("dtype").lower()
     core_nums = split_row_times
     core_loop = 0
     split_rows_nums = 0
@@ -869,7 +869,8 @@ def _in_top_k_single_core(predictions, targets, k, kernel_name):
             "row_nums": row_nums,
             "column": column,
             "column_aligned": column_aligned,
-            "split_rows_nums": split_rows_nums
+            "split_rows_nums": split_rows_nums,
+            "target_dtype": target_dtype
         }
         tensor = {"prediction_tensor": prediction_tensor, "target_tensor": target_tensor}
 
@@ -904,7 +905,7 @@ def _in_top_k_mul_core(predictions, targets, k, kernel_name):
     predictions_shape = predictions.get("shape")
     target_shape = targets.get("shape")
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = targets.get("dtype").lower()
 
     row = predictions_shape[0]
     column = predictions_shape[1]
@@ -966,7 +967,8 @@ def _in_top_k_mul_core(predictions, targets, k, kernel_name):
             "row_nums": row_nums,
             "column": column,
             "column_aligned": column_aligned,
-            "split_rows_nums": split_rows_nums
+            "split_rows_nums": split_rows_nums,
+            "target_dtype": target_dtype
         }
         tensor = {"prediction_tensor": prediction_tensor, "target_tensor": target_tensor}
         tensor_output_ub = _in_top_k_inter_process(shape_info, tensor, tik_instance, k)
@@ -1002,7 +1004,7 @@ def _in_top_k_mul_core_v2(predictions, targets, k, kernel_name):
     predictions_shape = predictions.get("shape")
     target_shape = targets.get("shape")
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = targets.get("dtype").lower()
     row = predictions_shape[0]
     column = predictions_shape[1]
 
@@ -1058,7 +1060,8 @@ def _in_top_k_mul_core_v2(predictions, targets, k, kernel_name):
                     "row_nums": row_nums,
                     "column": column,
                     "column_aligned": column_aligned,
-                    "split_rows_nums": split_rows_nums
+                    "split_rows_nums": split_rows_nums,
+                    "target_dtype": target_dtype
                 }
                 tensor_output_ub = _in_top_k_inter_process(shape_info, tensor, tik_instance, k)
                 with tik_instance.for_range(0, core_row_num) as i:
@@ -1076,7 +1079,8 @@ def _in_top_k_mul_core_v2(predictions, targets, k, kernel_name):
                     "row_nums": row_nums,
                     "column": column,
                     "column_aligned": column_aligned,
-                    "split_rows_nums": split_rows_nums
+                    "split_rows_nums": split_rows_nums,
+                    "target_dtype": target_dtype
                 }
                 with tik_instance.if_scope(outer_loop < last_non_tail_block):
                     core_row_num.set_as(row_nums)
@@ -1119,7 +1123,7 @@ def _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k):
     target_tensor = tensor.get("target_tensor")
     prediction_tensor = tensor.get("prediction_tensor")
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = shape_info.get('target_dtype')
     element_bytes = 4
     block_element = BLOCK_SIZE // element_bytes
 
@@ -1189,7 +1193,7 @@ def _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k):
 
     src = tik_instance.Tensor(shape=(16, ), dtype="float16", scope=tik.scope_ubuf, name="src2")
     tik_instance.vector_dup(16, src, 0, 1, 1, 8)
-    dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="int32", scope=tik.scope_ubuf, name="dst_ub")
+    dst_ub = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype=target_dtype, scope=tik.scope_ubuf, name="dst_ub")
     dst_ub1 = tik_instance.Tensor(shape=(BLOCK_SIZE, ), dtype="float16", scope=tik.scope_ubuf, name="dst_ub1")
     data_bool_ub = tik_instance.Tensor("float16", (1, ), name="data_bool_ub", scope=tik.scope_ubuf)
     cmp_mask = tik_instance.vcmp_lt(1, tensor_sub_half, tensor_zeros, 1, 1)
@@ -1273,7 +1277,8 @@ def _in_top_k_tiling_column(predictions, targets, k, kernel_name):
                     "column_size": column_num,
                     "column": column,
                     "column_num": last_column_size,
-                    "last_column_size": last_column_size
+                    "last_column_size": last_column_size,
+                    "target_dtype": target_dtype
                 }
                 tensor = {"prediction_tensor": prediction_tensor, "target_tensor": target_tensor}
                 tensor_output_temp_ub = _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k)
@@ -1291,7 +1296,8 @@ def _in_top_k_tiling_column(predictions, targets, k, kernel_name):
                     "column_size": column_num,
                     "column": column,
                     "column_num": last_column_size,
-                    "last_column_size": last_column_size
+                    "last_column_size": last_column_size,
+                    "target_dtype": target_dtype
                 }
                 tensor = {"prediction_tensor": prediction_tensor, "target_tensor": target_tensor}
                 tensor_output_temp_ub = _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k)
@@ -1300,3 +1306,4 @@ def _in_top_k_tiling_column(predictions, targets, k, kernel_name):
             tik_instance.data_move(tensor_output[index], output_ub, 0, 1, 1, 1, 1)
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[prediction_tensor, target_tensor], outputs=[tensor_output])
     return tik_instance
+

@@ -37,8 +37,28 @@ case2 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (98026,
          "expect": "success",
          "support_expect": True}
 
+case3 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (76, 21), "format": "ND", "ori_format": "ND", "range": ((1, 76), (1, 21))},
+                    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (76,),"ori_format": "ND", "range": ((1, 76), )},
+                    {"shape": (-1,), "dtype": "uint8", "format": "ND", "ori_shape": (76,),"ori_format": "ND", "range": ((1, 76), )},
+                    16],
+         "case_name": "InTopk_3",
+         "expect": "success",
+         "support_expect": True}
+
+case4 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (34, 2100), "format": "ND", "ori_format": "ND", "range": ((1, 34), (1, 2100))},
+                    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (34,),"ori_format": "ND", "range": ((1, 34), )},
+                    {"shape": (-1,), "dtype": "uint8", "format": "ND", "ori_shape": (34,),"ori_format": "ND", "range": ((1, 34), )},
+                    16],
+         "case_name": "InTopk_4",
+         "expect": "success",
+         "support_expect": True}
+
+
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
+
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

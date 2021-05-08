@@ -36,6 +36,7 @@ FP_MIN = -1
 # The size of each vector instruction processing data
 V_SIZE_BYTES = 256
 
+
 class GlobalVarGM:
     """GlobalVarGM Class Defination"""
     def __init__(self, tik_instance):
@@ -151,7 +152,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     target_shape = targets.get("shape")
     prediction_dtype = predictions.get("dtype").lower()
     target_dtype = targets.get("dtype").lower()
-    precision_dtype = precision.get("dtype").lower()
+    precision_dtype = 'uint8'
 
     tik_instance = tik.Tik()
     obj_gm = GlobalVarGM(tik_instance)
@@ -162,7 +163,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     column = obj_tiling.get_cols_num()
 
     para_check.check_dtype(prediction_dtype, ('float32', ), param_name="predictions")
-    para_check.check_dtype(target_dtype, ('int32', ), param_name="targets")
+    para_check.check_dtype(target_dtype, ('int32', 'int64'), param_name="targets")
 
     if not tbe_platform.api_check_support("tik.vconv", "f322f16"):
         error_manager_vector.raise_err_specific_reson(kernel_name, "this product does not supported float32")
@@ -210,7 +211,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
 
     real_core_num = obj_tiling.get_core_num()
     with tik_instance.if_scope(tik.any(k <= 0, k > column)):
-        _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k)
+        _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets)
     with tik_instance.else_scope():
         with tik_instance.for_range(0, mini_cloud_core_nums, block_num=mini_cloud_core_nums) as core_loop:
             with tik_instance.if_scope(core_loop < real_core_num):
@@ -220,21 +221,21 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
                 }
                 with tik_instance.if_scope(core_row_capicity > 0):
                     with tik_instance.if_scope(row <= BLOCK_SIZE):
-                        _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k)
+                        _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
                     with tik_instance.else_scope():
                         with tik_instance.if_scope(core_row_capicity < BLOCK_SIZE):
-                            _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k)
+                            _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
                         with tik_instance.else_scope():
-                            _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k)
+                            _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
                 with tik_instance.else_scope():
-                    _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k)
+                    _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
 
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[obj_gm.get_predictions_gm(), obj_gm.get_targets_gm()],
                           outputs=[obj_gm.get_tensor_output_gm()], flowtable=(obj_gm.tiling_gm, ))
     return tik_instance
 
 
-def _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k):
+def _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_special_k function of the in_top_k
 
@@ -251,7 +252,7 @@ def _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k):
     row = obj_tiling.get_rows_num()
     column = obj_tiling.get_cols_num()
 
-    target_dtype = "int32"
+    target_dtype = targets.get('dtype').lower()
     precision_dtype = obj_gm.get_tensor_output_gm().dtype
     if k <= 0:
         element = 0
@@ -351,7 +352,7 @@ def calc_invalid_mask(tik_instance, target_ub, mask_len, column, tensor_zero, ds
         return mask
 
 
-def _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
+def _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_single_core function
 
@@ -380,6 +381,7 @@ def _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
     row_remainder = row - (split_row_times - 1) * row_nums
     core_nums = split_row_times
     split_rows_nums = 0
+    shape_info["targets_dtype"] = targets.get("dtype").lower()
 
     # copy predictions to ub from gm.
     # if the last dimension is not divided by 32 bytes, just aligned.
@@ -433,7 +435,7 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     carry = 2
     block_element = BLOCK_SIZE // element_bytes
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = shape_info.get("targets_dtype")
     core_row_num = tik_instance.Scalar("int64")
 
     # step 0: set some shape value of tensor in UB.
@@ -791,7 +793,7 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     return tensor_output_ub
 
 
-def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
+def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_mul_core_v2 function
 
@@ -808,7 +810,7 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
     ----------
     """
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = targets.get("dtype")
     row = obj_tiling.get_rows_num()
     column = obj_tiling.get_cols_num()
 
@@ -833,6 +835,7 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
     last_single_core_times = (split_remainder + core_row_capicity - 1) // core_row_capicity
     last_non_tail_block = last_single_core_times - 1
     last_row_remainder = split_remainder - last_non_tail_block * core_row_capicity
+    shape_info["targets_dtype"] = target_dtype
     with tik_instance.if_scope(split_core_nums <= mini_cloud_core_nums):
         with tik_instance.if_scope(core_loop < split_core_nums):
             outer_core_num = tik_instance.Scalar("int64")
@@ -930,7 +933,7 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
             tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], output_ub, 0, 1, 1, 0, 0)
 
 
-def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
+def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_mul_core function
 
@@ -960,6 +963,7 @@ def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
     row_split_num = (row + BLOCK_SIZE - 1) // BLOCK_SIZE
     row_nums = tik_instance.Scalar(dtype="int64", name="row_nums")
 
+    shape_info["targets_dtype"] = targets.get("dtype")
     with tik_instance.if_scope(row_split_num <= mini_cloud_core_nums):
         row_nums.set_as(BLOCK_SIZE)
         core_nums = (row + row_nums - 1) // row_nums
@@ -1250,7 +1254,7 @@ def _in_top_k_column_inner_loop(tik_instance, shape_info, obj_gm, k):
     last_column_size = shape_info.get("last_column_size")
     split_column_nums = shape_info.get("split_column_nums")
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = shape_info.get("targets_dtype")
     element_bytes = 4
     block_element = BLOCK_SIZE // element_bytes
 
@@ -1374,7 +1378,7 @@ def _in_top_k_column_inner_loop(tik_instance, shape_info, obj_gm, k):
     return tensor_output_ub_temp
 
 
-def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k):
+def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_tiling_column function
 
@@ -1415,6 +1419,7 @@ def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k):
 
     move_data_count = tik_instance.Scalar(dtype="int64", name="move_data_count")
     move_data_count.set_as(0)
+    shape_info['targets_dtype'] = targets.get("dtype")
     with tik_instance.if_scope(split_row_times <= mini_cloud_core_nums):
         output_ub = tik_instance.Tensor(dtype=obj_gm.get_tensor_output_gm().dtype,
                                         shape=(BLOCK_SIZE, ),
@@ -1493,3 +1498,4 @@ def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k):
                     output_ub[outer_loop] = tensor_output_temp_ub[0]
                 index = core_loop * need_row_core + split_loop * BLOCK_SIZE
                 tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], output_ub, 0, 1, 1, 1, 1)
+
