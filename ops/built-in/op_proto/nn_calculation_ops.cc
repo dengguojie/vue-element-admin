@@ -7235,9 +7235,44 @@ static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
   return true;
 }
 
+static void ResetConv3dBpInputOutShape(ge::Operator& op,
+                                       Format dy_format,
+                                      const std::vector<int64_t>&dy_sizes,
+                                      Format input_format,
+                                      std::vector<int64_t>& input_sizes) {
+  std::string dx_format_str = format2str[input_format];
+  int32_t n_input_position = dx_format_str.find("N");
+  int32_t d_input_position = dx_format_str.find("D");
+  int32_t h_input_position = dx_format_str.find("H");
+  int32_t w_input_position = dx_format_str.find("W");
+
+  std::string dy_format_str = format2str[dy_format];
+  int32_t n_dy_position = dy_format_str.find("N");
+  int32_t d_dy_position = dy_format_str.find("D");
+  int32_t h_dy_position = dy_format_str.find("H");
+  int32_t w_dy_position = dy_format_str.find("W");
+
+  if (dy_sizes[n_dy_position] == -1) {
+    input_sizes[n_input_position] = -1;
+  }
+
+  if (dy_sizes[d_dy_position] == -1) {
+    input_sizes[d_input_position] = -1;
+  }
+
+  if (dy_sizes[h_dy_position] == -1) {
+    input_sizes[h_input_position] = -1;
+  }
+
+  if (dy_sizes[w_dy_position] == -1) {
+    input_sizes[w_input_position] = -1;
+  }
+}
+
 static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& input_sizes_desc,
                                             const GeTensorDescPtr& dy_desc, GeTensorDescPtr& y_desc,
                                             std::vector<int64_t>& input_sizes) {
+  bool unknown_rank = IsUnknownRankShape(dy_desc->MutableShape().GetDims());
   std::vector<std::pair<int64_t, int64_t>> dy_range;
   dy_desc->GetShapeRange(dy_range);
   std::vector<int64_t> pre_op_range;
@@ -7252,7 +7287,6 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
 
     y_desc->SetShapeRange(dx_range);
   } else {
-    bool unknown_rank = IsUnknownRankShape(dy_desc->MutableShape().GetDims());
     if (!SetConv3dBpInputOutShapeRange(op, unknown_rank, dy_range, dx_range)) {
       return false;
     }
@@ -7265,6 +7299,11 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
     }
 
     OP_LOGD(op.GetName().c_str(), "dedx range[%u] is (%lld, %lld)", i, dx_range[i].first, dx_range[i].second);
+  }
+
+  if (!unknown_rank) {
+    ResetConv3dBpInputOutShape(op, dy_desc->GetFormat(), dy_desc->GetShape().GetDims(), y_desc->GetFormat(),
+                               input_sizes);
   }
 
   return true;

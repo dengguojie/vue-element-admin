@@ -455,8 +455,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         else:
             # batch = 1 other axes full load
             al1_tiling_k = kernel_h * kernel_w * cout1_g * al1_co0
-            al1_tiling_m = compute_util.align(c_l0c_hw, (tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] *
-                                         cl0_tiling_mc * m_dim))
+            al1_tiling_m = compute_util.int_ceil_div(c_l0c_hw, (tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] *
+                                                     cl0_tiling_mc * m_dim))
         if tiling.get("BL1_shape"):
             bl1_tiling_k, bl1_tiling_n, _, bl1_tiling_kdparts = tiling.get("BL1_shape")
         else:
@@ -504,8 +504,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
         for x in range(1, compute_util.int_ceil_div(cddr_h * cddr_w, howo_size)):
             m_length = x * howo_size
-            right = m_length // wo_l1
-            distance = right - left + 1 if (m_length % wo_l1 != 0) else right - left
+            right = m_length // cddr_w
+            distance = right - left + 1 if (m_length % cddr_w != 0) else right - left
             if max_dis < distance:
                 max_dis = distance
             left = right

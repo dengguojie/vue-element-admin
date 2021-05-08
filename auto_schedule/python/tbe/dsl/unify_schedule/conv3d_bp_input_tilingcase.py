@@ -88,9 +88,13 @@ def _parse_fuzz_build_range(info_list):
     range_list: list of 5d range
     """
     range_list = []
+    target_index = 2
     for item in info_list:
         inputs = item.get("inputs")
         for input_tensor in inputs:
+            invalid = (not isinstance(input_tensor, dict)) or input_tensor.get("index") != target_index
+            if invalid:
+                continue
             input_range = input_tensor.get("tensor")[0].get("range")
             if input_range:
                 for axis_range in input_range:
@@ -300,20 +304,22 @@ def query_tiling_cases(tgt_list, conv_info, max_kernel_id, var_names):
             id_list.sort()
             max_kernel_id = id_list[-1] + 1
             for range_key in ["repo_range", "cost_range"]:
-                for kernel_id, range_x in current_info[range_key].items():
-                    new_range = []
-                    for index, dim_value in enumerate(range_x):
-                        if index in (0, 2, 4, 6):
-                            new_range.append(tgt_ndhw[index] if dim_value < tgt_ndhw[index] else dim_value)
-                        else:
-                            new_range.append(tgt_ndhw[index] if dim_value > tgt_ndhw[index] else dim_value)
-                    current_info[range_key][kernel_id] = new_range
+                if isinstance(current_info.get(range_key), dict):
+                    for kernel_id, range_x in current_info[range_key].items():
+                        new_range = []
+                        for index, dim_value in enumerate(range_x):
+                            if index in (0, 2, 4, 6):
+                                new_range.append(tgt_ndhw[index] if dim_value < tgt_ndhw[index] else dim_value)
+                            else:
+                                new_range.append(tgt_ndhw[index] if dim_value > tgt_ndhw[index] else dim_value)
+                        current_info[range_key][kernel_id] = new_range
             if all_compile_info:
                 for key, value in current_info.items():
-                    new_item = all_compile_info[key]
-                    new_item.update(value)
-                    all_compile_info[key] = new_item
-                    add_compile_info(key, all_compile_info[key])
+                    if isinstance(all_compile_info.get(key), dict) and isinstance(value, dict):
+                        new_item = all_compile_info[key]
+                        new_item.update(value)
+                        all_compile_info[key] = new_item
+                        add_compile_info(key, all_compile_info[key])
             else:
                 all_compile_info = current_info
         add_compile_info("dedy_c1", conv_info.get("ori_cout"))

@@ -361,20 +361,20 @@ class Conv3dBackpropParaProcess():
         self.y = para_dict.get("ori_tensors").get("y")
         self.input_size = para_dict.get("ori_tensors").get("input_size")
 
-    def _set_conv3dx_dim_range(self, idx, attr_param, dx_range, dy_range):
+    def _set_conv3dx_dim_range(self, dx_pos, dy_pos, attr_param, dx_range, dy_range):
         stride, kernel, pad = attr_param[0], attr_param[1], attr_param[2]
-        low, high = dy_range[idx][0], dy_range[idx][1]
+        low, high = dy_range[dy_pos][0], dy_range[dy_pos][1]
         if self.pad_mode == "VAR":
-            dx_range[idx][0] = stride * (low - 1) + 1
-            dx_range[idx][1] = stride * high
+            dx_range[dx_pos][0] = stride * (low - 1) + 1
+            dx_range[dx_pos][1] = stride * high
         else:
-            dx_range[idx][0] = stride * (low - 1) + kernel - pad
-            dx_range[idx][1] = stride * (high - 1) + kernel - pad + stride - 1
-        dx_range[idx][0] = max(dx_range[idx][0], _K_MIN_RANGE)
+            dx_range[dx_pos][0] = stride * (low - 1) + kernel - pad
+            dx_range[dx_pos][1] = stride * (high - 1) + kernel - pad + stride - 1
+        dx_range[dx_pos][0] = max(dx_range[dx_pos][0], _K_MIN_RANGE)
         if high == -1:
-            dx_range[idx][1] = high
+            dx_range[dx_pos][1] = high
         else:
-            dx_range[idx][1] = min(dx_range[idx][1], _K_MAX_RANGE)
+            dx_range[dx_pos][1] = min(dx_range[dx_pos][1], _K_MAX_RANGE)
 
     def get_dx_range(self, dy_range):
         """
@@ -401,25 +401,25 @@ class Conv3dBackpropParaProcess():
         n_dy_pos = out_backprop_format.find('N')
         dy_n = out_backprop_sizes[n_dy_pos]
 
-        dx_range = [1, 1, 1, 1, 1]
-        dx_range[idx_y_n] = [dy_n, dy_n]
-        dx_range[idx_y_d] = [dx_d, dx_d]
-        dx_range[idx_y_h] = [dx_h, dx_h]
-        dx_range[idx_y_w] = [dx_w, dx_w]
-        dx_range[idx_y_c] = [filter_c * self.groups, filter_c * self.groups]
+        dx_range_ndhwc = [1, 1, 1, 1, 1]
+        dx_range_ndhwc[0] = [dy_n, dy_n]
+        dx_range_ndhwc[1] = [dx_d, dx_d]
+        dx_range_ndhwc[2] = [dx_h, dx_h]
+        dx_range_ndhwc[3] = [dx_w, dx_w]
+        dx_range_ndhwc[4] = [filter_c * self.groups, filter_c * self.groups]
 
         if len(dy_range) == _K_DIM_SIZE:
-            dx_range[idx_y_n] = dy_range[n_dy_pos]
+            dx_range_ndhwc[0] = dy_range[n_dy_pos]
             if dx_d == -1:
                 attr_param_d = [stride_d, kdext, pad_front + pad_back]
-                self._set_conv3dx_dim_range(idx_y_d, attr_param_d, dx_range, dy_range)
+                self._set_conv3dx_dim_range(1, idx_y_d, attr_param_d, dx_range_ndhwc, dy_range)
             if dx_h == -1:
                 attr_param_h = [stride_h, khext, pad_up + pad_down]
-                self._set_conv3dx_dim_range(idx_y_h, attr_param_h, dx_range, dy_range)
+                self._set_conv3dx_dim_range(2, idx_y_h, attr_param_h, dx_range_ndhwc, dy_range)
             if dx_w == -1:
                 attr_param_w = [stride_w, kwext, pad_left + pad_right]
-                self._set_conv3dx_dim_range(idx_y_w, attr_param_w, dx_range, dy_range)
-        return dx_range
+                self._set_conv3dx_dim_range(3, idx_y_w, attr_param_w, dx_range_ndhwc, dy_range)
+        return dx_range_ndhwc
 
     def get_dy_range(self, dx_range_ndhwc):
         """
