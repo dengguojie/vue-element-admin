@@ -99,8 +99,8 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     ge::OpDescPtr square_op;
     FUSION_PASS_MAKE_SHARED((square_op = std::make_shared<ge::OpDesc>(pow_node->GetName() + "/" + SQUARE, SQUARE)),
                             return INTERNAL_ERROR);
-    square_op->AddInputDesc("input0", input_desc0);
-    square_op->AddOutputDesc("output0", output_desc0);
+    square_op->AddInputDesc("x", input_desc0);
+    square_op->AddOutputDesc("y", output_desc0);
     ge::NodePtr square_node = graph.AddNode(square_op);
     newNodes.push_back(square_node);
 
