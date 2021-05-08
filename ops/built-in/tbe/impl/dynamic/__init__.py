@@ -312,6 +312,7 @@ from .lp_loss import lp_loss
 from .lp_norm import lp_norm
 from .masked_scale import masked_scale
 from .scatter_non_aliasing_add import scatter_non_aliasing_add
+from .ger import ger
 from .smooth_l1_loss_v2 import smooth_l1_loss_v2
 from .index_fill_d import index_fill_d
 from .max_pool_grad_with_argmaxv1 import max_pool_grad_with_argmax_v1

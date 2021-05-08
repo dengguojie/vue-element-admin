@@ -72,7 +72,8 @@ IMPLEMT_INFERFUNC(Cholesky, CholeskyInfer) {
 
 INFER_FUNC_REG(Cholesky, CholeskyInfer);
 
-IMPLEMT_INFERFUNC(Ger, GerInfer) {
+// ----------------------Ger Starts----------------------
+IMPLEMT_VERIFIER(Ger, GerVerify) {
   DataType x1_type = op.GetInputDesc("x1").GetDataType();
   DataType x2_type = op.GetInputDesc("x2").GetDataType();
   if (x1_type != DT_FLOAT16 && x1_type != DT_FLOAT) {
@@ -80,14 +81,18 @@ IMPLEMT_INFERFUNC(Ger, GerInfer) {
     return GRAPH_FAILED;
   }
   if (x2_type != DT_FLOAT16 && x2_type != DT_FLOAT) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op Ger first input x2's data type should be fp16 or fp32.");
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op Ger second input x2's data type should be fp16 or fp32.");
     return GRAPH_FAILED;
   }
   if (x1_type != x2_type) {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op Ger two inputs' data type doesn't match.");
     return GRAPH_FAILED;
   }
+  return GRAPH_SUCCESS;
+}
 
+IMPLEMT_INFERFUNC(Ger, GerInfer) {
+  DataType x1_type = op.GetInputDesc("x1").GetDataType();
   Shape x1_shape = op.GetInputDesc("x1").GetShape();
   Shape x2_shape = op.GetInputDesc("x2").GetShape();
   if (x1_shape.GetDims().size() != 1 || x2_shape.GetDims().size() != 1) {
@@ -105,7 +110,11 @@ IMPLEMT_INFERFUNC(Ger, GerInfer) {
   return GRAPH_SUCCESS;
 }
 
+// Registered inferfunction
 INFER_FUNC_REG(Ger, GerInfer);
+// Registered verify function
+VERIFY_FUNC_REG(Ger, GerVerify);
+// ----------------------Ger End----------------------
 
 IMPLEMT_INFERFUNC(LogMatrixDeterminant, LogMatrixDeterminantInfer) {
   auto x_shape = op.get_input_desc_x().GetShape().GetDims();
