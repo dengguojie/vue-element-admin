@@ -105,23 +105,26 @@ ge::GeTensorPtr DynamicRNNV3FusionPass::ProcessDynamicRnnV3Wdate(ge::NodePtr fus
   ge::OutDataAnchorPtr constWcAnchorPtr0 = wcInputAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr wcNode = constWcAnchorPtr0->GetOwnerNode();
   vector<ge::GeTensorPtr> wcT = ge::OpDescUtils::MutableWeights(wcNode);
-  ge::GeTensorPtr wcTensorPtr = wcT[0];
+  ge::GeTensorPtr wcTensorPtr = nullptr;
+  if (wcT.size() != 0) {
+    wcTensorPtr = wcT[0];
 
-  float *wcData = (float *)wcTensorPtr->GetData().data();
-  unique_ptr<float[]> dstWcData(new (std::nothrow) float[batchSize * hiddenSize]());
+    float *wcData = (float *)wcTensorPtr->GetData().data();
+    unique_ptr<float[]> dstWcData(new (std::nothrow) float[batchSize * hiddenSize]());
 
-  auto retMem = memset_s(dstWcData.get(), batchSize*hiddenSize, 0, batchSize * hiddenSize);
-  FUSION_PASS_CHECK(retMem != EOK, OP_LOGE("DynamicRnnV3", "Failed to operate memset_s function."), return nullptr);
-  float *dstWc = dstWcData.get();
+    auto retMem = memset_s(dstWcData.get(), batchSize*hiddenSize, 0, batchSize * hiddenSize);
+    FUSION_PASS_CHECK(retMem != EOK, OP_LOGE("DynamicRnnV3", "Failed to operate memset_s function."), return nullptr);
+    float *dstWc = dstWcData.get();
 
-  for (int i = 0; i < batchSize; i++) {
-    for (int j = 0; j < hiddenSize; j++) {
-      dstWc[i*hiddenSize + j] = *(wcData + j);
+    for (int i = 0; i < batchSize; i++) {
+      for (int j = 0; j < hiddenSize; j++) {
+        dstWc[i*hiddenSize + j] = *(wcData + j);
+      }
     }
-  }
 
-  wcTensorPtr->SetData(reinterpret_cast<uint8_t *>(dstWcData.get()), (batchSize * hiddenSize) * sizeof(float));
-  wcTensorPtr->SetTensorDesc(wcTensorDesc);
+    wcTensorPtr->SetData(reinterpret_cast<uint8_t *>(dstWcData.get()), (batchSize * hiddenSize) * sizeof(float));
+    wcTensorPtr->SetTensorDesc(wcTensorDesc);
+  }
 
   return wcTensorPtr;
 }
@@ -143,7 +146,7 @@ Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   int64_t hiddenSize = fusedDesc->GetInputDesc(1).GetShape().GetDim(1) / 4;
   int64_t stateSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(0);
 
-  bool failStatus = true;
+  bool failStatus = false;
 
   ProcessDynamicRnnV3Wdate(fusedNode, failStatus, wciIndex, batchSize, hiddenSize);
   FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process wci fail."), return FAILED);
