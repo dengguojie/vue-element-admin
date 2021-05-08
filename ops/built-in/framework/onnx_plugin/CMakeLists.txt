@@ -104,6 +104,7 @@ set(_onnx_plugins
   if_plugin.cc
   random_uniform_plugin.cc
   deformable_conv_plugin.cc
+  nonzero_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
