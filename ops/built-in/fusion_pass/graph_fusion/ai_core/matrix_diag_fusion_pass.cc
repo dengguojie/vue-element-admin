@@ -92,6 +92,7 @@ vector<FusionPattern*> MatrixDiagFusionPass::DefinePatterns() {
 
 Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // matrix_diag node
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "MatrixDiagFusionPass start");
   ge::NodePtr matrixdiagVNode = GetNodeFromMapping(PATTERN_MATRIXDIAG, mapping);
   FUSION_PASS_CHECK(matrixdiagVNode == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(),
@@ -106,7 +107,6 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                             "matrixdiagVNode's OpDesc is "
                             "null, fusion failed."),
                     return PARAM_INVALID);
-  ge::OpDescPtr fusionDesc = AttrUtils::CopyOpDesc(matrixdiagDesc);
 
   // get the input desc of entrance node to differentiate const and varj
   ge::GeTensorDesc matrixdiagInputTensor = matrixdiagVNode->GetOpDesc()->GetInputDesc(0);
@@ -271,12 +271,24 @@ Status MatrixDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     return NOT_CHANGED;
   }
   // check op support
-  vector<ge::GeTensorPtr> weights = {assitPtr};
-  ge::OpDescUtils::SetWeights(matrixdiagVNode, weights);
+  map<int, ge::GeTensorPtr> weights;
+  weights[1] = assitPtr;
+  Status ret1 = ge::OpDescUtils::SetWeights(*matrixdiagVNode, weights);
+  FUSION_PASS_CHECK(ret1 != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "SetWeights failed."), return NOT_CHANGED);
   auto constInputNodes = OpDescUtils::GetConstInputs(matrixdiagVNode);
-  NodePtr constInput = constInputNodes[0];
+  NodePtr constInput = nullptr;
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "constInputNodes size is %d", constInputNodes.size());
+  if (constInputNodes.size() > 1) {
+    constInput = constInputNodes[1];
+  } else if (constInputNodes.size() == 1) {
+    constInput = constInputNodes[0];
+  } else {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null,please check!");
+    return FAILED;
+  }
   constInput->GetOpDesc()->SetType(CONSTANTOP);
   matrixdiagDesc->SetType("MatrixDiagD");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "MatrixDiagFusionPass SUCCESS END");
   return SUCCESS;
 }
 
