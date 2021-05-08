@@ -581,12 +581,19 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
     howo_split = 1
     l0ub_howo_tmp = l0ub_howo
     tile_l1_wi = fmap_w
-    tile_l1_hi = min((l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1, fmap_h)
+
+    def get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h):
+        l0ub_howo = 2 * l0ub_howo if dtype in ("uint8", "int8") else l0ub_howo
+        return min((l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1, fmap_h)
+
+    tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
+
     tile_l1_di = fmap_d
     tile_l1_c0 = l0ub_c0
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
         l0ub_howo = 16
-        tile_l1_hi = (l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1
+        tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
+
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
         howo_split = 0
     else:
@@ -596,7 +603,8 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
 
     l0ub_howo = l0ub_howo_tmp
     tile_l1_wi = fmap_w
-    tile_l1_hi = (l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1
+    tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
+
     tile_l1_di = max(l0ub_kd, l0ub_do)
     tile_l1_c0 = l0ub_c0
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
@@ -607,7 +615,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
         tile_l1_di = min(l0ub_kd, fmap_d)
         if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
             l0ub_howo = 16
-            tile_l1_hi = (l0ub_howo + output_w - 1) // output_w * stride_h + kernel_h - 1
+            tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
 
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
         error_manager_vector.raise_err_specific_reson("extract_volume_patches", "L1 Size is not enough")
