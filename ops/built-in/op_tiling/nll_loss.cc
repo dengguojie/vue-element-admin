@@ -77,7 +77,7 @@ bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compi
   }
   reduction = all_vars["reduction"].get<std::string>();
 
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%d], ub_size[%d], reduction[%s].", core_num,
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%lld], ub_size[%lld], reduction[%s].", core_num,
           ub_size, reduction.c_str());
 
   return true;
@@ -140,19 +140,31 @@ void SetLastCoreTilingData(const int64_t& max_line, const int64_t& n_size, int64
   last_core_left_size = GetMod(n_size, max_line);
 }
 
-void SetNormalWeightTilingData(const int64_t& max_line, const int64_t& per_core_size, const int64_t& last_core_size,
-                               int64_t& per_core_loop_cnt, int64_t& per_core_left_size, int64_t& last_core_loop_cnt,
-                               int64_t& last_core_left_size) {
+void SetCommonTilingData(const int64_t& max_line, const int64_t& per_core_size, const int64_t& last_core_size,
+                         int64_t& per_core_loop_cnt, int64_t& per_core_left_size, int64_t& last_core_loop_cnt,
+                         int64_t& last_core_left_size) {
   per_core_loop_cnt = GetFloorDiv(per_core_size, max_line);
   per_core_left_size = GetMod(per_core_size, max_line);
   last_core_loop_cnt = GetFloorDiv(last_core_size, max_line);
   last_core_left_size = GetMod(last_core_size, max_line);
 }
 
+int64_t GetMaxAligned(const int64_t& max_line, const int64_t& min_aligned, const int64_t& need_core_num,
+                      const int64_t& n_size) {
+  // ub limit
+  int64_t max_aligned = max_line - GetMod(max_line, min_aligned);
+
+  // the maximum amount of data that can be allocated per core
+  int64_t limit_per_core_size = GetFloorDiv(n_size, need_core_num - 1);
+  int64_t max_aligned_n_size = limit_per_core_size + min_aligned - GetMod(limit_per_core_size, min_aligned);
+  return max_aligned < max_aligned_n_size ? max_aligned : max_aligned_n_size;
+}
+
 int64_t ChangeAligned(const int64_t& max_aligned, const int64_t& min_aligned, const int64_t& need_core_num,
                       int64_t& per_core_size, int64_t& last_core_size) {
   // data needs to be supplemented on each core for full division
   int64_t per_core_supple_data = GetMod(max_aligned - GetMod(per_core_size, max_aligned), max_aligned);
+
   // filled with data from the last core
   int64_t last_core_left_size = last_core_size - (need_core_num - 1) * per_core_supple_data;
 
@@ -162,7 +174,7 @@ int64_t ChangeAligned(const int64_t& max_aligned, const int64_t& min_aligned, co
     return max_aligned;
   }
 
-  // the minimum aligned is not divisible.
+  // the minimum aligned is not divisible
   if (max_aligned == min_aligned) {
     return -1;
   }
@@ -174,7 +186,7 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
                      int64_t& per_core_size, int64_t& per_core_loop_cnt, int64_t& per_core_left_size,
                      int64_t& last_core_size, int64_t& last_core_loop_cnt, int64_t& last_core_left_size,
                      int64_t& min_aligned, bool is_left_data) {
-  int max_line = ub_max_line;
+  int64_t max_line = ub_max_line;
 
   // one core
   if (need_core_num == 1) {
@@ -187,10 +199,12 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
   per_core_size = GetFloorDiv(n_size, need_core_num);
   last_core_size = per_core_size;
   int64_t left_size = GetMod(n_size, need_core_num);
+
   // use last core data supplement per core
   if (left_size > 0) {
     last_core_size -= GetMod((need_core_num - 1 - left_size), (need_core_num - 1));
   }
+
   // no data is allocated to the last core
   if (last_core_size <= 0) {
     need_core_num -= 1;
@@ -207,7 +221,8 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
   // core allow has left data
   if (!is_left_data) {
     // integer multiple of min_aligned
-    int max_aligned = max_line - GetMod(max_line, min_aligned);
+    int64_t max_aligned = GetMaxAligned(max_line, min_aligned, need_core_num, n_size);
+
     // compute max_line when total x may exact division
     max_line = ChangeAligned(max_aligned, min_aligned, need_core_num, per_core_size, last_core_size);
     if (max_line == -1) {
@@ -218,17 +233,18 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
     }
   }
 
-  SetNormalWeightTilingData(max_line, per_core_size, last_core_size, per_core_loop_cnt, per_core_left_size,
-                            last_core_loop_cnt, last_core_left_size);
+  SetCommonTilingData(max_line, per_core_size, last_core_size, per_core_loop_cnt, per_core_left_size,
+                      last_core_loop_cnt, last_core_left_size);
 }
 
-void NormalWeightTiling(int64_t& bytes, int64_t& core_num, int64_t& ub_size, int64_t& need_core_num, int64_t& n_size,
-                        int64_t& c_size, int64_t& per_core_size, int64_t& per_core_loop_cnt,
-                        int64_t& per_core_left_size, int64_t& last_core_size, int64_t& last_core_loop_cnt,
-                        int64_t& last_core_left_size, int64_t& unit_size, int64_t& min_aligned, bool is_left_data) {
+void NLLLossCommonTiling(int64_t& bytes, int64_t& core_num, int64_t& ub_size, int64_t& need_core_num, int64_t& n_size,
+                         int64_t& c_size, int64_t& per_core_size, int64_t& per_core_loop_cnt,
+                         int64_t& per_core_left_size, int64_t& last_core_size, int64_t& last_core_loop_cnt,
+                         int64_t& last_core_left_size, int64_t& unit_size, int64_t& min_aligned, bool is_left_data) {
   int64_t ub_part = 5;
   int64_t data_one_block = GetFloorDiv(BLOCK_SIZE, bytes);
   int64_t ub_x_size = GetFloorDiv(ub_size, ub_part);
+
   // dma move 32byte unit
   int64_t ub_max_line = GetFloorDiv(ub_x_size - GetMod(ub_x_size, data_one_block), unit_size);
 
@@ -313,15 +329,15 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
     min_aligned = GetFloorDiv(BLOCK_SIZE, bytes);
   }
 
-  NormalWeightTiling(bytes, core_num, ub_size, need_core_num, n_size, c_size, per_core_size, per_core_loop_cnt,
-                     per_core_left_size, last_core_size, last_core_loop_cnt, last_core_left_size, unit_size,
-                     min_aligned, is_left_data);
+  NLLLossCommonTiling(bytes, core_num, ub_size, need_core_num, n_size, c_size, per_core_size, per_core_loop_cnt,
+                      per_core_left_size, last_core_size, last_core_loop_cnt, last_core_left_size, unit_size,
+                      min_aligned, is_left_data);
 
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: n_size=%d, c_size=%d", n_size, c_size);
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: tiling_mode=%d, need_core_num=%d", tiling_mode, need_core_num);
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: per_core_size=%d, per_core_loop_cnt=%d, per_core_left_size=%d",
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: n_size=%lld, c_size=%lld", n_size, c_size);
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: tiling_mode=%lld, need_core_num=%lld", tiling_mode, need_core_num);
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: per_core_size=%lld, per_core_loop_cnt=%lld, per_core_left_size=%lld",
           per_core_size, per_core_loop_cnt, per_core_left_size);
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: last_core_size=%d, last_core_loop_cnt=%d, last_core_left_size=%d",
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: last_core_size=%lld, last_core_loop_cnt=%lld, last_core_left_size=%lld",
           last_core_size, last_core_loop_cnt, last_core_left_size);
 
   // set tiling data
@@ -338,6 +354,7 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
 
   // block_dim, core num used in tik op
   run_info.block_dim = need_core_num;
+
   // workspace, null for tik op
   std::vector<int64_t> workspace;
   run_info.workspaces = workspace;
