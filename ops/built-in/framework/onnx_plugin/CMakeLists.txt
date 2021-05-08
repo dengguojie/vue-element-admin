@@ -106,6 +106,7 @@ set(_onnx_plugins
   deformable_conv_plugin.cc
   nonzero_plugin.cc
   quant/int8_dequantize_plugin.cc
+  quant/Int8Transpose_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
