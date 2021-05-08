@@ -15,18 +15,19 @@
 """
 depthwise_conv2d
 """
-from te.utils import para_check
-from te.utils.error_manager import error_manager_cube as err_man
-import te.lang.cce as tbe
+from tbe import tvm
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_cube as err_man
 import tbe.common.register as tbe_register
-from impl.dynamic.conv2d import conv2d
+from .conv2d import conv2d
+from .conv2d import conv2d_fusion_compute
 
 NONETYPE = type(None)
 
 @tbe_register.register_op_compute("DepthwiseConv2D", op_mode="dynamic", support_fusion=True)
-@para_check.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
-                             (tuple, list), (tuple, list), (tuple, list),
-                             int, str, int, str, str)
+@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (tvm.tensor.Tensor, NONETYPE),
+                             (tvm.tensor.Tensor, NONETYPE), dict, (tuple, list), (tuple, list),
+                             (tuple, list), str, int, str)
 def depthwise_compute(fmap,
                       filter,
                       bias,
@@ -65,7 +66,6 @@ def depthwise_compute(fmap,
     -------
     None
     """
-
     filter_format = filter.op.attrs['ori_format'].value
     if filter_format == "HWCN":
         groups = filter.op.attrs['ori_shape'][3].value

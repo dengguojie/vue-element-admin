@@ -2175,10 +2175,12 @@ class CceConvOp:
                     if ConvParam.para_dict["pooling_mode"] == "AVG":
                         im2col_attr_0["l1_group_flag"] = 1
                     if l0a_load2d_flag:
-                        sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
+                        if not self._pre_relu_fused_flag:
+                            sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
                         sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy')
                     else:
-                        sch[al1].emit_insn(al1.op.axis[0], 'dma_copy', im2col_attr)
+                        if not self._pre_relu_fused_flag:
+                            sch[al1].emit_insn(al1.op.axis[0], 'dma_copy', im2col_attr)
                         sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'im2col_v2', im2col_attr_0)
 
                 def add_pragma_for_aipp_fuse(setfmatrix_dict):
@@ -4074,7 +4076,7 @@ class CceConvOp:
 
             return aub_factor
 
-        def _ahead_body_compute_at():
+        def _ahead_body_compute_at(tiling):
             """
             handle ahead fusion body stage attach
 
@@ -4086,16 +4088,40 @@ class CceConvOp:
             -------
             None
             """
+            def get_max_out_for_dynamic():
+                if "ho" in self._dyn_var_map:
+                    h_out = self._var_range['ho'][1]
+                else:
+                    h_out = ConvParam.h_out
+                if "wo" in self._dyn_var_map:
+                    w_out = self._var_range['wo'][1]
+                else:
+                    w_out = ConvParam.w_out
+                return h_out, w_out
+
             if self._pre_relu_fused_flag:
                 if aub_factor == [1, 1]:
-                    out_row_num = int_ceil_div(ConvParam.h_out, al1_factor[1])
+                    h_out, w_out = get_max_out_for_dynamic()
+                    if ("ho" in self._dyn_var_map or "wo" in self._dyn_var_map) and tiling["AL1_shape"]:
+                        no2_al1_factor = int_ceil_div(int_ceil_div(h_out * w_out, int(
+                            tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2])), tiling["AL1_shape"][1])
+                    else:
+                        no2_al1_factor = al1_factor[1]
+                    out_row_num = int_ceil_div(h_out, no2_al1_factor)
                     shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
                     in_row_num = (out_row_num - 1)*ConvParam.stride_h + shape_w_nc1hwc0[2] + \
                                                     (ConvParam.dilate_h - 1) - ConvParam.pad_h[0]
                     fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
-                    need_buffer_size = in_row_num*fmap_shape_nc1hwc0[3]*32
-                    if need_buffer_size > PRE_BUFFER_SIZE_MAX:
-                        aub_factor[1] = fmap_shape_nc1hwc0[2]
+                    if "fmap_w" in self._dyn_var_map:
+                        fmap_width = self._var_range['fmap_w'][1]
+                    else:
+                        fmap_width = fmap_shape_nc1hwc0[3]
+                    need_buffer_size = in_row_num * fmap_width * 32
+                    if int(need_buffer_size) > PRE_BUFFER_SIZE_MAX:
+                        if "fmap_h" in self._dyn_var_map:
+                            aub_factor[1] = self._var_range['fmap_h'][1]
+                        else:
+                            aub_factor[1] = fmap_shape_nc1hwc0[2]
 
                 al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[1], nparts=aub_factor[0])
                 if self._conv1d_split_w_flag:
@@ -5412,7 +5438,7 @@ class CceConvOp:
         ############################ intrin mapping ###########################
         intrin_mapping(weight, tiling)
         ########################### cube schedule end #########################
-        _ahead_body_compute_at()
+        _ahead_body_compute_at(tiling)
         _body_ops_compute_at()
         _body_ops_convbn1_flag(multiout_ub2)
         _input_ops_compute_at()
