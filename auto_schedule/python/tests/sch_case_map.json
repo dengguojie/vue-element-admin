@@ -222,5 +222,17 @@
     "auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier.py":[
         "reduce_sum",
         "reduce_classify"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/reduce_atomic_schedule.py":[
+        "reduce_sum",
+        "reduce_max",
+        "reduce_min",
+        "reduce_prod"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/reduce_schedule.py":[
+        "reduce_sum",
+        "reduce_max",
+        "reduce_min",
+        "reduce_prod"
     ]
 }

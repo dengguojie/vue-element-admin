@@ -72,7 +72,6 @@ class EntryReduceSchedule(Schedule):
 
     def do_schedule(self):
         outs, tiling_case = self.outs, self.tiling_case
-        [outs].clear()
         # Get Compute Graph Info
         graph_info = get_context().get_current_compute().get("_compute_graph_info")
         single_reduce_info: SingleReduceInfo = get_context().get_current_compute().get("_single_reduce_info")
@@ -81,15 +80,14 @@ class EntryReduceSchedule(Schedule):
             real_schedule = reduce_sch.do_schedule(None)
             real_schedule.tiling_key = tiling_case.tiling_key
         elif tiling_case.type == tiling_case.Type.ATOMIC_REDUCE:
-            reduce_sch: ReduceAtomicSchedule = ReduceAtomicSchedule()
-            reduce_sch.init(outs, [])
+            reduce_sch: ReduceAtomicSchedule = ReduceAtomicSchedule(graph_info, single_reduce_info)
             if single_reduce_info.is_reduce_all_axes():
                 reduce_sch._reduce_case = 1
             elif single_reduce_info.is_reduce_not_last_axis():
                 reduce_sch._reduce_case = 2
             else:
                 reduce_sch._reduce_case = 3
-            real_schedule = reduce_sch.do_schedule(outs, tiling_case, graph_info, single_reduce_info)
+            real_schedule = reduce_sch.do_schedule(outs, tiling_case)
             real_schedule.tiling_key = tiling_case.tiling_key
         elif tiling_case.type == tiling_case.Type.NORMAL_REDUCE:
             reduce_sch: ReduceSchedule = ReduceSchedule(graph_info, single_reduce_info)
