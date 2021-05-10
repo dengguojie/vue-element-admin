@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from sys import flags
+from math import ceil
+
 from op_test_frame.ut import OpUT
 
 CUBE_BLOCK = 16
@@ -190,6 +192,72 @@ def gen_cases_by_shape_and_range(case):
 
     return params
 
+normal_case = [
+    # [((-1, -1, -1, -1), ((1, 196608), (1, 196608), (1, 196608), (1, 196608)), 'float16', 'FRACTAL_NZ', False),
+    #  ((3, 8, -1, 1), ((3, 3), (8, 8), (1, 196608), (1, 1)), 'float16', 'FRACTAL_NZ', True),
+    #  (None, None, None, None),
+    #  ((3, 8, -1, 1), ((3, 3), (8, 8), (1, 196608), (1, 1)), 'float16', 'FRACTAL_NZ'),
+    #  "dynamic_batch_matmul_succ_case0"],
+    # IMPORTANT: default tiling
+    [((-1, -1, -1, -1), ((1, 2147483647), (1, 2147483647), (1, 2147483647), (1, 196608)), 'float16', 'FRACTAL_NZ', False),
+     ((-1, -1, -1, -1), ((1, 196608), (1, 196608), (1, 196608), (1, 196608)), 'float16', 'FRACTAL_NZ', True),
+     (None, None, None, None),
+     ((-1, -1, -1, -1), ((1, 2147483647), (1, 2147483647), (1, 2147483647), (1, 196608)), 'float16', 'FRACTAL_NZ'),
+     "dynamic_batch_matmul_succ_case1"],
+]
+
+def cus_ceil(v, base):
+    if v == -1:
+        return v
+    return ceil(v / base)
+
+def c0(dtype):
+    return {'float16': 16, 'float32': 8}[dtype]
+
+def shape_from_nd_to(shape, dtype, format):
+    if format == 'ND':
+        return shape
+    elif format == 'FRACTAL_NZ':
+        batches = shape[:-2]
+        a, b = shape[-2:]
+        return list(batches) + [cus_ceil(b, c0(dtype)), cus_ceil(a, 16), 16, c0(dtype)]
+    raise RuntimeError(f"not support shape from nd to {format}")
+
+def range_from_nd_to(range, dtype, format):
+    if format == 'ND':
+        return range
+    elif format == 'FRACTAL_NZ':
+        batches = range[:-2]
+        [a0, a1], [b0, b1] = range[-2:]
+        return list(batches) + [[cus_ceil(b0, c0(dtype)), cus_ceil(b1, c0(dtype))], [cus_ceil(a0, 16), cus_ceil(a1, 16)], [16, 16], [c0(dtype), c0(dtype)]]
+    raise RuntimeError(f"not support shape from nd to {format}")
+
+def gen_batch_matmul_dynamic_normally(params):
+    [x1_ori_shape, x1_ori_range, x1_dtype, x1_format, trans_a], [x2_ori_shape, x2_ori_range, x2_dtype, x2_format, trans_b], [bias_ori_shape, bias_ori_range, bias_dtype, bias_format], [y_ori_shape, y_ori_range, y_dtype, y_format], case_name = params
+
+    x1 = {"ori_shape": x1_ori_shape, "dtype": x1_dtype, "shape": shape_from_nd_to(x1_ori_shape, x1_dtype, x1_format),
+          "format": x1_format , "ori_format": "ND", "range": range_from_nd_to(x1_ori_range, x1_dtype, x1_format)
+    }
+    x2 = {"ori_shape": x2_ori_shape, "dtype": x2_dtype, "shape": shape_from_nd_to(x2_ori_shape, x2_dtype, x2_format),
+          "format": x2_format , "ori_format": "ND", "range": range_from_nd_to(x2_ori_range, x2_dtype, x2_format),
+    }
+    y = {"ori_shape": y_ori_shape, "dtype": y_dtype, "shape": shape_from_nd_to(y_ori_shape, y_dtype, y_format),
+         "format": y_format , "ori_format": "ND", "range": range_from_nd_to(y_ori_range, y_dtype, y_format),
+    }
+
+    if bias_ori_shape:
+        bias = {"ori_shape": bias_ori_shape, "dtype": bias_dtype, "shape": shape_from_nd_to(bias_ori_shape, bias_dtype, bias_format),
+                "format": bias_format, "ori_format": "ND", "range": range_from_nd_to(bias_ori_range, bias_dtype, bias_format)}
+    else:
+        bias = None
+
+    return {
+        "params": [x1, x2, bias, y, trans_a, trans_b],
+        "case_name": case_name,
+        "expect": "success"
+    }
+for case in normal_case:
+    ut_case.add_case(case=gen_batch_matmul_dynamic_normally(case))
 
 for case in matmul_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
@@ -203,4 +271,4 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_batch_matmul_generalization)
 
 if __name__ == "__main__":
-    ut_case.run()
+    ut_case.run(["Ascend310", "Ascend910"])

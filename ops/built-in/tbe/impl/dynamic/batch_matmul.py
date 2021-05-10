@@ -30,8 +30,8 @@ from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
 
 
-# General limitation of the size for input shape: 2**32 - 1
-SHAPE_SIZE_LIMIT = 2147483648
+# General limitation of the size for input shape: 2**31 - 1
+SHAPE_SIZE_LIMIT = 2147483647
 BLOCK_CUBE = 16
 DYNAMIC_FLAG = -1
 DYNAMIC_FLAG_UNRANK = [-2]

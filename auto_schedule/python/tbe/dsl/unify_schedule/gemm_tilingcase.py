@@ -19,6 +19,7 @@ import collections
 import copy
 import json
 import math
+import itertools
 from functools import reduce
 
 from tbe.common.platform import platform_info as tbe_platform_info
@@ -32,6 +33,7 @@ from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
 
 from .cube_tilingcase import CubeTilingOp
+from .cube_tilingcase import MAX_RANGE
 from .cube_tilingcase import TilingSelection
 from .constants import Pattern
 
@@ -67,24 +69,6 @@ def set_var_value(info, target_area):
     for index, value in enumerate(target_area):
         info[key_list[index]] = value
     return info
-
-
-def check_range_value(target_area):
-    """
-    check range value of target_area to find out None exit
-
-    Parameters
-    ----------
-    target_area: range value of dymanic elements
-
-    Returns
-    -------
-    return True means None exit,else return False
-    """
-    for value in target_area:
-        if value[1] is None:
-            return True
-    return False
 
 
 def set_default_compile_info(tiling_op, tiling_case, target_area_list):
@@ -354,7 +338,7 @@ def _calc_tiling_case(mode, target_area, cnt):
 
     tiling_op = MatmulTiling(info, mode)
 
-    if check_range_value(target_area):
+    if tiling_op.use_default_tiling_case(target_area):
         return set_default_tiling_case(target_area, tiling_op)
 
     tiling_cases = TilingSelection(tiling_op, cnt).calc_tiling(target_area)
@@ -431,7 +415,7 @@ def _calc_tiling_case_with_support_info(missing_support_info_list, mode, tiling_
         k_m_index = 0 + offset if trans_a else 1 + offset
         k_n_index = 1 + offset if trans_b else 0 + offset
         n_index = 0 + offset if trans_b else 1 + offset
-        
+
         m_range = _list_comprehensive(input_a["tensor"][0]["range"][m_index], factor)
         k_m_range = _list_comprehensive(input_a["tensor"][0]["range"][k_m_index], factor)
         k_n_range = _list_comprehensive(input_b["tensor"][0]["range"][k_n_index], factor)
@@ -457,10 +441,10 @@ def _calc_tiling_case_with_support_info(missing_support_info_list, mode, tiling_
                     "batch_range in input1 has no intersection with batch_range in input2"
                 )
             area.append(batch_range)
-        
+
         tiling_case_part = _calc_tiling_case(mode, area, tiling_key_cnt + len(tiling_case))
         tiling_case += tiling_case_part
-    
+
     return tiling_case
 
 
@@ -489,17 +473,21 @@ def calc_matmul(outs, option=None):
         if not missing_support_info_list:
             tiling_case = _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)
         else:
-            tiling_case = _calc_tiling_case_with_support_info(missing_support_info_list, 
-                                                              mode, 
-                                                              INITIAL_TILING_ID, 
+            tiling_case = _calc_tiling_case_with_support_info(missing_support_info_list,
+                                                              mode,
+                                                              INITIAL_TILING_ID,
                                                               context)
         _set_build_json_info(tiling_case, mode)
         return tiling_case
 
-    return _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)   
+    return _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)
 
 
 class MatmulTiling(CubeTilingOp):
+    DEFAULT_COMPILE_TIME = 4096
+    GEAR_M_N = [1, 4, 8, 16, 32, 64, 128, 192, 256, 512, 768, 1024]
+    GEAR_BATCH = [1, 2, 4, 8, 16, 32]
+
     def __init__(self, tiling_info, dynamic_mode):
         super().__init__(tiling_info, dynamic_mode)
         self.a_info = self.tiling_info["A_shape"]
@@ -772,3 +760,126 @@ class MatmulTiling(CubeTilingOp):
 
         tiling = copy.deepcopy(tiling_in)
         return tiling
+
+
+    def _get_compile_time(self, target_area):
+        """
+        caculate total all compile time depends on target_area
+        """
+        compile_time = 1
+        for value in target_area:
+            compile_time *= (value[1] - value[0] + 1)
+        return compile_time
+
+
+    def _get_gear_element(self, range_value, gear):
+        """
+        Parameters
+        ----------
+        range_value: format [m_min,m_max]
+
+        gear format: [1, 4, 8, 16, 32, 64, 128, 192, 256, 512, 768, 1024]
+
+        Returns
+        -------
+        element_list: list, element to cover the range_value
+        """
+        left = 0
+        right = 0
+        element_list = []
+        for index, value in enumerate(gear):
+            if value <= range_value[0]:
+                left = index
+            if index < (len(gear) -1) and gear[index] <= range_value[1] < gear[index + 1]:
+                right = index + 1
+        if left == (len(gear) - 1):
+            element_list = [gear[-1]]
+        if right == 0:
+            element_list = gear[left:]
+        else:
+            element_list = gear[left:right]
+        return element_list
+
+
+    def _get_gear_repo_shapes(self, target_area):
+        """
+        caculate all gear repo seeds during range
+
+        Parameters
+        ----------
+        target_are: format [[m_min,m_max],[k_min,k_max],[n_min,n_max]]
+
+        Returns
+        -------
+        gear_repo_shapes: list, [(m_value, k_value, n_value),...]
+        """
+        cls = self.__class__
+
+        gear_m_list = self._get_gear_element(target_area[0], cls.GEAR_M_N)
+        gear_k_list = self._get_gear_element(target_area[1], cls.GEAR_M_N)
+        gear_n_list = self._get_gear_element(target_area[2], cls.GEAR_M_N)
+        if len(target_area) == 4:
+            gear_batch_list = self._get_gear_element(target_area[3], cls.GEAR_BATCH)
+        else:
+            gear_batch_list = [1]
+        return list(itertools.product(gear_m_list, gear_k_list, gear_n_list, gear_batch_list))
+
+
+    def _get_tiling_range(self, gear_repo_shapes, seed_shape):
+        """
+        cacaulate gear repository range
+
+        Parameters
+        ----------
+        gear_repo_shapes format:[(m_gear, k_gear, n_gear),...]
+
+        seed_shape format: [m_value, k_value, n_value]
+
+        Returns
+        -------
+        gear_tiling_range：[m_min, m_max, k_min, k_max, n_min, n_max]
+        """
+        cls = self.__class__
+
+        def _calc_range(value, gear):
+            value_index = gear.index(value)
+            if value_index == (len(gear) - 1):
+                return [value, MAX_RANGE]
+            return [value, (gear[value_index + 1] - 1)]
+
+        gear_tiling_range = []
+        if seed_shape in gear_repo_shapes:
+            for index, item in enumerate(seed_shape):
+                if index == (len(seed_shape) - 1):
+                    gear_tiling_range += _calc_range(item, cls.GEAR_BATCH)
+                else:
+                    gear_tiling_range += _calc_range(item, cls.GEAR_M_N)
+        else:
+            for item in seed_shape:
+                gear_tiling_range += [item, item]
+        return gear_tiling_range
+
+
+    def use_default_tiling_case(self, target_area):
+        """
+        check range value of target_area to determine whether to use default tiling case
+
+        Parameters
+        ----------
+        target_area: range value of dymanic elements
+
+        Returns
+        -------
+        return True means use default tiling, else not
+        """
+        cls = self.__class__
+
+        # None means range is -1
+        for value in target_area:
+            if value[1] is None:
+                return True
+
+        if len(self._get_gear_repo_shapes(target_area)) > (len(cls.GEAR_M_N)**2):
+            return True
+
+        return False
