@@ -38,7 +38,7 @@ def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     when -inf, lp_norm equals the min absolute value of elements.
     """
     if (p == "inf") or (p == _CONST_INF):
-        reduce_support_fp32 = tbe_platform.api_check_support("tbe.reduce_max", "float32")
+        reduce_support_fp32 = tbe_platform.api_check_support("tbe.dsl.reduce_max", "float32")
         if x_type == "float16" and reduce_support_fp32:
             abs_x = tbe.cast_to(abs_x, "float32")
         elif x_type == "float32" and not reduce_support_fp32:
@@ -50,7 +50,7 @@ def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
         res = tbe.reduce_max(abs_x, axis=axes, keepdims=keepdim)
     else:
         # p is "-inf"
-        reduce_support_fp32 = tbe_platform.api_check_support("tbe.reduce_min", "float32")
+        reduce_support_fp32 = tbe_platform.api_check_support("tbe.dsl.reduce_min", "float32")
         if x_type == "float16" and reduce_support_fp32:
             abs_x = tbe.cast_to(abs_x, "float32")
         elif x_type == "float32" and not reduce_support_fp32:
@@ -71,7 +71,7 @@ def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     Compute norm for p = 0.
     When p = 0, lp_norm equals the number of nonzero-elements
     """
-    mul_support_fp32 = tbe_platform.api_check_support("tbe.vmuls", "float32")
+    mul_support_fp32 = tbe_platform.api_check_support("tbe.dsl.vmuls", "float32")
     if mul_support_fp32 and x_type == "float16":
         abs_x = tbe.cast_to(abs_x, "float32")
     elif not mul_support_fp32 and x_type == "float32":
@@ -94,7 +94,7 @@ def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     Compute norm for p = 1.
     When p = 1, lp_norm equals the sum of elements' absolute value
     """
-    sum_support_fp32 = tbe_platform.api_check_support("tbe.reduce_sum", "float32")
+    sum_support_fp32 = tbe_platform.api_check_support("tbe.dsl.reduce_sum", "float32")
     if sum_support_fp32 and x_type == "float16":
         abs_x = tbe.cast_to(abs_x, "float32")
     elif not sum_support_fp32 and x_type == "float32":
@@ -115,7 +115,7 @@ def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     Compute norm for p = 2.
     For precision considering, separate it from lp_norm_compute without using vlog.
     """
-    mul_support_fp32 = tbe_platform.api_check_support("tbe.vmul", "float32")
+    mul_support_fp32 = tbe_platform.api_check_support("tbe.dsl.vmul", "float32")
     if mul_support_fp32 and x_type == "float16":
         abs_x = tbe.cast_to(abs_x, "float32")
     elif not mul_support_fp32 and x_type == "float32":
@@ -139,7 +139,7 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
 
     When p equals other int value, lp_norm = pow(sum(pow(abs(input),p)),1/p).
     """
-    mul_support_fp32 = tbe_platform.api_check_support("tbe.vmul", "float32")
+    mul_support_fp32 = tbe_platform.api_check_support("tbe.dsl.vmul", "float32")
     if mul_support_fp32 and x_type == "float16":
         abs_x = tbe.cast_to(abs_x, "float32")
     elif not mul_support_fp32 and x_type == "float32":

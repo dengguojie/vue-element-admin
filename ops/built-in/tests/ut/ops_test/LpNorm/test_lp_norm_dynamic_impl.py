@@ -27,48 +27,56 @@ ut_case.add_case("all",
                                                (-1,-1,1), 2147483647, [1,], True,
                                                "dynamic_lp_norm_fp16_ND_1",
                                                "success"))
-ut_case.add_case("all",
+ut_case.add_case(["Ascend910A"],
                  gen_dynamic_lp_norm_case((-1,-1,1),
                                                [(1,100),(1,100),(1,1)],
                                                "float16", "ND",
                                                (-1,-1,1), -2147483647, [1,], True,
                                                "dynamic_lp_norm_fp16_ND_2",
                                                "success"))
-ut_case.add_case("all",
+
+ut_case.add_case(["Ascend910A"],
                  gen_dynamic_lp_norm_case((-1,-1,1),
                                                [(1,100),(1,100),(1,1)],
                                                "float16", "ND",
-                                               (-1,-1,1), 1, [1,], False,
+                                               (-1,-1,1), 0, [0,1], True,
                                                "dynamic_lp_norm_fp16_ND_3",
                                                "success"))
 ut_case.add_case("all",
                  gen_dynamic_lp_norm_case((-1,-1,1),
                                                [(1,100),(1,100),(1,1)],
                                                "float16", "ND",
-                                               (-1,-1,1), 2, [0,1], False,
+                                               (-1,-1,1), 1, [1,], False,
                                                "dynamic_lp_norm_fp16_ND_4",
-                                               "success"))                                               
-
+                                               "success"))
 ut_case.add_case("all",
                  gen_dynamic_lp_norm_case((-1,-1,1),
                                                [(1,100),(1,100),(1,1)],
                                                "float16", "ND",
-                                               (-1,-1,1), 3, [1,], True,
+                                               (-1,-1,1), 2, [0,1], False,
                                                "dynamic_lp_norm_fp16_ND_5",
                                                "success"))
 ut_case.add_case("all",
                  gen_dynamic_lp_norm_case((-1,-1,1),
                                                [(1,100),(1,100),(1,1)],
-                                               "float16", "ND",
-                                               (-1,-1,1), 3, [0,2], False,
-                                               "dynamic_lp_norm_fp16_ND_6",
-                                               "success"))
-ut_case.add_case("all",
+                                               "float32", "ND",
+                                               (-1,-1,1), 2, [0,1], True,
+                                               "dynamic_lp_norm_fp32_ND_1",
+                                               "success"))                                                
+ut_case.add_case(["Ascend910A"],
                  gen_dynamic_lp_norm_case((-1,-1,1),
                                                [(1,100),(1,100),(1,1)],
-                                               "float16", "ND",
-                                               (-1,-1,1), 0, [1,], True,
-                                               "dynamic_lp_norm_fp16_ND_7",
+                                               "float32", "ND",
+                                               (-1,-1,1), 3, [0,1], True,
+                                               "dynamic_lp_norm_fp32_ND_2",
                                                "success"))
+ut_case.add_case(["Ascend910A"],
+                 gen_dynamic_lp_norm_case((-1,-1,1),
+                                               [(1,100),(1,100),(1,1)],
+                                               "float32", "ND",
+                                               (-1,-1,1), 3, [0,1], False,
+                                               "dynamic_lp_norm_fp32_ND_3",
+                                               "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
