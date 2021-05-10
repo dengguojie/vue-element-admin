@@ -38,7 +38,6 @@ from tbe.tvm.expr import Reduce
 from tbe.tvm.expr import Var
 from tbe.tvm.tensor import PlaceholderOp
 from tbe.tvm.tensor import Tensor
-from te import platform as cce
 
 from .constants import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
     NEED_TEMP_SPACE_INSNS, VCMP_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, NEED_EXTENT_NODE_INSNS
@@ -286,14 +285,6 @@ def get_core_num():
     :return:
     """
     return get_soc_spec("CORE_NUM")
-
-
-def get_build_cfg():
-    """
-    :return:
-    """
-    f_m = cce.fusion_manager.fusion_manager
-    return f_m.get_build_cfg()
 
 
 def equals_one(_x):

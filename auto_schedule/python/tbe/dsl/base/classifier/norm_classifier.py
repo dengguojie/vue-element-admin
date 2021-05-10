@@ -55,8 +55,8 @@ class NormClassifier:
         self.f_shape, self.f_ranges, self.f_reduce_axes = self._simplify()
 
     def classify(self):
-        from te import platform as cce
-        if cce.fusion_manager.fusion_manager.get_build_cfg() == "disable":
+        from tbe.common.buildcfg import get_current_build_config
+        if get_current_build_config("enable_op_prebuild"):
             return [helper.ins_of_prebuild(self.ins, self.reduce_axes)]
 
         return self._classify_const() if self._is_const() else self._classify_var()

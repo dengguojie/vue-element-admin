@@ -19,9 +19,10 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+from tbe.dsl.base import operation
+
 from .broadcast_elewise_classifier import BroadcastElewiseClassifier
 from .pure_elewise_classifier import PureElewiseClassifier
-from tbe.dsl.base import operation
 
 
 def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[Dict[str, Any]] = None):
@@ -31,9 +32,9 @@ def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[
     :param support_broadcast:
     :return:
     """
+    from tbe.common.buildcfg import get_current_build_config
     operation.get_context().add("_support_broadcast", support_broadcast)
-    from te import platform as cce
-    if cce.fusion_manager.fusion_manager.get_build_cfg() == "disable":
+    if get_current_build_config("enable_op_prebuild"):
         return [ins]
 
     return BroadcastElewiseClassifier(ins, extra_params).classify() if support_broadcast else \

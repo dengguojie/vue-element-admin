@@ -48,8 +48,8 @@ class UnknownReduceClassifier:
         self.const_reduce_axis_size = self.dim_len if size0 < 0 else min(size0, self.dim_len)
 
     def classify(self):
-        from te import platform as cce
-        if cce.fusion_manager.fusion_manager.get_build_cfg() == "disable":
+        from tbe.common.buildcfg import get_current_build_config
+        if get_current_build_config("enable_op_prebuild"):
             return [helper.ins_of_prebuild(self.ins, list(range(0, self.reduce_axis_size)))]
 
         if self.zero_axis_status == ZeroAxisStatus.EXIST:

@@ -16,20 +16,23 @@
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
+import copy
 from typing import Any
 from typing import Dict
 from typing import List
 
 from tbe import tvm
+from tbe.common import buildcfg
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.var import AttrVarDesc
 from tbe.dsl.base.var import Category
 from tbe.dsl.base.var import Var
-from tbe.tvm.build_module import BuildConfigs
-from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
 from tbe.dsl.static_schedule.conv_schedule import check_dyn_quantfuse_doubleout
+from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
+from tbe.tvm.build_module import BuildConfigs
+from tbe.tvm.build_module import build_config
 
 from . import CompileInfo
 from . import Pattern
@@ -45,6 +48,7 @@ def schedule_cce(outs, option=None):
     :param option:
     :return:
     """
+    from tbe.common.buildcfg import get_current_build_config
     original_outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     original_outs = reget_tensor_list(original_outs)
     pattern = pattern_parser.get_pattern(outs)
@@ -53,10 +57,8 @@ def schedule_cce(outs, option=None):
     # set compute pattern
     operation.get_context().get_current_compute().set_pattern(pattern)
 
-    if util.get_build_cfg() == "disable":
+    if get_current_build_config("enable_op_prebuild"):
         # prebuild
-        from te import platform as cce
-        f_m = cce.fusion_manager.fusion_manager
         op_type = operation.get_context().get_op_type()
         compute = operation.get_op_compute(op_type, verbose=True)
 
@@ -65,11 +67,7 @@ def schedule_cce(outs, option=None):
         else:
             fusion_pattern = pattern
 
-        # noinspection PyProtectedMember
-        if operation._in_compatible_mode():
-            f_m.set_current_op_pattern(fusion_pattern)
-        else:
-            operation.get_op_context().add_build_res("pattern", fusion_pattern)
+        operation.get_op_context().add_build_res("pattern", fusion_pattern)
 
         return None
 
@@ -104,7 +102,8 @@ def build(schedules_list, config_map=None):
     :param config_map:
     :return:
     """
-    if util.get_build_cfg() == "disable" and \
+    from tbe.common.buildcfg import get_current_build_config
+    if get_current_build_config("enable_op_prebuild") and \
             not get_soc_spec("CUBE_VECTOR_SPLIT"):
         # prebuild
         return
@@ -294,7 +293,6 @@ class Builder:
 
     def _call_tvm_build(self):
         # build config use mode: 1 + m + n
-
         m_config_items = {}
         if operation.in_dynamic():
             m_config_items.update({"parse_ddr_args": True, "build_fatbin": True})
@@ -304,21 +302,23 @@ class Builder:
             m_config_items.update(self.config_map['fusion_build_config'])
         m_config_items.update(operation.get_build_args())
 
-        from te import platform as cce
-        cce_build = cce.cce_build
-        dynamic_config, static_config = cce_build.dynamic_build_config, cce_build.build_config
-        update_func = cce_build.build_config_update_list
+        dynamic_config = buildcfg.default_buildcfg.dynamic_build_config_dict
+        with buildcfg.build_config(**dynamic_config):
+            upper_config = buildcfg.get_current_build_config("all")
+        dynamic_build_config = copy.deepcopy(upper_config)
+        dynamic_build_config.update(m_config_items)
+        build_configs = [build_config(**dynamic_build_config)]
 
-        build_configs = [update_func(dynamic_config, m_config_items)]
         for sch in self.valid_schs:
+            dynamic_single_sch_build_config = copy.deepcopy(upper_config)
             sch_context = util.get_sch_additional_entry(sch, "context")
 
             n_config_items = sch_context.get("_build_config")
             if n_config_items is not None:
                 m_config_items.update(n_config_items)
 
-            build_config = update_func(dynamic_config, m_config_items)
-            build_configs.append(build_config)
+            dynamic_single_sch_build_config.update(m_config_items)
+            build_configs.append(build_config(**dynamic_single_sch_build_config))
 
         if operation.in_dynamic():
             with BuildConfigs(build_configs):
