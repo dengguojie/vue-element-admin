@@ -67,7 +67,7 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
             line = line.strip()
             if line.startswith(os.path.join(base_path, "aicpu")) or line.startswith(
                     os.path.join(ut_path, "aicpu_test")):
-                proto_changed_files.append(line)
+                aicpu_changed_files.append(line)
             elif line.startswith(os.path.join(base_path, "fusion_pass")) or line.startswith(
                     os.path.join(ut_path, "graph_fusion")):
                 pass_changed_files.append(line)
