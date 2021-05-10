@@ -554,7 +554,8 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
       u_dims.push_back(p);
       Shape u_sec_shape(u_dims);
       if (Concatenate(batch_shape, u_sec_shape, u_shape) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Concatenate uShape with full_matrices = true in Svd failed!");
+        CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
+          "concatenate uShape with full_matrices = true in Svd failed!");
         return GRAPH_FAILED;
       }
       v_dims.push_back(n);

@@ -187,7 +187,10 @@ IMPLEMT_INFERFUNC(InvertPermutation, InvertPermutationInfer) {
   Shape shape;
   if (WithRank(op.GetInputDesc(0), 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "input x must be 1-D");
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[x] rank must be 1D, but got rank[",
+      op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

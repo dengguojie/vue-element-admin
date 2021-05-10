@@ -4241,63 +4241,67 @@ IMPLEMT_INFERFUNC(MaxPoolV2, MaxPoolV2InferShape) {
   Format input_format = inputTensorDesc.GetFormat();
   // get input ksize
   Tensor ksizeData;
-  if (ge::GRAPH_SUCCESS != op.GetInputConstData("ksize", ksizeData)) {
-    OP_LOGE(op.GetName().c_str(), "get const data failed");
+if (ge::GRAPH_SUCCESS != op.GetInputConstData("ksize", ksizeData)) {
+    std::string err_msg = "get input[ksize] const data failed";
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   DataType ksizeDtype = op.GetInputDesc("ksize").GetDataType();
   std::vector<int64_t> ksizeList;
   GetMaxPoolV2ConstData(ksizeData, ksizeDtype, ksizeList);
   if (ksizeList.size() != DIM_SIZE4) {
-    OP_LOGE(op.GetName().c_str(),
-            "length of ksize %zu must be equal to the "
-            "length of shape!",
-            ksizeList.size());
+    std::string err_msg = ConcatString("input ksize data size[",
+      ksizeList.size() ,"] must be equal to ", DIM_SIZE4);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input strides
   Tensor stridesData;
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("strides", stridesData)) {
-    OP_LOGE(op.GetName().c_str(), "get constdata failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("get input[strides] const data failed"));
     return GRAPH_FAILED;
   }
   DataType stridesDtype = op.GetInputDesc("strides").GetDataType();
   std::vector<int64_t> stridesList;
   GetMaxPoolV2ConstData(stridesData, stridesDtype, stridesList);
   if (stridesList.size() != DIM_SIZE4) {
-    OP_LOGE(op.GetName().c_str(),
-            "length of strides must be equal to the "
-            "length of shape!");
+    std::string err_msg = ConcatString("input strides data size[",
+      stridesList.size() ,"] must be equal to ", DIM_SIZE4);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   // get input data_format
   std::string dataFormat;
   if (GRAPH_SUCCESS != op.GetAttr("data_format", dataFormat)) {
-    OP_LOGE(op.GetName().c_str(),
-            "The MaxPool op GetOpAttr data_format "
-            "failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("get attr[data_format] failed"));
     return GRAPH_FAILED;
   }
   if (dataFormat != "NHWC" && dataFormat != "NCHW" && dataFormat != "NC1HWC0") {
-    OP_LOGE(op.GetName().c_str(),
-            "data_format only "
-            "support 'NHWC','NCHW' and 'NC1HWC0'.");
+    std::string err_msg = ConcatString("check attr[data_format] value[",
+      dataFormat ,"] failed, only support[NHWC/NCHW/NC1HWC0]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dataFormat == "NHWC") {
     if ((ksizeList[0] != 1) || (ksizeList[3] != 1) || (stridesList[0] != 1) || (stridesList[3] != 1)) {
-      OP_LOGE(op.GetName().c_str(),
-              "MaxPool only supports pooling across width/height"
-              "and other ksize dimension should be one");
+      std::string err_msg = ConcatString("check input[ksize/strides] value ",
+        "failed, ksize[0]:[", ksizeList[0], "], ksize[3]:[", ksizeList[3], "]",
+        "strides[0]:[", stridesList[0], "], strides[3]:[", stridesList[3], "]",
+        "must be one.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
   if ((dataFormat == "NCHW") || (dataFormat == "NC1HWC0")) {
     if ((ksizeList[0] != 1) || (ksizeList[1] != 1) || (stridesList[0] != 1) || (stridesList[1] != 1)) {
-      OP_LOGE(op.GetName().c_str(),
-              "MaxPool only supports pooling across width/height"
-              "and other ksize dimension should be one");
+      std::string err_msg = ConcatString("check input[ksize/strides] value ",
+        "failed, ksize[0]:[", ksizeList[0], "], ksize[1]:[", ksizeList[1], "]",
+        "strides[0]:[", stridesList[0], "], strides[1]:[", stridesList[1], "]",
+        "must be one.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -4305,7 +4309,8 @@ IMPLEMT_INFERFUNC(MaxPoolV2, MaxPoolV2InferShape) {
   // get input paddingMode
   std::string paddingMode;
   if (GRAPH_SUCCESS != op.GetAttr("padding", paddingMode)) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr padding failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("get attr[padding] failed"));
     return GRAPH_FAILED;
   }
 
@@ -4313,6 +4318,9 @@ IMPLEMT_INFERFUNC(MaxPoolV2, MaxPoolV2InferShape) {
     OP_LOGE(op.GetName().c_str(),
             "MaxPool can only support SAME or VALID "
             "padding mode!");
+    std::string err_msg = ConcatString("check attr[padding] value[",
+      paddingMode, "] failed, only support[SAME/VALID]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -5837,32 +5845,44 @@ IMPLEMT_INFERFUNC(NthElement, NthElementInfer) {
   auto x_tensor = op.get_input_desc_x();
   if (WithRankAtLeast(x_tensor, 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "at least 1D");
-    OP_LOGE(op.GetName().c_str(), "The rank of input x must be at least 1.");
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtLeast function, ",
+      "input[x] rank must be at least 1D, but got rank[",
+      op.get_input_desc_x().GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Tensor n_tensor;
   if (op.GetInputConstData("n", n_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get input n value error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("get const data[n] failed"));
     return GRAPH_FAILED;
   }
 
   int64_t n_dim = 0;
   if (MakeDimForScalarInput(n_tensor, n_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "MakeDimForScalarInput get input n value error.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+      std::string("failed to call MakeDimForScalarInput function, "
+      "get input n shape failed"));
     return GRAPH_FAILED;
   }
 
   int64_t existing = x_shape.GetDimNum();
   int64_t last_input_dim = x_shape.GetDim(existing - 1);
   if ((last_input_dim != ge::UNKNOWN_DIM) && (n_dim != ge::UNKNOWN_DIM) && (last_input_dim <= n_dim)) {
-    OP_LOGE(op.GetName().c_str(), "Input must have last dim > n=%lld,but inputLastDim is %lld", n_dim, last_input_dim);
+    std::string err_msg = ConcatString("input[x] last dim value[",
+      last_input_dim, "] must be greater than [", n_dim, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape output_shape;
   if (SubShape(x_shape, 0, -1, 1, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get SubShape error.");
+    std::string err_msg = ConcatString(
+      "failed to call SubShape function, input[x] shape[",
+      DebugString(x_shape.GetDims()), "], start[0], end[-1], stride[1]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

@@ -2462,24 +2462,32 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
   Shape input_shape;
   auto input_tensor_desc = op.GetInputDesc(0);
   if (WithRankAtLeast(input_tensor_desc, 2, input_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input[input], index is [0], must be at least 2-D, real rank is [%lld].",
-            input_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtLeast function, ",
+      "input[input] rank must be at least 2D, but got rank[",
+      op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape k_shape;
   auto k_tensor_desc = op.GetInputDesc(1);
   if (WithRankAtMost(k_tensor_desc, 1, k_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input[k], index is [1], must be at most 1-D, real rank is [%lld].",
-            k_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtMost function, ",
+      "input[k] rank must be at most 1D, but got rank[",
+      op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape padding_value_shape;
   auto padding_value_tensor_desc = op.GetInputDesc(2);
   if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input[padding_value], index is [2], rank must be 0, real rank is [%lld].",
-            padding_value_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[padding_value] rank must be 0, but got rank[",
+      op.GetInputDesc(2).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2513,14 +2521,20 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
       lower_diag_index = *(data);
       upper_diag_index = *(data + 1);
     } else {
-      OP_LOGE(op.GetName().c_str(), "The variable [diag_index] must be a vector with one or two elements. It has [%lld] elements.",
-              num_elements);
+      std::string err_msg = ConcatString(
+        "the input [k] must be scalar or a vector with one or two elements, ",
+        "but it has [", num_elements, "] elements. ");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
 
   if (lower_diag_index > upper_diag_index) {
-    OP_LOGE(op.GetName().c_str(), "The variable [lower_diag_index] is greater than [upper_diag_index]");
+    std::string err_msg = ConcatString(
+      "the variable [lower_diag_index] of input [k] 1th value[",
+      lower_diag_index,  "] must be  not greater than [upper_diag_index] ",
+      "of input [k] 2th value[", upper_diag_index, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2531,13 +2545,19 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
   int64_t max_diag_len = ge::UNKNOWN_DIM;
   if (num_rows != ge::UNKNOWN_DIM && num_cols != ge::UNKNOWN_DIM) {
     if (lower_diag_index != 0 && (-num_rows >= lower_diag_index || lower_diag_index >= num_cols)) {
-      OP_LOGE(op.GetName().c_str(), "The variable [lower_diag_index] is out of bound, lower_diag_index is [%lld], num_rows is [%lld], num_cols is [%lld].",
-              lower_diag_index, num_rows, num_cols);
+      std::string err_msg = ConcatString(
+        "the variable [lower_diag_index] of input [k] value[",
+        lower_diag_index, "] is illegal, ",
+        "should be 0 or in range(", -num_rows, ", ", num_cols, ")");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
     if (upper_diag_index != 0 && (-num_rows >= upper_diag_index || upper_diag_index >= num_cols)) {
-      OP_LOGE(op.GetName().c_str(), "The variable [upper_diag_index] is out of bound, lower_diag_index is [%lld], num_rows is [%lld], num_cols is [%lld].",
-              upper_diag_index, num_rows, num_cols);
+      std::string err_msg = ConcatString(
+        "the variable [upper_diag_index] of input [k] value[",
+        upper_diag_index, "] is illegal, ",
+        "should be 0 or in range(", -num_rows, ", ", num_cols, ")");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
     max_diag_len = std::min(num_rows + std::min(upper_diag_index, 0), num_cols - std::max(lower_diag_index, 0));
@@ -2564,24 +2584,33 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
   Shape input_shape;
   auto input_tensor_desc = op.GetInputDesc(0);
   if (WithRankAtLeast(input_tensor_desc, 2, input_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input input must be at least 2-D, real rank is %lld.",
-            input_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtLeast function, ",
+      "input[input] rank must be at least 2D, but got rank[",
+      op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape diagonal_shape;
   auto diagonal_tensor_desc = op.GetInputDesc(1);
   if (WithRankAtLeast(diagonal_tensor_desc, 1, diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input diagonal must be at least 1-D, real rank is %lld.",
-            diagonal_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtLeast function, ",
+      "input[diagonal] rank must be at least 1D, but got rank[",
+      op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape k_shape;
   auto k_tensor_desc = op.GetInputDesc(2);
   if (WithRankAtMost(k_tensor_desc, 1, k_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input k rank must be at most 1-D, real rank is %lld.",
-            k_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtMost function, ",
+      "input[k] rank must be at most 1D, but got rank[",
+      op.GetInputDesc(2).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2606,14 +2635,21 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
         lower_diag_index = *(data);
         upper_diag_index = *(data + 1);
       } else {
-        OP_LOGE(op.GetName().c_str(), "diag_index must be a vector with one or two elements. It has %lld elements",
-                num_elements);
+        std::string err_msg = ConcatString(
+          "the input[k] must be a scalar or vector with one or two elements, ",
+          "but it has [", num_elements, "] elements. ");
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_PARAM_INVALID;
       }
     }
 
     if (lower_diag_index > upper_diag_index) {
-      OP_LOGE(op.GetName().c_str(), "lower_diag_index is greater than upper_diag_index");
+      std::string err_msg = ConcatString(
+        "the variable [lower_diag_index] of input[k] 1th value[",
+        lower_diag_index, "] must be ",
+        "not greater than [upper_diag_index] of input[k] 2th value[",
+        upper_diag_index, "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -2623,20 +2659,31 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
     if (k_index_known) {
       if (WithRank(diagonal_tensor_desc, (lower_diag_index == upper_diag_index ? input_rank - 1 : input_rank),
                    diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "input diagonal must be fit with input matrix rank %lld, real rank is %lld.",
-                input_rank, diagonal_shape.GetDimNum());
+        std::string err_msg = ConcatString(
+          "failed to call WithRank function, ",
+          "input[diagonal] rank must be [",
+          (lower_diag_index == upper_diag_index ? input_rank - 1 : input_rank),
+          "], but got rank[", diagonal_tensor_desc.GetShape().GetDimNum(), "]");
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       } else {
         if (WithRankAtLeast(diagonal_tensor_desc, input_rank - 1, diagonal_shape, op.GetName().c_str()) !=
             GRAPH_SUCCESS) {
-          OP_LOGE(op.GetName().c_str(), "input diagonal must be at least %lld-D, real rank is %lld.", input_rank - 1,
-                  diagonal_shape.GetDimNum());
+          std::string err_msg = ConcatString(
+            "failed to call WithRankAtLeast function, ",
+            "input[diagonal] rank must be at least ", input_rank - 1,
+            "D, but got rank[", diagonal_tensor_desc.GetShape().GetDimNum(), "]");
+          AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
 
         if (WithRankAtMost(diagonal_tensor_desc, input_rank, diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-          OP_LOGE(op.GetName().c_str(), "input diagonal must be at most %lld-D, real rank is %lld.", input_rank,
-                  diagonal_shape.GetDimNum());
+          std::string err_msg = ConcatString(
+            "failed to call WithRankAtMost function, ",
+            "input[diagonal] rank must be at most ",
+            input_rank,"D, but got rank[",
+            diagonal_tensor_desc.GetShape().GetDimNum(), "]");
+          AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
       }
@@ -2646,11 +2693,19 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
       const int32_t num_cols = input_dims[input_rank - 1];
       if (num_rows != ge::UNKNOWN_DIM && num_cols != ge::UNKNOWN_DIM) {
         if (lower_diag_index != 0 && (-num_rows >= lower_diag_index || lower_diag_index >= num_cols)) {
-          OP_LOGE(op.GetName().c_str(), "lower_diag_index is out of bound.");
+          std::string err_msg = ConcatString(
+            "the variable [lower_diag_index] of input[k] value[",
+            lower_diag_index, "] is illegal, ",
+            "should be 0 or in range(", -num_rows, ", ", num_cols, ")");
+          AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_PARAM_INVALID;
         }
         if (upper_diag_index != 0 && (-num_rows >= upper_diag_index || upper_diag_index >= num_cols)) {
-          OP_LOGE(op.GetName().c_str(), "upper_diag_index is out of bound.");
+          std::string err_msg = ConcatString(
+            "the variable [upper_diag_index] of input[k] value[",
+            upper_diag_index, "] is illegal, ",
+            "should be 0 or in range(", -num_rows, ", ", num_cols, ")");
+          AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_PARAM_INVALID;
         }
       }
@@ -2663,17 +2718,31 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
     Shape diagonal_prefix_shape;
     if (SubShape(diagonal_shape, 0, (lower_diag_index == upper_diag_index ? -1 : -2), 1, diagonal_prefix_shape,
                  op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to get subshape from diagonal_shape");
+      std::string err_msg = ConcatString(
+        "failed to call SubShape function, input[diagonal] shape",
+        DebugString(diagonal_shape.GetDims()),
+        ", end[", (lower_diag_index == upper_diag_index ? -1 : -2),
+        "] is invaild");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
 
     if (Concatenate(diagonal_prefix_shape, UnknownShapeOfRank(2), diagonal_shape) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to concatenate diag_prefix_shape and 2-D unknown_shape");
+      std:: string err_msg = ConcatString("failed to call Concatenate function ",
+        "to concatenate prefix diagonal shape",
+        DebugString(diagonal_prefix_shape.GetDims()),
+        " and 2D unknown_shape");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
 
     if (Merge(input_shape, diagonal_shape, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to merge input_shape and diagonal_shape.");
+      std::string err_msg = ConcatString(
+        "failed to call Merge function to merge the 0th input[input] shape",
+        DebugString(input_shape.GetDims()),
+        " and the 1st input[diagonal]'s shape", 
+        DebugString(diagonal_shape.GetDims()));
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -2690,40 +2759,51 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   Shape diagonal_shape;
   auto diagonal_tensor_desc = op.GetInputDesc(0);
   if (WithRankAtLeast(diagonal_tensor_desc, 1, diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input[diagonal], index is [0], must be at least 1-D, real rank is [%lld].",
-            diagonal_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString("failed to call WithRankAtLeast function, ",
+      "input[diagonal] rank must be at least 1D, but got rank[",
+      op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape k_shape;
   auto k_tensor_desc = op.GetInputDesc(1);
   if (WithRankAtMost(k_tensor_desc, 1, k_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input[k], index is [1], rank must be at most 1-D, real rank is [%lld].",
-            k_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtMost function, ",
+      "input[k] rank must be at most 1D, but got rank[",
+      op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape num_rows_shape;
   auto num_rows_tensor_desc = op.GetInputDesc(2);
   if (WithRank(num_rows_tensor_desc, 0, num_rows_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input[num_rows], index is [2], rank must be 0, real rank is [%lld].",
-            num_rows_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[num_rows] rank must be 0, but got rank[",
+      op.GetInputDesc(2).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape num_cols_shape;
   auto num_cols_tensor_desc = op.GetInputDesc(3);
   if (WithRank(num_cols_tensor_desc, 0, num_cols_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input[num_cols], index is [3], rank must be 0, real rank is [%lld].",
-            num_cols_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[num_cols] rank must be 0, but got rank[",
+      op.GetInputDesc(3).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape padding_value_shape;
   auto padding_value_tensor_desc = op.GetInputDesc(4);
   if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input[padding_value], index is [4], rank must be 0, real rank is [%lld].",
-            padding_value_tensor_desc.GetShape().GetDimNum());
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[padding_value] rank must be 0, but got rank[",
+      op.GetInputDesc(4).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2756,14 +2836,21 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
       lower_diag_index = *(data);
       upper_diag_index = *(data + 1);
     } else {
-      OP_LOGE(op.GetName().c_str(), "The variable [diag_index] must be a vector with one or two elements. It has [%lld] elements.",
-              num_elements);
+      std::string err_msg = ConcatString(
+        "the input[k] must be scalar or a vector with one or two elements, ",
+        "but it has [", num_elements, "] elements. ");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
 
   if (lower_diag_index > upper_diag_index) {
-    OP_LOGE(op.GetName().c_str(), "The variable [lower_diag_index] is greater than [upper_diag_index].");
+    std::string err_msg = ConcatString(
+      "the variable [lower_diag_index] of input[k] 1th value[",
+      lower_diag_index, "] must be ",
+      "not greater than [upper_diag_index] of input[k] 2th value[",
+      upper_diag_index, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2773,11 +2860,12 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
     const int64_t num_diags = diagonal_dims[diagonal_rank - 2];
     const int64_t other_dim = diagonal_dims[diagonal_rank - 1];
     if (num_diags != (upper_diag_index - lower_diag_index + 1)) {
-      OP_LOGE(op.GetName().c_str(),
-              "The number of rows of [diagonal] doesn't match the number of"
-              "diagonals implied from [d_lower] and [d_upper]"
-              "num_diags is [%lld], d_lower is [%lld], d_upper is [%lld], other_dim is [%lld]",
-              num_diags, lower_diag_index, upper_diag_index, other_dim);
+      std::string err_msg = ConcatString(
+        "the number of rows of [diagonal] doesn't match the number of ",
+        "diagonals implied from [d_lower] and [d_upper].",
+        " num_diags is [" , num_diags, "], d_lower is [", lower_diag_index,
+        "], d_upper is [", upper_diag_index, "], other_dim is [", other_dim, "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -2806,43 +2894,64 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
   if (num_rows == ge::UNKNOWN_DIM) {
     num_rows = min_num_rows;
   } else if (num_rows < min_num_rows) {
-    OP_LOGE(op.GetName().c_str(), "Variable [num_rows] is too small, num_rows is [%d].", num_rows);
+    std::string err_msg = ConcatString(
+      "input[num_rows] value[", num_rows, "] must be not less than ",
+      "min_num_rows[", min_num_rows, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
   if (num_cols == ge::UNKNOWN_DIM) {
     num_cols = min_num_cols;
   } else if (num_cols < min_num_cols) {
-    OP_LOGE(op.GetName().c_str(), "Variable [num_cols] is too small, num_cols is [%d].", num_cols);
+    std::string err_msg = ConcatString(
+      "input[num_cols] value[", num_cols, "] must be not less than ",
+      "min_num_cols[", min_num_cols, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
   if (num_rows != min_num_rows && num_cols != min_num_cols) {
-    OP_LOGE(op.GetName().c_str(),
-            "The Variable [num_rows] and [num_cols] are not equal with [min_num_rows] and [min_num_rows]"
-            "num_rows is [%lld], min_num_rows is [%lld], num_cols is [%lld], min_num_cols is [%lld]",
-            num_rows, min_num_rows, num_cols, min_num_cols);
+    std::string err_msg = ConcatString(
+      "input[num_rows] value[", num_rows, "] and ",
+      "input[num_cols] value[", num_cols, "] ",
+      "are not equal with min_num_rows[", min_num_rows, "] and min_num_cols[",
+      min_num_rows, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
   Shape output_shape;
-  OP_LOGE(op.GetName().c_str(), "num_rows: ", num_rows, " num_cols: ", num_cols);
+  OP_LOGI(op.GetName().c_str(), "num_rows: ", num_rows, " num_cols: ", num_cols);
   if (lower_diag_index == upper_diag_index) {
     if (ReplaceDim(diagonal_shape, diagonal_rank - 1, num_rows, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to replacedim from diagonal_shape.");
+      std::string err_msg = ConcatString(
+        "failed to call ReplaceDim function, replace input[diagonal] dim, ",
+        "index[", diagonal_rank - 1, "],  replace value[", num_rows, "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     if (Concatenate(output_shape, Shape({num_cols}), output_shape) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to concatenate betweent outputshape and shape({num_cols}).");
+      std:: string err_msg = ConcatString(
+        "failed to call Concatenate function, output shape",
+        DebugString(output_shape.GetDims()),
+        " and another shape", DebugString(Shape({num_cols}).GetDims()));
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else {
     if (ReplaceDim(diagonal_shape, diagonal_rank - 2, num_rows, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to replacedim from diagonal_shape.");
+      std::string err_msg = ConcatString(
+        "failed to call ReplaceDim function, replace input[diagonal] dim, ",
+        "index[", diagonal_rank - 2, "], replace value[", num_rows, "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     if (ReplaceDim(output_shape, diagonal_rank - 1, num_cols, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to replacedim from output_shape.");
+      std::string err_msg = ConcatString(
+        "failed to call ReplaceDim function, replace output[output] dim, ",
+        "index[", diagonal_rank - 1, "], replace value[", num_cols, "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }

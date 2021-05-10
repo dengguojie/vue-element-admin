@@ -51,7 +51,8 @@ IMPLEMT_INFERFUNC(Multinomial, MultinomialInfer) {
 
   Operator::OpType type;
   if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Multinomial: get attr dtype failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
   TensorDesc output_desc = op.GetOutputDesc("y");
@@ -149,7 +150,8 @@ IMPLEMT_INFERFUNC(RandomPoisson, RandomPoissonInfer) {
 
   Operator::OpType type;
   if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "RandomPoisson: get attr dtype failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
   TensorDesc output_desc = op.GetOutputDesc("y");
@@ -441,7 +443,8 @@ IMPLEMT_INFERFUNC(RandomChoiceWithMask, RandomChoiceWithMaskInfer) {
   int64_t rank = static_cast<int64_t>(input_shape.GetDimNum());
   std::vector<int64_t> input_dims = op.GetInputDesc("x").GetShape().GetDims();
   if (input_dims.empty()) {
-    OP_LOGE(op.GetName().c_str(), "input x should not be empty.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("input x should not be empty."));
     return GRAPH_FAILED;
   } else if (input_dims == UNKNOWN_RANK) {
     output_y_desc.SetShape(Shape({UNKNOWN_DIM, UNKNOWN_DIM}));
@@ -449,7 +452,8 @@ IMPLEMT_INFERFUNC(RandomChoiceWithMask, RandomChoiceWithMaskInfer) {
   } else {
     int64_t count;
     if (ge::GRAPH_SUCCESS != op.GetAttr("count", count)) {
-      OP_LOGE(op.GetName().c_str(), "get attr failed");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get attr[count] failed."));
     }
     if (count > 0) {
       output_y_desc.SetShape(Shape({count, rank}));
@@ -479,7 +483,10 @@ IMPLEMT_INFERFUNC(RandomChoiceWithMask, RandomChoiceWithMaskInfer) {
         output_mask_desc.SetShapeRange(mask_range);
       }
     } else {
-      OP_LOGE(op.GetName().c_str(), "input count must greater or equal to 0 but instead is %lld.", count);
+      std::string err_msg = ConcatString(
+        "check attr[count] value[", count, "] failed, ",
+        "must greater or equal to 0");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }

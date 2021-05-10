@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 #include "op_proto_test_util.h"
 #include "matrix_calculation_ops.h"
+#include "array_ops.h"
 #include "split_combination_ops.h"
 #include "graph/debug/ge_attr_define.h"
 #include "utils/op_desc_utils.h"
@@ -60,4 +61,143 @@ TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape) {
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape_check_input0_failed) {
+  ge::op::MatrixDiagPartV2 op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range1 = {{2, 2}, {2, 2}};
+  std::vector<std::pair<int64_t,int64_t>> shape_range2 = {{2, 2}};
+  auto tensor_desc1 = create_desc_shape_range({2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2},
+                                              ge::FORMAT_ND, shape_range1);
+  op.UpdateInputDesc("input", tensor_desc1);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape_check_input1_failed) {
+  ge::op::MatrixDiagPartV2 op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range1 = {{2, 2}, {2, 2}};
+  auto tensor_desc0 = create_desc_shape_range({2, 2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2, 2},
+                                              ge::FORMAT_ND, shape_range1);
+  op.UpdateInputDesc("input", tensor_desc0);
+  auto tensor_desc1 = create_desc_shape_range({2,2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2,2},
+                                              ge::FORMAT_ND, shape_range1);
+  op.UpdateInputDesc("k", tensor_desc1);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape_check_input2_failed) {
+  ge::op::MatrixDiagPartV2 op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range1 = {{2, 2}, {2, 2}};
+  std::vector<std::pair<int64_t,int64_t>> shape_range2 = {{2, 2}};
+  auto tensor_desc1 = create_desc_shape_range({2, 2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2, 2},
+                                              ge::FORMAT_ND, shape_range1);
+  auto tensor_desc2 = create_desc_shape_range({2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2},
+                                              ge::FORMAT_ND, shape_range2);
+  op.UpdateInputDesc("input", tensor_desc1);
+  op.UpdateInputDesc("k", tensor_desc2);
+  auto tensor_desc3 = create_desc_shape_range({2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2},
+                                              ge::FORMAT_ND, shape_range1);
+  op.UpdateInputDesc("padding_value", tensor_desc3);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape_check_k_num_failed) {
+  ge::op::MatrixDiagPartV2 op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range1 = {{2, 2}, {2, 2}};
+  auto tensor_desc0 = create_desc_shape_range({2, 2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2, 2},
+                                              ge::FORMAT_ND, shape_range1);
+  op.UpdateInputDesc("input", tensor_desc0);
+
+  ge::TensorDesc const_desc(ge::Shape({3}), ge::FORMAT_ND, ge::DT_INT32);
+  int32_t const_value[3] = {3, 2, 1};
+  auto const_op = ge::op::Constant().set_attr_value(
+    ge::Tensor(const_desc, (uint8_t *)const_value, 3 * sizeof(int32_t)));
+  op.set_input_k(const_op);
+  op.UpdateInputDesc("k", const_desc);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape_check_k_vaue_failed) {
+  ge::op::MatrixDiagPartV2 op;
+   std::vector<std::pair<int64_t,int64_t>> shape_range1 = {{2, 2}, {2, 2}};
+  auto tensor_desc0 = create_desc_shape_range({2, 2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2, 2},
+                                              ge::FORMAT_ND, shape_range1);
+  op.UpdateInputDesc("input", tensor_desc0);
+
+  ge::TensorDesc const_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  int32_t const_value[2] = {3, 2};
+  auto const_op = ge::op::Constant().set_attr_value(
+    ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));
+
+  op.set_input_k(const_op);
+  op.UpdateInputDesc("k", const_desc);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape_check_k_vaue_failed2) {
+  ge::op::MatrixDiagPartV2 op;
+   std::vector<std::pair<int64_t,int64_t>> shape_range1 = {{2, 2}, {2, 2}};
+  auto tensor_desc0 = create_desc_shape_range({2, 2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2, 2},
+                                              ge::FORMAT_ND, shape_range1);
+  op.UpdateInputDesc("input", tensor_desc0);
+
+  ge::TensorDesc const_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  int32_t const_value[2] = {5, 6};
+  auto const_op = ge::op::Constant().set_attr_value(
+    ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));
+
+  op.set_input_k(const_op);
+  op.UpdateInputDesc("k", const_desc);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MatrixDiagPartV2, matrix_diag_part_v2_infer_shape_check_k_vaue_failed3) {
+  ge::op::MatrixDiagPartV2 op;
+   std::vector<std::pair<int64_t,int64_t>> shape_range1 = {{2, 2}, {2, 2}};
+  auto tensor_desc0 = create_desc_shape_range({2, 2},
+                                              ge::DT_INT64, ge::FORMAT_ND,
+                                              {2, 2},
+                                              ge::FORMAT_ND, shape_range1);
+  op.UpdateInputDesc("input", tensor_desc0);
+
+  ge::TensorDesc const_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
+  int32_t const_value[2] = {1, 6};
+  auto const_op = ge::op::Constant().set_attr_value(
+    ge::Tensor(const_desc, (uint8_t *)const_value, 2 * sizeof(int32_t)));
+
+  op.set_input_k(const_op);
+  op.UpdateInputDesc("k", const_desc);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }

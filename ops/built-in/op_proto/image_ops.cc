@@ -1261,33 +1261,56 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionWithOverlaps, NonMaxSuppressionWithOverlapsIn
   Shape overlap_threshold_shape = op.GetInputDesc("overlap_threshold").GetShape();
   Shape score_threshold_shape = op.GetInputDesc("score_threshold").GetShape();
   if (WithRank(op.GetInputDesc("overlaps"), 2, overlaps_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of overlaps should be equal to 2.");
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[overlaps] rank must be 2, but got rank[",
+      op.GetInputDesc("overlaps").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc("scores"), 1, scores_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores should be equal to 1.");
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[scores] rank must be 1, but got rank[",
+      op.GetInputDesc("scores").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc("max_output_size"), 0, max_output_size_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size should be equal to 0.");
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[max_output_size] rank must be 0, but got rank[",
+      op.GetInputDesc("max_output_size").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc("overlap_threshold"), 0, overlap_threshold_shape, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of overlap_threshold should be equal to 0.");
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[overlap_threshold] rank must be 0, but got rank[",
+      op.GetInputDesc("overlap_threshold").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc("score_threshold"), 0, score_threshold_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of score_threshold should be equal to 0.");
+    std::string err_msg = ConcatString("failed to call WithRank function, ",
+      "input[score_threshold] rank must be 0, but got rank[",
+      op.GetInputDesc("score_threshold").GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t unused_dim = 0;
   if (Merge(overlaps_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "dims[0] of overlaps should be equal to dims[0] of scores.");
+    std::string err_msg = ConcatString(
+        "failed to call Merge function to merge the input[overlaps] 0th dim",
+        "[" , overlaps_shape.GetDim(0), "] and the input[scores]'s 0th dim [", 
+        scores_shape.GetDim(0), "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (Merge(overlaps_shape.GetDim(0), overlaps_shape.GetDim(1), unused_dim) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "dims[0] of overlaps should be equal to dims[1] of overlaps.");
+    std::string err_msg = ConcatString(
+        "failed to call Merge function to merge the input[overlaps] 0th dim",
+        "[" , overlaps_shape.GetDim(0), "] and the input[overlaps]'s 1th dim [", 
+        overlaps_shape.GetDim(1), "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1297,7 +1320,8 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionWithOverlaps, NonMaxSuppressionWithOverlapsIn
   selected_indices_desc.SetDataType(DT_INT32);
   selected_indices_desc.SetShape(selecte_indices_shape);
   if (op.UpdateOutputDesc("selected_indices", selected_indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update selected_indices desc.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("update output[selected_indices] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

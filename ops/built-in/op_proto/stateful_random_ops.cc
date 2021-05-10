@@ -75,29 +75,41 @@ INFER_FUNC_REG(RngSkip, RngSkipInfer);
 IMPLEMT_INFERFUNC(StatefulRandomBinomial, StatefulRandomBinomialInfer) {
   Shape unused;
   if (WithRankAtMost(op.GetInputDesc(3), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input counts rank must be 1");
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtMost function, ",
+      "input[counts] rank must be at most 1D, but got rank[",
+      op.GetInputDesc(3).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRankAtMost(op.GetInputDesc(4), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input probs rank must be 1");
+    std::string err_msg = ConcatString(
+      "failed to call WithRankAtMost function, ",
+      "input[probs] rank must be at most 1D, but got rank[",
+      op.GetInputDesc(4).GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape shape;
   Tensor shape_tensor;
   if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get shape_tensor error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("get const data[shape] failed"));
     return GRAPH_FAILED;
   }
   if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get shape error.");
+     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call MakeShapeFromShapeTensor function failed to make "
+        "shape by input[shape] data"));
     return GRAPH_FAILED;
   }
 
   TensorDesc outputDesc = op.GetOutputDesc("y");
   DataType output_type;
   if (op.GetAttr("dtype", output_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr output_dtype error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      std::string("get attr[dtype] failed"));
   }
   outputDesc.SetDataType(output_type);
   outputDesc.SetShape(shape);
