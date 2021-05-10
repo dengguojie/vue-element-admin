@@ -132,6 +132,10 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
         completed input shapes and max shape
 
     """
+    # refresh value of OP_NAME after the assignment
+    if not op_name:
+      op_name = para_check.OP_NAME
+
     def _greater_one(_value):
         if isinstance(_value, (_expr.IntImm, _expr.UIntImm)):
             return _value.value > 1
@@ -182,6 +186,9 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
     """
     two input shapes produce third output shape
     """
+    # refresh value of OP_NAME after the assignment
+    if not op_name:
+      op_name = para_check.OP_NAME
 
     if operation.in_dynamic():
         return unify_broadcast_shapes([shape1, shape2], op_name)

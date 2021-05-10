@@ -515,6 +515,8 @@ def check_op_params(*type_args, **type_kwargs):
 
         @wraps(func)
         def _in_wrapper(*args, **kwargs):
+            global OP_NAME
+            OP_NAME = func.__name__
             for i, one_args in enumerate(args):
                 op_name = func.__name__
                 _check_one_op_param(one_args, formal_parameter_list[i][0],
