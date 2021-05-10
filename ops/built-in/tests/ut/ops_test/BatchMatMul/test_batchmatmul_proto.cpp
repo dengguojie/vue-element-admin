@@ -121,8 +121,8 @@ TEST(BatchMatMulInferTest, supportcheckerror2) {
   auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
                                 OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{6, 7}}},
                                 false, false);
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, FAILED);
+
+  Operate(op, FAILED);
 }
 
 TEST(BatchMatMulInferTest, supportcheckerror3) {
@@ -138,8 +138,7 @@ TEST(BatchMatMulInferTest, supportcheckerror4) {
                                 OP_TUPLE{{3, -1, 5}, DT_FLOAT16, FORMAT_ND, {{3, 4}}},
                                 false, false);
 
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, FAILED);
+  Operate(op, FAILED);
 }
 
 // cut batch in NZ
@@ -156,11 +155,11 @@ TEST_F(BatchMatMulInferSliceTest, split_test0) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   std::vector<std::vector<int64_t>> x1_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{2, 8}, {}, {}, {}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }
@@ -179,11 +178,11 @@ TEST_F(BatchMatMulInferSliceTest, split_test1) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   std::vector<std::vector<int64_t>> x2_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x2_data_slice = {{}, {0, 1}, {}, {}, {}};
   EXPECT_EQ(expect_x2_data_slice, x2_data_slice);
 }
@@ -202,11 +201,11 @@ TEST_F(BatchMatMulInferSliceTest, split_test2) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   std::vector<std::vector<int64_t>> x1_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{}, {}, {0, 1}, {}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }
@@ -225,18 +224,18 @@ TEST_F(BatchMatMulInferSliceTest, split_test3) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   std::vector<std::vector<int64_t>> x1_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{4, 8}, {}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 
   ge::GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   std::vector<std::vector<int64_t>> x2_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x2_data_slice = {{4, 8}, {}, {}};
   EXPECT_EQ(expect_x2_data_slice, x2_data_slice);
 }
@@ -255,11 +254,11 @@ TEST_F(BatchMatMulInferSliceTest, split_test4) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   std::vector<std::vector<int64_t>> x2_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x2_data_slice = {{}, {0, 15}};
   EXPECT_EQ(expect_x2_data_slice, x2_data_slice);
 }
@@ -278,11 +277,11 @@ TEST_F(BatchMatMulInferSliceTest, split_test5) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   std::vector<std::vector<int64_t>> x1_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{}, {16, 31}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }

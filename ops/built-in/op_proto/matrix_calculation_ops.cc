@@ -89,14 +89,14 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
   if (wShape.size() == 2) {
     if (!transpose) {
       if (kShape != wShape[1]) {
-        string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[1]:",wShape[1]); 
+        string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[1]:",wShape[1]);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     } else {
       if (kShape != wShape[0]) {
-        string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[0]:",wShape[0]); 
+        string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[0]:",wShape[0]);
         std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
@@ -517,8 +517,10 @@ string GetMatMulInfo(const Operator &op, const std::string &name_attr) {
 
 static const std::pair<int64_t, int64_t> FULL_RANGE = {1, -1};
 static const std::pair<int64_t, int64_t> EMPTY_RANGE = {0, 0};
-static const std::pair<int64_t, int64_t> NORMALIZE_FULL_RANGE = {1, std::numeric_limits<int64_t>::max()};
+static const int64_t NORMALIZE_INFINITE_RANGE = std::numeric_limits<int64_t>::max();
+static const std::pair<int64_t, int64_t> NORMALIZE_FULL_RANGE = {1, NORMALIZE_INFINITE_RANGE};
 static const int64_t VALUE_UNKNOWN_RANK = -2;
+static const int64_t INFINITE_RANGE = -1;
 static const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
 static const std::vector<int64_t> BATCH_GRAR = {0, 1, 3, 7, 15, 31, MAX_RANGE};
 static const std::vector<int64_t> SHAPE_GEAR = {0, 16*3, 16*7, 16*15, 16*31, 16*63, 16*127, 16*191,
@@ -526,6 +528,39 @@ static const std::vector<int64_t> SHAPE_GEAR = {0, 16*3, 16*7, 16*15, 16*31, 16*
 
 bool IsDimValid(int64_t dim) {
   return dim >= VALUE_UNKNOWN_RANK && dim != 0;
+}
+
+bool IsRangeValid(const std::vector<int64_t> &shape, const std::vector<std::pair<int64_t, int64_t>> &range,
+                  bool is_strict=true) {
+  if (shape.empty()) {
+    return true;
+  }
+
+  if (shape == UNKNOWN_RANK) {
+    return range.size() == 0;
+  }
+
+  if (std::find(shape.begin(), shape.end(), UNKNOWN_DIM) != shape.end()) {
+    return range.size() == shape.size();
+  }
+
+  // vector op do not update range when shape is fixed
+  if (!is_strict) {
+    return true;
+  }
+
+  if (range.size() == 0) {
+    return true;
+  }
+  if (range.size() != shape.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < range.size(); ++i) {
+    if (shape[i] != range[i].first or shape[i] != range[i].second) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool IsUnknownShape(const std::vector<int64_t> &shape) {
@@ -542,16 +577,19 @@ bool IsUnknownShape(const std::vector<int64_t> &shape) {
 void NormalizeRange(const std::string &op_name, const int64_t dim,
                     const std::pair<int64_t, int64_t> &shape_range,
                     std::pair<int64_t, int64_t> &range) {
-  if (dim == UNKNOWN_DIM && (shape_range == EMPTY_RANGE || shape_range == FULL_RANGE)) {
-    range = NORMALIZE_FULL_RANGE;
-    if (shape_range == EMPTY_RANGE) {
-      OP_LOGW(
-          op_name.c_str(),
-          "[InferShape] the dimension is -1 and no range is provided, therefore, the range is assumed to be [1, %ld]",
-          NORMALIZE_FULL_RANGE.second);
-    }
-  } else if (dim > 0) {
+  if (dim != UNKNOWN_DIM) {
     range = {dim, dim};
+    return ;
+  }
+
+  if (shape_range == EMPTY_RANGE) {
+    range = {1, NORMALIZE_INFINITE_RANGE};
+    OP_LOGW(
+        op_name.c_str(),
+        "[InferShape] the dimension is -1 and no range is provided, therefore, the range is assumed to be [1, %lld]",
+        NORMALIZE_INFINITE_RANGE);
+  } else if (shape_range.second == INFINITE_RANGE) {
+    range = {shape_range.first, NORMALIZE_INFINITE_RANGE};
   } else {
     range = shape_range;
   }
@@ -719,11 +757,20 @@ class InferShapeMatMul {
                    vector<int64_t> &shape_out, vector<std::pair<int64_t, int64_t>> &range_out, bool has_batch);
 
  private:
-  void NormalizeShapeAndRange();
+  bool PrecheckShapeAndRange();
+  bool NormalizeShapeAndRange();
   bool InferMKN();
   bool InferBatch();
   void SimplifyShapeAndRange();
   bool IsStaticShape();
+  void InitializeShapeAndRange(const vector<int64_t> &shape,
+                               vector<int64_t> &infer_shape,
+                               const vector<std::pair<int64_t, int64_t>> &range,
+                               vector<std::pair<int64_t, int64_t>> &infer_range);
+  bool NormalizeRangeOfMatMul(const vector<int64_t> &shape,
+                              const vector<int64_t> &infer_shape,
+                              const vector<std::pair<int64_t, int64_t>> &range,
+                              vector<std::pair<int64_t, int64_t>> &infer_range);
 
   static const int64_t base_len;
   const string& op_name;
@@ -801,51 +848,86 @@ InferShapeMatMul::InferShapeMatMul(const string &op_name, const vector<int64_t> 
   }
 }
 
-void InferShapeMatMul::NormalizeShapeAndRange() {
-  if (shape_a == UNKNOWN_RANK) {
-    for (int i = num_dim - base_len; i < num_dim; ++i) {
-      infer_shape_a[i] = UNKNOWN_DIM;
-      infer_range_a[i] = NORMALIZE_FULL_RANGE;
+void InferShapeMatMul::InitializeShapeAndRange(const vector<int64_t> &shape,
+                                               vector<int64_t> &infer_shape,
+                                               const vector<std::pair<int64_t, int64_t>> &range,
+                                               vector<std::pair<int64_t, int64_t>> &infer_range) {
+  // deal with shape (-2) range {}
+  auto valid_offset = shape == UNKNOWN_RANK ? 0 : infer_shape.size() - shape.size();
+  if (shape == UNKNOWN_RANK) {
+    fill(infer_shape.begin() + valid_offset, infer_shape.end(), UNKNOWN_DIM);
+    fill(infer_range.begin() + valid_offset, infer_range.end(), NORMALIZE_FULL_RANGE);
+  } else {
+    copy(shape.begin(), shape.end(), infer_shape.begin() + valid_offset);
+    copy(range.begin(), range.end(), infer_range.begin() + valid_offset);
+  }
+}
+
+bool InferShapeMatMul::NormalizeRangeOfMatMul(const vector<int64_t> &shape,
+                                              const vector<int64_t> &infer_shape,
+                                              const vector<std::pair<int64_t, int64_t>> &range,
+                                              vector<std::pair<int64_t, int64_t>> &infer_range) {
+  // deal with empty range
+  vector<std::pair<int64_t, int64_t>> preprocess_range;
+  if (shape != UNKNOWN_RANK && range.empty()) {
+    for (auto i = 0; i < shape.size(); ++i) {
+      if (shape[i] < 1) {
+        OpsInputShapeErrReport(op_name.c_str(),
+                               std::to_string(i) + "-th dim must > 1 when range is empty and shape is not (-2)", "dim",
+                               std::to_string(shape[i]));
+        OP_LOGE(op_name.c_str(),
+                "[InferShape] %d-th dim(%d) must > 1 when range is empty and shape is not (-2), please check the "
+                "output of upper operator",
+                i, shape[i]);
+        return false;
+      }
+
+      preprocess_range.push_back({shape[i], shape[i]});
     }
   } else {
-      copy(shape_a.begin(), shape_a.end(), infer_shape_a.begin() + num_dim - shape_a.size());
-      copy(range_a.begin(), range_a.end(), infer_range_a.begin() + num_dim - range_a.size());
+    preprocess_range = range;
   }
 
-  if (shape_b == UNKNOWN_RANK) {
-    for (int i = num_dim - base_len; i < num_dim; ++i) {
-      infer_shape_b[i] = UNKNOWN_DIM;
-      infer_range_b[i] = NORMALIZE_FULL_RANGE;
+  auto valid_offset = infer_range.size() - preprocess_range.size();
+  for (auto i = valid_offset; i < infer_range.size(); ++i) {
+    if (infer_shape[i] < VALUE_UNKNOWN_RANK || infer_shape[i] == 0) {
+      OpsInputShapeErrReport(op_name.c_str(), std::to_string(i - valid_offset) + "-th dim is not supported", "dim",
+                             std::to_string(infer_shape[i]));
+      OP_LOGE(op_name.c_str(), "[InferShape] %d-th dim(%d) is not supported, please check the output of upper operator",
+              i - valid_offset, infer_shape[i]);
+      return false;
     }
-  } else {
-      copy(shape_b.begin(), shape_b.end(), infer_shape_b.begin() + num_dim - shape_b.size());
-      copy(range_b.begin(), range_b.end(), infer_range_b.begin() + num_dim - range_b.size());
-  }
-
-  if (!shape_bias.empty()) {
-    if (shape_bias == UNKNOWN_RANK) {
-      infer_shape_bias[num_dim - 1] = UNKNOWN_DIM;
-      infer_range_bias[num_dim - 1] = NORMALIZE_FULL_RANGE;
-    } else {
-      copy(shape_bias.begin(), shape_bias.end(), infer_shape_bias.begin() + num_dim - shape_bias.size());
-      copy(range_bias.begin(), range_bias.end(), infer_range_bias.begin() + num_dim - range_bias.size());
+    if (infer_range[i].first == UNKNOWN_DIM && infer_range[i].second == UNKNOWN_DIM) {
+      OpsInputShapeErrReport(op_name.c_str(), "range is not supported", "range", "(-1, -1)");
+      OP_LOGE(op_name.c_str(),
+              "[InferShape] range like (-1, -1) is not supported, please check the output of upper operator");
+      return false;
     }
-  }
 
-  for (auto i = num_dim - shape_a.size(); i < num_dim; ++i) {
-    NormalizeRange(op_name, infer_shape_a[i], infer_range_a[i], infer_range_a[i]);
+    NormalizeRange(op_name, infer_shape[i], preprocess_range[i - valid_offset], infer_range[i]);
   }
+  return true;
+}
 
-  for (auto i = num_dim - shape_b.size(); i < num_dim; ++i) {
-    NormalizeRange(op_name, infer_shape_b[i], infer_range_b[i], infer_range_b[i]);
-  }
+bool InferShapeMatMul::PrecheckShapeAndRange() {
+  bool res = true;
+  res &= IsRangeValid(shape_a, range_a, false);
+  res &= IsRangeValid(shape_b, range_b, false);
+  res &= IsRangeValid(shape_bias, range_bias, false);
+  return res;
+}
 
-  if (!shape_bias.empty()) {
-    for (auto i = num_dim - shape_bias.size(); i < num_dim; ++i) {
-      NormalizeRange(op_name, infer_shape_bias[i], infer_range_bias[i], infer_range_bias[i]);
-    }
-  }
+bool InferShapeMatMul::NormalizeShapeAndRange() {
+  InitializeShapeAndRange(shape_a, infer_shape_a, range_a, infer_range_a);
+  InitializeShapeAndRange(shape_b, infer_shape_b, range_b, infer_range_b);
+  InitializeShapeAndRange(shape_bias, infer_shape_bias, range_bias, infer_range_bias);
 
+  bool res = true;
+  res &= NormalizeRangeOfMatMul(shape_a, infer_shape_a, range_a, infer_range_a);
+  res &= NormalizeRangeOfMatMul(shape_b, infer_shape_b, range_b, infer_range_b);
+  res &= NormalizeRangeOfMatMul(shape_bias, infer_shape_bias, range_bias, infer_range_bias);
+
+  return res;
 }
 
 bool InferShapeMatMul::InferMKN() {
@@ -899,8 +981,8 @@ bool InferShapeMatMul::InferMKN() {
 
   shape_out[num_dim - 2] = m;
   shape_out[num_dim - 1] = n;
-  range_out[num_dim - 2] = infer_range_a[idx_m] == NORMALIZE_FULL_RANGE ? FULL_RANGE : infer_range_a[idx_m];
-  range_out[num_dim - 1] = range_n == NORMALIZE_FULL_RANGE ? FULL_RANGE : range_n;
+  range_out[num_dim - 2] = infer_range_a[idx_m];
+  range_out[num_dim - 1] = range_n;
 
   return true;
 }
@@ -922,10 +1004,6 @@ bool InferShapeMatMul::InferBatch() {
         return false;
       }
     }
-
-    if (range_out[i] == NORMALIZE_FULL_RANGE) {
-      range_out[i] = FULL_RANGE;
-    }
   }
   return true;
 }
@@ -934,6 +1012,11 @@ void InferShapeMatMul::SimplifyShapeAndRange() {
   for (int i = 0; i < range_out.size(); i++) {
     if (range_out[i].first == range_out[i].second) {
       shape_out[i] = range_out[i].first;
+    }
+
+    // reverse normalize
+    if (range_out[i].second == NORMALIZE_INFINITE_RANGE) {
+      range_out[i] = {range_out[i].first, INFINITE_RANGE};
     }
   }
 }
@@ -953,7 +1036,13 @@ bool InferShapeMatMul::GetShapeRangeOfOutput() {
     return true;
   }
 
-  NormalizeShapeAndRange();
+  if (!PrecheckShapeAndRange()) {
+    return false;
+  }
+
+  if (!NormalizeShapeAndRange()) {
+    return false;
+  }
 
   if (!InferMKN()) {
     return false;
@@ -964,6 +1053,7 @@ bool InferShapeMatMul::GetShapeRangeOfOutput() {
   }
 
   SimplifyShapeAndRange();
+
   return true;
 }
 
@@ -1152,7 +1242,7 @@ bool InferMatmulInputND(const Operator &op,
   return false;
 }
 
-bool InferMatmul(const Operator &op) {  
+bool InferMatmul(const Operator &op) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
 
@@ -1317,7 +1407,7 @@ bool InferBatchMatmulInputND(const Operator &op,
   return false;
 }
 
-bool InferBatchMatmul(const Operator &op) {  
+bool InferBatchMatmul(const Operator &op) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
 
@@ -1843,7 +1933,7 @@ IMPLEMT_VERIFIER(MatrixDiagD, MatrixDiagDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
-    string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",input_diagonal_dtype, ", input_diagonal_dtype:",input_diagonal_dtype); 
+    string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",input_diagonal_dtype, ", input_diagonal_dtype:",input_diagonal_dtype);
     std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1925,7 +2015,7 @@ IMPLEMT_VERIFIER(MatrixDiagPartD, MatrixDiagPartDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
-    string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",input_diagonal_dtype, ", input_help_dtype:",input_help_dtype); 
+    string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",input_diagonal_dtype, ", input_help_dtype:",input_help_dtype);
     std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1972,7 +2062,7 @@ IMPLEMT_VERIFIER(MatrixSetDiagD, MatrixSetDiagDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(1).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(2).GetDataType();
   if ((input_matrix_dtype != input_diagonal_dtype) || (input_matrix_dtype != input_help_dtype)) {
-    string err_msg1 = ConcatString("the inputs of matrix and diagonal should be the same dtype! input_matrix_dtype:",input_matrix_dtype, ", input_diagonal_dtype:",input_diagonal_dtype,", input_help_dtype:",input_help_dtype); 
+    string err_msg1 = ConcatString("the inputs of matrix and diagonal should be the same dtype! input_matrix_dtype:",input_matrix_dtype, ", input_diagonal_dtype:",input_diagonal_dtype,", input_help_dtype:",input_help_dtype);
     std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -2886,7 +2976,7 @@ void split_equ(std::string eqn,std::string &in_equ,std::string &out_equ) {
     } else {
         return;
     }
-} 
+}
 // gets an array of input strings
 void get_in_equ_list(std::string in_equ,vector<std::string> &in_equ_list) {
     std::stringstream equ_stream(in_equ);
@@ -2897,7 +2987,7 @@ void get_in_equ_list(std::string in_equ,vector<std::string> &in_equ_list) {
     }
 }
 
-// Scenes with ellipses 
+// Scenes with ellipses
 void map_with_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
                         map<std::string, int64_t> &equ_map,
                         map<std::string, vector<int64_t>> &ellipsis_map) {
@@ -3065,7 +3155,7 @@ IMPLEMT_COMMON_INFERFUNC(EinSumInferShape) {
         OP_LOGE(op.GetName().c_str(), "GetOpAttr equation failed");
         return GRAPH_FAILED;
     }
-    // set tensor_size attr 
+    // set tensor_size attr
     int64_t tensor_size = op.GetInputsSize();
     op.SetAttr("tensor_size", tensor_size);
     vector<vector<int64_t>> tensor_list;
@@ -3075,7 +3165,7 @@ IMPLEMT_COMMON_INFERFUNC(EinSumInferShape) {
     }
     vector<int64_t> output_shape;
     einsum_infer_shape(equation,tensor_list,output_shape);
-    // updata output shape and dtype 
+    // updata output shape and dtype
     TensorDesc output_desc = op.GetOutputDesc("y");
     output_desc.SetShape(ge::Shape(output_shape));
     output_desc.SetDataType(x0_type);
@@ -3092,7 +3182,7 @@ VERIFY_FUNC_REG(EinSum, EinSumVerify);
 // ----------------EinSum-------------------
 
 // ---------------Eye----------------------------
-static bool CheckRows(const Operator &op, const string &attr_num_rows) 
+static bool CheckRows(const Operator &op, const string &attr_num_rows)
 {
     int64_t num_rows;
     op.GetAttr(attr_num_rows, num_rows);
@@ -3102,7 +3192,7 @@ static bool CheckRows(const Operator &op, const string &attr_num_rows)
     return true;
 }
 
-static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape) 
+static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape)
 {
     std::vector<int64_t> batch_shape;
     op.GetAttr(attr_batch_shape, batch_shape);
@@ -3115,7 +3205,7 @@ static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape)
     return true;
 }
 
-IMPLEMT_COMMON_INFERFUNC(EyeInferShape) 
+IMPLEMT_COMMON_INFERFUNC(EyeInferShape)
 {
     TensorDesc td = op.GetOutputDesc("y");
     int64_t num_rows, num_columns;
@@ -3141,7 +3231,7 @@ IMPLEMT_COMMON_INFERFUNC(EyeInferShape)
     return GRAPH_SUCCESS;
 }
 
-IMPLEMT_VERIFIER(Eye, EyeVerify) 
+IMPLEMT_VERIFIER(Eye, EyeVerify)
 {
     return GRAPH_SUCCESS;
 }

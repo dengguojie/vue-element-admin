@@ -16,8 +16,10 @@
 #include "graph/debug/ge_attr_define.h"
 
 #define OP_TUPLE tuple<vector<int64_t>, DataType, Format, vector<pair<int64_t,int64_t>>>
-#define RES_TUPLE tuple<vector<int64_t>, vector<pair<int64_t,int64_t>>>
+#define RES_TUPLE tuple<vector<int64_t>, vector<pair<int64_t,int64_t>>, bool>
 #define CASE_TUPLE tuple<OP_TUPLE, OP_TUPLE, OP_TUPLE, bool, bool, RES_TUPLE>
+#define PASS true
+#define FAILED false
 
 using namespace std;
 using namespace ge;
@@ -30,84 +32,116 @@ vector<CASE_TUPLE> testcase_matmul = {
                {},
                false,
                false,
-               RES_TUPLE{{2, 5}, {{2, 2}, {5, 5}}}},
+               RES_TUPLE{{2, 5}, {{2, 2}, {5, 5}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{7, 8}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{8, 9}, DT_FLOAT16, FORMAT_ND, {}},
-               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{2, 17}}}, false, false, RES_TUPLE{{7, 9}, {{7, 7}, {9, 9}}}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{2, 17}}}, false, false, RES_TUPLE{{7, 9}, {{7, 7}, {9, 9}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{7, 8}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{8, -1}, DT_FLOAT16, FORMAT_ND, {{8, 8}, {4, 33}}},
-               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{2, 17}}}, false, false, RES_TUPLE{{7, -1}, {{7, 7}, {4, 17}}}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{2, 17}}}, false, false, RES_TUPLE{{7, -1}, {{7, 7}, {4, 17}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
                {},
                false,
                false,
-               RES_TUPLE{{-1, -1}, {{1, -1}, {1, 60}}}},
+               RES_TUPLE{{-1, -1}, {{1, -1}, {1, 60}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
                OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                {},
                false,
                false,
-               RES_TUPLE{{5, -1}, {{5, 5}, {1, -1}}}},
+               RES_TUPLE{{5, -1}, {{5, 5}, {1, -1}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
                OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                false,
                false,
-               RES_TUPLE{{5, -1}, {{5, 5}, {1, -1}}}},
+               RES_TUPLE{{5, -1}, {{5, 5}, {1, -1}}, PASS}},
     // intersect k
     CASE_TUPLE{OP_TUPLE{{7, -1}, DT_FLOAT16, FORMAT_ND, {{7, 7}, {4, 9}}},
                OP_TUPLE{{9, -1}, DT_FLOAT16, FORMAT_ND, {{9, 9}, {7, 12}}},
                {},
                false,
                true,
-               RES_TUPLE{{7, 9}, {{7, 7}, {9, 9}}}},
+               RES_TUPLE{{7, 9}, {{7, 7}, {9, 9}}, PASS}},
     // all -2
     CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                {},
                false,
                false,
-               RES_TUPLE{{-2}, {}}},
+               RES_TUPLE{{-2}, {}, PASS}},
     /* with bias */
     // intersect k
     CASE_TUPLE{OP_TUPLE{{7, -1}, DT_FLOAT16, FORMAT_ND, {{7, 7}, {4, 9}}},
                OP_TUPLE{{9, -1}, DT_FLOAT16, FORMAT_ND, {{9, 9}, {7, 12}}},
-               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{4, 80}}}, false, true, RES_TUPLE{{7, 9}, {{7, 7}, {9, 9}}}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{4, 80}}}, false, true, RES_TUPLE{{7, 9}, {{7, 7}, {9, 9}}, PASS}},
     // intersect n
     CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{4, 9}, {5, 5}}},
                OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
-               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{4, 80}}}, false, false, RES_TUPLE{{-1, -1}, {{4, 9}, {4, 60}}}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{4, 80}}}, false, false, RES_TUPLE{{-1, -1}, {{4, 9}, {4, 60}}, PASS}},
     // change -1 to fix shape
     CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{1, -1}, {5, 5}}},
                OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
-               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{5, 5}}}, false, false, RES_TUPLE{{-1, 5}, {{1, -1}, {5, 5}}}},
+               OP_TUPLE{{-1}, DT_FLOAT16, FORMAT_ND, {{5, 5}}}, false, false, RES_TUPLE{{-1, 5}, {{1, -1}, {5, 5}}, PASS}},
     // all -2
     CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}}, OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
-               OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{-2}, {}}},
+               OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}}, false, false, RES_TUPLE{{-2}, {}, PASS}},
     /* dts */
     CASE_TUPLE{OP_TUPLE{{-1, 5}, DT_FLOAT16, FORMAT_ND, {{1, 60}, {5, 5}}},
                OP_TUPLE{{6, -1}, DT_FLOAT16, FORMAT_ND, {{6, 6}, {5, 90}}},
                {},
                true,
                true,
-               RES_TUPLE{{5, 6}, {{5, 5}, {6, 6}}}},
+               RES_TUPLE{{5, 6}, {{5, 5}, {6, 6}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{-2}, DT_FLOAT16, FORMAT_ND, {}},
                OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
                {},
                true,
                false,
-               RES_TUPLE{{-1, -1}, {{1, -1}, {1, 60}}}},
+               RES_TUPLE{{-1, -1}, {{1, -1}, {1, 60}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{-1, -1}, DT_FLOAT16, FORMAT_ND, {{1, 80}, {1, 80}}},
                OP_TUPLE{{5, -1}, DT_FLOAT16, FORMAT_ND, {{5, 5}, {1, 60}}},
                {},
                false,
                false,
-               RES_TUPLE{{-1, -1}, {{1, 80}, {1, 60}}}},
+               RES_TUPLE{{-1, -1}, {{1, 80}, {1, 60}}, PASS}},
     CASE_TUPLE{OP_TUPLE{{80, 5}, DT_FLOAT16, FORMAT_ND, {{1, 5}, {1, 5}, {16, 16}, {16, 16}}},
                OP_TUPLE{{5, 60}, DT_FLOAT16, FORMAT_ND, {{1, 4}, {1, 1}, {16, 16}, {16, 16}}},
                {},
                false,
                false,
-               RES_TUPLE{{80, 60}, {{80, 80}, {60, 60}}}},
+               RES_TUPLE{{80, 60}, {{80, 80}, {60, 60}}, PASS}},
+    /* dfx */
+    CASE_TUPLE{OP_TUPLE{{32, 32}, DT_FLOAT16, FORMAT_ND, {}},
+            OP_TUPLE{{-1, 64}, DT_FLOAT16, FORMAT_ND, {{4,5}}},
+            {},
+            false,
+            false,
+            RES_TUPLE{{}, {}, FAILED}},
+    CASE_TUPLE{OP_TUPLE{{32, -1}, DT_FLOAT16, FORMAT_ND, {{2, 3}}},
+            OP_TUPLE{{-1, 64}, DT_FLOAT16, FORMAT_ND, {{4,5}}},
+            {},
+            false,
+            false,
+            RES_TUPLE{{}, {}, FAILED}},
+    CASE_TUPLE{OP_TUPLE{{32, -1}, DT_FLOAT16, FORMAT_ND, {{2, 3}}},
+            OP_TUPLE{{64, 64}, DT_FLOAT16, FORMAT_ND, {}},
+            {},
+            false,
+            false,
+            RES_TUPLE{{}, {}, FAILED}},
+    CASE_TUPLE{OP_TUPLE{{32, 32}, DT_FLOAT16, FORMAT_ND, {}},
+            OP_TUPLE{{-1, 64}, DT_FLOAT16, FORMAT_ND, {{4, 5}}},
+            {},
+            false,
+            false,
+            RES_TUPLE{{}, {}, FAILED}},
+    // support vector op
+    CASE_TUPLE{OP_TUPLE{{32, 32}, DT_FLOAT16, FORMAT_ND, {}},
+            OP_TUPLE{{32, 64}, DT_FLOAT16, FORMAT_ND, {{4, 5}}},
+            {},
+            false,
+            false,
+            RES_TUPLE{{32, 64}, {{32, 32}, {64, 64}}, PASS}},
 };
 
 MatMulV2 CreateMatMulV2Op(OP_TUPLE a, OP_TUPLE b, OP_TUPLE bias,
@@ -131,9 +165,14 @@ MatMulV2 CreateMatMulV2Op(OP_TUPLE a, OP_TUPLE b, OP_TUPLE bias,
   return op;
 }
 
-void Operate(MatMulV2 &op) {
+void Operate(MatMulV2& op, bool expected_result) {
   auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, GRAPH_SUCCESS);
+
+  if (expected_result == PASS) {
+    EXPECT_EQ(ret, GRAPH_SUCCESS);
+  } else {
+    EXPECT_EQ(ret, GRAPH_FAILED);
+  }
 }
 
 void Check(MatMulV2 &op, const RES_TUPLE &expected) {
@@ -142,6 +181,17 @@ void Check(MatMulV2 &op, const RES_TUPLE &expected) {
   auto shape = output_desc.GetShape().GetDims();
   vector<pair<int64_t,int64_t>> range;
   EXPECT_EQ(output_desc.GetShapeRange(range), GRAPH_SUCCESS);
+
+  cout << "shape of output: (";
+  for (auto v : shape) {
+    cout << v << ", ";
+  }
+  cout << ")" << endl;
+  cout << "range of output: (";
+  for (auto v : range) {
+    cout << "(" << v.first << ", " << v.second << "), ";
+  }
+  cout << ")" << endl;
 
   EXPECT_EQ(shape, get<0>(expected));
   EXPECT_EQ(range, get<1>(expected));
@@ -160,9 +210,14 @@ TEST_P(MatMulV2Test, General) {
                              std::get<3>(GetParam()),
                              std::get<4>(GetParam()));
 
-  Operate(op);
+  auto result_tuple = get<5>(GetParam());
+  auto expected_result = get<2>(result_tuple);
 
-  Check(op, get<5>(GetParam()));
+  Operate(op, expected_result);
+
+  if (expected_result == PASS) {
+    Check(op, result_tuple);
+  }
 }
 
 INSTANTIATE_TEST_CASE_P(DynamicShape,
@@ -183,11 +238,11 @@ TEST_F(MatMulV2Test, split_test0) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   std::vector<std::vector<int64_t>> x2_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x2_data_slice = {{0, 1}, {}, {}, {}};
   EXPECT_EQ(expect_x2_data_slice, x2_data_slice);
 }
@@ -206,11 +261,11 @@ TEST_F(MatMulV2Test, split_test1) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   std::vector<std::vector<int64_t>> x1_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{}, {0, 1}, {}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }
@@ -229,11 +284,11 @@ TEST_F(MatMulV2Test, split_test2) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   std::vector<std::vector<int64_t>> x2_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x2_data_slice = {{}, {0, 15}};
   EXPECT_EQ(expect_x2_data_slice, x2_data_slice);
 }
@@ -252,11 +307,11 @@ TEST_F(MatMulV2Test, split_test3) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   std::vector<std::vector<int64_t>> x1_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{16, 31}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }

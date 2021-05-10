@@ -213,11 +213,11 @@ TEST_F(matmul_infer_test, split_test0) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   std::vector<std::vector<int64_t>> x2_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x2_data_slice = {{0, 1}, {}, {}, {}};
   EXPECT_EQ(expect_x2_data_slice, x2_data_slice);
 }
@@ -236,11 +236,11 @@ TEST_F(matmul_infer_test, split_test1) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   std::vector<std::vector<int64_t>> x1_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{}, {0, 1}, {}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }
@@ -259,11 +259,11 @@ TEST_F(matmul_infer_test, split_test2) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   std::vector<std::vector<int64_t>> x2_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x2_data_slice = {{}, {0, 15}};
   EXPECT_EQ(expect_x2_data_slice, x2_data_slice);
 }
@@ -282,11 +282,11 @@ TEST_F(matmul_infer_test, split_test3) {
   ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
   auto status = op_desc->InferDataSlice();
-  
+
   ge::GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   std::vector<std::vector<int64_t>> x1_data_slice;
   ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
-    
+
   std::vector<std::vector<int64_t>> expect_x1_data_slice = {{16, 31}, {}};
   EXPECT_EQ(expect_x1_data_slice, x1_data_slice);
 }
@@ -377,7 +377,7 @@ TEST_F(matmul_infer_test, supportcheckerror1) {
   auto ret = op.InferShapeAndType();
 
   // check result
-  EXPECT_EQ(ret, false);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 TEST_F(matmul_infer_test, supportcheckerror2) {
@@ -427,7 +427,7 @@ TEST_F(matmul_infer_test, supportcheckerror3) {
   auto ret = op.InferShapeAndType();
 
   // check result
-  EXPECT_EQ(ret, false);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 TEST_F(matmul_infer_test, supportcheckerror4) {
@@ -452,7 +452,7 @@ TEST_F(matmul_infer_test, supportcheckerror4) {
   auto ret = op.InferShapeAndType();
 
   // check result
-  EXPECT_EQ(ret, false);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 TEST_F(matmul_infer_test, supportcheckerror5) {
@@ -477,5 +477,5 @@ TEST_F(matmul_infer_test, supportcheckerror5) {
   auto ret = op.InferShapeAndType();
 
   // check result
-  EXPECT_EQ(ret, false);
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
