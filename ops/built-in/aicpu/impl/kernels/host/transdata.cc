@@ -138,12 +138,7 @@ namespace aicpu {
 bool TransDataCpuKernel::IsOriginSupportFormatTransfer(Format src_format,
                                                        Format dst_format) {
   static const map<Format, map<Format, int32_t>> kOriginSupportFormatTransfer =
-      {{FORMAT_NHWC, {{FORMAT_FRACTAL_Z, 1}}},
-       {FORMAT_NCHW, {{FORMAT_FRACTAL_Z, 1}}},
-       {FORMAT_HWCN, {{FORMAT_FRACTAL_Z_C04, 1}, {FORMAT_FRACTAL_Z, 1}}},
-       {FORMAT_NCDHW, {{FORMAT_FRACTAL_Z_3D, 1}}},
-       {FORMAT_DHWCN, {{FORMAT_FRACTAL_Z_3D, 1}}},
-       {FORMAT_NDHWC, {{FORMAT_FRACTAL_Z_3D, 1}}}};
+      {{FORMAT_HWCN, {{FORMAT_FRACTAL_Z_C04, 1}}}};
   auto dst = kOriginSupportFormatTransfer.find(src_format);
   if (dst == kOriginSupportFormatTransfer.end()) {
     return false;
@@ -176,6 +171,12 @@ uint32_t TransDataCpuKernel::NewCompute(CpuKernelContext &ctx) {
                        kTransData);
   auto output_dims = output_shape->GetDimSizes();
   auto output_format = output_shape->GetFormat();
+
+  AttrValue *groups = ctx.GetAttr("groups");
+  int64_t group = kGroupNum;
+  if (groups != nullptr) {
+      group = groups->GetInt();
+     }
   KERNEL_LOG_INFO(
       "Begin trans formats from [%s] to [%s], shape [%s] to [%s], data type "
       "[%s] to [%s]",
@@ -189,7 +190,8 @@ uint32_t TransDataCpuKernel::NewCompute(CpuKernelContext &ctx) {
       static_cast<Format>(GetPrimaryFormat(output_format)),
       input_dims,
       output_dims,
-      input_data_type};
+      input_data_type,
+      group};
   if (input_data_type != output_data_type || input_dims.empty() ||
       !formats::FormatTransferExists(trans_args)) {
     KERNEL_LOG_WARN(
@@ -236,9 +238,6 @@ uint32_t TransDataCpuKernel::NewCompute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-int32_t TransDataCpuKernel::GetPrimaryFormat(int32_t format) {
-  return static_cast<int32_t>(static_cast<uint32_t>(format) & 0xff);
-}
 template <typename T>
 uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
                                       Tensor *input_tensor,

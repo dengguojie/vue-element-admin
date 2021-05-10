@@ -36,6 +36,7 @@ struct TransArgs {
   std::vector<int64_t> src_shape;
   std::vector<int64_t> dst_shape;
   DataType src_data_type;
+  int64_t groups;
 };
 
 struct TransResult {
@@ -51,7 +52,8 @@ class FormatTransfer {
   virtual uint32_t TransShape(Format src_format,
                               const std::vector<int64_t> &src_shape,
                               DataType data_type, Format dst_format,
-                              std::vector<int64_t> &dst_shape) = 0;
+                              std::vector<int64_t> &dst_shape,
+                              int64_t groups) = 0;
 };
 
 using FormatTransferBuilder = std::function<std::shared_ptr<FormatTransfer>()>;

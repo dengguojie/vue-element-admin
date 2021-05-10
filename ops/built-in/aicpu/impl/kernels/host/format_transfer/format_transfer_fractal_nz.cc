@@ -362,7 +362,8 @@ uint32_t FormatTransferFractalNz::TransShape(Format src_format,
                                              const ShapeVector &src_shape,
                                              DataType data_type,
                                              Format dst_format,
-                                             ShapeVector &dst_shape) {
+                                             ShapeVector &dst_shape,
+                                             int64_t groups) {
   if (!IsDataTypeSupport(data_type)) {
     KERNEL_LOG_ERROR(
         "Trans format from [%s] to [%s], src shape [%s], data type [%s] is not "
@@ -432,7 +433,8 @@ uint32_t FormatTransferFractalNzND::TransShape(Format src_format,
                                                const ShapeVector &src_shape,
                                                DataType data_type,
                                                Format dst_format,
-                                               ShapeVector &dst_shape) {
+                                               ShapeVector &dst_shape,
+                                               int64_t groups) {
   KERNEL_LOG_ERROR(
       "The shape derivation from [%s] to [%s] is not unique. Trans shape is "
       "not supported",

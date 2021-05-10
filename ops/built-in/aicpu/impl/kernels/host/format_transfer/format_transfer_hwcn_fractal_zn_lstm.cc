@@ -291,7 +291,7 @@ uint32_t FormatTransferHwcnFractalznlstm::TransFormat(const TransArgs &args, Tra
 }
 
 uint32_t FormatTransferHwcnFractalznlstm::TransShape(Format src_format, const std::vector<int64_t> &src_shape,
-                                               DataType data_type, Format dst_format, std::vector<int64_t> &dst_shape) {
+                                               DataType data_type, Format dst_format, std::vector<int64_t> &dst_shape, int64_t groups) {
   if (src_format == FORMAT_HWCN && CheckDataTypeSupported(data_type)) {
     if (!CheckShapeValid(src_shape, kHwcnDimsNum)) {
       KERNEL_LOG_ERROR("Failed to check src shape %s",

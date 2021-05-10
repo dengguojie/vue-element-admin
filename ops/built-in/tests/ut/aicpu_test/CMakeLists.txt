@@ -67,7 +67,9 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_utils.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_z.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_nz.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractalz3d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
@@ -109,6 +111,7 @@ add_library(cpu_kernels_llt STATIC
 add_dependencies(cpu_kernels_llt eigen_headers)
 
 set(cpu_kernels_llt_include
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer
   ${CPU_KERNELS_DIR}
   ${CPU_KERNELS_DIR}/utils
   ${CPU_CONTEXT_DIR}/inc
@@ -164,6 +167,8 @@ set(_cpu_kernels_ut_files
   testcase/concatv2/src/concatv2_utest.cpp
   testcase/equal/src/equal_utest.cpp
   testcase/fill/src/fill_utest.cpp
+  testcase/trans_data/src/trans_data_utest.cpp
+  testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
   testcase/identity/src/identity_utest.cpp
   testcase/less/src/less_utest.cpp

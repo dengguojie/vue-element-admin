@@ -107,7 +107,7 @@ inline int32_t GetSubFormat(int32_t format) {
 inline bool HasSubFormat(int32_t format) { return GetSubFormat(format) > 0; }
 
 /**
- * @brief Judge whether tensor is empty 
+ * @brief Judge whether tensor is empty
  * @param tensor need judged tensor
  * @return true: is empty tensor, false: isn't empty tensor
  */

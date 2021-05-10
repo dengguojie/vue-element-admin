@@ -13,31 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_HOST_FORMAT_TRANSFER_FORMAT_TRANSFERS_FORMAT_TRANSFER_FRACTAL_NZ_H_
-#define AICPU_KERNELS_HOST_FORMAT_TRANSFER_FORMAT_TRANSFERS_FORMAT_TRANSFER_FRACTAL_NZ_H_
+#ifndef AICPU_KERNELS_HOST_FORMAT_TRANSFER_FORMAT_TRANSFER_FRACTAL_Z_H_
+#define AICPU_KERNELS_HOST_FORMAT_TRANSFER_FORMAT_TRANSFER_FRACTAL_Z_H_
 
 #include "register_format_transfer.h"
 
 namespace aicpu {
 namespace formats {
-// transfer from nd to nz
-class FormatTransferFractalNz : public FormatTransfer {
+class FormatTransferFractalZ : public FormatTransfer {
  public:
   uint32_t TransFormat(const TransArgs &args, TransResult &result) override;
   uint32_t TransShape(Format src_format, const std::vector<int64_t> &src_shape,
                       DataType data_type, Format dst_format,
-                      std::vector<int64_t> &dst_shape,
-                      int64_t groups) override;
-};
-
-// transfer nz to nd
-class FormatTransferFractalNzND : public FormatTransfer {
- public:
-  uint32_t TransFormat(const TransArgs &args, TransResult &result) override;
-  uint32_t TransShape(Format src_format, const std::vector<int64_t> &src_shape,
-                      DataType data_type, Format dst_format,
-                      std::vector<int64_t> &dst_shape,
-                      int64_t groups) override;
+                      std::vector<int64_t> &dst_shape, int64_t groups) override;
 };
 }  // namespace formats
 }  // namespace aicpu

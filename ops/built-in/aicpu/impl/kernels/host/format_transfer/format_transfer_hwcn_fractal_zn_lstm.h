@@ -27,7 +27,7 @@ class FormatTransferHwcnFractalznlstm : public FormatTransfer {
  public:
   uint32_t TransFormat(const TransArgs &args, TransResult &result) override;
   uint32_t TransShape(Format src_format, const std::vector<int64_t> &src_shape, DataType data_type, Format dst_format,
-                    std::vector<int64_t> &dst_shape) override;
+                    std::vector<int64_t> &dst_shape, int64_t groups) override;
 };
 }  // namespace formats
 }  // namespace aicpu

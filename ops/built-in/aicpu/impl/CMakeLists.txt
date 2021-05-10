@@ -35,6 +35,8 @@ set(local_kernels_src_files
 set(local_host_kernels_src_files
     kernels/host/transdata.cc
     kernels/host/format_transfer/format_transfer_fractal_nz.cc
+    kernels/host/format_transfer/format_transfer_fractal_z.cc
+    kernels/host/format_transfer/format_transfer_fractalz_3d.cc
     kernels/host/format_transfer/format_transfer_hwcn_fractal_zn_lstm.cc
     kernels/host/format_transfer/format_transfer_utils.cc
     kernels/host/format_transfer/register_format_transfer.cc
