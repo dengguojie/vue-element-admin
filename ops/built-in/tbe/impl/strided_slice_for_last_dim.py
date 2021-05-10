@@ -15,25 +15,44 @@
 """
 strided_slice_for_last_dim
 """
+import functools
+
 from te import tik
 from te import platform as tbe_platform
+from impl import common_util
+from impl.util.util_tik_comm_func import floor_align
+from impl.util.util_tik_comm_func import ceil_align
+from impl.util.util_tik_comm_func import ceil_div
+from impl.util.util_tik_comm_func import gm2ub
+from impl.util.util_tik_comm_func import ub2gm
+
 
 # constant 8
 NUM_EIGHT = 8
 
+VNCHW_BLOCK_SIZE = 512
+VNCHW_ELEMENT_FP16 = VNCHW_BLOCK_SIZE // 2
+
+
+def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride, kernel_name):
+    """
+    strided slice for only last dim to slice
+
+    Returns
+    -------
+    tik_instance: tik_instance
+    """
+    if _can_do_with_vnchw_conv(input_shape, dtype, begin, end, stride):
+        return strided_slice_last_dim_with_vnchw_conv(input_shape, dtype, begin, end, stride, kernel_name)
+
+    return strided_slice_last_dim_with_scalar(input_shape, dtype, output_shape, begin, end, stride, kernel_name)
 
 # pylint: disable=invalid-name, too-many-locals, unused-argument
 # pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
 # pylint: disable=too-many-branches, too-many-statements
-def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride, kernel_name):
+def strided_slice_last_dim_with_scalar(input_shape, dtype, output_shape, begin, end, stride, kernel_name):
     """
-    the main function of npu_clear_float_status
-
-    Parameters
-    ----------
-    addr: dict,shape and datatype,datatype supports float32
-    data: dict,shape and datatype,datatype supports float32
-    kernel_name: cce kernel name, default value is "n_p_u_clear_float_status"
+    strided slice for only last dim to slice with scalar
 
     Returns
     -------
@@ -136,9 +155,6 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
     if split_factor_group_2 != 1:
         return False
 
-    if split_factor_group_2 != 1:
-        return False
-
     if output_group_1 % consecutive_num != 0 or output_group_2 % consecutive_num != 0:
         return False
 
@@ -173,6 +189,11 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
 
     input_ub_size = max(input_ub_size0, input_ub_size1)
     output_ub_size = max(output_ub_size0, output_ub_size1)
+
+    dtype_size = common_util.get_data_size(dtype)
+    total_ub_size = tik.Dprofile().get_unified_buffer_size()
+    if input_ub_size + output_ub_size > total_ub_size // dtype_size:
+        return False
 
     # ub_size change
     input_data_ub = tik_instance.Tensor(dtype,
@@ -244,5 +265,145 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
                                            0, 1, group_2_length, 0, 0)
 
     tik_instance.BuildCCE(kernel_name, inputs=[input_data], outputs=[output_data])
+
+    return tik_instance
+
+
+def _can_do_with_vnchw_conv(input_shape, dtype, begin, end, stride):
+    """
+    Determining if it can use vnchw_conv to do.
+    """
+    dtype_size = common_util.get_data_size(dtype)
+    if dtype_size % 2 != 0:
+        return False
+
+    float16_type_size = common_util.get_data_size("float16")
+    input_inner_dims = input_shape[-1] * dtype_size // float16_type_size
+    need_ub_size = (16 * input_inner_dims * 2) * float16_type_size
+    element_each_block = common_util.constant.BLOCK_SIZE // float16_type_size
+
+    total_ub_size = tik.Dprofile().get_unified_buffer_size()
+    if len(input_shape) < 2:
+        return False
+
+    input_out_dims = functools.reduce(lambda x, y: x * y, input_shape[0:-1])
+    output_shape = list(map(lambda x, y, z: (x - y) // z, end, begin, stride))
+    output_out_dims = functools.reduce(lambda x, y: x * y, output_shape[0:-1])
+    if input_out_dims != output_out_dims:
+        return False
+
+    # in this case, scalar make better performance
+    if input_shape[-1] // output_shape[-1] > 32:
+        return False
+
+    # if not double buffer the performance will not better than do with scalar
+    double_buffer_mutil_times = 2
+    return need_ub_size * element_each_block * double_buffer_mutil_times <= total_ub_size and input_out_dims > 2
+
+
+# pylint: disable=invalid-name, too-many-locals, unused-argument
+# pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
+# pylint: disable=too-many-branches, too-many-statements
+def strided_slice_last_dim_with_vnchw_conv(input_shape, dtype, begin, end, stride, kernel_name):
+    """
+    strided slice for only last dim to slice with vnchw_conv
+    """
+    dtype_size = common_util.get_data_size(dtype)
+    output_shape = list(map(lambda x, y, z: (x - y) // z, end, begin, stride))
+    float16_type_size = common_util.get_data_size("float16")
+    multi_times = dtype_size // float16_type_size
+    input_inner_dims = input_shape[-1] * multi_times
+    output_inner_dims = (end[-1] - begin[-1]) // stride[-1] * multi_times
+    out_dims = functools.reduce(lambda x, y: x * y, input_shape[0:-1])
+    begin_value = begin[-1] * multi_times
+    end_value = end[-1] * multi_times
+    profile = tik.Dprofile()
+    total_ub_length = profile.get_unified_buffer_size() // float16_type_size
+    need_ub_size_one_row = 16 * input_inner_dims * 2
+    element_each_block = common_util.constant.BLOCK_SIZE // float16_type_size
+    thread_num = 2
+    ub_size = floor_align(total_ub_length // 2 // thread_num, element_each_block)
+    max_rows_in_ub = floor_align(ub_size // (input_inner_dims * 16), element_each_block)
+    aicore_num = profile.get_aicore_num()
+    output_32byes_align_rows = element_each_block
+    if element_each_block % output_inner_dims == 0:
+        output_32byes_align_rows = element_each_block // output_inner_dims
+    elif output_inner_dims % element_each_block == 0:
+        output_32byes_align_rows = 1
+
+    rows_each_core = ceil_align(ceil_div(out_dims, aicore_num), output_32byes_align_rows)
+    aicore_num_used = ceil_div(out_dims, rows_each_core)
+    tail_rows = out_dims % rows_each_core
+    if aicore_num_used == 1:
+        rows_each_core = out_dims
+        tail_rows = 0
+
+    tik_instance = tik.Tik()
+    input_gm = tik_instance.Tensor("float16", (out_dims, input_inner_dims), scope=tik.scope_gm, name="input_gm")
+    output_gm = tik_instance.Tensor("float16", (out_dims, output_inner_dims), scope=tik.scope_gm, name="output_gm")
+
+    def slice_each_core(blk_idx, to_do_rows, thread_num):
+        thread_num = min(to_do_rows, thread_num)
+        repeat_times = ceil_align(ceil_div(to_do_rows, max_rows_in_ub), thread_num)
+        rows_each_repeat = ceil_align(to_do_rows // repeat_times, output_32byes_align_rows)
+        if rows_each_repeat > max_rows_in_ub:
+            rows_each_repeat = floor_align(to_do_rows // repeat_times, output_32byes_align_rows)
+        repeat_times = ceil_div(to_do_rows, rows_each_repeat)
+        repeat_tail_count = to_do_rows % rows_each_repeat
+
+        input_addr = rows_each_core * input_inner_dims * blk_idx
+        output_addr = rows_each_core * output_inner_dims * blk_idx
+
+        roll_back_rows = tik_instance.Scalar(dtype="int64", name="roll_back_rows", init_value=0)
+        curr_rows = tik_instance.Scalar(dtype="int64", name="curr_rows", init_value=rows_each_repeat)
+        if repeat_tail_count * output_inner_dims % element_each_block != 0:
+            roll_back_rows.set_as(ceil_align(repeat_tail_count, element_each_block) - repeat_tail_count)
+
+        with tik_instance.new_stmt_scope():
+            thread_num = min(repeat_times, thread_num)
+            with tik_instance.for_range(0, repeat_times, thread_num=thread_num) as repeat_idx:
+                rows_idx = tik_instance.Scalar(dtype="int64", name="rows_idx", init_value=repeat_idx * rows_each_repeat)
+                if repeat_tail_count * output_inner_dims % element_each_block != 0 and repeat_times != 1:
+                    with tik_instance.if_scope(repeat_idx == repeat_times - 1):
+                        rows_idx.set_as(rows_idx - roll_back_rows)
+                        curr_rows.set_as(repeat_tail_count + roll_back_rows)
+
+                input_ub = tik_instance.Tensor("float16", (ub_size, ), scope=tik.scope_ubuf, name="input_ub")
+                vnchw_conv_ub = tik_instance.Tensor("float16", (ub_size, ), scope=tik.scope_ubuf, name="vnchw_conv_ub")
+                gm2ub(tik_instance, input_ub, input_gm[input_addr + rows_idx * input_inner_dims],
+                      curr_rows * input_inner_dims)
+                dst_list = [vnchw_conv_ub[i * element_each_block] for i in range(16)]
+                src_list = [input_ub[i * element_each_block] for i in range(16)]
+                vnchw_conv_repeat_times = ceil_div(curr_rows * input_inner_dims, 16)
+                with tik_instance.if_scope(vnchw_conv_repeat_times == 1):
+                    tik_instance.vnchwconv(False, False, dst_list, src_list, vnchw_conv_repeat_times, 0, 0)
+                with tik_instance.else_scope():
+                    tik_instance.vnchwconv(False, False, dst_list, src_list, vnchw_conv_repeat_times, 16, 1)
+                tik_instance.data_move(input_ub, vnchw_conv_ub[begin_value * 16],
+                                       0, curr_rows, output_inner_dims, input_inner_dims - output_inner_dims, 0)
+
+                dst_list = [vnchw_conv_ub[i * element_each_block] for i in range(16)]
+                src_list = [input_ub[i * element_each_block] for i in range(16)]
+                vnchw_conv_repeat_times = ceil_div(curr_rows * output_inner_dims, 16)
+                with tik_instance.if_scope(vnchw_conv_repeat_times == 1):
+                    tik_instance.vnchwconv(False, False, dst_list, src_list, vnchw_conv_repeat_times, 0, 0)
+                with tik_instance.else_scope():
+                    tik_instance.vnchwconv(False, False, dst_list, src_list, vnchw_conv_repeat_times, 1, 16)
+
+                ub2gm(tik_instance, output_gm[output_addr + rows_idx * output_inner_dims],
+                      vnchw_conv_ub, curr_rows * output_inner_dims)
+
+    with tik_instance.for_range(0, aicore_num_used, block_num=aicore_num_used) as blk_idx:
+        if tail_rows != 0:
+            with tik_instance.if_scope(blk_idx < aicore_num_used -1):
+                slice_each_core(blk_idx, rows_each_core, thread_num)
+            with tik_instance.else_scope():
+                slice_each_core(blk_idx, tail_rows, thread_num)
+        else:
+            slice_each_core(blk_idx, rows_each_core, thread_num)
+
+    opt_config = {"out_of_bound_sync_check": True,
+                  "enable_const_fold": True}
+    tik_instance.BuildCCE(kernel_name, inputs=[input_gm], outputs=[output_gm], config=opt_config)
 
     return tik_instance

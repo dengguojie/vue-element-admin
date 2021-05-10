@@ -428,7 +428,22 @@ def ceil_align(count, base):
 
     Returns
     -------
-        `count` align of `base`
+        `count` ceil align of `base`
     """
     return ceil_div(count, base) * base
 
+
+def floor_align(count, base):
+    """
+    Get the floor number `count` align of `base`
+
+    Parameters
+    ----------
+    count :
+    base :
+
+    Returns
+    -------
+        `count` floor align of `base`
+    """
+    return count // base * base
