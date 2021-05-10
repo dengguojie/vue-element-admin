@@ -51,7 +51,7 @@ case2 = {
         "range": [(None, 2147483647), (2, 10), (0, 5)]
     }],
     "case_name":
-        "test_dync_bc_2",
+        "test_dynamic_broadcast_classify_op_impl_2",
     "expect":
         "success",
     "support_expect":
@@ -73,7 +73,7 @@ case3 = {
         "range": [(50, 50), (10, 10)]
     }],
     "case_name":
-        "test_dync_bc_3",
+        "test_dynamic_broadcast_classify_op_impl_3",
     "expect":
         "success",
     "support_expect":
@@ -95,7 +95,7 @@ case4 = {
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_bc_4",
+        "test_dynamic_broadcast_classify_op_impl_4",
     "expect":
         "success",
     "support_expect":
@@ -117,13 +117,12 @@ case5 = {
         "range": [(1, None), (1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_bc_5",
+        "test_dynamic_broadcast_classify_op_impl_5",
     "expect":
         "success",
     "support_expect":
         True
 }
-
 
 case6 = {
     "params": [{
@@ -140,15 +139,176 @@ case6 = {
         "range": [(1, None), (2, None), (2, None), (1, None)]
     }],
     "case_name":
-        "test_dync_bc_6",
+        "test_dynamic_broadcast_classify_op_impl_6",
     "expect":
         "success",
     "support_expect":
         True
 }
 
-ut_case.add_case(["Ascend310", "Ascend910", "Ascend710"], case2)
-ut_case.add_case(["Ascend310", "Ascend910", "Ascend710"], case3)
-ut_case.add_case(["Ascend310", "Ascend910", "Ascend710"], case4)
-ut_case.add_case(["Ascend310", "Ascend910"], case5)
-ut_case.add_case(["Ascend310", "Ascend910"], case6)
+case7 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(0, 0), (1, None)]
+    }, {
+        "shape": (-1, 1),
+        "dtype": "float32",
+        "range": [(0, 0), (1, 1)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(0, 1), (1, None)]
+    }],
+    "case_name":
+        "test_dynamic_broadcast_classify_op_impl_7",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case8 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, 10), (1, 10)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(11, 100), (2, 7)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, 100), (1, None)]
+    }],
+    "case_name":
+        "test_dynamic_broadcast_classify_op_impl_8",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case9 = {
+    "params": [{
+        "shape": (-1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, 10), (2, None), (10, 100)]
+    }, {
+        "shape": (1, 1, 11),
+        "dtype": "float32",
+        "range": [(1, 1), (1, 1), (11, 11)]
+    }, {
+        "shape": (-1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, 10), (1, None), (1, None)]
+    }],
+    "case_name":
+        "test_dynamic_broadcast_classify_op_impl_9",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case10 = {
+    "params": [{
+        "shape": (-1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, 10), (1, None), (10, 100)]
+    }, {
+        "shape": (1, -1, 1),
+        "dtype": "float32",
+        "range": [(1, 1), (1, None), (1, 1)]
+    }, {
+        "shape": (-1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, 10), (1, None), (1, None)]
+    }],
+    "case_name":
+        "test_dynamic_broadcast_classify_op_impl_10",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case11 = {
+    "params": [{
+        "shape": (-1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (2, None), (1, None)]
+    }, {
+        "shape": (-1, 1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, 1), (1, None)]
+    }, {
+        "shape": (-1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None), (1, None)]
+    }],
+    "case_name":
+        "test_dynamic_broadcast_classify_op_impl_11",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case12 = {
+    "params": [{
+        "shape": (-1, -1, -1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (2, None), (2, None), (2, None), (1, None)]
+    }, {
+        "shape": (-1, -1, 1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (2, None), (1, 1), (2, None), (1, None)]
+    }, {
+        "shape": (-1, -1, -1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (2, None), (1, None), (2, None), (1, None)]
+    }],
+    "case_name":
+        "test_dynamic_broadcast_classify_op_impl_12",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case13 = {
+    "params": [{
+        "shape": (-1, -1, 1, -1, 20, -1),
+        "dtype": "float32",
+        "range": [(2, None), (1, None), (1, 1), (1, None), (20, 20), (1, None)]
+    }, {
+        "shape": (1, -1, -1, -1, 20, -1),
+        "dtype": "float32",
+        "range": [(1, 1), (1, None), (2, None), (1, None), (20, 20), (1, None)]
+    }, {
+        "shape": (-1, -1, -1, -1, -1, -1),
+        "dtype": "float32",
+        "range": [(2, None), (1, None), (2, None), (1, None), (20, 20), (1, None)]
+    }],
+    "case_name":
+        "test_dynamic_broadcast_classify_op_impl_13",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend710"], case2)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend710"], case3)
+ut_case.add_case(["Ascend310", "Ascend910A", "Ascend710"], case4)
+ut_case.add_case(["Ascend310", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310", "Ascend910A"], case13)

@@ -31,12 +31,8 @@ def test_static_tiling(_):
             b_sch = BroadcastSchedule([out], tiling_case)
             b_sch._out = out
             b_sch._schedule = tvm.create_schedule(b_sch._out.op)
-            try:
-                b_sch._calc_tiling_static()
-                b_sch._do_tiling_static()
-            except RuntimeError as e:
-                print(e)
-                return False
+            b_sch._calc_tiling_static()
+            b_sch._do_tiling_static()
             return True
 
 
@@ -58,12 +54,8 @@ def test_all_tiling(_):
             b_sch = BroadcastSchedule([out], tiling_case)
             b_sch._out = out
             b_sch._schedule = tvm.create_schedule(b_sch._out.op)
-            try:
-                b_sch._calc_tiling_all_cut()
-                b_sch._do_tiling_all_cut()
-            except RuntimeError as e:
-                print(e)
-                return False
+            b_sch._calc_tiling_all_cut()
+            b_sch._do_tiling_all_cut()
             return True
 
 

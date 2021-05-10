@@ -853,7 +853,7 @@ class BroadcastSchedule(Schedule):
             common_tensor = self._in_out_map[tensor_i] - \
                             (self._all_pre_node_broadcast | self._broadcast_store_predicate)
             if len(common_tensor) > 0:
-                self._store_predicate_common_tensors.update(common_tensor)
+                self._store_predicate_common_tensors.add(tensor_i)
 
     def _calc_storage_bound(self):
         def _correct_ub_size_by_cmp_sel(_tensor):

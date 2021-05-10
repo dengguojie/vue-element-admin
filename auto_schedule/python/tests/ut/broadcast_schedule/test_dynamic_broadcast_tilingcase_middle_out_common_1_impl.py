@@ -24,8 +24,8 @@ def dsl_dync_vmulout(x, y, z, kernel_name="dsl_dync_vmulout"):
             input_y_fp32 = tbe.dsl.broadcast(data2, shape)
 
             sub = tbe.dsl.vsub(input_x_fp32, input_y_fp32)
-            res1 = tbe.dsl.vabs(sub)
-            res = tbe.dsl.vadd(res1, input_y_fp32)
+            res1 = tbe.dsl.vmuls(data1, tvm.const(1, dtype=dtype))
+            res = tbe.dsl.vadd(sub, input_y_fp32)
 
             tensors.append((data1, data2, res1, res))
 
@@ -37,23 +37,23 @@ def dsl_dync_vmulout(x, y, z, kernel_name="dsl_dync_vmulout"):
     tbe.dsl.build(schedules, config)
 
 
-ut_case = OpUT("vmiddleout", "broadcast_schedule.test_dynamic_broadcast_tilingcase_middle_out_impl", "dsl_dync_vmulout")
+ut_case = OpUT("vmiddleout", "broadcast_schedule.test_dynamic_broadcast_tilingcase_middle_out_common_1_impl", "dsl_dync_vmulout")
 case1 = {
     "params": [{
-        "shape": (1, -1),
+        "shape": (-1, 1, 8192),
         "dtype": "float16",
-        "range": [(1, None), (1, None)]
+        "range": [(1, None), (1, 1), (8192, 8192)]
     }, {
-        "shape": (-1, -1),
+        "shape": (-1, -1, -1),
         "dtype": "float16",
-        "range": [(1, None), (1, None)]
+        "range": [(1, None), (2, None), (1, 8192)]
     }, {
-        "shape": (-1, -1),
+        "shape": (-1, -1, 8192),
         "dtype": "float16",
-        "range": [(1, None), (1, None)]
+        "range": [(2, None), (1, None), (8192, 8192)]
     }],
     "case_name":
-        "test_dynamic_broadcast_tilingcase_middle_out_impl_1",
+        "test_dynamic_broadcast_tilingcase_middle_out_common_1_impl_1",
     "expect":
         "success",
     "support_expect":

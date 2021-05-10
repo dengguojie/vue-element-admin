@@ -27,10 +27,10 @@ def dsl_dync_vmulout(x, y, z, kernel_name="dsl_dync_vmulout"):
             res1 = tbe.dsl.cast_to(sub, "float32")
             res = tbe.dsl.vadd(input_x_fp32, input_y_fp32)
 
-            tensors.append((data1, data2, res1, res))
+            tensors.append((data1, data2, res, res1))
 
         with tvm.target.cce():
-            sch = tbe.dsl.auto_schedule([res1, res])
+            sch = tbe.dsl.auto_schedule([res, res1])
         schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
@@ -53,10 +53,10 @@ case1 = {
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_bc_1",
+        "test_dynamic_broadcast_tilingcase_mul_out_impl_1",
     "expect":
         "success",
     "support_expect":
         True
 }
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)

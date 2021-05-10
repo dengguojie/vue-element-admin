@@ -46,11 +46,11 @@ case1 = {
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_bc_1",
+        "test_dynamic_broadcast_schedule_op_impl_1",
     "expect":
         "success",
     "support_expect":
         True
 }
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)

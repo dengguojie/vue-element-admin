@@ -165,15 +165,21 @@
     ],
     "auto_schedule/python/tbe/dsl/base/classifier/broadcast_elewise_classifier.py":[
         "vsub",
-        "broadcast_classify"
+        "broadcast_classify",
+        "broadcast_schedule",
+        "broadcast_tilingcase"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/broadcast_tilingcase.py":[
         "vsub",
+        "broadcast_classify",
+        "broadcast_schedule",
         "broadcast_tilingcase"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/broadcast_schedule.py":[
         "vsub",
-        "broadcast_schedule"
+        "broadcast_classify",
+        "broadcast_schedule",
+        "broadcast_tilingcase"
     ],
     "auto_schedule/python/tbe/dsl/static_schedule/elewise_schedule_new.py":[
         "vadd/test_vadd_impl.py",
