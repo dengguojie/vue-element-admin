@@ -57,15 +57,20 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
 
     # cast to type float32 when type is float16
     has_improve_precision = False
-    if dtype.lower() == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
+    if dtype.lower() == "float16" and tbe_platform.api_check_support("impl.util.platform_adapter.vmul", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         dtype = "float32"
         has_improve_precision = True
 
     # round the input
-    round_fp16 = tbe.round(tbe.vmuls(input_x, 1.0 / TWO_PI))
-    round_fp32 = tbe.cast_to(round_fp16, dtype)
+    vmu_ = tbe.vmuls(input_x, 1.0 / TWO_PI)
+    if not tbe_platform.api_check_support("impl.util.platform_adapter.round", "float32") and dtype == "float32":
+        input_x_ = tbe.cast_to(vmu_, "float16")
+        round_fp = tbe.round(input_x_)
+    else:
+        round_fp = tbe.round(vmu_)
+
+    round_fp32 = tbe.cast_to(round_fp, dtype)
     input_x_round = tbe.vsub(input_x, tbe.vmuls(round_fp32, TWO_PI))
 
     # the initial value one
@@ -117,9 +122,7 @@ def cos(input_x, output_y, kernel_name="cos"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+            data_input = tvm.placeholder(x_shape[0], dtype=input_dtype,
                                          name="data_input")
             res = cos_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])

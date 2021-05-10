@@ -94,8 +94,8 @@ def sin_compute(x, y, kernel_name="sin"):
     shape = shape_util.shape_to_list(x.shape)
 
     has_improve_precision = False
-    cast_dtype = FLOAT_16
-    if tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
+    cast_dtype = dtype
+    if tbe_platform.api_check_support("impl.util.platform_adapter.vmul", "float32"):
         has_improve_precision = True
         cast_dtype = FLOAT_32
 
@@ -105,16 +105,24 @@ def sin_compute(x, y, kernel_name="sin"):
 
     pai_multiple = tbe.vmuls(x, 1 / PI)
     # pai_round = tbe.round(pai_multiple)
-    round_float = tbe.cast_to(tbe.round(pai_multiple), cast_dtype)
-
+    if not tbe_platform.api_check_support("impl.util.platform_adapter.round", "float32") and cast_dtype == FLOAT_32:
+        pai_16 = tbe.cast_to(pai_multiple, FLOAT_16)
+        round_float = tbe.cast_to(tbe.round(pai_16), cast_dtype)
+    else:
+        round_float = tbe.cast_to(tbe.round(pai_multiple), cast_dtype)
     # to adjust x to [-pai/2,pai/2]
     x = tbe.vsub(x, tbe.vmuls(round_float, PI))
 
     res = _sin(x)
 
     # if round is odd, the final result need to mutiply -1.Need to multipy 1/2 to get the ceil value
-    ceil_value = tbe.ceil(tbe.vmuls(round_float, 1 / 2))
-
+    ran_ = tbe.vmuls(round_float, 1 / 2)
+    if not tbe_platform.api_check_support("impl.util.platform_adapter.ceil", "float32") and cast_dtype == FLOAT_32:
+        ran_16 = tbe.cast_to(ran_, FLOAT_16)
+        ceil_value = tbe.ceil(ran_16)
+        ceil_value = tbe.cast_to(ceil_value, cast_dtype)
+    else:
+        ceil_value = tbe.ceil(ran_)
     # if odd, ceil*2-round is 1,if even, the value is 0
     tmp = tbe.cast_to(tbe.vmuls(ceil_value, tvm.const(2, dtype)), cast_dtype)
     sub_value = tbe.vsub(tmp, round_float)
@@ -171,9 +179,7 @@ def sin(x, y, kernel_name="sin"):
         # op compute
         with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            input_data = tvm.placeholder(fuseshape, name="input_data", dtype=x_dtype)
+            input_data = tvm.placeholder(x_shape[0], name="input_data", dtype=x_dtype)
 
             res = sin_compute(input_data, y, kernel_name)
             tensors.append([input_data, res])
