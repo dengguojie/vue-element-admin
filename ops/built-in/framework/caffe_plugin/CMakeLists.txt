@@ -89,6 +89,7 @@ if(NOT ENABLE_TEST)
     upsample_plugin.cc
     while_plugin.cc
     yolo_plugin.cc
+    correlation_plugin.cc
   )
 
   add_library(ops_all_caffe_plugin SHARED

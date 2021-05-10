@@ -112,6 +112,7 @@ set(_op_proto_srcs
   warp_perspective_ops.cc
   wts_arq.cc
   avg_pool_1d_ops.cc
+  correlation.cc
 )
 
 set(_op_proto_include
