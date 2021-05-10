@@ -1,0 +1,31 @@
+onnx-parser_test:ð
+‡
+x
+wy"ConvTranspose*
+auto_pad"
+SAME_LOWER *
+	dilations@@ *
+kernel_shape@@ *
+output_shape@@@@ *
+strides@@ ConvTransposeZ
+x
+
+
+
+
+ 
+ Z
+w
+
+
+
+
+
+b
+y
+
+
+
+
+B
+BB

@@ -482,3 +482,107 @@ TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDSplicDataTest3) {
     EXPECT_EQ(new_pads_expect, new_pads);
 }
 
+
+TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDOnnxAutoPadSameLower) {
+    ge::op::Conv2DTransposeD op;
+    op.UpdateInputDesc("x", create_desc_with_ori({1, 3, 32, 32},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 32, 32}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({3, 16, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {3, 16, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("bias", create_desc_with_ori({1, 16, 64, 64},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {0, 0, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("auto_pad", "SAME_LOWER");
+    op.SetAttr("output_shape", {64, 64});
+    op.SetAttr("input_size", {0, 0, 0, 0});
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    std::vector<std::int64_t> new_pads;
+    op.GetAttr("pads", new_pads);
+    std::vector<std::int64_t> new_pads_expect = {0, 1, 0, 1};
+    EXPECT_EQ(new_pads_expect, new_pads);
+
+    std::vector<std::int64_t> new_output_padding;
+    op.GetAttr("output_padding", new_output_padding);
+    std::vector<std::int64_t> new_output_padding_expect = {0, 0, 0, 0};
+    EXPECT_EQ(new_output_padding_expect, new_output_padding);
+}
+
+TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDOnnxAutoPadSameUpper) {
+    ge::op::Conv2DTransposeD op;
+    op.UpdateInputDesc("x", create_desc_with_ori({1, 3, 32, 32},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 32, 32}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({3, 16, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {3, 16, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("bias", create_desc_with_ori({1, 16, 64, 64},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {0, 0, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("auto_pad", "SAME_UPPER");
+    op.SetAttr("output_shape", {64, 64});
+    op.SetAttr("input_size", {0, 0, 0, 0});
+    
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    std::vector<std::int64_t> new_pads;
+    op.GetAttr("pads", new_pads);
+    std::vector<std::int64_t> new_pads_expect = {1, 0, 1, 0};
+    EXPECT_EQ(new_pads_expect, new_pads);
+
+    std::vector<std::int64_t> new_output_padding;
+    op.GetAttr("output_padding", new_output_padding);
+    std::vector<std::int64_t> new_output_padding_expect = {0, 0, 0, 0};
+    EXPECT_EQ(new_output_padding_expect, new_output_padding);
+}
+
+TEST_F(Conv2DTransposeDProtoTest, conv2dTransposeDOnnxOutputShape) {
+    ge::op::Conv2DTransposeD op;
+    op.UpdateInputDesc("x", create_desc_with_ori({1, 3, 32, 32},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 32, 32}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({3, 16, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {3, 16, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("bias", create_desc_with_ori({1, 16, 67, 67},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 67, 67}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {0, 0, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("output_shape", {67, 67});
+    op.SetAttr("input_size", {0, 0, 0, 0});
+    
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    std::vector<std::int64_t> new_pads;
+    op.GetAttr("pads", new_pads);
+    std::vector<std::int64_t> new_pads_expect = {0, 0, 0, 0};
+    EXPECT_EQ(new_pads_expect, new_pads);
+
+    std::vector<std::int64_t> new_output_padding;
+    op.GetAttr("output_padding", new_output_padding);
+    std::vector<std::int64_t> new_output_padding_expect = {0, 0, 2, 2};
+    EXPECT_EQ(new_output_padding_expect, new_output_padding);
+}

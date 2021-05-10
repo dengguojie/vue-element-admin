@@ -44,12 +44,6 @@ static bool CheckOnnxAttr(const ge::onnx::NodeProto *p_node) {
                   "E50058");
         return false;
       }
-    } else if (attr.name() == "output_shape" &&
-               attr.type() == ge::onnx::AttributeProto::INTS) {
-      ReportErr("ConvTransPose", "output_shape attr is not supported now.",
-                "E50058");
-      return false;
-    } else {
     }
   }
   return true;
@@ -106,6 +100,7 @@ static bool SetDefaultAttr(ge::Operator &op_dst) {
   const std::vector<int32_t> out_shape_default = {0, 0, 0, 0};
   const int32_t group_default = 1;
   const string fmt_default = "NCHW";
+  const string auto_pad_default = "NOTSET";
   op_dst.SetAttr("strides", strides_default);
   op_dst.SetAttr("dilations", dilations_default);
   op_dst.SetAttr("pads", pads_default);
@@ -113,6 +108,7 @@ static bool SetDefaultAttr(ge::Operator &op_dst) {
   op_dst.SetAttr("output_padding", out_pads_default);
   op_dst.SetAttr("input_size", out_shape_default);
   op_dst.SetAttr("data_format", fmt_default);
+  op_dst.SetAttr("auto_pad", auto_pad_default);
   return true;
 }
 
@@ -163,8 +159,7 @@ static void SetOutputPading(const ge::onnx::AttributeProto &src_attr,
   }
 }
 
-static void SetPads(const ge::onnx::AttributeProto &src_attr,
-                    ge::Operator &op_dst, std::string &auto_pad) {
+static void SetPads(const ge::onnx::AttributeProto &src_attr, ge::Operator &op_dst) {
   static const int32_t onnx_y_begin = 0;
   static const int32_t onnx_x_begin = 1;
   static const int32_t onnx_y_end = 2;
@@ -179,26 +174,29 @@ static void SetPads(const ge::onnx::AttributeProto &src_attr,
     pads_list.push_back(src_attr.ints(onnx_x_begin));
     pads_list.push_back(src_attr.ints(onnx_x_end));
     op_dst.SetAttr("pads", pads_list);
-  } else if (src_attr.name() == "auto_pad" &&
-             src_attr.type() == ge::onnx::AttributeProto::STRING) {
-    auto_pad = src_attr.s();
-  } else {
   }
 }
 
-static Status CheckAttrs(const ge::Operator &op_dst,
-                         const std::string &auto_pad) {
-  // SAVE_LOWER and SAME_UPPER are not supported in op_proto
-  if (auto_pad == "SAME_LOWER" || auto_pad == "SAME_UPPER") {
-    ReportErr("ConvTransPose",
-              "auto_pad SAME_LOWER/UPPER are not supported now.", "E50058");
-    return FAILED;
-  } else {
-    return SUCCESS;
+static void SetAutoPad(const ge::onnx::AttributeProto &src_attr, ge::Operator &op_dst) {
+  if (src_attr.name() == "auto_pad" &&
+      src_attr.type() == ge::onnx::AttributeProto::STRING) {
+    std::string auto_pad = src_attr.s();
+    op_dst.SetAttr("auto_pad", auto_pad);
+  }
+}
+
+static void SetOutputShape(const ge::onnx::AttributeProto &src_attr, ge::Operator &op_dst) {
+  std::vector<int32_t> output_shape_list;
+  if (src_attr.name() == "output_shape" &&
+      src_attr.type() == ge::onnx::AttributeProto::INTS) {
+    output_shape_list.push_back(src_attr.ints(0));
+    output_shape_list.push_back(src_attr.ints(1));
+    op_dst.SetAttr("output_shape", output_shape_list);
   }
 }
 
 Status ParseParamsConv2DTranspose(const Message *op_src, ge::Operator &op_dst) {
+  OP_LOGD(op_dst.GetName().c_str(), "Enter ParseParamsConv2DTranspose.");
   const ge::onnx::NodeProto *p_node =
       reinterpret_cast<const ge::onnx::NodeProto *>(op_src);
   if (p_node == nullptr) {
@@ -222,15 +220,16 @@ Status ParseParamsConv2DTranspose(const Message *op_src, ge::Operator &op_dst) {
     return FAILED;
   }
 
-  std::string auto_pad = "NOTSET";
   for (const auto &attr : p_node->attribute()) {
     SetDilations(attr, op_dst);
     SetStrides(attr, op_dst);
     SetGroup(attr, op_dst);
     SetOutputPading(attr, op_dst);
-    SetPads(attr, op_dst, auto_pad);
+    SetPads(attr, op_dst);
+    SetAutoPad(attr, op_dst);
+    SetOutputShape(attr, op_dst);
   }
-  return CheckAttrs(op_dst, auto_pad);
+  return SUCCESS;
 }
 
 REGISTER_CUSTOM_OP("Conv2DTransposeD")

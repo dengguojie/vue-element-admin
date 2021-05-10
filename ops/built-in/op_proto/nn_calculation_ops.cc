@@ -9386,7 +9386,150 @@ INFER_DATA_SLICE_FUNC_REG(Conv2DTranspose, Conv2DTransposeInferDataSlice);
 INFER_FUNC_REG(Conv2DTranspose, Conv2DTransposeInfer);
 VERIFY_FUNC_REG(Conv2DTranspose, Conv2DTransposeVerify);
 // ----------------Conv2DTransposeD-------------------
+template <typename T1>
+static bool CheckVectorLessZero(const std::vector<T1>& input_list) {
+  for (uint32_t i = 0; i < input_list.size(); i++) {
+    if (input_list[i] < 0) {
+      return true;                                                              
+    }
+  }
+  return false;
+}
+
+template <typename T1, typename T2>
+static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Format x_format,
+                            const std::vector<T2>& filter_sizes, Format filter_format) {
+  OP_LOGD(op.GetName().c_str(), "Enter ProcessOnnxAttr, process auto_pad and output_shape.");
+
+  std::string auto_pad;
+  if (op.GetAttr("auto_pad", auto_pad) != GRAPH_SUCCESS) {
+    auto_pad = "NOTSET";
+  }
+  OP_LOGD(op.GetName().c_str(), "get default auto_pad[%s].", auto_pad.c_str());
+
+  std::vector<int32_t> output_shape_list;
+  if (op.GetAttr("output_shape", output_shape_list) != GRAPH_SUCCESS) {
+    return;
+  }
+
+  std::vector<int32_t> stride_list;
+  if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
+    return;
+  }
+
+  std::vector<int32_t> dilations_list;
+  if (op.GetAttr("dilations", dilations_list) != GRAPH_SUCCESS) {
+    return;
+  }
+
+  // dynamic shape scenario, no need process
+  if (CheckVectorLessZero(x_sizes) || CheckVectorLessZero(filter_sizes) || 
+      CheckVectorLessZero(output_shape_list) || CheckVectorLessZero(stride_list) || 
+      CheckVectorLessZero(dilations_list)) {
+    OP_LOGD(op.GetName().c_str(), "no need process with dynamic shape scenario.");
+    return;
+  }
+
+  std::string x_format_str = format2str[x_format];
+  int32_t h_input_position = x_format_str.find("H");
+  int32_t w_input_position = x_format_str.find("W");
+  int32_t input_h = x_sizes[h_input_position];
+  int32_t input_w = x_sizes[w_input_position];
+  int32_t stride_h = stride_list[h_input_position];
+  int32_t stride_w = stride_list[w_input_position];
+  int32_t dilation_h = dilations_list[h_input_position];
+  int32_t dilation_w = dilations_list[w_input_position];
+
+  std::string filter_format_str = format2str[filter_format];
+  int32_t h_filter_position = filter_format_str.find("H");
+  int32_t w_filter_position = filter_format_str.find("W");
+  int32_t filter_h = filter_sizes[h_filter_position];
+  int32_t filter_w = filter_sizes[w_filter_position];
+
+  int32_t output_shape_h = output_shape_list[0];
+  int32_t output_shape_w = output_shape_list[1];
+
+  if (auto_pad == "NOTSET") {
+    std::vector<int32_t> pads_list;
+    if (op.GetAttr("pads", pads_list) != GRAPH_SUCCESS) {
+      OP_LOGD(op.GetName().c_str(), "can't get pads.");
+      return;
+    }
+
+    if (pads_list.size() != 4) {
+      OP_LOGD(op.GetName().c_str(), "pads_list size error.");
+      return;
+    }
+
+    int32_t pad_up = pads_list[0];
+    int32_t pad_down = pads_list[1];
+    int32_t pad_left = pads_list[2];
+    int32_t pad_right = pads_list[3];
+
+    int32_t standard_h = stride_h * (input_h - 1) + ((filter_h - 1) * dilation_h + 1) - pad_up - pad_down;
+    int32_t output_padding_h = output_shape_h > standard_h ? output_shape_h - standard_h : 0;
+    int32_t standard_w = stride_w * (input_w - 1) + ((filter_w - 1) * dilation_w + 1) - pad_left - pad_right;
+    int32_t output_padding_w = output_shape_w > standard_w ? output_shape_w - standard_w : 0;
+    OP_LOGD(op.GetName().c_str(), "result: oPadH[%d], oPadW[%d]", output_padding_h, output_padding_w);
+
+    std::vector<int32_t> output_padding_list = {0, 0, 0, 0};
+    output_padding_list[h_input_position] = output_padding_h;
+    output_padding_list[w_input_position] = output_padding_w;
+    op.SetAttr("output_padding", output_padding_list);
+
+  } else {
+    int32_t pad_h = 0;
+    int32_t pad_w = 0;
+    int32_t output_padding_h = 0;
+    int32_t output_padding_w = 0;
+
+    int32_t standard_h = stride_h * (input_h - 1) + ((filter_h - 1) * dilation_h + 1);
+    if (output_shape_h > standard_h) {
+      pad_h = 0;
+      output_padding_h = output_shape_h - standard_h;
+    } else {
+      pad_h = standard_h - output_shape_h;
+      output_padding_h = 0;
+    }
+
+    int32_t standard_w = stride_w * (input_w - 1) + ((filter_w - 1) * dilation_w + 1);
+    if (output_shape_w > standard_w) {
+      pad_w = 0;
+      output_padding_w = output_shape_w - standard_w;
+    } else {
+      pad_w = standard_w - output_shape_w;
+      output_padding_w = 0;
+    }
+
+    OP_LOGD(op.GetName().c_str(), "result: padH[%d], padW[%d], oPadH[%d], oPadW[%d]",
+            pad_h, pad_w, output_padding_h, output_padding_w);
+    
+    std::vector<int32_t> pads_list = {0, 0, 0, 0};
+    std::vector<int32_t> output_padding_list = {0, 0, 0, 0};
+    output_padding_list[h_input_position] = output_padding_h;
+    output_padding_list[w_input_position] = output_padding_w;
+    op.SetAttr("output_padding", output_padding_list);
+    if (auto_pad == "VALID" || auto_pad == "SAME_LOWER") {
+      // up, down, left, right
+      pads_list[0] = pad_h / 2;
+      pads_list[1] = pad_h - pad_h / 2;
+      pads_list[2] = pad_w / 2;
+      pads_list[3] = pad_w - pad_w / 2;
+      op.SetAttr("pads", pads_list);
+    } else if (auto_pad == "SAME_UPPER") {
+      pads_list[0] = pad_h - pad_h / 2;
+      pads_list[1] = pad_h / 2;
+      pads_list[2] = pad_w - pad_w / 2;
+      pads_list[3] = pad_w / 2;
+      op.SetAttr("pads", pads_list);
+    }
+  }
+  
+  return;
+}
+
 IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2DTransposeD InferShape.");
   const int32_t DIM_SIZE_LIMIT = 4;
 
   // get shape for output from input_size
@@ -9425,6 +9568,12 @@ IMPLEMT_INFERFUNC(Conv2DTransposeD, Conv2DTransposeDInfer) {
   CHECK_FORMAT(filter_format);
   CHECK_FORMAT(input_format);
   CHECK_FORMAT(x_format);
+
+  // process ONNX attr
+  if (CheckVectorAllZero(input_sizes)) {
+    ProcessOnnxAttr(op, x_sizes, x_format, filter_sizes, filter_format);
+  }
+
   // update pads list by padding[SAME,VALID] and calculate input_size
   bool isRun = false;
   if (!SetInputsizeListConv2DTranspose(op, x_sizes, x_format, filter_sizes, filter_format, input_sizes,
@@ -9499,6 +9648,15 @@ IMPLEMT_VERIFIER(Conv2DTransposeD, Conv2DTransposeDVerify) {
 
 IMPLEMT_INFER_DATA_SLICE(Conv2DTransposeD, Conv2DTransposeDInferDataSlice) {
   OP_LOGD(op.GetName().c_str(), "Enter Conv2DTransposeD InferDataSlice.");
+  // process ONNX attr
+  auto x_tensor = op.GetInputDesc("x");
+  auto w_tensor = op.GetInputDesc("filter");
+  auto x_format = x_tensor.GetOriginFormat();
+  auto w_format = w_tensor.GetOriginFormat();
+  auto x_shape = x_tensor.GetOriginShape().GetDims();
+  auto w_shape = w_tensor.GetOriginShape().GetDims();
+  ProcessOnnxAttr(op, x_shape, x_format, w_shape, w_format);
+
   if (!InferConv2DTransposeDataSlice(op)) {
     return GRAPH_FAILED;
   }
