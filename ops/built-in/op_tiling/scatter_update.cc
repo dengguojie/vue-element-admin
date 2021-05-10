@@ -84,20 +84,20 @@ void CalRunningParams(ScatterUpdateTilingParams& runParams, int64_t indicesNum, 
     if (updateSizeByte <= halfUbSize) {
       runParams.tilingMode = TILING_MODE_1;
     } else {
-        runParams.tilingMode = TILING_MODE_2;
+      runParams.tilingMode = TILING_MODE_2;
     }
   } else {
-      if (updateDataNum < varDataEachBlock) {
-        if (updateSizeByte <= halfUbSize) {
-          runParams.tilingMode = TILING_MODE_3;
-          runParams.updatesLoopNum = updatesNum / (halfUbSize / varSize);
-          runParams.updatesLastNum = updatesNum % (halfUbSize / varSize);
-        } else {
-            runParams.tilingMode = TILING_MODE_4;
-        }
+    if (updateDataNum < varDataEachBlock) {
+      if (updateSizeByte <= halfUbSize) {
+        runParams.tilingMode = TILING_MODE_3;
+        runParams.updatesLoopNum = updatesNum / (halfUbSize / varSize);
+        runParams.updatesLastNum = updatesNum % (halfUbSize / varSize);
       } else {
-          runParams.tilingMode = TILING_MODE_5;
+        runParams.tilingMode = TILING_MODE_4;
       }
+    } else {
+      runParams.tilingMode = TILING_MODE_5;
+    }
   }
 
   if (updateDataNum < varDataEachBlock) {
@@ -120,29 +120,28 @@ void SetRuningParams(const ScatterUpdateTilingParams& params, OpRunInfo& runInfo
   ByteBufferPut(runInfo.tiling_data, params.updatesLastNum);
 }
 
-void PrintTilingParams(const ScatterUpdateTilingParams& params) {
-  GELOGD("op [ScatterUpdateTiling] : tilingMode=%ld.", params.tilingMode);
-  GELOGD("op [ScatterUpdateTiling] : indiceStep=%ld.", params.indiceStep);
-  GELOGD("op [ScatterUpdateTiling] : coreNum=%ld.", params.coreNum);
-  GELOGD("op [ScatterUpdateTiling] : updatesDataNum=%ld.", params.updatesDataNum);
-  GELOGD("op [ScatterUpdateTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
-  GELOGD("op [ScatterUpdateTiling] : indicesLastNum=%ld.", params.indicesLastNum);
-  GELOGD("op [ScatterUpdateTiling] : updatesNum=%ld.", params.updatesNum);
-  GELOGD("op [ScatterUpdateTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
-  GELOGD("op [ScatterUpdateTiling] : updatesLastNum=%ld.", params.updatesLastNum);
+void PrintTilingParams(const std::string& opType, const ScatterUpdateTilingParams& params) {
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : tilingMode=%ld.", params.tilingMode);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : indiceStep=%ld.", params.indiceStep);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : coreNum=%ld.", params.coreNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updatesDataNum=%ld.", params.updatesDataNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : indicesLastNum=%ld.", params.indicesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updatesNum=%ld.", params.updatesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updatesLastNum=%ld.", params.updatesLastNum);
 }
 
 bool CheckScatterUpdateTensorShape(const std::string& opType, std::vector<int64_t> varShape,
                                    std::vector<int64_t> indicesShape, std::vector<int64_t> updatesShape,
                                    std::vector<int64_t> outShape) {
   if (varShape != outShape) {
-    ge::OpsOneInputShapeErrReport("ScatterUpdate", "var", "the length of var must be same as the length of output");
-    OP_LOGE(opType.c_str(), "[ScatterUpdateTiling] : var_out's shape must be the same as var's shape.");
+    OP_LOGE(opType.c_str(), "the length of var must be same as the length of output.");
     return false;
   }
 
   if (indicesShape.size() == 1 && indicesShape[0] == 1 && varShape.size() - updatesShape.size() == 1) {
-    GELOGI("op[%s] Input indices is a scalar.", opType.c_str());
+    OP_LOGI(opType.c_str(), "Input indices is a scalar.");
     return true;
   }
 
@@ -152,9 +151,7 @@ bool CheckScatterUpdateTensorShape(const std::string& opType, std::vector<int64_
     actualUpdatesShape.push_back(varShape[i]);
   }
   if (updatesShape != actualUpdatesShape) {
-    ge::OpsOneInputShapeErrReport("ScatterUpdate", "updates",
-                                  "updates does not satisfy the relation expression with actualUpdateShape");
-    OP_LOGE(opType.c_str(), "op [ScatterUpdateTiling] : updates's shape is illegal.");
+    OP_LOGE(opType.c_str(), "updates does not satisfy the relation expression with actualUpdateShape.");
     return false;
   }
   return true;
@@ -165,57 +162,50 @@ bool GetScatteUpdateCompileParams(const std::string& opType, const nlohmann::jso
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    OP_LOGE(opType.c_str(), "op [ScatterUpdateTiling] : GetCompileParams, get core_num error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
-    OP_LOGE(opType.c_str(), "op [ScatterUpdateTiling] : GetCompileParams, get ub_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
 
   if (allVars.count("var_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "var_size");
-    OP_LOGE(opType.c_str(), "op [ScatterUpdateTiling] : GetCompileParams, get var_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get var_size error");
     return false;
   }
   varSize = allVars["var_size"].get<std::int64_t>();
 
   if (allVars.count("indices_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_size");
-    OP_LOGE(opType.c_str(), "op [ScatterUpdateTiling] : GetCompileParams, get indices_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get indices_size error");
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int64_t>();
 
-  return true;  
+  return true;
 }
 
 bool ScatterUpdateTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
                          OpRunInfo& runInfo) {
   using namespace ge;
-  GELOGI("op[%s] ScatterUpdateTiling running.", opType.c_str());
+
+  OP_LOGI(opType.c_str(), "ScatterUpdateTiling running.");
   if (opCompileInfo == nullptr) {
-    OP_LOGE(opType.c_str(), "op [ScatterUpdateTiling] : opCompileInfo json error.");
+    OP_LOGE(opType.c_str(), "opCompileInfo json error.");
     return false;
   }
 
-  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.inputs[1].tensor.empty() || opParas.inputs[2].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices or updates or var",
-                                  "The input may be empty");
-    OP_LOGE(opType.c_str(), "op [ScatterUpdateTiling] : input shape error");
+  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
+      opParas.inputs[2].tensor.empty()) {
+    OP_LOGE(opType.c_str(), "input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "var_out",
-                                   "The output may be empty");
-    OP_LOGE(opType.c_str(), "op [ScatterUpdateTiling] : output shape error");
+    OP_LOGE(opType.c_str(), "output shape error");
     return false;
   }
 
@@ -226,7 +216,7 @@ bool ScatterUpdateTiling(const std::string& opType, const TeOpParas& opParas, co
 
   bool is_valid_shape = CheckScatterUpdateTensorShape(opType, varShape, indicesShape, updatesShape, outShape);
   if (!is_valid_shape) {
-    OP_LOGE(opType.c_str(), "ScatterUpdateTiling: CheckScatterUpdateTensorShape failed.");
+    OP_LOGE(opType.c_str(), "CheckScatterUpdateTensorShape failed.");
     return false;
   }
 
@@ -236,7 +226,7 @@ bool ScatterUpdateTiling(const std::string& opType, const TeOpParas& opParas, co
   int64_t indicesSize = 0;
   bool can_get_params = GetScatteUpdateCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize);
   if (!can_get_params) {
-    OP_LOGE(opType.c_str(), "ScatterUpdateTiling: GetScatteUpdateCompileParams error.");
+    OP_LOGE(opType.c_str(), "GetScatteUpdateCompileParams error.");
     return false;
   }
 
@@ -244,28 +234,28 @@ bool ScatterUpdateTiling(const std::string& opType, const TeOpParas& opParas, co
   InitRunningParams(runParams);
   int64_t indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
   int64_t updatesNum = std::accumulate(updatesShape.begin(), updatesShape.end(), 1, std::multiplies<int>());
-  int64_t updateDataNum = (varShape.size() > 1) ? (std::accumulate(varShape.begin() + 1, varShape.end(), 1,
-                                                                   std::multiplies<int>())) : 1;
+  int64_t updateDataNum =
+      (varShape.size() > 1) ? (std::accumulate(varShape.begin() + 1, varShape.end(), 1, std::multiplies<int>())) : 1;
   int64_t maxIndice = varShape[0];
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
 
-  GELOGD("op [ScatterUpdateTiling] : indicesNum=%ld.", indicesNum);
-  GELOGD("op [ScatterUpdateTiling] : updatesNum=%ld.", updatesNum);
-  GELOGD("op [ScatterUpdateTiling] : updateDataNum=%ld.", updateDataNum);
-  GELOGD("op [ScatterUpdateTiling] : maxIndice=%ld.", maxIndice);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : indicesNum=%ld.", indicesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updatesNum=%ld.", updatesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updateDataNum=%ld.", updateDataNum);
+  OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : maxIndice=%ld.", maxIndice);
 
-  CalRunningParams(runParams, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize, coreNum,
-                   varSize, indicesSize, varDataEachBlock);
+  CalRunningParams(runParams, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize, coreNum, varSize, indicesSize,
+                   varDataEachBlock);
 
   SetRuningParams(runParams, runInfo);
 
-  PrintTilingParams(runParams);
+  PrintTilingParams(opType, runParams);
 
   runInfo.block_dim = runParams.coreNum;
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
 
-  GELOGI("op[%s] tiling run success.", opType.c_str());
+  OP_LOGI(opType.c_str(), "ScatterUpdateTiling run success.");
 
   return true;
 }

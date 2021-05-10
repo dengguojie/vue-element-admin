@@ -6,14 +6,14 @@
 
 using namespace std;
 
-class ScatterMaxTiling : public testing::Test {
+class ScatterUpdateTiling : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "ScatterMaxTiling SetUp" << std::endl;
+    std::cout << "ScatterUpdateTiling SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "ScatterMaxTiling TearDown" << std::endl;
+    std::cout << "ScatterUpdateTiling TearDown" << std::endl;
   }
 };
 
@@ -30,10 +30,10 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_0) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_0) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4}}";
@@ -81,13 +81,13 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_0) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 17);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 17 704 0 2112 1486848 0 704 23232 0 23232 176 88 33 1408 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 17 704 0 2112 1486848 0 704 ");
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_1) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_1) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4}}";
@@ -135,14 +135,14 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10 33 32 24242 0 1039 25187438 1 434 25187438 1 434 0 0 1039 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "5 33 32 24242 0 1039 25187438 0 24242 ");
 }
 
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_4) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_4) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"var_size\":4, \"indices_size\":4}}";
@@ -191,10 +191,10 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_4) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_5) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_5) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"var_size\":4, \"indices_size\":4}}";
@@ -243,10 +243,10 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_5) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_6) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_6) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"var_size\":4, \"indices_size\":4}}";
@@ -295,10 +295,10 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_6) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_7) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_7) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"var_size\":4, \"indices_size\":4}}";
@@ -347,10 +347,10 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_7) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_8) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_8) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"var_size\":4, \"indices_size\":4}}";
@@ -399,10 +399,10 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_8) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_9) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_9) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"indices_size\":4}}";
@@ -451,10 +451,10 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_9) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_10) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_10) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4}}";
@@ -503,10 +503,10 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_10) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_13) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_13) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\": 4, \"indices_size\": 4}}";
@@ -554,10 +554,10 @@ TEST_F(ScatterMaxTiling, scatter_max_tiling_13) {
   ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }
 
-TEST_F(ScatterMaxTiling, scatter_max_tiling_14) {
+TEST_F(ScatterUpdateTiling, scatter_update_tiling_14) {
   using namespace optiling;
-  std::string op_name = "ScatterMax";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterMax");
+  std::string op_name = "ScatterUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterUpdate");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\": 4, \"indices_size\": 4}}";

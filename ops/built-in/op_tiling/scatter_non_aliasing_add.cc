@@ -57,6 +57,7 @@ struct ScatterNonAliasingAddTilingParams {
   std::vector<int64_t> varOffset = {0, 0, 0, 0, 0, 0, 0};
   int64_t indicesLastDim;
   int64_t indicesFrontDim;
+  int64_t varNum;
 };
 
 void InitRunningParams(ScatterNonAliasingAddTilingParams& params) {
@@ -69,6 +70,7 @@ void InitRunningParams(ScatterNonAliasingAddTilingParams& params) {
   params.addsNum = 0;
   params.addsLoopNum = 0;
   params.addsLastNum = 0;
+  params.varNum = 0;
 }
 
 void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indicesNum, int64_t addsNum,
@@ -77,6 +79,7 @@ void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indi
   int64_t addSizeByte = varSize * addsNum;
   int64_t halfUbSize = ubSize / 2;
   int64_t halfUbIndicesNum = halfUbSize / indicesSize;
+  runParams.varNum = maxIndice;
   runParams.addsLoopNum = addDataNum / (halfUbSize / varSize);
   runParams.addsLastNum = addDataNum % (halfUbSize / varSize);
   runParams.indicesLoopNum = (indicesNum / runParams.indicesLastDim) / (halfUbIndicesNum / runParams.indicesLastDim);
@@ -114,13 +117,15 @@ void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indi
   }
   if (addDataNum < varDataEachBlock) {
     runParams.coreNum = 1;
-    runParams.indiceStep = ceil(float(maxIndice) / coreNum);
+    runParams.indiceStep = ceil(float(maxIndice));
     int64_t VarBlockNum = 32 / VarDtypeSize;
     runParams.indiceStep = ceil(float(runParams.indiceStep) / VarBlockNum) * VarBlockNum;
+    runParams.indiceStep = ceil(float(runParams.indiceStep) / addDataNum) * addDataNum;
   } else {
     runParams.indiceStep = ceil(float(maxIndice) / coreNum);
     int64_t VarBlockNum = 32 / VarDtypeSize;
     runParams.indiceStep = ceil(float(runParams.indiceStep) / VarBlockNum) * VarBlockNum;
+    runParams.indiceStep = ceil(float(runParams.indiceStep) / addDataNum) * addDataNum;
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
   }
 }
@@ -140,6 +145,7 @@ void SetRuningParams(const ScatterNonAliasingAddTilingParams& params, OpRunInfo&
   }
   ByteBufferPut(runInfo.tiling_data, params.indicesLastDim);
   ByteBufferPut(runInfo.tiling_data, params.indicesFrontDim);
+  ByteBufferPut(runInfo.tiling_data, params.varNum);
 }
 
 void PrintTilingParams(const std::string& opType, const ScatterNonAliasingAddTilingParams& params) {
@@ -157,6 +163,7 @@ void PrintTilingParams(const std::string& opType, const ScatterNonAliasingAddTil
   }
   OP_LOGD(opType.c_str(), "op [ScatterNonAliasingAddTiling] : indicesLastDim=%ld.", params.indicesLastDim);
   OP_LOGD(opType.c_str(), "op [ScatterNonAliasingAddTiling] : indicesFrontDim=%ld.", params.indicesFrontDim);
+  OP_LOGD(opType.c_str(), "op [ScatterNonAliasingAddTiling] : varNum=%ld.", params.varNum);
 }
 
 bool CheckScatterNonAliasingAddTensorShape(const std::string& opType, std::vector<int64_t> varShape,

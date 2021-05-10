@@ -96,7 +96,7 @@ TEST_F(ScatterNonAliasingAddTiling, scatter_non_aliasing_add_tiling_0) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 8 6 8 0 4 16 0 8 24 8 0 0 0 0 0 2 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 8 6 8 0 4 16 0 8 24 8 0 0 0 0 0 2 2 48 ");
 }
 
 TEST_F(ScatterNonAliasingAddTiling, scatter_non_aliasing_add_tiling_1) {
@@ -149,7 +149,7 @@ TEST_F(ScatterNonAliasingAddTiling, scatter_non_aliasing_add_tiling_1) {
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 16672 32 88888 0 4 177776 2 25400 266664 88888 0 0 0 0 0 2 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 88888 6 88888 0 4 177776 2 25400 266664 88888 0 0 0 0 0 2 2 533328 ");
 }
 
 TEST_F(ScatterNonAliasingAddTiling, scatter_non_aliasing_add_tiling_2) {
@@ -202,7 +202,7 @@ TEST_F(ScatterNonAliasingAddTiling, scatter_non_aliasing_add_tiling_2) {
   op_compile_info.key = "1234562";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "3 8 1 7 0 4 14 0 14 21 7 0 0 0 0 0 2 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "3 49 1 7 0 4 14 0 14 21 7 0 0 0 0 0 2 2 42 ");
 }
 
 TEST_F(ScatterNonAliasingAddTiling, scatter_non_aliasing_add_tiling_3) {
@@ -255,5 +255,5 @@ TEST_F(ScatterNonAliasingAddTiling, scatter_non_aliasing_add_tiling_3) {
   op_compile_info.key = "1234563";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "4 8 1 7 5 19056 622216 0 7 21 7 0 0 0 0 0 2 88888 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "4 49 1 7 5 19056 622216 0 7 21 7 0 0 0 0 0 2 88888 42 ");
 }

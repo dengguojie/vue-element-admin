@@ -137,10 +137,10 @@ void CalAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t indi
   int64_t halfUbSize = ubSize / 2;
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / updatesSize);
   runParams.updatesLastNum = updateDataNum % (halfUbSize / updatesSize);
-  runParams.indicesLoopNum = indicesNum / (halfUbSize / indicesSize /
-                                           runParams.indicesLastDim * runParams.indicesLastDim);
-  runParams.indicesLastNum = indicesNum % (halfUbSize / indicesSize /
-                                           runParams.indicesLastDim * runParams.indicesLastDim);
+  runParams.indicesLoopNum =
+      indicesNum / (halfUbSize / indicesSize / runParams.indicesLastDim * runParams.indicesLastDim);
+  runParams.indicesLastNum =
+      indicesNum % (halfUbSize / indicesSize / runParams.indicesLastDim * runParams.indicesLastDim);
   runParams.updatesDataNum = updateDataNum;
   runParams.updatesNum = updatesNum;
 
@@ -148,20 +148,20 @@ void CalAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t indi
     if (updateSizeByte <= halfUbSize) {
       runParams.tilingMode = TILING_MODE_1;
     } else {
-        runParams.tilingMode = TILING_MODE_2;
+      runParams.tilingMode = TILING_MODE_2;
     }
   } else {
-      if (updateDataNum < updatesDataEachBlock) {
-        if (updateSizeByte <= halfUbSize) {
-          runParams.tilingMode = TILING_MODE_3;
-          runParams.updatesLoopNum = updatesNum / (halfUbSize / updatesSize);
-          runParams.updatesLastNum = updatesNum % (halfUbSize / updatesSize);
-        } else {
-          runParams.tilingMode = TILING_MODE_4;
-        }
+    if (updateDataNum < updatesDataEachBlock) {
+      if (updateSizeByte <= halfUbSize) {
+        runParams.tilingMode = TILING_MODE_3;
+        runParams.updatesLoopNum = updatesNum / (halfUbSize / updatesSize);
+        runParams.updatesLastNum = updatesNum % (halfUbSize / updatesSize);
       } else {
-          runParams.tilingMode = TILING_MODE_5;
+        runParams.tilingMode = TILING_MODE_4;
       }
+    } else {
+      runParams.tilingMode = TILING_MODE_5;
+    }
   }
 }
 
@@ -178,10 +178,10 @@ void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t v
   runParams.varLastNum = varNum % (varUbSize / updatesSize);
   runParams.updatesLoopNum = updateDataNum / (varUbSize / updatesSize);
   runParams.updatesLastNum = updateDataNum % (varUbSize / updatesSize);
-  runParams.indicesLoopNum = indicesNum / (indicesUbSize / indicesSize /
-                                           runParams.indicesLastDim * runParams.indicesLastDim);
-  runParams.indicesLastNum = indicesNum % (indicesUbSize / indicesSize /
-                                           runParams.indicesLastDim * runParams.indicesLastDim);
+  runParams.indicesLoopNum =
+      indicesNum / (indicesUbSize / indicesSize / runParams.indicesLastDim * runParams.indicesLastDim);
+  runParams.indicesLastNum =
+      indicesNum % (indicesUbSize / indicesSize / runParams.indicesLastDim * runParams.indicesLastDim);
   runParams.updatesDataNum = updateDataNum;
   runParams.updatesNum = updatesNum;
   runParams.varNum = varNum;
@@ -189,28 +189,28 @@ void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t v
     if (updateSizeByte <= varUbSize && varSizeByte <= varUbSize) {
       runParams.tilingMode = TILING_MODE_6;
     } else if (updateSizeByte > varUbSize && varSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_7;
+      runParams.tilingMode = TILING_MODE_7;
     } else if (updateSizeByte <= varUbSize && varSizeByte > varUbSize) {
-        runParams.tilingMode = TILING_MODE_8;
+      runParams.tilingMode = TILING_MODE_8;
     } else {
-        runParams.tilingMode = TILING_MODE_9;
+      runParams.tilingMode = TILING_MODE_9;
     }
   } else if (updateDataNum < updatesDataEachBlock) {
-      if (updateSizeByte <= varUbSize && varAllSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_10;
+    if (updateSizeByte <= varUbSize && varAllSizeByte <= varUbSize) {
+      runParams.tilingMode = TILING_MODE_10;
     } else if (updateSizeByte > varUbSize && varAllSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_11;
+      runParams.tilingMode = TILING_MODE_11;
     } else if (updateSizeByte <= varUbSize && varAllSizeByte > varUbSize) {
-        runParams.tilingMode = TILING_MODE_12;
+      runParams.tilingMode = TILING_MODE_12;
     } else {
-        runParams.tilingMode = TILING_MODE_13;
+      runParams.tilingMode = TILING_MODE_13;
     }
   } else {
-      if (updateDataNum / (varUbSize / updatesSize) == 0) {
-        runParams.tilingMode = TILING_MODE_14;
-      } else {
-        runParams.tilingMode = TILING_MODE_15;
-      }
+    if (updateDataNum / (varUbSize / updatesSize) == 0) {
+      runParams.tilingMode = TILING_MODE_14;
+    } else {
+      runParams.tilingMode = TILING_MODE_15;
+    }
   }
 
   runParams.varEachCoreData = runParams.indiceStep * runParams.updatesDataNum;
@@ -323,33 +323,25 @@ bool CheckScatterNdTensorShape(const std::string& opType, std::vector<int64_t> i
   int64_t indicesLastDim = indicesShape.back();
 
   if (indicesDims <= 1) {
-    ge::OpsOneInputShapeErrReport("ScatterNd", "indices", "the ndim of indices is less than 1 or equal as 1");
-    OP_LOGE(opType.c_str(), "op ScatterNdTiling : indices dim is invalid");
+    OP_LOGE(opType.c_str(), "the ndim of indices is less than 1 or equal to 1");
     return false;
   }
 
   if (indicesDims - 1 + outputDims - indicesLastDim != updatesDims) {
-    ge::OpsOneInputShapeErrReport("ScatterNd", "updates",
-                                  "output's shape and updates'shape are not equal in some dimensions");
-    OP_LOGE(opType.c_str(), "op ScatterNdTiling : update's shape and output's shape must be same in some dimension");
+    OP_LOGE(opType.c_str(), "output's shape and updates'shape are not equal in some dimensions");
     return false;
   }
 
   for (int64_t i = 0; i < indicesDims - 1; i++) {
     if (indicesShape[i] != updatesShape[i]) {
-      ge::OpsOneInputShapeErrReport("ScatterNd", "indices",
-                                    "indices's shape and updates'shape are not equal in some dimensions");
-      OP_LOGE(opType.c_str(),
-              "op ScatterNdTiling : indices's shape and update's shape must be same in some dimensions");
+      OP_LOGE(opType.c_str(), "indices's shape and updates'shape are not equal in some dimensions");
       return false;
     }
   }
 
   for (int64_t i = 0; i < updatesDims - indicesDims + 1; i++) {
     if (updatesShape[indicesDims - 1 + i] != outputShape[indicesLastDim + i]) {
-      ge::OpsOneInputShapeErrReport("ScatterNd", "updates",
-                                    "output's shape and updates'shape are not equal in some dimensions");
-      OP_LOGE(opType.c_str(), "op ScatterNdTiling : update's shape and output's shape must be same in some dimension");
+      OP_LOGE(opType.c_str(), "output's shape and updates'shape are not equal in some dimensions");
       return false;
     }
   }
@@ -361,36 +353,31 @@ bool GetScatterNdCompileParams(const std::string& opType, const nlohmann::json& 
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling] : GetCompileParams, get core_num error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling] : GetCompileParams, get ub_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
 
   if (allVars.count("updates_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "updates_size");
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling] : GetCompileParams, get updates_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get updates_size error");
     return false;
   }
   updatesSize = allVars["updates_size"].get<std::int64_t>();
 
   if (allVars.count("indices_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_size");
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling] : GetCompileParams, get indices_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get indices_size error");
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int64_t>();
 
   if (allVars.count("support_atomic") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "support_atomic");
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling] : GetCompileParams, get support_atomic error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get support_atomic error");
     return false;
   }
   supportAtomic = allVars["support_atomic"].get<std::int64_t>();
@@ -414,26 +401,24 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
                      OpRunInfo& runInfo) {
   using namespace ge;
 
-  OP_LOGI("op[%s] ScatterNdTiling running.", opType.c_str());
+  OP_LOGI(opType.c_str(), "ScatterNdTiling running.");
   if (opCompileInfo == nullptr) {
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling] : opCompileInfo json error.");
+    OP_LOGE(opType.c_str(), "opCompileInfo json error.");
     return false;
   }
 
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices or updates", "the input may be empty");
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling]: input shape error");
+    OP_LOGE(opType.c_str(), "input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "out", "the output may be empty");
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling]: output shape error");
+    OP_LOGE(opType.c_str(), "output shape error");
     return false;
   }
 
   if (opParas.const_inputs.find("shape") == opParas.const_inputs.end()) {
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling]: get const input failed.");
+    OP_LOGE(opType.c_str(), "get const input failed.");
     return false;
   }
 
@@ -441,10 +426,10 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   const std::vector<int64_t>& updatesShape = opParas.inputs[1].tensor[0].shape;
   const std::vector<int64_t>& outShape = opParas.outputs[0].tensor[0].shape;
   std::string input_dtype = opParas.inputs[1].tensor[0].dtype;
-  
+
   bool is_valid_shape = CheckScatterNdTensorShape(opType, indicesShape, updatesShape, outShape);
   if (!is_valid_shape) {
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling] : CheckScatterNdTensorShape is failed");
+    OP_LOGE(opType.c_str(), "CheckScatterNdTensorShape is failed");
     return false;
   }
 
@@ -453,10 +438,10 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   int64_t updatesSize = 0;
   int64_t indicesSize = 0;
   int64_t supportAtomic = 0;
-  bool can_get_params = GetScatterNdCompileParams(opType, opCompileInfo, coreNum, ubSize, updatesSize,
-                                                  indicesSize, supportAtomic);
+  bool can_get_params =
+      GetScatterNdCompileParams(opType, opCompileInfo, coreNum, ubSize, updatesSize, indicesSize, supportAtomic);
   if (!can_get_params) {
-    OP_LOGE(opType.c_str(), "op [ScatterNdTiling] : GetScatterNdCompileParams error");
+    OP_LOGE(opType.c_str(), "GetScatterNdCompileParams error");
     return false;
   }
 
@@ -466,18 +451,21 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   int64_t varNum = std::accumulate(outShape.begin(), outShape.end(), 1, std::multiplies<int>());
   int64_t indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
   int64_t updatesNum = std::accumulate(updatesShape.begin(), updatesShape.end(), 1, std::multiplies<int>());
-  int64_t updateDataNum = ((int32_t)outShape.size() == indicesShape.back()) ? 1 : (std::accumulate(outShape.begin() +
-                           indicesShape.back(), outShape.end(), 1, std::multiplies<int>()));
-  int64_t maxIndice = std::accumulate(outShape.begin(), outShape.end() - (outShape.size() - indicesShape.back()),
-                                      1, std::multiplies<int>());
+  int64_t updateDataNum =
+      ((int32_t)outShape.size() == indicesShape.back())
+          ? 1
+          : (std::accumulate(outShape.begin() + indicesShape.back(), outShape.end(), 1, std::multiplies<int>()));
+  int64_t maxIndice = std::accumulate(outShape.begin(), outShape.end() - (outShape.size() - indicesShape.back()), 1,
+                                      std::multiplies<int>());
   runParams.maxIndice = maxIndice;
   runParams.indicesLastDim = indicesShape.back();
   int64_t updatesDataEachBlock = BLOCK_SIZE / updatesSize;
   int64_t dataNumOneRepeat = 0;
 
-  for (int64_t i = 0; i+1 < indicesShape.back(); i++) {
-    runParams.varOffSet[i] = std::accumulate(outShape.begin() + (i + 1), outShape.end() -
-                                            (outShape.size() - indicesShape.back()), 1, std::multiplies<int>());
+  for (int64_t i = 0; i + 1 < indicesShape.back(); i++) {
+    runParams.varOffSet[i] =
+        std::accumulate(outShape.begin() + (i + 1), outShape.end() - (outShape.size() - indicesShape.back()), 1,
+                        std::multiplies<int>());
   }
 
   OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varNum=%ld.", varNum);
@@ -499,11 +487,11 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
 
   if (supportAtomic == 1 && input_dtype == "float32") {
     if (CheckScatterNdHighPerfShape(outShape, indicesShape)) {
-      CalScatterNdHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum,
-                                       updatesDataEachBlock, indicesSize);
+      CalScatterNdHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum, updatesDataEachBlock,
+                                       indicesSize);
     } else {
-      CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize,
-                                   updatesSize, indicesSize, updatesDataEachBlock);
+      CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize, updatesSize, indicesSize,
+                                   updatesDataEachBlock);
     }
   } else {
     CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
@@ -519,11 +507,10 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
 
-  GELOGI("op[%s] tiling run success.", opType.c_str());
+  OP_LOGI(opType.c_str(), "ScatterNdTiling run success.");
 
   return true;
 }
 
 REGISTER_OP_TILING_FUNC_BUFFERED(ScatterNd, ScatterNdTiling);
 }  // namespace optiling
-

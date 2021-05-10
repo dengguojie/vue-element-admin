@@ -120,7 +120,7 @@ class ScatterNdSub():
         Check whether the input parameters is valid or not
         """
         indices_support_dtype_list = ("int32",)
-        var_support_dtype_list = ("float32", "float16", "int8", "uint8", "int32")
+        var_support_dtype_list = ("float32", "float16", "int32")
         para_check.check_dtype(self.indice_dtype, indices_support_dtype_list, param_name="indices")
         para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")
         if self.var_dtype != self.subs_dtype:
@@ -311,22 +311,13 @@ class ScatterNdSub():
 
         with self.tik_instance.if_scope(loop > 0):
             with self.tik_instance.for_range(0, loop) as i:
-                self.tik_instance.vec_sub(mask, 
-                                          self.subs_ub[i * 255 * mask], 
-                                          self.var_ub[i * 255 * mask], 
-                                          self.subs_ub[i * 255 * mask],
-                                          255, 8, 8, 8)
+                self.tik_instance.vec_sub(mask, self.subs_ub[i * 255 * mask], self.var_ub[i * 255 * mask],
+                                          self.subs_ub[i * 255 * mask], 255, 8, 8, 8)
         with self.tik_instance.if_scope(last > 0):
-            self.tik_instance.vec_sub(mask, 
-                                      self.subs_ub[loop * 255 * mask],
-                                      self.var_ub[loop * 255 * mask],
-                                      self.subs_ub[loop * 255 * mask],
-                                      last - 1, 8, 8, 8)
-            self.tik_instance.vec_sub(lastmaskScalar, 
-                                      self.subs_ub[lastindex * mask],
-                                      self.var_ub[lastindex * mask],
-                                      self.subs_ub[lastindex * mask],
-                                      1, 8, 8, 8)
+            self.tik_instance.vec_sub(mask, self.subs_ub[loop * 255 * mask], self.var_ub[loop * 255 * mask],
+                                      self.subs_ub[loop * 255 * mask], last - 1, 8, 8, 8)
+            self.tik_instance.vec_sub(lastmaskScalar, self.subs_ub[lastindex * mask], self.var_ub[lastindex * mask],
+                                      self.subs_ub[lastindex * mask], 1, 8, 8, 8)
 
     def vec_sub_with_subr(self, update_num, subs_subr, var_subr):
         """
@@ -344,22 +335,16 @@ class ScatterNdSub():
 
         with self.tik_instance.if_scope(loop > 0):
             with self.tik_instance.for_range(0, loop) as i:
-                self.tik_instance.vec_sub(mask, 
-                                          self.subs_ub[i * 255 * mask + subs_subr],
+                self.tik_instance.vec_sub(mask, self.subs_ub[i * 255 * mask + subs_subr],
                                           self.var_ub[i * 255 * mask + var_subr],
-                                          self.subs_ub[i * 255 * mask + subs_subr],
-                                          255, 8, 8, 8)
+                                          self.subs_ub[i * 255 * mask + subs_subr], 255, 8, 8, 8)
         with self.tik_instance.if_scope(last > 0):
-            self.tik_instance.vec_sub(mask, 
-                                      self.subs_ub[loop * 255 * mask + subs_subr],
+            self.tik_instance.vec_sub(mask, self.subs_ub[loop * 255 * mask + subs_subr],
                                       self.var_ub[loop * 255 * mask + var_subr],
-                                      self.subs_ub[loop * 255 * mask + subs_subr],
-                                      last - 1, 8, 8, 8)
-            self.tik_instance.vec_sub(lastmaskScalar, 
-                                      self.subs_ub[lastindex * mask + subs_subr],
+                                      self.subs_ub[loop * 255 * mask + subs_subr], last - 1, 8, 8, 8)
+            self.tik_instance.vec_sub(lastmaskScalar, self.subs_ub[lastindex * mask + subs_subr],
                                       self.var_ub[lastindex * mask + var_subr],
-                                      self.subs_ub[lastindex * mask + subs_subr],
-                                      1, 8, 8, 8)
+                                      self.subs_ub[lastindex * mask + subs_subr], 1, 8, 8, 8)
 
     def update_var(self, subs_loop_index, update_num, var_loop_index, mode):
         """
@@ -402,11 +387,8 @@ class ScatterNdSub():
                                             self.out_gm[var_loop_index + update_num - self.var_data_each_block], 0, 1,
                                             1, 0, 0)
                 self.vsub(update_num)
-                self.tik_instance.vec_sub(self.var_data_each_block, 
-                                          self.subs_tile_ub[0],
-                                          self.var_tile_ub[0],
-                                          self.subs_tile_ub[0],
-                                          1, 8, 8, 8)
+                self.tik_instance.vec_sub(self.var_data_each_block, self.subs_tile_ub[0], self.var_tile_ub[0],
+                                          self.subs_tile_ub[0], 1, 8, 8, 8)
                 self.tik_instance.data_move(self.out_gm[var_loop_index + update_num - self.var_data_each_block],
                                             self.subs_tile_ub, 0, 1, 1, 0, 0)
                 self.tik_instance.data_move(self.out_gm[var_loop_index], self.subs_ub, 0, 1, self.subs_burst_len - 1, 0,
@@ -538,13 +520,10 @@ class ScatterNdSub():
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 6, 0, 0)
             self.tiling_args()
-            with self.tik_instance.if_scope(self.core_num > 1):
-                with self.tik_instance.if_scope(core_index < self.core_num):
-                    self.init_ub_tensor()
-                    self.core_loop_index.set_as(core_index)
-                    self.traversing_indices()
-            with self.tik_instance.else_scope():
+
+            with self.tik_instance.if_scope(core_index < self.core_num):
                 self.init_ub_tensor()
+                self.core_loop_index.set_as(core_index)
                 self.traversing_indices()
 
     def scatter_nd_sub_operator(self):

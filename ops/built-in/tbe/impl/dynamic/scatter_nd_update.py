@@ -474,14 +474,10 @@ class ScatterNdUpdate():
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 6, 0, 0)
             self.tiling_args()
-            with self.tik_instance.if_scope(self.core_num > 1):
-                with self.tik_instance.if_scope(core_index < self.core_num):
-                    self.init_ub_tensor()
-                    self.core_loop_index.set_as(core_index)
-                    self.traversing_indices()
 
-            with self.tik_instance.else_scope():
+            with self.tik_instance.if_scope(core_index < self.core_num):
                 self.init_ub_tensor()
+                self.core_loop_index.set_as(core_index)
                 self.traversing_indices()
 
     def scatter_nd_update_operator(self):

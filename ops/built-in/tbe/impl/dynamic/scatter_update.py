@@ -23,7 +23,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 # max int64 value
-MAX_INT64_VALUE = 2 ** 64 - 1
+MAX_INT64_VALUE = 2**64 - 1
 # tiling param num
 TILING_ARG_NUM = 12
 # reserved ub size
@@ -73,14 +73,10 @@ class ScatterUpdate():
 
         self.check_input_params()
 
-        self.ai_core_num = tbe_platform.get_soc_spec(
-            tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(
-            tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
-        self.var_dtype_bytes_size = tbe_platform.get_bit_len(
-            self.var_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(
-            self.indices_dtype) // EIGHT_BIT
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.var_dtype_bytes_size = tbe_platform.get_bit_len(self.var_dtype) // EIGHT_BIT
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indices_dtype) // EIGHT_BIT
         self.var_data_each_block = BLOCK_BYTES // self.var_dtype_bytes_size
         self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
 
@@ -90,7 +86,8 @@ class ScatterUpdate():
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
         self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
-                                                   name="updates_gm", scope=tik.scope_gm)
+                                                   name="updates_gm",
+                                                   scope=tik.scope_gm)
         self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="out_gm", scope=tik.scope_gm)
 
         self.updates_ub = None
@@ -127,8 +124,8 @@ class ScatterUpdate():
             error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "updates", "var",
                                                                   self.updates_dtype, self.var_dtype)
         if self.var_dtype != self.out_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "out", "var",
-                                                                  self.out_dtype, self.var_dtype)
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "out", "var", self.out_dtype,
+                                                                  self.var_dtype)
 
     def tiling_args(self):
         """
@@ -175,15 +172,20 @@ class ScatterUpdate():
         None
         """
         self.updates_ub = self.tik_instance.Tensor(self.var_dtype, (self.updates_ub_num,),
-                                                   name="updates_ub", scope=tik.scope_ubuf)
+                                                   name="updates_ub",
+                                                   scope=tik.scope_ubuf)
         self.indices_ub = self.tik_instance.Tensor("int32", (self.indices_ub_num,),
-                                                   name="indices_ub", scope=tik.scope_ubuf)
+                                                   name="indices_ub",
+                                                   scope=tik.scope_ubuf)
         self.var_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),
-                                                    name="var_tile_ub", scope=tik.scope_ubuf)
+                                                    name="var_tile_ub",
+                                                    scope=tik.scope_ubuf)
         self.updates_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),
-                                                        name="updates_tile_ub", scope=tik.scope_ubuf)
+                                                        name="updates_tile_ub",
+                                                        scope=tik.scope_ubuf)
         self.var_vconv_ub = self.tik_instance.Tensor("float16", (32,), name="var_vconv_ub", scope=tik.scope_ubuf)
-        self.updates_vconv_ub = self.tik_instance.Tensor("float16", (32,), name="updates_vconv_ub",
+        self.updates_vconv_ub = self.tik_instance.Tensor("float16", (32,),
+                                                         name="updates_vconv_ub",
                                                          scope=tik.scope_ubuf)
 
         self.var_read_index = self.tik_instance.Scalar("int32", name="var_read_index")
@@ -215,8 +217,8 @@ class ScatterUpdate():
             self.indices_burst_len.set_as(indice_num // self.indices_data_each_block)
         with self.tik_instance.else_scope():
             self.indices_burst_len.set_as((indice_num // self.indices_data_each_block) + 1)
-        self.tik_instance.data_move(self.indices_ub, self.indices_gm[indices_in_index], 0, 1,
-                                    self.indices_burst_len, 0, 0)
+        self.tik_instance.data_move(self.indices_ub, self.indices_gm[indices_in_index], 0, 1, self.indices_burst_len, 0,
+                                    0)
 
         with self.tik_instance.if_scope(self.tiling_mode == 1):
             self.traversing_updates_32b_aligned_and_ub_enough(indices_in_index, indice_num)
@@ -264,16 +266,17 @@ class ScatterUpdate():
         None
         """
         with self.tik_instance.if_scope(self.updates_loop_num > 0):
-            with self.tik_instance.for_range(
-                    0, self.updates_loop_num) as updates_loop_index:
-                self.update_var((indices_in_index + indices_ub_index) * self.update_data_num + updates_loop_index *
-                                self.updates_ub_num, self.updates_ub_num, self.var_read_index * self.update_data_num +
-                                updates_loop_index * self.updates_ub_num, mode)
+            with self.tik_instance.for_range(0, self.updates_loop_num) as updates_loop_index:
+                self.update_var((indices_in_index + indices_ub_index) * self.update_data_num +
+                                updates_loop_index * self.updates_ub_num, self.updates_ub_num,
+                                self.var_read_index * self.update_data_num + updates_loop_index * self.updates_ub_num,
+                                mode)
 
         with self.tik_instance.if_scope(self.updates_last_num > 0):
-            self.update_var((indices_in_index + indices_ub_index) * self.update_data_num + self.updates_loop_num *
-                            self.updates_ub_num, self.updates_last_num, self.var_read_index * self.update_data_num +
-                            self.updates_loop_num * self.updates_ub_num, mode)
+            self.update_var((indices_in_index + indices_ub_index) * self.update_data_num +
+                            self.updates_loop_num * self.updates_ub_num, self.updates_last_num,
+                            self.var_read_index * self.update_data_num + self.updates_loop_num * self.updates_ub_num,
+                            mode)
 
     def update_var(self, updates_loop_index, update_num, var_loop_index, mode):
         """
@@ -293,22 +296,22 @@ class ScatterUpdate():
         """
         if mode == 2:
             self.updates_burst_len.set_as(update_num // self.var_data_each_block)
-            self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_loop_index],
-                                        0, 1, self.updates_burst_len, 0, 0)
-            self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1,
+            self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_loop_index], 0, 1,
                                         self.updates_burst_len, 0, 0)
+            self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1, self.updates_burst_len, 0,
+                                        0)
 
         if mode == 5:
             with self.tik_instance.if_scope(update_num % self.var_data_each_block == 0):
                 self.updates_burst_len.set_as(update_num // self.var_data_each_block)
             with self.tik_instance.else_scope():
                 self.updates_burst_len.set_as(update_num // self.var_data_each_block + 1)
-            self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_loop_index],
-                                        0, 1, self.updates_burst_len, 0, 0)
+            self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_loop_index], 0, 1,
+                                        self.updates_burst_len, 0, 0)
 
             with self.tik_instance.if_scope(update_num % self.var_data_each_block == 0):
-                self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1,
-                                            self.updates_burst_len, 0, 0)
+                self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1, self.updates_burst_len,
+                                            0, 0)
             with self.tik_instance.else_scope():
                 self.tik_instance.data_move(self.var_gm[var_loop_index], self.updates_ub, 0, 1,
                                             self.updates_burst_len - 1, 0, 0)
@@ -338,10 +341,10 @@ class ScatterUpdate():
             self.var_read_index.set_as(self.indices_ub[indices_ub_index])
             with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                 with self.tik_instance.if_scope((self.core_loop_index + 1) * self.indice_step > self.var_read_index):
-                    self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num],
-                                                self.updates_ub[(indices_in_index + indices_ub_index) *
-                                                                self.update_data_num],
-                                                0, 1, updates_burst_len, 0, 0)
+                    self.tik_instance.data_move(
+                        self.var_gm[self.var_read_index * self.update_data_num],
+                        self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num], 0, 1,
+                        updates_burst_len, 0, 0)
 
     def traversing_updates_single_core_and_ub_enough(self, indices_in_index, indice_num):
         """
@@ -363,11 +366,11 @@ class ScatterUpdate():
 
         with self.tik_instance.for_range(0, indice_num) as indices_ub_index:
             self.var_read_index.set_as(self.indices_ub[indices_ub_index])
-            self.tik_instance.data_move(self.var_tile_ub, self.var_gm[self.var_read_index * self.update_data_num],
-                                        0, 1, 1, 0, 0)
+            self.tik_instance.data_move(self.var_tile_ub, self.var_gm[self.var_read_index * self.update_data_num], 0, 1,
+                                        1, 0, 0)
             with self.tik_instance.for_range(0, self.update_data_num) as updates_ub_index:
-                self.update_value.set_as(self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num
-                                                         + updates_ub_index])
+                self.update_value.set_as(self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num +
+                                                         updates_ub_index])
                 self.updates_tile_ub[updates_ub_index].set_as(self.update_value)
             if self.var_dtype in ("int8", "uint8"):
                 self.tik_instance.vec_conv(32, "", self.var_vconv_ub, self.var_tile_ub, 1, 8, 4)
@@ -380,8 +383,8 @@ class ScatterUpdate():
                 self.tik_instance.vec_muls(self.update_data_num, self.var_tile_ub, self.var_tile_ub, 0, 1, 8, 8)
                 self.tik_instance.vec_add(self.update_data_num, self.var_tile_ub, self.var_tile_ub,
                                           self.updates_tile_ub, 1, 8, 8, 8)
-            self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.var_tile_ub,
-                                        0, 1, 1, 0, 0)
+            self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.var_tile_ub, 0, 1,
+                                        1, 0, 0)
 
     def traversing_updates_single_core_and_ub_not_enough(self, indices_in_index, indice_num):
         """
@@ -399,10 +402,11 @@ class ScatterUpdate():
         """
         with self.tik_instance.for_range(0, indice_num) as indices_ub_index:
             self.var_read_index.set_as(self.indices_ub[indices_ub_index])
-            self.tik_instance.data_move(self.var_tile_ub, self.var_gm[self.var_read_index * self.update_data_num],
+            self.tik_instance.data_move(self.var_tile_ub, self.var_gm[self.var_read_index * self.update_data_num], 0, 1,
+                                        1, 0, 0)
+            self.tik_instance.data_move(self.updates_tile_ub,
+                                        self.updates_gm[(indices_in_index + indices_ub_index) * self.update_data_num],
                                         0, 1, 1, 0, 0)
-            self.tik_instance.data_move(self.updates_tile_ub, self.updates_gm[(indices_in_index + indices_ub_index) *
-                                                                              self.update_data_num], 0, 1, 1, 0, 0)
             if self.var_dtype in ("int8", "uint8"):
                 self.tik_instance.vec_conv(32, "", self.var_vconv_ub, self.var_tile_ub, 1, 8, 4)
                 self.tik_instance.vec_conv(32, "", self.updates_vconv_ub, self.updates_tile_ub, 1, 8, 4)
@@ -414,8 +418,8 @@ class ScatterUpdate():
                 self.tik_instance.vec_muls(self.update_data_num, self.var_tile_ub, self.var_tile_ub, 0, 1, 8, 8)
                 self.tik_instance.vec_add(self.update_data_num, self.var_tile_ub, self.var_tile_ub,
                                           self.updates_tile_ub, 1, 8, 8, 8)
-            self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.var_tile_ub,
-                                        0, 1, 1, 0, 0)
+            self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.var_tile_ub, 0, 1,
+                                        1, 0, 0)
 
     def traversing_indices(self):
         """
@@ -430,8 +434,7 @@ class ScatterUpdate():
         None
         """
         with self.tik_instance.if_scope(self.indices_loop_num > 0):
-            with self.tik_instance.for_range(
-                    0, self.indices_loop_num) as indices_loop_index:
+            with self.tik_instance.for_range(0, self.indices_loop_num) as indices_loop_index:
                 self.move_indices(indices_loop_index * self.indices_ub_num, self.indices_ub_num)
 
         with self.tik_instance.if_scope(self.indices_last_num > 0):
@@ -450,17 +453,15 @@ class ScatterUpdate():
         None
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
-            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub",
+            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+                                                      name="tiling_ub",
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 3, 0, 0)
             self.tiling_args()
-            with self.tik_instance.if_scope(self.core_num > 1):
-                with self.tik_instance.if_scope(core_index < self.core_num):
-                    self.init_ub_tensor()
-                    self.core_loop_index.set_as(core_index)
-                    self.traversing_indices()
-            with self.tik_instance.else_scope():
+
+            with self.tik_instance.if_scope(core_index < self.core_num):
                 self.init_ub_tensor()
+                self.core_loop_index.set_as(core_index)
                 self.traversing_indices()
 
     def scatter_update_operator(self):
@@ -477,22 +478,26 @@ class ScatterUpdate():
         """
         self.scatter_update_compute_tiling()
         opt_config = {"out_of_bound_sync_check": True}
-        self.tik_instance.BuildCCE(
-            kernel_name=self.kernel_name,
-            inputs=(self.var_gm, self.indices_gm, self.updates_gm),
-            outputs=(self.out_gm), flowtable=[self.tiling_gm], config=opt_config)
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.var_gm, self.indices_gm, self.updates_gm),
+                                   outputs=(self.out_gm),
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
 
-        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num,
-                                                            "var_size": self.var_dtype_bytes_size,
-                                                            "indices_size": self.indices_dtype_bytes_size})
+        tbe_context.get_context().add_compile_info(
+            "vars", {
+                "ub_size": self.ub_size_bytes,
+                "core_num": self.ai_core_num,
+                "var_size": self.var_dtype_bytes_size,
+                "indices_size": self.indices_dtype_bytes_size
+            })
 
 
 # pylint: disable=unused-argument
 @register_operator("ScatterUpdate")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def scatter_update(var, indices, updates, var_out, use_locking=False,
-                   kernel_name="scatter_update"):
+def scatter_update(var, indices, updates, var_out, use_locking=False, kernel_name="scatter_update"):
     """
     scatter_update interface
 

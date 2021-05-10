@@ -91,9 +91,9 @@ void InitRunningParams(ScatterMaxTilingParams& params) {
 }
 
 void CalScatterMaxBranchRunningParams(ScatterMaxTilingParams& runParams, int64_t varNum, int64_t indicesNum,
-                                     int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize,
-                                     int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock,
-                                     int64_t dataNumOneRepeat) {
+                                      int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize,
+                                      int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock,
+                                      int64_t dataNumOneRepeat) {
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;
@@ -113,28 +113,28 @@ void CalScatterMaxBranchRunningParams(ScatterMaxTilingParams& runParams, int64_t
     if (updateSizeByte <= varUbSize && varSizeByte <= varUbSize) {
       runParams.tilingMode = TILING_MODE_1;
     } else if (updateSizeByte > varUbSize && varSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_2;
+      runParams.tilingMode = TILING_MODE_2;
     } else if (updateSizeByte <= varUbSize && varSizeByte > varUbSize) {
-        runParams.tilingMode = TILING_MODE_3;
+      runParams.tilingMode = TILING_MODE_3;
     } else {
-        runParams.tilingMode = TILING_MODE_4;
+      runParams.tilingMode = TILING_MODE_4;
     }
   } else if (updateDataNum < varDataEachBlock) {
-      if (updateSizeByte <= varUbSize && varAllSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_5;
+    if (updateSizeByte <= varUbSize && varAllSizeByte <= varUbSize) {
+      runParams.tilingMode = TILING_MODE_5;
     } else if (updateSizeByte > varUbSize && varAllSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_6;
+      runParams.tilingMode = TILING_MODE_6;
     } else if (updateSizeByte <= varUbSize && varAllSizeByte > varUbSize) {
-        runParams.tilingMode = TILING_MODE_7;
+      runParams.tilingMode = TILING_MODE_7;
     } else {
-        runParams.tilingMode = TILING_MODE_8;
+      runParams.tilingMode = TILING_MODE_8;
     }
   } else {
-      if (updateDataNum / (varUbSize / varSize) == 0) {
-        runParams.tilingMode = TILING_MODE_9;
-      } else {
-        runParams.tilingMode = TILING_MODE_10;
-      }
+    if (updateDataNum / (varUbSize / varSize) == 0) {
+      runParams.tilingMode = TILING_MODE_9;
+    } else {
+      runParams.tilingMode = TILING_MODE_10;
+    }
   }
 
   if (runParams.tilingMode == TILING_MODE_1 || runParams.tilingMode == TILING_MODE_2) {
@@ -169,35 +169,34 @@ void SetRuningParams(const ScatterMaxTilingParams& params, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, params.varEachCoreData);
 }
 
-void PrintTilingParams(const ScatterMaxTilingParams& params) {
-  GELOGD("op [ScatterMaxTiling] : tilingMode=%ld.", params.tilingMode);
-  GELOGD("op [ScatterMaxTiling] : indiceStep=%ld.", params.indiceStep);
-  GELOGD("op [ScatterMaxTiling] : coreNum=%ld.", params.coreNum);
-  GELOGD("op [ScatterMaxTiling] : updatesDataNum=%ld.", params.updatesDataNum);
-  GELOGD("op [ScatterMaxTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
-  GELOGD("op [ScatterMaxTiling] : indicesLastNum=%ld.", params.indicesLastNum);
-  GELOGD("op [ScatterMaxTiling] : updatesNum=%ld.", params.updatesNum);
-  GELOGD("op [ScatterMaxTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
-  GELOGD("op [ScatterMaxTiling] : updatesLastNum=%ld.", params.updatesLastNum);
-  GELOGD("op [ScatterMaxTiling] : varNum=%ld.", params.varNum);
-  GELOGD("op [ScatterMaxTiling] : varLoopNum=%ld.", params.varLoopNum);
-  GELOGD("op [ScatterMaxTiling] : varLastNum=%ld.", params.varLastNum);
-  GELOGD("op [ScatterMaxTiling] : varEachCoreBurstLen=%ld.", params.varEachCoreBurstLen);
-  GELOGD("op [ScatterMaxTiling] : varLastCoreBurstLen=%ld.", params.varLastCoreBurstLen);
-  GELOGD("op [ScatterMaxTiling] : maxIndice=%ld.", params.maxIndice);
-  GELOGD("op [ScatterMaxTiling] : varEachCoreData=%ld.", params.varEachCoreData);
+void PrintTilingParams(const std::string& opType, const ScatterMaxTilingParams& params) {
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : tilingMode=%ld.", params.tilingMode);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : indiceStep=%ld.", params.indiceStep);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : coreNum=%ld.", params.coreNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : updatesDataNum=%ld.", params.updatesDataNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : indicesLastNum=%ld.", params.indicesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : updatesNum=%ld.", params.updatesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : updatesLastNum=%ld.", params.updatesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : varNum=%ld.", params.varNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : varLoopNum=%ld.", params.varLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : varLastNum=%ld.", params.varLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : varEachCoreBurstLen=%ld.", params.varEachCoreBurstLen);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : varLastCoreBurstLen=%ld.", params.varLastCoreBurstLen);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : maxIndice=%ld.", params.maxIndice);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : varEachCoreData=%ld.", params.varEachCoreData);
 }
 
 bool CheckScatterMaxShape(const std::string& opType, std::vector<int64_t> varShape, std::vector<int64_t> indicesShape,
                           std::vector<int64_t> updatesShape, std::vector<int64_t> outShape) {
   if (varShape != outShape) {
-    ge::OpsOneInputShapeErrReport("ScatterMax", "var", "the length of var must be same as the length of output");
-    OP_LOGE(opType.c_str(), "[ScatterMaxTiling] : var_out's shape must be the same as var's shape.");
+    OP_LOGE(opType.c_str(), "the length of var must be same as the length of output.");
     return false;
   }
 
   if (indicesShape.size() == 1 && indicesShape[0] == 1 && varShape.size() - updatesShape.size() == 1) {
-    GELOGI("op[%s] Input indices is a scalar.", opType.c_str());
+    OP_LOGI(opType.c_str(), "Input indices is a scalar.");
     return true;
   }
 
@@ -207,9 +206,7 @@ bool CheckScatterMaxShape(const std::string& opType, std::vector<int64_t> varSha
     actualUpdatesShape.push_back(varShape[i]);
   }
   if (updatesShape != actualUpdatesShape) {
-    ge::OpsOneInputShapeErrReport("ScatterMax", "updates",
-                                  "updates does not satisfy the relation expression with actualUpdatesShape");
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : updates's shape is illegal.");
+    OP_LOGE(opType.c_str(), "updates does not satisfy the relation expression with actualUpdatesShape.");
     return false;
   }
   return true;
@@ -220,29 +217,25 @@ bool GetScatterMaxCompileParams(const std::string& opType, const nlohmann::json&
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : GetCompileParams, get core_num error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : GetCompileParams, get ub_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
 
   if (allVars.count("var_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "var_size");
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : GetCompileParams, get var_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get var_size error");
     return false;
   }
   varSize = allVars["var_size"].get<std::int64_t>();
 
   if (allVars.count("indices_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_size");
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : GetCompileParams, get indices_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get indices_size error");
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int64_t>();
@@ -254,24 +247,20 @@ bool ScatterMaxTiling(const std::string& opType, const TeOpParas& opParas, const
                       OpRunInfo& runInfo) {
   using namespace ge;
 
-  GELOGI("op[%s] ScatterMaxTiling running.", opType.c_str());
+  OP_LOGI(opType.c_str(), "ScatterMaxTiling running.");
   if (opCompileInfo == nullptr) {
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : opCompileInfo json error.");
+    OP_LOGE(opType.c_str(), "opCompileInfo json error.");
     return false;
   }
 
-  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.inputs[1].tensor.empty() || opParas.inputs[2].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices or updates or var",
-                                  "The input may be empty");
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : input shape error");
+  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
+      opParas.inputs[2].tensor.empty()) {
+    OP_LOGE(opType.c_str(), "input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "var_out",
-                                   "The output may be empty");
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : output shape error");
+    OP_LOGE(opType.c_str(), "output shape error");
     return false;
   }
 
@@ -283,7 +272,7 @@ bool ScatterMaxTiling(const std::string& opType, const TeOpParas& opParas, const
 
   bool is_valid_shape = CheckScatterMaxShape(opType, varShape, indicesShape, updatesShape, outShape);
   if (!is_valid_shape) {
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : CheckScatterMaxShape is failed.");
+    OP_LOGE(opType.c_str(), "CheckScatterMaxShape is failed.");
     return false;
   }
 
@@ -294,7 +283,7 @@ bool ScatterMaxTiling(const std::string& opType, const TeOpParas& opParas, const
 
   bool can_get_params = GetScatterMaxCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize);
   if (!can_get_params) {
-    OP_LOGE(opType.c_str(), "op [ScatterMaxTiling] : GetScatterMaxCompileParams error.");
+    OP_LOGE(opType.c_str(), "GetScatterMaxCompileParams error.");
     return false;
   }
 
@@ -303,14 +292,14 @@ bool ScatterMaxTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t varNum = std::accumulate(varShape.begin(), varShape.end(), 1, std::multiplies<int>());
   int64_t indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
   int64_t updatesNum = std::accumulate(updatesShape.begin(), updatesShape.end(), 1, std::multiplies<int>());
-  int64_t updateDataNum = (varShape.size() > 1) ? (std::accumulate(varShape.begin() + 1, varShape.end(), 1,
-                                                                   std::multiplies<int>())) : 1;
+  int64_t updateDataNum =
+      (varShape.size() > 1) ? (std::accumulate(varShape.begin() + 1, varShape.end(), 1, std::multiplies<int>())) : 1;
   int64_t maxIndice = varShape[0];
   runParams.maxIndice = maxIndice;
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
   int64_t dataNumOneRepeat = 0;
 
-  GELOGD("op [ScatterMaxTiling] : indicesNum=%ld.", indicesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterMaxTiling] : indicesNum=%ld.", indicesNum);
 
   if (updateDataNum < varDataEachBlock) {
     runParams.coreNum = 1;
@@ -330,13 +319,13 @@ bool ScatterMaxTiling(const std::string& opType, const TeOpParas& opParas, const
 
   SetRuningParams(runParams, runInfo);
 
-  PrintTilingParams(runParams);
+  PrintTilingParams(opType, runParams);
 
   runInfo.block_dim = runParams.coreNum;
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
 
-  GELOGI("op[%s] tiling run success.", opType.c_str());
+  OP_LOGI(opType.c_str(), "ScatterMaxTiling run success.");
 
   return true;
 }

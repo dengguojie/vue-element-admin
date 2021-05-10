@@ -139,17 +139,17 @@ void CalAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t ind
       runParams.tilingMode = TILING_MODE_2;
     }
   } else {
-      if (updateDataNum < varDataEachBlock) {
-        if (updateSizeByte <= halfUbSize) {
-          runParams.tilingMode = TILING_MODE_4;
-          runParams.updatesLoopNum = updatesNum / (halfUbSize / varSize);
-          runParams.updatesLastNum = updatesNum % (halfUbSize / varSize);
-        } else {
-          runParams.tilingMode = TILING_MODE_4;
-        }
+    if (updateDataNum < varDataEachBlock) {
+      if (updateSizeByte <= halfUbSize) {
+        runParams.tilingMode = TILING_MODE_4;
+        runParams.updatesLoopNum = updatesNum / (halfUbSize / varSize);
+        runParams.updatesLastNum = updatesNum % (halfUbSize / varSize);
       } else {
-        runParams.tilingMode = TILING_MODE_5;
+        runParams.tilingMode = TILING_MODE_4;
       }
+    } else {
+      runParams.tilingMode = TILING_MODE_5;
+    }
   }
 }
 
@@ -176,30 +176,30 @@ void CalNotAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t 
     if (updateSizeByte <= varUbSize && varSizeByte <= varUbSize) {
       runParams.tilingMode = TILING_MODE_6;
     } else if (updateSizeByte > varUbSize && varSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_7;
+      runParams.tilingMode = TILING_MODE_7;
     } else if (updateSizeByte <= varUbSize && varSizeByte > varUbSize) {
-        runParams.tilingMode = TILING_MODE_8;
+      runParams.tilingMode = TILING_MODE_8;
     } else {
-        runParams.tilingMode = TILING_MODE_9;
+      runParams.tilingMode = TILING_MODE_9;
     }
   } else if (updateDataNum < varDataEachBlock) {
-      if (updateSizeByte <= varUbSize && varAllSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_10;
+    if (updateSizeByte <= varUbSize && varAllSizeByte <= varUbSize) {
+      runParams.tilingMode = TILING_MODE_10;
     } else if (updateSizeByte > varUbSize && varAllSizeByte <= varUbSize) {
-        runParams.tilingMode = TILING_MODE_11;
+      runParams.tilingMode = TILING_MODE_11;
     } else if (updateSizeByte <= varUbSize && varAllSizeByte > varUbSize) {
-        runParams.tilingMode = TILING_MODE_12;
+      runParams.tilingMode = TILING_MODE_12;
     } else {
-        runParams.tilingMode = TILING_MODE_13;
+      runParams.tilingMode = TILING_MODE_13;
     }
   } else {
-      if (updateDataNum / (varUbSize / varSize) == 0) {
-        runParams.tilingMode = TILING_MODE_14;
-      } else {
-        runParams.tilingMode = TILING_MODE_15;
-      }
+    if (updateDataNum / (varUbSize / varSize) == 0) {
+      runParams.tilingMode = TILING_MODE_14;
+    } else {
+      runParams.tilingMode = TILING_MODE_15;
+    }
   }
-  
+
   if (runParams.tilingMode == TILING_MODE_6 || runParams.tilingMode == TILING_MODE_7) {
     runParams.varEachCoreData = runParams.indiceStep * runParams.updatesDataNum;
     int64_t varLastCoreData = varNum - runParams.varEachCoreData * (coreNum - 1);
@@ -286,13 +286,12 @@ bool CheckScatterAddShape(const std::string& opType, const std::vector<int64_t>&
                           const std::vector<int64_t>& indicesShape, const std::vector<int64_t>& updatesShape,
                           const std::vector<int64_t>& outShape) {
   if (varShape != outShape) {
-    ge::OpsOneInputShapeErrReport("ScatterAdd", "var", "the length of var must be same as the length of output");
-    OP_LOGE(opType.c_str(), "[ScatterAddTiling] : var_out's shape must be the same as var's shape.");
+    OP_LOGE(opType.c_str(), "the length of var must be same as the length of output.");
     return false;
   }
 
   if (indicesShape.size() == 1 && indicesShape[0] == 1 && varShape.size() - updatesShape.size() == 1) {
-    GELOGI("op[%s] Input indices is a scalar.", opType.c_str());
+    OP_LOGI(opType.c_str(), "Input indices is a scalar.");
     return true;
   }
 
@@ -302,9 +301,7 @@ bool CheckScatterAddShape(const std::string& opType, const std::vector<int64_t>&
     actualUpdatesShape.push_back(varShape[i]);
   }
   if (updatesShape != actualUpdatesShape) {
-    ge::OpsOneInputShapeErrReport("ScatterAdd", "updates",
-                                  "updates does not satisfy the relation expression with actualUpdatesShape");
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : updates's shape is illegal.");
+    OP_LOGE(opType.c_str(), "updates does not satisfy the relation expression with actualUpdatesShape.");
     return false;
   }
   return true;
@@ -316,36 +313,31 @@ bool GetScatterAddCompileParams(const std::string& opType, const nlohmann::json&
   const auto& allVars = opCompileInfo["vars"];
 
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : GetCompileParams, get core_num error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : GetCompileParams, get ub_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
 
   if (allVars.count("var_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "var_size");
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : GetCompileParams, get var_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get var_size error");
     return false;
   }
   varSize = allVars["var_size"].get<std::int64_t>();
 
   if (allVars.count("indices_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_size");
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : GetCompileParams, get indices_size error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get indices_size error");
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int64_t>();
 
   if (allVars.count("support_atomic") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "support_atomic");
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : GetCompileParams, get support_atomic error");
+    OP_LOGE(opType.c_str(), "GetCompileParams, get support_atomic error");
     return false;
   }
   supportAtomic = allVars["support_atomic"].get<std::int64_t>();
@@ -371,24 +363,20 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
                       OpRunInfo& runInfo) {
   using namespace ge;
 
-  GELOGI("op[%s] ScatterAddTiling running.", opType.c_str());
+  OP_LOGI(opType.c_str(), "ScatterAddTiling running.");
   if (opCompileInfo == nullptr) {
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : opCompileInfo json error.");
+    OP_LOGE(opType.c_str(), "opCompileInfo json error.");
     return false;
   }
 
-  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.inputs[1].tensor.empty() || opParas.inputs[2].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices or updates or var",
-                                  "The input may be empty");
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : input shape error");
+  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
+      opParas.inputs[2].tensor.empty()) {
+    OP_LOGE(opType.c_str(), "input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "var_out",
-                                   "The output may be empty");
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : output shape error");
+    OP_LOGE(opType.c_str(), "output shape error");
     return false;
   }
 
@@ -400,7 +388,7 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
 
   bool is_valid_shape = CheckScatterAddShape(opType, varShape, indicesShape, updatesShape, outShape);
   if (!is_valid_shape) {
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : CheckScatterAddShape is failed.");
+    OP_LOGE(opType.c_str(), "CheckScatterAddShape is failed.");
     return false;
   }
 
@@ -409,10 +397,10 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t varSize = 0;
   int64_t indicesSize = 0;
   int64_t supportAtomic = 0;
-  bool can_get_params = GetScatterAddCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize,
-                                                   indicesSize, supportAtomic);
+  bool can_get_params =
+      GetScatterAddCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize, supportAtomic);
   if (!can_get_params) {
-    OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : GetScatterAddCompileParams error.");
+    OP_LOGE(opType.c_str(), "GetScatterAddCompileParams error.");
     return false;
   }
 
@@ -421,8 +409,8 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t varNum = std::accumulate(varShape.begin(), varShape.end(), 1, std::multiplies<int>());
   int64_t indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
   int64_t updatesNum = std::accumulate(updatesShape.begin(), updatesShape.end(), 1, std::multiplies<int>());
-  int64_t updateDataNum = (varShape.size() > 1) ? (std::accumulate(varShape.begin() + 1, varShape.end(), 1,
-                                                                   std::multiplies<int>())) : 1;
+  int64_t updateDataNum =
+      (varShape.size() > 1) ? (std::accumulate(varShape.begin() + 1, varShape.end(), 1, std::multiplies<int>())) : 1;
   int64_t maxIndice = varShape[0];
   runParams.maxIndice = maxIndice;
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
@@ -449,13 +437,13 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
 
   if (supportAtomic == 1 && input_dtype == "float32") {
     if (CheckScatterAddHighPerfShape(varShape, indicesShape)) {
-      CalScatterAddHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum,
-                                        varDataEachBlock, indicesSize);
+      CalScatterAddHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum, varDataEachBlock,
+                                        indicesSize);
     } else {
       runParams.indiceStep = ceil(float(maxIndice) / coreNum);
       runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
-      CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize,
-                                   varSize, indicesSize, varDataEachBlock);
+      CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize, varSize, indicesSize,
+                                   varDataEachBlock);
     }
   } else {
     CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
@@ -470,7 +458,7 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
 
-  GELOGI("op[%s] tiling run success.", opType.c_str());
+  OP_LOGI(opType.c_str(), "ScatterAddTiling run success.");
 
   return true;
 }

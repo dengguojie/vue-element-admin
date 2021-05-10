@@ -22,7 +22,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_context
 
 # max int64 value
-MAX_INT64_VALUE = 2 ** 64 - 1
+MAX_INT64_VALUE = 2**64 - 1
 # tiling param num
 TILING_ARG_NUM = 20
 # reserved ub size
@@ -42,9 +42,9 @@ INT32_MAX = 2147483647
 # int32 min value
 INT32_MIN = -2147483648
 # fp32 max value
-FP32_MAX = 3.4 * (10 ** 38)
+FP32_MAX = 3.4 * (10**38)
 # fp32 min value
-FP32_MIN = -3.4 * (10 ** 38)
+FP32_MIN = -3.4 * (10**38)
 # fp16 max value
 FP16_MAX = 65504
 # fp16 min value
@@ -101,14 +101,10 @@ class ScatterCommon():
 
         self.check_input_params()
 
-        self.ai_core_num = tbe_platform.get_soc_spec(
-            tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(
-            tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
-        self.var_dtype_bytes_size = tbe_platform.get_bit_len(
-            self.var_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(
-            self.indices_dtype) // EIGHT_BIT
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.var_dtype_bytes_size = tbe_platform.get_bit_len(self.var_dtype) // EIGHT_BIT
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indices_dtype) // EIGHT_BIT
         self.var_data_each_block = BLOCK_BYTES // self.var_dtype_bytes_size
         self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
         self.data_num_one_repeat = VECTOR_BYTE_SIZE // self.var_dtype_bytes_size
@@ -129,7 +125,8 @@ class ScatterCommon():
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
         self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
-                                                   name="updates_gm", scope=tik.scope_gm)
+                                                   name="updates_gm",
+                                                   scope=tik.scope_gm)
         self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="out_gm", scope=tik.scope_gm)
 
         self.var_ub = None
@@ -181,8 +178,8 @@ class ScatterCommon():
             error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "updates", "var",
                                                                   self.updates_dtype, self.var_dtype)
         if self.var_dtype != self.out_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "out", "var",
-                                                                  self.out_dtype, self.var_dtype)
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "out", "var", self.out_dtype,
+                                                                  self.var_dtype)
 
     def tiling_args(self):
         """
@@ -242,19 +239,23 @@ class ScatterCommon():
         -------
         None
         """
-        self.var_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_ub_num,),
-                                               name="var_ub", scope=tik.scope_ubuf)
+        self.var_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_ub_num,), name="var_ub", scope=tik.scope_ubuf)
         self.updates_ub = self.tik_instance.Tensor(self.var_dtype, (self.updates_ub_num,),
-                                                   name="updates_ub", scope=tik.scope_ubuf)
+                                                   name="updates_ub",
+                                                   scope=tik.scope_ubuf)
         self.indices_ub = self.tik_instance.Tensor("int32", (self.indices_ub_num,),
-                                                   name="indices_ub", scope=tik.scope_ubuf)
+                                                   name="indices_ub",
+                                                   scope=tik.scope_ubuf)
         self.var_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),
-                                                    name="var_tile_ub", scope=tik.scope_ubuf)
+                                                    name="var_tile_ub",
+                                                    scope=tik.scope_ubuf)
         self.updates_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),
-                                                        name="updates_tile_ub", scope=tik.scope_ubuf)
+                                                        name="updates_tile_ub",
+                                                        scope=tik.scope_ubuf)
         if self.compute_type == "vdiv" and not tbe_platform.api_check_support("tik.vdiv", "float32"):
             self.temp_ub = self.tik_instance.Tensor(self.var_dtype, (self.temp_ub_num,),
-                                                    name="temp_ub", scope=tik.scope_ubuf)
+                                                    name="temp_ub",
+                                                    scope=tik.scope_ubuf)
 
         self.var_read_index = self.tik_instance.Scalar("int32", name="var_read_index")
         self.var_read_index.set_as(0)
@@ -409,11 +410,12 @@ class ScatterCommon():
         self.tik_instance.data_move(self.updates_ub, self.updates_gm, 0, 1, updates_burst_len, 0, 0)
 
         with self.tik_instance.if_scope(self.core_loop_index < self.core_num - 1):
-            self.each_core_max_indice = (self.core_loop_index + 1) * self.indice_step
-            self.updates_the_var_mode1(indices_in_index, indice_num, self.each_core_max_indice,
-                                       self.var_each_core_burst_len)
+            self.each_core_max_indice.set_as((self.core_loop_index + 1) * self.indice_step)
+            self.var_burst_len.set_as(self.var_each_core_burst_len)
         with self.tik_instance.else_scope():
-            self.updates_the_var_mode1(indices_in_index, indice_num, self.max_indice, self.var_last_core_burst_len)
+            self.each_core_max_indice.set_as(self.max_indice)
+            self.var_burst_len.set_as(self.var_last_core_burst_len)
+        self.updates_the_var_mode1(indices_in_index, indice_num, self.each_core_max_indice, self.var_burst_len)
 
     def updates_the_var_mode1(self, indices_in_index, indice_num, max_indice, burst_len):
         """
@@ -433,8 +435,8 @@ class ScatterCommon():
         -------
         None
         """
-        self.tik_instance.data_move(self.var_ub, self.var_gm[self.core_loop_index * self.var_each_core_data],
-                                    0, 1, burst_len, 0, 0)
+        self.tik_instance.data_move(self.var_ub, self.var_gm[self.core_loop_index * self.var_each_core_data], 0, 1,
+                                    burst_len, 0, 0)
         self.last_var_num.set_as(self.update_data_num)
         self.var_offset.set_as(0)
 
@@ -444,38 +446,36 @@ class ScatterCommon():
                 with self.tik_instance.if_scope(max_indice > self.var_read_index):
                     with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat):
                         with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * 255):
-                            self.cal_scatter_common(self.data_num_one_repeat,
-                                                    self.var_ub[(self.var_read_index - self.indice_step *
-                                                                 self.core_loop_index) * self.update_data_num],
-                                                    self.updates_ub[(indices_in_index + indices_ub_index) *
-                                                                    self.update_data_num], 255)
+                            self.cal_scatter_common(
+                                self.data_num_one_repeat,
+                                self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
+                                            self.update_data_num],
+                                self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num], 255)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
                         self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
-                        self.cal_scatter_common(self.data_num_one_repeat,
-                                                self.var_ub[(self.var_read_index - self.indice_step *
-                                                             self.core_loop_index) * self.update_data_num +
-                                                            self.var_offset],
-                                                self.updates_ub[(indices_in_index + indices_ub_index) *
-                                                                self.update_data_num + self.var_offset], self.repeat)
+                        self.cal_scatter_common(
+                            self.data_num_one_repeat,
+                            self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
+                                        self.update_data_num + self.var_offset],
+                            self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num +
+                                            self.var_offset], self.repeat)
                         with self.tik_instance.if_scope(self.mask != 0):
-                            self.cal_scatter_common(self.mask,
-                                                    self.var_ub[(self.var_read_index - self.indice_step *
-                                                                 self.core_loop_index) * self.update_data_num +
-                                                                self.data_num_one_repeat * self.repeat +
-                                                                self.var_offset],
-                                                    self.updates_ub[(indices_in_index + indices_ub_index) *
-                                                                    self.update_data_num + self.data_num_one_repeat *
-                                                                    self.repeat + self.var_offset], 1)
+                            self.cal_scatter_common(
+                                self.mask, self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
+                                                       self.update_data_num + self.data_num_one_repeat * self.repeat +
+                                                       self.var_offset],
+                                self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num +
+                                                self.data_num_one_repeat * self.repeat + self.var_offset], 1)
                     with self.tik_instance.else_scope():
-                        self.cal_scatter_common(self.update_data_num,
-                                                self.var_ub[(self.var_read_index - self.indice_step *
-                                                             self.core_loop_index) * self.update_data_num],
-                                                self.updates_ub[(indices_in_index + indices_ub_index) *
-                                                                self.update_data_num], 1)
-        self.tik_instance.data_move(self.var_gm[self.core_loop_index * self.var_each_core_data],
-                                    self.var_ub, 0, 1, burst_len, 0, 0)
+                        self.cal_scatter_common(
+                            self.update_data_num,
+                            self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
+                                        self.update_data_num],
+                            self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num], 1)
+        self.tik_instance.data_move(self.var_gm[self.core_loop_index * self.var_each_core_data], self.var_ub, 0, 1,
+                                    burst_len, 0, 0)
 
     def traversing_32b_aligned_ub_store_all_var(self, indices_in_index, indice_num):
         """
@@ -492,11 +492,12 @@ class ScatterCommon():
         None
         """
         with self.tik_instance.if_scope(self.core_loop_index < self.core_num - 1):
-            self.each_core_max_indice = (self.core_loop_index + 1) * self.indice_step
-            self.updates_the_var_mode2(indices_in_index, indice_num, self.each_core_max_indice,
-                                       self.var_each_core_burst_len)
+            self.each_core_max_indice.set_as((self.core_loop_index + 1) * self.indice_step)
+            self.var_burst_len.set_as(self.var_each_core_burst_len)
         with self.tik_instance.else_scope():
-            self.updates_the_var_mode2(indices_in_index, indice_num, self.max_indice, self.var_last_core_burst_len)
+            self.each_core_max_indice.set_as(self.max_indice)
+            self.var_burst_len.set_as(self.var_last_core_burst_len)
+        self.updates_the_var_mode2(indices_in_index, indice_num, self.each_core_max_indice, self.var_burst_len)
 
     def updates_the_var_mode2(self, indices_in_index, indice_num, max_indice, burst_len):
         """
@@ -516,8 +517,8 @@ class ScatterCommon():
         -------
         None
         """
-        self.tik_instance.data_move(self.var_ub, self.var_gm[self.core_loop_index * self.var_each_core_data],
-                                    0, 1, burst_len, 0, 0)
+        self.tik_instance.data_move(self.var_ub, self.var_gm[self.core_loop_index * self.var_each_core_data], 0, 1,
+                                    burst_len, 0, 0)
         self.last_var_num.set_as(self.update_data_num)
         self.var_offset.set_as(0)
 
@@ -525,40 +526,37 @@ class ScatterCommon():
             self.var_read_index.set_as(self.indices_ub[indices_ub_index])
             with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                 with self.tik_instance.if_scope(max_indice > self.var_read_index):
-                    self.tik_instance.data_move(self.updates_ub,
-                                                self.updates_gm[(indices_in_index + indices_ub_index) *
-                                                                self.update_data_num],
-                                                0, 1, self.update_data_num // self.var_data_each_block, 0, 0)
+                    self.tik_instance.data_move(
+                        self.updates_ub, self.updates_gm[(indices_in_index + indices_ub_index) * self.update_data_num],
+                        0, 1, self.update_data_num // self.var_data_each_block, 0, 0)
                     with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat):
                         with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * 255):
-                            self.cal_scatter_common(self.data_num_one_repeat,
-                                                    self.var_ub[(self.var_read_index - self.indice_step *
-                                                                 self.core_loop_index) * self.update_data_num],
-                                                    self.updates_ub, 255)
+                            self.cal_scatter_common(
+                                self.data_num_one_repeat,
+                                self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
+                                            self.update_data_num], self.updates_ub, 255)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
                         self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
-                        self.cal_scatter_common(self.data_num_one_repeat,
-                                                self.var_ub[(self.var_read_index - self.indice_step *
-                                                             self.core_loop_index) * self.update_data_num +
-                                                            self.var_offset],
-                                                self.updates_ub[self.var_offset], self.repeat)
+                        self.cal_scatter_common(
+                            self.data_num_one_repeat,
+                            self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
+                                        self.update_data_num + self.var_offset], self.updates_ub[self.var_offset],
+                            self.repeat)
                         with self.tik_instance.if_scope(self.mask != 0):
-                            self.cal_scatter_common(self.mask,
-                                                    self.var_ub[(self.var_read_index - self.indice_step *
-                                                                 self.core_loop_index) * self.update_data_num +
-                                                                self.data_num_one_repeat * self.repeat +
-                                                                self.var_offset],
-                                                    self.updates_ub[self.data_num_one_repeat * self.repeat +
-                                                                    self.var_offset], 1)
+                            self.cal_scatter_common(
+                                self.mask, self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
+                                                       self.update_data_num + self.data_num_one_repeat * self.repeat +
+                                                       self.var_offset],
+                                self.updates_ub[self.data_num_one_repeat * self.repeat + self.var_offset], 1)
                     with self.tik_instance.else_scope():
-                        self.cal_scatter_common(self.update_data_num,
-                                                self.var_ub[(self.var_read_index - self.indice_step *
-                                                             self.core_loop_index) * self.update_data_num],
-                                                self.updates_ub, 1)
-        self.tik_instance.data_move(self.var_gm[self.core_loop_index * self.var_each_core_data], self.var_ub,
-                                    0, 1, burst_len, 0, 0)
+                        self.cal_scatter_common(
+                            self.update_data_num,
+                            self.var_ub[(self.var_read_index - self.indice_step * self.core_loop_index) *
+                                        self.update_data_num], self.updates_ub, 1)
+        self.tik_instance.data_move(self.var_gm[self.core_loop_index * self.var_each_core_data], self.var_ub, 0, 1,
+                                    burst_len, 0, 0)
 
     def traversing_32b_aligned_ub_store_all_update(self, indices_in_index, indice_num):
         """
@@ -584,32 +582,32 @@ class ScatterCommon():
             self.var_read_index.set_as(self.indices_ub[indices_ub_index])
             with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                 with self.tik_instance.if_scope((self.core_loop_index + 1) * self.indice_step > self.var_read_index):
-                    self.tik_instance.data_move(self.var_ub, self.var_gm[self.var_read_index * self.update_data_num],
-                                                0, 1, updates_burst_len, 0, 0)
+                    self.tik_instance.data_move(self.var_ub, self.var_gm[self.var_read_index * self.update_data_num], 0,
+                                                1, updates_burst_len, 0, 0)
                     with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat):
                         with self.tik_instance.if_scope(self.update_data_num >= self.data_num_one_repeat * 255):
-                            self.cal_scatter_common(self.data_num_one_repeat, self.var_ub,
-                                                    self.updates_ub[(indices_ub_index + indices_in_index) *
-                                                                    self.update_data_num], 255)
+                            self.cal_scatter_common(
+                                self.data_num_one_repeat, self.var_ub,
+                                self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num], 255)
                             self.var_offset.set_as(255 * self.data_num_one_repeat)
                             self.last_var_num.set_as(self.update_data_num - 255 * self.data_num_one_repeat)
                         self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                         self.mask.set_as(self.last_var_num % self.data_num_one_repeat)
-                        self.cal_scatter_common(self.data_num_one_repeat, self.var_ub[self.var_offset],
-                                                self.updates_ub[(indices_ub_index + indices_in_index) *
-                                                                self.update_data_num + self.var_offset], self.repeat)
+                        self.cal_scatter_common(
+                            self.data_num_one_repeat, self.var_ub[self.var_offset],
+                            self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num +
+                                            self.var_offset], self.repeat)
                         with self.tik_instance.if_scope(self.mask != 0):
-                            self.cal_scatter_common(self.mask, self.var_ub[self.data_num_one_repeat * self.repeat +
-                                                                           self.var_offset],
-                                                    self.updates_ub[(indices_ub_index + indices_in_index) *
-                                                                    self.update_data_num + self.data_num_one_repeat *
-                                                                    self.repeat + self.var_offset], 1)
+                            self.cal_scatter_common(
+                                self.mask, self.var_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
+                                self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num +
+                                                self.data_num_one_repeat * self.repeat + self.var_offset], 1)
                     with self.tik_instance.else_scope():
-                        self.cal_scatter_common(self.update_data_num, self.var_ub,
-                                                self.updates_ub[(indices_ub_index + indices_in_index) *
-                                                                self.update_data_num], 1)
-                    self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num],
-                                                self.var_ub, 0, 1, updates_burst_len, 0, 0)
+                        self.cal_scatter_common(
+                            self.update_data_num, self.var_ub,
+                            self.updates_ub[(indices_ub_index + indices_in_index) * self.update_data_num], 1)
+                    self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.var_ub, 0,
+                                                1, updates_burst_len, 0, 0)
 
     def circulate_indices(self, indices_in_index, indice_num, mode):
         """
@@ -653,12 +651,12 @@ class ScatterCommon():
         None
         """
         with self.tik_instance.for_range(0, self.var_loop_num) as var_loop_index:
-            self.move_var(self.var_read_index + var_loop_index * self.var_ub_num,
-                          self.var_ub_num, update_in_index + var_loop_index * self.var_ub_num, 4)
+            self.move_var(self.var_read_index + var_loop_index * self.var_ub_num, self.var_ub_num,
+                          update_in_index + var_loop_index * self.var_ub_num, 4)
 
         with self.tik_instance.if_scope(self.var_last_num > 0):
-            self.move_var(self.var_read_index + self.var_loop_num * self.var_ub_num,
-                          self.var_last_num, update_in_index + self.var_loop_num * self.var_ub_num, 4)
+            self.move_var(self.var_read_index + self.var_loop_num * self.var_ub_num, self.var_last_num,
+                          update_in_index + self.var_loop_num * self.var_ub_num, 4)
 
     def traversing_var_mode9(self, update_in_index):
         """
@@ -693,8 +691,8 @@ class ScatterCommon():
         None
         """
         with self.tik_instance.for_range(0, self.var_loop_num) as var_loop_index:
-            self.move_var(self.var_read_index + var_loop_index * self.var_ub_num,
-                          self.var_ub_num, update_in_index + var_loop_index * self.var_ub_num, 10)
+            self.move_var(self.var_read_index + var_loop_index * self.var_ub_num, self.var_ub_num,
+                          update_in_index + var_loop_index * self.var_ub_num, 10)
 
         self.var_last_num_off.set_as((self.var_last_num // self.var_data_each_block + 1) * self.var_data_each_block)
         self.move_var_tail(self.var_read_index + self.update_data_num - self.var_last_num_off, self.var_last_num,
@@ -773,8 +771,8 @@ class ScatterCommon():
         if mode == 10:
             self.var_burst_len.set_as((var_num // self.var_data_each_block) + 1)
             self.tik_instance.data_move(self.var_ub, self.var_gm[var_in_index], 0, 1, self.var_burst_len, 0, 0)
-            self.tik_instance.data_move(self.updates_ub, self.updates_gm[update_in_index], 0, 1,
-                                        self.var_burst_len, 0, 0)
+            self.tik_instance.data_move(self.updates_ub, self.updates_gm[update_in_index], 0, 1, self.var_burst_len, 0,
+                                        0)
             self.last_var_num.set_as(var_forward_offset)
             self.var_offset.set_as(0)
 
@@ -792,8 +790,8 @@ class ScatterCommon():
                 with self.tik_instance.if_scope(self.mask != 0):
                     self.cal_scatter_common(self.mask,
                                             self.var_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
-                                            self.updates_ub[self.data_num_one_repeat * self.repeat +
-                                                            self.var_offset], 1)
+                                            self.updates_ub[self.data_num_one_repeat * self.repeat + self.var_offset],
+                                            1)
             with self.tik_instance.else_scope():
                 self.cal_vector_dup_common(var_forward_offset - var_num, self.updates_ub)
                 self.cal_scatter_common(var_forward_offset, self.var_ub, self.updates_ub, 1)
@@ -824,8 +822,8 @@ class ScatterCommon():
             with self.tik_instance.for_range(0, self.update_data_num) as ub_index:
                 self.var_value.set_as(self.var_ub[self.var_read_index + ub_index])
                 self.var_tile_ub[ub_index].set_as(self.var_value)
-                self.update_value.set_as(self.updates_ub[(indices_in_index + indices_ub_index) *
-                                                         self.update_data_num + ub_index])
+                self.update_value.set_as(self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num +
+                                                         ub_index])
                 self.updates_tile_ub[ub_index].set_as(self.update_value)
             self.cal_scatter_common(self.update_data_num, self.var_tile_ub, self.updates_tile_ub, 1)
             with self.tik_instance.for_range(0, self.update_data_num) as ub_index:
@@ -889,8 +887,8 @@ class ScatterCommon():
             self.var_read_index.set_as(self.var_read_index * self.update_data_num)
             self.tik_instance.data_move(self.var_tile_ub, self.var_gm[self.var_read_index], 0, 1, 1, 0, 0)
             with self.tik_instance.for_range(0, self.var_data_each_block) as ub_index:
-                self.update_value.set_as(self.updates_ub[(indices_in_index + indices_ub_index) *
-                                                         self.update_data_num + ub_index])
+                self.update_value.set_as(self.updates_ub[(indices_in_index + indices_ub_index) * self.update_data_num +
+                                                         ub_index])
                 self.updates_tile_ub[ub_index].set_as(self.update_value)
             self.cal_scatter_common(self.update_data_num, self.var_tile_ub, self.updates_tile_ub, 1)
             self.tik_instance.data_move(self.var_gm[self.var_read_index], self.var_tile_ub, 0, 1, 1, 0, 0)
@@ -950,7 +948,8 @@ class ScatterCommon():
         None
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
-            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub",
+            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+                                                      name="tiling_ub",
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 5, 0, 0)
             self.tiling_args()
@@ -1016,12 +1015,17 @@ class ScatterCommon():
         """
         self.scatter_common_compute_tiling()
         opt_config = {"out_of_bound_sync_check": True}
-        self.tik_instance.BuildCCE(
-            kernel_name=self.kernel_name,
-            inputs=(self.var_gm, self.indices_gm, self.updates_gm),
-            outputs=(self.out_gm), flowtable=[self.tiling_gm], config=opt_config)
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.var_gm, self.indices_gm, self.updates_gm),
+                                   outputs=(self.out_gm),
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
 
-        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num,
-                                                            "var_size": self.var_dtype_bytes_size,
-                                                            "indices_size": self.indices_dtype_bytes_size,
-                                                            "support_vdiv": self.support_vdiv})
+        tbe_context.get_context().add_compile_info(
+            "vars", {
+                "ub_size": self.ub_size_bytes,
+                "core_num": self.ai_core_num,
+                "var_size": self.var_dtype_bytes_size,
+                "indices_size": self.indices_dtype_bytes_size,
+                "support_vdiv": self.support_vdiv
+            })

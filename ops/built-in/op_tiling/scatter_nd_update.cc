@@ -251,9 +251,9 @@ bool ScatterNdUpdateTiling(const std::string& opType, const TeOpParas& opParas, 
   int64_t updateDataNum =
       (varShape.size() > 1) ? (std::accumulate(varShape.begin() + K, varShape.end(), 1, std::multiplies<int>())) : 1;
   int64_t maxIndice = 1;
-  
+
   maxIndice = std::accumulate(varShape.begin(), varShape.end(), 1, std::multiplies<int>());
-  
+
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
   OP_LOGD(opType.c_str(), "BLOCK_SIZE=%ld.", BLOCK_SIZE);
   OP_LOGD(opType.c_str(), "varSize=%ld.", varSize);

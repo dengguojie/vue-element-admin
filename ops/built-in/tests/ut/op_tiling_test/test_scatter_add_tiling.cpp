@@ -191,3 +191,575 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_2) {
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "16 0 32 1 0 0 0 0 0 0 0 0 0 0 21340 0 667 663 0 667 0 663 ");
 }
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_3) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
+
+  std::vector<int64_t> inputA{33, 1, 32, 2, 11};
+  std::vector<int64_t> inputB{11, 12, 2, 8};
+  std::vector<int64_t> inputC{11, 12, 2, 8, 1, 32, 2, 11};
+  std::vector<int64_t> output{33, 1, 32, 2, 11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "12345678";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.block_dim, 17);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 17 704 0 2112 1486848 0 704 0 0 0 0 0 33 0 0 0 0 0 0 0 ");
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_4) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
+
+  std::vector<int64_t> inputA{33, 1, 32, 2, 11};
+  std::vector<int64_t> inputB{11, 12, 2, 8};
+  std::vector<int64_t> inputC{11, 12, 2, 8, 1, 32, 2, 11};
+  std::vector<int64_t> output{33, 1, 32, 22};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456789";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_5) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
+
+  std::vector<int64_t> inputA{33, 1, 32, 2, 11};
+  std::vector<int64_t> inputB{1};
+  std::vector<int64_t> inputC{1, 32, 2, 11};
+  std::vector<int64_t> output{33, 1, 32, 2, 11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "12345678b";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_6) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
+
+  std::vector<int64_t> inputA{33, 1, 32, 2, 11};
+  std::vector<int64_t> inputB{11, 12, 2, 8};
+  std::vector<int64_t> inputC{11, 12, 2, 8, 32, 2, 11};
+  std::vector<int64_t> output{33, 1, 32, 2, 11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "12345678a";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_7) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"var_size\":4, \"indices_size\":4, \"support_atomic\":0}}";
+
+  std::vector<int64_t> inputA{33,1,32,2,11};
+  std::vector<int64_t> inputB{11,12,2,8};
+  std::vector<int64_t> inputC{11,12,2,8,1,32,2,11};
+  std::vector<int64_t> output{33,1,32,2,11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "a1234561";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_8) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"support_atomic\":0}}";
+
+  std::vector<int64_t> inputA{33,1,32,2,11};
+  std::vector<int64_t> inputB{11,12,2,8};
+  std::vector<int64_t> inputC{11,12,2,8,1,32,2,11};
+  std::vector<int64_t> output{33,1,32,2,11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "b1234561";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_9) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"indices_size\":4, \"support_atomic\":0}}";
+
+  std::vector<int64_t> inputA{33,1,32,2,11};
+  std::vector<int64_t> inputB{11,12,2,8};
+  std::vector<int64_t> inputC{11,12,2,8,1,32,2,11};
+  std::vector<int64_t> output{33,1,32,2,11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "c1234561";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_10) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"support_atomic\":0}}";
+
+  std::vector<int64_t> inputA{33,1,32,2,11};
+  std::vector<int64_t> inputB{11,12,2,8};
+  std::vector<int64_t> inputC{11,12,2,8,1,32,2,11};
+  std::vector<int64_t> output{33,1,32,2,11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "d1234561";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_11) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\": 4, \"indices_size\": 4}}";
+
+  std::vector<int64_t> inputA{33,1,32,2,11};
+  std::vector<int64_t> inputB{11,12,2,8};
+  std::vector<int64_t> inputC{11,12,2,8,1,32,2,11};
+  std::vector<int64_t> output{33,1,32,2,11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "e1234561";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_13) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\": 4, \"indices_size\": 4, \"support_atomic\": 0}}";
+
+  std::vector<int64_t> inputA{};
+  std::vector<int64_t> inputB{11,12,2,8};
+  std::vector<int64_t> inputC{11,12,2,8,1,32,2,11};
+  std::vector<int64_t> output{33,1,32,2,11};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "f1234561";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(ScatterAddTiling, scatter_add_tiling_14) {
+  using namespace optiling;
+  std::string op_name = "ScatterAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\": 4, \"indices_size\": 4, \"support_atomic\": 0}}";
+
+  std::vector<int64_t> inputA{33,1,32,2,11};
+  std::vector<int64_t> inputB{11,12,2,8};
+  std::vector<int64_t> inputC{11,12,2,8,1,32,2,11};
+  std::vector<int64_t> output{};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "g1234561";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}
