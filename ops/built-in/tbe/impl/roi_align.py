@@ -123,7 +123,7 @@ class RoiAlign:
         self.batch_offset = self.input_c1 * self.input_c0 * self.input_h * self.input_w
 
         self.sample_ratio = sample_ratio
-        if sample_ratio < 0:
+        if sample_ratio <= 0:
             self.sample_ratio = -1
 
         self.repeat = int(math.ceil(float(self.input_c1) / 8))
@@ -383,9 +383,9 @@ class RoiAlign:
         hx = self.tik_inst.Tensor("float16", (128, ), \
                                   scope=tbe_platform.scope_ubuf, name="hx")
 
-        n_grid_h = self.tik_inst.Tensor("int32", (128, ), \
+        n_grid_h = self.tik_inst.Tensor("float16", (128, ), \
                                         scope=tbe_platform.scope_ubuf, name="n_grid_h")
-        n_grid_w = self.tik_inst.Tensor("int32", (128, ), \
+        n_grid_w = self.tik_inst.Tensor("float16", (128, ), \
                                         scope=tbe_platform.scope_ubuf, name="n_grid_w")
         if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             roi_gridh_fp32 = self.tik_inst.Tensor("float32", (128, ), \
