@@ -9,6 +9,28 @@ message NetParameter {
   repeated LayerParameter layer = 100;  // ID 100 so layers are printed last.
 
 }
+
+message FillerParameter {
+  // The filler type.
+  optional string type = 1 [default = 'constant'];
+  optional float value = 2 [default = 0]; // the value in constant filler
+  optional float min = 3 [default = 0]; // the min value in uniform filler
+  optional float max = 4 [default = 1]; // the max value in uniform filler
+  optional float mean = 5 [default = 0]; // the mean value in Gaussian filler
+  optional float std = 6 [default = 1]; // the std value in Gaussian filler
+  // The expected number of non-zero output weights for a given input in
+  // Gaussian filler -- the default -1 means don't perform sparsification.
+  optional int32 sparse = 7 [default = -1];
+  // Normalize the filler variance by fan_in, fan_out, or their average.
+  // Applies to 'xavier' and 'msra' fillers.
+  enum VarianceNorm {
+    FAN_IN = 0;
+    FAN_OUT = 1;
+    AVERAGE = 2;
+  }
+  optional VarianceNorm variance_norm = 8 [default = FAN_IN];
+}
+
 // Update the next available ID when you add a new LayerParameter field.
 //
 // LayerParameter next available layer-specific ID: 151 (last added: smooth_l1_loss_param)
@@ -27,7 +49,7 @@ message LayerParameter {
   optional ResampleParameter resample_param = 2007; 
   optional SReLUParameter srelu_param = 2008;
   optional TileParameter tile_param = 2009;
-  optional WarpPerspectiveParameter warp_perspective_param = 2010; 
+  optional WarpPerspectiveParameter warpperspective_param = 2010; 
   optional ImagePadParameter image_pad_param = 2011;
   optional PSROIAlignParameter psroi_align_param = 2012;
   optional ROIAlignParameter  roi_align_param = 2013;
