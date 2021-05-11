@@ -15,15 +15,15 @@
 """
 avg_pool_grad
 """
-from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe_register
+from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import set_default_para
-from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import error_manager_cube
-from impl.util.platform_adapter import tbe
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -289,7 +289,7 @@ def _avgpoolgrad_compute(input_size, filters, out_backprop, y, strides, pads,
             'op_res': [dedx]}
 
 
-@operation.register_operator("AvgPoolGrad")
+@tbe_register.register_operator("AvgPoolGrad")
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
                              (tuple, list), (tuple, list, str), str, str)    
 def avg_pool_grad(orig_input_shape,

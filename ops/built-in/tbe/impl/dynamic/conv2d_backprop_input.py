@@ -8,18 +8,16 @@ conv2d_backprop_input
 
 from __future__ import absolute_import
 
+from impl.util import fusion_util
+from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import tbe_register
+from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
-from impl.util import fusion_util
-from te.platform.fusion_manager import get_fusion_build_cfg
 from impl.util.platform_adapter import register_operator_compute
 
 
@@ -174,9 +172,9 @@ def conv2dbp_input_fusion_compute(input_size,  # pylint: disable=W0622,C0103,R09
 
     fusion_util.check_fusion_input([input_size, filters, out_backprop])
     # set fusion build config
-    build_cfg = get_fusion_build_cfg()
+    build_cfg = tbe_register.get_fusion_buildcfg()
     build_cfg['constant_realize_extent_in_infer_bound'] = False
-    
+
     return _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides,
                                           pads, dilations, groups, data_format, kernel_name)
 
@@ -217,7 +215,7 @@ def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides
             'op_res': [dedx]}
 
 
-@operation.register_operator('Conv2DBackpropInput')
+@tbe_register.register_operator('Conv2DBackpropInput')
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
                              (tuple, list), (tuple, list), int, str, str,
                              (type(None), dict))

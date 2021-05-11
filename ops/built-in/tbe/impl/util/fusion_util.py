@@ -17,9 +17,9 @@ fusion common function for dynamic
 """
 from __future__ import absolute_import
 
-from te.tvm import tensor
-from te.tvm import expr
-from te.tvm import api as tvm
+from tbe.tvm import tensor
+from tbe.tvm import expr
+from tbe.tvm import api as tvm
 from tbe.dsl.base import operation
 from tbe.dsl.instrinsic.cce_emitinsn_params import cceEmitParamsIns
 

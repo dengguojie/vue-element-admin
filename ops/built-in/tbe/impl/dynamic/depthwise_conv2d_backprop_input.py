@@ -54,7 +54,7 @@ def _depthwise_conv2d_backprop_input_compute(
             'op_res': [dedx]}
 
 
-@operation.register_operator('DepthwiseConv2DBackpropInput')
+@register_operator('DepthwiseConv2DBackpropInput')
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
                              (tuple, list), (tuple, list), str, str)
 def depthwise_conv2d_backprop_input(input_size,  # pylint: disable=W0622,C0103,R0913,R0914

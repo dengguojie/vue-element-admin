@@ -23,6 +23,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import CubeParaProcess
 
 
@@ -388,7 +389,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res':[dedw]}
 
 
-@operation.register_operator('DepthwiseConv2DBackpropFilter')
+@tbe_register.register_operator('DepthwiseConv2DBackpropFilter')
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
                              (tuple, list), (tuple, list), str, str)
 def depthwise_conv2d_backprop_filter(input_fm,
