@@ -541,6 +541,39 @@ class Conv2dBpInputTiling(CubeTilingOp):
                     return False
         return True
 
+    def _check_tiling_al0(self, tiling_mess):
+        """
+        Check if tiling in repository al0 space is legal
+
+        Parameters
+        ----------
+        tiling_mess: shape and tiling retrieved from repository
+        Returns
+        -------
+        tiling_valid_flag: If true means it's legal
+        """
+        tiling_tmp = tiling_mess.get('tiling')
+        l0_shape = "AL0_matrix"
+        l0_space = tbe_platform_info.get_soc_spec("L0A_SIZE")
+        row = tiling_tmp.get(l0_shape)[0]
+        col = tiling_tmp.get(l0_shape)[1]
+        group = tiling_tmp.get(l0_shape)[5]
+        if row == 0 or col == 0:
+            return False
+        l0_dtype_bit = BIT_RATIO_DICT.get(self.a_type)
+        data_amount_l0 = (
+            row
+            * col
+            * tiling_tmp.get(l0_shape)[2]
+            * tiling_tmp.get(l0_shape)[3]
+            * group
+            * l0_dtype_bit
+        )
+        if isinstance(data_amount_l0, int) and data_amount_l0 > l0_space:
+            DynamicConv2dBpInputParams.dynamic_para["correct_range_flag"] = True
+            return False
+        return True
+
     def _modify_tiling_for_large_m(self, tiling_mess):
         """
         modify tiling for case with large m when stride > 1, only for kh == 1 and kw == 1

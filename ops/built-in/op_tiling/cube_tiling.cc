@@ -275,7 +275,10 @@ namespace optiling {
       std::string tiling_id("");
 
       if (compile_info["tiling_type"] == "default_tiling") {
-        tiling_id = compile_info["default_range"].begin().key();
+        std::vector<int64_t> default_range = compile_info["default_range"].begin().value().get<std::vector<int64_t>>();
+        if (is_shape_in_range_cube(input_shape, default_range)) {
+          tiling_id = compile_info["default_range"].begin().key();
+        }
       } else if (vars.size() != 1) {
         tiling_id = cube_tiling_nhw(op_type, input_shape, compile_info, tiling_id);
       } else {

@@ -198,10 +198,6 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
     if shape_dy[y_n_idx] != -1 and shape_dy[y_h_idx] != -1 and shape_dy[y_w_idx] != -1:
         error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
                                                    "no dynamic shape found in input")
-    if (shape_dy[y_n_idx] * shape_dx[x_n_idx] < 0 or shape_dy[y_h_idx] * shape_dx[x_h_idx] < 0 
-        or shape_dy[y_w_idx] * shape_dx[x_w_idx] < 0):
-        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
-                                                   "dynamic dim in dx and dy should be consistant")
     if shape_dx[x_h_idx] == -1:
         _check_range("out_grad_h", out_grad.get('range')[x_h_idx])
         x_h_range = out_grad.get('range')[x_h_idx][1]

@@ -190,7 +190,7 @@ class TilingSelection:
                 default_tiling = self.op.get_default_tiling(target_area.get(w_name)[0])
                 tiling_cases = [self.op.assembly_case(default_tiling, tgt_area, seed_cnt)]
                 add_compile_info("tiling_type", "default_tiling")
-                add_compile_info("default_range", {str(seed_cnt): tgt_area})
+                add_compile_info("default_range", {str(seed_cnt): self.op.get_default_range(tgt_area)})
             else:
                 add_compile_info("tiling_type", "dynamic_tiling")
                 if h_name in self.op.var_map or w_name in self.op.var_map:
@@ -841,6 +841,10 @@ class TilingSelection:
                 else:
                     seed_shape = tuple(cut_range[1::2])
                 cost_seed = self.op.get_costmodel_tiling(seed_shape)
+                if self.op.op_type == "conv2d_bp_input" and not self.op._check_tiling_al0(cost_seed):
+                    cost_cases.append((cut_range[0], cut_range[1], cut_range[2],
+                                       cut_range[3], cut_range[4], cut_range[5] - 1))
+                    continue
                 seed_range = self.op.get_tiling_range(cost_seed['tiling'], cost_seed[self.op.key])
                 if isinstance(seed_range[0], list):
                     is_overlap_other, covered_area_other = _cal_overlap(cut_range, seed_range[0])

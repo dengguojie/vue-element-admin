@@ -28,6 +28,18 @@ case2 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
          "expect": "success",
          "support_expect": True}
 
+#dx hw dynamic dy not        
+case18 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (-1,1,3,3,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,3,3,16),"ori_format": "NHWC",
+                     "range":[(1, 1), (3, 10), (3, 10), (16, 16)]},
+                    {"shape": (16,1,3,3,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16,3,3,1),"ori_format": "NHWC",
+                     "range":[(16, 16), (3, 3), (3, 3), (1, 1)]},
+                    {"shape": (-1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,-1,-1,16),"ori_format": "NHWC",
+                     "range":[(1, 10), (3, 4), (3, 4), (16, 16)]},
+                    [1,3,3,1], [1,2,2,1], "VALID", "NHWC"],
+         "expect": "success",
+         "support_expect": True}
+
 # dynamic hw SAME NHWC
 case15 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
                     {"shape": (1, 2, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, -1, -1, 32),"ori_format": "NHWC",
@@ -226,6 +238,7 @@ ut_case.add_case(["Ascend910A"], case14)
 ut_case.add_case(["Ascend910A"], case15)
 ut_case.add_case(["Ascend910A"], case16)
 ut_case.add_case(["Ascend910A"], case17)
+ut_case.add_case(["Ascend910A"], case18)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
