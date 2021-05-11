@@ -16,16 +16,16 @@ MaskedFill ut case
 from op_test_frame.ut import OpUT
 ut_case = OpUT("MaskedFill", "impl.dynamic.masked_fill", "masked_fill")
 
-case1 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
+case1 = {"params": [{"shape": (-1, 8, 375), "dtype": "int32",
                      "format": "ND", "ori_shape": (16, 8, 375),
                      "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]}, #x
                     {"shape": (-1, 8, 375), "dtype": "int8",
                      "format": "ND", "ori_shape": (16, 8, 375),
                      "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
-                    {"shape": (1,), "dtype": "float16",
+                    {"shape": (1,), "dtype": "int32",
                      "format": "ND", "ori_shape": (1,),
                      "ori_format": "ND", "range": [(1, 1)]},
-                    {"shape": (-1, 8, 375), "dtype": "float16",
+                    {"shape": (-1, 8, 375), "dtype": "int32",
                      "format": "ND", "ori_shape": (16, 8, 375),
                      "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
                     ],

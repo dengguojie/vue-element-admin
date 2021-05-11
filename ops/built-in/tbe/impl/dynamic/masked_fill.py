@@ -41,31 +41,38 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
     :return:y
             TVM tensor
     """
-
     ori_dtype = x.dtype
-    if x.dtype in ('int8', 'int32'):
+    if x.dtype in ('int8',):
         x = tbe.cast_to(x, 'float16')
-
-    x_shape = shape_util.shape_to_list(x.shape)
-    mask_shape = shape_util.shape_to_list(mask.shape)
-    # computer output shape
-    x_shape, mask_shpae, target_shape = shape_util.broadcast_shapes(x_shape, mask_shape)
     target_dtype = x.dtype
+
+    if x.dtype == 'int32':
+        mask = tbe.cast_to(mask, 'float16')
     mask = tbe.cast_to(mask, x.dtype)
+
     if value.dtype != x.dtype:
         value = tbe.cast_to(value, x.dtype)
-
-    if mask_shape != target_shape:
-        mask = tbe.broadcast(mask, target_shape)
-    tensor_ones = tbe.broadcast(tvm.const(1, target_dtype), target_shape)
+    
+    x_shape = shape_util.shape_to_list(x.shape)
+    mask_shape = shape_util.shape_to_list(mask.shape)
+    value_shape = shape_util.shape_to_list(value.shape)
+    # computer output shape
+    x_shape, mask_shape, value_shape, target_shape = shape_util.unify_broadcast_shapes(
+        [x_shape, mask_shape, value_shape])
+    mask = tbe.broadcast(mask, target_shape)
+    x = tbe.broadcast(x, target_shape)
     value = tbe.broadcast(value, target_shape)
-    if x_shape != target_shape:
-        x = tbe.broadcast(x, target_shape)
 
-    tensor_mask_value = tbe.vmul(mask, value)
-    tensor_mask_sub = tbe.vsub(tensor_ones, mask)
-    tensor_x_mul = tbe.vmul(x, tensor_mask_sub)
-    y = tbe.vadd(tensor_x_mul, tensor_mask_value)
+    tensor_ones = tbe.broadcast(tvm.const(1, target_dtype), target_shape)
+
+    if x.dtype == 'int32':
+        tensor_mask_value = tbe.vmul(mask, value)
+        tensor_mask_sub = tbe.vsub(tensor_ones, mask)
+        tensor_x_mul = tbe.vmul(x, tensor_mask_sub)
+        y = tbe.vadd(tensor_x_mul, tensor_mask_value)
+        return y
+
+    y = tbe.vcmpsel(mask, tensor_ones, 'eq', value, x)
 
     if y.dtype != ori_dtype:
         y = tbe.cast_to(y, ori_dtype)
@@ -74,9 +81,8 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
 
 
 @register_operator("MaskedFill")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def masked_fill(x, mask, value, y, kernel_name="masked_fill"):
     """
     :param x: dict
@@ -148,7 +154,8 @@ def masked_fill(x, mask, value, y, kernel_name="masked_fill"):
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    config = {"name": kernel_name,
-              "tensor_list": tensors,
-              }
+    config = {
+        "name": kernel_name,
+        "tensor_list": tensors,
+    }
     tbe.build(schedules, config)
