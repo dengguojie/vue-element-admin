@@ -17,7 +17,7 @@ import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("ExtractImagePatches", "impl.extract_image_patches", "extract_image_patches")
+ut_case = OpUT("Im2col", "impl.im2col", "im2col")
 
 case1 = {
     "params": [{
@@ -32,8 +32,8 @@ case1 = {
         "format": "NHWC",
         "ori_shape": (1, 2, 4, 1),
         "ori_format": "NHWC"
-    }, (1, 2, 2, 1), (1, 3, 3, 1), (1, 3, 3, 1), "SAME"],
-    "expect": ValueError,
+    }, (2, 2), (3, 3), (3, 3), "SAME"],
+    "expect": TypeError,
     "format_expect": [],
     "support_expect": True
 }
@@ -50,8 +50,8 @@ case2 = {
         "format": "NHWC",
         "ori_shape": (1, 2, 10, 1),
         "ori_format": "NHWC"
-    }, (1, 4, 4, 1), (1, 3, 3, 1), (1, 3, 3, 1), "SAME"],
-    "expect": ValueError,
+    }, (4, 4), (3, 3), (3, 3), "SAME"],
+    "expect": TypeError,
     "format_expect": [],
     "support_expect": True
 }
@@ -68,8 +68,8 @@ case3 = {
         "format": "NHWC",
         "ori_shape": (2, 8, 1, 576),
         "ori_format": "NHWC"
-    }, (1, 3, 3, 1), (1, 2, 2, 1), (1, 3, 3, 1), "SAME"],
-    "expect": RuntimeError,
+    }, (3, 3), (2, 2), (3, 3), "SAME"],
+    "expect": TypeError,
     "format_expect": [],
     "support_expect": True
 }
@@ -86,8 +86,8 @@ case4 = {
         "format": "NHWC",
         "ori_shape": (2, 4, 1, 256),
         "ori_format": "NHWC"
-    }, (1, 2, 2, 1), (1, 4, 4, 1), (1, 3, 3, 1), "SAME"],
-    "expect": RuntimeError,
+    }, (2, 2), (4, 4), (3, 3), "SAME"],
+    "expect": TypeError,
     "format_expect": [],
     "support_expect": True
 }
@@ -104,7 +104,7 @@ case5 = {
         "format": "NHWC",
         "ori_shape": (1, 40, 40, 258064),
         "ori_format": "NHWC"
-    }, (1, 127, 127, 1), (1, 8, 8, 1), (1, 1, 1, 1), "SAME"],
+    }, (127, 127), (8, 8), (1, 1), "SAME", (0,0,0,0)],
     "expect": "success",
     "format_expect": [],
     "support_expect": True
@@ -123,7 +123,7 @@ case6 = {
         "format": "NHWC",
         "ori_shape": (1, 40, 40, 16129),
         "ori_format": "NHWC"
-    }, (1, 127, 127, 1), (1, 8, 8, 1), (1, 1, 1, 1), "SAME"],
+    }, (127, 127), (8, 8), (1, 1), "SAME", (0,0,0,0)],
     "expect": "success",
     "format_expect": [],
     "support_expect": True
@@ -142,7 +142,7 @@ case7 = {
         "format": "NHWC",
         "ori_shape": (1, 40, 40, 16),
         "ori_format": "NHWC"
-    }, (1, 3, 1, 1), (1, 1, 2, 1), (1, 1, 2, 1), "VALID"],
+    }, (3, 1), (1, 2), (1, 2), "VALID", (0,0,0,0)],
     "expect": "success",
     "format_expect": [],
     "support_expect": True
@@ -161,7 +161,7 @@ case8 = {
         "format": "NHWC",
         "ori_shape": (1, 10, 10, 256),
         "ori_format": "NHWC"
-    }, (1, 4, 4, 1), (1, 8, 8, 1), (1, 1, 1, 1), "VALID"],
+    }, (4, 4), (8, 8), (1, 1), "VALID", (0,0,0,0)],
     "expect": "success",
     "format_expect": [],
     "support_expect": True
@@ -180,7 +180,7 @@ case9 = {
         "format": "NHWC",
         "ori_shape": (1, 10, 10, 16),
         "ori_format": "NHWC"
-    }, (1, 4, 4, 1), (1, 8, 8, 1), (1, 1, 1, 1), "VALID"],
+    }, (4, 4), (8, 8), (1, 1), "VALID", (0,0,0,0)],
     "expect": "success",
     "format_expect": [],
     "support_expect": True
@@ -199,7 +199,7 @@ case10 = {
         "format": "NHWC",
         "ori_shape": (1, 10, 10, 16),
         "ori_format": "NHWC"
-    }, (1, 1, 4, 1), (1, 25, 26, 1), (1, 3, 1, 1), "VALID"],
+    }, (1, 4), (25, 26), (3, 1), "VALID", (0,0,0,0)],
     "expect": "success",
     "format_expect": [],
     "support_expect": True
@@ -305,13 +305,13 @@ def get_images(fm_shape, src_type):
     return feature.astype(s_type)
 
 
-def calc_expect_func(images, y, ksizes, strides, dilates, padding):
+def calc_expect_func(images, y, ksizes, strides, dilates, padding, pads):
     feature = images["value"]
     IN, IC1, IH, IW, C0 = feature.shape
     x_pad = feature.transpose(0, 1, 4, 2, 3).reshape(IN, IC1 * C0, IH, IW)
     IN, IH, IW, IC = images["ori_shape"]
     x = x_pad[:, :IC, :, :]
-    conv_param = {'ksizes': ksizes[1:3], 'pads': (0, 0), 'strides': strides[1:3], 'rates': dilates[1:3]}
+    conv_param = {'ksizes': ksizes[:], 'pads': (0, 0), 'strides': strides[:], 'rates': dilates[:]}
     out, tr_out = extract_image_patches_produce(x, conv_param, images["dtype"])
     return [tr_out]
 
@@ -333,7 +333,7 @@ ut_case.add_precision_case(
             "ori_shape": (2, 3, 3, 288),
             "ori_format": "NHWC",
             "param_type": "output"
-        }, (1, 3, 3, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
+        }, (3, 3), (1, 1), (2, 2), "VALID", (0,0,0,0)],
         "calc_expect_func":
             calc_expect_func,
         "precision_standard":
@@ -357,7 +357,7 @@ ut_case.add_precision_case(
             "ori_shape": (1, 13, 13, 144),
             "ori_format": "NHWC",
             "param_type": "output"
-        }, (1, 3, 3, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
+        }, (3, 3), (1, 1), (2, 2), "VALID", (0,0,0,0)],
         "calc_expect_func":
             calc_expect_func,
         "precision_standard":
@@ -381,7 +381,7 @@ ut_case.add_precision_case(
             "ori_shape": (1, 3, 3, 768),
             "ori_format": "NHWC",
             "param_type": "output"
-        }, (1, 4, 4, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
+        }, (4, 4), (1, 1), (2, 2), "VALID", (0,0,0,0)],
         "calc_expect_func":
             calc_expect_func,
         "precision_standard":
@@ -405,7 +405,7 @@ ut_case.add_precision_case(
             "ori_shape": (1, 7, 7, 192),
             "ori_format": "NHWC",
             "param_type": "output"
-        }, (1, 2, 2, 1), (1, 1, 1, 1), (1, 2, 2, 1), "VALID"],
+        }, (2, 2), (1, 1), (2, 2), "VALID", (0,0,0,0)],
         "calc_expect_func":
             calc_expect_func,
         "precision_standard":

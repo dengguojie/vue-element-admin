@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-extract_image_patches
+image_to_col
 """
 import functools
 import math
@@ -27,9 +27,6 @@ from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_common import write_code
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
 from topi.cce.util import check_load3d_w_out_1_support
 from impl.im2col_common_func import im2col_compute
 from impl.im2col_common_func import im2col_schedule
@@ -43,44 +40,8 @@ INT8_SIZE = 1
 SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
-def get_op_support_info(images, y, ksizes, strides, dilates, padding, kernel_name="extract_image_patches"):
-    """
-    get extract_image_patches slice info
-    """
-    format_x = images.get("format")
-    images_shape = images.get("shape")
-    data_format = images.get("ori_format")
-    kernel_h = ksizes[1]
-    if data_format == "NCHW":
-        kernel_h = ksizes[2]
-    if format_x == "NC1HWC0":
-        images_h = images_shape[2]
-        if images_h == kernel_h or padding == "SAME":
-            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
-        elif padding == "VALID":
-            axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
-                                  SplitOutput([0, [0]])], [SplitInput([0, [2], [0], [0]]),
-                                                           SplitOutput([0, [1]])]]
-        else:
-            axis_split_matrix = None
-        axis_reduce_list = None
-    else:
-        axis_split_matrix = None
-        axis_reduce_list = None
-    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
-
-    return op_cal_info_in_json
-
-
 # pylint: disable=unused-argument,too-many-locals,too-many-arguments
-@tbe_platform.fusion_manager.fusion_manager.register("extract_image_patches")
-def extract_image_patches_compute(fmap,
-                                  c_in_real,
-                                  ksizes,
-                                  strides,
-                                  dilates,
-                                  padding,
-                                  kernel_name="extract_image_patches"):
+def image_to_col_compute(fmap, c_in_real, ksizes, strides, dilates, pads, padding_mode):
     """
     ops compute
 
@@ -93,8 +54,6 @@ def extract_image_patches_compute(fmap,
     strides: input attr
     dilates: input attr
     padding: input attr
-    kernel_name : str
-    kernel name, default value is "extract_image_patches"
 
     Returns
     -------
@@ -106,31 +65,47 @@ def extract_image_patches_compute(fmap,
     fmap_h = fmap_shape[2].value
     fmap_w = fmap_shape[3].value
 
-    _, kernel_h, kernel_w, _ = ksizes
-    _, stride_h, stride_w, _ = strides
-    _, dilate_h, dilate_w, _ = dilates
+    kernel_h, kernel_w = ksizes
+    stride_h = strides[0]
+    stride_w = strides[0]
+    if len(strides) != 1:
+        stride_h = strides[0]
+        stride_w = strides[1]
+    dilate_h = dilates[0]
+    dilate_w = dilates[0]
+    if len(dilates) != 1:
+        dilate_h = dilates[0]
+        dilate_w = dilates[1]
 
-    out_h, padding_h_before, padding_h_after = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
-        fmap_h, kernel_h, dilate_h, stride_h, padding)
-    out_w, padding_w_before, padding_w_after = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
-        fmap_w, kernel_w, dilate_w, stride_w, padding)
+    padding_h_top = pads[0]
+    padding_h_bottom = pads[0]
+    padding_w_before = pads[0]
+    padding_w_after = pads[0]
+    if len(pads) != 1:
+        padding_h_top, padding_h_bottom, padding_w_before, padding_w_after = pads
 
-    pads = (padding_h_before, padding_h_after, padding_w_before, padding_w_after)
-    ksize = (kernel_h, kernel_w)
-    stride = (stride_h, stride_w)
-    dilate = (dilate_h, dilate_w)
+    out_h = int((fmap_h + padding_h_top + padding_h_bottom - (dilate_h * (kernel_h - 1) + 1)) / stride_h + 1)
+    out_w = int((fmap_w + padding_w_before + padding_w_after - (dilate_w * (kernel_w - 1) + 1)) / stride_w + 1)
 
-    output_res, workspace_res, workspace_shape = im2col_compute(fmap, c_in_real, ksize, stride, dilate, pads, out_h, out_w)
+    if padding_mode in ("SAME", "VALID"):
+        out_h, padding_h_top, padding_h_bottom = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
+        fmap_h, kernel_h, dilate_h, stride_h, padding_mode)
+        out_w, padding_w_before, padding_w_after = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
+            fmap_w, kernel_w, dilate_w, stride_w, padding_mode)
+
+    pads = (padding_h_top, padding_h_bottom, padding_w_before, padding_w_after)
+
+    output_res, workspace_res, workspace_shape = im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pads, out_h, out_w)
 
     return output_res, workspace_res, workspace_shape
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-statements,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
-                            para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
-                            para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
-def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_name="extract_image_patches"):
-    """
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.KERNEL_NAME)
+def im2col(images, y, ksizes, strides, dilates, padding_mode, pads, kernel_name="im2col"):
+    """.
     calculating data
 
     Parameters
@@ -142,9 +117,9 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     ksizes: input attr
     strides: input attr
     dilates: input attr
-    padding: input attr
+    pads: input attr
     kernel_name : str
-        kernel name, default value is "extract_image_patches"
+        kernel name, default value is "image_to_col"
 
     Returns
     -------
@@ -164,23 +139,36 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     format_list = ('NHWC', 'NCHW')
     if data_format not in format_list:
         error_manager_vector.raise_err_input_format_invalid(kernel_name, "x", format_list, data_format)
-    if len(ksizes) != 4 or len(strides) != 4 or len(dilates) != 4:
+    if len(ksizes) != 2:
         error_manager_vector.raise_err_check_params_rules(kernel_name, 'input params invalide',
-                                                          ['ksizes', 'strides', 'dilates'], [ksizes, strides, dilates])
+                                                          ['ksizes'], [ksizes])
     # NCHW -> NHWC
     if data_format == 'NCHW':
         shape_input_4d = (shape_input_4d[0], shape_input_4d[2], shape_input_4d[3], shape_input_4d[1])
-        ksizes = (ksizes[0], ksizes[2], ksizes[3], ksizes[1])
-        strides = (strides[0], strides[2], strides[3], strides[1])
-        dilates = (dilates[0], dilates[2], dilates[3], dilates[1])
+
     fmap_n, fmap_h, fmap_w, fmap_c = shape_input_4d
     fmap_c1 = (fmap_c + align_block_size - 1) // align_block_size
     fmap_c0 = align_block_size
     shape_input = (fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0)
 
-    _, kernel_h, kernel_w, _ = ksizes
-    _, stride_h, stride_w, _ = strides
-    _, dilate_h, dilate_w, _ = dilates
+    kernel_h, kernel_w = ksizes
+    stride_h = strides[0]
+    stride_w = strides[0]
+    if len(strides) != 1:
+        stride_h = strides[0]
+        stride_w = strides[1]
+    dilate_h = dilates[0]
+    dilate_w = dilates[0]
+    if len(dilates) != 1:
+        dilate_h = dilates[0]
+        dilate_w = dilates[1]
+
+    padding_h_top = pads[0]
+    padding_h_bottom = pads[0]
+    padding_w_before = pads[0]
+    padding_w_after = pads[0]
+    if len(pads) != 1:
+        padding_h_top, padding_h_bottom, padding_w_before, padding_w_after = pads
 
     if (kernel_h >= 256) or (kernel_w >= 256):
         error_manager_vector.raise_err_specific_reson(kernel_name, "kernel_h and kernel_w can not >= 256!")
@@ -188,11 +176,16 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
         error_manager_vector.raise_err_specific_reson(kernel_name, "stride_h and stride_w can not >= 64!")
     if (dilate_h >= 256) or (dilate_w >= 256):
         error_manager_vector.raise_err_specific_reson(kernel_name, "dilate_h and dilate_w can not >= 256!")
+    
+    out_h = int((fmap_h + padding_h_top + padding_h_bottom - (dilate_h * (kernel_h - 1) + 1)) / stride_h + 1)
+    out_w = int((fmap_w + padding_w_before + padding_w_after - (dilate_w * (kernel_w - 1) + 1)) / stride_w + 1)
 
-    out_h, padding_h_top, padding_h_bottom = \
-        tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(fmap_h, kernel_h, dilate_h, stride_h, padding)
-    out_w, padding_w_before, padding_w_after = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
-        fmap_w, kernel_w, dilate_w, stride_w, padding)
+    if padding_mode in ("SAME", "VALID"):
+        out_h, padding_h_top, padding_h_bottom = \
+            tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(fmap_h, kernel_h, dilate_h, stride_h, padding_mode)
+        out_w, padding_w_before, padding_w_after = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
+            fmap_w, kernel_w, dilate_w, stride_w, padding_mode)
+
     if (out_h <= 0) or (out_w <= 0):
         error_manager_vector.raise_err_specific_reson(kernel_name, "out_h and out_w can not <= 0!")
     if (padding_h_top >= 256) or (padding_h_bottom >= 256):
@@ -223,8 +216,7 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
                          (min_cut_h * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER))
 
     data_input = tvm.placeholder(shape_input, name="data", dtype=dtype_input)
-    output_res, workspace_res, _ = extract_image_patches_compute(data_input, fmap_c, ksizes, strides, dilates, padding,
-                                                                 kernel_name)
+    output_res, workspace_res, _ = image_to_col_compute(data_input, fmap_c, ksizes, strides, dilates, pads, padding_mode)
     sch = tvm.create_schedule(output_res.op)
     im2col_schedule(output_res, [sch])
 
