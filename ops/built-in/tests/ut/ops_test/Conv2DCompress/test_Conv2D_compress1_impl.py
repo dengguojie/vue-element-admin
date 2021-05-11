@@ -74,7 +74,7 @@ def test_conv2d_compress_impl2(test_arg):
             conv2d_compress_test(fmap_shape, filters_shape, bias_flag,
                                  strides, pads, dilations, dtype)
     testcases = [
-        {"fmap_shape": [1, 16, 100, 100], "filters_shape": [32, 16, 3, 3], "dtype": "int8", "bias_flag": None, "pads": [1, 1, 1, 1], "strides": [1, 1, 1, 1], "dilations": [1, 1, 1, 1]}
+        {"fmap_shape": [1, 16, 100, 100], "filters_shape": [32, 16, 3, 3], "dtype": "int8", "bias_flag": None, "pads": [1, 1, 1, 1], "strides": [1, 1, 1, 1], "dilations": [1, 1, 1, 1]},
     ]
     fusion_conv2dcompress_compute(testcases)
 
