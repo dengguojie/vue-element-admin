@@ -271,6 +271,8 @@ def check_op_params(*type_args, **type_kwargs):
                 "but actually is [%s]."
                 % (error_info['op_name'], error_info['param_name'],
                    error_info['excepted_dtype_list'], error_info['dtype']))
+        if "param_name" not in op_param.keys():
+            op_param["param_name"] = param_name
 
     def _check_input(op_param, param_name, param_type, op_name=OP_NAME):
         if param_type == REQUIRED_INPUT:

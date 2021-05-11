@@ -39,11 +39,16 @@ def _check_mask(input_mask, is_shrink=False):
                                                                "(0, 2)", str(input_mask))
     elif input_mask != 0:
         error_manager_vector.raise_err_input_value_invalid("strided_slice_grad", "new_axis_mask",
-                                                               "0", str(input_mask))
+                                                           "0", str(input_mask))
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name
 @register_operator("StridedSliceGrad")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
                        end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                        kernel_name="strided_slice_grad"):

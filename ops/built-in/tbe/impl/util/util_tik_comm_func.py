@@ -15,10 +15,14 @@
 """
 util_tik_comm_func
 """
+import functools
 from te import tik
 from te import platform as tbe_platform
 from impl import common_util
 from impl import constant_util
+from impl.util import util_common
+from impl.util.platform_adapter import tik as tik_adapter
+from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
@@ -29,6 +33,158 @@ SCALAR_MUL_FP32 = 2**50
 SCALAR_MUL2_FP32 = 2**26
 # repeat max num
 MAX_REPEAT_NUM = 255
+# max int64
+MAX_INT64 = 2 ** 64 - 1
+
+
+class OpBase:
+    """
+    Class: class that OpBase
+    """
+    def __init__(self):
+        self.tik_instance = tik_adapter.Tik()
+        self.core_nums = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.CORE_NUM)
+        self.ub_size_bytes = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.UB_SIZE)
+        self.input_gm_list = []
+        self.output_gm_list = []
+        self.tiling_gm = None
+        self.unknown_max_shape = (MAX_INT64,)
+        self.kernel_name = None
+        self.opt_config = {"out_of_bound_sync_check": True,
+                           "enable_const_fold": True}
+        self.tiling_key = None
+        self.mode_compute = dict()
+
+    def op_init_gm(self, input_dict_list, output_dict_list, tiling_info=None, is_fused_1d=False):
+        """
+        op_init_gm
+
+        Parameters
+        ----------
+        input_dict_list: list
+            a list of input dict
+        output_dict_list: list
+            a list of output dict
+        tiling_info: dict
+            include key shape and dtype
+        is_fused_1d: bool
+            whether fused shape to id when apply gm
+
+        Returns
+        ------
+        None
+        """
+        def gen_gm_scope(gm_dict, gm_type="input"):
+            gm_dtype = gm_dict.get("dtype")
+            if util_common.is_unknown([gm_dict]):
+                gm_shape = self.unknown_max_shape
+            else:
+                gm_shape = gm_dict.get("shape")
+                if is_fused_1d:
+                    total_num = functools.reduce(lambda x, y: x*y, gm_shape)
+                    gm_shape = [total_num]
+
+            # get gm name from dict
+            if "param_name" not in gm_dict.keys():
+                gm_name = gm_type + "_gm_" + str(i)
+            else:
+                gm_name = gm_dict.get("param_name")
+
+            # get is_atomic_add from dict
+            is_atomic_add = False
+            if "is_atomic_add" in gm_dict.keys():
+                is_atomic_add = gm_dict.get("is_atomic_add")
+            gen_gm = self.tik_instance.Tensor(gm_dtype, gm_shape,
+                                              name=gm_name, scope=tik.scope_gm,
+                                              is_atomic_add=is_atomic_add)
+            return gen_gm
+
+        for i, input_dict in enumerate(input_dict_list):
+            if input_dict is None:
+                continue
+            input_gm = gen_gm_scope(input_dict)
+            self.input_gm_list.append(input_gm)
+
+        for i, output_dict in enumerate(output_dict_list):
+            if output_dict is None:
+                continue
+            output_gm = gen_gm_scope(output_dict, gm_type="output")
+            self.output_gm_list.append(output_gm)
+
+        if tiling_info is not None:
+            tiling_dtype = tiling_info.get("dtype")
+            tiling_shape = tiling_info.get("shape")
+            self.tiling_gm = self.tik_instance.Tensor(tiling_dtype, tiling_shape,
+                                                      name="tiling_gm", scope=tik.scope_gm)
+
+    def op_build_cce(self):
+        """
+        op_build_cce
+        """
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=self.input_gm_list,
+                                   flowtable=[self.tiling_gm],
+                                   outputs=self.output_gm_list,
+                                   config=self.opt_config)
+
+    def regist_compute(self, tiling_key, tiling_func, *var_tuple, **var_key_value):
+        """
+        regist_compute
+
+        Parameters
+        ----------
+        tiling_key: int
+            tiling_key info
+        tiling_func: class
+            tiling_key function
+
+        Returns
+        ------
+        None
+        """
+        compute_classify = "default"
+        if "compute_classify" in var_key_value.keys():
+            compute_classify = var_key_value[compute_classify]
+        if compute_classify not in self.mode_compute.keys():
+            self.mode_compute[compute_classify] = dict()
+        self.mode_compute[compute_classify][tiling_key] = [tiling_func, var_tuple, var_key_value]
+
+    def run_compute(self, tiling_key, compute_classify=None):
+        """
+        run_compute
+        """
+        for classify_key, compute_info in self.mode_compute.items():
+            if compute_classify is not None and classify_key != compute_classify:
+                continue
+            for key, key_func in compute_info.items():
+                with self.tik_instance.if_scope(tiling_key == key):
+                    with self.tik_instance.new_stmt_scope():
+                        key_func[0](*key_func[1], **key_func[2])
+
+    # pylint: disable=unnecessary-pass
+    def tiling_args(self):
+        """
+        read tiling args, should over write
+        """
+        pass
+
+    # pylint: disable=unnecessary-pass
+    def core_scedule_args(self, core_idx):
+        """
+        calcu core para base tiling
+        if need should over write, else do nothing
+        """
+        pass
+
+    def op_run_compute(self):
+        """
+        op_run_base run all the regist_compute base tiling_key
+        if can not run all regist_compute at the same time, need should over write
+        """
+        with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
+            self.tiling_args()
+            self.core_scedule_args(core_index)
+            self.run_compute(self.tiling_key)
 
 
 def ub_offset(input_ub):
