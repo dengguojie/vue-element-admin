@@ -190,12 +190,12 @@ class MaxpoolGradBase(object):
         stride_h, stride_w = self.strides[1:3]
         stridehw = stride_h * stride_w
         if stridehw == 1:
-            max_mem_size0 = 14592
-            max_mem_size1 = 15744
+            max_mem_size0 = 16256
+            max_mem_size1 = 16448
             max_mem_size2 = 16512
             max_mem_size3 = 1024
-            max_mem_size4 = 14592
-            max_mem_size5 = 14592
+            max_mem_size4 = 16256
+            max_mem_size5 = 16256
         elif stridehw < 4:
             max_mem_size0 = 10880
             max_mem_size1 = 21920
@@ -205,8 +205,8 @@ class MaxpoolGradBase(object):
             max_mem_size5 = 10880
         else:
             max_mem_size0 = 8064
-            max_mem_size1 = 32560
-            max_mem_size2 = 32624
+            max_mem_size1 = 32832
+            max_mem_size2 = 32896
             max_mem_size3 = 512
             max_mem_size4 = 8064
             max_mem_size5 = 8064

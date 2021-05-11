@@ -938,26 +938,19 @@ class ResizeBilinearV2Grad(object):
         """
         core function
         """
-        grads_w_num = self.grads_w * self.c0
-        w_grad_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size - self.c0,), scope=tik.scope_ubuf,
+        unit_w = 256
+        iter_num = 8
+        w_grad_ub = self.tik_instance.Tensor(self.grads_dtype, (unit_w * self.c0,), scope=tik.scope_ubuf,
                                              name="w_grad_ub")
-        self.dup_zero(w_grad_ub, num=self.tensor_size - self.c0)
+        self.dup_zero(w_grad_ub, num=unit_w * self.c0)
+        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,), scope=tik.scope_ubuf,
+                                            name="grads_ub")
+        self.data_move(grads_ub, self.grads_gm, offsets=[0, grad_offset], num=self.grad_each_core)
 
-        with self.tik_instance.new_stmt_scope():
-            grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,), scope=tik.scope_ubuf,
-                                                name="grads_ub")
-            self.data_move(grads_ub, self.grads_gm, offsets=[0, grad_offset], num=self.grad_each_core)
+        self.data_merge(grads_ub, w_grad_ub, unit_w, self.grads_h * self.grads_w)
+        self.data_sum(w_grad_ub, unit_w * self.c0, iter_num)
 
-            with self.tik_instance.for_range(0, self.grads_h) as dst_h:
-                tmp_grads_offset = dst_h * grads_w_num
-                self.data_add(w_grad_ub, w_grad_ub, grads_ub, [0, 0, tmp_grads_offset], num=grads_w_num)
-
-        output_ub = self.tik_instance.Tensor(self.grads_dtype, (self.c0,), scope=tik.scope_ubuf,
-                                             name="output_ub")
-        self.dup_zero(output_ub, num=self.c0)
-        self.data_sum(output_ub, w_grad_ub, num=grads_w_num)
-
-        self.data_move(self.output_gm, output_ub, [output_offset, 0], num=self.c0)
+        self.data_move(self.output_gm, w_grad_ub, [output_offset, 0], num=self.c0)
 
     def one2n_big(self, core_idx):
         """
@@ -986,30 +979,31 @@ class ResizeBilinearV2Grad(object):
         core function
         """
         max_w = self.tensor_size // self.c0
-        loop = self.grads_w // max_w
-        tail_w = self.grads_w % max_w
-        output_ub = self.tik_instance.Tensor(self.grads_dtype, (self.c0,), scope=tik.scope_ubuf,
-                                             name="output_ub")
-        self.dup_zero(output_ub, num=self.c0)
+        unit_w = 1024
+        iter_num = 10
+        loop = (self.grads_h * self.grads_w) // max_w
+        tail_w = (self.grads_h * self.grads_w) % max_w
         offset = self.tik_instance.Scalar(dtype="int32", name="offset")
         offset.set_as(grad_offset)
 
-        with self.tik_instance.for_range(0, self.grads_h) as dst_h:
-            with self.tik_instance.if_scope(loop > 0):
-                move_num = max_w * self.c0
-                with self.tik_instance.for_range(0, loop) as idx:
-                    tmp_offset = offset + idx * move_num
-                    self.data_move(grads_ub, self.grads_gm, [0, tmp_offset], num=move_num)
-                    self.data_sum(output_ub, grads_ub, num=move_num)
-                offset.set_as(offset + loop * move_num)
+        w_grad_ub = self.tik_instance.Tensor(self.grads_dtype, (unit_w * self.c0,), scope=tik.scope_ubuf,
+                                             name="w_grad_ub")
+        self.dup_zero(w_grad_ub, num=unit_w * self.c0)
 
-            with self.tik_instance.if_scope(tail_w > 0):
-                move_num = tail_w * self.c0
-                self.data_move(grads_ub, self.grads_gm, [0, offset], num=move_num)
-                self.data_sum(output_ub, grads_ub, num=move_num)
-                offset.set_as(offset + move_num)
+        move_num = max_w * self.c0
+        with self.tik_instance.for_range(0, loop) as idx:
+            tmp_offset = offset + idx * move_num
+            self.data_move(grads_ub, self.grads_gm, [0, tmp_offset], num=move_num)
+            self.data_merge(grads_ub, w_grad_ub, unit_w, max_w)
 
-        self.data_move(self.output_gm, output_ub, [output_offset, 0], num=self.c0)
+        with self.tik_instance.if_scope(tail_w > 0):
+            offset.set_as(offset + loop * move_num)
+            self.data_move(grads_ub, self.grads_gm, [0, offset], num=tail_w * self.c0)
+            self.data_merge(grads_ub, w_grad_ub, unit_w, tail_w)
+
+        self.data_sum(w_grad_ub, unit_w * self.c0, iter_num)
+
+        self.data_move(self.output_gm, w_grad_ub, [output_offset, 0], num=self.c0)
 
     def n2one(self, core_idx):
         """
@@ -1116,28 +1110,36 @@ class ResizeBilinearV2Grad(object):
             self.tik_instance.vec_add(last_num_scalar, dst[dst_offset], src0[src0_offset], src1[src1_offset], 1,
                                       dst_stride, src0_stride, src1_stride)
 
-    def data_sum(self, dst, src, num):
+    def data_merge(self, grads_ub, w_grad_ub, unit_w, merge_w):
+        """
+        merge data
+        """
+        loop = merge_w // unit_w
+        tail_num = merge_w % unit_w
+
+        with self.tik_instance.if_scope(loop > 0):
+            with self.tik_instance.for_range(0, loop) as loop_idx:
+                tmp_grads_offset = loop_idx * unit_w * self.c0
+                self.data_add(w_grad_ub, w_grad_ub, grads_ub, [0, 0, tmp_grads_offset], num=unit_w * self.c0)
+        with self.tik_instance.if_scope(tail_num > 0):
+            offset = loop * unit_w * self.c0
+            self.data_add(w_grad_ub, w_grad_ub, grads_ub, [0, 0, offset], num=tail_num * self.c0)
+
+    def data_sum(self, src, num, iter_num):
         """
         sum data
         """
-        mask = 16
-        src_stride = mask // self.data_each_block
-        loop = num // (mask * 255)
-        offset = self.tik_instance.Scalar("int32", name="offset", init_value=0)
-        loop_scalar = self.tik_instance.Scalar("int32", name="loop")
-        repeat_scalar = self.tik_instance.Scalar("int32", name="repeat")
+        for it in range(iter_num):
+            num = num // 2
+            if num // MASK > 0:
+                mask = MASK
+                repeat_time = num // MASK
+            else:
+                mask = num
+                repeat_time = 1
 
-        loop_scalar.set_as(loop)
-        with self.tik_instance.if_scope(loop_scalar > 0):
-            with self.tik_instance.for_range(0, loop_scalar) as idx:
-                src_offset = idx * mask * 255
-                self.tik_instance.vec_add(mask, dst, src[src_offset], dst, 255, 0, src_stride, 0)
-            offset.set_as(offset + loop_scalar * mask * 255)
-
-        repeat_time = (num % (mask * 255)) // mask
-        repeat_scalar.set_as(repeat_time)
-        with self.tik_instance.if_scope(repeat_scalar > 0):
-            self.tik_instance.vec_add(mask, dst, src[offset], dst, repeat_scalar, 0, src_stride, 0)
+            src_stride = mask // self.data_each_block
+            self.tik_instance.vec_add(mask, src, src[num], src, repeat_time, 0, src_stride, 0)
 
 
 @register_operator("ResizeBilinearV2Grad")
