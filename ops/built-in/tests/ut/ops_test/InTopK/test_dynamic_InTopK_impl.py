@@ -52,12 +52,21 @@ case4 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (34, 21
          "case_name": "InTopk_4",
          "expect": "success",
          "support_expect": True}
+         
+case5 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (55, 4500), "format": "ND", "ori_format": "ND", "range": ((1, 55), (1, 4500))},
+                    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (55,),"ori_format": "ND", "range": ((1, 55), )},
+                    {"shape": (-1,), "dtype": "uint8", "format": "ND", "ori_shape": (55,),"ori_format": "ND", "range": ((1, 55), )},
+                    17],
+         "case_name": "InTopk_5",
+         "expect": "success",
+         "support_expect": True}
 
 
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
 
 if __name__ == '__main__':
