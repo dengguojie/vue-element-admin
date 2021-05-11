@@ -43,13 +43,6 @@ Status ParseParamsConv3D(const Message* op_src, ge::Operator& op) {
   auto ret = op_dsc->UpdateInputDesc(kPos1, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "update filter format failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3d";
-    err_map["param_name"] = "updating filter's format";
-    err_map["rule_desc"] = "update filter's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
   OP_LOGI(op.GetName().c_str(), "update filter format success, now is %d", op.GetInputDesc(kPos1).GetFormat());
@@ -68,13 +61,6 @@ Status ParseParamsConv3D(const Message* op_src, ge::Operator& op) {
   ret = op_dsc->UpdateInputDesc(kPos0, org_tensor_x);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "update input x format failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3d";
-    err_map["param_name"] = "updating input_x's format";
-    err_map["rule_desc"] = "update input_x's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
   OP_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op.GetInputDesc(kPos0).GetFormat());
@@ -85,13 +71,6 @@ Status ParseParamsConv3D(const Message* op_src, ge::Operator& op) {
   ret = op_dsc->UpdateOutputDesc(kPos0, org_tensor_y);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "update output y format failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3d";
-    err_map["param_name"] = "updating output_y's format";
-    err_map["rule_desc"] = "update output_y's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
   std::vector<int32_t> pad_list = {0, 0, 0, 0, 0, 0};

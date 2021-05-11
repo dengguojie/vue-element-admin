@@ -53,13 +53,6 @@ Status ParseParamsConv3DBackpropFilter(const Message* op_src, ge::Operator& op) 
   auto ret = opDsc->UpdateInputDesc(kInputIdx0, org_tensor_x);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Update input_x format failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dBackpropFilter";
-    err_map["param_name"] = "updating input_x's format";
-    err_map["rule_desc"] = "update input_x's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
 
@@ -69,13 +62,6 @@ Status ParseParamsConv3DBackpropFilter(const Message* op_src, ge::Operator& op) 
   ret = opDsc->UpdateInputDesc(kInputIdx1, org_tensor_y);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Update out_backprop format failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dBackpropFilter";
-    err_map["param_name"] = "updating out_backprop's format";
-    err_map["rule_desc"] = "update out_backprop's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
 
@@ -85,13 +71,6 @@ Status ParseParamsConv3DBackpropFilter(const Message* op_src, ge::Operator& op) 
   ret = opDsc->UpdateOutputDesc(kInputIdx0, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Update output dw format failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dBackpropFilter";
-    err_map["param_name"] = "updating output_dw's format";
-    err_map["rule_desc"] = "update output_dw's format";
-    err_map["format"] = "failed";
-    std::string report_error_code = "E50012";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return FAILED;
   }
   std::vector<int32_t> pad_list = {0, 0, 0, 0, 0, 0};
