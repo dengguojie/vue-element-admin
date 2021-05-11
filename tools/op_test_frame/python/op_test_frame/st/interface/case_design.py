@@ -169,6 +169,33 @@ class CaseDesign:
             raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         return value_list
 
+    def _check_value_valid(self, one_input_desc, json_obj, tensor):
+        # if have value, case generate by no cross
+        for key in one_input_desc:
+            if one_input_desc[key] is not None and len(one_input_desc[key]) > 1:
+                utils.print_error_log('The "value" field (configured in "%s") is specified, '
+                                      'each of the rest fields can be configured with one '
+                                      'profile only. Please modify it in file %s.' % (tensor,
+                                                                                      self.current_json_path))
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        value_list = []
+        case_value = json_obj.get(utils.VALUE)
+        if isinstance(case_value, (str, list)):
+            if isinstance(case_value, str):
+                dir_path = os.path.dirname(self.current_json_path)
+                real_bin_path = self._check_bin_valid(case_value, dir_path)
+                value_list.append(real_bin_path)
+            else:
+                value_list.append(case_value)
+        else:
+            utils.print_error_log('The value (%s) is invalid, for "%s" only supports list or bin file.'
+                                  'Please modify it in file %s.' % (case_value,
+                                                                    tensor, self.current_json_path))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        return value_list
+
     def _check_list_str_valid(self, json_obj, key, support_list, tensor):
         self._check_key_exist(json_obj, key, tensor)
         value_list = []
@@ -295,6 +322,17 @@ class CaseDesign:
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         return
 
+    @staticmethod
+    def _check_bin_valid(bin_path, dir_path):
+        real_bin_path = os.path.join(dir_path, bin_path)
+        if os.path.splitext(real_bin_path)[-1] != utils.BIN_FILE:
+            utils.print_error_log(
+                'The file "%s" is invalid, only supports .bin file. '
+                'Please modify it.' % bin_path)
+            raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+        utils.check_path_valid(real_bin_path)
+        return real_bin_path
+
     def _get_ori_filed_data(self, input_or_out_desc, key_desc, format_list, shape_list):
         ori_filed_list = []
         if input_or_out_desc.get('ori_format') is not None:
@@ -334,6 +372,30 @@ class CaseDesign:
             one_op_dict.update({
                 utils.SHAPE_RANGE: shape_range_list_list})
 
+    def _get_data_distribute_list(self, input_desc):
+        if 'data_distribute' in input_desc and utils.VALUE not in input_desc:
+            data_distribute_list = self._check_list_str_valid(
+                input_desc, 'data_distribute',
+                WHITE_LISTS.data_distribution_list, INPUT_DESC)
+        else:
+            data_distribute_list = ['uniform']
+        return data_distribute_list
+
+    def _get_value_range_list(self, input_desc):
+        if 'value_range' in input_desc and utils.VALUE not in input_desc:
+            value_range_list = self._check_list_list_valid(
+                input_desc, 'value_range', INPUT_DESC)
+            for item in value_range_list:
+                self._check_range_value_valid(item)
+        else:
+            value_range_list = [[0.1, 1.0]]
+        return value_range_list
+
+    def _deal_with_value(self, input_desc, one_input_desc):
+        if input_desc.get(utils.VALUE) is not None:
+            value_list = self._check_value_valid(one_input_desc, input_desc, INPUT_DESC)
+            one_input_desc.update({"value": value_list})
+
     def _make_input_desc_list(self, json_obj):
         input_desc_list = []
         if len(json_obj[INPUT_DESC]) == 0:
@@ -350,19 +412,8 @@ class CaseDesign:
                 input_desc, 'shape', INPUT_DESC)
             for item in shape_list:
                 self._check_shape_valid(item)
-            if 'data_distribute' in input_desc:
-                data_distribute_list = self._check_list_str_valid(
-                    input_desc, 'data_distribute',
-                    WHITE_LISTS.data_distribution_list, INPUT_DESC)
-            else:
-                data_distribute_list = ['uniform']
-            if 'value_range' in input_desc:
-                value_range_list = self._check_list_list_valid(
-                    input_desc, 'value_range', INPUT_DESC)
-                for item in value_range_list:
-                    self._check_range_value_valid(item)
-            else:
-                value_range_list = [[0.1, 1.0]]
+            data_distribute_list = self._get_data_distribute_list(input_desc)
+            value_range_list = self._get_value_range_list(input_desc)
             ori_filed_list = self._get_ori_filed_data(input_desc, INPUT_DESC, format_list, shape_list)
             if ori_filed_list:
                 # add ori_format and ori_shape for one_input_desc
@@ -383,6 +434,8 @@ class CaseDesign:
                     utils.TYPICAL_SHAPE) is not None:
                 self._get_dynamic_shape_info(
                     INPUT_DESC, input_desc, one_input_desc)
+
+            self._deal_with_value(input_desc, one_input_desc)
 
             input_desc_list.append(one_input_desc)
             for item in one_input_desc.values():
@@ -406,23 +459,13 @@ class CaseDesign:
                 input_desc, 'shape', INPUT_DESC)
             for item in shape_list:
                 self._check_shape_valid(item)
-            if 'data_distribute' in input_desc:
-                data_distribute_list = self._check_list_str_valid(
-                    input_desc, 'data_distribute',
-                    WHITE_LISTS.data_distribution_list, INPUT_DESC)
-            else:
-                data_distribute_list = ['uniform']
-            if 'value_range' in input_desc:
-                value_range_list = self._check_list_list_valid(
-                    input_desc, 'value_range', INPUT_DESC)
-                for item in value_range_list:
-                    self._check_range_value_valid(item)
-            else:
-                value_range_list = [[0.1, 1.0]]
+            data_distribute_list = self._get_data_distribute_list(input_desc)
+            value_range_list = self._get_value_range_list(input_desc)
             one_input_desc = {'type': type_list,
                               'shape': shape_list,
                               'value_range': value_range_list,
                               'data_distribute': data_distribute_list}
+            self._deal_with_value(input_desc, one_input_desc)
             input_desc_list.append(one_input_desc)
             for item in one_input_desc.values():
                 if len(item) > 1:
@@ -544,6 +587,8 @@ class CaseDesign:
             cross_key_list = [key for key in op_cross_key_list]
             if tensor.get(utils.SHAPE_RANGE):
                 dynamic_handle.add_key_in_cross_key_list(cross_key_list)
+            if tensor.get(utils.VALUE):
+                cross_key_list.append(utils.VALUE)
             if tensor.get('ori_format') and tensor.get('ori_shape'):
                 ori_field_cross_key_list, result_cross_list = combine_ori_field_to_cross(tensor, cross_key_list)
                 for case in result_cross_list:

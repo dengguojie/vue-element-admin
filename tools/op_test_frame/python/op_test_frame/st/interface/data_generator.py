@@ -12,6 +12,7 @@ try:
     import os
     import numpy as np
     import importlib
+    import functools
     from . import utils
     from . import st_report
     from . import op_st_case_info
@@ -37,6 +38,32 @@ class DataGenerator:
             op_name_path = os.path.join(output_path, case_list[0]['op'])
             self.output_path = os.path.join(output_path, op_name_path, 'run',
                                             'out', 'test_data', 'data')
+
+    @staticmethod
+    def gen_data_with_value(input_shape, value, dtype):
+        """
+        generate data with value
+        :param input_shape: the data shape
+        :param value: input value
+        :param dtype: the data type
+        :return: the numpy data
+        """
+        if isinstance(value, str):
+            data = np.fromfile(value, dtype)
+            input_size = functools.reduce(lambda x, y: x * y, input_shape)
+            data_size = functools.reduce(lambda x, y: x * y, data.shape)
+            if input_size != data_size:
+                utils.print_error_log("The size of data from %s not equal to input shape size." % value)
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+            data.shape = input_shape
+            return data
+        data = np.array(value, dtype=dtype)
+        if list(data.shape) == input_shape:
+            return data
+        utils.print_error_log("The value shape not equal to input shape.")
+        raise utils.OpTestGenException(
+            utils.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     @staticmethod
     def gen_data(data_shape, min_value, max_value, dtype,
@@ -130,6 +157,24 @@ class DataGenerator:
             data = data.astype(real_dtype)
         return data
 
+    def _gen_input_data(self, input_shape, dtype, range_min, range_max,
+                        input_desc, file_path):
+        value = input_desc.get('value')
+        try:
+            if value:
+                data = self.gen_data_with_value(input_shape, value, dtype)
+            else:
+                data = self.gen_data(
+                    input_shape, range_min, range_max, dtype,
+                    input_desc['data_distribute'])
+            return data
+        except MemoryError as error:
+            utils.print_warn_log(
+                'Failed to generate data for %s. The shape is too '
+                'large to invoke MemoryError. %s' % (file_path, error))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+
     def generate(self):
         """
         generate data by case list
@@ -163,16 +208,8 @@ class DataGenerator:
                         ' retry.' % file_path)
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-                try:
-                    data = self.gen_data(
-                            input_shape, range_min, range_max, dtype,
-                            input_desc['data_distribute'])
-                except MemoryError as error:
-                    utils.print_warn_log(
-                        'Failed to generate data for %s. The shape is too '
-                        'large to invoke MemoryError. %s' % (file_path, error))
-                    raise utils.OpTestGenException(
-                        utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+                data = self._gen_input_data(input_shape, dtype, range_min,
+                                            range_max, input_desc, file_path)
                 try:
                     input_dic = {
                         'value': data,

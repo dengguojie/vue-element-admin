@@ -75,6 +75,7 @@ ACL_OP_JSON_RELATIVE_PATH = "/run/out/test_data/config/acl_op.json"
 TESTCASE_PY_RELATIVE_PATH = "/src/test_{op_name}.py"
 PYTEST_INI_RELATIVE_PATH = "/src/pytest.ini"
 INPUT_SUFFIX_LIST = ['.ini', '.py']
+BIN_FILE = '.bin'
 FILE_AUTHORITY = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR
 FOLDER_MASK = 0o700
 TYPE_UNDEFINED = "UNDEFINED"
@@ -84,6 +85,7 @@ OUTPUT_DESC = 'output_desc'
 # dynamic shape scenario add keys as follows
 SHAPE_RANGE = 'shape_range'
 TYPICAL_SHAPE = 'typical_shape'
+VALUE = 'value'
 # Two dynamic scenarios: shape value is -1 or -2
 SHAPE_DYNAMIC_SCENARIOS_ONE = -1
 SHAPE_DYNAMIC_SCENARIOS_TWO = -2

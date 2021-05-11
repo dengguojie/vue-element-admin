@@ -82,6 +82,13 @@ ST_MS_GOLDEN_JSON_OUTPUT = './st/msopst/golden/base_case/golden_output' \
                            '/mindspore/json'
 ST_MS_GOLDEN_INPUT_JSON = './st/msopst/golden/base_case/input/ms_case.json'
 
+ST_GOLDEN_OP_GEN_WITH_VALUE_JSON_INPUT = './st/msopst/golden/base_case/input' \
+                                             '/test_value_add.json'
+ST_GOLDEN_OP_GEN_WITH_VALUE_ACL_PROJECT_OUTPUT = './st/msopst/golden/base_case' \
+                                                 '/golden_output/' \
+                                                 'gen_optional_acl_prj/Adds/src'
+ST_MS_GOLDEN_INPUT_JSON_WITH_VALUE = './st/msopst/golden/base_case/input/ms_case_with_value.json'
+
 
 class NumpyArrar:
     def tofile(self, file_path):
@@ -739,6 +746,39 @@ class TestUtilsMethods(unittest.TestCase):
     def mock_gen_data(cls, *args, **kwargs):
         """mock tofile"""
         return NumpyArrar()
+
+    def test_gen_data_with_value_code(self):
+        """
+        test tbe gen data with value
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'run', '-i', ST_GOLDEN_OP_GEN_WITH_VALUE_JSON_INPUT, '-soc',
+                'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                msopst.main()
+        adds_output_src = os.path.join(ST_OUTPUT, 'Adds/src')
+        self.assertTrue(test_utils.check_file_context(
+            adds_output_src, ST_GOLDEN_OP_GEN_WITH_VALUE_ACL_PROJECT_OUTPUT))
+
+    def test_ms_gen_data_with_value_code(self):
+        """
+        test mindspore gen data with value
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'run', '-i', ST_MS_GOLDEN_INPUT_JSON_WITH_VALUE, '-soc',
+                'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit) as error:
+            with mock.patch('sys.argv', args):
+                with mock.patch('op_test_frame.st.interface'
+                                '.ms_op_generator'
+                                '.importlib.import_module'):
+                    msopst.main()
+        try:
+            self.assertEqual(
+                error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
+        finally:
+            test_utils.clear_out_path(ST_OUTPUT)
 
 
 if __name__ == '__main__':
