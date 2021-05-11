@@ -55,12 +55,6 @@ class PadInit(OpBase):
         self.tiling_shape = (TILING_NUMS,)
         self.kernel_name = kernel_name
 
-        # regist compute base on tiling_key
-        self.regist_compute(MODE0, self.do_pad_with_move_cut_inner)
-        self.regist_compute(MODE1, self.do_pad_with_move_cut_outer)
-        self.regist_compute(MODE2, self.do_pad_with_vnchw_for_last_two_dim)
-        self.regist_compute(MODE3, self.do_pad_with_vnchw_for_last_three_dim)
-
         # op para init
         self.inner_dtype = "float16"
         self.input_gm = None
@@ -243,14 +237,10 @@ class PadInit(OpBase):
         """
         tiling_dict = {"dtype": self.tiling_dtype, "shape": self.tiling_shape}
         self.input_bytes_size = tbe_platform.get_bit_len(input_dict_list[pad_input_idx]["dtype"]) // EIGHT_BIT
-        input_dict_list[pad_input_idx]["dtype"] = self.inner_dtype
-        input_dict_list[pad_input_idx]["shape"] = self.unknown_max_shape
-        output_dict_list[pad_outnput_idx]["dtype"] = self.inner_dtype
-        output_dict_list[pad_outnput_idx]["shape"] = self.unknown_max_shape
         output_dict_list[pad_outnput_idx]["is_atomic_add"] = True
         self.op_init_gm(input_dict_list, output_dict_list, tiling_info=tiling_dict)
-        self.input_gm = self.input_gm_list[pad_input_idx]
-        self.output_gm = self.output_gm_list[pad_outnput_idx]
+        self.input_gm = self.input_gm_list[pad_input_idx].reinterpret_cast_to(self.inner_dtype)
+        self.output_gm = self.output_gm_list[pad_outnput_idx].reinterpret_cast_to(self.inner_dtype)
 
     def get_output_outer_idx(self, in_idx, outer_num=5):
         """
@@ -423,7 +413,7 @@ class PadInit(OpBase):
             tail_copy_offset = 0
 
         copy_new_num = self.tiling_input_shape[-1] - tail_copy_offset
-        with self.tik_instance.if_scope(scalar_copy_num > copy_new_num):
+        with self.tik_instance.if_scope(tik.all(scalar_copy_num > copy_new_num, copy_new_num != 0)):
             scalar_copy_num.set_as(copy_new_num)
         copy_loop_ceil = self.tik_instance.Scalar(dtype="int64", name="copy_loop_ceil")
         copy_loop_floor = self.tik_instance.Scalar(dtype="int64", name="copy_loop_floor")
@@ -983,12 +973,19 @@ class PadInit(OpBase):
         MODE2: the last dim of output < 960, and cut by outer dim(0-3)
                 and do pad with vnchw
         """
-        # run all regist compute base tiling key
-        self.op_run_compute()
-        # Build CCE
-        self.op_build_cce()
+        # op step 0. init gm memory
+        # do in function init_src_dst_gm
 
-        # add compile info
+        # op step 1. regist the tiling funtion base on tiling_key
+        self.regist_compute(MODE0, self.do_pad_with_move_cut_inner)
+        self.regist_compute(MODE1, self.do_pad_with_move_cut_outer)
+        self.regist_compute(MODE2, self.do_pad_with_vnchw_for_last_two_dim)
+        self.regist_compute(MODE3, self.do_pad_with_vnchw_for_last_three_dim)
+
+        # op step 2. run all regist compute base tiling key
+        self.op_run_compute()
+
+        # op step 3. add compile info
         # dtype_rate mean input_dtype byte // inner_dtype(fp16)
         # input_dtype is fp16/int16 dtype_rate == 1
         # input_dtype is fp32/int32 dtype_rate == 2
@@ -1003,6 +1000,10 @@ class PadInit(OpBase):
             for key in outer_compile_info.keys():
                 wr_compile_info[key] = outer_compile_info[key]
         tbe_context.get_context().add_compile_info("vars", wr_compile_info)
+
+        # # op step 4. Build CCE
+        self.op_build_cce()
+
         return self.tik_instance
 
 
