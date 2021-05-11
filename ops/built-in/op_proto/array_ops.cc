@@ -2278,6 +2278,8 @@ template<typename T> static bool ExpandCalDim(const Tensor &data,
 }
 
 IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
+  const vector<string> depend_names = {"shape"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   Shape x_shape = op.GetInputDesc("x").GetShape();
   DataType x_dtype = op.GetInputDesc("x").GetDataType();
   std::vector <int64_t> dims_x = x_shape.GetDims();
@@ -2294,13 +2296,19 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
     DataType input_dtype = op.GetInputDesc("x").GetDataType();
 
     if (dim_num > 1) {
-      OP_LOGE(op.GetName().c_str(), "The dim numbles of constnode are less than one.");
+      OP_LOGE(op.GetName().c_str(), "The dim numbers of constnode are more than one.");
       return GRAPH_FAILED;
     }
 
     std::vector<int64_t> shape_vector;
     std::vector<std::pair<int64_t, int64_t>> range_vector;
-    for (int64_t item = 0; item < shapedims[0]; ++item) {
+
+    int64_t max_len = dims_x.size();
+    if (shapedims[0] > max_len) {
+      max_len = shapedims[0];
+    }
+
+    for (int64_t item = 0; item < max_len; ++item) {
       shape_vector.push_back(-1);
       range_vector.push_back(std::make_pair(1, -1));
     }
@@ -2419,5 +2427,5 @@ IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ExpandD, ExpandDInferShape);
-// ----------------Expand END---------------------
+// ----------------ExpandD END---------------------
 }  // namespace ge

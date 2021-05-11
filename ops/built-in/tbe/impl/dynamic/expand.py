@@ -51,18 +51,8 @@ def expand_compute(x, shape):
     _, _, shape_max = shape_util.broadcast_shapes(shape_in, shape)
 
     dtype = x.dtype
-    if dtype in ('int8', 'uint8'):
-        x = tbe.cast_to(x, 'float16')
 
-    python_shape_in = [int(shape_in_x) for shape_in_x in shape_in]
-    python_shape_max = list(shape_max)
-    if python_shape_in == python_shape_max:
-        output_tensor = tbe.vmuls(x, NUM_ONE)
-    else:
-        output_tensor = tbe.broadcast(x, shape_max, dtype)
-
-    if dtype in ('int8', 'uint8'):
-        return tbe.cast_to(output_tensor, dtype, f1628IntegerFlag=True)
+    output_tensor = tbe.broadcast(x, shape_max, dtype)
 
     return output_tensor
 
@@ -116,36 +106,9 @@ def expand(x, shape, y, kernel_name="expand"):
     if dims_value < -1:
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape[0] should be more than -1")
 
-    if dims_value == -1:
-        dims_value = len(input_x_shape)
+    shape_shape_adapt = [-1] + input_x_shape
+    shape_range_adapt = [(1, None)] + input_x_range
 
-    if len(input_x_shape) > dims_value: 
-        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "shape", \
-            "the dimensions of x should not be bigger than shape[0]")
-    if len(input_x_shape) < dims_value:
-        len_diff = dims_value - len(input_x_shape)
-        input_x_shape = [1] * len_diff + input_x_shape
-        input_x_range = [(1, 1)] * len_diff + input_x_range
-
-    x_shape_adapt = []
-    shape_shape_adapt = []
-    x_range_adapt = []
-    shape_range_adapt = []
-
-    for shape_i, range_i in zip(input_x_shape, input_x_range):
-        if shape_i == 1:
-            x_shape_adapt.append(1)
-            x_range_adapt.append((1, 1))
-            shape_shape_adapt.append(-1)
-            shape_range_adapt.append((1, None))
-        else:
-            x_shape_adapt.append(shape_i)
-            x_range_adapt.append(range_i)
-            shape_shape_adapt.append(shape_i)
-            shape_range_adapt.append(range_i)
-
-    x["shape"] = x_shape_adapt
-    x["range"] = x_range_adapt
     shape["shape"] = shape_shape_adapt
     shape["range"] = shape_range_adapt
 
