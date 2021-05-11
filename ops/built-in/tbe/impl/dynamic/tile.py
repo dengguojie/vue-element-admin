@@ -46,8 +46,12 @@ def tile_compute(data, multiples, output_x, kernel_name="tile"):
     -------
     res
     """
+    src_dtype = data.dtype
+    if src_dtype == "int8":
+        data = tbe.cast_to(data, "float16")
     res = tbe.broadcast(data, multiples)
-
+    if src_dtype == "int8":
+        res = tbe.cast_to(res, "int8")
     return res
 
 

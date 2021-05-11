@@ -223,7 +223,7 @@ def l2_loss_schedule(res, input_tensors):
         sch[cache_write_buffer_list[i]].emit_insn(
             cache_write_buffer_list[i].op.axis[0],
             emit_insn_pragma)
-    sch[reduce_i_ub].emit_insn(reduce_i_ub_i, "reduce_last_axis_reduce_sum")
+    sch[reduce_i_ub].emit_insn(reduce_i_ub_i, "vector_reduce_sum")
     sch[reduce_o_gm].emit_insn(reduce_o_gm.op.axis[0], "dma_copy")
     sch[reduce_c].emit_insn(sch[reduce_c].op.axis[0], "phony_insn")
 
