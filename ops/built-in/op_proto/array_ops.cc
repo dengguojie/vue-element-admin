@@ -1828,8 +1828,8 @@ INFER_FUNC_REG(IdentityN, IdentityNInfer);
 IMPLEMT_INFERFUNC(Identity, IdentityInfer) {
   OP_LOGI(op.GetName().c_str(), "Identity infershape start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc_x = op_desc->MutableInputDesc("x");
-  auto output_desc_y = op_desc->MutableOutputDesc("y");
+  auto input_desc_x = op_desc->MutableInputDesc(0);
+  auto output_desc_y = op_desc->MutableOutputDesc(0);
 
   std::vector<int64_t> vec_dim;
   vec_dim = input_desc_x->MutableShape().GetDims();
