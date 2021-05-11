@@ -917,7 +917,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         out_w, out_h = current_size_w, current_size_h
         w_i = self._get_dedy_w(out_w, stride_w=1)
 
-        # M axis theorically loading length in al1
+        # M axis theorically loading length in al0
         al0_m_data = tiling['CL0_matrix'][1] * utils.FP16_M
 
         # load3d instructions refer to load extra lines with pad/stride/filter

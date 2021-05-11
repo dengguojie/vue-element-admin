@@ -613,7 +613,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     return result
 
 def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
-                           dilations, groups, data_format, kernel_name):
+                          dilations, groups, data_format, kernel_name):
 
     ori_shape_filters = filter.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
