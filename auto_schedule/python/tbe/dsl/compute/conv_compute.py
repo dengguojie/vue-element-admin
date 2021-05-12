@@ -24,10 +24,12 @@ from topi.cce.util import check_load3d_w_out_1_support
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import CUBE_MKN
+from tbe.common.buildcfg import get_current_build_config
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.base.operation import get_te_var
 from tbe.tvm.buffer_manager import get_buffer_manager
 from tbe.tvm.dsl_source_info import source_info_decorator
+
 
 # fmapH, fmapW must be in [1,4096]
 FMAP_HW_MIN = 1
@@ -2252,9 +2254,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     if (in_dtype, w_dtype) == ("int8", "int8"):
         res_dtype = "int32"
     #====================fetch L1fusion information from pass interface=============
-    from te.platform import get_L1_info
-    l1_fusion_enable_flag = get_L1_info("L1_fusion_enabled")
-    l2_fusion_enable_flag = get_L1_info("L2_fusion_enabled") and get_L1_info("L2_mode") == 1
+    l1_fusion_enable_flag = get_current_build_config("enable_L1_fusion")
+    l2_fusion_enable_flag = get_current_build_config("enable_L2_fusion") and get_current_build_config("l2_mode") == 1
     lxfusion_enable_flag = l1_fusion_enable_flag or l2_fusion_enable_flag
 
     if lxfusion_enable_flag: # lxfusion enabled

@@ -9,10 +9,10 @@ def test_conv2d_v200_lxfusion(test_arg):
 
     from functools import reduce
     from impl.conv2d import conv2d_compute
-    from te import tvm
+    from tbe import tvm
     from topi import generic
-    import te.lang.cce
-    from te import platform as cceconf
+    from tbe.dsl import build
+    from tbe.common.platform.platform_info import set_current_compile_soc_info
     from impl.ascend_dequant_s16 import ascend_dequant_s16_compute
     from impl.ascend_requant_s16 import ascend_requant_s16_compute
     from impl.ascend_dequant import ascend_dequant_compute
@@ -20,9 +20,9 @@ def test_conv2d_v200_lxfusion(test_arg):
     from impl.ascend_quant import ascend_quant_compute
     from impl.eltwise import eltwise_compute
     from impl.leaky_relu import leaky_relu_compute
-    from te.platform.cce_policy import set_L1_info
-    from te.tvm.buffer_manager import RemappedBuffer
-    from te.tvm.buffer_manager import get_buffer_manager
+    from tbe.common.buildcfg.compatible_interface import set_L1_info
+    from tbe.tvm.buffer_manager import RemappedBuffer
+    from tbe.tvm.buffer_manager import get_buffer_manager
 
     l1_fusion_type = 0
     fm_addr_type = 0
@@ -274,7 +274,6 @@ def test_conv2d_v200_lxfusion(test_arg):
         #==============call pass interface======================
         buffer_manager = get_buffer_manager()
         buffer_manager.set_l1_fusion_type(int(l1_fusion_type))
-
         scope_dict = {0: "global", 1: "local.L1_Fusion"}
         rb_fmap = RemappedBuffer(0, scope_dict[fm_addr_type], fm_total_shape, shape_in_5HD)
 
@@ -284,13 +283,13 @@ def test_conv2d_v200_lxfusion(test_arg):
                     fm_total_shape = shape_in_5HD
 
             fm = tvm.placeholder(shape_in_5HD, name="fm", dtype="int8", attrs={"ori_format": "NCHW",
-                                                                               "L1_valid_size": L1_valid_size,
-                                                                               "L1_addr_flag": 1})
+                                                                            "L1_valid_size": L1_valid_size,
+                                                                            "L1_addr_flag": 1})
             buffer_manager.set_remapped_buffers([rb_fmap])
             buffer_manager.set_tensor_list([fm])
 
             filter_w = tvm.placeholder(shape_w_fracz, name="filter_w", dtype="int8",
-                                       attrs={"ori_shape": shape_w, "ori_format": "NCHW"})
+                                    attrs={"ori_shape": shape_w, "ori_format": "NCHW"})
 
             if dataflow_v200 in (0, 1, 2, 3):
                 if bias_flag:
@@ -299,7 +298,7 @@ def test_conv2d_v200_lxfusion(test_arg):
                     bias_tensor = None
                 conv_res = conv2d_compute(fm, filter_w, bias_tensor, None, None, strides, pads, dilations, offset_x=offset_d)
                 vdeq = tvm.placeholder(shape_scale, name="vreq_reg", dtype="uint64",
-                                       attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                                    attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
                 if dataflow_v200 == 0:
                     # conv + dequant
                     out = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=relu_flag)
@@ -374,7 +373,7 @@ def test_conv2d_v200_lxfusion(test_arg):
                 if dataflow_v200 == 4:
                     # conv + dequants16
                     vdeq_reg = tvm.placeholder(shape_scale, name="vdeq_reg", dtype="uint64",
-                                               attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                                            attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
 
                     if bias_flag:
                         bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
@@ -393,7 +392,7 @@ def test_conv2d_v200_lxfusion(test_arg):
                 elif dataflow_v200 == 5:
                     # conv + dequant_s16 + requant_s16(relu) singleout
                     vdeq16_reg = tvm.placeholder(shape_scale, name="vdeqs16_reg", dtype="uint64",
-                                                 attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
 
                     if bias_flag:
                         bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
@@ -404,14 +403,14 @@ def test_conv2d_v200_lxfusion(test_arg):
 
                     # vadd(relu) + s16———>s8
                     conv16_reg = tvm.placeholder(shape_scale, name="conv16_reg", dtype="uint64",
-                                                 attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
                     if eltwise_addr_type:
                         if eltwise_total_shape == []:
                             eltwise_total_shape = dequants16.shape
 
                     fm2 = tvm.placeholder(dequant_s16.shape, name="fm2", dtype="int16")
                     out = ascend_requant_s16_compute(dequant_s16, conv16_reg, fm2, None, None,
-                                                     dual_output=False, relu_flag=reqs16_relu_flag)
+                                                    dual_output=False, relu_flag=reqs16_relu_flag)
                     out = out[0]
 
                     if bias_flag:
@@ -426,7 +425,7 @@ def test_conv2d_v200_lxfusion(test_arg):
                 elif dataflow_v200 == 6:
                     # conv + dequant_s16 + requant_s16(relu) dualout
                     vdeq16_reg = tvm.placeholder(shape_scale, name="vdeqs16_reg", dtype="uint64",
-                                                 attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
 
                     if bias_flag:
                         bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
@@ -437,14 +436,14 @@ def test_conv2d_v200_lxfusion(test_arg):
 
                     # vadd(relu) + s16———>s8
                     conv16_reg = tvm.placeholder(shape_scale, name="conv16_reg", dtype="uint64",
-                                                 attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
                     if eltwise_addr_type:
                         if eltwise_total_shape == []:
                             eltwise_total_shape = dequants16.shape
 
                     fm2 = tvm.placeholder(dequant_s16.shape, name="fm2", dtype="int16")
                     res_s8, res_s16 = ascend_requant_s16_compute(dequant_s16, conv16_reg, fm2, None, None,
-                                                     dual_output=True, relu_flag=reqs16_relu_flag)
+                                                    dual_output=True, relu_flag=reqs16_relu_flag)
                     out_s8 = res_s8
                     out_s16 = res_s16
 
@@ -509,7 +508,7 @@ def test_conv2d_v200_lxfusion(test_arg):
             "need_build": True,
             "name": kernel_name,
             "tensor_list": tensor_list}
-        te.lang.cce.cce_build_code(sch, config)
+        build(sch, config)
 
 
     def run_testcase(config_dict):
@@ -539,8 +538,12 @@ def test_conv2d_v200_lxfusion(test_arg):
                                       bias_flag, relu_flag, True, reqs16_relu_flag)
 
 
-    cceconf.te_set_version("Hi3796CV300CS")
+    set_current_compile_soc_info("Hi3796CV300CS")
     run_testcase(v200_l1fusion_testcase["3796CS"]["st"])
 
 print("adding Conv2D v200 l1fusion ut testcases")
-ut_case.add_cust_test_func(test_func=test_conv2d_v200_lxfusion)
+ut_case.add_cust_test_func(support_soc="Hi3796CV300CS", test_func=test_conv2d_v200_lxfusion)
+if __name__ == '__main__':
+    # ut_case.add_cust_test_func(test_func=test_leakyrelu_depthwise_fusion_testcase)
+    ut_case.run("Hi3796CV300CS")
+    exit(0)

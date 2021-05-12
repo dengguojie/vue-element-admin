@@ -8,7 +8,6 @@ provide common function used by conv2d
 """
 
 import math
-import te.platform as tbe_platform
 from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.platform.platform_info import get_soc_spec
