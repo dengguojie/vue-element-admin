@@ -55,7 +55,9 @@ REG_OP(LogSoftmaxGrad)
 *Two inputs, including:
 * @li features: A Tensor. Must be one of the following types: half, float32, double.
 *    A "batch_size * num_classes" matrix.
-* @li labels: A Tensor of the same type as "features". batch_size vector with values in [0, num_classes).
+* @li labels: A Tensor. Must be one of the following types: 'int32', 'int64'.
+*             batch_size vector with values in [0, num_classes).
+*             This is the label for the given minibatch entry.
 
 
 *@par Outputs:

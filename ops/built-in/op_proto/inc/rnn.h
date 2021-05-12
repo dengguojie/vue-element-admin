@@ -33,6 +33,7 @@ namespace ge {
 *@li c:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li w:A 4D Tensor. Must be one of the following types: float16. The format must be FRACTAL_Z.
 *@li b:A 1D Tensor. Must be one of the following types: float16. The format must be ND . \n
+*@li mask:A 1D Tensor. Must be one of the following types: uint8.
 
 *@par Attributes:
 *@li keep_prob:An integer identifying the keep prob in the op. Default to 1.
@@ -42,7 +43,6 @@ namespace ge {
 
 *@par Outputs:
 *seven outputs:
-*@li mask:A 1D Tensor. Must be one of the following types: uint8.
 *@li ct:A 4D Tensor. Must be one of the following types: float16, float32.
 *@li ht:A 4D Tensor. Must be one of the following types: float16.
 *@li it:A 4D Tensor. Must be one of the following types: float16, float32.
