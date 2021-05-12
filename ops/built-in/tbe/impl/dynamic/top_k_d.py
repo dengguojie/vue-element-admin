@@ -39,9 +39,46 @@ FULL_MASK_FP16 = 128
 FULL_MASK_INT32 = 64
 FULL_MASK_INT64 = 32
 
+SORT_REGION_BYTE = 16
+SORT_ONCE_NUM = tbe_platform.VECTOR_INST_BLOCK_WIDTH // SORT_REGION_BYTE
+
 
 def _get_dtype_byte(dtype):
     return tbe_platform.get_bit_len(dtype) // 8
+
+
+def _get_dtype_min_val(dtype):
+    """
+    get dtype min val
+    """
+    val_list = {'float16': -65536,
+                'float32': -(2 - 2 ** -23) * 2 ** 127 + 1,
+                'int32': -(2 ** 31),
+                'uint32': 0}
+    return val_list[dtype]
+
+
+def _ceil_fill(value, block):
+    """
+    Fill the input value by block.
+    """
+    return (value + block - 1) // block * block
+
+
+def _ceil_div(value, block):
+    """
+    compute ceil div
+
+    Parameters
+    ----------
+    value: num
+    block: factor
+
+    Returns
+    -------
+    ceil value
+    """
+    return (value + block - 1) // block
 
 
 # pylint: disable=invalid-name
@@ -458,8 +495,10 @@ def set_tensor_more_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs):
                                            scope=tik.scope_ubuf)
     region_k_ub = tik_instance.Tensor("float16", (1, max_region_len * 8), name="region_k_ub", scope=tik.scope_ubuf)
     region_k2_ub = tik_instance.Tensor("float16", (1, max_region_len * 8), name="region_k2_ub", scope=tik.scope_ubuf)
-    data_tail_block_ub = tik_instance.Tensor("float16", (16,), name="data_tail_block_ub", scope=tik.scope_ubuf)
-    indices_tail_block_ub = tik_instance.Tensor("int32", (8,), name="indices_tail_block_ub", scope=tik.scope_ubuf)
+    data_tail_block_ub = tik_instance.Tensor("float16", (SORT_ONCE_NUM,), name="data_tail_block_ub",
+                                             scope=tik.scope_ubuf)
+    indices_tail_block_ub = tik_instance.Tensor("int32", (SORT_ONCE_NUM,), name="indices_tail_block_ub",
+                                                scope=tik.scope_ubuf)
     obj_gm.set_data_gm_out(output)
     obj_ub.set_data_ub(data_ub)
     obj_ub.set_region_ub(region_ub)
@@ -508,8 +547,10 @@ def set_tensor_less_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs):
     region_sorted_ub = tik_instance.Tensor("float16", (batch_cols_padding * 8,),
                                            name="region_sorted_ub",
                                            scope=tik.scope_ubuf)
-    data_tail_block_ub = tik_instance.Tensor("float16", (16,), name="data_tail_block_ub", scope=tik.scope_ubuf)
-    indices_tail_block_ub = tik_instance.Tensor("int32", (8,), name="indices_tail_block_ub", scope=tik.scope_ubuf)
+    data_tail_block_ub = tik_instance.Tensor("float16", (SORT_ONCE_NUM,), name="data_tail_block_ub",
+                                             scope=tik.scope_ubuf)
+    indices_tail_block_ub = tik_instance.Tensor("int32", (SORT_ONCE_NUM,), name="indices_tail_block_ub",
+                                                scope=tik.scope_ubuf)
     obj_gm.set_data_gm_out(output)
     obj_ub.set_data_ub(data_ub)
     obj_ub.set_region_ub(region_ub)
@@ -567,13 +608,14 @@ class GlobalVarFunction(object):
         self.indices_out_final_ub = obj_ub.get_indices_out_final_ub()
         self.rows = obj_tiling.get_rows_num()
         self.cols = obj_tiling.get_cols_num()
-        self.cols_padding = ((self.cols + 15) // 16) * 16
+        self.cols_padding = _ceil_fill(self.cols, SORT_ONCE_NUM)
         self.k = obj_tiling.get_k_num()
         self.core_num = obj_tiling.core_num
         self.loop_times = obj_tiling.get_loop_times()
         self.rows_per_core = obj_tiling.get_rows_cores()
         self.batch_num = obj_tiling.get_batch_num()
         self.turn_block_idx = obj_tiling.get_turn_num()
+        self.num_per_ele = SORT_REGION_BYTE // _get_dtype_byte(self.data_ub.dtype)
 
     # pylint: disable=locally-disabled,too-many-locals
     def kernel_ir(self, tik_instance, largest, by_part, block_idx, block_dim, k):
@@ -653,13 +695,13 @@ class GlobalVarFunction(object):
         offset_int32_ub = self.offset_int32_ub
         indices_out_final_ub = self.indices_out_final_ub
         cols_per_part = self.func_obj_tiling.cols_per_part
-        k_padding = ((k + 15) // 16) * 16
-        cols_padding = ((cols + 15) // 16) * 16
-        part_cnt = (cols + cols_per_part - 1) // cols_per_part
+        k_padding = _ceil_fill(k, SORT_ONCE_NUM)
+        cols_padding = _ceil_fill(cols, SORT_ONCE_NUM)
+        part_cnt = _ceil_div(cols, cols_per_part)
         last_part_cols = cols - ((part_cnt - 1) * cols_per_part)
-        last_part_cols_padding = ((last_part_cols + 15) // 16) * 16
+        last_part_cols_padding = _ceil_fill(last_part_cols, SORT_ONCE_NUM)
         gm_offset = row_start_in_core * cols + core_rows_start * cols
-        multiplier_scalar = tik_instance.Scalar("float16")
+        multiplier_scalar = tik_instance.Scalar(data_ub.dtype)
 
         self.copy_gm_to_ubuf_func(tik_instance,
                                   data_ub,
@@ -762,8 +804,8 @@ class GlobalVarFunction(object):
                                      src_region_sorted=result_ub,
                                      len_region_k=cols_per_part * 4,
                                      len_region_sorted=last_part_cols_padding)
-        repeat_255 = k_padding // (16 * 255)
-        repeat_remain = (k_padding - repeat_255 * 16 * 255) // 16
+        repeat_255 = k_padding // (SORT_ONCE_NUM * 255)
+        repeat_remain = _ceil_div(k_padding - repeat_255 * SORT_ONCE_NUM * 255, SORT_ONCE_NUM)
         self.emit_vextract(tik_instance, region_k_ub, region_k2_ub, Mode.Y2.value, repeat_255, repeat_remain)
         self.emit_vextract(tik_instance,
                            region_k_ub,
@@ -819,11 +861,11 @@ class GlobalVarFunction(object):
                              multi_core=multi_core)
 
     def _extract(self, tik_instance, sorted_ub, rows):
-        repeat_255 = rows * self.cols_padding // (16 * 255)
-        repeat_remain = (rows * self.cols_padding - repeat_255 * 16 * 255) // 16
+        repeat_255 = rows * self.cols_padding // (SORT_ONCE_NUM * 255)
+        repeat_remain = _ceil_div(rows * self.cols_padding - repeat_255 * SORT_ONCE_NUM * 255, SORT_ONCE_NUM)
         self.emit_vextract(tik_instance, self.data_ub, sorted_ub, Mode.Y2.value, repeat_255, repeat_remain)
-        repeat_255 = self.cols_padding // (16 * 255)
-        repeat_remain = (self.cols_padding - repeat_255 * 16 * 255) // 16
+        repeat_255 = self.cols_padding // (SORT_ONCE_NUM * 255)
+        repeat_remain = _ceil_div(self.cols_padding - repeat_255 * SORT_ONCE_NUM * 255, SORT_ONCE_NUM)
         with tik_instance.for_range(0, rows, name='i0') as i:
             self.emit_vextract(tik_instance,
                                self.indices_out_fp16_ub,
@@ -832,7 +874,7 @@ class GlobalVarFunction(object):
                                repeat_255,
                                repeat_remain,
                                dst_offset=i * self.cols_padding,
-                               src_offset=i * self.cols_padding * 8)
+                               src_offset=i * self.cols_padding * self.num_per_ele)
             self.emit_vextract(tik_instance,
                                self.offset_fp16_ub,
                                sorted_ub,
@@ -840,7 +882,7 @@ class GlobalVarFunction(object):
                                repeat_255,
                                repeat_remain,
                                dst_offset=i * self.cols_padding,
-                               src_offset=i * self.cols_padding * 8)
+                               src_offset=i * self.cols_padding * self.num_per_ele)
 
     # pylint: disable=too-many-arguments
     def topk_rows(self, tik_instance, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
@@ -884,7 +926,7 @@ class GlobalVarFunction(object):
                               self.indices_ub,
                               mode=Mode.X1.value,
                               cnt=self.cols_padding,
-                              dst_offset=i * self.cols_padding * 8,
+                              dst_offset=i * self.cols_padding * self.num_per_ele,
                               src_offset=0)
 
             self.emit_vconcat(tik_instance,
@@ -892,7 +934,7 @@ class GlobalVarFunction(object):
                               self.offset_ub,
                               mode=Mode.Y1.value,
                               cnt=self.cols_padding,
-                              dst_offset=i * self.cols_padding * 8,
+                              dst_offset=i * self.cols_padding * self.num_per_ele,
                               src_offset=0)
 
         self.sort_region(tik_instance, self.region_sorted_ub, self.region_ub, rows, self.cols_padding)
@@ -947,7 +989,8 @@ class GlobalVarFunction(object):
             merge_n0 = 2 * self.func_obj_tiling.cols_per_part
             merge_n1 = 2 * self.func_obj_tiling.cols_per_part
             merge_n2_merge_two_reg = tik_instance.Scalar(init_value=len_region_sorted, name="merge_n2_merge_two_reg")
-            src_list = [src_region_k[0], src_region_k[2 * self.func_obj_tiling.cols_per_part * 8], src_region_sorted[0],
+            src_list = [src_region_k[0], src_region_k[2 * self.func_obj_tiling.cols_per_part * self.num_per_ele],
+                        src_region_sorted[0],
                         src_region_k[16]]
             tik_instance.vmrgsort4(dst, src_list, (merge_n0, merge_n1, merge_n2_merge_two_reg, 16), False, 7, 1)
 
@@ -956,7 +999,7 @@ class GlobalVarFunction(object):
         """
         copy_region
         """
-        burstlen = (num * 2 * 8 + 31) // 32
+        burstlen = _ceil_div(num * SORT_REGION_BYTE, tbe_platform.BLOCK_REDUCE_INT8)
         tik_instance.data_move(dst[dst_offset], src, 0, 1, burstlen, 0, 0)
 
     # pylint: disable=no-self-use,too-many-arguments
@@ -991,9 +1034,11 @@ class GlobalVarFunction(object):
         """
         with tik_instance.if_scope(repeat_255 > 0):
             with tik_instance.for_range(0, repeat_255, name='i0') as i:
-                tik_instance.vextract(dst[dst_offset + i * 255 * 16], src[src_offset + i * 255 * 16 * 8], 255, mode)
+                tik_instance.vextract(dst[dst_offset + i * 255 * SORT_ONCE_NUM],
+                                      src[src_offset + i * 255 * SORT_ONCE_NUM * self.num_per_ele], 255, mode)
         with tik_instance.if_scope(repeat_remain > 0):
-            tik_instance.vextract(dst[dst_offset + 255 * 16 * repeat_255], src[src_offset + 255 * 16 * 8 * repeat_255],
+            tik_instance.vextract(dst[dst_offset + 255 * SORT_ONCE_NUM * repeat_255],
+                                  src[src_offset + 255 * SORT_ONCE_NUM * self.num_per_ele * repeat_255],
                                   repeat_remain, mode)
 
     # pylint: disable=too-many-arguments,no-self-use
@@ -1001,16 +1046,17 @@ class GlobalVarFunction(object):
         """
         emit_vbitsort
         """
-        repeat_255 = tik_instance.Scalar(init_value=cnt // (16 * 255), dtype="int32", name="repeat_255")
-        repeat_remain = tik_instance.Scalar(init_value=(cnt - repeat_255 * 16 * 255) // 16,
+        repeat_255 = tik_instance.Scalar(init_value=cnt // (SORT_ONCE_NUM * 255), dtype="int32", name="repeat_255")
+        repeat_remain = tik_instance.Scalar(init_value=_ceil_div(cnt - repeat_255 * SORT_ONCE_NUM * 255, SORT_ONCE_NUM),
                                             dtype="int32",
                                             name="repeat_remain")
-        with tik_instance.if_scope(repeat_255 > 0):
-            with tik_instance.for_range(0, repeat_255, name='i0') as i:
-                tik_instance.vrpsort16(dst[dst_offset + i * 255 * 16 * 8], src[src_offset + i * 255 * 16 * 8], 255)
+
+        with tik_instance.for_range(0, repeat_255, name='i0') as i:
+            tik_instance.vrpsort16(dst[dst_offset + i * 255 * SORT_ONCE_NUM * self.num_per_ele],
+                                   src[src_offset + i * 255 * SORT_ONCE_NUM * self.num_per_ele], 255)
         with tik_instance.if_scope(repeat_remain > 0):
-            tik_instance.vrpsort16(dst[dst_offset + 255 * 16 * 8 * repeat_255],
-                                   src[src_offset + 255 * 16 * 8 * repeat_255], repeat_remain)
+            tik_instance.vrpsort16(dst[dst_offset + 255 * SORT_ONCE_NUM * self.num_per_ele * repeat_255],
+                                   src[src_offset + 255 * SORT_ONCE_NUM * self.num_per_ele * repeat_255], repeat_remain)
 
     def sort_region(self, tik_instance, dst, src, rows, cols):
         """
@@ -1018,26 +1064,26 @@ class GlobalVarFunction(object):
         """
         self.emit_vbitsort(tik_instance, dst, src, cnt=rows * cols)
 
-        with tik_instance.if_scope(cols > 16):
+        with tik_instance.if_scope(cols > SORT_ONCE_NUM):
             self.merge_region(tik_instance, dst=src, src=dst, rows=rows, cols=cols)
 
     def merge_region(self, tik_instance, dst, src, rows, cols):
         """
         merge_region
         """
-        cols_padding = ((cols + 15) // 16) * 16
+        cols_padding = _ceil_fill(cols, SORT_ONCE_NUM)
         with tik_instance.for_range(0, rows, name='merge_i0') as i:
-            self._merge_loop(tik_instance, src, dst, cols, (cols + 15) // 16, region_offset=i * cols_padding * 8)
+            self._merge_loop(tik_instance, src, dst, cols, _ceil_div(cols, SORT_ONCE_NUM),
+                             region_offset=i * cols_padding * self.num_per_ele)
 
     def _merge_loop(self, tik_instance, src_ub, dst_ub, last_dim, total_region_list, region_offset=0):
         region_list_reg = tik_instance.Scalar(init_value=total_region_list, dtype="int32", name="region_list_reg")
         with tik_instance.for_range(0, self.loop_times) as i:
             with tik_instance.if_scope(i % 2 == 0):
-                self._merge(tik_instance, src_ub, dst_ub, last_dim, region_list_reg, (i + 1), region_offset)
+                self._merge(tik_instance, src_ub, dst_ub, last_dim, region_list_reg, i, region_offset)
 
             with tik_instance.else_scope():
-                self._merge(tik_instance, dst_ub, src_ub, last_dim, region_list_reg, (i + 1), region_offset)
-            region_list_reg.set_as((region_list_reg + 3) // 4)
+                self._merge(tik_instance, dst_ub, src_ub, last_dim, region_list_reg, i, region_offset)
 
     # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,no-self-use
     def _merge(self, tik_instance, src_ub, dst_ub, last_dim, total_region_list, level, region_offset=0):
@@ -1045,14 +1091,16 @@ class GlobalVarFunction(object):
         _merge_recur
         merge multi sorted region proposal list to one sorted region proposal list
         """
-        mid_var = total_region_list // 4
+        max_merge_tensors = 4
+        mid_var = total_region_list // max_merge_tensors
         loops = tik_instance.Scalar(init_value=(mid_var), dtype="int32", name="loops")
-        remain = tik_instance.Scalar(init_value=(total_region_list - loops * 4), dtype="int32", name="remain")
+        remain = tik_instance.Scalar(init_value=(total_region_list - loops * max_merge_tensors), dtype="int32",
+                                     name="remain")
 
         level_reg = tik_instance.Scalar(init_value=level, dtype="int32", name="level_reg")
 
         merge_n0_reg = tik_instance.Scalar(init_value=1, name="merge_n0_reg")
-        merge_n0_reg.set_as(merge_n0_reg << (4 + 2 * level_reg - 2))
+        merge_n0_reg.set_as((merge_n0_reg << (2 * level_reg)) * SORT_ONCE_NUM)
 
         merge_n1_reg = tik_instance.Scalar(init_value=merge_n0_reg, name="merge_n1_reg")
         merge_n2_reg = tik_instance.Scalar(init_value=merge_n0_reg, name="merge_n2_reg")
@@ -1064,84 +1112,99 @@ class GlobalVarFunction(object):
         n012 = tik_instance.Scalar(init_value=0, name="n012")
 
         with tik_instance.if_scope(tik.all(loops > 0, remain == 0)):
-            with tik_instance.if_scope(merge_n0_reg * 4 * loops > last_dim):
+            with tik_instance.if_scope(merge_n0_reg * max_merge_tensors * loops > last_dim):
                 merge_repeat.set_as(loops - 1)
                 n012.set_as(merge_n0_reg + merge_n1_reg + merge_n2_reg)
-                merge_left.set_as(last_dim - ((merge_n0_reg * 4 * (loops - 1)) + n012))
+                merge_left.set_as(last_dim - ((merge_n0_reg * max_merge_tensors * (loops - 1)) + n012))
                 need_tail_process.set_as(1)
 
         with tik_instance.if_scope(merge_repeat > 0):
             src_list = [
-                src_ub[region_offset], src_ub[region_offset + merge_n0_reg * 8],
-                src_ub[region_offset + merge_n0_reg * 8 + merge_n1_reg * 8],
-                src_ub[region_offset + merge_n0_reg * 8 + merge_n1_reg * 8 + merge_n2_reg * 8]
+                src_ub[region_offset], src_ub[region_offset + merge_n0_reg * self.num_per_ele],
+                src_ub[region_offset + merge_n0_reg * self.num_per_ele + merge_n1_reg * self.num_per_ele],
+                src_ub[region_offset + merge_n0_reg * self.num_per_ele + merge_n1_reg * self.num_per_ele +
+                       merge_n2_reg * self.num_per_ele]
             ]
             tik_instance.vmrgsort4(dst_ub[region_offset], src_list,
                                    (merge_n0_reg, merge_n1_reg, merge_n2_reg, merge_n3_reg), False, 15, merge_repeat)
 
         with tik_instance.if_scope(need_tail_process == 1):
-            tail_offset = tik_instance.Scalar(init_value=(4 * merge_n0_reg * merge_repeat * 8), name="tail_offset")
+            tail_offset = tik_instance.Scalar(
+                init_value=(max_merge_tensors * merge_n0_reg * merge_repeat * self.num_per_ele), name="tail_offset")
             src_list = [
-                src_ub[region_offset + tail_offset], src_ub[region_offset + tail_offset + merge_n0_reg * 8],
-                src_ub[region_offset + tail_offset + merge_n0_reg * 8 + merge_n1_reg * 8],
-                src_ub[region_offset + tail_offset + merge_n0_reg * 8 + merge_n1_reg * 8 + merge_n2_reg * 8]
+                src_ub[region_offset + tail_offset],
+                src_ub[region_offset + tail_offset + merge_n0_reg * self.num_per_ele],
+                src_ub[region_offset + tail_offset + merge_n0_reg * self.num_per_ele + merge_n1_reg * self.num_per_ele],
+                src_ub[region_offset + tail_offset + merge_n0_reg * self.num_per_ele + merge_n1_reg * self.num_per_ele +
+                       merge_n2_reg * self.num_per_ele]
             ]
             tik_instance.vmrgsort4(dst_ub[region_offset + tail_offset], src_list,
                                    (merge_n0_reg, merge_n1_reg, merge_n2_reg, merge_left), False, 15, 1)
 
         offset_reg = tik_instance.Scalar(dtype="int32", init_value=0, name="offset_reg")
-        offset_reg.set_as(4 * loops * merge_n0_reg)
+        offset_reg.set_as(max_merge_tensors * loops * merge_n0_reg)
 
         with tik_instance.if_scope(remain == 3):
             merge_n2_reg.set_as(last_dim - (offset_reg + merge_n0_reg + merge_n1_reg))
 
             src_list = [
-                src_ub[region_offset + offset_reg * 8], src_ub[region_offset + offset_reg * 8 + merge_n0_reg * 8],
-                src_ub[region_offset + offset_reg * 8 + merge_n0_reg * 8 + merge_n1_reg * 8], src_ub[0]
+                src_ub[region_offset + offset_reg * self.num_per_ele],
+                src_ub[region_offset + offset_reg * self.num_per_ele + merge_n0_reg * self.num_per_ele],
+                src_ub[region_offset + offset_reg * self.num_per_ele + merge_n0_reg * self.num_per_ele +
+                       merge_n1_reg * self.num_per_ele],
+                src_ub[0]
             ]
 
-            tik_instance.vmrgsort4(dst_ub[region_offset + offset_reg * 8], src_list,
+            tik_instance.vmrgsort4(dst_ub[region_offset + offset_reg * self.num_per_ele], src_list,
                                    (merge_n0_reg, merge_n1_reg, merge_n2_reg, 16), False, 7, 1)
         with tik_instance.if_scope(remain == 2):
             merge_n1_reg.set_as(last_dim - (offset_reg + merge_n0_reg))
             src_list = [
-                src_ub[region_offset + offset_reg * 8], src_ub[region_offset + offset_reg * 8 + merge_n0_reg * 8],
+                src_ub[region_offset + offset_reg * self.num_per_ele],
+                src_ub[region_offset + offset_reg * self.num_per_ele + merge_n0_reg * self.num_per_ele],
                 src_ub[0], src_ub[0]
             ]
 
-            tik_instance.vmrgsort4(dst_ub[region_offset + offset_reg * 8], src_list,
+            tik_instance.vmrgsort4(dst_ub[region_offset + offset_reg * self.num_per_ele], src_list,
                                    (merge_n0_reg, merge_n1_reg, 16, 16), False, 3, 1)
 
         with tik_instance.if_scope(remain == 1):
             merge_n0_reg.set_as(last_dim - offset_reg)
-            num_blocks_write_reg = tik_instance.Scalar(init_value=((merge_n0_reg * 16 + 31) // 32), name="merge_n1_reg")
-            tik_instance.data_move(dst_ub[region_offset + offset_reg * 8], src_ub[region_offset + offset_reg * 8], 0, 1,
+            num_blocks_write_reg = tik_instance.Scalar(
+                init_value=_ceil_div(merge_n0_reg * SORT_REGION_BYTE, tbe_platform.BLOCK_REDUCE_INT8),
+                name="merge_n1_reg")
+            tik_instance.data_move(dst_ub[region_offset + offset_reg * self.num_per_ele],
+                                   src_ub[region_offset + offset_reg * self.num_per_ele], 0, 1,
                                    num_blocks_write_reg, 0, 0)
+        total_region_list.set_as(_ceil_div(total_region_list, max_merge_tensors))
 
     # pylint: disable=too-many-arguments,no-self-use
     def emit_vconcat(self, tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
         """
         emit_vconcat
         """
-        repeat_255_scalar = tik_instance.Scalar(init_value=(cnt // (16 * 255)))
-        repeat_remain_scalar = tik_instance.Scalar(init_value=((cnt - repeat_255_scalar * 16 * 255) // 16))
+        repeat_255_scalar = tik_instance.Scalar(init_value=(cnt // (SORT_ONCE_NUM * 255)))
+        repeat_remain_scalar = tik_instance.Scalar(
+            init_value=_ceil_div(cnt - repeat_255_scalar * SORT_ONCE_NUM * 255, SORT_ONCE_NUM))
 
         with tik_instance.if_scope(repeat_255_scalar > 0):
             with tik_instance.for_range(0, repeat_255_scalar, name='vconcat_i0') as i:
-                tik_instance.vconcat(dst[dst_offset + i * 255 * 16 * 8], src[src_offset + i * 255 * 16], 255, mode)
+                tik_instance.vconcat(dst[dst_offset + i * 255 * SORT_ONCE_NUM * self.num_per_ele],
+                                     src[src_offset + i * 255 * SORT_ONCE_NUM], 255, mode)
         with tik_instance.if_scope(repeat_remain_scalar > 0):
-            tik_instance.vconcat(dst[dst_offset + 255 * 16 * 8 * repeat_255_scalar],
-                                 src[src_offset + 255 * 16 * repeat_255_scalar], repeat_remain_scalar, mode)
+            tik_instance.vconcat(dst[dst_offset + 255 * SORT_ONCE_NUM * self.num_per_ele * repeat_255_scalar],
+                                 src[src_offset + 255 * SORT_ONCE_NUM * repeat_255_scalar], repeat_remain_scalar, mode)
 
     def copy_gm_to_ubuf_func(self, tik_instance, dst, src, num_rows, cols, col_start, gm_offset, largest):
         """
         copy_gm_to_ubuf copy data from gm to ubuf
         """
-        cols_padding = ((cols + 15) // 16) * 16
-        burstlen = (cols * 2 + 31) // 32
+        cols_padding = _ceil_fill(cols, SORT_ONCE_NUM)
+        burstlen = _ceil_div(cols * _get_dtype_byte(dst.dtype), tbe_platform.BLOCK_REDUCE_INT8)
         # pylint: disable=invalid-name
-        cols_32B_align = cols % 16
-        reg_min_number = tik_instance.Scalar(dtype="float16", init_value=FP16_MINIMUM, name='reg_min_number')
+        cols_32B_align = cols % SORT_ONCE_NUM
+        reg_min_number = tik_instance.Scalar(dtype=dst.dtype, init_value=_get_dtype_min_val(dst.dtype),
+                                             name='reg_min_number')
 
         with tik_instance.if_scope(cols_32B_align == 0):
             tik_instance.data_move(dst[0], src[col_start + gm_offset], 0, 1, burstlen * num_rows, 0, 0)
@@ -1204,12 +1267,8 @@ class GlobalVarFunction(object):
         """
         copy_ubuf_to_gm
         """
-        if dtype == 'float16':
-            burstlen = (k * 2 + 31) // 32
-            blocklen = 16
-        elif dtype == 'int32':
-            burstlen = (k * 4 + 31) // 32
-            blocklen = 8
+        burstlen = _ceil_div(k * _get_dtype_byte(dtype), tbe_platform.BLOCK_REDUCE_INT8)
+        blocklen = tbe_platform.BLOCK_REDUCE_INT8 // _get_dtype_byte(dtype)
         k_32B_align = self.k % blocklen
         cols_32B_align = self.cols % blocklen
         dst_offset = tik_instance.Scalar(dtype="int32", init_value=gm_offset)
@@ -1232,7 +1291,7 @@ class GlobalVarFunction(object):
                 dst_offset.set_as(dst_offset + k)
                 src_offset.set_as(src_offset + cols_padding)
 
-            with tik_instance.if_scope(tik.all(multi_core == 1, k > 16)):
+            with tik_instance.if_scope(tik.all(multi_core == 1, k > blocklen)):
                 self.emit_copy_ubuf_to_gm(tik_instance,
                                           dst,
                                           src,
@@ -1269,10 +1328,10 @@ class GlobalVarFunction(object):
         """
         copy_gm_to_ubuf copy data from gm to ubuf
         """
-        cols_padding = ((cols + 15) // 16) * 16
-        burstlen = (cols * 2 + 31) // 32
+        cols_padding = _ceil_fill(cols, SORT_ONCE_NUM)
+        burstlen = _ceil_div(cols * _get_dtype_byte(dst.dtype), tbe_platform.BLOCK_REDUCE_INT8)
         # pylint: disable=invalid-name
-        cols_32B_align = cols % 16
+        cols_32B_align = cols % (tbe_platform.BLOCK_REDUCE_INT8 // _get_dtype_byte(dst.dtype))
         with tik_instance.if_scope(cols_32B_align == 0):
             tik_instance.data_move(dst[0], src[col_start + gm_offset], 0, num_rows, burstlen, 0, 0)
 
@@ -1344,7 +1403,6 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
     indices_out = tik_instance.Tensor("int32", indices_out_shape, name='indices_out', scope=tik.scope_gm)
     outs = [res, indices_out]
     cols = obj_tiling.get_cols_num()
-    soc_core_num = 32
     block_dim = obj_tiling.get_core_num()
 
     if k > 0:
@@ -1357,11 +1415,11 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
         k_scalar = tik_instance.Scalar(dtype="int32", name="k_scalar")
         tik_instance.data_move(k_ub, k_input, 0, 1, 1, 0, 0)
         k_scalar.set_as(k_ub[0])
-        with tik_instance.if_scope(k_scalar < 16):
+        with tik_instance.if_scope(k_scalar < SORT_ONCE_NUM):
             block_dim.set_as(1)
             obj_tiling.num_rows_cores_scalar.set_as(obj_tiling.num_rows_scalar)
 
-    with tik_instance.for_range(0, soc_core_num, block_num=soc_core_num) as block_idx:
+    with tik_instance.for_range(0, obj_tiling.core_num, block_num=obj_tiling.core_num) as block_idx:
         with tik_instance.if_scope(block_idx < block_dim):
             with tik_instance.if_scope(cols > obj_tiling.mode_threshold):
                 set_tensor_more_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs)
@@ -1373,7 +1431,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
                 obj_func.kernel_ir(tik_instance, largest, False, block_idx, block_dim, k_scalar)
 
     tbe_context.get_context().add_compile_info("vars", {
-        "core_num": soc_core_num,
+        "core_num": obj_tiling.core_num,
         "k_num": k,
         "ub_size": obj_tiling.ub_size,
         "batch_cols_padding": obj_tiling.batch_cols_padding
@@ -1424,7 +1482,7 @@ def top_k_d(input_tensor,
     para_check.check_dtype(out_dtype, check_list, param_name="out_tensor")
     para_check.check_dtype(out_indices_dtype, out_indices_check_list, param_name="out_indices_tensor")
     profile = tik.Dprofile()
-    tik_instance = tik.Tik(profile, disable_debug=True)
+    tik_instance = tik.Tik(profile)
     obj_gm = GlobalVarGM(tik_instance)
     obj_ub = GlobalVarUB()
     obj_tiling_gm = obj_gm.tiling_gm
