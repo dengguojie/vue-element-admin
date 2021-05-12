@@ -363,7 +363,8 @@ IMPLEMT_INFERFUNC(StackPop, StackPopInfer) {
       shape_vec.push_back(shape);
     }
     if (shape_vec.size() == 0) {
-      std::string err_msg("stack is empty.");
+      std::string err_msg = ConcatString("stack shape named ", stack_name,
+                                  " from context is empty, you should call stack push first.");
 	    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
