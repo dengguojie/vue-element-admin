@@ -286,6 +286,13 @@ def calc_conv2d(outs, option=None):
             tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
         else:
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
+    new_in_range = ConvParam.dynamic_para.get("new_in_range")
+    correct_range_flag = ConvParam.dynamic_para.get("correct_range_flag", False)
+    if correct_range_flag:
+        if tgt_area["fmap_h"][0] != tgt_area["fmap_h"][1]:
+            tgt_area["fmap_h"] = tuple(new_in_range[2])
+        if tgt_area["fmap_w"][0] != tgt_area["fmap_w"][1]:
+            tgt_area["fmap_w"] = tuple(new_in_range[3])
     tgt_list.append(tgt_area)
     # >>> start: generate tgt_area by format
     if fuzz_build:
@@ -324,7 +331,7 @@ def calc_conv2d(outs, option=None):
     tiling_dict = cce_conv_op.schedule(res_out, outs, [schedule], convbn1_flag=ConvParam.convbn1_flag,
                                        tilingdict_flag=True)
     tiling_dict["dynamic_shape_flag"] = True
-    add_compile_info("fmap_c1", tiling_dict["a_shape"][1])
+    add_compile_info("fmap_c1", ConvParam.dim_map["fmap_5hd_shape"][1])
 
     tiling_cases = []
     total_info = {}

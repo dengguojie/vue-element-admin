@@ -586,7 +586,8 @@ class Conv2dParaProcess(CubeParaProcess):
 
         return {"in_shape_nc1hwc0": in_shape_nc1hwc0, "w_shape_frac_z": w_shape_frac_z,
                 "w_shape": w_shape_nchw, "group_para": group_para, "padding_mode": padding_mode,
-                "pooling_mode": self.pooling_mode, "correct_range_flag": correct_range_flag}
+                "pooling_mode": self.pooling_mode, "correct_range_flag": correct_range_flag,
+                "new_in_range": new_in_range_nchw}
 
     def config_paras(self):
         """
@@ -610,7 +611,7 @@ class Conv2dParaProcess(CubeParaProcess):
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
                 "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para"),
                 "padding_mode": param.get("padding_mode"), "pooling_mode": param.get("pooling_mode"),
-                "correct_range_flag": param.get("correct_range_flag", False)}
+                "correct_range_flag": param.get("correct_range_flag", False), "new_in_range": param.get("new_in_range")}
 
 
 class Conv2dBackpropParaProcess(CubeParaProcess):

@@ -302,6 +302,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                    "padding_mode": paras.get("padding_mode"),
                    "pooling_mode": paras.get("pooling_mode"),
                    "correct_range_flag": paras.get("correct_range_flag", False),
+                   "new_in_range": paras.get("new_in_range"),
                    "ori_tensors": _collect_org_tensors(ori_paras)},
                   optim_dict=default_para.get("optim_dict"),
                   dsl_flag=dsl_flag)
