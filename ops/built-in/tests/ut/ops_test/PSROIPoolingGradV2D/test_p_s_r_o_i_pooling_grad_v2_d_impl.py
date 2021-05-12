@@ -21,7 +21,7 @@ def gen_psroipooling_v2_d_case(x_dict, rois_dict, y_dict, output_dim, group_size
 
 
 # invalid dtype
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
                      {"shape": (512, 2, 7, 7, 16), "dtype": "int32", "format": "NC1HWC0",
                       "ori_shape": (512, 22, 7, 7), "ori_format": "NCHW", "param_type": "input"},
@@ -32,7 +32,7 @@ ut_case.add_case("all",
                      22, 3, 0.0625, (84, 84),
                      "psroipooling_v2_d_o1", RuntimeError))
 
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
                      {"shape": (512, 2, 7, 7, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (512, 22, 7, 7), "ori_format": "NCHW", "param_type": "input"},
@@ -44,7 +44,7 @@ ut_case.add_case("all",
                      "psroipooling_v2_d_o2", RuntimeError))
 
 
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
                      {"shape": (512, 2, 7, 7, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (512, 22, 7, 7), "ori_format": "NCHW", "param_type": "input"},
@@ -55,7 +55,7 @@ ut_case.add_case("all",
                      22, 3, 0.0625, (84, 84),
                      "psroipooling_v2_d_o3", RuntimeError))
 
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
                      {"shape": (512, 2, 7, 7, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (512, 22, 7, 7), "ori_format": "NCHW", "param_type": "input"},
@@ -66,7 +66,7 @@ ut_case.add_case("all",
                      8, 3, 0.0625, (84, 84),
                      "psroipooling_v2_d_o4", RuntimeError))
 
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
                      {"shape": (512, 2, 7, 7, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (512, 22, 7, 7), "ori_format": "NCHW", "param_type": "input"},
@@ -77,42 +77,42 @@ ut_case.add_case("all",
                      22, 3, 0.0625, (84, 84),
                      "psroipooling_v2_d_o5", RuntimeError))
 
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
-                     {"shape": (512, 2, 7, 7, 16), "dtype": "float16", "format": "NC1HWC0",
+                     {"shape": (512, 2, 7, 7, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (512, 22, 7, 7), "ori_format": "NCHW", "param_type": "input"},
-                     {"shape": (4, 5, 128), "dtype": "float16", "format": "ND",
+                     {"shape": (4, 5, 128), "dtype": "float32", "format": "ND",
                       "ori_shape": (4, 5, 128), "ori_format": "ND", "param_type": "input"},
-                     {"shape": (4, 68, 84, 84, 16), "dtype": "float16", "format": "NC1HWC0",
+                     {"shape": (4, 68, 84, 84, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (4, 1078, 84, 84), "ori_format": "NCHW", "param_type": "output"},
                      22, 7, 0.0625, (84, 84),
                      "psroipooling_v2_d_o6", "success"))
 
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
-                     {"shape": (128, 2, 7, 7, 16), "dtype": "float16", "format": "NC1HWC0",
+                     {"shape": (128, 2, 7, 7, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (512, 22, 7, 7), "ori_format": "NCHW", "param_type": "input"},
-                     {"shape": (1, 5, 128), "dtype": "float16", "format": "ND",
+                     {"shape": (1, 5, 128), "dtype": "float32", "format": "ND",
                       "ori_shape": (4, 5, 128), "ori_format": "ND", "param_type": "input"},
-                     {"shape": (1, 68, 84, 84, 16), "dtype": "float16", "format": "NC1HWC0",
+                     {"shape": (1, 68, 84, 84, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (1, 1078, 84, 84), "ori_format": "NCHW", "param_type": "output"},
                      22, 7, 0.0625, (84, 84),
                      "psroipooling_v2_d_o7", "success"))
 
 # normal shape 3
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
-                     {"shape": (6, 9, 3, 3, 16), "dtype": "float16", "format": "NC1HWC0",
+                     {"shape": (6, 9, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (6, 9, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "input"},
-                     {"shape": (1, 5, 6), "dtype": "float16", "format": "ND",
+                     {"shape": (1, 5, 6), "dtype": "float32", "format": "ND",
                       "ori_shape": (1, 5, 6), "ori_format": "ND", "param_type": "input"},
-                     {"shape": (1, 9*3*3, 14, 14, 16), "dtype": "float16", "format": "NC1HWC0",
+                     {"shape": (1, 9*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (1, 9*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      140, 3, 0.125, (14, 14),
                      "psroipooling_v2_d_o8", "success"))
 
 # normal shape 4
-ut_case.add_case("all",
+ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
                      {"shape": (8, 1, 3, 3, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (8, 1, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -121,15 +121,15 @@ ut_case.add_case("all",
                      {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float16", "format": "NC1HWC0",
                       "ori_shape": (1, 1*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      11, 3, 0.0625, (14, 14),
-                     "psroipooling_v2_d_o9", "success"))
+                     "psroipooling_v2_d_o9", RuntimeError))
 # normal shape 5
 ut_case.add_case("Ascend910A",
                  gen_psroipooling_v2_d_case(
-                     {"shape": (8, 1, 3, 3, 16), "dtype": "float16", "format": "NC1HWC0",
+                     {"shape": (8, 1, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (8, 1, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "input"},
-                     {"shape": (1, 5, 8), "dtype": "float16", "format": "ND",
+                     {"shape": (1, 5, 8), "dtype": "float32", "format": "ND",
                       "ori_shape": (1, 5, 8), "ori_format": "ND", "param_type": "input"},
-                     {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float16", "format": "NC1HWC0",
+                     {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (1, 1*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      11, 3, 0.0625, (14, 14),
                      "psroipooling_v2_d_o10", "success"))
@@ -154,8 +154,8 @@ ut_case.add_case("Ascend310",
                      {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
                       "ori_shape": (1, 1*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      11, 3, 0.0625, (14, 14),
-                     "psroipooling_v2_d_o12", "success"))
+                     "psroipooling_v2_d_o12", RuntimeError))
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend310", "Ascend910"])
+    ut_case.run(["Ascend910A"])
     exit(0)
