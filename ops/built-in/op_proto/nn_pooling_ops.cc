@@ -3252,6 +3252,15 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
   auto inputTensorDesc = op.GetInputDesc("x");
   auto shape = inputTensorDesc.GetShape();
   Format input_format = inputTensorDesc.GetFormat();
+
+  size_t input_dims = shape.GetDims().size();
+  if (input_dims != DIM_SIZE5) {
+    string excepted_value = ConcatString(DIM_SIZE5);
+    OpsAttrValueErrReport(op.GetName(), "length of x ", excepted_value, ConcatString((size_t)DIM_SIZE5));
+    OP_LOGE(op.GetName().c_str(), "length of x should be 5!");
+    return GRAPH_FAILED;
+  }
+
   // get input ksize
   std::vector<int32_t> ksizeList;
   if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {

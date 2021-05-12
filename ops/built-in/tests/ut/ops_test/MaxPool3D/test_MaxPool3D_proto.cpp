@@ -382,3 +382,21 @@ TEST_F(MaxPool3DTest, padding_absent) {
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
+TEST_F(MaxPool3DTest, x_dims_invalid) {
+    ge::op::MaxPool3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori({2, 19, 1, 19, 19, 16}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0, {19, 19, 19, 16}, ge::FORMAT_NDHWC));
+    std::vector<int64_t> ksize = {5,5,5};
+    std::vector<int64_t> strides = {3,3,3};
+    std::vector<int64_t> pads = {2,2,2,2,2,2};
+    std::vector<int64_t> dilation = {1,1,1,1,1,1};
+    std::string padding = "CALCULATED";
+    std::string data_format= "NDHWC";
+
+    op.SetAttr("ksize", ksize);
+    op.SetAttr("strides", strides);
+    op.SetAttr("dilation", dilation);
+    op.SetAttr("pads", pads);
+    op.SetAttr("ceil_mode", 0);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
