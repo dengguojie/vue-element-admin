@@ -971,6 +971,7 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
     dims.erase(std::begin(dims) + 1);
     ge::GeShape y_shape(dims);
     outputYDesc.SetShape(y_shape);
+    outputYDesc.SetOriginShape(y_shape);
 
     // use common rnn y update all output default value
     dynamicRnnDescForward->UpdateOutputDesc("y", outputYDesc);
@@ -1005,6 +1006,7 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
     reshape_dims[1] = 1;
     ge::GeShape r_shape(reshape_dims);
     ReshapeTensorDesc.SetShape(r_shape);
+    ReshapeTensorDesc.SetOriginShape(r_shape);
 
     reshape_desc_forward->UpdateInputDesc("x", outputYDesc);
     reshape_desc_forward->UpdateInputDesc("shape", ReshapeTensorDesc);
@@ -1023,10 +1025,9 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
     auto reverse_desc_y = ge::OpDescUtils::GetOpDescFromOperator(yReverseOp);
     yReverseOp.BreakConnect();
 
-    ge::GeTensorDesc yDesc = fusedDesc->GetOutputDesc(0).Clone();
-    reverse_desc_y->UpdateInputDesc("x", yDesc);
+    reverse_desc_y->UpdateInputDesc("x", ReshapeTensorDesc);
     ge::AttrUtils::SetListInt(reverse_desc_y, "axis", {0});
-    reverse_desc_y->UpdateOutputDesc("y", yDesc);
+    reverse_desc_y->UpdateOutputDesc("y", ReshapeTensorDesc);
 
     ge::NodePtr yReverse_node = graph.AddNode(reverse_desc_y);
     FUSION_PASS_CHECK(yReverse_node == nullptr,
