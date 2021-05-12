@@ -42,6 +42,7 @@ using namespace ge;
 
 namespace fe {
 static const string CONV3D_DW = "Conv3DBackpropFilterD";
+static const string CONV3D_DW_DYNAMIC = "Conv3DBackpropFilter";
 static const string PATTERN_CONV3D_DW_GROUP = "Conv3DBpFilterGroup";
 static constexpr int CHANNEL_MIN  = 16;
 static constexpr int CONV3D_ORI_DIMS = 5;
@@ -53,9 +54,10 @@ vector<FusionPattern*> Conv3DBpFilterGroupFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern == nullptr,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
-  
+
   // define origin graph
-  pattern->AddOpDesc(PATTERN_CONV3D_DW_GROUP, {CONV3D_DW}).SetOutput(PATTERN_CONV3D_DW_GROUP);
+  pattern->AddOpDesc(PATTERN_CONV3D_DW_GROUP, {CONV3D_DW, CONV3D_DW_DYNAMIC})
+    .SetOutput(PATTERN_CONV3D_DW_GROUP);
 
   patterns.push_back(pattern);
 
@@ -63,13 +65,8 @@ vector<FusionPattern*> Conv3DBpFilterGroupFusionPass::DefinePatterns() {
 }
 
 Status Conv3DBpFilterGroupFusionPass::GetChannelValue(const ge::OpDescPtr& dw_desc,
-                                                      uint32_t index, int64_t& channel) {
-  if (index >= dw_desc->GetAllInputsDesc().size()) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "The input index(%u) is illegal.", index);
-    return FAILED;
-  }
-
-  GeTensorDesc in_desc = dw_desc->GetInputDesc(index);
+                                                      const std::string& name, int64_t& channel) {
+  GeTensorDesc in_desc = dw_desc->GetInputDesc(name);
   auto format = in_desc.GetOriginFormat();
   auto dims = in_desc.GetOriginShape().GetDims();
 
@@ -83,7 +80,8 @@ Status Conv3DBpFilterGroupFusionPass::GetChannelValue(const ge::OpDescPtr& dw_de
   } else if (format == ge::FORMAT_NCDHW) {
     channel = dims[1];
   } else {
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "original format of the input.");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+      "original format[%d] of the input is unsupported.", format);
     return FAILED;
   }
 
@@ -339,7 +337,7 @@ Status Conv3DBpFilterGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
 
   int64_t dx_channel = 1;
   FUSION_PASS_CHECK(
-    SUCCESS != GetChannelValue(dw_desc, 0, dx_channel),
+    SUCCESS != GetChannelValue(dw_desc, "x", dx_channel),
     OP_LOGW(
       FUSED_OP_TYPE.c_str(),
       "Get the channel value of the feature map failed."),
@@ -347,7 +345,7 @@ Status Conv3DBpFilterGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
 
   int64_t dy_channel = 1;
   FUSION_PASS_CHECK(
-    SUCCESS != GetChannelValue(dw_desc, 1, dy_channel),
+    SUCCESS != GetChannelValue(dw_desc, "out_backprop", dy_channel),
     OP_LOGW(FUSED_OP_TYPE.c_str(),
       "Get the channel value of the out backprop failed."),
     return NOT_CHANGED);

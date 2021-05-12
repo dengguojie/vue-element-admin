@@ -7712,9 +7712,6 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
     return GRAPH_FAILED;
   }
 
-  // set dtype of output desc
-  auto out_backprop_dtype = out_backprop_desc->GetDataType();
-  y_desc->SetDataType(out_backprop_dtype);
   // set shape of output desc, filter_size should match the format of y
   std::vector<int64_t> y_shape;
   y_shape.push_back(filter_sizes[0]);

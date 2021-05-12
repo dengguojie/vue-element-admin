@@ -47,6 +47,7 @@ _DEFAULT_TILING_FLAG = 32
 @register_tiling_case(pattern=Pattern.CONV3D_BACKPROP_FILTER)
 def calc_conv3dbp_filter(outs, option=None):
     info = DynamicParams.tiling_info_dict
+    group_dict = DynamicParams.group_dict
     var_names = ["batch_n", "fmap_d", "fmap_h", "fmap_w"]
 
     shape_dict = {"batch_n": info.get("b_shape")[0],
@@ -70,8 +71,10 @@ def calc_conv3dbp_filter(outs, option=None):
     tiling_op = Conv3dBpFilterTiling(info, mode, DynamicParams.var_map)
 
     tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)
-    add_compile_info("dedy_c1", info.get("a_shape")[2])
-    add_compile_info("fmap_c1", info.get("b_shape")[2])
+    dedy_c1 = utils.icd(group_dict["cout_ori"], info.get("a_shape")[-1])
+    fmap_c1 = utils.icd(group_dict["cin_ori"], info.get("b_shape")[-1])
+    add_compile_info("dedy_c1", dedy_c1)
+    add_compile_info("fmap_c1", fmap_c1)
     return tiling_cases
 
 

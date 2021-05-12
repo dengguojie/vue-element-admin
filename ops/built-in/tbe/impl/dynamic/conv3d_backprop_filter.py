@@ -363,6 +363,10 @@ def _get_output(x_in, k_size, pads, stride, dilation):
 def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     pad_front, pad_back, pad_up, pad_down, pad_left, pad_right = pads
     _, weight_d, weight_h, weight_w, _ = kernel
+    _, dilation_d, dilation_h, dilation_w, _ = dilation
+    filter_d_dilation = (weight_d - 1) * dilation_d + 1
+    filter_h_dilation = (weight_h - 1) * dilation_h + 1
+    filter_w_dilation = (weight_w - 1) * dilation_w + 1
 
     out_d_upper = None
     if -1 in [pad_front, pad_back]:
@@ -373,7 +377,8 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
         out_d_lower = _get_output(fmap_range[1][0], weight_d,
                                   (pad_front, pad_back), stride[1], dilation[1])
         if out_d_lower < 1:
-            fmap_range_d_lower = min(weight_d, fmap_range[1][1]) if fmap_range[1][1] else weight_d
+            fmap_range_d_lower = \
+                min(filter_d_dilation, fmap_range[1][1]) if fmap_range[1][1] else filter_d_dilation
             fmap_range[1] = (fmap_range_d_lower, fmap_range[1][1])
             out_d_lower = _get_output(fmap_range[1][0], weight_d,
                                       (pad_front, pad_back), stride[1], dilation[1])
@@ -391,7 +396,8 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
         out_h_lower = _get_output(fmap_range[2][0], weight_h,
                                   (pad_up, pad_down), stride[2], dilation[2])
         if out_h_lower < 1:
-            fmap_range_h_lower = min(weight_h, fmap_range[2][1]) if fmap_range[2][1] else weight_h
+            fmap_range_h_lower = \
+                min(filter_h_dilation, fmap_range[2][1]) if fmap_range[2][1] else filter_h_dilation
             fmap_range[2] = (fmap_range_h_lower, fmap_range[2][1])
             out_h_lower = _get_output(fmap_range[2][0], weight_h,
                                       (pad_up, pad_down), stride[2], dilation[2])
@@ -409,7 +415,8 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
         out_w_lower = _get_output(fmap_range[3][0], weight_w,
                                   (pad_left, pad_right), stride[3], dilation[3])
         if out_w_lower < 1:
-            fmap_range_w_lower = min(weight_w, fmap_range[3][1]) if fmap_range[3][1] else weight_w
+            fmap_range_w_lower = \
+                min(filter_w_dilation, fmap_range[3][1]) if fmap_range[3][1] else filter_w_dilation
             fmap_range[3] = (fmap_range_w_lower, fmap_range[3][1])
             out_w_lower = _get_output(fmap_range[3][0], weight_w,
                                       (pad_left, pad_right), stride[3], dilation[3])
@@ -473,15 +480,6 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                          _DILATION_MIN, _DILATION_MAX)
     _check_attr_range_dw("dilations's W", dilation_w,
                          _DILATION_MIN, _DILATION_MAX)
-    # group check
-    if groups != 1:
-        dict_args = {
-            'errCode': 'E50060',
-            'op_name': 'dynamic conv3d_backprop_filter',
-            'description': "only supports groups=1"
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
 
     if dilation_n != 1 or dilation_c != 1:
         dict_args = {}

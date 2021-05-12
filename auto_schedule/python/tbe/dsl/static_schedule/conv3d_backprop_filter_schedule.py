@@ -499,8 +499,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             if tiling["BL1_shape"]:
                 # if axis K needs split, then attach to dw_cc
                 if bl1_attach_mode:
-                    if fmap_matrix_flag:
-                        sch[fmap_matrix].compute_at(sch[dw_cc], bl1_at_axis)
+                    sch[fmap_matrix].compute_at(sch[dw_cc], bl1_at_axis)
                     if not load2d_flag:
                         sch[fmap_l1].compute_at(sch[dw_cc], bl1_at_axis)
                 else:  # if axis K fully load in L1, attach to dw_ddr
@@ -509,8 +508,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                         sch[fmap_l1].compute_at(sch[dw_ddr], c_fmap_l1_at)
 
             else:  # else: fully load, attach to thread_axis
-                if fmap_matrix_flag:
-                    sch[fmap_matrix].compute_at(sch[dw_ddr], fused_multi_core)
+                sch[fmap_matrix].compute_at(sch[dw_ddr], fused_multi_core)
                 if not load2d_flag:
                     sch[fmap_l1].compute_at(sch[dw_ddr], fused_multi_core)
 
@@ -545,19 +543,6 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             achieve emit_insn
 
             """
-            setfmatrix_dict = dict()
-            setfmatrix_dict["conv_kernel_h"] = kernel_height
-            setfmatrix_dict["conv_kernel_w"] = kernel_width
-            setfmatrix_dict["conv_padding_top"] = pad_up
-            setfmatrix_dict["conv_padding_bottom"] = pad_down
-            setfmatrix_dict["conv_padding_left"] = pad_left
-            setfmatrix_dict["conv_padding_right"] = pad_right
-            setfmatrix_dict["conv_stride_h"] = stride_height
-            setfmatrix_dict["conv_stride_w"] = stride_width
-            setfmatrix_dict["conv_fm_c"] = featuremap_channel
-            setfmatrix_dict["conv_fm_h"] = featuremap_height
-            setfmatrix_dict["conv_fm_w"] = featuremap_width
-
             mad_dict = {
                 "mad_pattern":
                 3,
@@ -616,16 +601,33 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     )
                 }
 
+            setfmatrix_dict = dict()
+            setfmatrix_dict["conv_kernel_h"] = kernel_height
+            setfmatrix_dict["conv_kernel_w"] = kernel_width
+            setfmatrix_dict["conv_padding_top"] = pad_up
+            setfmatrix_dict["conv_padding_bottom"] = pad_down
+            setfmatrix_dict["conv_padding_left"] = pad_left
+            setfmatrix_dict["conv_padding_right"] = pad_right
+            setfmatrix_dict["conv_stride_h"] = stride_height
+            setfmatrix_dict["conv_stride_w"] = stride_width
+            setfmatrix_dict["conv_fm_c"] = featuremap_channel
+            setfmatrix_dict["conv_fm_h"] = featuremap_height
+            setfmatrix_dict["conv_fm_w"] = featuremap_width
+            setfmatrix_dict["conv_dilation_h"] = dilation_height
+            setfmatrix_dict["conv_dilation_w"] = dilation_width
+
             if self.dynamic_mode and not load2d_flag:
                 setfmatrix_dict["set_fmatrix"] = 1
-                setfmatrix_dict["conv_fm_c1"] = kernel_depth * c1_fmap
+                setfmatrix_dict["enable_row_major_vm_desc"] = 1
+                setfmatrix_dict["conv_fm_c1"] = kernel_depth * cin1_g
                 setfmatrix_dict["conv_fm_c0"] = c0_fmap
+                setfmatrix_dict["group_flag"] = 1
             else:
-                setfmatrix_dict["conv_dilation_h"] = dilation_height
-                setfmatrix_dict["conv_dilation_w"] = dilation_width
                 mad_dict["mad_pattern"] = 2
 
             setfmatrix_dict_0 = dict()
+            setfmatrix_dict_0["set_fmatrix"] = 0
+            setfmatrix_dict_0["enable_row_major_vm_desc"] = 1
             setfmatrix_dict_0["conv_kernel_h"] = kernel_height
             setfmatrix_dict_0["conv_kernel_w"] = kernel_width
             setfmatrix_dict_0["conv_padding_top"] = pad_up
@@ -637,15 +639,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             setfmatrix_dict_0["conv_fm_c"] = featuremap_channel
             setfmatrix_dict_0["conv_fm_h"] = featuremap_height
             setfmatrix_dict_0["conv_fm_w"] = featuremap_width
-            setfmatrix_dict_0["group_flag"] = 1
-
-            if self.dynamic_mode and not load2d_flag:
-                setfmatrix_dict_0["set_fmatrix"] = 0
-                setfmatrix_dict_0["conv_fm_c1"] = kernel_depth * c1_fmap
-                setfmatrix_dict_0["conv_fm_c0"] = c0_fmap
-            else:
-                setfmatrix_dict_0["conv_dilation_h"] = dilation_height
-                setfmatrix_dict_0["conv_dilation_w"] = dilation_width
+            setfmatrix_dict_0["conv_dilation_h"] = dilation_height
+            setfmatrix_dict_0["conv_dilation_w"] = dilation_width
 
             sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy')
             # move grads from L1 to L0A
@@ -655,9 +650,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             if not load2d_flag:
                 if self.dynamic_mode:
                     sch[fmap_l1].emit_insn(fmap_l1.op.axis[2],
-                                           'dma_copy', setfmatrix_dict)
+                                           'dma_copy', setfmatrix_dict_0)
+                    sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[1],
+                                               'row_major_vm', setfmatrix_dict)
                     sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1],
-                                                'im2col_v2', setfmatrix_dict_0)
+                                                'im2col_v2', setfmatrix_dict)
                 else:
                     sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
                     sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[1],
@@ -774,10 +771,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         if load2d_flag:
             fmap = fmap_matrix.op.input_tensors[0]
         else:
-            if not self.dynamic_mode:
-                fmap_l1 = fmap_matrix.op.input_tensors[0]
-            else:
-                fmap_l1 = fmap_matrix
+            fmap_l1 = fmap_matrix.op.input_tensors[0]
             fmap = fmap_l1.op.input_tensors[0]
 
 
@@ -845,7 +839,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         kernel_width = _get_value(fmap_matrix.op.attrs['kernel_size'][4])
         dilation_height = _get_value(fmap_matrix.op.attrs['dilation'][3])
         dilation_width = _get_value(fmap_matrix.op.attrs['dilation'][4])
-        featuremap_channel = kernel_depth * c1_fmap * c0_fmap
+        featuremap_channel = kernel_depth * cin1_g * c0_fmap
         featuremap_height = height_fmap
         featuremap_width = width_fmap
 
@@ -929,12 +923,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         #                               C0_fmap)
         if not load2d_flag:
             sch[fmap_l1].set_scope(tbe_platform_info.scope_cbuf)
-            if not self.dynamic_mode:
-                sch[fmap_matrix].buffer_align(
-                    (1, 1), (1, 1), (width_grads, width_grads), (1, 1),
-                    (kernel_height, kernel_height), (kernel_width, kernel_width),
-                    (1, _CUBE_DIM))
-                sch[fmap_matrix].set_scope(tbe_platform_info.scope_cbuf) # This is different from Master
+            sch[fmap_matrix].buffer_align(
+                (1, 1), (1, 1), (width_grads, width_grads), (1, 1),
+                (kernel_height, kernel_height), (kernel_width, kernel_width),
+                (1, _CUBE_DIM))
+            sch[fmap_matrix].set_scope(tbe_platform_info.scope_cbuf)
         else:
             sch[fmap_matrix].storage_align(sch[fmap_matrix].op.axis[1],
                                            _CUBE_MUL_SHAPE, 0)
@@ -962,7 +955,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     reduce_split_mode = False
             else:
                 reduce_split_mode = \
-                          grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]
+                    grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]
             return reduce_split_mode
 
         def _compute_tiling_factors():
@@ -1434,7 +1427,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     multi_core_offset = tvm.floordiv(
                                             tvm.floordiv(fused_multi_core,
                                                          block_dim_cout *
-                                                         block_dim_cin),
+                                                         block_dim_cin * block_dim_g),
                                             tvm.floordiv(batch_fmap * depth_grads - 1,
                                                          batch_dim_factor) +
                                             1) * hw_single_core_factor
@@ -1446,7 +1439,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                         ho_min = tvm.floordiv(multi_core_offset, width_grads)
                 else:
                     # multi_core offset
-                    block_div = (batch_dim_npart * block_dim_cout * block_dim_cin)
+                    block_div = (batch_dim_npart * block_dim_cout * block_dim_cin * block_dim_g)
                     multi_core_offset = fused_multi_core // block_div * \
                                       hw_single_core_factor
 
@@ -1488,7 +1481,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
             # mem management in dynamic mode
             sch[grads_matrix].set_storage_bound(al1_bound)
-            sch[fmap_matrix].set_storage_bound(bl1_bound)
+            sch[fmap_l1].set_storage_bound(bl1_bound)
 
         def _dynamic_memory_management():
             # disable_allocate
@@ -1499,6 +1492,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             sch.disable_allocate(tbe_platform_info.scope_ubuf)
 
             # mem_unique
+            sch[fmap_l1].mem_unique()
             sch[grads_matrix].mem_unique()
             sch[fmap_matrix].mem_unique()
             sch[grads_fractal].mem_unique()

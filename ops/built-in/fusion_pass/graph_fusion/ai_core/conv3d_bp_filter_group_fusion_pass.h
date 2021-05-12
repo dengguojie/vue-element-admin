@@ -45,7 +45,7 @@ class Conv3DBpFilterGroupFusionPass : public PatternFusionBasePass {
   Status CalculateGroup(int64_t in_channel, int64_t out_channel, int64_t groups,
                         std::map<std::string, int64_t>& group_map);
   int64_t LCM(int64_t numL, int64_t numR);
-  Status GetChannelValue(const ge::OpDescPtr& dw_desc, uint32_t index, int64_t& channel);
+  Status GetChannelValue(const ge::OpDescPtr& dw_desc, const std::string& name, int64_t& channel);
 
   const string FUSED_OP_TYPE = "Conv3d_bp_filter_group";
 };

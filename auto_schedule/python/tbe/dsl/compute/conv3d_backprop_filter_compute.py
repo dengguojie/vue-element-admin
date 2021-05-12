@@ -217,18 +217,28 @@ class Conv3dBackpropFilter:
             self.flag_all_one_case = True
         DynamicConv3dBpFilterParams.flag_all_one_case = self.flag_all_one_case
 
+        cin1_g = group_dict['cin1_g']
+        cout_g = group_dict['cout_g']
+        real_g = group_dict['real_g']
+
+        tiling_grads_shape = self.shape_grads_6hd[:]
+        tiling_grads_shape[2] = cout_g // tiling_grads_shape[-1]
+        tiling_fmap_shape = self.shape_x_6hd[:]
+        tiling_fmap_shape[2] = cin1_g
+
         # for dynamic
         self.dynamic_mode = self._get_dynamic_mode()
         self.var_map = self._get_var_map()
         DynamicConv3dBpFilterParams.dynamic_mode = self.dynamic_mode
         DynamicConv3dBpFilterParams.var_map = self.var_map
+        DynamicConv3dBpFilterParams.group_dict = group_dict
         DynamicConv3dBpFilterParams.tiling_info_dict = {
             "op_type": 'conv3d_backprop_filter',
-            "a_shape": self.shape_grads_6hd,
-            "b_shape": self.shape_x_6hd,
-            "c_shape": [compute_util.align(self.weight_shape[0], _BLOCK_SIZE) ,
-                        self.weight_shape[1], self.weight_shape[3], self.weight_shape[4],
-                        compute_util.align(self.weight_shape[2], _BLOCK_SIZE)],
+            "a_shape": tiling_grads_shape,
+            "b_shape": tiling_fmap_shape,
+            "c_shape": [cout_g, self.weight_shape[1],
+                        self.weight_shape[3], self.weight_shape[4],
+                        cin1_g * _BLOCK_SIZE],
             "a_dtype": self.grads.dtype,
             "b_dtype": self.fmap.dtype,
             "c_dtype": res_dtype,
@@ -238,7 +248,7 @@ class Conv3dBackpropFilter:
             "strideH_expand": 1,
             "strideW_expand": 1,
             "dilation": [1, self.dilation[3], self.dilation[4]],
-            "group": 1,
+            "group": real_g,
             "fused_coefficient": [0, 0, 0],
             "bias_flag": 0,
             "kernel_name": kernel_name,
@@ -587,45 +597,24 @@ class Conv3dBackpropFilter:
 
         if not self.flag_all_one_case:
             fmap_l1 = _tensor_to_al1()
-            
-            if self.dynamic_mode:
-                # new data layout (N, C1, H, W, C0,) -> (N, loop_m, loop_k, cube_m, cube_k)
-                fmap_shape_fractal = (real_g, batch_size * grads_depth, hw_mad_1,
-                                      kernel_depth * fmap_channel1_g *
-                                      kernel_height * kernel_width, fmap_c0,
-                                      _BLOCK_SIZE)
-                stride_hw = self.stride[1:]
-                pad_hw = self.pad[2:]
-                im2col_para = (fmap_l1, kernel_height, kernel_width, pad_hw, stride_hw,
-                               grads_width, self.dilation, cin_ori)
-                self.shape_list['fmap_fmap_matrix'] = fmap_shape_fractal
-                fmap_fractal = cube_util.im2col_fractal_v2(
-                    fmap_shape_fractal, im2col_para)
-                fmap_l1.op.attrs['pad'] = self.pad
-                fmap_l1.op.attrs['stride'] = self.stride
-                fmap_l1.op.attrs['dilation'] = self.dilation
-                fmap_l1.op.attrs['kernel_size'] = self.weight_shape
-                fmap_l1.op.attrs['load2d_flag'] = self.flag_all_one_case
-                fmap_l1.op.attrs['group_dict'] = self.group_dict
-            else:
-                # shape of fmap_original_matrix, corresponding to set_fmatrix
-                fmap_shape_original_matrix = (real_g, batch_size * grads_depth,
-                                              hw_ori,
-                                              kernel_depth * fmap_channel1_g,
-                                              kernel_height, kernel_width, fmap_c0)
-                self.shape_list['fmap_original_matrix'] = fmap_shape_original_matrix
-                fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
-                                                  fmap_l1, fmap_dtype)
-                # move fmap to L0B
-                fmap_shape_fmap_matrix = (real_g, batch_size * grads_depth,
-                                          hw_mad_1, kernel_depth *
-                                          fmap_channel1_g * kernel_height *
-                                          kernel_width, fmap_c0, _BLOCK_SIZE)
-                self.shape_list['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
-                fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
-                                                    fmap_matrix, fmap_dtype)
+            # shape of fmap_original_matrix, corresponding to set_fmatrix
+            fmap_shape_original_matrix = (real_g, batch_size * grads_depth,
+                                          hw_ori,
+                                          kernel_depth * fmap_channel1_g,
+                                          kernel_height, kernel_width, fmap_c0)
+            self.shape_list['fmap_original_matrix'] = fmap_shape_original_matrix
+            fmap_matrix = self._fmap_2_matrix(fmap_shape_original_matrix,
+                                              fmap_l1, fmap_dtype)
+            # move fmap to L0B
+            fmap_shape_fmap_matrix = (real_g, batch_size * grads_depth,
+                                      hw_mad_1, kernel_depth *
+                                      fmap_channel1_g * kernel_height *
+                                      kernel_width, fmap_c0, _BLOCK_SIZE)
+            self.shape_list['fmap_fmap_matrix'] = fmap_shape_fmap_matrix
 
+            fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
+                                                fmap_matrix, fmap_dtype)
         # else: all_one_case, using load_2d instead of load_3d
         else:
             # shape of fmap_matrix
@@ -1095,3 +1084,4 @@ class DynamicConv3dBpFilterParams:
     tiling_info_dict = {}
     var_map = {}
     flag_all_one_case = None
+    group_dict = {}
