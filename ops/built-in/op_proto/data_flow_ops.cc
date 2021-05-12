@@ -1419,7 +1419,8 @@ IMPLEMT_INFERFUNC(OrderedMapPeek, OrderedMapPeekInfer) {
   Shape unknown_shape(ge::UNKNOWN_SHAPE);
   std::vector<ge::DataType> list_type;
   if (op.GetAttr("dtypes", list_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get Attr dtyoes error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       ConcatString("get attr[dtypes] failed"));
     return GRAPH_FAILED;
   }
   size_t outputs_size = list_type.size();
@@ -1430,7 +1431,9 @@ IMPLEMT_INFERFUNC(OrderedMapPeek, OrderedMapPeekInfer) {
     output_tensor.SetDataType(list_type[i]);
     status = op.UpdateDynamicOutputDesc("values", i, output_tensor);
     if (status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Update output shape and type error.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+          op.GetName(),
+          ConcatString("update description for [values", ":", i, "] failed."));
       return GRAPH_FAILED;
     }
   }
@@ -1443,7 +1446,8 @@ IMPLEMT_INFERFUNC(OrderedMapUnstageNoKey, OrderedMapUnstageNoKeyInfer) {
   Shape unknown_shape(ge::UNKNOWN_SHAPE);
   std::vector<ge::DataType> list_type;
   if (op.GetAttr("dtypes", list_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get Attr dtyoes error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       ConcatString("get attr[dtypes] failed"));
     return GRAPH_FAILED;
   }
   size_t outputs_size = list_type.size();
@@ -1454,7 +1458,9 @@ IMPLEMT_INFERFUNC(OrderedMapUnstageNoKey, OrderedMapUnstageNoKeyInfer) {
     output_tensor.SetDataType(list_type[i]);
     status = op.UpdateDynamicOutputDesc("values", i, output_tensor);
     if (status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Update output shape and type error.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+          op.GetName(),
+          ConcatString("update description for [values", ":", i, "] failed."));
       return GRAPH_FAILED;
     }
   }
@@ -1470,7 +1476,8 @@ IMPLEMT_INFERFUNC(OrderedMapUnstage, OrderedMapUnstageInfer) {
   Shape unknown_shape(ge::UNKNOWN_SHAPE);
   std::vector<ge::DataType> list_type;
   if (op.GetAttr("dtypes", list_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get Attr dtyoes error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       ConcatString("get attr[dtypes] failed"));
     return GRAPH_FAILED;
   }
   size_t outputs_size = list_type.size();
@@ -1481,7 +1488,9 @@ IMPLEMT_INFERFUNC(OrderedMapUnstage, OrderedMapUnstageInfer) {
     output_tensor.SetDataType(list_type[i]);
     status = op.UpdateDynamicOutputDesc("values", i, output_tensor);
     if (status != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Update output shape and type error.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+          op.GetName(),
+          ConcatString("update description for [values", ":", i, "] failed."));
       return GRAPH_FAILED;
     }
   }
