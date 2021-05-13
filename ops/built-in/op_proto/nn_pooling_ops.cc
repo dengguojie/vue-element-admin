@@ -4927,10 +4927,20 @@ static bool set_avg_pool_grad_out_shape_range(ge::Operator& op, const std::strin
                                               const std::string& data_format,
                                               const std::vector<std::pair<int64_t, int64_t>>& input_grad_range,
                                               const std::vector<int64_t>& ksize,
-                                              const std::vector<int64_t>& output_sizes,
                                               std::vector<std::pair<int64_t, int64_t>>& output_range,
                                               ge::GeTensorDescPtr& tensordesc_output, bool& unknown_rank) {
-
+  std::vector<int64_t> output_sizes = tensordesc_output->MutableShape().GetDims();
+  if (output_sizes.empty() || output_sizes.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "output_sizes list should be 4D. actual is: %u.", output_sizes.size());
+    map<string, string> err_map;
+    err_map["param_name"] = "output_sizes";
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["expected_value"] = "4D";
+    err_map["input_value"] = std::to_string(output_sizes.size()) + "D.";
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
   int32_t h_position = data_format.find("H");
   int32_t w_position = data_format.find("W");
   int32_t c_position = data_format.find("C");
@@ -5147,9 +5157,8 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
       op.GetAttr("data_format", data_format);
       std::vector<int64_t> ksize;
       ksize = GetAttrValue(op, "ksize");
-      std::vector<int64_t> output_sizes = tensordesc_output->MutableShape().GetDims();
       if (!set_avg_pool_grad_out_shape_range(op, pad_str, input_grad_shape, data_format, input_grad_range, ksize,
-                                            output_sizes, output_range, tensordesc_output, unknown_rank)) {
+                                            output_range, tensordesc_output, unknown_rank)) {
         return GRAPH_FAILED;
       }
     }

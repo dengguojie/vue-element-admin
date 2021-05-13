@@ -290,3 +290,37 @@ TEST_F(AvgPoolGradProtoTest, avg_pool_grad_verify_test_strides) {
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+// no_output shape and no value_range
+TEST_F(AvgPoolGradProtoTest, avg_pool_grad_no_outputshape){
+    ge::op::AvgPoolGrad op;
+    op.UpdateInputDesc("input_grad",
+                       create_desc_shape_range({-1, 32, 2, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, 32, 2, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 2}, {32, 32}, {1, 2}, {1, 2}}));
+          
+    auto avg_pool_grad_input_ori_shape_data = ge::op::Data("orig_input_shape");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    avg_pool_grad_input_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    avg_pool_grad_input_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_orig_input_shape(avg_pool_grad_input_ori_shape_data);
+    op.UpdateInputDesc("orig_input_shape", ori_tensorDesc);
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto input_sizes_desc = op_desc->MutableInputDesc("orig_input_shape");
+
+    op.SetAttr("ksize", {1, 1, 3, 3});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("padding", "SAME");
+    op.SetAttr("data_format", "NCHW");
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
