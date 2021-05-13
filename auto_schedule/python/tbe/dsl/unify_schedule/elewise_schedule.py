@@ -278,18 +278,6 @@ class ElewiseSchedule(Schedule):
         self._ub_tiling_vars[u_i] = self._tiling_case["ub_tiling_factor"]
 
     def _calc_tiling_const(self):
-        def _get_original_inputs():
-            """
-            In const mode, some op(like bias) need original input.
-            Better solution: make const tiling process same as dynamic shape, and pass original input output to tiling.
-            :return:
-            """
-            const_origin_inputs = operation.get_context().get_current_compute().get("_const_origin_inputs")
-            origin_inputs = copy.deepcopy(const_origin_inputs)
-            for x in origin_inputs:
-                x["shape"] = x["const_shape"]
-            return origin_inputs
-
         res = self._out
         output_shape = util.shape_to_list(res.shape)
         if output_shape == [0]:
@@ -298,9 +286,14 @@ class ElewiseSchedule(Schedule):
             return
 
         max_dim_length = len(output_shape)
+        inputs = []
+        for _input in self._input_tensors:
+            input_shape = util.shape_to_list(_input.shape)
+            inputs.append({"shape": input_shape, "dtype": _input.dtype})
         outputs = [{"shape": output_shape, "dtype": res.dtype}]
-        if len(self._input_tensors) == 0:
+        if len(inputs) == 0:
             max_dim_length = 0
+            inputs = copy.deepcopy(outputs)
 
         broadcast_axis = [False] * max_dim_length
 
@@ -324,8 +317,8 @@ class ElewiseSchedule(Schedule):
         }
         const_compile_info.update(get_compile_info())
 
-        op_type = operation.get_context().get_op_type()
-        run_info = op_tiling.do_op_tiling(op_type, const_compile_info, _get_original_inputs(), outputs)
+        op_type = "AutoTiling"
+        run_info = op_tiling.do_op_tiling(op_type, const_compile_info, inputs, outputs)
         tiling_format = {
             "need_multi_core": "int",
             "block_axis": "int",

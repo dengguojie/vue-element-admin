@@ -59,7 +59,7 @@ case1 = {
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_vdiv_1",
+        "test_dync_vdiv_broadcast_1",
     "expect":
         "success",
     "support_expect":

@@ -362,26 +362,17 @@ class BroadcastSchedule(Schedule):
         self._ub_factor = self._ub_tiling_vars[u_i]
 
     def _calc_tiling_const(self):
-        def _get_original_inputs():
-            """
-            In const mode, some op(like bias) need original input.
-            Better solution: make const tiling process same as dynamic shape, and pass original input output to tiling.
-            :return:
-            """
-            const_origin_inputs = operation.get_context().get_current_compute().get("_const_origin_inputs")
-            origin_inputs = copy.deepcopy(const_origin_inputs)
-            for x in origin_inputs:
-                x["shape"] = x["const_shape"]
-            return origin_inputs
-
         def _get_const_tiling():
             input_shapes = []
+            inputs = []
             max_dim_length = len(output_shape)
             for _input in self._input_tensors:
                 input_shape = util.shape_to_list(_input.shape)
                 input_shapes.append([1] * (max_dim_length - len(input_shape)) + input_shape)
+                inputs.append({"shape": input_shape, "dtype": _input.dtype})
             outputs = [{"shape": output_shape, "dtype": res.dtype}]
-            if len(input_shapes) == 0:
+            if len(inputs) == 0:
+                inputs = copy.deepcopy(outputs)
                 max_dim_length = 0
 
             input_shapes = list(map(list, zip(*input_shapes)))
@@ -404,8 +395,8 @@ class BroadcastSchedule(Schedule):
             }
             const_compile_info.update(get_compile_info())
 
-            op_type = operation.get_context().get_op_type()
-            return op_tiling.do_op_tiling(op_type, const_compile_info, _get_original_inputs(), outputs)
+            op_type = "AutoTiling"
+            return op_tiling.do_op_tiling(op_type, const_compile_info, inputs, outputs)
 
         res = self._out
         output_shape = util.shape_to_list(res.shape)
