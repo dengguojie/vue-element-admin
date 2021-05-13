@@ -1346,7 +1346,12 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
     nparts_factor = (add_0.shape[0].value + block_outer - 1) // block_outer
     data_size = get_bit_len(dtype.lower()) // 8
     min_factor = BLOCK_REDUCE_INT8 // data_size
-    if nparts_factor >= min_factor:
+    ub_bytes = get_soc_spec("UB_SIZE")
+    # 24 // 20 means the ratio of occupied space to total space
+    if block_factor * data_size * 24 // 20 >= ub_bytes:
+        add_0_axis_0_o, add_0_axis_0_n1_o = s[add_0].split(add_0_axis_0_o,
+                                                           factor=(ub_bytes // data_size) * 20 // 24)
+    elif nparts_factor >= min_factor:
         add_0_axis_0_o, add_0_axis_0_n1_o = s[add_0].split(add_0_axis_0_o,
                                                            nparts=block_outer)
     else:

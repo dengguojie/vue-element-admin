@@ -61,6 +61,14 @@ case7 = {"params": [{"shape": (221, 8), "dtype": "float32", "format": "NHWC", "o
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case8 = {"params": [{"shape": (4771178, 139), "dtype": "float32", "format": "NHWC", "ori_shape": (4771178, 139),"ori_format": "NHWC"},
+                    {"shape": (4771178, 139), "dtype": "float32", "format": "NHWC", "ori_shape": (4771178, 139),"ori_format": "NHWC"},
+                    {"shape": (4771178,), "dtype": "float32", "format": "NHWC", "ori_shape": (4771178,),"ori_format": "NHWC"},
+                    {"shape": (4771178, 139), "dtype": "float32", "format": "NHWC", "ori_shape": (4771178, 139),"ori_format": "NHWC"}],
+         "case_name": "softmax_cross_entropy_with_logits_8",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 def test_get_op_support_info(test_arg):
     from impl.softmax_cross_entropy_with_logits import get_op_support_info
@@ -92,6 +100,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend920A"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 def calc_expect_func(x1, x2, y1, y2):
