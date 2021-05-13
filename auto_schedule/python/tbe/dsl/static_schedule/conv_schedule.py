@@ -2618,7 +2618,22 @@ class CceConvOp:
                         setfmatrix_dict["conv_stride_h"] = 1
                     if self._l0a_dma_flag:
                         sch[fmap_col_before_before].compute_inline()
-                        sch[fmap_col_before].emit_insn(fmap_col_before.op.axis[5], 'dma_copy')
+                        # 5hd to fraz dma EmitInsn has no-linear problems.
+                        # Here split k1 with kernel_w, kernel_h to avoid floordiv and floormod
+                        k1_outer, k1_inner = sch[fmap_col_before].split(fmap_col_before.op.axis[-3],
+                                                                        factor=ConvParam.filter_w)
+                        k1_outer_outer, k1_outer_inner = sch[fmap_col_before].split(k1_outer, factor=ConvParam.filter_h)
+                        sch[fmap_col_before].reorder(fmap_col_before.op.axis[0],
+                                                     fmap_col_before.op.axis[1],
+                                                     fmap_col_before.op.axis[2],
+                                                     k1_outer_outer,
+                                                     fmap_col_before.op.axis[4],
+                                                     k1_outer_inner,
+                                                     k1_inner,
+                                                     fmap_col_before.op.axis[5])
+                        # dma at k1_outer_inner axis, because dma before mo will have accuracy issues
+                        # also contain fewer instructions
+                        sch[fmap_col_before].emit_insn(k1_outer_inner, 'dma_copy')
                         sch[fmap_col].emit_insn(new_fmap_col_axis[0], 'dma_copy')
                     else:
                         sch[fmap_col_before].emit_insn(
