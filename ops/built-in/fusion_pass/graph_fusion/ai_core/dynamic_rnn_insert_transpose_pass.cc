@@ -25,13 +25,14 @@
 namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeDynamicRNN";
 static const string FUSED_NODE = "DynamicRNN";
+static const string FUSED_NODE_V2 = "DynamicRNNV2";
 
 vector<FusionPattern*> DynamicRNNInsertTransposePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicRNNInsertTransposePass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
-  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
+  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE, FUSED_NODE_V2}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
   return patterns;
 }

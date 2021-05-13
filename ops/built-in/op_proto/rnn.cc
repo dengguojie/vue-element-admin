@@ -125,6 +125,101 @@ IMPLEMT_INFERFUNC(DynamicRNN, DynamicRNNInferShape) {
 INFER_FUNC_REG(DynamicRNN, DynamicRNNInferShape);
 VERIFY_FUNC_REG(DynamicRNN, DynamicRNNVerify);
 
+IMPLEMT_VERIFIER(DynamicRNNV2, DynamicRNNV2Verify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicRNNV2, DynamicRNNV2InferShape) {
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
+  ge::TensorDesc inputWiTensorDesc = op.GetInputDescByName("weight_input");
+  ge::TensorDesc inputWhTensorDesc = op.GetInputDescByName("weight_hidden");
+  ge::Shape shapeX = inputXTensorDesc.GetShape();
+  ge::Shape shapeWi = inputWiTensorDesc.GetShape();
+  ge::Shape shapeWh = inputWhTensorDesc.GetShape();
+  DataType inputXDtype = inputXTensorDesc.GetDataType();
+  // bias is optional, default dtype is x's dtype
+  DataType inputBDtype = inputXDtype;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc->MutableInputDesc("b") != nullptr) {
+    inputBDtype = op.GetInputDescByName("b").GetDataType();
+  } else if (op_desc->MutableInputDesc("init_c") != nullptr) {
+    inputBDtype = op.GetInputDescByName("init_c").GetDataType();
+  }
+  TensorDesc outputYTensorDesc = op.GetOutputDescByName("y");
+  TensorDesc outputHTensorDesc = op.GetOutputDescByName("output_h");
+  TensorDesc outputCTensorDesc = op.GetOutputDescByName("output_c");
+  TensorDesc outputITensorDesc = op.GetOutputDescByName("i");
+  TensorDesc outputJTensorDesc = op.GetOutputDescByName("j");
+  TensorDesc outputFTensorDesc = op.GetOutputDescByName("f");
+  TensorDesc outputOTensorDesc = op.GetOutputDescByName("o");
+  TensorDesc outputTanhcTensorDesc = op.GetOutputDescByName("tanhc");
+
+  int64_t dim_num = shapeX.GetDimNum();
+  int64_t batchSize = 0;
+  int64_t hiddenSize = 0;
+  int64_t num_step = 0;
+  if (dim_num == 3) {
+    num_step = shapeX.GetDims().at(0);
+    batchSize = shapeX.GetDims().at(1);
+    hiddenSize = shapeWi.GetDims().at(1) / 4;
+  } else {
+    AscendString OpName;
+    op.GetName(OpName);
+    OpsOneInputShapeErrReport(OpName.GetString(), "X Shape Dim", "The input shape of X not equal 3!");
+    OP_LOGE(OpName.GetString(), "The input shape of X not equal 3, please check!");
+    return GRAPH_FAILED;
+  }
+
+  vector<int64_t> outputYDims = {num_step, batchSize, hiddenSize};
+  vector<int64_t> outputHCDims = {1, batchSize, hiddenSize};
+
+  outputYTensorDesc.SetShape(ge::Shape(outputYDims));
+  outputHTensorDesc.SetShape(ge::Shape(outputHCDims));
+  outputCTensorDesc.SetShape(ge::Shape(outputHCDims));
+  outputITensorDesc.SetShape(ge::Shape(outputYDims));
+  outputJTensorDesc.SetShape(ge::Shape(outputYDims));
+  outputFTensorDesc.SetShape(ge::Shape(outputYDims));
+  outputOTensorDesc.SetShape(ge::Shape(outputYDims));
+  outputTanhcTensorDesc.SetShape(ge::Shape(outputYDims));
+
+  outputYTensorDesc.SetDataType(inputBDtype);
+  outputHTensorDesc.SetDataType(inputXDtype);
+  outputCTensorDesc.SetDataType(inputBDtype);
+  outputITensorDesc.SetDataType(inputBDtype);
+  outputJTensorDesc.SetDataType(inputBDtype);
+  outputFTensorDesc.SetDataType(inputBDtype);
+  outputOTensorDesc.SetDataType(inputBDtype);
+  outputTanhcTensorDesc.SetDataType(inputBDtype);
+
+  CHECK(op.UpdateOutputDesc("y", outputYTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("output_h", outputHTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("output_c", outputCTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("i", outputITensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("j", outputJTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("f", outputFTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("o", outputOTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("tanhc", outputTanhcTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+
+  inputWiTensorDesc.SetFormat(ge::FORMAT_HWCN);
+  inputWhTensorDesc.SetFormat(ge::FORMAT_HWCN);
+  CHECK(op.UpdateInputDesc("weight_input", inputWiTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateInputDesc("weight_hidden", inputWhTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicRNNV2, DynamicRNNV2InferShape);
+VERIFY_FUNC_REG(DynamicRNNV2, DynamicRNNV2Verify);
+
 IMPLEMT_VERIFIER(DynamicRNNV3, DynamicRNNV3Verify) {
   return GRAPH_SUCCESS;
 }
