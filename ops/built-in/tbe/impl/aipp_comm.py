@@ -139,6 +139,7 @@ def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic, output_format="NC1H
     if is_dynamic:
         ub_size -= (DYNC_PARAM_SIZE + 1024 - 1) // 1024 * 1024
 
+    buffer_upper_limit = l1_size
     if l1_size >= ub_size:
         buffer_upper_limit = ub_size
 
