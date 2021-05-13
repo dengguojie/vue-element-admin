@@ -3952,12 +3952,22 @@ class MatMulCompute:
 
         # to Zz
         if self.trans_a:
-            a_matrix_shape = (km_shape, m_shape * batch_shape, block_reduce, block_in)
-            a_matrix = tvm.compute(
-                a_matrix_shape,
-                lambda i, j, k, l: temp_tensor_a[i, j, l, k],
-                name="tensor_a_matrix",
-                attrs={"trans": "1"})
+            if self.src_dtype == "int8":
+                a_matrix_shape = (km_shape * 2, (m_shape * batch_shape + 2 - 1) // 2,
+                                  block_in, block_reduce)
+                a_matrix = tvm.compute(
+                    a_matrix_shape,
+                    lambda i, j, k, l:temp_tensor_a[i // 2,
+                    j * 2 + (l // self.block_in), l % self.block_in, k + (i % 2) * self.block_in],
+                    name="tensor_a_matrix",
+                    attrs={"trans": "1"})
+            else:
+                a_matrix_shape = (km_shape, m_shape * batch_shape, block_reduce, block_in)
+                a_matrix = tvm.compute(
+                    a_matrix_shape,
+                    lambda i, j, k, l: temp_tensor_a[i, j, l, k],
+                    name="tensor_a_matrix",
+                    attrs={"trans": "1"})
         else:
             a_matrix_shape = (m_shape * batch_shape, km_shape, block_in, block_reduce)
             a_matrix = tvm.compute(
@@ -3994,19 +4004,30 @@ class MatMulCompute:
 
         # to Zn
         if self.trans_b:
-            b_matrix_shape = (n_shape * batch_shape, kn_shape, block_reduce, block_out)
+            b_matrix_shape = (n_shape * batch_shape, kn_shape, block_out, block_reduce)
             b_matrix = tvm.compute(
                 b_matrix_shape,
                 lambda i, j, k, l: temp_tensor_b[i, j, k, l],
                 name="tensor_b_matrix",
                 attrs={"trans": "1"})
         else:
-            b_matrix_shape = (kn_shape, n_shape * batch_shape, block_out, block_reduce)
-            b_matrix = tvm.compute(
-                b_matrix_shape,
-                lambda i, j, k, l: temp_tensor_b[j, i, l, k],
-                name="tensor_b_matrix",
-                attrs={"trans": "0"})
+            if self.src_dtype == "int8":
+                b_matrix_shape = ((kn_shape + 2 - 1) // 2,
+                                  n_shape * batch_shape * 2, block_out, block_reduce)
+                b_matrix = tvm.compute(
+                    b_matrix_shape,
+                    lambda i, j, k, l: temp_tensor_b[j // 2,
+                    i * 2 + l // self.block_out, l % self.block_out, k + (j % 2) * self.block_out],
+                    name="tensor_b_matrix",
+                    attrs={"trans":"0"}
+                )
+            else:
+                b_matrix_shape = (kn_shape, n_shape * batch_shape, block_out, block_reduce)
+                b_matrix = tvm.compute(
+                    b_matrix_shape,
+                    lambda i, j, k, l: temp_tensor_b[j, i, l, k],
+                    name="tensor_b_matrix",
+                    attrs={"trans": "0"})
 
         return b_matrix
 
@@ -4029,22 +4050,26 @@ class MatMulCompute:
         if self.format_out == "ND":
             nz2nd_flag = True
         reduce_kp, reduce_kb = self._get_reduce(k_shape_l0)
+        reduce_axis = self._cal_reduce_axis_length()
         if self.tensor_bias is None:
             tensor_c_matrix = tvm.compute(
                 (n_shape_l0 * self.batch_shape, m_shape_l0,
                  self.block_in, self.block_out),
-                lambda nb, mb, mp, np: tvm.sum(
+                lambda nb, mb, mp, np: tvm.sum(tvm.select(
+                    tvm.all(reduce_kb.var * self.block_reduce + reduce_kp.var < reduce_axis),
                     (a_matrix_in[mb, reduce_kb,
                                  mp, reduce_kp] * b_matrix_in[
                         reduce_kb, nb, np, reduce_kp]).astype(
-                        self.matrix_type),
+                        self.matrix_type)),
                     axis=[reduce_kb, reduce_kp]),
                 name="tensor_c_matrix")
         else:
             tensor_c_matrix = tvm.compute(
                 (self.n_shape * self.batch_shape,
                  self.m_shape, self.block_in, self.block_out),
-                lambda nb, mb, mp, np: tvm.sum(tvm.select(
+                lambda nb, mb, mp, np: tvm.sum(tvm.select(tvm.all(
+                    reduce_kb.var * self.block_reduce +
+                    reduce_kp.var < reduce_axis), tvm.select(
                     tvm.all(reduce_kb.var == 0, reduce_kp.var == 0),
                     (a_matrix_in[mb, reduce_kb, mp, reduce_kp] * b_matrix_in[
                         reduce_kb, nb, np, reduce_kp]).astype(
@@ -4053,7 +4078,7 @@ class MatMulCompute:
                     (a_matrix_in[mb, reduce_kb, mp, reduce_kp] * b_matrix_in[
                         reduce_kb, nb, np, reduce_kp]).astype(
                         self.matrix_type)),
-                    axis=[reduce_kb, reduce_kp]),
+                    axis=[reduce_kb, reduce_kp])),
                 name='tensor_c_matrix')
 
         if nz2nd_flag:
@@ -4180,3 +4205,8 @@ class MatMulCompute:
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
+
+    def _cal_reduce_axis_length(self):
+        km_shape = self.m_shape if self.trans_a else self.km_shape
+        kn_shape = self.n_shape if self.trans_b else self.kn_shape
+        return kn_shape * self.block_reduce
