@@ -348,12 +348,11 @@ def dynamic_rnn_v3(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
 
     block_size = 4
     hidden_size = n_size // 4
-    in_x = k_size - hidden_size
     if project_fun:
         state_size = project.get("shape")[1]
     else:
         state_size = hidden_size
-
+    in_x = k_size - state_size
     shape_x = (t_size, in_x, m_size, 16, 16)
     shape_w = (1, k_size, block_size, hidden_size, 16, 16)
     shape_hc = (t_size, hidden_size, m_size, 16, 16)
@@ -963,7 +962,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     # c_t_tanh_ub = c_t_tanh
     if wci_gm is not None:
-        wco_ct_add = vadd(wco_ub, update_c)
+        wco_ct_add = vmul(wco_ub, update_c)
         o_t_tmp = vadd(wco_ct_add, o_t)
         pipehole_tensors.append(wco_ct_add)
         pipehole_tensors.append(o_t_tmp)
@@ -1037,7 +1036,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                               tag="elewise_single_cast")
         c_t_tanh_fake = tvm.compute(shape_i, lambda *indices: update_c_fp16_back_fp32_fake(*indices) + c_t_tanh(*indices),
                                     name="c_t_tanh_fake",
-                                    tag="elewise_double_add")
+                                    tag="elewise_binary_add")
     else:
         c_t_tanh_fake = vadd(c_t_tanh, update_c_gm)
 
