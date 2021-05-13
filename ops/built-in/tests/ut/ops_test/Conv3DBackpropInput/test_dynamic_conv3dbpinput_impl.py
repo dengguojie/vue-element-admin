@@ -42,7 +42,7 @@ def test_conv3d_backprop_input_fuzz_build_generalization(test_arg):
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'ori_shape': (16, 4, 16, 16),
+            'ori_shape': (1, 1, 1, 256, 64),
             'ori_format': 'DHWCN',
             'format': 'FRACTAL_Z_3D',
             'dtype': 'float16'

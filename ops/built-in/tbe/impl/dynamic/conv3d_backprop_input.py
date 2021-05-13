@@ -24,6 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+from impl.util.util_cube_dynamic import Conv3dBackpropParaProcess
 from tbe.common.register import register_param_generalization
 
 
@@ -714,9 +715,33 @@ def _conv3d_backprop_input_compute(filters, out_backprop, y_input, input_size, s
 
     return {'op_placeholder': [dx_shape, filter_frac, dedy], 'op_res': [dedx]}
 
+
+def _get_ndhwc_by_format(obj_format, obj_shape):
+    idx_n = obj_format.find('N')
+    idx_d = obj_format.find('D')
+    idx_h = obj_format.find('H')
+    idx_w = obj_format.find('W')
+    idx_c = obj_format.find('C')
+    return [obj_shape[idx_n],
+            obj_shape[idx_d],
+            obj_shape[idx_h],
+            obj_shape[idx_w],
+            obj_shape[idx_c]]
+
+
+def _get_pad_mode(pads):
+    pad_mode = "FIX"
+    if not isinstance(pads, str):
+        if all(i == -1 for i in pads):
+            pad_mode = "VAR"
+    elif pads == "SAME":
+        pad_mode = "VAR"
+    return pad_mode
+
+
 def _generate_unkown_shape(obj_shape, obj_format):
     if obj_format == "NDC1HWC0":
-        idx_tup = (0, 1, 3 ,4)
+        idx_tup = (0, 1, 3, 4)
     else:
         idx_n = obj_format.find('N')
         idx_d = obj_format.find('D')
@@ -731,6 +756,7 @@ def _generate_unkown_shape(obj_shape, obj_format):
 def _generalize_input_keep_rank(param_dict):
     param_dict["ori_shape"] = _generate_unkown_shape(param_dict["ori_shape"], param_dict["ori_format"])
     param_dict["shape"] = _generate_unkown_shape(param_dict["shape"], param_dict["format"])
+
 
 @register_param_generalization("Conv3DBackpropInput")
 def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R0913,R0914
@@ -789,8 +815,40 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
         error_manager_cube.raise_err_one_para("E2306",
                                               "Conv3DBackpropInput",
                                               "Invalid generalize mode, currently only support keep_rank")
+    # get dx_range depends on dy_range
+    para_dict = {
+        "strides": _get_ndhwc_by_format(out_backprop["ori_format"], strides),
+        "pads": pads,
+        "dilations": _get_ndhwc_by_format(out_backprop["ori_format"], dilations),
+        "kernel_name": kernel_name,
+        "groups": groups,
+        "ori_tensors": {"filter": filter,
+                        "out_backprop": out_backprop,
+                        "y": y,
+                        "input_size": input_size}
+    }
+    conv3d_backprop = Conv3dBackpropParaProcess(para_dict, _get_pad_mode(pads))
+    dy_range = out_backprop["range"] # NDC1HWC0
+    dy_ori_shape = out_backprop["ori_shape"]
+    dy_ori_format = out_backprop["ori_format"]
+    dy_range_ori_format = [1, 1, 1, 1, 1]
+    dy_range_ori_format[dy_ori_format.find('N')] = dy_range[0]
+    dy_range_ori_format[dy_ori_format.find('D')] = dy_range[1]
+    dy_range_ori_format[dy_ori_format.find('H')] = dy_range[3]
+    dy_range_ori_format[dy_ori_format.find('W')] = dy_range[4]
+    dy_range_ori_format[dy_ori_format.find('C')] = [dy_ori_shape[dy_ori_format.find('C')],
+                                                    dy_ori_shape[dy_ori_format.find('C')]]
+    dx_range_ndhw = conv3d_backprop.get_dx_range(dy_range_ori_format)
+    _, _, y_c1, _, _, y_c0 = y["shape"] # NDC1HWC0
+    y["range"] = [dx_range_ndhw[0],
+                  dx_range_ndhw[1],
+                  [y_c1, y_c1],
+                  dx_range_ndhw[2],
+                  dx_range_ndhw[3],
+                  [y_c0, y_c0]]
     result.append([input_size, filter, out_backprop, y, strides, pads, dilations, groups, data_format, kernel_name])
     return result
+
 
 @register_operator("Conv3DBackpropInput")
 @para_check.check_input_type(dict, dict, dict, dict,

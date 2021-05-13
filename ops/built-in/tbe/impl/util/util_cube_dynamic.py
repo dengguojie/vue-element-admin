@@ -46,6 +46,22 @@ UNKNOWN_SHAPE = [-2]
 DIM_TO_NAME = {0: "N", 2: "H", 3: "W"}
 INPUT_SIZE_DEFAULT_SHAPE = [4]
 DX_OP_TYPE = ["deconvolution", "conv2d_transpose", "conv2d_backprop_input"]
+_K_MIN_RANGE = 1
+_K_MAX_RANGE = 4096
+_K_DIM_SIZE = 5
+
+
+def _get_idx_shape_from_format(obj_format, obj_shape):
+    """
+    get index and shape from ele_format
+    """
+    idx_n = obj_format.find('N')
+    idx_d = obj_format.find('D')
+    idx_h = obj_format.find('H')
+    idx_w = obj_format.find('W')
+    idx_c = obj_format.find('C')
+    return [idx_n, idx_d, idx_h, idx_w, idx_c],\
+           [obj_shape[idx_n], obj_shape[idx_d], obj_shape[idx_h], obj_shape[idx_w], obj_shape[idx_c]]
 
 
 def ceil_div(x_1, x_2):
@@ -1304,3 +1320,78 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
 
         return (dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, new_dx_range_nchw,
                 group_para, correct_range_flag)
+
+
+class Conv3dBackpropParaProcess():
+    """
+    class of param check and preprocess for dynamic conv3d_backprop_input
+    """
+    def __init__(self, para_dict, pad_mode):
+        self.para_dict = para_dict
+        self.pad_mode = pad_mode
+        self.strides = para_dict.get("strides") # ndhwc
+        self.pads = para_dict.get("pads")
+        self.dilations = para_dict.get("dilations") # ndhwc
+        self.groups = para_dict.get("groups")
+        self.filter = para_dict.get("ori_tensors").get("filter")
+        self.out_backprop = para_dict.get("ori_tensors").get("out_backprop")
+        self.y = para_dict.get("ori_tensors").get("y")
+        self.input_size = para_dict.get("ori_tensors").get("input_size")
+
+    def _set_conv3dx_dim_range(self, dx_pos, dy_pos, attr_param, dx_range, dy_range):
+        stride, kernel, pad = attr_param[0], attr_param[1], attr_param[2]
+        low, high = dy_range[dy_pos][0], dy_range[dy_pos][1]
+        if self.pad_mode == "VAR":
+            dx_range[dx_pos][0] = stride * (low - 1) + 1
+            dx_range[dx_pos][1] = stride * high
+        else:
+            dx_range[dx_pos][0] = stride * (low - 1) + kernel - pad
+            dx_range[dx_pos][1] = stride * (high - 1) + kernel - pad + stride - 1
+        dx_range[dx_pos][0] = max(dx_range[dx_pos][0], _K_MIN_RANGE)
+        if high == -1:
+            dx_range[dx_pos][1] = high
+        else:
+            dx_range[dx_pos][1] = min(dx_range[dx_pos][1], _K_MAX_RANGE)
+
+    def get_dx_range(self, dy_range):
+        """
+        get dx_range according to dy_range
+        """
+        _, shape_filter_ndhwc = _get_idx_shape_from_format(self.filter["ori_format"],
+                                                           self.filter["ori_shape"])
+        _, shape_y_ndhwc = _get_idx_shape_from_format(self.y["ori_format"],
+                                                      self.y["ori_shape"])
+        idx_out_backprop_ndhwc, shape_out_backprop_ndhwc = _get_idx_shape_from_format(self.out_backprop["ori_format"],
+                                                                                      self.out_backprop["ori_shape"])
+        _, filter_d, filter_h, filter_w, _ = shape_filter_ndhwc
+        _, dx_d, dx_h, dx_w, _ = shape_y_ndhwc
+        idx_out_backprop_n, idx_out_backprop_d, idx_out_backprop_h, idx_out_backprop_w, _ = idx_out_backprop_ndhwc
+        stride_d, stride_h, stride_w = \
+            self.strides[1], self.strides[2], self.strides[3]
+        dilations_d, dilations_h, dilations_w = \
+            self.dilations[1], self.dilations[2], self.dilations[3]
+        pad_front, pad_back, pad_up, pad_down, pad_left, pad_right = \
+            self.pads[0], self.pads[1], self.pads[2], self.pads[3], self.pads[4], self.pads[5]
+        kdext = (filter_d - 1) * dilations_d + 1
+        khext = (filter_h - 1) * dilations_h + 1
+        kwext = (filter_w - 1) * dilations_w + 1
+        dy_n = shape_out_backprop_ndhwc[idx_out_backprop_n]
+
+        dx_range_ndhw = [1, 1, 1, 1]
+        dx_range_ndhw[0] = [dy_n, dy_n]
+        dx_range_ndhw[1] = [dx_d, dx_d]
+        dx_range_ndhw[2] = [dx_h, dx_h]
+        dx_range_ndhw[3] = [dx_w, dx_w]
+
+        if len(dy_range) == _K_DIM_SIZE:
+            dx_range_ndhw[0] = dy_range[idx_out_backprop_n]
+            if dx_d == -1:
+                attr_param_d = [stride_d, kdext, pad_front + pad_back]
+                self._set_conv3dx_dim_range(1, idx_out_backprop_d, attr_param_d, dx_range_ndhw, dy_range)
+            if dx_h == -1:
+                attr_param_h = [stride_h, khext, pad_up + pad_down]
+                self._set_conv3dx_dim_range(2, idx_out_backprop_h, attr_param_h, dx_range_ndhw, dy_range)
+            if dx_w == -1:
+                attr_param_w = [stride_w, kwext, pad_left + pad_right]
+                self._set_conv3dx_dim_range(3, idx_out_backprop_w, attr_param_w, dx_range_ndhw, dy_range)
+        return dx_range_ndhw

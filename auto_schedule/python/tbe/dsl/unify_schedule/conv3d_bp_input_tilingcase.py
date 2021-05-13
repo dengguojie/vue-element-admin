@@ -140,7 +140,7 @@ def gen_support_info(range_x, ori_tensors):
     support_info = {}
     inputs = []
     item = {}
-    item["index"] = 0
+    item["index"] = 2
     item["tensor"] = []
     tensor_info = {}
     ori_tensors_input = ori_tensors.get("out_backprop")
@@ -354,12 +354,12 @@ def get_tiling_cases(tgt_list, conv_info, var_names):
                         # get dx_range deponds on dy_range
                         dy_range = copy.deepcopy(item)
                         conv3d_backprop = Conv3dBackpropParaProcess(para_dict, _get_pad_mode(conv_info))
-                        dx_range_ndhwc = conv3d_backprop.get_dx_range(dy_range)
+                        dx_range_ndhw = conv3d_backprop.get_dx_range(dy_range)
                         fuzz_area = {}
-                        fuzz_area["batch_n"] = tuple(dx_range_ndhwc[0])
-                        fuzz_area["dedx_d"] = tuple(dx_range_ndhwc[1])
-                        fuzz_area["dedx_h"] = tuple(dx_range_ndhwc[2])
-                        fuzz_area["dedx_w"] = tuple(dx_range_ndhwc[3])
+                        fuzz_area["batch_n"] = tuple(dx_range_ndhw[0])
+                        fuzz_area["dedx_d"] = tuple(dx_range_ndhw[1])
+                        fuzz_area["dedx_h"] = tuple(dx_range_ndhw[2])
+                        fuzz_area["dedx_w"] = tuple(dx_range_ndhw[3])
                         tgt_list.append(fuzz_area)
         kernel_id = get_context().get_addition("max_kernel_id")
         valid = isinstance(kernel_id, int) and kernel_id > -2
