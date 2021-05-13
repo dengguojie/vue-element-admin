@@ -54,7 +54,10 @@ class BroadcastElewiseClassifier:
         self.ins = ins
         extra_params = {} if extra_params is None else extra_params
         self.disable_optimization = extra_params.get("disable_optimization", False)
-        self.is_unknown_rank = self._check_update_unknown_rank()
+        self.is_unknown_rank = False
+        self.maybe_empty_tensor = False
+
+    def _init(self):
         shapes = [x["shape"] for x in self.ins]
         self.dim_length = max([len(s) for s in shapes])
         operation.get_context().add("_unknown_rank", self.is_unknown_rank)
@@ -62,7 +65,7 @@ class BroadcastElewiseClassifier:
         self.completed_ins = self._complete()
         self.completed_shapes = [x["shape"] for x in self.completed_ins]
         self.completed_ranges = [x["range"] for x in self.completed_ins]
-        self.maybe_empty_tensor = False
+
         self._update_shape_range()
         self.f_shapes, self.f_ranges, fusion_index = _simplify_shape(self.completed_shapes,
                                                                      self.completed_ranges, self.disable_optimization)
@@ -75,6 +78,7 @@ class BroadcastElewiseClassifier:
         classify
         :return:
         """
+        self._init()
         if len(self.completed_shapes) > MAX_BROADCAST_INPUT:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
@@ -95,7 +99,7 @@ class BroadcastElewiseClassifier:
 
         return [clone_complete(x) for x in self.ins]
 
-    def _check_update_unknown_rank(self):
+    def check_update_unknown_rank(self):
         is_unknown_rank = False
         for _in in self.ins:
             shapes = list(_in["shape"])
@@ -108,7 +112,23 @@ class BroadcastElewiseClassifier:
                 _in["shape"] = [-1] * MAX_RANK
                 _in["range"] = [(1, None)] * MAX_RANK
                 is_unknown_rank = True
-        return is_unknown_rank
+        self.is_unknown_rank = is_unknown_rank
+
+    def check_update_empty_shape(self):
+        is_empty_shape = False
+        for _in in self.ins:
+            shapes, ranges = list(_in["shape"]), list(_in.get("range"))
+            for index, (shape, (r0, r1)) in enumerate(zip(shapes, ranges)):
+                if shape == 0:
+                    _in["range"][index] = (0, 0)
+                    is_empty_shape = True
+                if r0 == 0:
+                    _in["range"][index] = (1, r1)
+                    is_empty_shape = True
+                if r1 == 0:
+                    _in["range"][index] = (0, 0)
+                    is_empty_shape = True
+        self.maybe_empty_tensor = is_empty_shape
 
     def _normalize(self):
         normalize_shapes = copy.deepcopy(self.f_shapes)
@@ -145,11 +165,6 @@ class BroadcastElewiseClassifier:
                         _range[i] = (VAR_BOUND_LIMIT, r1)
                     elif r1 is None:
                         _range[i] = (r0, VAR_BOUND_LIMIT)
-                    if r0 == 0:
-                        _range[i] = (1, r1)
-                        self.maybe_empty_tensor = True
-                    if r1 == 0:
-                        _range[i] = (0, 0)
             for _shape, _range in zip(self.completed_shapes, self.completed_ranges):
                 for i, (s, (r0, r1)) in enumerate(zip(_shape, _range)):
                     if s != -1:

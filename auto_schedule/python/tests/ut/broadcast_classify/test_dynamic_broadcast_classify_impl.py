@@ -156,6 +156,88 @@ def test_dim_length_1_mul(_):
         return ins == except_ins
 
 
+def test_mix_unknown_rank(_):
+    with op_context.OpContext("dynamic"):
+        inputs = [{"shape": (-2,), "dtype": "float16", "range": [(1, None)]},
+                  {"shape": (30, -1, -1,), "dtype": "float16", "range": [(30, 30), (1, None), (1, None)]}]
+        ins = classify_elewise(inputs, support_broadcast=True)
+        except_ins = [
+            [{'shape': (-1,), 'range': ((1, 2147483647),), 'support_broadcast': True, 'mode': 'special',
+              'pattern': ['common']},
+             {'shape': (-1,), 'range': ((30, 2147483647),), 'support_broadcast': True, 'mode': 'special',
+              'pattern': ['common']}], [
+                {'shape': (-1, -1), 'range': ((1, 2147483647), (1, 2147483647)), 'support_broadcast': True,
+                 'mode': 'special', 'pattern': ['common', 'broadcast']},
+                {'shape': (-1, -1), 'range': ((1, 2147483647), (1, 2147483647)), 'support_broadcast': True,
+                 'mode': 'special', 'pattern': ['common', 'broadcast']}], [
+                {'shape': (30, -1, -1), 'range': ((30, 30), (1, 2147483647), (1, 2147483647)),
+                 'support_broadcast': True, 'mode': 'special', 'pattern': ['common', 'broadcast', 'common']},
+                {'shape': (30, -1, -1), 'range': ((30, 30), (1, 2147483647), (1, 2147483647)),
+                 'support_broadcast': True, 'mode': 'special', 'pattern': ['common', 'broadcast', 'common']}], [
+                {'shape': (-1, -1), 'range': ((1, 2147483647), (1, 2147483647)), 'support_broadcast': True,
+                 'mode': 'special', 'pattern': ['broadcast', 'common']},
+                {'shape': (-1, -1), 'range': ((1, 2147483647), (1, 2147483647)), 'support_broadcast': True,
+                 'mode': 'special', 'pattern': ['broadcast', 'common']}], [
+                {'shape': [1], 'range': [(1, 1)], 'support_broadcast': True, 'mode': 'special_scalar',
+                 'pattern': ('scalar', 'broadcast')},
+                {'shape': [-1], 'range': [(1, None)], 'support_broadcast': True, 'mode': 'special_scalar',
+                 'pattern': ('scalar', 'broadcast')}], [
+                {'shape': [-1, -1, -1, -1], 'range': [(1, 2147483647), (1, 30), (1, 2147483647), (1, 2147483647)],
+                 'support_broadcast': True, 'mode': 'original'},
+                {'shape': [1, 30, -1, -1], 'range': [(1, 1), (30, 30), (1, 2147483647), (1, 2147483647)],
+                 'support_broadcast': True, 'mode': 'original'}],
+            [{'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'},
+             {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}]]
+        return ins == except_ins
+
+
+def test_empty_shape(_):
+    with op_context.OpContext("dynamic"):
+        inputs = [{"shape": (30, 0, -1), "dtype": "float16", "range": [(30, 30), (0, 0), (1, None)]},
+                  {"shape": (30, -1, -1,), "dtype": "float16", "range": [(30, 30), (1, None), (0, None)]}]
+        ins = classify_elewise(inputs, support_broadcast=True)
+        except_ins = [[{'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'},
+                       {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}]]
+        return ins == except_ins
+
+
+def test_mix_empty_shape(_):
+    with op_context.OpContext("dynamic"):
+        inputs = [{"shape": (-2,), "dtype": "float16", "range": [(1, None)]},
+                  {"shape": (30, -1, -1,), "dtype": "float16", "range": [(30, 30), (1, None), (0, None)]}]
+        ins = classify_elewise(inputs, support_broadcast=True)
+        except_ins = [[{'shape': (-1,), 'range': ((1, 2147483647),), 'support_broadcast': True, 'mode': 'special',
+                        'pattern': ['common']},
+                       {'shape': (-1,), 'range': ((30, 2147483647),), 'support_broadcast': True, 'mode': 'special',
+                        'pattern': ['common']}], [
+                          {'shape': (-1, -1), 'range': ((1, 2147483647), (1, 2147483647)), 'support_broadcast': True,
+                           'mode': 'special', 'pattern': ['common', 'broadcast']},
+                          {'shape': (-1, -1), 'range': ((1, 2147483647), (1, 2147483647)), 'support_broadcast': True,
+                           'mode': 'special', 'pattern': ['common', 'broadcast']}], [
+                          {'shape': (30, -1, -1), 'range': ((30, 30), (1, 2147483647), (1, 2147483647)),
+                           'support_broadcast': True, 'mode': 'special', 'pattern': ['common', 'broadcast', 'common']},
+                          {'shape': (30, -1, -1), 'range': ((30, 30), (1, 2147483647), (1, 2147483647)),
+                           'support_broadcast': True, 'mode': 'special', 'pattern': ['common', 'broadcast', 'common']}],
+                      [{'shape': (-1, -1), 'range': ((1, 2147483647), (1, 2147483647)), 'support_broadcast': True,
+                        'mode': 'special', 'pattern': ['broadcast', 'common']},
+                       {'shape': (-1, -1), 'range': ((1, 2147483647), (1, 2147483647)), 'support_broadcast': True,
+                        'mode': 'special', 'pattern': ['broadcast', 'common']}], [
+                          {'shape': [1], 'range': [(1, 1)], 'support_broadcast': True, 'mode': 'special_scalar',
+                           'pattern': ('scalar', 'broadcast')},
+                          {'shape': [-1], 'range': [(1, None)], 'support_broadcast': True, 'mode': 'special_scalar',
+                           'pattern': ('scalar', 'broadcast')}], [{'shape': [-1, -1, -1, -1],
+                                                                   'range': [(1, 2147483647), (1, 30), (1, 2147483647),
+                                                                             (1, 2147483647)],
+                                                                   'support_broadcast': True, 'mode': 'original'},
+                                                                  {'shape': [1, 30, -1, -1],
+                                                                   'range': [(1, 1), (30, 30), (1, 2147483647),
+                                                                             (1, 2147483647)],
+                                                                   'support_broadcast': True, 'mode': 'original'}],
+                      [{'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'},
+                       {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}]]
+        return ins == except_ins
+
+
 test_func_list = [
     test_max_inputs,
     test_unknown_rank,
@@ -163,7 +245,10 @@ test_func_list = [
     test_no_intersection,
     test_no_intersection_mul,
     test_const_broadcast_mul,
-    test_dim_length_1_mul
+    test_dim_length_1_mul,
+    test_mix_unknown_rank,
+    test_empty_shape,
+    test_mix_empty_shape
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)

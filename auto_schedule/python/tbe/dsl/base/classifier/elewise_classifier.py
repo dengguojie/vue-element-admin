@@ -32,10 +32,15 @@ def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[
     :param support_broadcast:
     :return:
     """
+    if support_broadcast:
+        classifer = BroadcastElewiseClassifier(ins, extra_params)
+        classifer.check_update_unknown_rank()
+        classifer.check_update_empty_shape()
+    else:
+        classifer = PureElewiseClassifier(ins)
     from tbe.common.buildcfg import get_current_build_config
     operation.get_context().add("_support_broadcast", support_broadcast)
     if get_current_build_config("enable_op_prebuild"):
         return [ins]
 
-    return BroadcastElewiseClassifier(ins, extra_params).classify() if support_broadcast else \
-        PureElewiseClassifier(ins).classify()
+    return classifer.classify()
