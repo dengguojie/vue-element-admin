@@ -1219,8 +1219,9 @@ REG_OP(Expand)
 */
 
 REG_OP(NonZero)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}))
+    .INPUT(x, TensorType({DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_INT8, DT_UINT8, DT_INT16, \
+              DT_UINT16, DT_INT32, DT_UINT32, DT_INT64, DT_UINT64, DT_BOOL}))
+    .OUTPUT(y, TensorType({DT_INT64}))
     .ATTR(transpose, Bool, false)
     .OP_END_FACTORY_REG(NonZero)
 
