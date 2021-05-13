@@ -121,12 +121,9 @@ def _get_custom_pattern():
     :return:
     """
     pattern = None
-    if operation._in_compatible_mode():
-        pattern = operation.get_context().get_pattern()
-    else:
-        op_type = operation.get_context().get_op_type()
-        if op_type and get_operator(op_type):
-            pattern = get_operator(op_type).get_pattern()
+    op_type = operation.get_context().get_op_type()
+    if op_type and get_operator(op_type):
+        pattern = get_operator(op_type).get_pattern()
 
     return pattern
 
@@ -134,7 +131,7 @@ def _get_custom_pattern():
 def get_pattern(outs):
     """
     :param outs:
-    
+
     """
     pattern = _get_custom_pattern()
     if pattern is None:

@@ -6,6 +6,7 @@ from tbe.dsl.unify_schedule.unify_auto_schedule import build
 import tbe.dsl.base.operation as operation
 from impl.dynamic import relu
 from op_test_frame.ut import OpUT
+import tbe.common.register
 
 
 ut_case = OpUT("Conv2D", "impl.dynamic.conv2d",
@@ -31,8 +32,8 @@ def test_conv2d_relu_dynamic(test_arg):
     with operation.OperatorContext(operation.OpMode.DYNAMIC) as opc:
         opc.set_op_type("conv_relu")
         with operation.ComputeContext():
-            conv = operation.get_fusion_compute('Conv2D')
-            relu = operation.get_fusion_compute('Relu')
+            conv = tbe.common.register.get_op_compute('Conv2D')
+            relu = tbe.common.register.get_op_compute('Relu')
             conv_res = conv(inputs,
                             weights,
                             bias,

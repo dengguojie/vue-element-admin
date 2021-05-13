@@ -24,6 +24,7 @@ from typing import List
 from tbe import tvm
 from tbe.common import buildcfg
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.register import get_op_compute
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.var import AttrVarDesc
@@ -60,7 +61,7 @@ def schedule_cce(outs, option=None):
     if get_current_build_config("enable_op_prebuild"):
         # prebuild
         op_type = operation.get_context().get_op_type()
-        compute = operation.get_op_compute(op_type, verbose=True)
+        compute = get_op_compute(op_type)
 
         if compute is None or compute.support_fusion is False:
             fusion_pattern = Pattern.OPAQUE

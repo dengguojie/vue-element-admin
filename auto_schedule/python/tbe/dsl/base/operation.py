@@ -18,14 +18,11 @@ operation
 import functools
 import re
 import threading
-import warnings
 from dataclasses import dataclass
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import List
 from typing import Optional
-from typing import Tuple
 from typing import Union
 
 from tbe.common.context import op_context
@@ -99,48 +96,6 @@ class OperatorContextProxy:
 
     def __getattr__(self, item):
         return getattr(self._operator_context, item)
-
-
-def register_operator(op_type, pattern=None):
-    """
-    :param op_type:
-    :param pattern:
-    :return:
-    """
-
-    warnings.warn("register_operator is expired, replace it with the same func in register",
-                  DeprecationWarning, stacklevel=2)
-    import tbe.common.register
-    return tbe.common.register.register_operator(op_type, pattern)
-
-
-def get_operator(op_type):
-    """
-    :param op_type:
-    :return:
-    """
-    warnings.warn("get_operator is expired, replace it with the same func in register",
-                  DeprecationWarning, stacklevel=2)
-    import tbe.common.register
-    operator = tbe.common.register.get_operator(op_type)
-    if operator:
-        return operator.get_func()
-    return None
-
-
-def get_pattern(op_type):
-    """
-
-    :param op_type:
-    :return:
-    """
-    warnings.warn("get_pattern is expired, replace it with func get_operator in register",
-                  DeprecationWarning, stacklevel=2)
-    import tbe.common.register
-    operator = tbe.common.register.get_operator(op_type)
-    if operator:
-        return operator.get_pattern()
-    return None
 
 
 def register_schedule(pattern):
@@ -230,64 +185,6 @@ def get_build_pointcut(pattern):
     :return:
     """
     return _builds.get(pattern)
-
-
-def register_fusion_compute(op_type):
-    """
-    :param op_type:
-    :return:
-    """
-
-    warnings.warn("register_fusion_compute is expired, replace it with func register_op_compute",
-                  DeprecationWarning, stacklevel=2)
-    import tbe.common.register
-    return tbe.common.register.register_op_compute(op_type, "dynamic", True)
-
-def get_fusion_compute(op_type):
-    """
-    :param op_type:
-    :return:
-    """
-    warnings.warn("get_fusion_compute is expired, replace it with func get_op_compute",
-                  DeprecationWarning, stacklevel=2)
-    import tbe.common.register
-    compute_ = tbe.common.register.get_op_compute(op_type, "dynamic")
-    if compute_:
-        return compute_.get_func()
-    return None
-
-
-def register_op_compute(op_type, op_mode="dynamic", support_fusion=True):
-    # type: (str, str, bool) -> Callable
-    """
-    :param op_type:
-    :param op_mode:
-    :param support_fusion:
-    :return:
-    """
-
-    warnings.warn("register_op_compute is expired, replace it with the same func in register",
-                  DeprecationWarning, stacklevel=2)
-    import tbe.common.register
-    return tbe.common.register.register_op_compute(op_type, op_mode, support_fusion)
-
-
-def get_op_compute(op_type, op_mode="dynamic", verbose=False):
-    # type: (str, str, bool) -> Union[Callable, Compute, None]
-    """
-    :param op_type:
-    :param op_mode:
-    :param verbose:
-    :return:
-    """
-    warnings.warn("get_op_compute is expired, replace it with the same func in register",
-                  DeprecationWarning, stacklevel=2)
-    import tbe.common.register
-    compute_ = tbe.common.register.get_op_compute(op_type, op_mode)
-    if compute_:
-        old_compute = Compute(compute_.get_func(), op_mode, compute_.if_support_fusion())
-        return old_compute if verbose else compute_.get_func()
-    return None
 
 
 def var(name, bound=None, dtype="int32", addition=None):
@@ -394,9 +291,6 @@ def get_op_mode():
     """
     :return:
     """
-    if _in_compatible_mode():
-        return get_context().get_mode()
-
     op_context_obj = op_context.get_context()
     return op_context_obj.get_op_mode() if op_context_obj else None
 
@@ -405,9 +299,6 @@ def get_context() -> Union[OperatorContext, OperatorContextProxy, None]:
     """
     :return:
     """
-    if _in_compatible_mode():
-        return _get_contexts()[-1]
-
     op_context_obj = get_op_context()
     if op_context_obj:
         return op_context_obj.get_custom_context("dsl")
@@ -455,19 +346,13 @@ def add_compile_info_inner(key, value):
 
 
 def _add_compile_info(key, value):
-    if _in_compatible_mode():
-        get_compile_info()[key] = value
-    else:
-        get_op_context().add_compile_info(key, value)
+    get_op_context().add_compile_info(key, value)
 
 
 def get_compile_info() -> dict:
     """
     :return:
     """
-    if _in_compatible_mode():
-        return get_context().get("compile_info")
-
     return get_op_context().get_compile_info()
 
 

@@ -20,7 +20,8 @@ from tbe import tvm
 from tbe.common.utils import para_check, shape_util
 from tbe.common.utils.errormgr import error_manager_vector
 from impl.util.util_select_op_base import SplitInput, SplitOutput, get_op_cal_info
-from tbe.dsl.base.operation import register_operator, get_context, add_compile_info, var
+from tbe.dsl.base.operation import get_context, add_compile_info, var
+from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from tbe.dsl.base.operation import var
 
@@ -337,21 +338,21 @@ def bn_training_update(x,
     None
     """
 
-    shape_x = x["shape"]
-    shape_sum = sum["shape"]
-    shape_square_sum = square_sum["shape"]
-    shape_scale = scale["shape"]
-    shape_offset = offset["shape"]
-    shape_mean = mean["shape"]
-    shape_variance = variance["shape"]
+    shape_x = x.get("shape")
+    shape_sum = sum.get("shape")
+    shape_square_sum = square_sum.get("shape")
+    shape_scale = scale.get("shape")
+    shape_offset = offset.get("shape")
+    shape_mean = mean.get("shape")
+    shape_variance = variance.get("shape")
 
-    dtype_x = x["dtype"].lower()
-    dtype_sum = sum["dtype"].lower()
-    dtype_square_sum = square_sum["dtype"].lower()
-    dtype_scale = scale["dtype"].lower()
-    dtype_offset = offset["dtype"].lower()
-    dtype_mean = mean["dtype"].lower()
-    dtype_variance = variance["dtype"].lower()
+    dtype_x = x.get("dtype").lower()
+    dtype_sum = sum.get("dtype").lower()
+    dtype_square_sum = square_sum.get("dtype").lower()
+    dtype_scale = scale.get("dtype").lower()
+    dtype_offset = offset.get("dtype").lower()
+    dtype_mean = mean.get("dtype").lower()
+    dtype_variance = variance.get("dtype").lower()
 
     format = x.get("format")
 
