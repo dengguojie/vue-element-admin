@@ -36,6 +36,8 @@ namespace optiling {
 const int64_t DEFAULT_TILING_MODE = 100000;
 const int64_t HEIGHT_ALIGN_FLAG = 10000;
 const int64_t WEIGHT_ALIGN_FLAG = 1000;
+const int64_t WIDTH_ALIGN_FLAG = 100;
+const int64_t BIG_TO_SMALL_FLAG = 10;
 
 struct ResizeNearestNeighborV2TilingParams {
   int64_t tiling_key;
@@ -97,8 +99,7 @@ static void GetTilingParamForHW2MHNW(const ResizeNearestNeighborV2CompileParams&
   if (left_core_num != 0) {
     if (tiling_params.input_weight > left_core_num * 4) {
       // charge whether continue cut weight
-      left_core_num = (compile_params.core_num + tiling_params.cut_batch_c1_num - 1)
-                      / tiling_params.cut_batch_c1_num;
+      left_core_num = (compile_params.core_num + tiling_params.cut_batch_c1_num - 1) / tiling_params.cut_batch_c1_num;
       tiling_params.cut_batch_c1_num = compile_params.core_num / left_core_num;
       auto cut_w_sigment = (tiling_params.input_weight + left_core_num - 1) / left_core_num;
       int64_t min_w_sigment = 16;
@@ -115,8 +116,38 @@ static void GetTilingParamForHW2MHNW(const ResizeNearestNeighborV2CompileParams&
   }
 }
 
-static void GetTilingParamForDefault(const ResizeNearestNeighborV2CompileParams& compile_params,
-                                     const bool is_w_nw,
+static void GetTilingParamForNW2W(const ResizeNearestNeighborV2CompileParams& compile_params,
+                                  ResizeNearestNeighborV2TilingParams& tiling_params) {
+  // cut weight first
+  if (tiling_params.output_weight <= compile_params.core_num) {
+    tiling_params.cut_weight_num = tiling_params.output_weight;
+  } else {
+    for (int64_t i = (compile_params.core_num - 1); i > 0; i--) {
+      if (tiling_params.output_weight % i == 0) {
+        tiling_params.cut_weight_num = i;
+        break;
+      }
+    }
+  }
+  auto left_core_num = compile_params.core_num - tiling_params.cut_weight_num;
+  if (left_core_num != 0) {
+    // continue cut height
+    left_core_num = compile_params.core_num / tiling_params.cut_weight_num;
+    auto cut_h_sigment = (tiling_params.input_height + left_core_num - 1) / left_core_num;
+    auto h_max = (tiling_params.input_height + cut_h_sigment - 1) / cut_h_sigment;
+    tiling_params.cut_height_num = min(left_core_num, h_max);
+  }
+  left_core_num = compile_params.core_num / (tiling_params.cut_weight_num * tiling_params.input_height);
+  // continue cut height
+  auto image_batch_c1 = tiling_params.input_batch * tiling_params.input_c1;
+  if (left_core_num > 1) {
+    auto cut_batch_c1_sigment = (image_batch_c1 + left_core_num - 1) / left_core_num;
+    tiling_params.cut_batch_c1_num = (image_batch_c1 + cut_batch_c1_sigment - 1) / cut_batch_c1_sigment;
+    tiling_params.cut_batch_c1_num = min(left_core_num, tiling_params.cut_batch_c1_num);
+  }
+}
+
+static void GetTilingParamForDefault(const ResizeNearestNeighborV2CompileParams& compile_params, const bool is_w_nw,
                                      ResizeNearestNeighborV2TilingParams& tiling_params) {
   auto h_max = (tiling_params.output_height + compile_params.core_num - 1) / compile_params.core_num;
   h_max = (tiling_params.output_height + h_max - 1) / h_max;
@@ -153,9 +184,8 @@ static void GetTilingParamForDefault(const ResizeNearestNeighborV2CompileParams&
   tiling_params.cut_height_num = tiling_params.cut_height_num != 0 ? tiling_params.cut_height_num : 1;
 }
 
-static void GetTilingParamForResizeNearestNeighborV2Default(const ResizeNearestNeighborV2CompileParams& compile_params,
-                                     const bool is_w_nw,
-                                     ResizeNearestNeighborV2TilingParams& tiling_params) {
+static void GetTilingParamForResizeNearestNeighborV2GradDefault(
+    const ResizeNearestNeighborV2CompileParams& compile_params, ResizeNearestNeighborV2TilingParams& tiling_params) {
   auto h_max = (tiling_params.input_height + compile_params.core_num - 1) / compile_params.core_num;
   h_max = (tiling_params.input_height + h_max - 1) / h_max;
   auto image_batch_c1 = tiling_params.input_batch * tiling_params.input_c1;
@@ -176,7 +206,7 @@ static void GetTilingParamForResizeNearestNeighborV2Default(const ResizeNearestN
   auto left_core_num = compile_params.core_num / tiling_params.cut_weight_num;
   auto nc_max = (image_batch_c1 + left_core_num - 1) / left_core_num;
   nc_max = (image_batch_c1 + nc_max - 1) / nc_max;
-  // when w_cut * NC1 > compile_params.max_w_sigment, will cut NC1 first
+  // when w_cut * NC1 > compile_params.max_w_len, will cut NC1 first
   int64_t w_sigment = (tiling_params.input_weight + tiling_params.cut_weight_num - 1) / tiling_params.cut_weight_num;
   auto image_batch_c1_w = image_batch_c1 * min(w_sigment, int64_t(128));
   auto nc_cut_by_compile = (image_batch_c1_w + compile_params.max_w_len - 1) / compile_params.max_w_len;
@@ -188,23 +218,32 @@ static void GetTilingParamForResizeNearestNeighborV2Default(const ResizeNearestN
   // cut h
   tiling_params.cut_height_num = min(left_core_num, h_max);
   tiling_params.cut_height_num = tiling_params.cut_height_num != 0 ? tiling_params.cut_height_num : 1;
+  left_core_num = compile_params.core_num /
+                  (tiling_params.cut_weight_num * tiling_params.cut_batch_c1_num * tiling_params.cut_height_num);
+  int64_t cut_weight_height_num = tiling_params.cut_weight_num * tiling_params.cut_height_num;
+  if (left_core_num > 1 && image_batch_c1 > 1 && cut_weight_height_num < 17) {
+    left_core_num = compile_params.core_num / cut_weight_height_num;
+    nc_max = (image_batch_c1 + left_core_num - 1) / left_core_num;
+    nc_max = (image_batch_c1 + nc_max - 1) / nc_max;
+    tiling_params.cut_batch_c1_num = min(left_core_num, nc_max);
+  }
 }
 
 static bool GetTilingParam(const ResizeNearestNeighborV2CompileParams& compile_params,
                            ResizeNearestNeighborV2TilingParams& tiling_params) {
   // check whether h,w to nh,nw
-  bool is_h_nh = ((tiling_params.output_height % tiling_params.input_height == 0
-                   &&  compile_params.align_corners + compile_params.half_pixel_centers == 0)
-                  || (tiling_params.output_height == tiling_params.input_height));
-  bool is_w_nw = ((tiling_params.output_weight % tiling_params.input_weight == 0
-                   &&  compile_params.align_corners + compile_params.half_pixel_centers == 0)
-                  || tiling_params.output_weight == tiling_params.input_weight);
+  bool is_h_nh = ((tiling_params.output_height % tiling_params.input_height == 0 &&
+                   compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
+                  (tiling_params.output_height == tiling_params.input_height));
+  bool is_w_nw = ((tiling_params.output_weight % tiling_params.input_weight == 0 &&
+                   compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
+                  tiling_params.output_weight == tiling_params.input_weight);
   // h is not h-> mh and  w -> nw, will run output cut branch
   // is the n is too large (> 100), will not use hign performance branch
   is_w_nw = (!is_h_nh && tiling_params.output_weight > tiling_params.input_weight * 100) ? false : is_w_nw;
   // h is h-> mh and  w -> nw, n > max_w_len,  will not use hign performance branch
-  is_w_nw = (is_h_nh && tiling_params.output_weight > tiling_params.input_weight * compile_params.max_w_len)
-            ? false : is_w_nw;
+  is_w_nw = (is_h_nh && tiling_params.output_weight > tiling_params.input_weight * compile_params.max_w_len) ? false
+                                                                                                             : is_w_nw;
   int64_t h_tiling_align_flag = 0;
   int64_t w_tiling_align_flag = is_w_nw ? 1 : 0;
 
@@ -221,46 +260,55 @@ static bool GetTilingParam(const ResizeNearestNeighborV2CompileParams& compile_p
     // 2. second cut h
     GetTilingParamForDefault(compile_params, is_w_nw, tiling_params);
   }
-  tiling_params.tiling_key = tiling_params.tiling_key + h_tiling_align_flag * HEIGHT_ALIGN_FLAG
-                             + w_tiling_align_flag * WEIGHT_ALIGN_FLAG;
+  tiling_params.tiling_key =
+      tiling_params.tiling_key + h_tiling_align_flag * HEIGHT_ALIGN_FLAG + w_tiling_align_flag * WEIGHT_ALIGN_FLAG;
   return true;
 }
 
 static bool GetTilingParamResizeNearestNeighborV2Grad(const ResizeNearestNeighborV2CompileParams& compile_params,
-                           ResizeNearestNeighborV2TilingParams& tiling_params) {
+                                                      ResizeNearestNeighborV2TilingParams& tiling_params) {
   // check whether h,w to nh,nw
-  bool is_h_nh = ((tiling_params.output_height % tiling_params.input_height == 0
-                   &&  compile_params.align_corners + compile_params.half_pixel_centers == 0)
-                  || (tiling_params.output_height == tiling_params.input_height));
-  bool is_w_nw = ((tiling_params.output_weight % tiling_params.input_weight == 0
-                   &&  compile_params.align_corners + compile_params.half_pixel_centers == 0)
-                  || tiling_params.output_weight == tiling_params.input_weight);
+  bool is_h_nh = ((tiling_params.output_height % tiling_params.input_height == 0 &&
+                   compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
+                  (tiling_params.output_height == tiling_params.input_height));
+  bool is_w_nw = ((tiling_params.output_weight % tiling_params.input_weight == 0 &&
+                   compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
+                  tiling_params.output_weight == tiling_params.input_weight);
   // h is not h-> mh and  w -> nw, will run output cut branch
   // is the n is too large (> 100), will not use hign performance branch
   is_w_nw = (!is_h_nh && tiling_params.output_weight > tiling_params.input_weight * 100) ? false : is_w_nw;
   // h is h-> mh and  w -> nw, n > max_w_len,  will not use hign performance branch
-  is_w_nw = (is_h_nh && tiling_params.output_weight > tiling_params.input_weight * compile_params.max_w_len)
-            ? false : is_w_nw;
+  is_w_nw = (is_h_nh && tiling_params.output_weight > tiling_params.input_weight * compile_params.max_w_len) ? false
+                                                                                                             : is_w_nw;
   int64_t h_tiling_align_flag = 0;
   int64_t w_tiling_align_flag = is_w_nw ? 1 : 0;
+
+  bool is_nw_w = ((tiling_params.input_weight % tiling_params.output_weight == 0) &&
+                  (compile_params.align_corners + compile_params.half_pixel_centers == 0));
+  is_nw_w = (tiling_params.input_weight > tiling_params.output_weight * 120) ? false : is_nw_w;
+  bool is_big_to_small = tiling_params.input_weight > tiling_params.output_weight;
+  int64_t w_align_flag = (is_big_to_small && is_nw_w) ? 1 : 0;
+  int64_t is_big_to_small_flag = is_big_to_small ? 1 : 0;
 
   if (is_h_nh && is_w_nw) {
     // process h * w, so cut by nc1 first from input
     h_tiling_align_flag = 1;
     GetTilingParamForHW2MHNW(compile_params, tiling_params);
+  } else if (w_align_flag) {
+    GetTilingParamForNW2W(compile_params, tiling_params);
   } else {
     // process nc1 * w
     // 1. first cut by w to get more nc1
     // 2. second cut h
-    GetTilingParamForResizeNearestNeighborV2Default(compile_params, is_w_nw, tiling_params);
+    GetTilingParamForResizeNearestNeighborV2GradDefault(compile_params, tiling_params);
   }
-  tiling_params.tiling_key = tiling_params.tiling_key + h_tiling_align_flag * HEIGHT_ALIGN_FLAG
-                             + w_tiling_align_flag * WEIGHT_ALIGN_FLAG;
+  tiling_params.tiling_key = tiling_params.tiling_key + h_tiling_align_flag * HEIGHT_ALIGN_FLAG +
+                             w_tiling_align_flag * WEIGHT_ALIGN_FLAG + w_align_flag * WIDTH_ALIGN_FLAG +
+                             is_big_to_small_flag * BIG_TO_SMALL_FLAG;
   return true;
 }
 
-static void PrintTilingParams(const std::string& op_type,
-                              const ResizeNearestNeighborV2TilingParams& tiling_params,
+static void PrintTilingParams(const std::string& op_type, const ResizeNearestNeighborV2TilingParams& tiling_params,
                               const ResizeNearestNeighborV2CompileParams& compile_params) {
   // print tiling_params
   OP_LOGD(op_type, "tiling_data, tiling_key = %d.", tiling_params.tiling_key);
@@ -357,7 +405,7 @@ static bool ResizeNearestNeighborV2Tiling(const std::string& op_type, const TeOp
     PrintTilingParams(op_type, tiling_params, compile_params);
     OP_LOGE(op_type, "get tiling data failed.");
     return false;
-   }
+  }
 
   // get tiling data end
   PrintTilingParams(op_type, tiling_params, compile_params);
