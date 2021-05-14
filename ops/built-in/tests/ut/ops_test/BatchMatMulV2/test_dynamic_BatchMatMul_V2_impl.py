@@ -85,7 +85,7 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
     else:
         expect = RuntimeError
     return {
-        "params": [x1, x2, bias, y, trans_a, trans_b],
+        "params": [x1, x2, bias, None, y, trans_a, trans_b, 0],
         "case_name": case_name,
         "expect": expect
     }
@@ -120,12 +120,6 @@ for case in matmul_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
 
 normal_case = [
-    # [((-1, -1, -1, -1), ((1, 196608), (1, 196608), (1, 196608), (1, 196608)), 'float16', 'FRACTAL_NZ', False),
-    #  ((3, 8, -1, 1), ((3, 3), (8, 8), (1, 196608), (1, 1)), 'float16', 'FRACTAL_NZ', True),
-    #  (None, None, None, None),
-    #  ((3, 8, -1, 1), ((3, 3), (8, 8), (1, 196608), (1, 1)), 'float16', 'FRACTAL_NZ'),
-    #  "dynamic_batch_matmul_v2_succ_case0"],
-    # IMPORTANT: default tiling
     [((-1, -1, -1, -1), ((1, 2147483647), (1, 2147483647), (1, 2147483647), (1, 196608)), 'float16', 'FRACTAL_NZ', False),
      ((-1, -1, -1, -1), ((1, 196608), (1, 196608), (1, 196608), (1, 196608)), 'float16', 'FRACTAL_NZ', True),
      (None, None, None, None),
@@ -179,7 +173,7 @@ def gen_batch_matmul_dynamic_normally(params):
         bias = None
 
     return {
-        "params": [x1, x2, bias, y, trans_a, trans_b],
+        "params": [x1, x2, bias, None, y, trans_a, trans_b, 0],
         "case_name": case_name,
         "expect": "success"
     }

@@ -125,6 +125,39 @@ case10 = {"params": [{"shape": (3, 32, 64), "dtype": "float16", "format": "NHWC"
                      ],
           "case_name": "BatchMatmul_support_check4"}
 
+case11 = {"params": [{"shape": (8, 4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 4, 32, 64),"ori_format": "ND"},
+                    {"shape": (8, 1, 1, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 1, 64, 16),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (8, 4, 1, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 4, 32, 16),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_v2_11",
+         "expect": "success",
+         "support_expect": True}
+
+case12 = {"params": [{"shape": (2, 4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2, 4, 32, 64),"ori_format": "ND"},
+                    {"shape": (2, 4, 1, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2, 4, 64, 16),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (1, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 16),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_v2_12",
+         "expect": "success",
+         "support_expect": True}
+
+case13 = {"params": [{"shape": (2, 4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (2, 4, 32, 64),"ori_format": "ND"},
+                    {"shape": (4, 1, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 64, 16),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (1, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 16),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_v2_13",
+         "expect": "success",
+         "support_expect": True}
+
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)

@@ -34,7 +34,7 @@ class GEMM_Params:
     """
     all params and print function
     """
-    def __init__(self):     
+    def __init__(self):
         self.ops_mode = "fp16fp16"
         self.DEBUG_PARAM = False
         self.DEBUG_IR = False
@@ -621,6 +621,7 @@ class GEMM_Schedule:
                 self.gemm_params.TENSOR_MAP["fusion_input"] = input_list
             elif "reduce_sum" in res.op.tag:
                 self.gemm_params.fusion_type = FusionType.REDUCE_FUSION
+    
 
         _init_fusion_case()
         _init_common_tensor()
@@ -1457,7 +1458,7 @@ class GEMM_Schedule:
         blockidx = []
         # split batch axis
         if self.gemm_params.fusion_type == FusionType.REDUCE_FUSION:
-            batch_nparts = self.gemm_params.DIM_MAP["A_matrix_dim"][0]
+            batch_nparts = self.gemm_params.TENSOR_MAP['c_l0c'].shape[0].value
         else:
             batch_nparts = block_dim[0]
 
@@ -2212,7 +2213,7 @@ class GEMM_Schedule:
         """
         batch = sch[res].op.reduce_axis
         # set all batch to ddr add
-        block_dim_batch = self.gemm_params.DIM_MAP["A_matrix_dim"][0]
+        block_dim_batch = self.gemm_params.TENSOR_MAP['c_l0c'].shape[0].value
         batch_outer, batch_inner = sch[res].split(res.op.reduce_axis[0], nparts = block_dim_batch)
         res_after = res
         res_ub = sch.rfactor(res, batch_outer)

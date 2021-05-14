@@ -175,11 +175,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                            "shape length for batch matmul greater than or equal to 2")
 
-    if len(shape_a) == len(shape_b):
-        if shape_a[:shape_len_a - 2] != shape_b[:shape_len_b - 2]:
-            error_manager_vector.raise_err_two_input_shape_invalid('batch_matmul', 'input_x', 'input_y',
-                                                                   "batch size of a and b are not equal")
-
     is_gevm = (shape_a[-2] == 1) or (shape_a[-1] == 1)
     is_gemv = (shape_b[-2] == 1) or (shape_b[-1] == 1)
 
@@ -587,8 +582,11 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
     dst_dtype = output_z.get("dtype").lower()
 
     ori_shape_x = input_x.op.attrs["ori_shape"]
-    batch_shape = ori_shape_x[:-2] if len(ori_shape_x) > 2 else None
-
+    ori_shape_y = input_y.op.attrs["ori_shape"]
+    ori_shape_out = output_z.get("ori_shape")
+    batch_shape_a = ori_shape_x[:-2] if len(ori_shape_x) > 2 else list()
+    batch_shape_b = ori_shape_y[:-2] if len(ori_shape_y) > 2 else list()
+    batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else list()
 
     para_dict = {
         "trans_a": trans_a_local,
@@ -598,7 +596,9 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
         "tensor_c": bias,
         "dst_dtype": dst_dtype,
         "kernel_name": kernel_name,
-        "batch_shape": batch_shape
+        "batch_shape_a": batch_shape_a,
+        "batch_shape_b": batch_shape_b,
+        "batch_shape_out": batch_shape_out
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
     return result
@@ -651,12 +651,16 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
     else:
         trans_a_local = trans_a
 
-
     if format_b == 'FRACTAL_NZ':
         trans_b_local = False if trans_b else True
     else:
         trans_b_local = trans_b
     dst_dtype = output_z.get("dtype").lower()
+
+    batch_shape_a = input_x.op.attrs["ori_batch_shape"]
+    batch_shape_b = input_y.op.attrs["ori_batch_shape"]
+    ori_shape_out = output_z.get("ori_shape")
+    batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else list()
 
     para_dict = {
         "trans_a": trans_a_local,
@@ -665,7 +669,10 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
         "format_b": format_b,
         "tensor_c": bias,
         "dst_dtype": dst_dtype,
-        "kernel_name": kernel_name
+        "kernel_name": kernel_name,
+        "batch_shape_out": batch_shape_out,
+        "batch_shape_a": batch_shape_a,
+        "batch_shape_b": batch_shape_b
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
 
@@ -723,11 +730,14 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
     shape_b_length = len(shape_b)
     if shape_a is not None:
         if shape_a_length < 2:
-            shape_a = input_x.get("shape")
+            shape_a = list(shape_a)
+            shape_a.insert(0, 1)
 
     if shape_b is not None:
         if shape_b_length < 2:
-            shape_b = input_y.get("shape")
+            shape_b = list(shape_b)
+            shape_b.append(1)
+
     shape_bias = ()
     if bias is not None and bool(bias):
         shape_bias = bias.get("shape")
@@ -822,12 +832,16 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         format_b = "ND"
 
     batch_shape_a = None
+    ori_batch_shape_a = list()
     if len(shape_a) > 2:
         batch_shape_a = functools.reduce(lambda x, y: x * y, shape_a[:-2])
+        ori_batch_shape_a = list(shape_a[:-2])
 
     batch_shape_b = None
+    ori_batch_shape_b = list()
     if len(shape_b) > 2:
         batch_shape_b = functools.reduce(lambda x, y: x * y, shape_b[:-2])
+        ori_batch_shape_b = list(shape_b[:-2])
 
     if len(shape_a) >= len(shape_b):
         batch_shape = batch_shape_a
@@ -835,16 +849,10 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         batch_shape = batch_shape_b
 
     if batch_shape is not None and batch_shape >= 1:
-        if is_fractal:
-            if batch_shape_a is not None:
-                shape_a_dup = (batch_shape_a,) + shape_a_dup
-            if batch_shape_b is not None:
-                shape_b_dup = (batch_shape_b,) + shape_b_dup
-        else:
-            if batch_shape_a is not None:
-                shape_a_dup = (batch_shape_a,) + shape_a_dup
-            if batch_shape_b is not None:
-                shape_b_dup = (batch_shape_b,) + shape_b_dup
+        if batch_shape_a is not None:
+            shape_a_dup = (batch_shape_a,) + shape_a_dup
+        if batch_shape_b is not None:
+            shape_b_dup = (batch_shape_b,) + shape_b_dup
 
     tensor_bias = None
     shape_bias_length = len(shape_bias)
@@ -856,10 +864,12 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
         shape_bias_dup = (bias_batch_size,) + shape_bias_dup
 
     tensor_a = tvm.placeholder(shape_a_dup, name='tensor_a',
-                               attrs={'format': format_a},
+                               attrs={'format': format_a,
+                                      'ori_batch_shape': ori_batch_shape_a},
                                dtype=inp_src_dtype)
     tensor_b = tvm.placeholder(shape_b_dup, name='tensor_b',
-                               attrs={'format': format_b},
+                               attrs={'format': format_b,
+                                      'ori_batch_shape': ori_batch_shape_b},
                                dtype=inp_src_dtype)
 
     if shape_bias_length > 0:

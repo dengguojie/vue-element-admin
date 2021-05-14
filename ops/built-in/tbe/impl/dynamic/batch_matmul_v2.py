@@ -23,9 +23,9 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 @register_operator_compute("BatchMatMul", op_mode="dynamic", support_fusion=False)
-def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias, output_z,
-                         trans_a=False, trans_b=False,
-                         kernel_name="matmul"):
+def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias=None, offset_w=None, output_z={},
+                                 trans_a=False, trans_b=False, offset_x=0,
+                                 kernel_name="matmul"):
     """
     matmul computer for fusion
 
@@ -33,6 +33,7 @@ def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias, output_z,
     input_x1: tensor
     input_x2: tensor
     bias: tensor or None
+    offset_w: tensor or None
     output_z: dict
         A dict object, dict with keys(shape, dtype, format and range)
         the dtype must be fp16
@@ -41,6 +42,8 @@ def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias, output_z,
         If true, shape_a == transposed before multiplication
     trans_b: bool
         If true, shape_a == transposed before multiplication
+    offset_x: int
+        offset of gradients in quant mode
     kernel_name: str
         cce kernel_name
     Returns
@@ -53,12 +56,11 @@ def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias, output_z,
 
 @register_operator("BatchMatMulV2")
 @para_check.check_op_params(
-    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-    para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
-    para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_BOOL,
-    para_check.KERNEL_NAME)
-def batch_matmul_v2(input_x1, input_x2, bias=None, output_z={},
-                 trans_a=False, trans_b=False, kernel_name="matmul"):
+    para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+    para_check.OPTION_INPUT,para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
+    para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w={}, output_z={},
+                    trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     caculating matrix multiplication with bias, C = A * B + bias
     only support input with nz format and fp16 in dynamic mode
@@ -76,6 +78,8 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, output_z={},
         A dict object, dict with keys(shape and dtype) or None
         the dtype must be fp16
         the format must be ND
+    offset_w: dict
+        A dict object, dict with keys(shape and dtype) or None
     output_z: dict
         A dict object, dict with keys(shape, dtype, format and range)
         the dtype must be fp16
@@ -84,6 +88,8 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, output_z={},
         If true, shape_a == transposed before multiplication
     trans_b: bool
         If true, shape_a == transposed before multiplication
+    offset_x: int
+        offset of gradients in quant mode
     kernel_name: str
         cce kernel_name
     Returns

@@ -1685,6 +1685,17 @@ IMPLEMT_VERIFIER(BatchMatMul, BatchMatMulVerify) {
   return GRAPH_SUCCESS;
 }
 
+void modify_batchmatmul_outputshape(vector<int64_t> &shape_out, const vector<int64_t> &shape_y) {
+  vector<int64_t> shape_out_new(2);
+  if (shape_y.size() >= 2) {
+    shape_out = shape_y;
+  }
+  if (shape_y.size() == 1 && shape_out.size() >= 2) {
+    copy(shape_out.end() - 2, shape_out.end(), shape_out_new.begin());
+    shape_out = shape_out_new;
+  }
+}
+
 graphStatus CommonBatchMatMulInferShape(Operator &op) {
   OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "adj").c_str());
 
@@ -1692,6 +1703,8 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
   auto tensordesc_out = op_desc->MutableOutputDesc("y");
   auto tensordesc_x1 = op_desc->GetInputDesc("x1");
   auto tensordesc_x2 = op_desc->GetInputDesc("x2");
+  auto tensordesc_y = op.GetOutputDesc("y");
+
   ge::TensorDesc tensordesc_bias;
   vector<int64_t> shape_bias;
   if (ge::GRAPH_SUCCESS == op.TryGetInputDesc("bias", tensordesc_bias)) {
@@ -1700,6 +1713,7 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
 
   auto shape_x1 = tensordesc_x1.GetShape().GetDims();
   auto shape_x2 = tensordesc_x2.GetShape().GetDims();
+  auto shape_y = tensordesc_y.GetShape().GetDims();
 
   size_t dim_num_x1 = shape_x1.size();
   size_t dim_num_x2 = shape_x2.size();
@@ -1729,6 +1743,9 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
   if (GRAPH_SUCCESS != GetMatMulOutputShape(op, shape_out, shape_range_out, "adj", true)) {
     return GRAPH_FAILED;
   }
+
+  OP_LOGD(op.GetName().c_str(), "modify output shape with ori_shape");
+  modify_batchmatmul_outputshape(shape_out, shape_y);
 
   tensordesc_out->SetShape(ge::GeShape(shape_out));
   tensordesc_out->SetShapeRange(shape_range_out);

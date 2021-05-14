@@ -145,7 +145,8 @@ def _get_batchmatmul_node(case):
                                "ori_shape": input_x.get("ori_shape") },
                                dtype=inp_src_dtype)
     tensor_b = tvm.placeholder(shape_b_dup, name='tensor_b',
-                               attrs={'format': format_b},
+                               attrs={'format': format_b,
+                               "ori_shape": input_y.get("ori_shape")},
                                dtype=inp_src_dtype)
 
     if shape_bias_length > 0:
