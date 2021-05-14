@@ -136,6 +136,7 @@ set(_optiling_files
   smooth_l1_loss_v2.cc
   nll_loss.cc
   nll_loss_grad.cc
+  confusion_softmax_grad.cc
 )
 
 set(_op_tiling_include

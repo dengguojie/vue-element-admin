@@ -33,6 +33,7 @@ from . import bn_update_schedule
 from . import bn_update_tilingcase
 from . import layer_norm_tilingcase, layer_norm_normal_schedule, layer_norm_workspace_schedule
 from . import bn_update_grad_schedule, bn_training_update_grad_tilingcase
+from . import confusion_softmax_grad_schedule, confusion_softmax_grad_tilingcase
 
 # cube
 from . import conv2d_bp_input_schedule
