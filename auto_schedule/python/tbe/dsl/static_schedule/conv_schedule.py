@@ -177,6 +177,8 @@ def check_conv_bn1(outs):
         return False
 
     conv_out, reduce_0, reduce_1 = outs
+    if "convolution_" not in conv_out.op.tag and "conv_vector_bias_add" not in conv_out.op.tag:
+        return False
     if ("reduce_sum" not in reduce_0.op.tag) or \
             ("reduce_sum" not in reduce_1.op.tag):
         return False
@@ -294,13 +296,14 @@ def check_doubleout_reluv2(outs):
     """
     if isinstance(outs, (list, tuple)) and len(outs) == 2:
         reluv2, mask = outs
-        src_input_constraint = reluv2.op.input_tensors[0].op.name == "C"
+        src_input_constraint = reluv2.op.input_tensors[0].op.name == "C" or \
+            "bias_add_vector" in reluv2.op.input_tensors[0].op.name
         dtype_constraint = reluv2.dtype == "float16" and (mask.dtype == "uint8" or \
             mask.dtype == "uint1")
         tag_constraint = reluv2.op.tag == "elewise_single_relu" \
             and (mask.op.tag == "emit_insn_elewise_binary_cmp|gt|bit" or \
             mask.op.tag == "elewise_binary_vcmpv_gt")
-        if (src_input_constraint or ConvParam.dynamic_flag) and dtype_constraint and tag_constraint:
+        if src_input_constraint and dtype_constraint and tag_constraint:
             return True
     return False
 

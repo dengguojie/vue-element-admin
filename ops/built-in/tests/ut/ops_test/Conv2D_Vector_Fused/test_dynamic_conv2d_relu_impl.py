@@ -5,6 +5,8 @@ import tbe.dsl as tbe
 from tbe.dsl.unify_schedule.unify_auto_schedule import build
 import tbe.dsl.base.operation as operation
 from impl.dynamic import relu
+from impl.dynamic.conv2d import _conv2d_compute
+from impl.dynamic.relu import relu_compute
 from op_test_frame.ut import OpUT
 import tbe.common.register
 
@@ -32,9 +34,7 @@ def test_conv2d_relu_dynamic(test_arg):
     with operation.OperatorContext(operation.OpMode.DYNAMIC) as opc:
         opc.set_op_type("conv_relu")
         with operation.ComputeContext():
-            conv = tbe.common.register.get_op_compute('Conv2D')
-            relu = tbe.common.register.get_op_compute('Relu')
-            conv_res = conv(inputs,
+            conv_res = _conv2d_compute(inputs,
                             weights,
                             bias,
                             offset_w,
@@ -47,7 +47,7 @@ def test_conv2d_relu_dynamic(test_arg):
                             offset_x=offset_x,
                             kernel_name="conv2d")
 
-            relu_res = relu(conv_res['op_res'][0], relu_outputs, "relu")
+            relu_res = relu_compute(conv_res['op_res'][0], relu_outputs, "relu")
             with tvm.target.cce():
                 sch = tbe.auto_schedule(relu_res['op_res'])
             tensor_list = list(conv_res['op_placeholder']) + \

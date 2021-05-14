@@ -49,7 +49,8 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   }
 
   if (opCompileInfo.contains("fmap_c1") && opParas.inputs[0].tensor[0].shape[1] != opCompileInfo["fmap_c1"]) {
-    OP_LOGE(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups");
+    OP_LOGE(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups; x_channel=%d, fmap_c1=%d",
+            opParas.inputs[0].tensor[0].shape[1], opCompileInfo["fmap_c1"]);
     return false;
   }
 
@@ -57,6 +58,12 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     GELOGD("op compile info is empty");
     return false;
   }
+
+  int32_t batch = opParas.inputs[0].tensor[0].shape[nDim];
+  int32_t hi = opParas.inputs[0].tensor[0].shape[hDim];
+  int32_t wi = opParas.inputs[0].tensor[0].shape[wDim];
+  int32_t ho = opParas.outputs[0].tensor[0].shape[hDim];
+  int32_t wo = opParas.outputs[0].tensor[0].shape[wDim];
   // accurate build has only one item
   // fuzzy build has multiple items
   std::vector<std::string> varMap;
@@ -93,18 +100,21 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
   std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[nDim]);
+    var_value.insert(var_value.end(), batch);
   }
   if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[hDim]);
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[hDim]);
+    var_value.insert(var_value.end(), hi);
+    var_value.insert(var_value.end(), ho);
   }
   if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[wDim]);
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[wDim]);
+    var_value.insert(var_value.end(), wi);
+    var_value.insert(var_value.end(), wo);
   }
 
-  return cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opInfo, runInfo);
+  bool res = cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opInfo, runInfo);
+  GELOGD("conv2d tiling_data is %d, %d, %d, %d, %d, %d", runInfo.tiling_key, batch, hi, ho, wi, wo);
+
+  return res;
 }
 
 // register tiling interface of the conv2d

@@ -293,6 +293,10 @@ def calc_conv2d(outs, option=None):
             tgt_area["fmap_h"] = tuple(new_in_range[2])
         if tgt_area["fmap_w"][0] != tgt_area["fmap_w"][1]:
             tgt_area["fmap_w"] = tuple(new_in_range[3])
+    if get_te_var("fmap_h") and tgt_area["fmap_h"][0] == 1 and \
+        sum(ConvParam.para_dict["pad_h"]) == 0 and ConvParam.para_dict["filter_h"] == 1 and \
+        not ConvParam.tensor_map["l0a_load2d_flag"]:
+        tgt_area["fmap_h"] = tuple((2, tgt_area["fmap_h"][1]))
     tgt_list.append(tgt_area)
     # >>> start: generate tgt_area by format
     if fuzz_build:
