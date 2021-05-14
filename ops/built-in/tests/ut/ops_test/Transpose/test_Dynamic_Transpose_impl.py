@@ -35,6 +35,11 @@ def test_op_check_supported(test_arg):
     if check_supported(input_x, perm, output_y) == False:
         raise Exception("Failed to call check_supported in Transpose.")
 
+def test_op_check_supported(test_arg):
+    from impl.dynamic.transpose import _by_dynamic_static_union_version
+    if _by_dynamic_static_union_version((1, 24, 3, 20), 1) == False:
+        raise Exception("Failed to call check_supported in Transpose.")
+
 def test_op_check_supported_in_white_list_return_false(test_arg):
     from impl.dynamic.transpose import check_supported
     input_x = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
@@ -203,6 +208,47 @@ ut_case.add_precision_case("Ascend910A",
                                "precision_standard": precision_info.PrecisionStandard(0, 0)
                            })
 
+ut_case.add_precision_case(["Hi3796CV300ES","Hi3796CV300CS"],
+                           {
+                               "params":
+                                   [
+                                       {
+                                           "shape": (-1, 24, 3, 20),
+                                           "dtype": "float16",
+                                           "format": "ND",
+                                           "ori_shape": (-1, 24, 3, 20),
+                                           "range": ((1, 1), (24, 24), (3, 3), (20, 20),),
+                                           "run_shape": (1, 24, 3, 20),
+                                           "ori_format": "ND",
+                                           "param_type": "input"
+                                       },
+                                       {
+                                           "shape": (4,),
+                                           "run_shape": (4,),
+                                           "dtype": "int32",
+                                           "ori_shape": (4),
+                                           "ori_format" : "ND",
+                                           "format": "ND",
+                                           "value": np.array([3, 0, 1, 2]),
+                                           "value_need_in_tiling": True,
+                                           "param_type": "input"
+                                       },
+                                       {
+                                           "shape": (20, -1, 24, 3),
+                                           "dtype": "float16",
+                                           "format": "ND",
+                                           "ori_shape": (20, 1, 24, 3),
+                                           "range": ((20, 20), (1, 1), (24, 24), (3, 3), ),
+                                           "run_shape": (20, 1, 24, 3),
+                                           "ori_format": "ND",
+                                           "param_type": "output"
+                                       },
+                                   ],
+                               "calc_expect_func": calc_expect_func,
+                               "precision_standard": precision_info.PrecisionStandard(0, 0)
+                           })
+
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
-    ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910A", "Hi3796CV300ES", "Hi3796CV300CS"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+
