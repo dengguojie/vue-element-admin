@@ -78,6 +78,7 @@ mkdir -p ${DST_DIR}/AICPU/Tensorflow/third_party
 cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/secure_c_proto.cmake ${DST_DIR}/AICPU/Tensorflow/third_party
 cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/secure_c_kernel.cmake ${DST_DIR}/AICPU/Tensorflow/third_party
 cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/eigen.cmake ${DST_DIR}/AICPU/Tensorflow/third_party
+cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/protobuf_static.cmake ${DST_DIR}/AICPU/Tensorflow/third_party
 #1.2 PyTorch
 #cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/AICPU/PyTorch
 #cp -r ${SRC_DIR}/cpukernel/* ${DST_DIR}/AICPU//cpukernel
