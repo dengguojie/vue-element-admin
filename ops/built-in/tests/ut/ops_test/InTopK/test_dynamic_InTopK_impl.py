@@ -61,13 +61,21 @@ case5 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (55, 45
          "expect": "success",
          "support_expect": True}
 
+case6 = {"params": [{"shape": (-1, -1), "dtype": "float32", "ori_shape": (550, 700), "format": "ND", "ori_format": "ND", "range": ((1, 550), (1, 700))},
+                    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (550,),"ori_format": "ND", "range": ((1, 550), )},
+                    {"shape": (-1,), "dtype": "uint8", "format": "ND", "ori_shape": (550,),"ori_format": "ND", "range": ((1, 550), )},
+                    12],
+         "case_name": "InTopk_6",
+         "expect": "success",
+         "support_expect": True}
+
 
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

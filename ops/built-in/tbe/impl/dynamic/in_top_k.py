@@ -36,6 +36,10 @@ FP_MIN = -1
 # The size of each vector instruction processing data
 V_SIZE_BYTES = 256
 
+BIG_DIM0_TYPE = 1
+BIG_DIM1_TYPE = 2
+OTHER_TYPE = 3
+
 class GlobalVarGM:
     """GlobalVarGM Class Defination"""
     def __init__(self, tik_instance):
@@ -150,8 +154,8 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     predictions_shape = predictions.get("shape")
     target_shape = targets.get("shape")
     prediction_dtype = predictions.get("dtype").lower()
-    target_dtype = targets.get("dtype").lower()
-    precision_dtype = precision.get("dtype").lower()
+    target_dtype = "int32"
+    precision_dtype = 'uint8'
 
     tik_instance = tik.Tik()
     obj_gm = GlobalVarGM(tik_instance)
@@ -210,7 +214,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
 
     real_core_num = obj_tiling.get_core_num()
     with tik_instance.if_scope(tik.any(k <= 0, k > column)):
-        _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k)
+        _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets)
     with tik_instance.else_scope():
         with tik_instance.for_range(0, mini_cloud_core_nums, block_num=mini_cloud_core_nums) as core_loop:
             with tik_instance.if_scope(core_loop < real_core_num):
@@ -220,21 +224,21 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
                 }
                 with tik_instance.if_scope(core_row_capicity > 0):
                     with tik_instance.if_scope(row <= BLOCK_SIZE):
-                        _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k)
+                        _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
                     with tik_instance.else_scope():
                         with tik_instance.if_scope(core_row_capicity < BLOCK_SIZE):
-                            _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k)
+                            _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
                         with tik_instance.else_scope():
-                            _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k)
+                            _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
                 with tik_instance.else_scope():
-                    _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k)
+                    _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
 
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[obj_gm.get_predictions_gm(), obj_gm.get_targets_gm()],
                           outputs=[obj_gm.get_tensor_output_gm()], flowtable=(obj_gm.tiling_gm, ))
     return tik_instance
 
 
-def _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k):
+def _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_special_k function of the in_top_k
 
@@ -251,7 +255,7 @@ def _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k):
     row = obj_tiling.get_rows_num()
     column = obj_tiling.get_cols_num()
 
-    target_dtype = "int32"
+    target_dtype = targets.get('dtype').lower()
     precision_dtype = obj_gm.get_tensor_output_gm().dtype
     if k <= 0:
         element = 0
@@ -331,7 +335,7 @@ def calc_invalid_mask(tik_instance, target_ub, mask_len, column, tensor_zero, ds
     """
     repeat_time = 1
     deq_scale = 1.0
-    if(flag == 0):
+    if flag == 0:
         src1 = tik_instance.Tensor(dtype="int32",
                                    shape=(128, ),
                                    name="src1",
@@ -351,7 +355,7 @@ def calc_invalid_mask(tik_instance, target_ub, mask_len, column, tensor_zero, ds
         return mask
 
 
-def _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
+def _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_single_core function
 
@@ -380,6 +384,7 @@ def _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
     row_remainder = row - (split_row_times - 1) * row_nums
     core_nums = split_row_times
     split_rows_nums = 0
+    shape_info["targets_dtype"] = targets.get("dtype").lower()
 
     # copy predictions to ub from gm.
     # if the last dimension is not divided by 32 bytes, just aligned.
@@ -393,14 +398,25 @@ def _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
         shape_info["column_aligned"] = column_aligned
         shape_info["split_rows_nums"] = split_rows_nums
         shape_info["max_tensor_size"] = max_tensor_size
-        tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k)
+
         length = tik_instance.Scalar("int64")
         length.set_as(row_nums + BLOCK_SIZE - 1)
-        tik_instance.data_move(obj_gm.get_tensor_output_gm()[outer_loop * row_nums], tensor_output_ub,
-                               0, 1, length // BLOCK_SIZE, 0, 0)
+        with tik_instance.if_scope(column_aligned <= 64):
+            tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, BIG_DIM0_TYPE)
+            tik_instance.data_move(obj_gm.get_tensor_output_gm()[outer_loop * row_nums], tensor_output_ub,
+                                       0, 1, length // BLOCK_SIZE, 0, 0)
+        with tik_instance.else_scope():
+            with tik_instance.if_scope(column_aligned <= 4096):
+                tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, BIG_DIM1_TYPE)
+                tik_instance.data_move(obj_gm.get_tensor_output_gm()[outer_loop * row_nums], tensor_output_ub,
+                                       0, 1, length // BLOCK_SIZE, 0, 0)
+            with tik_instance.else_scope():
+                tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, OTHER_TYPE)
+                tik_instance.data_move(obj_gm.get_tensor_output_gm()[outer_loop * row_nums], tensor_output_ub,
+                                       0, 1, length // BLOCK_SIZE, 0, 0)
 
 
-def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
+def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, mask):
     """"
     the _in_top_k_inter_process function
 
@@ -433,7 +449,7 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     carry = 2
     block_element = BLOCK_SIZE // element_bytes
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = shape_info.get("targets_dtype")
     core_row_num = tik_instance.Scalar("int64")
 
     # step 0: set some shape value of tensor in UB.
@@ -446,8 +462,16 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
                                                shape=(max_tensor_size // element_bytes, ),
                                                name="prediction_tensor_ub",
                                                scope=tik.scope_ubuf)
+
+    if mask == BIG_DIM0_TYPE:
+        target_shape = (max_tensor_size // element_bytes // 8, ) 
+    elif mask == BIG_DIM1_TYPE:
+        target_shape = (max_tensor_size // element_bytes // 72, )
+    else:
+        target_shape = (BLOCK_SIZE, )
+
     target_ub = tik_instance.Tensor(dtype=target_dtype,
-                                    shape=(BLOCK_SIZE, ),
+                                    shape=target_shape,
                                     name="target_ub",
                                     scope=tik.scope_ubuf)
     tik_instance.data_move(target_ub, target_tensor[index1], 0, 1, (core_row_num + block_element - 1) // block_element,
@@ -460,16 +484,18 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
         tik_instance.data_move(prediction_tensor_ub, prediction_tensor[index], 0, 1, length // block_element, 0, 0)
     with tik_instance.else_scope():
         index = index1 * column
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.data_move(prediction_tensor_ub[i * column_aligned], prediction_tensor[index + i * column], 0,
-                                   1, column_aligned // block_element, 0, 0)
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.data_move(prediction_tensor_ub[i * column_aligned], prediction_tensor[index + i * column], 0,
+                                       1, column_aligned // block_element, 0, 0)
 
         # dirty data set as FP_MIN, for example, A[:,1:15] is target data, then set A[:,15:16] as FP_MIN.
         reg_data = tik_instance.Scalar(prediction_dtype)
         reg_data.set_as(FP_MIN)
-        with tik_instance.for_range(0, core_row_num) as i:
-            with tik_instance.for_range(0, column_aligned - column) as j:
-                prediction_tensor_ub[i * column_aligned + column + j] = reg_data
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                with tik_instance.for_range(0, column_aligned - column) as j:
+                    prediction_tensor_ub[i * column_aligned + column + j] = reg_data
 
     # step 1: index the predictions's elements according to the targets.
     # the result is in tensor data_ub.
@@ -483,29 +509,31 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     column_reduce_remainder = column_aligned % half_mask_value
 
     with tik_instance.if_scope(column_reduce_times > 0):
-        with tik_instance.for_range(0, core_row_num) as i:
-            scalar_target = tik_instance.Scalar(target_dtype, "scalar_target")
-            scalar_target.set_as(target_ub[i])
-            with tik_instance.if_scope(tik.any(scalar_target < 0, scalar_target >= column)):
-                scalar_target.set_as(0)
-            scalar_value = tik_instance.Scalar(prediction_dtype)
-            scalar_value.set_as(prediction_tensor_ub[i * column_aligned + scalar_target])
-            tik_instance.vector_dup(half_mask_value, data_ub[i * column_aligned], scalar_value, column_reduce_times, 1,
-                                    8, 0)
-            with tik_instance.if_scope(column_reduce_remainder != 0):
-                tik_instance.vector_dup(column_reduce_remainder,
-                                        data_ub[i * column_aligned + column_reduce_times * half_mask_value],
-                                        scalar_value, 1, 1, 1, 0)
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                scalar_target = tik_instance.Scalar(target_dtype, "scalar_target")
+                scalar_target.set_as(target_ub[i])
+                with tik_instance.if_scope(tik.any(scalar_target < 0, scalar_target >= column)):
+                    scalar_target.set_as(0)
+                scalar_value = tik_instance.Scalar(prediction_dtype)
+                scalar_value.set_as(prediction_tensor_ub[i * column_aligned + scalar_target])
+                tik_instance.vector_dup(half_mask_value, data_ub[i * column_aligned], scalar_value, column_reduce_times, 1,
+                                        8, 0)
+                with tik_instance.if_scope(column_reduce_remainder != 0):
+                    tik_instance.vector_dup(column_reduce_remainder,
+                                            data_ub[i * column_aligned + column_reduce_times * half_mask_value],
+                                            scalar_value, 1, 1, 1, 0)
 
     with tik_instance.else_scope():
-        with tik_instance.for_range(0, core_row_num) as i:
-            scalar_target = tik_instance.Scalar(target_dtype, "scalar_target")
-            scalar_target.set_as(target_ub[i])
-            with tik_instance.if_scope(tik.any(scalar_target < 0, scalar_target >= column)):
-                scalar_target.set_as(0)
-            scalar_value = tik_instance.Scalar(prediction_dtype)
-            scalar_value.set_as(prediction_tensor_ub[i * column_aligned + scalar_target])
-            tik_instance.vector_dup(column_reduce_remainder, data_ub[i * column_aligned], scalar_value, 1, 1, 1, 0)
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                scalar_target = tik_instance.Scalar(target_dtype, "scalar_target")
+                scalar_target.set_as(target_ub[i])
+                with tik_instance.if_scope(tik.any(scalar_target < 0, scalar_target >= column)):
+                    scalar_target.set_as(0)
+                scalar_value = tik_instance.Scalar(prediction_dtype)
+                scalar_value.set_as(prediction_tensor_ub[i * column_aligned + scalar_target])
+                tik_instance.vector_dup(column_reduce_remainder, data_ub[i * column_aligned], scalar_value, 1, 1, 1, 0)
 
     # step 2, prediction_tensor subtract data_ub.
     column_remainder = column % half_mask_value
@@ -518,19 +546,21 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
                                    scope=tik.scope_ubuf)
 
     with tik_instance.if_scope(reduce_times > 0):
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vsub(half_mask_value, prediction_tensor_ub[i * column_aligned],
-                              prediction_tensor_ub[i * column_aligned], data_ub[i * column_aligned], reduce_times, 1, 1,
-                              1, 8, 8, 8)
-            with tik_instance.if_scope(column_remainder != 0):
-                index = reduce_times * half_mask_value + i * column_aligned
-                tik_instance.vsub(column_remainder, prediction_tensor_ub[index], prediction_tensor_ub[index],
-                                  data_ub[index], 1, 1, 1, 1, 8, 8, 8)
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vsub(half_mask_value, prediction_tensor_ub[i * column_aligned],
+                                  prediction_tensor_ub[i * column_aligned], data_ub[i * column_aligned], reduce_times, 1, 1,
+                                  1, 8, 8, 8)
+                with tik_instance.if_scope(column_remainder != 0):
+                    index = reduce_times * half_mask_value + i * column_aligned
+                    tik_instance.vsub(column_remainder, prediction_tensor_ub[index], prediction_tensor_ub[index],
+                                      data_ub[index], 1, 1, 1, 1, 8, 8, 8)
     with tik_instance.else_scope():
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vsub(column_remainder, prediction_tensor_ub[i * column_aligned],
-                              prediction_tensor_ub[i * column_aligned], data_ub[i * column_aligned], 1, 1, 1, 1, 8, 8,
-                              8)
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vsub(column_remainder, prediction_tensor_ub[i * column_aligned],
+                                  prediction_tensor_ub[i * column_aligned], data_ub[i * column_aligned], 1, 1, 1, 1, 8, 8,
+                                  8)
 
     with tik_instance.if_scope(repeat_times > 0):
         tik_instance.vector_dup(mask_value, half_sub, 0, repeat_times, 1, 8)
@@ -538,19 +568,22 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
         tik_instance.vector_dup(tail_mask, half_sub[repeat_times * mask_value], 0, 1, 1, 8)
 
     with tik_instance.if_scope(column_reduce_times > 0):
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vconv(half_mask_value, '', half_sub[i * column_aligned * carry],
-                               prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 4, 8)
-        with tik_instance.if_scope(column_reduce_remainder != 0):
+        with tik_instance.new_stmt_scope(disable_sync=True):
             with tik_instance.for_range(0, core_row_num) as i:
-                tik_instance.vconv(column_reduce_remainder, '',
-                                   half_sub[column_reduce_times * half_mask_value + carry * i * column_aligned],
-                                   prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value], 1,
-                                   1, 1, 4, 8)
+                tik_instance.vconv(half_mask_value, '', half_sub[i * column_aligned * carry],
+                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 4, 8)
+        with tik_instance.if_scope(column_reduce_remainder != 0):
+            with tik_instance.new_stmt_scope(disable_sync=True):
+                with tik_instance.for_range(0, core_row_num) as i:
+                    tik_instance.vconv(column_reduce_remainder, '',
+                                       half_sub[column_reduce_times * half_mask_value + carry * i * column_aligned],
+                                       prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value], 1,
+                                       1, 1, 4, 8)
     with tik_instance.else_scope():
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vconv(column_reduce_remainder, '', half_sub[carry * i * column_aligned],
-                               prediction_tensor_ub[i * column_aligned], 1, 1, 1, 4, 8)
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vconv(column_reduce_remainder, '', half_sub[carry * i * column_aligned],
+                                   prediction_tensor_ub[i * column_aligned], 1, 1, 1, 4, 8)
 
     # step 3, if half_sub[i, j] > 0, then the according element data_sign[i, j] set 1, else 0.
     column_reduce_times = column_aligned // mask_value
@@ -581,25 +614,27 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     tik_instance.vector_dup(mask_value, data_ones, one, 1, 1, 1, 0)
 
     with tik_instance.if_scope(column_reduce_times > 0):
-        with tik_instance.for_range(0, core_row_num) as i:
-            with tik_instance.for_range(0, column_reduce_times) as j:
-                srcmask = tik_instance.vcmp_gt(mask_value, half_sub[i * column_aligned * carry + mask_value * j],
-                                               data_zeros, 1, 1)
-                tik_instance.vsel(mask_value, 0, data_sign[i * column_aligned * carry + mask_value * j], srcmask,
-                                  data_ones, data_zeros, 1, 1, 1, 1)
-            with tik_instance.if_scope(column_reduce_remainder != 0):
-                srcmask = tik_instance.vcmp_gt(column_reduce_remainder,
-                                               half_sub[i * column_aligned * carry + column_reduce_times * mask_value],
-                                               data_zeros, 1, 1)
-                tik_instance.vsel(column_reduce_remainder, 0,
-                                  data_sign[i * column_aligned * carry + column_reduce_times * mask_value], srcmask,
-                                  data_ones, data_zeros, 1, 1, 1, 1)
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                with tik_instance.for_range(0, column_reduce_times) as j:
+                    srcmask = tik_instance.vcmp_gt(mask_value, half_sub[i * column_aligned * carry + mask_value * j],
+                                                   data_zeros, 1, 1)
+                    tik_instance.vsel(mask_value, 0, data_sign[i * column_aligned * carry + mask_value * j], srcmask,
+                                      data_ones, data_zeros, 1, 1, 1, 1)
+                with tik_instance.if_scope(column_reduce_remainder != 0):
+                    srcmask = tik_instance.vcmp_gt(column_reduce_remainder,
+                                                   half_sub[i * column_aligned * carry + column_reduce_times * mask_value],
+                                                   data_zeros, 1, 1)
+                    tik_instance.vsel(column_reduce_remainder, 0,
+                                      data_sign[i * column_aligned * carry + column_reduce_times * mask_value], srcmask,
+                                      data_ones, data_zeros, 1, 1, 1, 1)
     with tik_instance.else_scope():
-        with tik_instance.for_range(0, core_row_num) as i:
-            srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub[i * column_aligned * carry], data_zeros, 1,
-                                           1)
-            tik_instance.vsel(column_reduce_remainder, 0, data_sign[i * column_aligned * carry], srcmask, data_ones,
-                              data_zeros, 1, 1, 1, 1)
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, core_row_num) as i:
+                srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub[i * column_aligned * carry], data_zeros, 1,
+                                               1)
+                tik_instance.vsel(column_reduce_remainder, 0, data_sign[i * column_aligned * carry], srcmask, data_ones,
+                                  data_zeros, 1, 1, 1, 1)
 
     # step 4: do reduce sum in each row of data_sign to count the number which larger than the element indexing from
     # the target.
@@ -607,15 +642,17 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     column_reduce_remainder = column_aligned % half_mask_value
 
     with tik_instance.if_scope(column_reduce_times > 0):
-        with tik_instance.for_range(0, core_row_num) as i:
-            tik_instance.vconv(half_mask_value, '', prediction_tensor_ub[i * column_aligned],
-                               data_sign[i * column_aligned * carry], column_reduce_times, 1, 1, 8, 4)
-        with tik_instance.if_scope(column_reduce_remainder != 0):
+        with tik_instance.new_stmt_scope(disable_sync=True):
             with tik_instance.for_range(0, core_row_num) as i:
-                tik_instance.vconv(column_reduce_remainder, '',
-                                   prediction_tensor_ub[column_reduce_times * half_mask_value + i * column_aligned],
-                                   data_sign[carry * i * column_aligned + column_reduce_times * half_mask_value], 1, 1,
-                                   1, 8, 4)
+                tik_instance.vconv(half_mask_value, '', prediction_tensor_ub[i * column_aligned],
+                                   data_sign[i * column_aligned * carry], column_reduce_times, 1, 1, 8, 4)
+        with tik_instance.if_scope(column_reduce_remainder != 0):
+            with tik_instance.new_stmt_scope(disable_sync=True):
+                with tik_instance.for_range(0, core_row_num) as i:
+                    tik_instance.vconv(column_reduce_remainder, '',
+                                       prediction_tensor_ub[column_reduce_times * half_mask_value + i * column_aligned],
+                                       data_sign[carry * i * column_aligned + column_reduce_times * half_mask_value], 1, 1,
+                                       1, 8, 4)
     with tik_instance.else_scope():
         with tik_instance.for_range(0, core_row_num) as i:
             tik_instance.vconv(column_reduce_remainder, '', prediction_tensor_ub[i * column_aligned],
@@ -628,82 +665,85 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
         reduce_mask.set_as(column_reduce_times)
 
     data_bool = tik_instance.Tensor(dtype="float32",
-                                    shape=(BLOCK_SIZE, ),
+                                    shape=target_shape,
                                     name="data_bool",
                                     scope=tik.scope_ubuf)
-    with tik_instance.if_scope(reduce_mask == 1):
+
+    if mask == BIG_DIM0_TYPE:
+        with tik_instance.if_scope(column_reduce_remainder != 0):
+            with tik_instance.new_stmt_scope(disable_sync=True):
+                with tik_instance.for_range(0, core_row_num) as i:
+                    tik_instance.vcadd(column_reduce_remainder, data_bool[i], prediction_tensor_ub[i * column_aligned], 1,
+                                       1, 1, 1, 0)
+        with tik_instance.else_scope():
+            with tik_instance.new_stmt_scope(disable_sync=True):
+                with tik_instance.for_range(0, core_row_num) as i:
+                    tik_instance.vcadd(half_mask_value, data_bool[i], prediction_tensor_ub[i * column_aligned], 1, 1, 1, 1,
+                                       0)
+    elif mask == BIG_DIM1_TYPE:
+        tensor_sec_reduce = tik_instance.Tensor(dtype="float32",
+                                                shape=(max_tensor_size // element_bytes // 72, half_mask_value),
+                                                name="tensor_sec_reduce",
+                                                scope=tik.scope_ubuf)
+        zeros_init = tik_instance.Scalar("float32")
+        zeros_init.set_as(0)
+        with tik_instance.if_scope(column_reduce_remainder != 0):
+            tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
+            with tik_instance.for_range(0, core_row_num) as i:
+                tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
+                                  prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+                tik_instance.vcadd(column_reduce_remainder,
+                                  tensor_sec_reduce[i * half_mask_value + column_reduce_times],
+                                  prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value],
+                                  1, 1, 1, 1, 0)
+            tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
+        with tik_instance.else_scope():
+            tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
+            with tik_instance.new_stmt_scope(disable_sync=True):
+                with tik_instance.for_range(0, core_row_num) as i:
+                    tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
+                                       prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+            tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
+    else:
+        tensor_third_reduce = tik_instance.Tensor(dtype="float32",
+                                                  shape=(BLOCK_SIZE, V_SIZE_BYTES),
+                                                  name="tensor_third_reduce",
+                                                  scope=tik.scope_ubuf)
+        tensor_sec_reduce = tik_instance.Tensor(dtype="float32",
+                                                shape=(BLOCK_SIZE, half_mask_value),
+                                                name="tensor_sec_reduce",
+                                                scope=tik.scope_ubuf)
+        zeros_init = tik_instance.Scalar("float32")
+        zeros_init.set_as(0)
+
+        tik_instance.vector_dup(half_mask_value, tensor_third_reduce, zeros_init, row_nums * 4, 1, 8, 0)
+        tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
         with tik_instance.if_scope(column_reduce_remainder != 0):
             with tik_instance.for_range(0, core_row_num) as i:
-                tik_instance.vcadd(column_reduce_remainder, data_bool[i], prediction_tensor_ub[i * column_aligned], 1,
-                                   1, 1, 1, 0)
+                tik_instance.vcadd(half_mask_value, tensor_third_reduce[i * V_SIZE_BYTES],
+                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+                tik_instance.vcadd(column_reduce_remainder,
+                                   tensor_third_reduce[i * V_SIZE_BYTES + column_reduce_times],
+                                   prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value],
+                                   1, 1, 1, 8, 0)
+                tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
+                                   tensor_third_reduce[i * V_SIZE_BYTES], 4, 1, 1, 8, 0)
+            tik_instance.vcadd(half_mask_value, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
         with tik_instance.else_scope():
             with tik_instance.for_range(0, core_row_num) as i:
-                tik_instance.vcadd(half_mask_value, data_bool[i], prediction_tensor_ub[i * column_aligned], 1, 1, 1, 1,
-                                   0)
-    with tik_instance.else_scope():
-        with tik_instance.if_scope(reduce_mask <= half_mask_value):
-            tensor_sec_reduce = tik_instance.Tensor(dtype="float32",
-                                                    shape=(BLOCK_SIZE, half_mask_value),
-                                                    name="tensor_sec_reduce",
-                                                    scope=tik.scope_ubuf)
-            zeros_init = tik_instance.Scalar("float32")
-            zeros_init.set_as(0)
-            with tik_instance.if_scope(column_reduce_remainder != 0):
-                tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
-                with tik_instance.for_range(0, core_row_num) as i:
-                    tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
-                                      prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
-                    tik_instance.vcadd(column_reduce_remainder,
-                                      tensor_sec_reduce[i * half_mask_value + column_reduce_times],
-                                      prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value],
-                                      1, 1, 1, 1, 0)
-                tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
-            with tik_instance.else_scope():
-                tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
-                with tik_instance.for_range(0, core_row_num) as i:
-                    tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
-                                       prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
-                tik_instance.vcadd(reduce_mask, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
-        with tik_instance.else_scope():
-            tensor_third_reduce = tik_instance.Tensor(dtype="float32",
-                                                      shape=(BLOCK_SIZE, V_SIZE_BYTES),
-                                                      name="tensor_third_reduce",
-                                                      scope=tik.scope_ubuf)
-            tensor_sec_reduce = tik_instance.Tensor(dtype="float32",
-                                                    shape=(BLOCK_SIZE, half_mask_value),
-                                                    name="tensor_sec_reduce",
-                                                    scope=tik.scope_ubuf)
-            zeros_init = tik_instance.Scalar("float32")
-            zeros_init.set_as(0)
-
-            tik_instance.vector_dup(half_mask_value, tensor_third_reduce, zeros_init, row_nums * 4, 1, 8, 0)
-            tik_instance.vector_dup(half_mask_value, tensor_sec_reduce, zeros_init, row_nums, 1, 8, 0)
-            with tik_instance.if_scope(column_reduce_remainder != 0):
-                with tik_instance.for_range(0, core_row_num) as i:
-                    tik_instance.vcadd(half_mask_value, tensor_third_reduce[i * V_SIZE_BYTES],
-                                       prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
-                    tik_instance.vcadd(column_reduce_remainder,
-                                       tensor_third_reduce[i * V_SIZE_BYTES + column_reduce_times],
-                                       prediction_tensor_ub[i * column_aligned + column_reduce_times * half_mask_value],
-                                       1, 1, 1, 8, 0)
-                    tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
-                                       tensor_third_reduce[i * V_SIZE_BYTES], 4, 1, 1, 8, 0)
-                tik_instance.vcadd(half_mask_value, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
-            with tik_instance.else_scope():
-                with tik_instance.for_range(0, core_row_num) as i:
-                    tik_instance.vcadd(half_mask_value, tensor_third_reduce[i * V_SIZE_BYTES],
-                                       prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
-                    tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
-                                       tensor_third_reduce[i * V_SIZE_BYTES], 4, 1, 1, 8, 0)
-                tik_instance.vcadd(half_mask_value, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
+                tik_instance.vcadd(half_mask_value, tensor_third_reduce[i * V_SIZE_BYTES],
+                                   prediction_tensor_ub[i * column_aligned], column_reduce_times, 1, 1, 8, 0)
+                tik_instance.vcadd(half_mask_value, tensor_sec_reduce[i * half_mask_value],
+                                   tensor_third_reduce[i * V_SIZE_BYTES], 4, 1, 1, 8, 0)
+            tik_instance.vcadd(half_mask_value, data_bool, tensor_sec_reduce, row_nums, 1, 1, 8, 0)
 
     # if data_bool[i] < k, then the tensor_output[i] is true, else is false(represented by 0 and 1).
     data_k = tik_instance.Tensor(dtype="float32",
-                                 shape=(BLOCK_SIZE, ),
+                                 shape=target_shape,
                                  name="data_k",
                                  scope=tik.scope_ubuf)
     tensor_bool = tik_instance.Tensor(dtype="float16",
-                                      shape=(BLOCK_SIZE, ),
+                                      shape=target_shape,
                                       name="tensor_bool",
                                       scope=tik.scope_ubuf)
 
@@ -713,10 +753,23 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     repeat_times = row_nums // half_mask_value
     repeat_remainder = row_nums % half_mask_value
 
-    with tik_instance.if_scope(repeat_times == 0):
-        tik_instance.vector_dup(row_nums, data_k, k_conv_dtype, 1, 1, 1, 0)
-        tik_instance.vsub(repeat_remainder, data_bool, data_k, data_bool, 1, 1, 1, 1, 8, 8, 8)
-        tik_instance.vconv(repeat_remainder, '', tensor_bool, data_bool, 1, 1, 1, 8, 8)
+    with tik_instance.if_scope(repeat_remainder == 0):
+        tik_instance.vector_dup(half_mask_value, data_k, k_conv_dtype, repeat_times, 1, 8, 0)
+        tik_instance.vsub(half_mask_value, data_bool, data_k, data_bool, repeat_times, 1, 1, 1, 8, 8, 8)
+        tik_instance.vconv(half_mask_value, '', tensor_bool, data_bool, repeat_times, 1, 1, 4, 8)
+    with tik_instance.else_scope():
+        with tik_instance.if_scope(repeat_times == 0):
+            tik_instance.vector_dup(row_nums, data_k, k_conv_dtype, 1, 1, 1, 0)
+            tik_instance.vsub(repeat_remainder, data_bool, data_k, data_bool, 1, 1, 1, 1, 8, 8, 8)
+            tik_instance.vconv(repeat_remainder, '', tensor_bool, data_bool, 1, 1, 1, 8, 8)
+        with tik_instance.else_scope():
+            index = repeat_times * half_mask_value
+            tik_instance.vector_dup(half_mask_value, data_k, k_conv_dtype, repeat_times, 1, 8, 0)
+            tik_instance.vector_dup(repeat_remainder, data_k[index], k_conv_dtype, 1, 1, 1, 0)
+            tik_instance.vsub(half_mask_value, data_bool, data_k, data_bool, repeat_times, 1, 1, 1, 8, 8, 8)
+            tik_instance.vconv(half_mask_value, '', tensor_bool, data_bool, repeat_times, 1, 1, 4, 8)
+            tik_instance.vsub(repeat_remainder, data_bool[index], data_k[index], data_bool[index], 1, 1, 1, 1, 8, 8, 8)
+            tik_instance.vconv(repeat_remainder, '', tensor_bool[index], data_bool[index], 1, 1, 1, 4 ,8)
 
     tensor_zeros = tik_instance.Tensor(dtype="float16",
                                        shape=(BLOCK_SIZE, ),
@@ -735,11 +788,11 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     tik_instance.vector_dup(BLOCK_SIZE, tensor_ones, ones_uint8, 1, 1, 1, 0)
 
     data_bool_ub = tik_instance.Tensor(dtype="float16",
-                                       shape=(BLOCK_SIZE, ),
+                                       shape=target_shape,
                                        name="data_bool_ub",
                                        scope=tik.scope_ubuf)
     tensor_output_ub = tik_instance.Tensor(dtype=obj_gm.get_tensor_output_gm().dtype,
-                                           shape=(BLOCK_SIZE, ),
+                                           shape=target_shape,
                                            name="tensor_output_ub",
                                            scope=tik.scope_ubuf)
 
@@ -791,7 +844,7 @@ def _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k):
     return tensor_output_ub
 
 
-def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
+def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_mul_core_v2 function
 
@@ -808,7 +861,7 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
     ----------
     """
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = targets.get("dtype")
     row = obj_tiling.get_rows_num()
     column = obj_tiling.get_cols_num()
 
@@ -833,6 +886,7 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
     last_single_core_times = (split_remainder + core_row_capicity - 1) // core_row_capicity
     last_non_tail_block = last_single_core_times - 1
     last_row_remainder = split_remainder - last_non_tail_block * core_row_capicity
+    shape_info["targets_dtype"] = target_dtype
     with tik_instance.if_scope(split_core_nums <= mini_cloud_core_nums):
         with tik_instance.if_scope(core_loop < split_core_nums):
             outer_core_num = tik_instance.Scalar("int64")
@@ -857,9 +911,14 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
                     shape_info["column_aligned"] = column_aligned
                     shape_info["split_rows_nums"] = split_rows_nums
                     shape_info["max_tensor_size"] = max_tensor_size
-                    tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k)
-                    with tik_instance.for_range(0, core_row_num) as i:
-                        output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
+                    with tik_instance.if_scope(column_aligned <= 4096):
+                        tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, BIG_DIM1_TYPE)
+                        with tik_instance.for_range(0, core_row_num) as i:
+                            output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
+                    with tik_instance.else_scope():
+                        tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, OTHER_TYPE)
+                        with tik_instance.for_range(0, core_row_num) as i:
+                            output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
             with tik_instance.else_scope():
                 outer_core_num.set_as(split_remainder)
                 with tik_instance.for_range(0, last_single_core_times) as outer_loop:
@@ -877,27 +936,47 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
                         core_row_num.set_as(row_nums)
                     with tik_instance.else_scope():
                         core_row_num.set_as(last_row_remainder)
-                    tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k)
-                    with tik_instance.for_range(0, core_row_num) as i:
-                        output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
+                    with tik_instance.if_scope(column_aligned <= 4096):
+                        tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, 2)
+                        with tik_instance.for_range(0, core_row_num) as i:
+                            output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
+                    with tik_instance.else_scope():
+                        tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, 3)
+                        with tik_instance.for_range(0, core_row_num) as i:
+                            output_ub[outer_loop * row_nums + i] = tensor_output_ub[i]
             index = core_loop * BLOCK_SIZE
             tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], output_ub, 0, 1, 1, 0, 0)
     with tik_instance.else_scope():
         row_align = (row + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
-        need_row_core = row_align // mini_cloud_core_nums // BLOCK_SIZE * BLOCK_SIZE
-        last_core = row - need_row_core * (mini_cloud_core_nums - 1)
+        core_split = tik_instance.Scalar(dtype="int64", name="core_split")
+        index_base = tik_instance.Scalar(dtype="int64", name="index_base")
         split_time1 = tik_instance.Scalar(dtype="int64", name="split_time1")
         split_remainder1 = tik_instance.Scalar(dtype="int64", name="split_remainder1")
         output_ub = tik_instance.Tensor(dtype="uint8",
                                         shape=(BLOCK_SIZE, ),
                                         name="output_ub",
                                         scope=tik.scope_ubuf)
-        with tik_instance.if_scope(core_loop < mini_cloud_core_nums - 1):
-            split_time1.set_as((need_row_core + BLOCK_SIZE - 1) // BLOCK_SIZE)
-            split_remainder1.set_as(need_row_core - (split_time1 - 1) * BLOCK_SIZE)
+        need_row_core1 = (row_align // mini_cloud_core_nums) // BLOCK_SIZE * BLOCK_SIZE
+        need_row_core2 = (row_align // mini_cloud_core_nums + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
+        with tik_instance.if_scope(need_row_core1 == need_row_core2):
+            core_split.set_as(0)
         with tik_instance.else_scope():
-            split_time1.set_as((last_core + BLOCK_SIZE) // BLOCK_SIZE)
-            split_remainder1.set_as(last_core - (split_time1 - 1) * BLOCK_SIZE)
+            core_split.set_as((need_row_core2 * mini_cloud_core_nums - row_align) // (need_row_core2 - need_row_core1))
+        last_core = row - core_split * need_row_core1 - (mini_cloud_core_nums - core_split - 1) * need_row_core2
+        
+        with tik_instance.if_scope(core_loop < core_split):
+            index_base.set_as(core_loop * need_row_core1)
+            split_time1.set_as((need_row_core1 + BLOCK_SIZE - 1) // BLOCK_SIZE)
+            split_remainder1.set_as(need_row_core1 - (split_time1 - 1) * BLOCK_SIZE)
+        with tik_instance.else_scope():
+            index_base.set_as(need_row_core1 * core_split + (core_loop - core_split) * need_row_core2)
+            with tik_instance.if_scope(core_loop < mini_cloud_core_nums - 1):
+                split_time1.set_as((need_row_core2 + BLOCK_SIZE - 1) // BLOCK_SIZE)
+                split_remainder1.set_as(need_row_core2 - (split_time1 - 1) * BLOCK_SIZE)
+            with tik_instance.else_scope():
+                split_time1.set_as((last_core + BLOCK_SIZE) // BLOCK_SIZE)
+                split_remainder1.set_as(last_core - (split_time1 - 1) * BLOCK_SIZE)
+
         with tik_instance.for_range(0, split_time1) as split_loop:
             split_time2 = tik_instance.Scalar(dtype="int64", name="split_time2")
             split_remainder2 = tik_instance.Scalar(dtype="int64", name="split_remainder2")
@@ -910,7 +989,7 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
             with tik_instance.for_range(0, split_time2) as outer_loop:
                 core_row_num = tik_instance.Scalar(dtype="int64", name="core_row_num")
                 shape_info["outer_loop"] = outer_loop
-                shape_info["index"] = need_row_core * core_loop + BLOCK_SIZE * split_loop + core_row_capicity * outer_loop
+                shape_info["index"] = index_base + BLOCK_SIZE * split_loop + core_row_capicity * outer_loop
                 shape_info["core_nums"] = split_time2
                 shape_info["row_remainder"] = split_remainder2
                 shape_info["row_nums"] = core_row_capicity
@@ -923,14 +1002,19 @@ def _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k):
                     core_row_num.set_as(core_row_capicity)
                 with tik_instance.else_scope():
                     core_row_num.set_as(split_remainder2)
-                tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k)
-                with tik_instance.for_range(0, core_row_num) as i:
-                    output_ub[outer_loop * core_row_capicity + i] = tensor_output_ub[i]
-            index = need_row_core * core_loop + BLOCK_SIZE * split_loop
+                with tik_instance.if_scope(column_aligned <= 4096):
+                    tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, 2)
+                    with tik_instance.for_range(0, core_row_num) as i:
+                        output_ub[outer_loop * core_row_capicity + i] = tensor_output_ub[i]
+                with tik_instance.else_scope():
+                    tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, 3)
+                    with tik_instance.for_range(0, core_row_num) as i:
+                        output_ub[outer_loop * core_row_capicity + i] = tensor_output_ub[i]
+            index = index_base + BLOCK_SIZE * split_loop
             tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], output_ub, 0, 1, 1, 0, 0)
 
 
-def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
+def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_mul_core function
 
@@ -955,11 +1039,13 @@ def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
     max_tensor_size = UB_SIZE_BYTES // coexisting_tensor_num
     split_rows_nums = 0
     mini_cloud_core_nums = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    core_row_capicity = max_tensor_size // (column_aligned * element_bytes)
     core_loop = shape_info.get("core_loop")
 
     row_split_num = (row + BLOCK_SIZE - 1) // BLOCK_SIZE
     row_nums = tik_instance.Scalar(dtype="int64", name="row_nums")
 
+    shape_info["targets_dtype"] = targets.get("dtype")
     with tik_instance.if_scope(row_split_num <= mini_cloud_core_nums):
         row_nums.set_as(BLOCK_SIZE)
         core_nums = (row + row_nums - 1) // row_nums
@@ -974,6 +1060,7 @@ def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
 
     # copy predictions to ub from gm,
     # if the last dimension is not divided by 32 bytes, just aligned.
+    shape_info["core_loop"] = core_loop
     with tik_instance.if_scope(row_split_num <= mini_cloud_core_nums):
         shape_info["index"] = core_loop * row_nums
         shape_info["outer_loop"] = core_loop
@@ -983,27 +1070,50 @@ def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
         shape_info["column"] = column
         shape_info["column_aligned"] = column_aligned
         shape_info["max_tensor_size"] = max_tensor_size
-        tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k)
         length = tik_instance.Scalar("int64")
         with tik_instance.if_scope(core_loop < tail_block):
             length.set_as(row_nums + BLOCK_SIZE - 1)
         with tik_instance.else_scope():
             length.set_as(row_remainder + BLOCK_SIZE - 1)
-        tik_instance.data_move(obj_gm.get_tensor_output_gm()[core_loop * row_nums], tensor_output_ub,
-                               0, 1, length // BLOCK_SIZE, 0, 0)
+        with tik_instance.if_scope(column_aligned <= 64):
+            tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, BIG_DIM0_TYPE)
+            tik_instance.data_move(obj_gm.get_tensor_output_gm()[core_loop * row_nums], tensor_output_ub,
+                                   0, 1, length // BLOCK_SIZE, 0, 0)
+        with tik_instance.else_scope():
+            tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, BIG_DIM1_TYPE)
+            tik_instance.data_move(obj_gm.get_tensor_output_gm()[core_loop * row_nums], tensor_output_ub,
+                                   0, 1, length // BLOCK_SIZE, 0, 0)
     with tik_instance.else_scope():
+        core_split = tik_instance.Scalar(dtype="int64", name="core_split")
+        index_base = tik_instance.Scalar(dtype="int64", name="index_base")
         split_time = tik_instance.Scalar(dtype="int64", name="split_time")
         core_row_remainder = tik_instance.Scalar(dtype="int64", name="core_row_remainder")
         row_core_line = tik_instance.Scalar(dtype="int64", name="row_core_line")
-        row_core_line.set_as(BLOCK_SIZE)
-        with tik_instance.if_scope(core_loop < core_nums - 1):
-            split_time.set_as((row_nums + BLOCK_SIZE - 1) // BLOCK_SIZE)
-            core_row_remainder.set_as(row_nums - (split_time - 1) * BLOCK_SIZE)
+        need_row_core1 = (row_align // mini_cloud_core_nums) // BLOCK_SIZE * BLOCK_SIZE
+        need_row_core2 = (row_align // mini_cloud_core_nums + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
+        with tik_instance.if_scope(need_row_core1 == need_row_core2):
+            core_split.set_as(0)
         with tik_instance.else_scope():
-            split_time.set_as((row_remainder + BLOCK_SIZE - 1) // BLOCK_SIZE)
-            core_row_remainder.set_as(row_remainder - (split_time - 1) * BLOCK_SIZE)
+            core_split.set_as((need_row_core2 * mini_cloud_core_nums - row_align) // (need_row_core2 - need_row_core1))
+        row_remainder = row - core_split * need_row_core1 - (mini_cloud_core_nums - core_split - 1) * need_row_core2
+        row_core_line.set_as(core_row_capicity // BLOCK_SIZE * BLOCK_SIZE)
+        with tik_instance.if_scope(row_core_line > need_row_core2):
+            row_core_line.set_as(need_row_core2)
+        with tik_instance.if_scope(core_loop < core_split):
+            index_base.set_as(core_loop * need_row_core1)
+            split_time.set_as((need_row_core1 + row_core_line - 1) // row_core_line)
+            core_row_remainder.set_as(need_row_core1 - (split_time - 1) * row_core_line)
+        with tik_instance.else_scope():
+            index_base.set_as(need_row_core1 * core_split + (core_loop - core_split) * need_row_core2)
+            with tik_instance.if_scope(core_loop < core_nums - 1):
+                split_time.set_as((need_row_core2 + row_core_line - 1) // row_core_line)
+                core_row_remainder.set_as(need_row_core2 - (split_time - 1) * row_core_line)
+            with tik_instance.else_scope():
+                split_time.set_as((row_remainder + row_core_line - 1) // row_core_line)
+                core_row_remainder.set_as(row_remainder - (split_time - 1) * row_core_line)
+       
         with tik_instance.for_range(0, split_time) as outer_loop:
-            shape_info["index"] = core_loop * row_nums + outer_loop * BLOCK_SIZE
+            shape_info["index"] = index_base + outer_loop * row_core_line
             shape_info["outer_loop"] = outer_loop
             shape_info["core_nums"] = split_time
             shape_info["row_remainder"] = core_row_remainder
@@ -1012,9 +1122,18 @@ def _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k):
             shape_info["column_aligned"] = column_aligned
             shape_info["split_rows_nums"] = split_rows_nums
             shape_info["max_tensor_size"] = max_tensor_size
-            index = core_loop * row_nums + outer_loop * BLOCK_SIZE
-            tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k)
-            tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], tensor_output_ub, 0, 1, 1, 0, 0)
+            index = index_base + outer_loop * row_core_line
+            length = tik_instance.Scalar("int64")
+            with tik_instance.if_scope(outer_loop < split_time - 1):
+                length.set_as(row_core_line + BLOCK_SIZE - 1)
+            with tik_instance.else_scope():
+                length.set_as(core_row_remainder + BLOCK_SIZE - 1)
+            with tik_instance.if_scope(column_aligned <= 64):
+                tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, 1)
+                tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], tensor_output_ub, 0, 1, length // BLOCK_SIZE, 0, 0)
+            with tik_instance.else_scope():
+                tensor_output_ub = _in_top_k_inter_process(tik_instance, shape_info, obj_gm, k, 2)
+                tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], tensor_output_ub, 0, 1, length // BLOCK_SIZE, 0, 0)
 
 
 def _in_top_k_column_process(tik_instance, shape_info, obj_gm):
@@ -1250,7 +1369,7 @@ def _in_top_k_column_inner_loop(tik_instance, shape_info, obj_gm, k):
     last_column_size = shape_info.get("last_column_size")
     split_column_nums = shape_info.get("split_column_nums")
     prediction_dtype = "float32"
-    target_dtype = "int32"
+    target_dtype = shape_info.get("targets_dtype")
     element_bytes = 4
     block_element = BLOCK_SIZE // element_bytes
 
@@ -1374,7 +1493,7 @@ def _in_top_k_column_inner_loop(tik_instance, shape_info, obj_gm, k):
     return tensor_output_ub_temp
 
 
-def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k):
+def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k, targets):
     """"
     the _in_top_k_tiling_column function
 
@@ -1404,17 +1523,21 @@ def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k):
     last_column_size = column_aligned - (column_num * (split_column_nums - 1))
     row = obj_tiling.get_rows_num()
 
+    single_core_times = tik_instance.Scalar(dtype="int64", name="single_core_times")
+    split_row_times = tik_instance.Scalar(dtype="int64", name="split_row_times")
+    row_remainder = tik_instance.Scalar(dtype="int64", name="row_remainder")
     with tik_instance.if_scope(row <= BLOCK_SIZE):
-        split_row_times = 1
-        single_core_times = row
-        row_remainder = row
+        split_row_times.set_as(1)
+        single_core_times.set_as(row)
+        row_remainder.set_as(row)
     with tik_instance.else_scope():
-        split_row_times = (row + BLOCK_SIZE - 1) // BLOCK_SIZE
-        single_core_times = BLOCK_SIZE
-        row_remainder = row - (split_row_times - 1) * BLOCK_SIZE
+        split_row_times.set_as((row + BLOCK_SIZE - 1) // BLOCK_SIZE)
+        single_core_times.set_as(BLOCK_SIZE)
+        row_remainder.set_as(row - (split_row_times - 1) * BLOCK_SIZE)
 
     move_data_count = tik_instance.Scalar(dtype="int64", name="move_data_count")
     move_data_count.set_as(0)
+    shape_info['targets_dtype'] = targets.get("dtype")
     with tik_instance.if_scope(split_row_times <= mini_cloud_core_nums):
         output_ub = tik_instance.Tensor(dtype=obj_gm.get_tensor_output_gm().dtype,
                                         shape=(BLOCK_SIZE, ),
@@ -1450,24 +1573,39 @@ def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k):
             tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], output_ub, 0, 1, 1, 1, 1)
     with tik_instance.else_scope():
         row_align = (row + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
-        need_row_core = row_align // mini_cloud_core_nums // BLOCK_SIZE * BLOCK_SIZE
-        last_core = row - need_row_core * (mini_cloud_core_nums - 1)
-        split_time = tik_instance.Scalar(dtype="int64", name="split_time")
-        row_remainder = tik_instance.Scalar(dtype="int64", name="row_remainder")
-        with tik_instance.if_scope(core_loop < mini_cloud_core_nums - 1):
-            split_time.set_as((need_row_core + BLOCK_SIZE - 1) // BLOCK_SIZE)
-            row_remainder.set_as(need_row_core - (split_time - 1) * BLOCK_SIZE)
+        core_split = tik_instance.Scalar(dtype="int64", name="core_split")
+        index_base = tik_instance.Scalar(dtype="int64", name="index_base")
+        split_time1 = tik_instance.Scalar(dtype="int64", name="split_time1")
+        need_row_core1 = (row_align // mini_cloud_core_nums) // BLOCK_SIZE * BLOCK_SIZE
+        need_row_core2 = (row_align // mini_cloud_core_nums + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
+        
+        with tik_instance.if_scope(need_row_core1 == need_row_core2):
+            core_split.set_as(0)
         with tik_instance.else_scope():
-            split_time.set_as((last_core + BLOCK_SIZE - 1) // BLOCK_SIZE)
-            row_remainder.set_as(last_core - (split_time - 1) * BLOCK_SIZE)
-        with tik_instance.for_range(0, split_time) as split_loop:
-            output_ub = tik_instance.Tensor(dtype=obj_gm.get_tensor_output_gm().dtype,
+            core_split.set_as((need_row_core2 * mini_cloud_core_nums - row_align) // (need_row_core2 - need_row_core1))
+        last_core = row - core_split * need_row_core1 - (mini_cloud_core_nums - core_split - 1) * need_row_core2
+        
+        with tik_instance.if_scope(core_loop < core_split):
+            index_base.set_as(core_loop * need_row_core1)
+            split_time1.set_as((need_row_core1 + BLOCK_SIZE - 1) // BLOCK_SIZE)
+            row_remainder.set_as(need_row_core1 - (split_time1 -  1) * BLOCK_SIZE)
+        with tik_instance.else_scope():
+            index_base.set_as(need_row_core1 * core_split + (core_loop - core_split) * need_row_core2)
+            with tik_instance.if_scope(core_loop < mini_cloud_core_nums - 1):
+                split_time1.set_as((need_row_core2 + BLOCK_SIZE - 1) // BLOCK_SIZE)
+                row_remainder.set_as(need_row_core2 - (split_time1 - 1) * BLOCK_SIZE)
+            with tik_instance.else_scope():
+                split_time1.set_as((last_core + BLOCK_SIZE - 1) // BLOCK_SIZE)
+                row_remainder.set_as(last_core - (split_time1 - 1) * BLOCK_SIZE)
+
+        output_ub = tik_instance.Tensor(dtype=obj_gm.get_tensor_output_gm().dtype,
                                             shape=(BLOCK_SIZE, ),
                                             name="output_ub",
                                             scope=tik.scope_ubuf)
-            with tik_instance.if_scope(split_loop < split_time - 1):
+        with tik_instance.for_range(0, split_time1) as split_loop:
+            with tik_instance.if_scope(split_loop < split_time1 - 1):
                 with tik_instance.for_range(0, BLOCK_SIZE) as outer_loop:
-                    shape_info["index"] = core_loop * need_row_core + split_loop * BLOCK_SIZE + outer_loop
+                    shape_info["index"] = index_base + split_loop * BLOCK_SIZE + outer_loop
                     shape_info["single_core_times"] = single_core_times
                     shape_info["split_column_nums"] = split_column_nums
                     shape_info["column_size"] = column_num
@@ -1477,11 +1615,11 @@ def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k):
                     shape_info["max_tensor_size"] = max_tensor_size
                     tensor_output_temp_ub = _in_top_k_column_inner_loop(tik_instance, shape_info, obj_gm, k)
                     output_ub[outer_loop] = tensor_output_temp_ub[0]
-                index = core_loop * need_row_core + split_loop * BLOCK_SIZE
+                index = index_base + split_loop * BLOCK_SIZE
                 tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], output_ub, 0, 1, 1, 1, 1)
             with tik_instance.else_scope():
                 with tik_instance.for_range(0, row_remainder) as outer_loop:
-                    shape_info["index"] = core_loop * need_row_core + split_loop * BLOCK_SIZE + outer_loop
+                    shape_info["index"] = index_base + split_loop * BLOCK_SIZE + outer_loop
                     shape_info["single_core_times"] = single_core_times
                     shape_info["split_column_nums"] = split_column_nums
                     shape_info["column_size"] = column_num
@@ -1491,5 +1629,6 @@ def _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k):
                     shape_info["max_tensor_size"] = max_tensor_size
                     tensor_output_temp_ub = _in_top_k_column_inner_loop(tik_instance, shape_info, obj_gm, k)
                     output_ub[outer_loop] = tensor_output_temp_ub[0]
-                index = core_loop * need_row_core + split_loop * BLOCK_SIZE
+                index = index_base + split_loop * BLOCK_SIZE
                 tik_instance.data_move(obj_gm.get_tensor_output_gm()[index], output_ub, 0, 1, 1, 1, 1)
+
