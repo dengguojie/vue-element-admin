@@ -61,10 +61,15 @@ int32_t CeilDiv(const int32_t& num, const int32_t& factor) {
   return res;
 }
 
-bool GetCompileParams(const std::string& op_type, const nlohmann::json& opCompileInfoJson, uint32_t& core_num,
-                      uint32_t& ub_size) {
+bool GetCompileParams(const std::string& op_type, const nlohmann::json& opCompileInfoJson, uint32_t& workspace_num,
+                      uint32_t& core_num, uint32_t& ub_size) {
   using namespace nlohmann;
   const auto& all_vars = opCompileInfoJson["vars"];
+  if (all_vars.count("workspace_num") == 0) {
+    OP_LOGE(op_type.c_str(), "get workspace_num failed");
+    return false;
+  }
+  workspace_num = all_vars["workspace_num"].get<std::uint32_t>();
   if (all_vars.count("core_num") == 0) {
     OP_LOGE(op_type.c_str(), "get core_num failed");
     return false;
@@ -135,31 +140,34 @@ void WriteTilingParams(const CleanTilingParams& params, OpRunInfo& run_info) {
 }
 
 void PrintTilingParams(const std::string& op_type, const CleanTilingParams& params) {
-  GELOGD("op [%s] : params.select_key_input_scalar=%d", op_type.c_str(), params.select_key_input_scalar);
-  GELOGD("op [%s] : params.need_core_num_input_scalar=%d", op_type.c_str(), params.need_core_num_input_scalar);
-  GELOGD("op [%s] : params.ele_num_full_mask_full_repeat_time_input_scalar=%d", op_type.c_str(),
-         params.ele_num_full_mask_full_repeat_time_input_scalar);
-  GELOGD("op [%s] : params.burst_len_full_mask_full_repeat_time_input_scalar=%d", op_type.c_str(),
-         params.burst_len_full_mask_full_repeat_time_input_scalar);
-  GELOGD("op [%s] : params.ele_num_front_core_input_scalar=%d", op_type.c_str(),
-         params.ele_num_front_core_input_scalar);
-  GELOGD("op [%s] : params.init_times_full_mask_full_repeat_time_front_core_input_scalar=%d", op_type.c_str(),
-         params.init_times_full_mask_full_repeat_time_front_core_input_scalar);
-  GELOGD("op [%s] : params.ele_num_front_part_front_core_input_scalar=%d", op_type.c_str(),
-         params.ele_num_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.burst_len_last_part_front_core_input_scalar=%d", op_type.c_str(),
-         params.burst_len_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.repeat_time_last_part_front_core_input_scalar=%d", op_type.c_str(),
-         params.repeat_time_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.ele_num_last_core_input_scalar=%d", op_type.c_str(), params.ele_num_last_core_input_scalar);
-  GELOGD("op [%s] : params.init_times_full_mask_full_repeat_time_last_core_input_scalar=%d", op_type.c_str(),
-         params.init_times_full_mask_full_repeat_time_last_core_input_scalar);
-  GELOGD("op [%s] : params.ele_num_front_part_last_core_input_scalar=%d", op_type.c_str(),
-         params.ele_num_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.burst_len_last_part_last_core_input_scalar=%d", op_type.c_str(),
-         params.burst_len_last_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.repeat_time_last_part_last_core_input_scalar=%d", op_type.c_str(),
-         params.repeat_time_last_part_last_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.select_key_input_scalar=%d", op_type.c_str(),
+          params.select_key_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.need_core_num_input_scalar=%d", op_type.c_str(),
+          params.need_core_num_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_full_mask_full_repeat_time_input_scalar=%d", op_type.c_str(),
+          params.ele_num_full_mask_full_repeat_time_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.burst_len_full_mask_full_repeat_time_input_scalar=%d", op_type.c_str(),
+          params.burst_len_full_mask_full_repeat_time_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_front_core_input_scalar=%d", op_type.c_str(),
+          params.ele_num_front_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.init_times_full_mask_full_repeat_time_front_core_input_scalar=%d", op_type.c_str(),
+          params.init_times_full_mask_full_repeat_time_front_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_front_part_front_core_input_scalar=%d", op_type.c_str(),
+          params.ele_num_front_part_front_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.burst_len_last_part_front_core_input_scalar=%d", op_type.c_str(),
+          params.burst_len_last_part_front_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.repeat_time_last_part_front_core_input_scalar=%d", op_type.c_str(),
+          params.repeat_time_last_part_front_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_last_core_input_scalar=%d", op_type.c_str(),
+          params.ele_num_last_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.init_times_full_mask_full_repeat_time_last_core_input_scalar=%d", op_type.c_str(),
+          params.init_times_full_mask_full_repeat_time_last_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.ele_num_front_part_last_core_input_scalar=%d", op_type.c_str(),
+          params.ele_num_front_part_last_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.burst_len_last_part_last_core_input_scalar=%d", op_type.c_str(),
+          params.burst_len_last_part_last_core_input_scalar);
+  OP_LOGD(op_type.c_str(), "op [%s] : params.repeat_time_last_part_last_core_input_scalar=%d", op_type.c_str(),
+          params.repeat_time_last_part_last_core_input_scalar);
 }
 
 bool CheckSize(const std::string& op_type, const uint32_t& size) {
@@ -177,84 +185,91 @@ bool CheckSize(const std::string& op_type, const uint32_t& size) {
 // tiling function
 bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& op_paras,
                                   const nlohmann::json& opCompileInfoJson, OpRunInfo& run_info) {
-  GELOGI("op[%s] op tiling begin.", op_type.c_str());
+  OP_LOGI(op_type.c_str(), "op[%s] op tiling begin.", op_type.c_str());
   if (op_paras.const_inputs.find("workspace_size") == op_paras.const_inputs.end()) {
     OP_LOGE(op_type.c_str(), "op : workspace_size not exists");
     return false;
   }
-  int64_t addr_tensor_size = std::get<1>(op_paras.const_inputs.at("workspace_size"));
-  bool flag = CheckSize(op_type, addr_tensor_size);
-  if (!flag) {
-    return false;
-  }
-  GELOGD("op [%s] : addr_tensor_size=%d", op_type.c_str(), addr_tensor_size);
-  uint32_t ele_num_fp32 = addr_tensor_size / BYTE_FP32;
-  CleanTilingParams params;
-  // init tiling params
-  InitTilingParams(params);
-  params.select_key_input_scalar = 1;
+  uint32_t workspace_num = 1;
   uint32_t core_num = 1;
   uint32_t ub_size = 256 * 1024;
   // get compile_info params
-  flag = GetCompileParams(op_type, opCompileInfoJson, core_num, ub_size);
+  bool flag = GetCompileParams(op_type, opCompileInfoJson, workspace_num, core_num, ub_size);
   if (!flag) {
     OP_LOGE(op_type.c_str(), "GetCompileParams failed");
     return false;
   }
-  GELOGI("op[%s] GetCompileParams success.", op_type.c_str());
-  // is using all core
-  if (addr_tensor_size >= MIN_ELE_SIZE_USING_ALL_CORE) {
-    params.need_core_num_input_scalar = core_num;
-  } else {
-    params.need_core_num_input_scalar = 1;
-  }
-  // compute tiling params
-  params.ele_num_full_mask_full_repeat_time_input_scalar = MASK_FP32 * MAX_REPEAT_TIME;
-  params.burst_len_full_mask_full_repeat_time_input_scalar =
-      params.ele_num_full_mask_full_repeat_time_input_scalar * BYTE_FP32 / BYTE_BLOCK;
-  if (params.need_core_num_input_scalar == 1) {
-    // use one core
-    params.ele_num_front_core_input_scalar = ele_num_fp32;
-    ComputeParamsOneCore(params.ele_num_front_core_input_scalar, params.ele_num_full_mask_full_repeat_time_input_scalar,
-                         params.init_times_full_mask_full_repeat_time_front_core_input_scalar,
-                         params.ele_num_front_part_front_core_input_scalar,
-                         params.burst_len_last_part_front_core_input_scalar,
-                         params.repeat_time_last_part_front_core_input_scalar);
+  OP_LOGI(op_type.c_str(), "op[%s] GetCompileParams success.", op_type.c_str());
+  for (size_t i = 0; i < workspace_num; i++) {
+    int64_t addr_tensor_size = std::get<1>(op_paras.const_inputs.at("workspace_size"));
+    bool flag = CheckSize(op_type, addr_tensor_size);
+    if (!flag) {
+      return false;
+    }
+    OP_LOGD(op_type.c_str(), "op: addr_tensor_size=%d",  addr_tensor_size);
+    uint32_t ele_num_fp32 = addr_tensor_size / BYTE_FP32;
+    CleanTilingParams params;
+    // init tiling params
+    InitTilingParams(params);
+    params.select_key_input_scalar = 1;
+    // is using all core
+    if (addr_tensor_size >= MIN_ELE_SIZE_USING_ALL_CORE) {
+      params.need_core_num_input_scalar = core_num;
+    } else {
+      params.need_core_num_input_scalar = 1;
+    }
+    // compute tiling params
+    params.ele_num_full_mask_full_repeat_time_input_scalar = MASK_FP32 * MAX_REPEAT_TIME;
+    params.burst_len_full_mask_full_repeat_time_input_scalar =
+        params.ele_num_full_mask_full_repeat_time_input_scalar * BYTE_FP32 / BYTE_BLOCK;
+    if (params.need_core_num_input_scalar == 1) {
+      // use one core
+      params.ele_num_front_core_input_scalar = ele_num_fp32;
+      ComputeParamsOneCore(params.ele_num_front_core_input_scalar,
+                           params.ele_num_full_mask_full_repeat_time_input_scalar,
+                           params.init_times_full_mask_full_repeat_time_front_core_input_scalar,
+                           params.ele_num_front_part_front_core_input_scalar,
+                           params.burst_len_last_part_front_core_input_scalar,
+                           params.repeat_time_last_part_front_core_input_scalar);
 
-    params.ele_num_last_core_input_scalar = params.ele_num_front_core_input_scalar;
-    ComputeParamsOneCore(params.ele_num_last_core_input_scalar, params.ele_num_full_mask_full_repeat_time_input_scalar,
-                         params.init_times_full_mask_full_repeat_time_last_core_input_scalar,
-                         params.ele_num_front_part_last_core_input_scalar,
-                         params.burst_len_last_part_last_core_input_scalar,
-                         params.repeat_time_last_part_last_core_input_scalar);
-  } else if (params.need_core_num_input_scalar > 1) {
-    // use all core
-    // front core
-    params.ele_num_front_core_input_scalar = ele_num_fp32 / params.need_core_num_input_scalar;
-    ComputeParamsOneCore(params.ele_num_front_core_input_scalar, params.ele_num_full_mask_full_repeat_time_input_scalar,
-                         params.init_times_full_mask_full_repeat_time_front_core_input_scalar,
-                         params.ele_num_front_part_front_core_input_scalar,
-                         params.burst_len_last_part_front_core_input_scalar,
-                         params.repeat_time_last_part_front_core_input_scalar);
-    // last core
-    params.ele_num_last_core_input_scalar =
-        ele_num_fp32 - params.ele_num_front_core_input_scalar * (params.need_core_num_input_scalar - 1);
-    ComputeParamsOneCore(params.ele_num_last_core_input_scalar, params.ele_num_full_mask_full_repeat_time_input_scalar,
-                         params.init_times_full_mask_full_repeat_time_last_core_input_scalar,
-                         params.ele_num_front_part_last_core_input_scalar,
-                         params.burst_len_last_part_last_core_input_scalar,
-                         params.repeat_time_last_part_last_core_input_scalar);
+      params.ele_num_last_core_input_scalar = params.ele_num_front_core_input_scalar;
+      ComputeParamsOneCore(params.ele_num_last_core_input_scalar,
+                           params.ele_num_full_mask_full_repeat_time_input_scalar,
+                           params.init_times_full_mask_full_repeat_time_last_core_input_scalar,
+                           params.ele_num_front_part_last_core_input_scalar,
+                           params.burst_len_last_part_last_core_input_scalar,
+                           params.repeat_time_last_part_last_core_input_scalar);
+    } else if (params.need_core_num_input_scalar > 1) {
+      // use all core
+      // front core
+      params.ele_num_front_core_input_scalar = ele_num_fp32 / params.need_core_num_input_scalar;
+      ComputeParamsOneCore(params.ele_num_front_core_input_scalar,
+                           params.ele_num_full_mask_full_repeat_time_input_scalar,
+                           params.init_times_full_mask_full_repeat_time_front_core_input_scalar,
+                           params.ele_num_front_part_front_core_input_scalar,
+                           params.burst_len_last_part_front_core_input_scalar,
+                           params.repeat_time_last_part_front_core_input_scalar);
+      // last core
+      params.ele_num_last_core_input_scalar =
+          ele_num_fp32 - params.ele_num_front_core_input_scalar * (params.need_core_num_input_scalar - 1);
+      ComputeParamsOneCore(params.ele_num_last_core_input_scalar,
+                           params.ele_num_full_mask_full_repeat_time_input_scalar,
+                           params.init_times_full_mask_full_repeat_time_last_core_input_scalar,
+                           params.ele_num_front_part_last_core_input_scalar,
+                           params.burst_len_last_part_last_core_input_scalar,
+                           params.repeat_time_last_part_last_core_input_scalar);
+    }
+    // write tiling params to run_info
+    WriteTilingParams(params, run_info);
+    // print tiling params
+    PrintTilingParams(op_type, params);
+    // block_dim, core num used in tik op
+    run_info.block_dim = params.need_core_num_input_scalar;
+    // workspace, null for tik op
+    std::vector<int64_t> workspace;
+    run_info.workspaces = workspace;
   }
-  // write tiling params to run_info
-  WriteTilingParams(params, run_info);
-  // print tiling params
-  PrintTilingParams(op_type, params);
-  // block_dim, core num used in tik op
-  run_info.block_dim = params.need_core_num_input_scalar;
-  // workspace, null for tik op
-  std::vector<int64_t> workspace;
-  run_info.workspaces = workspace;
-  GELOGI("op[%s] op tiling success", op_type.c_str());
+  OP_LOGI(op_type.c_str(), "op[%s] op tiling success", op_type.c_str());
   return true;
 }
 REGISTER_OP_TILING_FUNC_BUFFERED(DynamicAtomicAddrClean, DynamicAtomicAddrCleanTiling);

@@ -67,7 +67,7 @@ class DynamicAtomicAddrClean():
     """
 
     # pylint: disable=too-few-public-methods,too-many-statements
-    def __init__(self):
+    def __init__(self, size_list):
         """
         constructor of class DynamicAtomicAddrClean
 
@@ -83,6 +83,8 @@ class DynamicAtomicAddrClean():
         self.core_num = tbe_platform.get_soc_spec(
             tbe_platform.CORE_NUM)
         self.is_double_buffer = True
+        self.workspace_num = len(size_list)
+        self.workspace_addrs = []
         self.ub_size = _tik_get_ub_size(self.is_double_buffer)
         self.gm_tensor = self.tik_instance.Tensor("float32", (MAX_INT32,),
                                                   tik.scope_gm, "gm_tensor")
@@ -180,70 +182,14 @@ class DynamicAtomicAddrClean():
 
         self.obj_common_input_scalar = CommonInputScalar(self.tik_instance)
         self.obj_init_input_scalar = InitInputScalar(self.tik_instance)
-
-        with self.tik_instance.new_stmt_scope():
-            # mov tiling data from gm to ub, and set_as scalar
-            tiling_ub = self.tik_instance.Tensor("int32",
-                                                 (MAX_TILING_PARAMS_NUM,),
-                                                 tik.scope_ubuf, "tiling_ub")
-            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1,
-                                        MAX_TILING_PARAMS_NUM * INT32_BYTE // BLOCK_BYTE,
-                                        0, 0)
-            input_scalar_index = 0
-            # common part input scalar
-            self.obj_common_input_scalar.select_key.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_common_input_scalar.need_core_num.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_common_input_scalar.ele_num_full_mask_repeat_time.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_common_input_scalar.burst_len_full_mask_repeat_time.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            # init part input scalar
-            self.obj_init_input_scalar.ele_num_front_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar. \
-                init_times_full_mask_repeat_time_front_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.ele_num_front_part_front_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.burst_len_last_part_front_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.repeat_time_last_part_front_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.ele_num_last_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar. \
-                init_times_full_mask_repeat_time_last_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.ele_num_front_part_last_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.burst_len_last_part_last_core.set_as(
-                tiling_ub[input_scalar_index])
-            input_scalar_index = input_scalar_index + 1
-            self.obj_init_input_scalar.repeat_time_last_part_last_core.set_as(
-                tiling_ub[input_scalar_index])
-
         self.ub_tensor = self.tik_instance.Tensor("float32", (
             MASK_FP32 * MAX_REPEAT_TIME,), tik.scope_ubuf, "ub_tensor")
 
     # pylint: disable=unused-argument
-    def addr_clean(self, kernel_name):
+    def addr_clean(self, workspace_addrs):
         """
         addr_clean
-        :param kernel_name:
+        :param workspace_addrs:
         :return:
         """
         with self.tik_instance.for_range(0, self.core_num,
@@ -260,15 +206,16 @@ class DynamicAtomicAddrClean():
                     gm_offset = core_index * self.obj_init_input_scalar.ele_num_front_core + \
                                 init_index * self.obj_common_input_scalar.ele_num_full_mask_repeat_time
                     ub_offset = 0
-                    self.tik_instance.data_move(self.gm_tensor[gm_offset],
-                                                self.ub_tensor[ub_offset], 0, 1,
-                                                self.obj_common_input_scalar.
-                                                burst_len_full_mask_repeat_time,
-                                                0, 0)
+                    for idx in range(self.workspace_num):
+                        self.tik_instance.data_move(workspace_addrs[idx][gm_offset],
+                                                    self.ub_tensor[ub_offset], 0, 1,
+                                                    self.obj_common_input_scalar.
+                                                    burst_len_full_mask_repeat_time,
+                                                    0, 0)
                 # last part front core
                 with self.tik_instance.if_scope(
                         self.obj_init_input_scalar.
-                                init_times_full_mask_repeat_time_front_core == 0):
+                        init_times_full_mask_repeat_time_front_core == 0):
                     self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
                                                  ZERO_FP32,
                                                  self.obj_init_input_scalar.
@@ -278,11 +225,12 @@ class DynamicAtomicAddrClean():
                             self.obj_init_input_scalar.ele_num_front_core + \
                             self.obj_init_input_scalar.ele_num_front_part_front_core
                 with self.tik_instance.if_scope(self.obj_init_input_scalar.burst_len_last_part_front_core > 0):
-                    self.tik_instance.data_move(self.gm_tensor[gm_offset],
-                                                self.ub_tensor[0], 0, 1,
-                                                self.obj_init_input_scalar.
-                                                burst_len_last_part_front_core,
-                                                0, 0)
+                    for idx in range(self.workspace_num):
+                        self.tik_instance.data_move(workspace_addrs[idx][gm_offset],
+                                                    self.ub_tensor[0], 0, 1,
+                                                    self.obj_init_input_scalar.
+                                                    burst_len_last_part_front_core,
+                                                    0, 0)
             with self.tik_instance.if_scope(
                     core_index ==
                     self.obj_common_input_scalar.need_core_num - 1):
@@ -297,11 +245,12 @@ class DynamicAtomicAddrClean():
                         core_index * self.obj_init_input_scalar.ele_num_front_core \
                         + init_index * self.obj_common_input_scalar.ele_num_full_mask_repeat_time
                     ub_offset = 0
-                    self.tik_instance.data_move(self.gm_tensor[gm_offset],
-                                                self.ub_tensor[ub_offset], 0, 1,
-                                                self.obj_common_input_scalar.
-                                                burst_len_full_mask_repeat_time,
-                                                0, 0)
+                    for idx in range(self.workspace_num):
+                        self.tik_instance.data_move(workspace_addrs[idx][gm_offset],
+                                                    self.ub_tensor[ub_offset], 0, 1,
+                                                    self.obj_common_input_scalar.
+                                                    burst_len_full_mask_repeat_time,
+                                                    0, 0)
                 # last part last core
                 with self.tik_instance.if_scope(
                         self.obj_init_input_scalar.init_times_full_mask_repeat_time_last_core == 0):
@@ -314,13 +263,78 @@ class DynamicAtomicAddrClean():
                             self.obj_init_input_scalar.ele_num_front_core + \
                             self.obj_init_input_scalar.ele_num_front_part_last_core
                 with self.tik_instance.if_scope(self.obj_init_input_scalar.burst_len_last_part_last_core > 0):
-                    self.tik_instance.data_move(self.gm_tensor[gm_offset],
-                                                self.ub_tensor[0], 0, 1,
-                                                self.obj_init_input_scalar.
-                                                burst_len_last_part_last_core,
-                                                0, 0)
+                    for idx in range(self.workspace_num):
+                        self.tik_instance.data_move(workspace_addrs[idx][gm_offset],
+                                                    self.ub_tensor[0], 0, 1,
+                                                    self.obj_init_input_scalar.
+                                                    burst_len_last_part_last_core,
+                                                    0, 0)
+
+    def tik_instance_fun(self, kernel_name):
+        """
+        tik_instance_fun
+        """
+        for idx in range(self.workspace_num):
+            addr_gm = self.tik_instance.Tensor("float32", (MAX_INT32,),
+                                               tik.scope_gm, "".join(["gm_tensor", str(idx)]))
+            with self.tik_instance.new_stmt_scope():
+                # mov tiling data from gm to ub, and set_as scalar
+                tiling_ub = self.tik_instance.Tensor("int32",
+                                                     (MAX_TILING_PARAMS_NUM, ),
+                                                     tik.scope_ubuf, "tiling_ub")
+                self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1,
+                                            MAX_TILING_PARAMS_NUM * INT32_BYTE // BLOCK_BYTE,
+                                            0, 0)
+                input_scalar_index = 0 + idx * 14
+                # common part input scalar
+                self.obj_common_input_scalar.select_key.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_common_input_scalar.need_core_num.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_common_input_scalar.ele_num_full_mask_repeat_time.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_common_input_scalar.burst_len_full_mask_repeat_time.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                # init part input scalar
+                self.obj_init_input_scalar.ele_num_front_core.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar. \
+                    init_times_full_mask_repeat_time_front_core.set_as(
+                        tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar.ele_num_front_part_front_core.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar.burst_len_last_part_front_core.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar.repeat_time_last_part_front_core.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar.ele_num_last_core.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar. \
+                    init_times_full_mask_repeat_time_last_core.set_as(
+                        tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar.ele_num_front_part_last_core.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar.burst_len_last_part_last_core.set_as(
+                    tiling_ub[input_scalar_index])
+                input_scalar_index = input_scalar_index + 1
+                self.obj_init_input_scalar.repeat_time_last_part_last_core.set_as(
+                    tiling_ub[input_scalar_index])
+            self.workspace_addrs.append(addr_gm)
+        self.addr_clean(self.workspace_addrs)
         self.tik_instance.BuildCCE(kernel_name=kernel_name,
-                                   inputs=[self.gm_tensor],
+                                   inputs=self.workspace_addrs,
                                    outputs=[],
                                    flowtable=[self.tiling_gm])
         return self.tik_instance
@@ -343,9 +357,10 @@ def dynamic_atomic_addr_clean(size_list, kernel_name="DynamicAtomicAddrClean"):
     -------
     compile info
     """
-    obj_dynamic_atomic_addr_clean = DynamicAtomicAddrClean()
-    obj_dynamic_atomic_addr_clean.addr_clean(kernel_name)
+    obj_dynamic_atomic_addr_clean = DynamicAtomicAddrClean(size_list)
+    obj_dynamic_atomic_addr_clean.tik_instance_fun(kernel_name)
     # add compile info
     tbe_context.get_context().add_compile_info("vars",
                                                {"ub_size": obj_dynamic_atomic_addr_clean.ub_size,
-                                                "core_num": obj_dynamic_atomic_addr_clean.core_num})
+                                                "core_num": obj_dynamic_atomic_addr_clean.core_num,
+                                                "workspace_num": obj_dynamic_atomic_addr_clean.workspace_num})
