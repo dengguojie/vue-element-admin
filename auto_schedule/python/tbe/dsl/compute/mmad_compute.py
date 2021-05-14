@@ -4194,8 +4194,8 @@ class MatMulCompute:
                     self.tensor_bias[nb * self.block_out + np],
                     (a_matrix_in[mb, reduce_kb, mp, reduce_kp] * b_matrix_in[
                         reduce_kb, nb, np, reduce_kp]).astype(
-                        self.matrix_type)),
-                    axis=[reduce_kb, reduce_kp])),
+                        self.matrix_type))),
+                    axis=[reduce_kb, reduce_kp]),
                 name='tensor_c_matrix')
 
         if nz2nd_flag:

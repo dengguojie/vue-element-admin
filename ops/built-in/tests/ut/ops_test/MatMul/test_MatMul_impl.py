@@ -188,6 +188,16 @@ ut_case.add_precision_case("Ascend920A", {"params": [{"shape": (6, 2,16,16), "dt
                                          "calc_expect_func": calc_expect_func,
                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
 
+ut_case.add_precision_case("Ascend920A", {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96),"ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (4, 6,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64),"ori_format": "ND", "param_type": "input"},
+                                                    {"shape": (64,), "dtype": "float32", "format": "ND", "ori_shape": (64,),"ori_format": "ND", "param_type": "input"},
+                                                    None,
+                                                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 64),"ori_format": "ND", "param_type": "output"},
+                                                    False, False],
+                                         "expect": "success",
+                                         "calc_expect_func": calc_expect_func,
+                                         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
+
 ut_case.add_case("Ascend920A", {"params": [{"shape": (2, 5,16,32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (80, 64),"ori_format": "ND", "param_type": "input"},
                                                     {"shape": (2, 5,16,32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (80, 64),"ori_format": "ND", "param_type": "input"},
                                                     None,
