@@ -19,6 +19,7 @@ zn_2_hwcn
 from te import platform as tbe_platform
 from te.utils import para_check
 from te import tvm
+from impl import trans_data_negative_target_ntc
 
 # available ub size
 UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
@@ -1021,6 +1022,10 @@ def zn_2_hwcn(src, dst, src_format, dst_format, kernel_name='zn_2_hwcn'):
     _check_parameters(src, dst, src_format, dst_format, kernel_name)
     dst_shape = dst.get("shape")
     dtype = src.get("dtype")
+
+    if list(dst_shape) == [1, 1, 1024, 2048]:
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
+        return
 
     h_i, w_i, c_i, n_i = dst_shape
     c_0 = 16
