@@ -519,6 +519,53 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormXBackpropInferShape) {
 COMMON_INFER_FUNC_REG(LayerNormXBackprop, LayerNormXBackpropInferShape);
 // ---------------------LayerNormXBackprop END--------------------------
 
+// ----------------LayerNormBetaGammaBackpropV2--------------------
+IMPLEMT_COMMON_INFERFUNC(LayerNormBetaGammaBackpropV2InferShape) {
+  std::vector<int64_t> dims_tm;
+  if (op.GetAttr("shape_gamma", dims_tm) == GRAPH_FAILED) {
+    std::string err_msg = GetInputInvalidErrMsg("shape_gamma");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+  }
+  Shape valid_shape(dims_tm);
+
+  TensorDesc tensordesc_output0_pd_gamma = op.GetOutputDesc("pd_gamma");
+  TensorDesc tensordesc_output1_pd_beta = op.GetOutputDesc("pd_beta");
+
+  tensordesc_output0_pd_gamma.SetShape(valid_shape);
+  tensordesc_output0_pd_gamma.SetDataType(DT_FLOAT);
+
+  tensordesc_output1_pd_beta.SetShape(valid_shape);
+  tensordesc_output1_pd_beta.SetDataType(DT_FLOAT);
+
+  (void)op.UpdateOutputDesc("pd_gamma", tensordesc_output0_pd_gamma);
+  (void)op.UpdateOutputDesc("pd_beta", tensordesc_output1_pd_beta);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(LayerNormBetaGammaBackpropV2, LayerNormBetaGammaBackpropV2InferShape);
+// -------------------LayerNormBetaGammaBackpropV2 END------------------
+
+// --------------------------LayerNormXBackpropV2-----------------------
+IMPLEMT_COMMON_INFERFUNC(LayerNormXBackpropV2InferShape) {
+  TensorDesc tensordesc_output_pd_x = op.GetOutputDesc("pd_x");
+  TensorDesc tensordesc_output_res_for_gamma = op.GetOutputDesc("res_for_gamma");
+
+  tensordesc_output_pd_x.SetShape(op.GetInputDesc("dy").GetShape());
+  tensordesc_output_pd_x.SetDataType(op.GetInputDesc("dy").GetDataType());
+
+  tensordesc_output_res_for_gamma.SetShape(op.GetInputDesc("dy").GetShape());
+  tensordesc_output_res_for_gamma.SetDataType(DT_FLOAT);
+
+  (void)op.UpdateOutputDesc("pd_x", tensordesc_output_pd_x);
+  (void)op.UpdateOutputDesc("res_for_gamma", tensordesc_output_res_for_gamma);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(LayerNormXBackpropV2, LayerNormXBackpropV2InferShape);
+// ---------------------LayerNormXBackpropV2 END--------------------------
+
 // ----------------DropOutDoMask Op Start-------------------
 IMPLEMT_VERIFIER(DropOutDoMask, DropOutDoMaskVerify) {
   if (!CheckTwoInputDtypeSame(op, "x", "keep_prob")) {

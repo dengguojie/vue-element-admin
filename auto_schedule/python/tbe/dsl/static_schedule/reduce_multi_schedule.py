@@ -181,6 +181,9 @@ class ReduceMultiSchedule(ElewiseSchedule):
             self._map_apend(self._cache_read_tensors_and_readers_map, i,
                             self._input_tensor_dst_tensor_map[i])
 
+        if self._pattern in ("layernorm_x_backprop_fp16_1980_0420"):
+            self.set_op_type("layer_norm_x_backprop_v2")
+
     def _calculate_cache_write(self):
         # pylint: disable=attribute-defined-outside-init
         """
@@ -642,7 +645,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             for dim in self._reduce_axes_map:
                 temp_size *= self._reduce_axes_map[dim]
             if self._pattern in util.pattern.layernorm_width.keys() and \
-                    temp_size == 1024 and self._last_axis_index in self._reduce_axes_map:
+                    temp_size in (1024, 768) and self._last_axis_index in self._reduce_axes_map:
                 total_width = util.pattern.layernorm_width[self._pattern]
             else:
                 total_width = util.pattern.width[self._pattern]
@@ -1050,15 +1053,40 @@ class ReduceMultiSchedule(ElewiseSchedule):
         ub_tiling_result = self._tiling_result["ub_tiling"]
         res_ub_outer = ub_tiling_result["outer_itervar"]
 
+        block_tilling_result = self._tiling_result["block_tiling"]
+        parent_var = block_tilling_result["parent_itervar"]
+
+        is_support_buf_tile = False
+        if self._pattern in ("layernorm_x_backprop_fp16_1980_0420"):
+            if self._tiling_para.get("ub_tiling").get("axis") == 1 and len(self._tiling_cur_shape) == 3:
+                is_support_buf_tile = False
+
         for i in self._cache_read_tensors_and_buffer_map:
             read_buffer = self._cache_read_tensors_and_buffer_map[i]
-            para = {"parent": self._schedule[res], "scope": res_ub_outer}
+            if is_support_buf_tile and read_buffer.op.name.find("data_gamma") != -1:
+                para = {"parent": self._schedule[res], "scope": parent_var}
+            else:
+                para = {"parent": self._schedule[res], "scope": res_ub_outer}
             self._compute_at_map[read_buffer] = para
 
         for i in self._cache_write_tensors_and_buffer_map:
             write_buffer = self._cache_write_tensors_and_buffer_map[i]
-            para = {"parent": self._schedule[res], "scope": res_ub_outer}
+            if is_support_buf_tile and (write_buffer.op.name.find("cast_4") != -1 or
+                                        write_buffer.op.name.find("broadcast_tensor_0") != -1):
+                para = {"parent": self._schedule[res], "scope": parent_var}
+            else:
+                para = {"parent": self._schedule[res], "scope": res_ub_outer}
             self._compute_at_map[write_buffer] = para
+
+            if is_support_buf_tile and write_buffer.op.name.find("broadcast_tensor_0") != -1:
+                dim_before_cut = self._tiling_cur_shape[0]
+                dim_after_cut = self._tiling_cur_shape[2]
+                ub_factor = self._tiling_para['ub_tiling']['factor']
+                block_factor = self._tiling_para['block_tiling']['factor']
+                self._schedule[write_buffer].buffer_tile((0, dim_before_cut),
+                                                         (parent_var * block_factor + res_ub_outer * ub_factor,
+                                                          ub_factor),
+                                                         (0, dim_after_cut))
 
         for i in self._mid_output_tensors:
             para = {"parent": self._schedule[res], "scope": res_ub_outer}
@@ -1128,6 +1156,9 @@ class ReduceMultiSchedule(ElewiseSchedule):
             self._insn_map["reduce_min"] = "vector_dichotomy_reduce"
 
     def _do_buffer_reuse(self):
+        if self._pattern in ("layernorm_x_backprop_fp16_1980_0420"):
+            return
+
         if self._pattern not in util.pattern.width.keys() or not util.PATTERN_OPTIMAZE or \
                 self._pattern in util.pattern.no_buffer_reused:
             return

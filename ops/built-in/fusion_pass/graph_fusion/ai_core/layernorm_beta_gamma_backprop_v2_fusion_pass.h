@@ -15,11 +15,11 @@
  */
 
 /*!
- * \file layernorm_beta_gamma_backprop_fusion_pass.h
+ * \file layernorm_beta_gamma_backprop_v2_fusion_pass.h
  * \brief clip fusion pass(min --> max)
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORM_BETA_GAMMA_BACKPROP_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORM_BETA_GAMMA_BACKPROP_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORM_BETA_GAMMA_BACKPROP_V2_FUSION_PASS_H_
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORM_BETA_GAMMA_BACKPROP_V2_FUSION_PASS_H_
 
 #include <vector>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
@@ -37,7 +37,7 @@ struct LayerNormMatchResult {
   std::vector<NodePtr> castNodeVec;
 };
 
-class LayerNormBetaGammaBackpropFusionPass : public PatternFusionBasePass {
+class LayerNormBetaGammaBackpropV2FusionPass : public PatternFusionBasePass {
  protected:
   std::vector<FusionPattern*> DefinePatterns() override;
   Status Run(ge::ComputeGraph& graph) override;
@@ -45,10 +45,10 @@ class LayerNormBetaGammaBackpropFusionPass : public PatternFusionBasePass {
 
  private:
   Status MatchPass(ge::ComputeGraph& graph, std::vector<LayerNormMatchResult>& passMatchResultVec);
-  Status GetAllLayerNormBetaGammaBackpropNodes(ge::ComputeGraph& graph, std::vector<NodePtr>& batchNormNodeVec);
-  Status MatchLayerNormBetaGammaBackpropNode(ge::NodePtr bnNodePtr, LayerNormMatchResult& matchResult);
+  Status GetAllLayerNormBetaGammaBackpropV2Nodes(ge::ComputeGraph& graph, std::vector<NodePtr>& batchNormNodeVec);
+  Status MatchLayerNormBetaGammaBackpropV2Node(ge::NodePtr bnNodePtr, LayerNormMatchResult& matchResult);
   Status FusionGraphWithPass(ge::ComputeGraph& graph, LayerNormMatchResult& matchResult);
-  const string FUSED_OP_TYPE = "LayerNormBetaGammaBackprop";
+  const string FUSED_OP_TYPE = "LayerNormBetaGammaBackpropV2";
 };
 }  // namespace fe
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORM_BETA_GAMMA_BACKPROP_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORM_BETA_GAMMA_BACKPROP_V2_FUSION_PASS_H_

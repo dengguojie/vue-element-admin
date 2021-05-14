@@ -17,7 +17,7 @@
 /*!
  * \file layernormgrad_fusion_pass.h
  * \brief LayerNormGrad fusion pass
- *   (LayerNormGrad --> LayerNormXBackprop & LayerNormBetaGammaBackprop)
+ *   (LayerNormGrad --> LayerNormXBackpropV2 & LayerNormBetaGammaBackpropV2)
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORMGRAD_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYERNORMGRAD_FUSION_PASS_H_
@@ -31,7 +31,7 @@ class LayerNormGradFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  const string FUSED_OP_TYPE = "LayerNormXBackprop_LayerNormBetaGammaBackprop";
+  const string FUSED_OP_TYPE = "LayerNormXBackpropV2_LayerNormBetaGammaBackpropV2";
 };
 
 }  // namespace fe
