@@ -321,3 +321,4 @@ from .nll_loss_grad import nll_loss_grad
 from .shrink import shrink
 from .addcmul import addcmul
 from .confusion_softmax_grad import confusion_softmax_grad
+from .sort import sort

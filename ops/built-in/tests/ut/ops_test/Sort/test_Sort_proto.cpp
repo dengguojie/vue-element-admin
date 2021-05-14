@@ -3,101 +3,51 @@
 #include "op_proto_test_util.h"
 #include "nn_detect_ops.h"
 
-class SortTest : public testing::Test {
+// ----------------Sort-------------------
+class SortProtoTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "Sort Test SetUp" << std::endl;
+    std::cout << "Sort Proto Test SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "Sort Test TearDown" << std::endl;
+    std::cout << "Sort Proto Test TearDown" << std::endl;
   }
 };
 
-TEST_F(SortTest, Sort_test_0){
+
+TEST_F(SortProtoTest, sort_infer_shape_test) {
   ge::op::Sort op;
-  ge::TensorDesc tensorDesc;
-  ge::Shape shape({10, 10, 20});
-  tensorDesc.SetDataType(ge::DT_FLOAT16);
-  tensorDesc.SetShape(shape);
-  
-  op.UpdateInputDesc("x",tensorDesc);
-  
+
+  op.UpdateInputDesc("x", create_desc_shape_range({10,10,10,32},
+                    ge::DT_FLOAT16, ge::FORMAT_ND, {10,10,10,32},
+                     ge::FORMAT_ND, {{10,10},{10,10},{10,10},{32,32}}));
+
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+//  get sorted output shape
+  auto sorted_output_desc = op.GetOutputDesc("y1");
+  EXPECT_EQ(sorted_output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {10,10,10,32};
+  EXPECT_EQ(sorted_output_desc.GetShape().GetDims(), expected_output_shape);
 
-  auto output_desc_1 = op.GetOutputDesc("y1");
-  auto output_desc_2 = op.GetOutputDesc("y2");
-  EXPECT_EQ(output_desc_1.GetDataType(), ge::DT_FLOAT16);
-  EXPECT_EQ(output_desc_2.GetDataType(), ge::DT_INT32);
-  
-  std::vector<int64_t> expected_output_shape = {10, 10, 20};
-  EXPECT_EQ(output_desc_1.GetShape().GetDims(), expected_output_shape);
-  EXPECT_EQ(output_desc_2.GetShape().GetDims(), expected_output_shape);
-}
+//  check sorted output range
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{10,10},{10,10},{10,10},{32,32}};
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  sorted_output_desc.GetShapeRange(output_shape_range);
+  EXPECT_EQ(output_shape_range, expected_output_shape_range);
 
-TEST_F(SortTest, Sort_test_1){
-  ge::op::Sort op;
-  ge::TensorDesc tensorDesc;
-  ge::Shape shape({10, 200});
-  tensorDesc.SetDataType(ge::DT_FLOAT16);
-  tensorDesc.SetShape(shape);
-  
-  op.UpdateInputDesc("x",tensorDesc);
-  
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+//  get indices output shape
+  auto indices_output_desc = op.GetOutputDesc("y2");
+  EXPECT_EQ(indices_output_desc.GetDataType(), ge::DT_INT32);
+  std::vector<int64_t> expected_indices_shape = {10,10,10,32};
+  EXPECT_EQ(indices_output_desc.GetShape().GetDims(), expected_indices_shape);
 
-  auto output_desc_1 = op.GetOutputDesc("y1");
-  auto output_desc_2 = op.GetOutputDesc("y2");
-  EXPECT_EQ(output_desc_1.GetDataType(), ge::DT_FLOAT16);
-  EXPECT_EQ(output_desc_2.GetDataType(), ge::DT_INT32);
-  
-  std::vector<int64_t> expected_output_shape = {10, 200};
-  EXPECT_EQ(output_desc_1.GetShape().GetDims(), expected_output_shape);
-  EXPECT_EQ(output_desc_2.GetShape().GetDims(), expected_output_shape);
-}
+//  check indices range
+  std::vector<std::pair<int64_t, int64_t>> expected_indices_shape_range = {{10,10},{10,10},{10,10},{32,32}};
+  std::vector<std::pair<int64_t, int64_t>> indices_shape_range;
+  indices_output_desc.GetShapeRange(indices_shape_range);
+  EXPECT_EQ(indices_shape_range, expected_indices_shape_range);
 
-TEST_F(SortTest, Sort_test_2){
-  ge::op::Sort op;
-  ge::TensorDesc tensorDesc;
-  ge::Shape shape({2000});
-  tensorDesc.SetDataType(ge::DT_FLOAT16);
-  tensorDesc.SetShape(shape);
-  
-  op.UpdateInputDesc("x",tensorDesc);
-  
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-  auto output_desc_1 = op.GetOutputDesc("y1");
-  auto output_desc_2 = op.GetOutputDesc("y2");
-  EXPECT_EQ(output_desc_1.GetDataType(), ge::DT_FLOAT16);
-  EXPECT_EQ(output_desc_2.GetDataType(), ge::DT_INT32);
-  
-  std::vector<int64_t> expected_output_shape = {2000};
-  EXPECT_EQ(output_desc_1.GetShape().GetDims(), expected_output_shape);
-  EXPECT_EQ(output_desc_2.GetShape().GetDims(), expected_output_shape);
-}
-
-TEST_F(SortTest, Sort_test_3){
-  ge::op::Sort op;
-  ge::TensorDesc tensorDesc;
-  ge::Shape shape({20000});
-  tensorDesc.SetDataType(ge::DT_FLOAT16);
-  tensorDesc.SetShape(shape);
-  
-  op.UpdateInputDesc("x",tensorDesc);
-  
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-
-  auto output_desc_1 = op.GetOutputDesc("y1");
-  auto output_desc_2 = op.GetOutputDesc("y2");
-  EXPECT_EQ(output_desc_1.GetDataType(), ge::DT_FLOAT16);
-  EXPECT_EQ(output_desc_2.GetDataType(), ge::DT_INT32);
-  
-  std::vector<int64_t> expected_output_shape = {20000};
-  EXPECT_EQ(output_desc_1.GetShape().GetDims(), expected_output_shape);
-  EXPECT_EQ(output_desc_2.GetShape().GetDims(), expected_output_shape);
 }

@@ -1460,23 +1460,25 @@ VERIFY_FUNC_REG(DecodeBboxV2, DecodeBboxV2Verify);
 // ----------------DecodeBboxV2-------------------
 // --------------------sort----------------------------
 IMPLEMT_INFERFUNC(Sort, SortInferShape) {
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
-  Shape input_shape = tensordesc_input.GetShape();
-  DataType input_dtype = tensordesc_input.GetDataType();
-  std::vector<int64_t> dims_input = input_shape.GetDims();
 
-  TensorDesc tensordesc_output1 = op.GetOutputDesc("y1");
-  TensorDesc tensordesc_output2 = op.GetOutputDesc("y2");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+  std::vector<std::pair<int64_t, int64_t>> range;
 
-  tensordesc_output1.SetShape(ge::Shape(dims_input));
-  tensordesc_output2.SetShape(ge::Shape(dims_input));
+  //out_sorted
+  auto output_sorted_desc = op_desc->MutableOutputDesc(0);
+  output_sorted_desc->SetShape(x_desc->GetShape());
+  output_sorted_desc->SetDataType(x_desc->GetDataType());
 
-  tensordesc_output1.SetDataType(input_dtype);
-  tensordesc_output2.SetDataType(DT_INT32);
+  //out_indices
+  auto output_indices_desc = op_desc->MutableOutputDesc(1);
+  output_indices_desc->SetShape(x_desc->GetShape());
+  output_indices_desc->SetDataType(DT_INT32);
 
-  (void)op.UpdateOutputDesc("y1", tensordesc_output1);
-  (void)op.UpdateOutputDesc("y2", tensordesc_output2);
-
+  if(x_desc->GetShapeRange(range) == GRAPH_SUCCESS){
+    output_sorted_desc->SetShapeRange(range);
+    output_indices_desc->SetShapeRange(range);    
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -1487,7 +1489,6 @@ IMPLEMT_VERIFIER(Sort, SortVerify) {
 INFER_FUNC_REG(Sort, SortInferShape);
 VERIFY_FUNC_REG(Sort, SortVerify);
 // --------------------sort---------------------------
-
 // ----------------PTIou-------------------
 IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
   auto shape_box = op.GetInputDesc("bboxes").GetShape();
