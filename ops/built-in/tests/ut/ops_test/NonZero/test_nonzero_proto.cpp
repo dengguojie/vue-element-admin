@@ -29,7 +29,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_1) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -49,7 +49,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_2) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
   std::vector<int64_t> expected_output_shape = {-1, 2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -69,7 +69,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_3) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
   std::vector<int64_t> expected_output_shape = {-1, 2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -89,7 +89,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_4) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
   std::vector<int64_t> expected_output_shape = {2, -1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -109,7 +109,7 @@ TEST_F(NonZeroProtoUT, nonzero_test_5) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT64);
   std::vector<int64_t> expected_output_shape = {2, -1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

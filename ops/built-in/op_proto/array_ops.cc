@@ -2351,7 +2351,7 @@ IMPLEMT_INFERFUNC(NonZero, NonZeroInfer) {
   GeTensorDescPtr x_input = op_desc->MutableInputDesc(0);
   GeShape x_shape = x_input->GetShape();
   GeTensorDescPtr y_desc = op_desc->MutableOutputDesc(0);
-  y_desc->SetDataType(x_input->GetDataType());
+  y_desc->SetDataType(DT_INT64);
   bool transpose = false;
   if (op.GetAttr("transpose", transpose) != GRAPH_SUCCESS) {
     OP_LOGW(op.GetName().c_str(), "Failed to get attr[transpose]. Set attr[transpose] to false.");
