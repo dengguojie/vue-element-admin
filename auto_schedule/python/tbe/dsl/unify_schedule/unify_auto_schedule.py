@@ -63,7 +63,7 @@ def schedule_cce(outs, option=None):
         op_type = operation.get_context().get_op_type()
         compute = get_op_compute(op_type)
 
-        if compute is None or compute.support_fusion is False:
+        if compute is None or compute.if_support_fusion() is False:
             fusion_pattern = Pattern.OPAQUE
         else:
             fusion_pattern = pattern
@@ -108,7 +108,6 @@ def build(schedules_list, config_map=None):
             not get_soc_spec("CUBE_VECTOR_SPLIT"):
         # prebuild
         return
-
 
     def get_op_pattern_from_computes():
         """
@@ -306,9 +305,9 @@ class Builder:
         dynamic_config = buildcfg.default_buildcfg.dynamic_build_config_dict
         with buildcfg.build_config(**dynamic_config):
             upper_config = buildcfg.get_current_build_config("all")
-        dynamic_build_config = copy.deepcopy(upper_config)
-        dynamic_build_config.update(m_config_items)
-        build_configs = [build_config(**dynamic_build_config)]
+        current_build_config = copy.deepcopy(upper_config)
+        current_build_config.update(m_config_items)
+        build_configs = [build_config(**current_build_config)]
 
         for sch in self.valid_schs:
             dynamic_single_sch_build_config = copy.deepcopy(upper_config)
