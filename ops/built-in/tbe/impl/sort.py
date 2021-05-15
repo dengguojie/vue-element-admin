@@ -67,38 +67,6 @@ def check(x, y1, y2, axis, kernel_name):
     return shape, dtype, num
 
 
-def vbs16(tik_instance, num, total, input_ub, descending):
-    """
-    Function: Sort every 16 numsi in UB.
-    Modify : 2020-08-03
-
-    Init base parameters
-    Parameters
-    ----------
-    num: The number of effective object.
-    total: The number of all object (16 alignment).
-    input_ub: UB
-    ----------
-    """
-    Max = tik_instance.Scalar('float16', init_value=MAX_VAL)
-    Min = tik_instance.Scalar('float16', init_value=MIN_VAL)
-    # Add ineffective object for 16 alignment
-    if descending:
-        with tik_instance.for_range(0, total - num) as i:
-            input_ub[(num + i) * PROPOSAL_NUM + 4].set_as(Min)
-    else:
-        with tik_instance.for_range(0, total - num) as i:
-            input_ub[(num + i) * PROPOSAL_NUM + 4].set_as(Max)
-
-    # dest position in UB
-    dest_pos_ub = total * PROPOSAL_NUM
-    n_repeat_total = total // BLOCK
-
-    tik_instance.vrpsort16(dst=input_ub[dest_pos_ub], src=input_ub[0], repeat_times=n_repeat_total)
-
-    return input_ub, dest_pos_ub
-
-
 def merge4(tik_instance, num_list, input_ub, offset, src_pos_ub, index, dest_pos_ub):
     """
     Function: Merge 4 lists in UB.
@@ -511,10 +479,20 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
         offset_in = core_idx * num
         offset_out = core_idx * num_16
         dest_pos_ub = num_16 * PROPOSAL_NUM
+        n_repeat_total = num_16 // BLOCK
         # 1. Move data from OUT to UB
-        tik_instance.data_move(input_ub[dest_pos_ub], input_gm[offset_in], 0, 1, num_16 // BLOCK, 0, 0)
+        tik_instance.data_move(input_ub[dest_pos_ub], input_gm[offset_in], 0, 1, n_repeat_total, 0, 0)
+        Max = tik_instance.Scalar('float16', init_value=MAX_VAL)
+        Min = tik_instance.Scalar('float16', init_value=MIN_VAL)
+        # Add ineffective object for 16 alignment
+        if descending:
+            with tik_instance.for_range(0, num_16 - num) as i:
+                input_ub[(num + i) + dest_pos_ub].set_as(Min)
+        else:
+            with tik_instance.for_range(0, num_16 - num) as i:
+                input_ub[(num + i) + dest_pos_ub].set_as(Max)
 
-        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], num_16 // BLOCK, 4)
+        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, 4)
 
         if version == "cloud":
             idx = tik_instance.Scalar(dtype="float32", init_value=num)
@@ -532,10 +510,10 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
         else:
             raise RuntimeError("Unexcepted version.")
 
-        tik_instance.vconcat(input_ub[0], idx_ub[0], num_16 // BLOCK, 0)
+        tik_instance.vconcat(input_ub[0], idx_ub[0], n_repeat_total, 0)
 
         # 2. vbs16
-        input_ub, dest_pos_ub = vbs16(tik_instance, num, num_16, input_ub, descending)
+        tik_instance.vrpsort16(dst=input_ub[dest_pos_ub], src=input_ub[0], repeat_times=n_repeat_total)
         # 3. vms4
         input_ub, dest_pos_ub = vms4(tik_instance, num_16, input_ub, dest_pos_ub)
         # 4. Move Data from UB to OUT
