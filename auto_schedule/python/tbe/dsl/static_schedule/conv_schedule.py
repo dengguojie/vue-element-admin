@@ -4252,6 +4252,9 @@ class CceConvOp:
                     continue
                 if "bias_ub" in lop["op"]:
                     continue
+                #  phony_insn tensor no need set_storage_bound for convbn fusion
+                if self._convbn1_flag and "cast_1" in lop["op"]:
+                    continue
                 sch[lop["dst_buffer"]].set_storage_bound(ub_storage_bound_size)
 
             # mem_unique

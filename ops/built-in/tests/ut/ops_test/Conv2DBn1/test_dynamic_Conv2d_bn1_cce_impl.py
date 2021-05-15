@@ -60,9 +60,9 @@ def test_conv2d_bn1_dynamic(test_arg):
 
         build(sch, config)
 
-# ut_case.add_cust_test_func(test_func=test_conv2d_bn1_dynamic)
+ut_case.add_cust_test_func(test_func=test_conv2d_bn1_dynamic)
 
 if __name__ == '__main__':
-    ut_case.add_cust_test_func(test_func=test_conv2d_bn1_dynamic)
+    # ut_case.add_cust_test_func(test_func=test_conv2d_bn1_dynamic)
     ut_case.run("Ascend910A")
     exit(0)
