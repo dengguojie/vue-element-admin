@@ -117,7 +117,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling1) {
   std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.tiling_data),
-      "1 16 16 32 1 1 0 1 1 0 ");
+      "1 16 16 32 1 0 1 1 0 1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling2) {
@@ -188,7 +188,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling2) {
   std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.tiling_data),
-      "1 2 16 32 8 1 0 8 1 0 ");
+      "1 2 16 32 8 0 8 8 0 8 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling3) {
@@ -401,7 +401,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling5) {
   std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.tiling_data),
-      "1 32 220 3991 7 7 0 3 3 0 ");
+      "1 32 220 3991 7 2 1 3 1 0 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling6) {
@@ -614,7 +614,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling8) {
   std::cout << "NLLLossTilingData: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.tiling_data),
-      "2 32 2000 15003 64 1 0 16 0 16 ");
+      "2 32 2000 15003 63 0 63 47 0 47 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling9) {

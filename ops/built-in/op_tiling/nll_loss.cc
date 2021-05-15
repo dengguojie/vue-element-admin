@@ -219,7 +219,16 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
   }
 
   // core allow has left data
-  if (!is_left_data) {
+  if (is_left_data) {
+    max_line = max_line - GetMod(max_line, min_aligned);
+    int64_t line = ChangeAligned(min_aligned, min_aligned, need_core_num, per_core_size, last_core_size);
+    if (line == -1) {
+      need_core_num -= 1;
+      return RecursiveTiling(ub_max_line, need_core_num, n_size, c_size, per_core_size, per_core_loop_cnt,
+                             per_core_left_size, last_core_size, last_core_loop_cnt, last_core_left_size, min_aligned,
+                             is_left_data);
+    }
+  } else {
     // integer multiple of min_aligned
     int64_t max_aligned = GetMaxAligned(max_line, min_aligned, need_core_num, n_size);
 
@@ -289,7 +298,7 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   std::string reduction;
   int64_t unit_size = 1;
   int64_t min_aligned = 1;
-  bool is_left_data = false;
+  bool is_left_data = true;
 
   if (!GetCompileParams(op_type, op_info, core_num, ub_size, reduction)) {
     OP_LOGE(op_type.c_str(), "NLLLossTiling: GetCompileParams error.");
