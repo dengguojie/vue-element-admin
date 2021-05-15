@@ -59,6 +59,12 @@ def _calc_output(x_in, k_size, pads, stride, dilation):
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
 
+def _calc_upper(lower, upper):
+    if (upper > 1) and (upper > lower):
+        upper -= 1
+    return upper
+
+
 def _calc_ceil(x_1, x_2):
     """
     do ceiling division
@@ -501,9 +507,9 @@ class Conv3dBackpropParaProcess():
                                        self.dilations[3])
 
         dy_range = [(dx_range_n[0], dx_range_n[1]),
-                    (out_d_lower, out_d_upper),
-                    (out_h_lower, out_h_upper),
-                    (out_w_lower, out_w_upper),
+                    (out_d_lower, _calc_upper(out_d_lower, out_d_upper)),
+                    (out_h_lower, _calc_upper(out_h_lower, out_h_upper)),
+                    (out_w_lower, _calc_upper(out_w_lower, out_w_upper)),
                     (shape_out_backprop_ndhwc[-1], shape_out_backprop_ndhwc[-1])
                     ]
         return dy_range

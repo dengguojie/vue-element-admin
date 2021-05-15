@@ -119,6 +119,8 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
 
     var_map: the information for dynamic shape, {} by default
 
+    para_dict: the original information of tensors, None by default
+
     Returns
     ----------
     dx_ddr: dE/dX tensor

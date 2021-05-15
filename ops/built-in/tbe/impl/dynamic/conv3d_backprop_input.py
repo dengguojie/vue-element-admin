@@ -840,12 +840,14 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
                                                     dy_ori_shape[dy_ori_format.find('C')]]
     dx_range_ndhw = conv3d_backprop.get_dx_range(dy_range_ori_format)
     _, _, y_c1, _, _, y_c0 = y["shape"] # NDC1HWC0
-    y["range"] = [dx_range_ndhw[0],
-                  dx_range_ndhw[1],
-                  [y_c1, y_c1],
-                  dx_range_ndhw[2],
-                  dx_range_ndhw[3],
-                  [y_c0, y_c0]]
+    y["range"] = [
+        dx_range_ndhw[0],
+        dx_range_ndhw[1],
+        [y_c1, y_c1],
+        dx_range_ndhw[2],
+        dx_range_ndhw[3],
+        [y_c0, y_c0]
+    ]
     result.append([input_size, filter, out_backprop, y, strides, pads, dilations, groups, data_format, kernel_name])
     return result
 
