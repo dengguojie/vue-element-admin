@@ -217,7 +217,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float16,float",
                                                         format="FRACTAL_NZ,NC1HWC0,ND,ND")
-            if tbe_product in ("Ascend910", "Ascend310",):
+            if tbe_product in ("Ascend910", "Ascend310", "Ascend920",):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float16,float,float",
                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
@@ -239,7 +239,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float",
                                                         format="NC1HWC0,ND,ND")
-            if tbe_product in ("Ascend910", "Ascend310",):
+            if tbe_product in ("Ascend910", "Ascend310", "Ascend920",):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float,float",
                                                        format="NC1HWC0,ND,ND,NC1HWC0")
@@ -261,7 +261,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float16,float16,float",
                                                     format="NC1HWC0,NDC1HWC0,ND,ND")
-        if tbe_product in ("Ascend910",):
+        if tbe_product in ("Ascend910", "Ascend920",):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float,float,float16,float",
                                                    format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
@@ -312,7 +312,7 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float,float16,float16,float,float16",
                                                     format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0")
-        if tbe_product in ("Ascend910", "Ascend310",):
+        if tbe_product in ("Ascend910", "Ascend310", "Ascend920",):
             input0 = \
                 util_select_op_base.gen_param(classify="input0", name="x",
                                               datatype="float16,float,float16,float16,float,float,float16,float",
@@ -407,7 +407,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         has_improve_precision = True
     data_expsum = te.lang.cce.sum(data_exp, axis, keepdims=True)
 
-    if tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710",) and \
+    if tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710", "Ascend920",) and \
        output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         data_expsum = te.lang.cce.vrec(data_expsum, priority_flag=0)
         data_expsum = _broadcast_nz(data_expsum, shape)
