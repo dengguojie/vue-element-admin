@@ -63,8 +63,13 @@ def gen_data_file(data_file, shape, dtype, rand_type, low, high):
         rand_data = np.random.randint(low, high, size=shape)
     else:
         rand_data = np.random.uniform(low, high, size=shape)
-    data = np.array(rand_data, dtype=dtype)
-    write_file_txt(data_file, data, fmt="%s")
+    if dtype == np.float16:
+        data = np.array(rand_data, dtype=np.float32)
+        write_file_txt(data_file, data, fmt="%s")
+        data = np.array(data, dtype=np.float16)
+    else:
+        data = np.array(rand_data, dtype=dtype)
+        write_file_txt(data_file, data, fmt="%s")
     return data
 
 def config(execute_type):

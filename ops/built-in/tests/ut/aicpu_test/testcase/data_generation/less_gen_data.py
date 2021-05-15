@@ -45,7 +45,7 @@ def read_file_txt(file_name, dtype, delim=None):
 
 # prama1: file_name: the file which store the data
 # param2: delim: delimiter which is used to split data
-def read_file_txt_to_boll(file_name, delim=None):
+def read_file_txt_to_bool(file_name, delim=None):
     in_data = np.loadtxt(file_name, dtype=str, delimiter=delim)
     bool_data = []
     for item in in_data:
@@ -66,8 +66,13 @@ def gen_data_file(data_file, shape, dtype, rand_type, low, high):
         rand_data = np.random.randint(low, high, size=shape)
     else:
         rand_data = np.random.uniform(low, high, size=shape)
-    data = np.array(rand_data, dtype=dtype)
-    write_file_txt(data_file, data, fmt="%s")
+    if dtype == np.float16:
+        data = np.array(rand_data, dtype=np.float32)
+        write_file_txt(data_file, data, fmt="%s")
+        data = np.array(data, dtype=np.float16)
+    else:
+        data = np.array(rand_data, dtype=dtype)
+        write_file_txt(data_file, data, fmt="%s")
     return data
 
 def config(execute_type):
@@ -94,7 +99,7 @@ def gen_random_data_int32():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
+    # read_data = read_file_txt_to_bool(data_files[2])
 
 def gen_random_data_int64():
     data_files=["less/data/less_data_input1_2.txt",
@@ -112,7 +117,7 @@ def gen_random_data_int64():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
+    # read_data = read_file_txt_to_bool(data_files[2])
 
 def gen_random_data_float():
     data_files=["less/data/less_data_input1_3.txt",
@@ -130,7 +135,7 @@ def gen_random_data_float():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
+    # read_data = read_file_txt_to_bool(data_files[2])
 
 def gen_random_data_double():
     data_files=["less/data/less_data_input1_4.txt",
@@ -148,7 +153,7 @@ def gen_random_data_double():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
+    # read_data = read_file_txt_to_bool(data_files[2])
 
 def gen_random_data_int8():
     data_files=["less/data/less_data_input1_5.txt",
@@ -166,7 +171,7 @@ def gen_random_data_int8():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
+    # read_data = read_file_txt_to_bool(data_files[2])
 
 def gen_random_data_uint8():
     data_files=["less/data/less_data_input1_6.txt",
@@ -184,7 +189,7 @@ def gen_random_data_uint8():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
+    # read_data = read_file_txt_to_bool(data_files[2])
 
 def gen_random_data_int16():
     data_files=["less/data/less_data_input1_7.txt",
@@ -202,7 +207,7 @@ def gen_random_data_int16():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
+    # read_data = read_file_txt_to_bool(data_files[2])
 
 def gen_random_data_float16():
     data_files=["less/data/less_data_input1_8.txt",
@@ -211,8 +216,8 @@ def gen_random_data_float16():
     np.random.seed(3457)
     shape_x1 = [12, 130]
     shape_x2 = [12, 130]
-    a = gen_data_file(data_files[0], shape_x1, np.float16, "randint", 0, 2000)
-    b = gen_data_file(data_files[1], shape_x2, np.float16, "randint", 0, 2000)
+    a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
+    b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
 
     x1 = tf.compat.v1.placeholder(tf.float16, shape=shape_x1)
     x2 = tf.compat.v1.placeholder(tf.float16, shape=shape_x2)
@@ -220,7 +225,7 @@ def gen_random_data_float16():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
+    # read_data = read_file_txt_to_bool(data_files[2])
 
 def run():
     gen_random_data_int32()

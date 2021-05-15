@@ -15,7 +15,7 @@
  */
 #include "aicpu_test_utils.h"
 
-uint64_t CalTotalElements(std::vector<std::vector<int64_t>> &shapes, 
+uint64_t CalTotalElements(std::vector<std::vector<int64_t>> &shapes,
                           uint32_t index) {
   if(index < 0) {
     return 0;
@@ -31,7 +31,7 @@ template <>
 bool CompareResult(float output[], float expect_output[], uint64_t num) {
   bool result = true;
   for (uint64_t i = 0; i < num; ++i) {
-    if (std::abs(output[i] - expect_output[i]) > 0.0000001) {
+    if (std::fabs(output[i] - expect_output[i]) > 1e-6) {
       std::cout << "output[" << i << "] = ";
       std::cout << output[i];
       std::cout << ", expect_output[" << i << "] = ";
@@ -46,7 +46,23 @@ template <>
 bool CompareResult(double output[], double expect_output[], uint64_t num) {
   bool result = true;
   for (uint64_t i = 0; i < num; ++i) {
-    if (std::abs(output[i] - expect_output[i]) > 1e-15) {
+    if (std::fabs(output[i] - expect_output[i]) > 1e-10) {
+      std::cout << "output[" << i << "] = ";
+      std::cout << output[i];
+      std::cout << ", expect_output[" << i << "] = ";
+      std::cout << expect_output[i] << std::endl;
+      result = false;
+    }
+  }
+  return result;
+}
+
+bool CompareResult(Eigen::half output[], Eigen::half expect_output[],
+    uint64_t num) {
+  bool result = true;
+  for (uint64_t i = 0; i < num; ++i) {
+    if ((output[i] - expect_output[i] > Eigen::half(1e-3)) ||
+        (output[i] - expect_output[i] < Eigen::half(-1e-3))) {
       std::cout << "output[" << i << "] = ";
       std::cout << output[i];
       std::cout << ", expect_output[" << i << "] = ";

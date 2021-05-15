@@ -20,9 +20,14 @@
 #include <vector>
 #include <math.h>
 #include <iostream>
+#include "Eigen/Core"
 
-uint64_t CalTotalElements(std::vector<std::vector<int64_t>> &shapes, 
+uint64_t CalTotalElements(std::vector<std::vector<int64_t>> &shapes,
                           uint32_t index);
+
+bool CompareResult(Eigen::half output[], Eigen::half expect_output[],
+                   uint64_t num);
+
 template <typename T>
 bool CompareResult(T output[], T expect_output[], uint64_t num) {
   bool result = true;
