@@ -18,113 +18,71 @@ import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
+from topi.cce import util
+from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
 from te import platform as tbe_platform
 
-
-NUM_ZERO = 0.0
-NUM_ONE_NEG = -1.0
-NUM_ONE_POS = 1.0
-
-def _celu_computer_performance(data, alpha, dtype):
-    positive_data = tbe.vrelu(data)
-
-    scalar_one_neg = tvm.const(NUM_ONE_NEG, dtype)
-    scalar_alpha_rev = tvm.const(NUM_ONE_NEG/alpha, dtype)
-    negative_data = tbe.vmuls(data, scalar_one_neg)
-    negative_data = tbe.vrelu(negative_data)
-    negative_data = tbe.vmuls(negative_data, scalar_alpha_rev)
-    
-    exp_res = tbe.vexp(negative_data)
-    exp_res = tbe.vadds(exp_res, scalar_one_neg)
-
-    res = tbe.vmuls(exp_res, tvm.const(alpha, dtype))
-    res = tbe.vadd(positive_data, res)
-
-    return res
-
-
-def _celu_computer_precision(data, alpha, dtype):
-    scalar_zero = tvm.const(NUM_ZERO, dtype)
-    negative_data = tbe.vmins(data, scalar_zero)
-    scalar_alpha_rev = tvm.const(NUM_ONE_POS/alpha, dtype)
-    negative_data = negative_data.vmuls(negative_data, scalar_alpha_rev)
-
-    positive_data = tbe.vmaxs(data, scalar_zero)
-
-    exp_res = tbe.vexp(negative_data)
-    exp_res = tbe.vadds(exp_res, tvm.const(NUM_ONE_NEG, dtype))
-
-    res = tbe.vaxpy(exp_res, positive_data, tvm.const(alpha, dtype))
-
-    return res
-
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-@fusion_manager.register("celu")
-def celu_compute(x, y, alpha, kernel_name="celu"):
+@fusion_manager.register("Celu")
+def celu_compute(x, y, a1, a2, a3, kernel_name="celu"):
     """
-    do element-wise celu compute
+    Implement the operator by referring to  the
+            TBE Operator Development Guide.
+    celu:
+    if x >= 0
+        y = alpha3 * 3
+    else
+        y = alpha1 * (exp(x/alpha2)-1)
+    x:dict of x, include shape and dtype
+    y:dict of y, include shape and dtype
+    a1: scalar, alpha1
+    a2: scalar, alpha2
+    a3: scalar, alpha3
 
-    Parameters:
-    ----------
-    x: the placeholder of data input
-
-    alpha: float, coefficient when input tensor is less than zero
-
-    y: the dict of output
-
-    kernel_name : cce kernel name, default value is "celu"
-
-    Returns : A Tensor. Has the same type as data_input.
-    -------
     """
 
     data = x
     dtype = data.dtype
 
-    has_improve_precision = False
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
-        has_improve_precision = True
-    if dtype.lower() == "float16" and has_improve_precision:
-        data = tbe.cast_to(data, "float32")
-        cvt_dtype = "float32"
-    else:
-        cvt_dtype = dtype
+    rec_a2 = tvm.const(-1/a2, "float32")
+    negative_x = tbe.vmuls(data, tvm.const(-1, "float32"))
+    vmax_x = tbe.vmaxs(negative_x, tvm.const(0,"float32"))
+    div_a2x = tbe.vmuls(vmax_x, rec_a2)
+    exp_a2x = tbe.vexp(div_a2x)
+    neg_part = tbe.vadds(exp_a2x, tvm.const(-1,"float32"))
+    
+    pos_part = tbe.vmaxs(x, tvm.const(0,"float32"))
 
-    if has_improve_precision:
-        res = _celu_computer_precision(data, alpha, cvt_dtype)
-    else:
-        res = _celu_computer_performance(data, alpha, cvt_dtype)
+    mul_a1 = tbe.vmuls(neg_part, tvm.const(a1, "float32"))
+    mul_a3 = tbe.vmuls(pos_part, tvm.const(a3, "float32"))
 
-    if dtype.lower() == "float16" and has_improve_precision:
-        res = tbe.cast_to(res, "float16")
+    res = tbe.vadd(mul_a1,mul_a3)
+    res = tbe.cast_to(res, dtype)
 
     return res
 
 
 # pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT,para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def celu(x, y, alpha=1.0, kernel_name="celu"):
+def celu(x, y, alpha1=1.0, alpha2=1.0, alpha3=1.0, kernel_name="celu"):
     """
-    do element-wise celu operation
+    Implement the operator by referring to  the
+            TBE Operator Development Guide.
+    celu:
+    if x >= 0
+        y = alpha3 * 3
+    else
+        y = alpha1 * (exp(x/alpha2)-1)
+    x:dict of x, include shape and dtype
+    y:dict of y, include shape and dtype
+    a1: scalar, alpha1
+    a2: scalar, alpha2
+    a3: scalar, alpha3
 
-    Parameters:
-    ----------
-    x: the dict of input, only support float16, float32
-
-    alpha: float, coefficient when input tensor is less than zero.
-
-    output_res : the dict of output
-
-    kernel_name : cce kernel name, default value is "elu"
-
-    Returns
-    -------
-    None
     """
-
+    util.check_kernel_name(kernel_name)
     shape_input = x.get("shape")
     dtype_input = x.get("dtype")
     input_dtype = dtype_input.lower()
@@ -134,29 +92,16 @@ def celu(x, y, alpha=1.0, kernel_name="celu"):
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_input, check_list, param_name="x")
 
-    if not tbe_platform.cce_conf.api_check_support("te.lang.cce.sum", "float32") and dtype_input == "float32":
-        error_info = {}
-        error_info['errCode'] = 'E80008'
-        error_info['param_name'] = 'x'
-        error_info['op_name'] = 'celu'
-        error_info['expect_value'] = "float16"
-        error_info['real_value'] = dtype_input
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s]'s dtype "
-                                       "should be [%s], but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'], \
-                              error_info['expect_value'], error_info['real_value']))
+    if alpha2 == 0:
+        error_manager_vector.raise_err_input_value_invalid("celu","alpha2","non-zero","zero")
 
-    fuseshape = []
-    fuseshape.append(functools.reduce(lambda x, y: x*y, shape_input))
-    data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)
+    data_input = tvm.placeholder(shape_input, name="data_input", dtype=input_dtype)
 
-    res = celu_compute(data_input, y, alpha, kernel_name)
+    res = celu_compute(data_input, y, alpha1, alpha2, alpha3, kernel_name)
 
     with tvm.target.cce():
-        auto_sch = tbe.auto_schedule(res)
+        auto_sch = generic.auto_schedule(res)
 
     config = {"name": kernel_name,
-              "print_ir": False,
-              "tensor_list": [data_input, res],
-              "bool_storage_as_1bit": False}
-    tbe.build(auto_sch, config)
+              "tensor_list": [data_input, res]}
+    tbe.cce_build_code(auto_sch, config)

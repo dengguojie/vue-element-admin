@@ -536,13 +536,19 @@ REG_OP(Elu)
 *       max(0, x) + min(0, alpha * (exp(x/alpha) - 1)). \n
 
 *@par Inputs:
-*x: A float16, float32 or double, for the input data type . \n
+*x: A float16, float32, for the input data type . \n
 
 *@par Attributes:
-*alpha: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" . \n
+*alpha1: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" . \n
+
+*@par Attributes:
+*alpha2: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" . \n
+
+*@par Attributes:
+*alpha3: A float32. Defines at which positive value the ELU saturates. Defaults to "1.0" . \n
 
 *@par Outputs:
-*y: A float16, float32 or double, for the normalized result . \n
+*y: A float16, float32, for the normalized result . \n
 
 *@attention Constraints:
 *@li The input is of type float16 or float32 . \n
@@ -553,9 +559,11 @@ REG_OP(Elu)
 *@li Compatible with ONNX's Celu operator
 */
 REG_OP(Celu)
-    .INPUT(x, TensorType::FloatingDataType())
-    .OUTPUT(y, TensorType::FloatingDataType())
-    .ATTR(alpha, Float, 1.0)
+    .INPUT(x, TensorType({DT_FLOAT,DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT,DT_FLOAT16}))
+    .ATTR(alpha1, Float, 1.0)
+    .ATTR(alpha2, Float, 1.0)
+    .ATTR(alpha3, Float, 1.0)
     .OP_END_FACTORY_REG(Celu)
 
 /**
