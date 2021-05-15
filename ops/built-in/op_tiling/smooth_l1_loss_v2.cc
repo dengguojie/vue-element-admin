@@ -34,13 +34,13 @@ bool SmoothL1LossV2Tiling(const std::string& op_type, const TeOpParas& op_paras,
   if (reduction == "sum" || reduction == "mean") {
     Reduce reduce(op_type, op_paras, op_info, run_info);
     ret = reduce.DoTiling() && reduce.WriteTilingData();
-    if (reduce_mean_cof_dtype == "float32") {
+    if (reduction == "mean" && reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         reduce_mean_cof = reduce_mean_cof / input_shape[i];
       }
       ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
-    } else if (reduce_mean_cof_dtype == "float16") {
+    } else if (reduction == "mean" && reduce_mean_cof_dtype == "float16") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         reduce_mean_cof = reduce_mean_cof / input_shape[i];
       }

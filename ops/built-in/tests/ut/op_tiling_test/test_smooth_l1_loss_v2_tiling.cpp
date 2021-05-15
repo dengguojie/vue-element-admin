@@ -115,7 +115,7 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_2) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   std::cout << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "1 4000 1 1 964891246 ");
+            "1 4000 1 1 ");
 }
 
 TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_3) {
@@ -204,7 +204,7 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_4) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   std::cout << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "1 4000 1 1 3097 ");
+            "1 4000 1 1 ");
 }
 
 TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_5) {
