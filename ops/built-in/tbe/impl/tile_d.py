@@ -282,7 +282,9 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     dtype = input_x.get("dtype").lower()
     para_check.check_shape(shape, param_name="input_x")
     para_check.check_shape(multiples, param_name="multiples")
-    para_check.check_dtype(dtype.lower(), ("float16", "float32", "int32", "int8"), param_name="input_x")
+    para_check.check_dtype(dtype.lower(), ("float16", "float32", "int32", "int8", "bool"), param_name="input_x")
+    if dtype == "bool":
+        dtype = "int8"
     shape = list(shape)
     multiples = list(multiples)
     input_format = input_x.get("format")

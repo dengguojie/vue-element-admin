@@ -20,6 +20,10 @@ ut_case.add_case("all", gen_dynamic_tile_d_case((-1,), ((1, None),), [1, 2],
                                                 "float16",
                                                 "dynamic_tile_d_fp16_ND",
                                                 "success"))
+ut_case.add_case("all", gen_dynamic_tile_d_case((-1,), ((1, None),), [1, 2],
+                                                "bool",
+                                                "dynamic_tile_d_fp16_ND",
+                                                "success"))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

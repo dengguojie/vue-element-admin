@@ -109,8 +109,10 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
 
     # Check support dtype
     input_dtype = input_x.get("dtype").lower()
-    check_list = ("float16", "float32", "int32", "int8")
+    check_list = ("float16", "float32", "int32", "int8", "bool")
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
+    if input_dtype == "bool":
+        input_dtype = "int8"
 
     input_range = list(input_x.get("range"))
     input_shape = list(input_x.get("shape"))

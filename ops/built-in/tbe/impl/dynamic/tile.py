@@ -84,8 +84,10 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
     """
 
     input_x_dtype = input_x.get("dtype").lower()
-    check_list = ("float16", "float32", "int8", "uint8", "int32", "int16", "uint16")
+    check_list = ("float16", "float32", "int8", "uint8", "int32", "int16", "uint16", "bool")
     para_check.check_dtype(input_x_dtype, check_list, param_name="input_x")
+    if input_x_dtype == "bool":
+        input_x_dtype = "int8"
 
     # multiples : A Tensor. Must be one of the following types: int32, int64
     input_m_dtype = input_m.get("dtype").lower()
