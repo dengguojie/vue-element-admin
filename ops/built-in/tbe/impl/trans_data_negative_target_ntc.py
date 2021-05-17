@@ -25,7 +25,7 @@ PAD_IDX_LIST = (0, 1)
 # frame up levels
 FRAME_LEVEL = 2
 # burst limit
-BURST_LIMIT = 65536
+BURST_LIMIT = 65535
 INT8_DTYPES = ("int8", "uint8")
 NEED_CAST_DTYPES = ("float32", "int32")
 VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
@@ -743,6 +743,12 @@ def _move_cr_in_for_two_cr_dims(args):
         is_left_dims_nz.set_as(0)
     left_gm_offset = is_left_dims_nz * (left_dims_size * c0_len - cr_in_idx_0_size * c0_len + cr_in_idx_1_src_asize)
 
+    bust_len_scalar = tik_inst.Scalar(name="bust_len_scalar")
+    with tik_inst.if_scope(cr_in_idx_0_size * c0_len // ele_per_block > BURST_LIMIT):
+        bust_len_scalar.set_as(1)
+    with tik_inst.else_scope():
+        bust_len_scalar.set_as(cr_in_idx_0_size * c0_len // ele_per_block)
+
     with tik_inst.if_scope(mid_lp_cnt > 0):
         cr1_cr0_gap.set_as((cr_in_idx_1_src_asize - cr_in_idx_0_size * c0_len) // ele_per_block)
         with tik_inst.if_scope(cr1_cr0_gap < 0):  # to avoid compile error
@@ -756,11 +762,10 @@ def _move_cr_in_for_two_cr_dims(args):
                     with tik_inst.for_range(0, mid_lp_cnt) as mid_idx:
                         tik_inst.data_move(src_ub[mid_lp_ub_offset + mid_idx * cr_in_idx_0_size * c0_len],
                                            src_in_gm[mid_lp_gm_offset + mid_idx * cr_in_idx_1_src_asize],
-                                           0, 1, (cr_in_idx_0_size * c0_len // ele_per_block) % BURST_LIMIT, 0, 0)
+                                           0, 1, bust_len_scalar, 0, 0)
                 with tik_inst.else_scope():
                     tik_inst.data_move(src_ub[mid_lp_ub_offset], src_in_gm[mid_lp_gm_offset],
-                                       0, mid_lp_cnt, (cr_in_idx_0_size * c0_len // ele_per_block) % BURST_LIMIT,
-                                       cr1_cr0_gap, 0)
+                                       0, mid_lp_cnt, bust_len_scalar, cr1_cr0_gap, 0)
 
     with tik_inst.if_scope(right_dims_size > 0):
         right_c_cr_gap = (src_c_step_in - right_dims_size * c0_len) // ele_per_block
