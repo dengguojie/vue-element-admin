@@ -49,8 +49,7 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   }
 
   if (opCompileInfo.contains("fmap_c1") && opParas.inputs[0].tensor[0].shape[1] != opCompileInfo["fmap_c1"]) {
-    OP_LOGE(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups; x_channel=%d, fmap_c1=%d",
-            opParas.inputs[0].tensor[0].shape[1], opCompileInfo["fmap_c1"]);
+    OP_LOGE(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups");
     return false;
   }
 
