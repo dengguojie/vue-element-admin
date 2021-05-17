@@ -20,8 +20,22 @@ from tbe.dsl.base.operation import add_compile_info_inner
 
 from .known_reduce_classifier import KnownReduceClassifier
 from .unknown_reduce_classifier import UnknownReduceClassifier
+from .mixed_reduce_classifier import MixedReduceClassifier
 
 AXIS = "axis"
+
+
+def _need_process(ins):
+    _known_axis, _has_neg_two = None, False
+    for _item in ins:
+        if _item.get("rel_pos_to_reduce") == AXIS:
+            _known_axis = _item.get("value")
+            if isinstance(_known_axis, int):
+                _known_axis = [_known_axis, ]
+        else:
+            _has_neg_two = True if -2 in _item.get("shape") else _has_neg_two
+
+    return _known_axis, _has_neg_two
 
 
 def classify(ins: list, keepdims: bool):
@@ -31,49 +45,23 @@ def classify(ins: list, keepdims: bool):
     :param keepdims:
     :return:
     """
-    _check_all_unknown_shape(ins)
-    _check_keepdims(keepdims)
+    _known_axis, neg_two = _need_process(ins)
+    if neg_two:
+        if _known_axis is not None:
+            add_compile_info_inner("_ori_axis", _known_axis)
+        return MixedReduceClassifier(ins, keepdims, _known_axis).classify()
 
+    _check_keepdims(keepdims)
+    result = None
     for single_input in ins:
         if single_input.get("rel_pos_to_reduce") == AXIS:
             if single_input.get("value"):
                 add_compile_info_inner("_ori_axis", single_input.get("value"))
-                return KnownReduceClassifier(ins, keepdims).classify()
+                result = KnownReduceClassifier(ins, keepdims).classify()
             else:
-                return UnknownReduceClassifier(ins, keepdims).classify()
-
-    return [ins]
-
-
-def _check_all_unknown_shape(ins: list):
-    """
-    check the case with shape -2
-    :param ins:
-    :return:
-    """
-    is_axis_not_negative_one = False
-    is_known_classify = False
-    has_all_unknown_shape = False
-
-    for single_input in ins:
-        if single_input.get("rel_pos_to_reduce") == AXIS:
-            if single_input.get("value"):
-                is_known_classify = True
-            elif tuple(single_input.get("shape")) != (-1, ):
-                is_axis_not_negative_one = True
-        else:
-            if -2 in single_input.get("shape"):
-                if len(single_input) != 1:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90001"
-                    dict_args["detailed_cause"] = "if the shape contains -2, it must be [-2] or (-2, )"
-                has_all_unknown_shape = True
-
-    if has_all_unknown_shape and (is_known_classify or is_axis_not_negative_one):
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "shape -2 is supported only when axis is input and its shape is -1"
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+                result = UnknownReduceClassifier(ins, keepdims).classify()
+    result = [ins] if not result else result
+    return result
 
 
 def _check_keepdims(keepdims: bool):
