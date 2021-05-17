@@ -1044,6 +1044,8 @@ def logits_nchw_schedule(res, input_tensors):
         shape_x, block_split_axis, block_split_inner_size, max_ub_count)
 
     split_factor = ub_split_inner
+    if split_factor <= 1:
+        return None, []
     if ub_split_axis == block_split_axis:
         if block_split_inner_size % split_factor != 0:
             while block_split_inner_size % split_factor != 0:

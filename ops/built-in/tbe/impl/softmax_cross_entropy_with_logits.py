@@ -207,7 +207,9 @@ def softmax_cross_entropy_with_logits_compute(
     current_csize_maximum_fp32 = 15360
     high_perf_csize_maximum_fp32 = 20000
     if current_csize_maximum_fp32 < shape_broadcast[1] < \
-            high_perf_csize_maximum_fp32:
+            high_perf_csize_maximum_fp32 and \
+            tbe_platform.api_check_support("te.lang.cce.vexp",
+                                           "float32"):
         return softmax_cross_entropy_with_logits_compute_ex(input_features,
                                                             input_labels)
     has_improve_precision = False
