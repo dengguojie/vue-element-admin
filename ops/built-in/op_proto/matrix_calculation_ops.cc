@@ -1703,7 +1703,6 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
   auto tensordesc_out = op_desc->MutableOutputDesc("y");
   auto tensordesc_x1 = op_desc->GetInputDesc("x1");
   auto tensordesc_x2 = op_desc->GetInputDesc("x2");
-  auto tensordesc_y = op.GetOutputDesc("y");
 
   ge::TensorDesc tensordesc_bias;
   vector<int64_t> shape_bias;
@@ -1713,7 +1712,6 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
 
   auto shape_x1 = tensordesc_x1.GetShape().GetDims();
   auto shape_x2 = tensordesc_x2.GetShape().GetDims();
-  auto shape_y = tensordesc_y.GetShape().GetDims();
 
   size_t dim_num_x1 = shape_x1.size();
   size_t dim_num_x2 = shape_x2.size();
@@ -1745,7 +1743,6 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
   }
 
   OP_LOGD(op.GetName().c_str(), "modify output shape with ori_shape");
-  modify_batchmatmul_outputshape(shape_out, shape_y);
 
   tensordesc_out->SetShape(ge::GeShape(shape_out));
   tensordesc_out->SetShapeRange(shape_range_out);
