@@ -120,11 +120,15 @@ IMPLEMT_INFERFUNC(LogMatrixDeterminant, LogMatrixDeterminantInfer) {
   auto x_shape = op.get_input_desc_x().GetShape().GetDims();
   size_t size_num = x_shape.size();
   if (size_num < 2) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "The rank of x must be greater than 2");
+    string err_msg = ConcatString(
+        "the rank of input[x] should be greater than 2, but get ", size_num, ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);                                   
     return GRAPH_FAILED;
   }
   if (x_shape[size_num - 1] != x_shape[size_num - 2]) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Last two dimension of x are not equal");
+    string err_msg = ConcatString(
+        "the last two dimension of input[x] should be equal, but get ", x_shape[size_num - 1], " and ", x_shape[size_num - 2], ".");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg); 
     return GRAPH_FAILED;
   }
 
