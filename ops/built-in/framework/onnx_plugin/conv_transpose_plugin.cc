@@ -177,21 +177,25 @@ static void SetPads(const ge::onnx::AttributeProto &src_attr, ge::Operator &op_d
   }
 }
 
-static void SetAutoPad(const ge::onnx::AttributeProto &src_attr, ge::Operator &op_dst) {
+static void SetAutoPad(const ge::onnx::AttributeProto &src_attr, 
+                       ge::Operator &op_dst, bool &is_set_auto_pad) {
   if (src_attr.name() == "auto_pad" &&
       src_attr.type() == ge::onnx::AttributeProto::STRING) {
     std::string auto_pad = src_attr.s();
     op_dst.SetAttr("auto_pad", auto_pad);
+    is_set_auto_pad = true;
   }
 }
 
-static void SetOutputShape(const ge::onnx::AttributeProto &src_attr, ge::Operator &op_dst) {
+static void SetOutputShape(const ge::onnx::AttributeProto &src_attr, 
+                           ge::Operator &op_dst, bool &is_set_output_shape) {
   std::vector<int32_t> output_shape_list;
   if (src_attr.name() == "output_shape" &&
       src_attr.type() == ge::onnx::AttributeProto::INTS) {
     output_shape_list.push_back(src_attr.ints(0));
     output_shape_list.push_back(src_attr.ints(1));
     op_dst.SetAttr("output_shape", output_shape_list);
+    is_set_output_shape = true;
   }
 }
 
@@ -219,16 +223,24 @@ Status ParseParamsConv2DTranspose(const Message *op_src, ge::Operator &op_dst) {
     OP_LOGE("Conv2DTranspose", "Set op default attr failed.");
     return FAILED;
   }
-
+  
+  bool is_set_auto_pad = false;
+  bool is_set_output_shape = false;
   for (const auto &attr : p_node->attribute()) {
     SetDilations(attr, op_dst);
     SetStrides(attr, op_dst);
     SetGroup(attr, op_dst);
     SetOutputPading(attr, op_dst);
     SetPads(attr, op_dst);
-    SetAutoPad(attr, op_dst);
-    SetOutputShape(attr, op_dst);
+    SetAutoPad(attr, op_dst, is_set_auto_pad);
+    SetOutputShape(attr, op_dst, is_set_output_shape);
   }
+  
+  // when have output_shape and not have auto_pad, need set auto_pad as SAME_LOWER
+  if (is_set_output_shape && !is_set_auto_pad) {
+    op_dst.SetAttr("auto_pad", "SAME_LOWER");
+  }
+
   return SUCCESS;
 }
 

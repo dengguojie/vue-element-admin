@@ -9507,8 +9507,7 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
       output_padding_w = 0;
     }
 
-    OP_LOGD(op.GetName().c_str(), "result: padH[%d], padW[%d], oPadH[%d], oPadW[%d]",
-            pad_h, pad_w, output_padding_h, output_padding_w);
+    OP_LOGD(op.GetName().c_str(), "result: oPadH[%d], oPadW[%d]", output_padding_h, output_padding_w);
     
     std::vector<int32_t> pads_list = {0, 0, 0, 0};
     std::vector<int32_t> output_padding_list = {0, 0, 0, 0};
@@ -9529,8 +9528,11 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
       pads_list[3] = pad_w / 2;
       op.SetAttr("pads", pads_list);
     }
+
+    OP_LOGD(op.GetName().c_str(), "result: pad_up[%d], pad_down[%d], pad_left[%d], pad_right[%d]",
+            pads_list[0], pads_list[1], pads_list[2], pads_list[3]);
   }
-  
+
   return;
 }
 
