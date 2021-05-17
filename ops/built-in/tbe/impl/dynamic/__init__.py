@@ -22,6 +22,7 @@ from .avg_pool import avg_pool
 from .avg_pool_grad import avg_pool_grad
 from .embedding_dense_grad import embedding_dense_grad
 from .one_hot import one_hot
+from .pad_v3_d import pad_v3_d
 from .rnn_gen_mask_v2 import rnn_gen_mask_v2
 from .apply_proximal_adagrad_d import apply_proximal_adagrad_d
 from .arg_max_v2 import arg_max_v2
