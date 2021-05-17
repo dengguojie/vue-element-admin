@@ -35,16 +35,19 @@ REGISTER_CUSTOM_OP("QueueDequeueUpTo")
     .ParseParamsFn(QueueDequeueUpToMapping)
     .ImplyType(ImplyType::AI_CPU);
 
-Status ParseSingleExampleMapping(const google::protobuf::Message* op_src, ge::Operator& op) {
-  map<string, pair<string, string>> value;
-  value["in"] = pair<string, string>("dense_defaults", "Tdense");
-  value["out"] = pair<string, string>("sparse_indices", "num_sparse");
-  AutoMappingFnDynamic(op_src, op, value);
-  value["out"] = pair<string, string>("sparse_shapes", "num_sparse");
-  AutoMappingFnDynamic(op_src, op, value);
-  value["out"] = pair<string, string>("sparse_values", "num_sparse");
-  AutoMappingFnDynamic(op_src, op, value);
-  value["out"] = pair<string, string>("dense_values", "Tdense");
+Status ParseSingleExampleMapping(const ge::Operator& op_src, ge::Operator& op) {
+  std::vector<DynamicInputOutputInfo> value;
+  DynamicInputOutputInfo input(kInput, "dense_defaults", 14, "Tdense", 6);
+  value.push_back(input);
+  DynamicInputOutputInfo output(kOutput, "sparse_indices", 14, "num_sparse", 10);
+  value.push_back(output);
+  DynamicInputOutputInfo output1(kOutput, "sparse_values", 13, "sparse_types", 12);
+  value.push_back(output1);
+  DynamicInputOutputInfo output2(kOutput, "sparse_shapes", 13, "num_sparse", 10);
+  value.push_back(output2);
+  DynamicInputOutputInfo output3(kOutput, "dense_values", 12, "Tdense", 6);
+  value.push_back(output3);
+  AutoMappingByOpFnDynamic(op_src, op, value);
   return SUCCESS;
 }
 
@@ -52,7 +55,7 @@ Status ParseSingleExampleMapping(const google::protobuf::Message* op_src, ge::Op
 REGISTER_CUSTOM_OP("ParseSingleExample")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("ParseSingleExample")
-    .ParseParamsFn(ParseSingleExampleMapping)
+    .ParseParamsByOperatorFn(ParseSingleExampleMapping)
     .ImplyType(ImplyType::AI_CPU);
 
 // register Stage op to GE

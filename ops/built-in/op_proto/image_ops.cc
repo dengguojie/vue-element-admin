@@ -950,7 +950,7 @@ INFER_FUNC_REG(DrawBoundingBoxes, DrawBoundingBoxesInfer);
 
 IMPLEMT_INFERFUNC(NonMaxSuppression, NonMaxSuppressionInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-
+  
   GeShape boxes_shape;
   const char* op_name = op.GetName().c_str();
   auto boxes_desc = op_desc->MutableInputDesc(0);
@@ -984,15 +984,17 @@ IMPLEMT_INFERFUNC(NonMaxSuppression, NonMaxSuppressionInfer) {
 
   int64_t unused_dim;
   if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
-    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
-                                       boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
-                                       scores_shape.GetDim(0), "] of input[scores]");
+    std::string err_msg = ConcatString(
+        "failed to call Merge function, 0th dim[",
+        boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
+        scores_shape.GetDim(0), "] of input[scores]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (boxes_shape.GetDim(1) != 4 && boxes_shape.GetDim(1) != UNKNOWN_DIM) {
-    std::string err_msg = ConcatString("0th dim[", boxes_shape.GetDim(1), "] of input[boxes] not equal 4");
+    std::string err_msg = ConcatString(
+        "0th dim[", boxes_shape.GetDim(1), "] of input[boxes] not equal 4");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -1052,9 +1054,10 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV2, NonMaxSuppressionV2Infer) {
 
   int64_t unused_dim;
   if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
-    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
-                                       boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
-                                       scores_shape.GetDim(0), "] of input[scores]");
+    std::string err_msg = ConcatString(
+        "failed to call Merge function, 0th dim[",
+        boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
+        scores_shape.GetDim(0), "] of input[scores]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -1101,8 +1104,10 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
   if (WithRank(max_output_size_desc, 0, max_output_size_shape, op_name) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(2,
-        DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
+    std::string err_msg = GetShapeErrMsg(
+        2,
+        DebugString(max_output_size_desc->GetShape().GetDims()),
+        "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1111,8 +1116,10 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
   GeShape iou_threshold_shape;
   auto iou_threshold_desc = op_desc->MutableInputDesc(3);
   if (WithRank(iou_threshold_desc, 0, iou_threshold_shape, op_name) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(3,
-        DebugString(iou_threshold_desc->GetShape().GetDims()), "scalar");
+    std::string err_msg = GetShapeErrMsg(
+        3,
+        DebugString(iou_threshold_desc->GetShape().GetDims()),
+        "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1130,15 +1137,17 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
 
   int64_t unused_dim;
   if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
-    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
-                                       boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
-                                       scores_shape.GetDim(0), "] of input[scores]");
+    std::string err_msg = ConcatString(
+        "failed to call Merge function, 0th dim[",
+        boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
+        scores_shape.GetDim(0), "] of input[scores]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (boxes_shape.GetDim(1) != 4 && boxes_shape.GetDim(1) != UNKNOWN_DIM) {
-    std::string err_msg = ConcatString("1th dim[", boxes_shape.GetDim(1), "] of input[boxes] not equal 4.");
+    std::string err_msg = ConcatString(
+        "1th dim[", boxes_shape.GetDim(1), "] of input[boxes] not equal 4.");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -1163,7 +1172,9 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
   GeShape boxes_shape;
   auto boxes_desc = op_desc->MutableInputDesc(0);
   if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(0, DebugString(boxes_desc->GetShape().GetDims()), "2D");
+    std::string err_msg = GetShapeErrMsg(0, 
+                                         DebugString(boxes_desc->GetShape().GetDims()),
+                                         "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1173,7 +1184,9 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
   if (WithRank(scores_desc, 1, scores_shape, op_name) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(1, DebugString(scores_desc->GetShape().GetDims()), "1D");
+    std::string err_msg = GetShapeErrMsg(1,
+                                         DebugString(scores_desc->GetShape().GetDims()), 
+                                         "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1182,7 +1195,9 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
   if (WithRank(max_output_size_desc, 0, max_output_size_shape, op_name) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(2, DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
+    std::string err_msg = GetShapeErrMsg(2, 
+                                         DebugString(max_output_size_desc->GetShape().GetDims()),
+                                         "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1191,7 +1206,9 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
   GeShape iou_threshold_shape;
   auto iou_threshold_desc = op_desc->MutableInputDesc(3);
   if (WithRank(iou_threshold_desc, 0, iou_threshold_shape, op_name) != GRAPH_SUCCESS) {
-     std::string err_msg = GetShapeErrMsg(3, DebugString(iou_threshold_desc->GetShape().GetDims()), "scalar");
+     std::string err_msg = GetShapeErrMsg(3,
+                                          DebugString(iou_threshold_desc->GetShape().GetDims()), 
+                                          "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1200,7 +1217,9 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
   GeShape score_threshold_shape;
   auto score_threshold_desc = op_desc->MutableInputDesc(4);
   if (WithRank(score_threshold_desc, 0, score_threshold_shape, op_name) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(4, DebugString(score_threshold_desc->GetShape().GetDims()), "scalar");
+    std::string err_msg = GetShapeErrMsg(4, 
+                                         DebugString(score_threshold_desc->GetShape().GetDims()), 
+                                         "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -2075,42 +2094,54 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV5, NonMaxSuppressionV5Infer) {
   Shape softNmsSigma;
 
   if (WithRank(op.GetInputDesc(0), 2, boxes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "2D");
+    std::string err_msg = GetShapeErrMsg(0, 
+                                         DebugString(op.GetInputDesc(0).GetShape().GetDims()),
+                                         "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(1), 1, scores, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
+    std::string err_msg = GetShapeErrMsg(1, 
+                                         DebugString(op.GetInputDesc(1).GetShape().GetDims()),
+                                         "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(2), 0, max_output_size, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "scalar");
+    std::string err_msg = GetShapeErrMsg(2, 
+                                         DebugString(op.GetInputDesc(2).GetShape().GetDims()), 
+                                         "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(3), 0, iouThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "scalar");
+    std::string err_msg = GetShapeErrMsg(3, 
+                                         DebugString(op.GetInputDesc(3).GetShape().GetDims()),
+                                         "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(4), 0, scoreThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(4, DebugString(op.GetInputDesc(4).GetShape().GetDims()), "scalar");
+    std::string err_msg = GetShapeErrMsg(4, 
+                                         DebugString(op.GetInputDesc(4).GetShape().GetDims()), 
+                                         "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(5), 0, softNmsSigma, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(5, DebugString(op.GetInputDesc(5).GetShape().GetDims()), "scalar");
+    std::string err_msg = GetShapeErrMsg(5, 
+                                         DebugString(op.GetInputDesc(5).GetShape().GetDims()), 
+                                         "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -2128,7 +2159,9 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV5, NonMaxSuppressionV5Infer) {
 
   if (boxes.GetDim(1) != 4) {
     if (boxes.GetDim(1) != UNKNOWN_DIM) {
-      std::string err_msg = ConcatString("1th dim[", boxes.GetDim(1), "] of input[boxes] not equal 4 or -1.");
+      std::string err_msg = ConcatString("1th dim[", 
+                                         boxes.GetDim(1), 
+                                         "] of input[boxes] not equal 4 or -1.");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }

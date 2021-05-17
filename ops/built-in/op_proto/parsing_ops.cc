@@ -130,8 +130,9 @@ IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
     return GRAPH_FAILED;
   }
   if (num_sparse != sparse_keys.size()){
-    std::string err_msg = GetAttrSizeErrMsg("num_sparse", std::to_string(num_sparse),
-                              std::to_string(sparse_keys.size()));
+    std::string err_msg = GetAttrSizeErrMsg(
+        "num_sparse", std::to_string(num_sparse),
+        std::to_string(sparse_keys.size()));
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -141,12 +142,12 @@ IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
     output_desc.SetShape(Shape({UNKNOWN_DIM,1}));
     output_desc.SetDataType(DT_INT64);
     op.UpdateDynamicOutputDesc("sparse_indices", i, output_desc);
-
+    
     output_desc = op.GetDynamicOutputDesc("sparse_values", i);
     output_desc.SetShape(Shape({UNKNOWN_DIM}));
     output_desc.SetDataType(sparse_types[i]);
     op.UpdateDynamicOutputDesc("sparse_values", i, output_desc);
-
+    
     output_desc = op.GetDynamicOutputDesc("sparse_shapes", i);
     output_desc.SetShape(Shape({1}));
     output_desc.SetDataType(DT_INT64);

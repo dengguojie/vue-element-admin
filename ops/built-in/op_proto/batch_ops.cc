@@ -31,7 +31,8 @@ IMPLEMT_INFERFUNC(Batch, BatchInfer) {
     if (ReplaceDim(op.GetInputDesc(i).GetShape(), 0, ge::UNKNOWN_DIM, out_shapes, op.GetName().c_str()) ==
         GRAPH_FAILED) {
       std::string err_msg = ConcatString(
-        "failed to call ReplaceDim function, the input x_tensors[", i, "] is a real number without 0 dimension " );
+          "failed to call ReplaceDim function,"
+          " the input x_tensors[", i, "] is a real number without 0 dimension ");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
@@ -63,7 +64,7 @@ IMPLEMT_INFERFUNC(Unbatch, UnbatchInfer) {
   Shape out_shape;
   auto x_tensor = op.GetInputDesc(0);
   if (ReplaceDim(x_tensor.GetShape(), 0, ge::UNKNOWN_DIM, out_shape, op.GetName().c_str()) == GRAPH_FAILED) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
         string("failed to call ReplaceDim function, create output[y_tensor] shape failed"));
     return GRAPH_FAILED;
   }
