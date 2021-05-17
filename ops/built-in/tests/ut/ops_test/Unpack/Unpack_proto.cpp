@@ -61,3 +61,18 @@ TEST_F(UnpackProtoTest, unpack_infershape_test2) {
   expect_out = (out_range == std::vector<std::pair<int64_t, int64_t>>{{1, 32}, {1, 20}});
   EXPECT_EQ(expect_out, true);
 }
+
+TEST_F(UnpackProtoTest, unpack_infershape_test3) {
+  ge::op::Unpack op;
+  auto op_info = ge::OpDescUtils::GetOpDescFromOperator(op);
+  op_info->AddOutputDescForward("y", 2);
+  op.UpdateInputDesc("x", create_desc_shape_range({-2}, ge::DT_FLOAT, ge::FORMAT_ND, {-2},
+                                                  ge::FORMAT_ND, {}));
+  op.SetAttr("axis", 1);
+  op.SetAttr("num", 2);
+  auto infer_succ_res = op.InferShapeAndType();
+  EXPECT_EQ(infer_succ_res, ge::GRAPH_SUCCESS);
+  std::vector<int64_t> out_dims = op.GetOutputDesc(0).GetShape().GetDims();
+  bool expect_out = (out_dims == std::vector<int64_t>{-2});
+  EXPECT_EQ(expect_out, true);
+}

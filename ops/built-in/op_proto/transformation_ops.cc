@@ -2156,7 +2156,7 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
       }
     }
   } else {
-    output_vec = UNKNOWN_SHAPE;
+    output_vec = UNKNOWN_RANK;
   }
   for (int64_t i = 0; i < num; i++) {
     output_ptrs[i]->SetShape(GeShape(output_vec));
