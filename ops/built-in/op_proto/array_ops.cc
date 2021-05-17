@@ -1737,11 +1737,6 @@ IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
   }
   uint32_t out_type = DT_INT32;
   (void)op.GetAttr("dtype", out_type);
-  ge::DataType in_dtype = op_desc->MutableInputDesc("x")->GetDataType();
-  if (in_dtype == ge::DT_INT32) {
-    OP_LOGD(op.GetName().c_str(), "set output dtype to int32 when input dtype is int32");
-    out_type = DT_INT32;
-  }
   td->SetDataType((DataType)out_type);
 
   std::vector<std::pair<int64_t, int64_t>> inRange;
