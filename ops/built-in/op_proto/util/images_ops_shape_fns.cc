@@ -29,14 +29,14 @@ graphStatus ColorspaceShapeFn(Operator& op, const std::string output_name) {
   if (status != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input[images] must 1-D or higher rank.");
+    OP_LOGE(op_name.GetString(), "input[images] must 1-D or higher rank.");
     return GRAPH_PARAM_INVALID;
   }
   int64_t dim = op.GetInputDesc(0).GetShape().GetDims().back();
   if (dim != 3) {
     AscendString op_name;
     op.GetName(op_name);
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input[images] last dimension must be size 3.");
+    OP_LOGE(op_name.GetString(), "input[images] last dimension must be size 3.");
     return GRAPH_PARAM_INVALID;
   }
   TensorDesc desc = op.GetOutputDesc(output_name);
@@ -51,7 +51,7 @@ graphStatus ResizeShapeFn(Operator& op, const std::string input_name, const std:
   if (status != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input[images] must 4-D.");
+    OP_LOGE(op_name.GetString(), "input[images] must 4-D.");
     return GRAPH_PARAM_INVALID;
   }
   auto dims = op.GetInputDesc(0).GetShape().GetDims();
@@ -70,20 +70,20 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
   if (status != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input size must be 1-D.");
+    OP_LOGE(op_name.GetString(), "input size must be 1-D.");
     return GRAPH_PARAM_INVALID;
   }
   auto size_dims = op.GetInputDesc(size_input_name).GetShape().GetDims();
   if (size_dims[0] != 2) {
     AscendString op_name;
     op.GetName(op_name);
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input size must be 1-D tensor of 2 elements.");
+    OP_LOGE(op_name.GetString(), "input size must be 1-D tensor of 2 elements.");
     return GRAPH_PARAM_INVALID;
   }
   Tensor size_tensor;
   status = op.GetInputConstData(size_input_name, size_tensor);
   if (status != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get size tensor failed.");
+    OP_LOGE(op.GetName().c_str(), "get size tensor failed.");
     return GRAPH_FAILED;
   }
 
@@ -106,7 +106,7 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
     output_shape.push_back(size_width);
     output_shape.push_back(channel_dim);
   } else {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Not supported this format");
+    OP_LOGE(op.GetName().c_str(), "Not supported this format");
   }
   td.SetShape(Shape(output_shape));
   return op.UpdateOutputDesc(output_name, td);
@@ -117,7 +117,7 @@ graphStatus EncodeImageShapeFn(Operator& op) {
   if (WithRank(op.GetInputDesc(0), 3, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
-    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input rank must be 3 .");
+    OP_LOGE(op_name.GetString(), "input rank must be 3 .");
     return GRAPH_FAILED;
   }
 

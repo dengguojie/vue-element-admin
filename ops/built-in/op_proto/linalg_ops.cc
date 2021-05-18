@@ -34,9 +34,9 @@ IMPLEMT_INFERFUNC(CholeskyGrad, CholeskyGradInfer) {
   GeShape y_shape;
   if (MakeBatchSquareMatrix(x_desc, y_shape, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
-                          "Op CholeskyGrad first input x tensor make batch square matrix "
-                          "failed.");
+    OP_LOGE(op.GetName().c_str(),
+            "Op CholeskyGrad first input x tensor make batch square matrix "
+            "failed.");
     return GRAPH_FAILED;
   }
 
@@ -57,8 +57,8 @@ IMPLEMT_INFERFUNC(Cholesky, CholeskyInfer) {
   GeShape y_shape;
   if (MakeBatchSquareMatrix(x_desc, y_shape, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
-                          "Op Cholesky first input x's tensor make batch square matrix failed.");
+    OP_LOGE(op.GetName().c_str(),
+            "Op Cholesky first input x's tensor make batch square matrix failed.");
     return GRAPH_FAILED;
   }
   DataType type = x_desc->GetDataType();
@@ -77,15 +77,15 @@ IMPLEMT_VERIFIER(Ger, GerVerify) {
   DataType x1_type = op.GetInputDesc("x1").GetDataType();
   DataType x2_type = op.GetInputDesc("x2").GetDataType();
   if (x1_type != DT_FLOAT16 && x1_type != DT_FLOAT) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op Ger first input x1's data type should be fp16 or fp32.");
+    OP_LOGE(op.GetName().c_str(), "Op Ger first input x1's data type should be fp16 or fp32.");
     return GRAPH_FAILED;
   }
   if (x2_type != DT_FLOAT16 && x2_type != DT_FLOAT) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op Ger second input x2's data type should be fp16 or fp32.");
+    OP_LOGE(op.GetName().c_str(), "Op Ger second input x2's data type should be fp16 or fp32.");
     return GRAPH_FAILED;
   }
   if (x1_type != x2_type) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op Ger two inputs' data type doesn't match.");
+    OP_LOGE(op.GetName().c_str(), "Op Ger two inputs' data type doesn't match.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -96,7 +96,7 @@ IMPLEMT_INFERFUNC(Ger, GerInfer) {
   Shape x1_shape = op.GetInputDesc("x1").GetShape();
   Shape x2_shape = op.GetInputDesc("x2").GetShape();
   if (x1_shape.GetDims().size() != 1 || x2_shape.GetDims().size() != 1) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "The rank of both input should be one dimensional.");
+    OP_LOGE(op.GetName().c_str(), "The rank of both input should be one dimensional.");
     return GRAPH_FAILED;
   }
 
@@ -167,7 +167,7 @@ IMPLEMT_INFERFUNC(MatrixDeterminant, MatrixDeterminantInfer) {
   auto tensor = op.get_input_desc_x();
   Shape s;
   if (WithRankAtLeast(tensor, 2, s, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "The rank of x must be at least 2.");
+    OP_LOGE(op.GetName().c_str(), "The rank of x must be at least 2.");
     return GRAPH_FAILED;
   }
 
@@ -177,13 +177,13 @@ IMPLEMT_INFERFUNC(MatrixDeterminant, MatrixDeterminantInfer) {
   int64_t unused_dim = 0;
 
   if (Merge(dim1, dim2, unused_dim) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Merge two dimension failed.");
+    OP_LOGE(op.GetName().c_str(), "Merge two dimension failed.");
     return GRAPH_FAILED;
   }
 
   Shape result;
   if (SubShape(s, 0, -2, 1, result, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op MatrixDeterminant Get SubShape Failed.");
+    OP_LOGE(op.GetName().c_str(), "Op MatrixDeterminant Get SubShape Failed.");
     return GRAPH_FAILED;
   }
 
@@ -203,7 +203,7 @@ IMPLEMT_INFERFUNC(MatrixInverse, MatrixInverseInfer) {
   Shape result;
 
   if (MakeBatchSquareMatrix(tensor, result, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op first input x tensor Make Batch Square Matrix failed.");
+    OP_LOGE(op.GetName().c_str(), "Op first input x tensor Make Batch Square Matrix failed.");
     return GRAPH_FAILED;
   }
   DataType type = op.GetInputDesc("x").GetDataType();
@@ -222,7 +222,7 @@ IMPLEMT_INFERFUNC(MatrixSolve, MatrixSolveInfer) {
   auto rhs_tensor = op.get_input_desc_rhs();
   Shape result;
   if (MatrixSolve(matrix_tensor, rhs_tensor, true, result, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op MatrixSolve Call MatrixSolve Infer Shape fns Failed.");
+    OP_LOGE(op.GetName().c_str(), "Op MatrixSolve Call MatrixSolve Infer Shape fns Failed.");
     return GRAPH_FAILED;
   }
   DataType type = op.GetInputDesc("matrix").GetDataType();
@@ -243,13 +243,13 @@ IMPLEMT_INFERFUNC(MatrixSolveLs, MatrixSolveLsInfer) {
 
   Shape l2;
   if (WithRank(l2_tensor, 0, l2, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op MatrixSolveLs third input l2 must be a scalar.");
+    OP_LOGE(op.GetName().c_str(), "Op MatrixSolveLs third input l2 must be a scalar.");
     return GRAPH_FAILED;
   }
 
   Shape result;
   if (MatrixSolve(matrix_tensor, rhs_tensor, false, result, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op MatrixSolveLs Call MatrixSolve Infer Shape fns Failed.");
+    OP_LOGE(op.GetName().c_str(), "Op MatrixSolveLs Call MatrixSolve Infer Shape fns Failed.");
     return GRAPH_FAILED;
   }
 
@@ -269,7 +269,7 @@ IMPLEMT_INFERFUNC(MatrixTriangularSolve, MatrixTriangularSolveInfer) {
   auto rhs_tensor = op.get_input_desc_rhs();
   Shape result;
   if (MatrixSolve(matrix_tensor, rhs_tensor, true, result, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op MatrixTriangularSolve Call MatrixSolve Infer Shape fns Failed.");
+    OP_LOGE(op.GetName().c_str(), "Op MatrixTriangularSolve Call MatrixSolve Infer Shape fns Failed.");
     return GRAPH_FAILED;
   }
 
@@ -329,7 +329,7 @@ IMPLEMT_INFERFUNC(Qr, QrInfer) {
   q_desc.SetShape(Shape(q_shape));
   q_desc.SetDataType(type);
   if (op.UpdateOutputDesc("q", q_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Update q desc failed.");
+    OP_LOGE(op.GetName().c_str(), "Update q desc failed.");
     return GRAPH_FAILED;
   }
 
@@ -337,7 +337,7 @@ IMPLEMT_INFERFUNC(Qr, QrInfer) {
   r_desc.SetShape(Shape(r_shape));
   r_desc.SetDataType(type);
   if (op.UpdateOutputDesc("r", r_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Update r desc failed.");
+    OP_LOGE(op.GetName().c_str(), "Update r desc failed.");
     return GRAPH_FAILED;
   }
 
@@ -350,7 +350,7 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
   bool judge = false;
   Shape input;
   if (MakeBatchSquareMatrix(op.get_input_desc_x(), input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Input x make batch square matrix failed");
+    OP_LOGE(op.GetName().c_str(), "Input x make batch square matrix failed");
     return GRAPH_FAILED;
   }
 
@@ -359,13 +359,13 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
   int64_t dim0 = op.get_input_desc_x().GetShape().GetDim(dim_size - 2);
   int64_t dim1 = op.get_input_desc_x().GetShape().GetDim(dim_size - 1);
   if (Merge(dim0, dim1, n) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Merge last two dim of input x failed");
+    OP_LOGE(op.GetName().c_str(), "Merge last two dim of input x failed");
     return GRAPH_FAILED;
   }
 
   Shape batch_shape;
   if (SubShape(input, 0, -2, 1, batch_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "SubShape batch_shape in SelfAdjointEig failed");
+    OP_LOGE(op.GetName().c_str(), "SubShape batch_shape in SelfAdjointEig failed");
     return GRAPH_FAILED;
   }
 
@@ -376,14 +376,14 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
   Shape value_shape;
   judge = (Concatenate(batch_shape, value_sec_shape, value_shape) != GRAPH_SUCCESS);
   if (judge) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Concatenate eigen_value in SelfAdjointEig failed");
+    OP_LOGE(op.GetName().c_str(), "Concatenate eigen_value in SelfAdjointEig failed");
     return GRAPH_FAILED;
   }
   TensorDesc value_desc = op.GetOutputDesc("eigen_value");
   value_desc.SetShape(Shape(value_shape));
   value_desc.SetDataType(op.GetInputDesc("x").GetDataType());
   if (op.UpdateOutputDesc("eigen_value", value_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output eigen_value.");
+    OP_LOGE(op.GetName().c_str(), "fail to update output eigen_value.");
     return GRAPH_FAILED;
   }
 
@@ -397,14 +397,14 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
     Shape vector_shape;
     judge = (Concatenate(batch_shape, vector_sec_shape, vector_shape) != GRAPH_SUCCESS);
     if (judge) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Concatenate eigen_vector in SelfAdjointEig failed");
+      OP_LOGE(op.GetName().c_str(), "Concatenate eigen_vector in SelfAdjointEig failed");
       return GRAPH_FAILED;
     }
     TensorDesc vector_desc = op.GetOutputDesc("eigen_vector");
     vector_desc.SetShape(Shape(vector_shape));
     vector_desc.SetDataType(op.GetInputDesc("x").GetDataType());
     if (op.UpdateOutputDesc("eigen_vector", vector_desc) != GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update eigen_vector.");
+      OP_LOGE(op.GetName().c_str(), "fail to update eigen_vector.");
       return GRAPH_FAILED;
     }
   } else {
@@ -412,7 +412,7 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
     vector_desc.SetShape(Shape());
     vector_desc.SetDataType(op.GetInputDesc("x").GetDataType());
     if (op.UpdateOutputDesc("eigen_vector", vector_desc) != GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update eigen_vector.");
+      OP_LOGE(op.GetName().c_str(), "fail to update eigen_vector.");
       return GRAPH_FAILED;
     }
   }
@@ -425,7 +425,7 @@ INFER_FUNC_REG(SelfAdjointEig, SelfAdjointEigInfer);
 IMPLEMT_VERIFIER(Slogdet, SlogdetVerify) {
     DataType type = op.GetInputDesc("x").GetDataType();
     if (type != DT_FLOAT16 && type != DT_FLOAT && type != DT_DOUBLE) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Expert a floating point tensor as input.");
+        OP_LOGE(op.GetName().c_str(), "Expert a floating point tensor as input.");
         return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -436,11 +436,11 @@ IMPLEMT_INFERFUNC(Slogdet, SlogdetInfer) {
     size_t size_num = x_shape.size();
     DataType type = op.GetInputDesc("x").GetDataType();
     if (size_num < 2) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "The rank of x must be greater than 2");
+      OP_LOGE(op.GetName().c_str(), "The rank of x must be greater than 2");
       return GRAPH_FAILED;
     }
     if (x_shape[size_num - 1] != x_shape[size_num - 2]) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Last two dimension of x are not equal");
+      OP_LOGE(op.GetName().c_str(), "Last two dimension of x are not equal");
       return GRAPH_FAILED;
     }
 
@@ -496,7 +496,7 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
   Shape input;
 
   if (WithRankAtLeast(op.get_input_desc_x(), 2, input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "WithRankAtLeast input in Svd failed!");
+    OP_LOGE(op.GetName().c_str(), "WithRankAtLeast input in Svd failed!");
     return GRAPH_FAILED;
   }
 
@@ -508,7 +508,7 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
   Shape batch_shape;
 
   if (SubShape(input, 0, -2, 1, batch_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "SubShape batch_shape in Svd failed!");
+    OP_LOGE(op.GetName().c_str(), "SubShape batch_shape in Svd failed!");
     return GRAPH_FAILED;
   }
 
@@ -518,14 +518,14 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
   sigma_dims.push_back(p);
   Shape e_sec_shape(sigma_dims);
   if (Concatenate(batch_shape, e_sec_shape, sigma_shape) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Concatenate sigma_shap in Svd failed!");
+    OP_LOGE(op.GetName().c_str(), "Concatenate sigma_shap in Svd failed!");
     return GRAPH_FAILED;
   }
   TensorDesc sigma_desc = op.GetOutputDesc("sigma");
   sigma_desc.SetShape(Shape(sigma_shape));
   sigma_desc.SetDataType(op.GetInputDesc("x").GetDataType());
   if (op.UpdateOutputDesc("sigma", sigma_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output sigma");
+    OP_LOGE(op.GetName().c_str(), "fail to update output sigma");
     return GRAPH_FAILED;
   }
 
@@ -543,14 +543,14 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
       u_dims.push_back(m);
       Shape u_sec_shape(u_dims);
       if (Concatenate(batch_shape, u_sec_shape, u_shape) != GRAPH_SUCCESS) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Concatenate uShape with full_matrices = true in Svd failed!");
+        OP_LOGE(op.GetName().c_str(), "Concatenate uShape with full_matrices = true in Svd failed!");
         return GRAPH_FAILED;
       }
       v_dims.push_back(n);
       v_dims.push_back(n);
       Shape v_sec_shape(v_dims);
       if (Concatenate(batch_shape, v_sec_shape, v_shape) != GRAPH_SUCCESS) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Concatenate vShape with full_matrices = true in Svd failed!");
+        OP_LOGE(op.GetName().c_str(), "Concatenate vShape with full_matrices = true in Svd failed!");
         return GRAPH_FAILED;
       }
     } else {
@@ -558,7 +558,7 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
       u_dims.push_back(p);
       Shape u_sec_shape(u_dims);
       if (Concatenate(batch_shape, u_sec_shape, u_shape) != GRAPH_SUCCESS) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
+        OP_LOGE(op.GetName().c_str(),
           "concatenate uShape with full_matrices = true in Svd failed!");
         return GRAPH_FAILED;
       }
@@ -566,7 +566,7 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
       v_dims.push_back(p);
       Shape v_sec_shape(v_dims);
       if (Concatenate(batch_shape, v_sec_shape, v_shape) != GRAPH_SUCCESS) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Concatenate vShape with full_matrices = true in Svd failed!");
+        OP_LOGE(op.GetName().c_str(), "Concatenate vShape with full_matrices = true in Svd failed!");
         return GRAPH_FAILED;
       }
     }
@@ -574,7 +574,7 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
     u_desc.SetShape(Shape(u_shape));
     u_desc.SetDataType(op.GetInputDesc("x").GetDataType());
     if (op.UpdateOutputDesc("u", u_desc) != GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output u.");
+      OP_LOGE(op.GetName().c_str(), "fail to update output u.");
       return GRAPH_FAILED;
     }
 
@@ -582,7 +582,7 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
     v_desc.SetShape(Shape(v_shape));
     v_desc.SetDataType(op.GetInputDesc("x").GetDataType());
     if (op.UpdateOutputDesc("v", v_desc) != GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output v");
+      OP_LOGE(op.GetName().c_str(), "fail to update output v");
       return GRAPH_FAILED;
     }
   } else {
@@ -590,7 +590,7 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
     u_desc.SetShape(Shape());
     u_desc.SetDataType(op.GetInputDesc("x").GetDataType());
     if (op.UpdateOutputDesc("u", u_desc) != GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output u.");
+      OP_LOGE(op.GetName().c_str(), "fail to update output u.");
       return GRAPH_FAILED;
     }
 
@@ -598,7 +598,7 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
     v_desc.SetShape(Shape());
     v_desc.SetDataType(op.GetInputDesc("x").GetDataType());
     if (op.UpdateOutputDesc("v", v_desc) != GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output v");
+      OP_LOGE(op.GetName().c_str(), "fail to update output v");
       return GRAPH_FAILED;
     }
   }
@@ -610,7 +610,7 @@ INFER_FUNC_REG(Svd, SvdInfer);
 IMPLEMT_INFERFUNC(Lu, LuInfer) {
   Shape input;
   if (WithRankAtLeast(op.GetInputDesc(0), 2, input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input rank must be at least 2.");
+    OP_LOGE(op.GetName().c_str(), "input rank must be at least 2.");
     return GRAPH_FAILED;
   }
 
@@ -620,13 +620,13 @@ IMPLEMT_INFERFUNC(Lu, LuInfer) {
   int64_t dim_n = 0;
 
   if (Merge(dim1, dim2, dim_n) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Merge two dimension failed.");
+    OP_LOGE(op.GetName().c_str(), "Merge two dimension failed.");
     return GRAPH_FAILED;
   }
 
   Shape batch_shape;
   if (SubShape(input, 0, -2, 1, batch_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op Lu Get SubShape Failed.");
+    OP_LOGE(op.GetName().c_str(), "Op Lu Get SubShape Failed.");
     return GRAPH_FAILED;
   }
 
@@ -637,7 +637,7 @@ IMPLEMT_INFERFUNC(Lu, LuInfer) {
   lu_dims.push_back(dim_n);
   Shape lu_sec_shape(lu_dims);
   if (Concatenate(batch_shape, lu_sec_shape, lu_shape) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Concatenate lu_shape failed!");
+    OP_LOGE(op.GetName().c_str(), "Concatenate lu_shape failed!");
     return GRAPH_FAILED;
   }
 
@@ -647,7 +647,7 @@ IMPLEMT_INFERFUNC(Lu, LuInfer) {
   p_dims.push_back(dim_n);
   Shape p_sec_shape(p_dims);
   if (Concatenate(batch_shape, p_sec_shape, p_shape) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Concatenate p_shape failed!");
+    OP_LOGE(op.GetName().c_str(), "Concatenate p_shape failed!");
     return GRAPH_FAILED;
   }
 
@@ -656,7 +656,7 @@ IMPLEMT_INFERFUNC(Lu, LuInfer) {
   DataType lu_type = op.GetInputDesc("input").GetDataType();
   lu_desc.SetDataType(lu_type);
   if (op.UpdateOutputDesc("lu", lu_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output lu.");
+    OP_LOGE(op.GetName().c_str(), "fail to update output lu.");
     return GRAPH_FAILED;
   }
 
@@ -664,12 +664,12 @@ IMPLEMT_INFERFUNC(Lu, LuInfer) {
   p_desc.SetShape(Shape(p_shape));
   DataType p_type;
   if (op.GetAttr("output_idx_type", p_type) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Get attr output_idx_type error.");
+    OP_LOGE(op.GetName().c_str(), "Get attr output_idx_type error.");
     return GRAPH_FAILED;
   }
   p_desc.SetDataType(p_type);
   if (op.UpdateOutputDesc("p", p_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output p");
+    OP_LOGE(op.GetName().c_str(), "fail to update output p");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -681,7 +681,7 @@ IMPLEMT_INFERFUNC(MatrixSquareRoot, MatrixSquareRootInfer) {
   auto x_tensor_desc = op.GetInputDesc(0);
   Shape y_shape;
   if (MakeBatchSquareMatrix(x_tensor_desc, y_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to MakeBatchSquareMatrix y_shape.");
+    OP_LOGE(op.GetName().c_str(), "fail to MakeBatchSquareMatrix y_shape.");
     return GRAPH_FAILED;
   }
 
@@ -690,7 +690,7 @@ IMPLEMT_INFERFUNC(MatrixSquareRoot, MatrixSquareRootInfer) {
   y_desc.SetShape(Shape(y_shape));
   y_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output y.");
+    OP_LOGE(op.GetName().c_str(), "fail to update output y.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

@@ -113,7 +113,7 @@ IMPLEMT_INFERFUNC(Unique, UniqueInfer) {
 
   DataType idx_type;
   if (op.GetAttr("out_idx", idx_type) != GRAPH_SUCCESS) {
-    CUBE_CALL_ERR_REPORT(op.GetName().c_str(), "Op get attr out_idx failed");
+    OP_LOGE(op.GetName().c_str(), "Op get attr out_idx failed");
     return GRAPH_FAILED;
   }
 
@@ -143,14 +143,14 @@ IMPLEMT_INFERFUNC(UniqueExt2, UniqueExt2Infer) {
   Shape x_shape;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "at least 1D");
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x must be more than 1-D");
+    OP_LOGE(op.GetName().c_str(), "input x must be more than 1-D");
     return GRAPH_FAILED;
   }
 
   Shape axis_shape;
   if (WithRank(op.GetInputDesc(1), 1, axis_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input axis must be 1-D");
+    OP_LOGE(op.GetName().c_str(), "input axis must be 1-D");
     return GRAPH_FAILED;
   }
 
@@ -165,7 +165,7 @@ IMPLEMT_INFERFUNC(UniqueExt2, UniqueExt2Infer) {
 
   DataType idx_type;
   if (op.GetAttr("out_idx", idx_type) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op get attr out_idx failed");
+    OP_LOGE(op.GetName().c_str(), "Op get attr out_idx failed");
     return GRAPH_FAILED;
   }
 
@@ -433,12 +433,12 @@ IMPLEMT_INFERFUNC(ReverseSequence, ReverseSequenceInfer) {
 
   int64_t seq_dim;
   if (op.GetAttr("seq_dim", seq_dim) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Failed to get attribute value.");
+    OP_LOGE(op.GetName().c_str(), "Failed to get attribute value.");
     return GRAPH_FAILED;
   }
   int64_t batch_dim;
   if (op.GetAttr("batch_dim", batch_dim) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Failed to get attribute value.");
+    OP_LOGE(op.GetName().c_str(), "Failed to get attribute value.");
     return GRAPH_FAILED;
   }
   int64_t input_rank = input_shape.GetDimNum();
@@ -477,7 +477,7 @@ IMPLEMT_INFERFUNC(ReverseSequence, ReverseSequenceInfer) {
   y_desc.SetDataType(x_type);
   y_desc.SetShape(y_shape);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Failed to update y desc.");
+    OP_LOGE(op.GetName().c_str(), "Failed to update y desc.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -523,11 +523,11 @@ graphStatus ConstAndConstantInferFormat(ge::Operator& op) {
   auto format = op_desc->MutableOutputDesc(0)->GetOriginFormat();
   ConstGeTensorPtr tensor_value;
   if (!AttrUtils::GetTensor(op_desc, "value", tensor_value)) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Get attr value failed!");
+    OP_LOGE(op.GetName().c_str(), "Get attr value failed!");
     return GRAPH_FAILED;
   }
   if (!tensor_value) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "attr tensor is not exist!");
+    OP_LOGE(op.GetName().c_str(), "attr tensor is not exist!");
     return GRAPH_FAILED;
   }
   auto tensor_ptr = const_cast<GeTensor*>(tensor_value.get());
@@ -1269,7 +1269,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   GeTensorPtr tensor = nullptr;
   auto node = NodeUtils::GetNodeFromOperator(op);
   if (node == nullptr) {
-    CUBE_CALL_ERR_REPORT(op.GetName().c_str(), "get null node ptr!");
+    OP_LOGE(op.GetName().c_str(), "get null node ptr!");
     return GRAPH_PARAM_INVALID;
   }
   graphStatus state = NodeUtils::GetInputConstData(node, "shape", tensor);
@@ -1929,7 +1929,7 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
 
   auto node = NodeUtils::GetNodeFromOperator(op);
   if (node == nullptr) {
-    CUBE_CALL_ERR_REPORT(op.GetName().c_str(), "Get null node ptr.");
+    OP_LOGE(op.GetName().c_str(), "Get null node ptr.");
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2016,12 +2016,12 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
 
   GeShape x_shape;
   if (WithRankAtLeast(x_desc, 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x must be at least 1D.");
+    OP_LOGE(op.GetName().c_str(), "input x must be at least 1D.");
     return GRAPH_FAILED;
   }
 
   if (WithRankAtMost(x_desc, 5, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x must be at most 5D.");
+    OP_LOGE(op.GetName().c_str(), "input x must be at most 5D.");
     return GRAPH_FAILED;
   }
 
@@ -2063,11 +2063,11 @@ INFER_FUNC_REG(Where, WhereInfer);
 IMPLEMT_INFERFUNC(Fingerprint, FingerprintInfer) {
   Shape unused;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Input data must be at least 1D.");
+    OP_LOGE(op.GetName().c_str(), "Input data must be at least 1D.");
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Input method rank must be 0.");
+    OP_LOGE(op.GetName().c_str(), "Input method rank must be 0.");
     return GRAPH_FAILED;
   }
   int64_t batch = op.GetInputDesc(0).GetShape().GetDim(0);
@@ -2081,7 +2081,7 @@ IMPLEMT_INFERFUNC(Fingerprint, FingerprintInfer) {
     int64_t method_dim;
     method_dim = method_tensor.GetTensorDesc().GetShape().GetDimNum();
     if (method_dim != 0) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
+      OP_LOGE(op.GetName().c_str(),
                             "Input method_tensor rank must be 0, real value is [%ld].", method_dim);
       return GRAPH_FAILED;
     }
@@ -2090,7 +2090,7 @@ IMPLEMT_INFERFUNC(Fingerprint, FingerprintInfer) {
 
     method_string = method_data;
     if (method_string != "farmhash64") {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Unsupported method, real value is [%s]", method_string.c_str());
+      OP_LOGE(op.GetName().c_str(), "Unsupported method, real value is [%s]", method_string.c_str());
       return GRAPH_FAILED;
     }
     fingerprint_size = sizeof(uint64_t);
@@ -2101,7 +2101,7 @@ IMPLEMT_INFERFUNC(Fingerprint, FingerprintInfer) {
   desc.SetShape(shape);
   desc.SetDataType(DT_UINT8);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Fail to update output y.");
+    OP_LOGE(op.GetName().c_str(), "Fail to update output y.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2114,7 +2114,7 @@ IMPLEMT_INFERFUNC(TransShape, TransShapeInfer) {
   vector<int64_t> output_shape;
   auto ret = op.GetAttr("outShape", output_shape);
   if (ret != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Failed to get attribute value.");
+    OP_LOGE(op.GetName().c_str(), "Failed to get attribute value.");
     return GRAPH_SUCCESS;
   }
   y_desc.SetShape(Shape(output_shape));
@@ -2136,7 +2136,7 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
 
   if (ValidateSparseTensor(hypothesis_indices_desc, hypothesis_values_desc, hypothesis_shape_desc,
                            op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input hypothesis is not sparse tensor");
+    OP_LOGE(op.GetName().c_str(), "input hypothesis is not sparse tensor");
     return GRAPH_FAILED;
   }
 
@@ -2146,7 +2146,7 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
 
   if (ValidateSparseTensor(truth_indices_desc, truth_values_desc, truth_shape_desc, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input truth is not sparse tensor");
+    OP_LOGE(op.GetName().c_str(), "input truth is not sparse tensor");
     return GRAPH_FAILED;
   }
 
@@ -2170,7 +2170,7 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
   auto hypothesis_shape_num_elements = hypothesis_shape_desc.GetShape().GetShapeSize();
   auto truth_shape_num_elements = truth_shape_desc.GetShape().GetShapeSize();
   if (hypothesis_shape_num_elements != truth_shape_num_elements) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
+    OP_LOGE(op.GetName().c_str(),
                           "Num elements of hypothesis_shape does not match truth_shape: %ld vs %ld",
                           hypothesis_shape_num_elements, truth_shape_num_elements);
     return GRAPH_PARAM_INVALID;
@@ -2178,13 +2178,13 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
 
   int64_t* hypothesis_shape_data = reinterpret_cast<int64_t*>(hypothesis_shape_tensor.GetData());
   if (hypothesis_shape_data == nullptr) {
-    CUBE_CALL_ERR_REPORT(op.GetName().c_str(), "hypothesis shape data is invalid");
+    OP_LOGE(op.GetName().c_str(), "hypothesis shape data is invalid");
     return GRAPH_PARAM_INVALID;
   }
 
   int64_t* truth_shape_data = reinterpret_cast<int64_t*>(truth_shape_tensor.GetData());
   if (truth_shape_data == nullptr) {
-    CUBE_CALL_ERR_REPORT(op.GetName().c_str(), "truth shape data is invalid");
+    OP_LOGE(op.GetName().c_str(), "truth shape data is invalid");
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2195,7 +2195,7 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
 
   output_desc.SetShape(Shape(output_dims));
   if (op.UpdateOutputDesc("output", output_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "failed to update output output desc");
+    OP_LOGE(op.GetName().c_str(), "failed to update output output desc");
     return GRAPH_FAILED;
   }
 
@@ -2406,7 +2406,7 @@ IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
   }
   for (size_t i = 0; i < shape.size(); i++) {
     if ((shape[i] != dims_x[i]) && (shape[i] != 1) && (dims_x[i] != 1)) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "The input shape and attr shape are not compatible.");
+      OP_LOGE(op.GetName().c_str(), "The input shape and attr shape are not compatible.");
       return GRAPH_FAILED;
     }
     if (shape[i] > dims_x[i]) {

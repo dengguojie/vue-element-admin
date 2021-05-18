@@ -81,20 +81,20 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   int64_t num_true = 0;
   op.GetAttr("num_true", num_true);
   if (num_true < 1) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Attr num_true must >= 1.");
+    OP_LOGE(op.GetName().c_str(), "Attr num_true must >= 1.");
     return GRAPH_FAILED;
   }
 
   int64_t num_sampled = 0;
   op.GetAttr("num_sampled", num_sampled);
   if (num_sampled < 1) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Attr num_sampled must >=1.");
+    OP_LOGE(op.GetName().c_str(), "Attr num_sampled must >=1.");
     return GRAPH_FAILED;
   }
 
   Shape true_classes;
   if (WithRank(op.GetInputDesc(0), 2, true_classes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input true_classes must be 2-D.");
+    OP_LOGE(op.GetName().c_str(), "input true_classes must be 2-D.");
     return GRAPH_FAILED;
   }
 
@@ -114,7 +114,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   candidate_desc.SetDataType(DT_INT64);
   judge = (op.UpdateOutputDesc("sampled_candidates", candidate_desc) != GRAPH_SUCCESS);
   if (judge) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output sampled_candidates.");
+    OP_LOGE(op.GetName().c_str(), "fail to update output sampled_candidates.");
     return GRAPH_FAILED;
   }
 
@@ -122,7 +122,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   true_desc.SetShape(Shape(true_dims));
   true_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("true_expected_count", true_desc) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output true_expected_count.");
+    OP_LOGE(op.GetName().c_str(), "fail to update output true_expected_count.");
     return GRAPH_FAILED;
   }
 
@@ -131,7 +131,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   sampled_desc.SetDataType(DT_FLOAT);
   judge = (op.UpdateOutputDesc("sampled_expected_count", sampled_desc) != GRAPH_SUCCESS);
   if (judge) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "fail to update output sampled_expected_count.");
+    OP_LOGE(op.GetName().c_str(), "fail to update output sampled_expected_count.");
     return GRAPH_FAILED;
   }
 
