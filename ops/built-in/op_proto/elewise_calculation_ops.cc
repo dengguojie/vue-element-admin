@@ -2408,10 +2408,10 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxDInferShape) {
   // get all input desc
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
+  auto inputx_desc = op_info->MutableInputDesc("x");
   auto y_desc = op_info->MutableOutputDesc("y");
   // get x shape
-  auto x_shape = input_desc->MutableShape().GetDims();
+  auto x_shape = inputx_desc->MutableShape().GetDims();
 
   // set output dtype
   y_desc->SetDataType(DT_INT32);
@@ -2446,7 +2446,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxDInferShape) {
   // when output is dynamic will update range
   if (IsUnknown(output_shape)) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
-    input_desc->GetShapeRange(input_range);
+    inputx_desc->GetShapeRange(input_range);
     MakeUpShapeRange(x_shape, input_range);
     input_range.erase(input_range.begin() + dimension);
     y_desc->SetShapeRange(input_range);

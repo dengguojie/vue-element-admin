@@ -385,6 +385,14 @@ IMPLEMT_VERIFIER(SpaceToBatchND, SpaceToBatchNDVerify) {
 COMMON_INFER_FUNC_REG(SpaceToBatchND, SpaceToBatchNDInferShape);
 VERIFY_FUNC_REG(SpaceToBatchND, SpaceToBatchNDVerify);
 // ----------------SpaceToBatchND Op End-------------------
+// ----------------TransData InferFormat-------------------
+IMPLEMT_INFERFORMAT_FUNC(TransData, TransDataInferFormat) {
+  // pytorch network requirements,need to register an empty inferformat function 
+  return GRAPH_SUCCESS;
+}
+
+INFER_FORMAT_FUNC_REG(TransData, TransDataInferFormat);
+// ----------------TransData InferFormat End-------------------
 
 // ----------------SpaceToBatchNDD Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDDInferShape) {
