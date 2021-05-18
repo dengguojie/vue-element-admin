@@ -78,8 +78,14 @@ def hardtanh_grad_compute(input_result, input_grad, output_y, min_val=-1.0, max_
 
     # control value in maximum & minimum
     tmp_max = tbe.vmaxs(tmp_min, f_min)
-    sub_max = tbe.vsub(tmp_max, max_tensor)
-    sub_min = tbe.vsub(tmp_max, min_tensor)
+    if max_val != 0:
+        sub_max = tbe.vsub(tmp_max, max_tensor)
+    else:
+        sub_max = tmp_max
+    if min_val != 0:
+        sub_min = tbe.vsub(tmp_max, min_tensor)
+    else:
+        sub_min = tmp_max
     mul_max_min = tbe.vmul(sub_max, sub_min)
 
     add_inf = tbe.vadds(mul_max_min, tvm.const(INF_FP32_VAL, dtype="float32"))

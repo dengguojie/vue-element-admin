@@ -27,7 +27,29 @@ case1 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16", "format": "ND", 
          "expect": "success",
          "support_expect": True}
 
+case2 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
+                    {"shape": (-1, 8, 375), "dtype": "float16", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
+                    {"shape": (16, 8, 375), "dtype": "float16", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND", "range": [(16, 16), (8, 8), (375, 375)]},
+                    0.0,
+                    1.0
+                    ],
+         "case_name": "HardtanhGrad_dynamic_2",
+         "expect": "success",
+         "support_expect": True}
+
+case3 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
+                    {"shape": (-1, 8, 375), "dtype": "float16", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
+                    {"shape": (16, 8, 375), "dtype": "float16", "format": "ND", "ori_shape": (16, 8, 375), "ori_format": "ND", "range": [(16, 16), (8, 8), (375, 375)]},
+                    -1.0,
+                    0.0
+                    ],
+         "case_name": "HardtanhGrad_dynamic_3",
+         "expect": "success",
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
 
 
 if __name__ == "__main__":
