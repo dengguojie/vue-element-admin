@@ -83,19 +83,19 @@ class OPFile(metaclass=ABCMeta):
         elif self.fmk_type == "pytorch":
             return
 
-    @staticmethod
-    def _generate_caffe_plugin_cmake_list(plugin_dir):
+    def _generate_caffe_plugin_cmake_list(self, plugin_dir):
         # create and write
-        cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
-        utils.make_dirs(plugin_dir)
-        utils.write_files(cmake_list_path, op_tmpl.CAFFE_PLUGIN_CMAKLIST)
+        if self.mode == utils.GenModeType.GEN_PROJECT:
+            cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
+            utils.make_dirs(plugin_dir)
+            utils.write_files(cmake_list_path, op_tmpl.CAFFE_PLUGIN_CMAKLIST)
 
-    @staticmethod
-    def _generate_tf_plugin_cmake_list(plugin_dir):
+    def _generate_tf_plugin_cmake_list(self, plugin_dir):
         # create and write
-        cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
-        utils.make_dirs(plugin_dir)
-        utils.write_files(cmake_list_path, op_tmpl.PLUGIN_CMAKLIST)
+        if self.mode == utils.GenModeType.GEN_PROJECT:
+            cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
+            utils.make_dirs(plugin_dir)
+            utils.write_files(cmake_list_path, op_tmpl.PLUGIN_CMAKLIST)
 
     def _generate_caffe_plugin_cpp(self, plugin_dir, prefix):
         p_str = op_tmpl.CAFFE_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,

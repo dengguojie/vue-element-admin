@@ -30,7 +30,8 @@ class OpFileAiCpu(OPFile):
         Return Value:
         """
         op_info = self.op_info
-        self._generate_cmake_lists()
+        if self.mode == utils.GenModeType.GEN_PROJECT:
+            self._generate_cmake_lists()
         self._generate_impl_cc(op_info)
         self._generate_impl_h(op_info)
 
