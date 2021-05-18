@@ -653,7 +653,7 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
 
 # pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
-               cell_clip, num_proj, time_major, activation):
+               cell_clip, num_proj, time_major, activation, gate_order):
     """
     check parameters
     """
@@ -683,7 +683,11 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
 
     if activation not in ["tanh"]:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr activation only support tanh, please check!")
-
+    
+    if gate_order not in ["ijfo", "ifjo"]:
+        error_manager_vector.raise_err_check_params_rules("DynamicRNN",
+                                                          "gate_order in ['ijfo', 'ifjo']",
+                                                          "gate_order", str(gate_order))
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT,
@@ -696,7 +700,8 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT,
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # pylint: disable=too-many-function-args,too-many-statements
 # pylint: disable=unused-argument
@@ -704,7 +709,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 wco, mask, y, output_h, output_c, i, j, f, o, tanhc,
                 cell_type="LSTM", direction="UNIDIRECTIONAL", cell_depth=1,
                 use_peephole=False, keep_prob=1.0, cell_clip=-1.0, num_proj=0,
-                time_major=True, activation="tanh", forget_bias=0.0, is_training=True,
+                time_major=True, activation="tanh", forget_bias=0.0, gate_order="ijfo", is_training=True,
                 kernel_name="dynamic_rnn"):
     """
     dynamic_rnn
@@ -717,7 +722,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                       wcf, wco, mask, y, output_h, output_c, i, j, f, o, tanhc)
 
     check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
-               cell_clip, num_proj, time_major, activation)
+               cell_clip, num_proj, time_major, activation, gate_order)
 
     shape_x_input = input_x.get("shape")
     shape_w_input = weight.get("shape")
@@ -939,7 +944,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                     input_list,
                     output_list,
                     [is_gate_output, is_first_round, is_global_init,
-                     forget_bias])
+                     forget_bias, gate_order])
 
             with tik_instance.if_scope(loop_i > 0):
                 is_first_round = False
@@ -948,7 +953,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                     input_list,
                     output_list,
                     [is_gate_output, is_first_round, is_global_init,
-                     forget_bias])
+                     forget_bias, gate_order])
 
     config_map = {
         "dump_cce_code": False,
@@ -979,11 +984,12 @@ def dynamic_rnn_tik(input_list, custom_list):
     is_first_round = custom_list[1]
     is_global_init = custom_list[2]
     forget_bias = custom_list[3]
+    gate_order = custom_list[4]
 
     return dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                             is_gate_output, is_first_round, is_global_init,
-                            forget_bias)
+                            forget_bias, gate_order)
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
@@ -991,7 +997,7 @@ def dynamic_rnn_tik(input_list, custom_list):
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                      is_gate_output, is_first_round, is_global_init,
-                     forget_bias):
+                     forget_bias, gate_order):
     """
     implement of dynamic rnn
     :return:
@@ -1133,10 +1139,16 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     c_ub_bias = vadd(c_ub, bias_bc_ub)
 
     # split matmul res
-    i_t_index = 0
-    j_t_index = 1
-    f_t_index = 2
-    o_t_index = 3
+    if gate_order == "ijfo":
+        i_t_index = 0
+        j_t_index = 1
+        f_t_index = 2
+        o_t_index = 3
+    else:
+        i_t_index = 0
+        j_t_index = 2
+        f_t_index = 1
+        o_t_index = 3
 
     i_t = \
         tvm.compute(shape_i,

@@ -209,6 +209,7 @@ REG_OP(DynamicRNNGrad)
 *@li time_major:An bool identifying the time major in the op. Default to true.
 *@li activation:An string identifying the type of activation function in the op. Default to "tanh". Only tanh is currently supported.
 *@li forget_bias:An float identifying the forget bias in the op. Default to 0.
+*@li gate_order:An string identifying the type of gate order in the op. Support "ijfo" and "ifjo". Default to "ijfo".
 *@li is_training:An bool identifying is training in the op. Default to true . \n
 
 *@par Outputs:
@@ -253,6 +254,7 @@ REG_OP(DynamicRNN)
     .ATTR(time_major, Bool, true)
     .ATTR(activation, String, "tanh")
     .ATTR(forget_bias, Float, 0.0)
+    .ATTR(gate_order, String, "ijfo")
     .ATTR(is_training, Bool, true)
     .OP_END_FACTORY_REG(DynamicRNN)
 
