@@ -128,7 +128,7 @@ TEST_F(matmul_infer_test, matmul_infer_test_2) {
 
   // expect result
   std::vector<int64_t> expected_shape = {5, 6};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{5, 5}, {6, 6}};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {};
   // create desc
   auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, ge::FORMAT_ND,
                                                 shape_x1, ge::FORMAT_ND, range_x1);
@@ -186,7 +186,7 @@ TEST_F(matmul_infer_test, static_normal) {
 
   Operate(op);
 
-  Check(op, {2, 5}, {{2, 2}, {5, 5}});
+  Check(op, {2, 5}, {});
 }
 
 TEST_F(matmul_infer_test, dynamic_normal) {
@@ -330,7 +330,7 @@ TEST_F(matmul_infer_test, fuzzy_compile_2) {
 
   // expect result
   std::vector<int64_t> expected_shape = {32, 64};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{32, 32}, {64, 64}};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {};
   // create desc
   auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, ge::FORMAT_ND,
                                                 shape_x1, ge::FORMAT_ND, range_x1);
@@ -362,6 +362,11 @@ TEST_F(matmul_infer_test, supportcheckerror1) {
   std::vector<std::pair<int64_t,int64_t>> range_x2 = {};
   bool transpose_x1 = false;
   bool transpose_x2 = false;
+
+  // expect result
+  std::vector<int64_t> expected_shape = {32, 64};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {};
+
   // create desc
   auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, ge::FORMAT_ND,
                                                 shape_x1, ge::FORMAT_ND, range_x1);
@@ -377,7 +382,12 @@ TEST_F(matmul_infer_test, supportcheckerror1) {
   auto ret = op.InferShapeAndType();
 
   // check result
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
 }
 
 TEST_F(matmul_infer_test, supportcheckerror2) {

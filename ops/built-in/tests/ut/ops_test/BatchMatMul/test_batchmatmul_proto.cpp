@@ -76,7 +76,7 @@ TEST(BatchMatMulInferTest, StaticNormal1) {
 
   Operate(op);
 
-  Check(op, {3, 2, 5}, {{3, 3}, {2, 2}, {5, 5}});
+  Check(op, {3, 2, 5}, {});
 }
 
 TEST(BatchMatMulInferTest, StaticNormal2) {
@@ -86,7 +86,7 @@ TEST(BatchMatMulInferTest, StaticNormal2) {
 
   Operate(op);
 
-  Check(op, {2, 3, 2, 5}, {{2, 2}, {3, 3}, {2, 2}, {5, 5}});
+  Check(op, {2, 3, 2, 5}, {});
 }
 
 TEST(BatchMatMulInferTest, StaticNormal3) {
@@ -96,7 +96,7 @@ TEST(BatchMatMulInferTest, StaticNormal3) {
 
   Operate(op);
 
-  Check(op, {2, 3, 2, 5}, {{2, 2}, {3, 3}, {2, 2}, {5, 5}});
+  Check(op, {2, 3, 2, 5}, {});
 }
 
 TEST(BatchMatMulInferTest, StaticNormal4) {
@@ -106,7 +106,7 @@ TEST(BatchMatMulInferTest, StaticNormal4) {
 
   Operate(op);
 
-  Check(op, {2, 3, 2, 5}, {{2, 2}, {3, 3}, {2, 2}, {5, 5}});
+  Check(op, {2, 3, 2, 5}, {});
 }
 
 TEST(BatchMatMulInferTest, supportcheckerror1) {

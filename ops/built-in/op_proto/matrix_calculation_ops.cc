@@ -531,17 +531,26 @@ bool IsDimValid(int64_t dim) {
 }
 
 bool IsRangeValid(const std::vector<int64_t> &shape, const std::vector<std::pair<int64_t, int64_t>> &range,
-                  bool is_strict=true) {
-  if (shape.empty()) {
+                  const string &op_name, bool is_strict=true) {
+  if (shape.empty() || shape == UNKNOWN_RANK || range.empty()) {
     return true;
   }
 
-  if (shape == UNKNOWN_RANK) {
-    return range.size() == 0;
-  }
-
   if (std::find(shape.begin(), shape.end(), UNKNOWN_DIM) != shape.end()) {
-    return range.size() == shape.size();
+    if (range.size() != shape.size()) {
+      CUBE_CALL_ERR_REPORT(op_name.c_str(),
+        "length of range(%zu) in dynamic shape scene must be equal to the length of shape(%zu), or equal to 0.",
+        range.size(), shape.size());
+      return false;
+    }
+
+    for (size_t i = 0; i < range.size(); ++i) {
+      if (shape[i] == -1 && range[i].second != -1 && range[i].first > range[i].second) {
+        CUBE_CALL_ERR_REPORT(op_name.c_str(),
+                "%zu-th range(%lld, %lld) is invalid.", i, range[i].first, range[i].second);
+        return false;
+      }
+    }
   }
 
   // vector op do not update range when shape is fixed
@@ -549,9 +558,6 @@ bool IsRangeValid(const std::vector<int64_t> &shape, const std::vector<std::pair
     return true;
   }
 
-  if (range.size() == 0) {
-    return true;
-  }
   if (range.size() != shape.size()) {
     return false;
   }
@@ -757,7 +763,7 @@ class InferShapeMatMul {
                    vector<int64_t> &shape_out, vector<std::pair<int64_t, int64_t>> &range_out, bool has_batch);
 
  private:
-  bool PrecheckShapeAndRange();
+  bool PrecheckShapeAndRange(const string &op_name);
   bool NormalizeShapeAndRange();
   bool InferMKN();
   bool InferBatch();
@@ -871,18 +877,11 @@ bool InferShapeMatMul::NormalizeRangeOfMatMul(const vector<int64_t> &shape,
   vector<std::pair<int64_t, int64_t>> preprocess_range;
   if (shape != UNKNOWN_RANK && range.empty()) {
     for (auto i = 0; i < shape.size(); ++i) {
-      if (shape[i] < 1) {
-        OpsInputShapeErrReport(op_name.c_str(),
-                               std::to_string(i) + "-th dim must > 1 when range is empty and shape is not (-2)", "dim",
-                               std::to_string(shape[i]));
-        OP_LOGE(op_name.c_str(),
-                "[InferShape] %d-th dim(%d) must > 1 when range is empty and shape is not (-2), please check the "
-                "output of upper operator",
-                i, shape[i]);
-        return false;
+      if (shape[i] == -1) {
+        preprocess_range.push_back({1, NORMALIZE_INFINITE_RANGE});
+      } else {
+        preprocess_range.push_back({shape[i], shape[i]});
       }
-
-      preprocess_range.push_back({shape[i], shape[i]});
     }
   } else {
     preprocess_range = range;
@@ -909,11 +908,11 @@ bool InferShapeMatMul::NormalizeRangeOfMatMul(const vector<int64_t> &shape,
   return true;
 }
 
-bool InferShapeMatMul::PrecheckShapeAndRange() {
+bool InferShapeMatMul::PrecheckShapeAndRange(const string &op_name) {
   bool res = true;
-  res &= IsRangeValid(shape_a, range_a, false);
-  res &= IsRangeValid(shape_b, range_b, false);
-  res &= IsRangeValid(shape_bias, range_bias, false);
+  res &= IsRangeValid(shape_a, range_a, op_name, false);
+  res &= IsRangeValid(shape_b, range_b, op_name, false);
+  res &= IsRangeValid(shape_bias, range_bias, op_name, false);
   return res;
 }
 
@@ -943,13 +942,6 @@ bool InferShapeMatMul::InferMKN() {
   auto n = n_b;
 
   int64_t k;
-  OP_LOGD(op_name.c_str(), "[InferShape] start check the input dim!");
-  if (!IsDimValid(m) || !IsDimValid(k_a) || !IsDimValid(k_b) || !IsDimValid(n_b)) {
-    OpsInputShapeErrReport(op_name.c_str(), "The dimension must be -2, -1 or greater than 0", "a and b", "");
-    OP_LOGE(op_name.c_str(), "[InferShape] dimension must be -2, -1 or greater than 0");
-    return false;
-  }
-
   std::pair<int64_t, int64_t> range_k, range_n = infer_range_b[idx_n_b];
   OP_LOGI(op_name.c_str(), "[InferShape] start check the k dim!");
   if (k_a > 0 && k_b > 0 && k_a != k_b) {
@@ -1009,6 +1001,11 @@ bool InferShapeMatMul::InferBatch() {
 }
 
 void InferShapeMatMul::SimplifyShapeAndRange() {
+  if (std::find(shape_out.begin(), shape_out.end(), UNKNOWN_DIM) == shape_out.end()) {
+    range_out = {};
+    return;
+  }
+
   for (int i = 0; i < range_out.size(); i++) {
     if (range_out[i].first == range_out[i].second) {
       shape_out[i] = range_out[i].first;
@@ -1036,7 +1033,7 @@ bool InferShapeMatMul::GetShapeRangeOfOutput() {
     return true;
   }
 
-  if (!PrecheckShapeAndRange()) {
+  if (!PrecheckShapeAndRange(op_name)) {
     return false;
   }
 
@@ -2754,7 +2751,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
       std::string err_msg = ConcatString(
         "failed to call Merge function to merge the 0th input[input] shape",
         DebugString(input_shape.GetDims()),
-        " and the 1st input[diagonal]'s shape", 
+        " and the 1st input[diagonal]'s shape",
         DebugString(diagonal_shape.GetDims()));
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
