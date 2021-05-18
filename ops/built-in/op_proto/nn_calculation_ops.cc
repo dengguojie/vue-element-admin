@@ -1120,6 +1120,10 @@ static bool check_conv2d_backprop_input_pads(ge::Operator& op,
                                             const std::vector<int64_t>& filter_sizes, Format filter_format,
                                             const std::vector<int64_t>& dx_sizes, Format dx_format,
                                             const std::vector<int64_t>& attr_params) {
+  std::string pad_str;
+  if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str)) {
+    return true;
+  }
   size_t idx = 0;
   int64_t stride_h = attr_params[idx++];
   int64_t stride_w = attr_params[idx++];
