@@ -57,13 +57,16 @@ public:
   static const int64_t BLOCK_SIZE = 32;
   static const size_t MAX_UNKNOWN_RANK = 8;
   static const int64_t DOUBLE_BUFFER_SIZE = 2;
-  static const int64_t N_LAST_BROADCAST_THRESHOLD = 512;
+  static const int64_t BLOCK_NUM = 8;
+  static const int64_t MAX_REPEAT_TIMES = 8;
+  static const int64_t N_LAST_BROADCAST_THRESHOLD = 1024;
   static const int64_t LAST_AND_N_LAST_FACTOR = 7;
   static const int64_t MAX_PATTERN_DIM = 3;
   static const int64_t SPECIAL_BROADCAST_INPUT_NUMS = 2;
   static const int64_t BROADCAST_BASE_KEY = 2;
   static const int64_t ELEWISE_REPEATE_NUMS = 128;
   static const int64_t ELEWISE_UINT1_REPEATE_NUMS = 256;
+  static const int64_t MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS = 3;
   static constexpr float LAST_AND_N_LAST_BASE = 1.5;
 
 public:
@@ -89,6 +92,8 @@ private:
   bool CalcTiling();
   bool DoBlockTiling();
   void CheckUpdateBlockTiling();
+  int64_t SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_block);
+  int64_t FindLowestMiddle();
   bool DoUbTiling();
   void AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit);
   void CheckUpdateUbTiling();
@@ -127,6 +132,7 @@ private:
   bool need_multi_core{true};
   bool need_double_buffer{false};
   bool is_multi_output{false};
+  bool need_block_align{false};
 };
 
 }  // namespace optiling

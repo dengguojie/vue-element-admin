@@ -379,10 +379,26 @@ bool Broadcast::CalcTiling() {
              OP_LOGE(op_type.c_str(), "The output shape must be greater than 0"),
              return false);
   const int64_t multi_core_threshold = BGetElementByType(out_type) * compileInfo.core_num * DOUBLE_BUFFER_SIZE;
-  if (output_size < multi_core_threshold) {
+  // block factor whole cut when the shape size is less than the cores size
+  const int64_t block_align_threshold = BGetElementByType(out_type) * BLOCK_NUM *
+                                        MAX_REPEAT_TIMES * compileInfo.core_num;
+  if (output_size <= multi_core_threshold) {
     need_multi_core = false;
+  } else if (output_size <= block_align_threshold) {
+    need_block_align = true;
   }
   return true;
+}
+
+int64_t CalcAlignCore(const int64_t& shape, const int64_t& core,
+                      const int64_t& block_dims, const int64_t& half_core) {
+  int64_t align_core = core;
+  for (; align_core > 0; align_core--) {
+    if (shape % align_core == 0) {
+      break;
+    }
+  }
+  return (block_dims * align_core) > half_core ? align_core : core;
 }
 
 bool Broadcast::DoBlockTiling() {
@@ -390,17 +406,37 @@ bool Broadcast::DoBlockTiling() {
   V_CHECK_GT(compileInfo.core_num, 0,
              OP_LOGE(op_type.c_str(), "compileInfo core_num error, it is [%d]", compileInfo.core_num),
              return false);
+  // multi core need more than half of cores
+  int64_t half_core = compileInfo.core_num / 2;
+  bool is_one_dim = output_shape.size() == 1;
   for (size_t i = 0; i < output_shape.size(); i++) {
     if (output_shape[i] > cur_core) {
+      int64_t align_core =
+          need_block_align ? CalcAlignCore(output_shape[i], cur_core, block_dims, half_core) : cur_core;
       multi_core_output = output_shape[i];
       block_axis = i;
-      block_factor = std::ceil(output_shape[i] * 1.0 / cur_core);
+      block_factor = std::ceil(output_shape[i] * 1.0 / align_core);
       block_dims *= std::ceil(output_shape[i] * 1.0 / block_factor);
       output_shape[i] = block_factor;
       break;
     } else {
-      cur_core /= output_shape[i];
-      block_dims *= output_shape[i];
+      if (need_block_align && cur_core % output_shape[i] != 0 && block_dims * output_shape[i] > half_core) {
+        multi_core_output = output_shape[i];
+        block_axis = i;
+        block_factor = 1;
+        block_dims *= output_shape[i];
+        output_shape[i] = block_factor;
+        if (!is_one_dim) {
+          block_axis = i + 1;
+          block_factor = output_shape[i + 1];
+          output_shape[i] = multi_core_output;
+          multi_core_output = output_shape[i + 1];
+        }
+        break;
+      } else {
+        cur_core /= output_shape[i];
+        block_dims *= output_shape[i];
+      }
     }
   }
   if (output_shape.size() == 1) {
@@ -465,6 +501,79 @@ void Broadcast::CheckUpdateBlockTiling() {
   }
 }
 
+int64_t Broadcast::FindLowestMiddle() {
+  int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
+  int64_t lowest_middle_index = shape_len - 1;
+  if (!broadcast_axis[shape_len] && input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
+    if (input_shapes[0][shape_len] == 1 && input_shapes[1][shape_len] == 1) {
+      lowest_middle_index--;
+      for (int64_t i = shape_len - 1; i >= ub_axis; i--) {
+        if (input_shapes[0][i] == 1 && input_shapes[1][i] == 1) {
+          lowest_middle_index--;
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  bool maby_continuous_brc = broadcast_axis[lowest_middle_index] && broadcast_axis[lowest_middle_index + 1] &&
+                             input_num == SPECIAL_BROADCAST_INPUT_NUMS;
+  if (maby_continuous_brc) {
+    for (int64_t i = lowest_middle_index; i >= ub_axis; i--) {
+      if (!broadcast_axis[i]) {
+        break;
+      }
+      bool same_broadcast_direct = (input_shapes[0][i] == input_shapes[0][i + 1] && input_shapes[0][i] == 1) ||
+                                   (input_shapes[0][i] != 1 && input_shapes[0][i + 1] != 1);
+      if (same_broadcast_direct) {
+        lowest_middle_index--;
+      } else {
+        break;
+      }
+    }
+  }
+  return lowest_middle_index;
+}
+
+int64_t Broadcast::SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_block) {
+  int64_t last_ub_axis = ub_axis;
+  int64_t ub_output = output_shape[last_ub_axis];
+  output_shape[last_ub_axis] = ub_factor;
+  int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
+  int64_t last_broadcast_size = 1;
+  bool is_middle_optimize = false;
+  int64_t last_under_ub_shape = 1;
+  int64_t under_ub_shape = 1;
+  int64_t lowest_middle_index = FindLowestMiddle();
+  for (int64_t i = shape_len; i >= last_ub_axis; i--) {
+    if (broadcast_axis[i] && i != shape_len) {
+      if (under_ub_shape > N_LAST_BROADCAST_THRESHOLD && !is_middle_optimize) {
+        ub_axis = i + 1;
+        ub_factor = output_shape[i + 1];
+        break;
+      } else if (i <= lowest_middle_index && output_shape[i] >= (ele_in_block * MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS) &&
+                 output_shape[i] > last_broadcast_size) {
+        ub_axis = i;
+        ub_factor = output_shape[i];
+        last_under_ub_shape = under_ub_shape;
+        is_middle_optimize = true;
+        last_broadcast_size = output_shape[i];
+      } else if (!broadcast_axis[i + 1] &&
+                 under_ub_shape > (max_ub_shape / under_ub_shape * MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS) &&
+                 under_ub_shape > (BLOCK_NUM * ele_in_block) && !is_middle_optimize) {
+        ub_axis = i + 1;
+        ub_factor = output_shape[i + 1];
+        break;
+      }
+    }
+    if (i != last_ub_axis) {
+      under_ub_shape *= output_shape[i];
+    }
+  }
+  output_shape[last_ub_axis] = ub_output;
+  return is_middle_optimize ? last_under_ub_shape : under_ub_shape;
+}
+
 bool Broadcast::DoUbTiling() {
   int64_t limit = max_available_ub;
   V_OP_TILING_CHECK((SPLIT_FACTORS.find(compileInfo.max_dtype) != SPLIT_FACTORS.end()),
@@ -474,33 +583,29 @@ bool Broadcast::DoUbTiling() {
     limit = SPLIT_FACTORS.at(compileInfo.max_dtype);
   }
   int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
-  int64_t under_ub_shape = 1;
+  int64_t max_ub_shape = 1;
   int64_t ele_in_block = BGetElementByType(in_type);
+  bool has_ub_align = false;
   for (int64_t i = shape_len; i >= block_axis; i--) {
-    if (broadcast_axis[i] && i != shape_len) {
-      bool is_cut_under_b = (under_ub_shape > N_LAST_BROADCAST_THRESHOLD ||
-                              (under_ub_shape > (ele_in_block * LAST_AND_N_LAST_FACTOR) &&
-                              output_shape[i] < (ele_in_block * LAST_AND_N_LAST_BASE))) &&
-                            under_ub_shape % ele_in_block != 0 &&
-                            under_ub_shape >= BGetElementByType(out_type);
-      if (is_cut_under_b) {
-        ub_axis = i + 1;
-        ub_factor = output_shape[i + 1];
-        break;
-      } else if (output_shape[i] > (ele_in_block * 3) && under_ub_shape % ele_in_block != 0) {
-        ub_axis = i;
-        ub_factor = std::min(output_shape[i], limit);
-        break;
-      }
-    }
     if (output_shape[i] >= limit) {
       ub_axis = i;
       ub_factor = limit;
+      has_ub_align = has_ub_align || (broadcast_axis[i] && (max_ub_shape % ele_in_block == 0));
+      max_ub_shape *= ub_factor;
       break;
     } else {
       limit /= output_shape[i];
-      under_ub_shape *= output_shape[i];
+      has_ub_align = has_ub_align || (broadcast_axis[i] && (max_ub_shape % ele_in_block == 0));
+      max_ub_shape *= output_shape[i];
+      ub_axis = i;
+      ub_factor = output_shape[i];
     }
+  }
+  int64_t under_ub_shape = 1;
+  if (!has_ub_align) {
+    under_ub_shape = SplitUb(max_ub_shape, ele_in_block);
+  } else {
+    under_ub_shape = max_ub_shape / ub_factor;
   }
   AdjustUbTiling(under_ub_shape, limit);
   if (output_shape.size() != 1) {

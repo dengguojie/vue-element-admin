@@ -554,8 +554,8 @@ class BroadcastSchedule(Schedule):
 
         self._calc_tensor_space()
 
-        need_update_var_range = False
         for tensor_i in self._broadcast_tensors - self._compute_inline_tensors:
+            need_update_var_range = False
             if util.get_dsl_insn(tensor_i) != BROADCAST:
                 ub_under_shapes = util.shape_to_list(tensor_i.op.input_tensors[0].shape[self._ub_split_axis + 1:])
                 ub_under_size = reduce(lambda x, y: x * y, ub_under_shapes or [1])
@@ -563,13 +563,12 @@ class BroadcastSchedule(Schedule):
                     self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
                     update_store_predicate(tensor_i)
                     need_update_var_range = True
-
-        if need_update_var_range:
-            self._constraints.add(tvm.expr.EQ(self._ub_factor, 1))
-            out_ub_shapes = util.shape_to_list(self._out.shape[self._ub_split_axis + 1:])
-            for in_var, out_var in zip(ub_under_shapes, out_ub_shapes):
-                if isinstance(out_var, tvm.expr.Var):
-                    self._constraints.add(tvm.expr.EQ(out_var, in_var))
+            if need_update_var_range:
+                self._constraints.add(tvm.expr.EQ(self._ub_factor, 1))
+                out_ub_shapes = util.shape_to_list(self._out.shape[self._ub_split_axis + 1:])
+                for in_var, out_var in zip(ub_under_shapes, out_ub_shapes):
+                    if isinstance(out_var, tvm.expr.Var):
+                        self._constraints.add(tvm.expr.EQ(out_var, in_var))
 
     def _do_compute_inline(self):
         sch = self._schedule
