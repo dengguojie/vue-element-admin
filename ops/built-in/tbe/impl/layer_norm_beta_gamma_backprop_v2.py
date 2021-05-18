@@ -107,7 +107,7 @@ def op_select_format(input_dy, input_x,
 
     if _check_dynamic_format(shape_dy, shape_gamma, c_0):
         input0 = util_select_op_base.gen_param(classify="input0", name="dy",
-                                               datatype="float16,float16,float16,float16,float,"
+                                               datatype="float,float,float,float,float,"
                                                         "float,float,float",
                                                format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
         input1 = util_select_op_base.gen_param(classify="input1", name="res_for_gamma",
