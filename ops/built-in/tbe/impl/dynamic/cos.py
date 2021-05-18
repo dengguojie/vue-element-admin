@@ -57,14 +57,14 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
 
     # cast to type float32 when type is float16
     has_improve_precision = False
-    if dtype.lower() == "float16" and tbe_platform.api_check_support("impl.util.platform_adapter.vmul", "float32"):
+    if dtype.lower() == "float16" and tbe_platform.api_check_support("tbe.dsl.vmul", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         dtype = "float32"
         has_improve_precision = True
 
     # round the input
     vmu_ = tbe.vmuls(input_x, 1.0 / TWO_PI)
-    if not tbe_platform.api_check_support("impl.util.platform_adapter.round", "float32") and dtype == "float32":
+    if not tbe_platform.api_check_support("tbe.dsl.round", "float32") and dtype == "float32":
         input_x_ = tbe.cast_to(vmu_, "float16")
         round_fp = tbe.round(input_x_)
     else:

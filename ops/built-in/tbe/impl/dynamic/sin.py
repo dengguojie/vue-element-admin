@@ -95,7 +95,7 @@ def sin_compute(x, y, kernel_name="sin"):
 
     has_improve_precision = False
     cast_dtype = dtype
-    if tbe_platform.api_check_support("impl.util.platform_adapter.vmul", "float32"):
+    if tbe_platform.api_check_support("tbe.dsl.vmul", "float32"):
         has_improve_precision = True
         cast_dtype = FLOAT_32
 
@@ -105,7 +105,7 @@ def sin_compute(x, y, kernel_name="sin"):
 
     pai_multiple = tbe.vmuls(x, 1 / PI)
     # pai_round = tbe.round(pai_multiple)
-    if not tbe_platform.api_check_support("impl.util.platform_adapter.round", "float32") and cast_dtype == FLOAT_32:
+    if not tbe_platform.api_check_support("tbe.dsl.round", "float32") and cast_dtype == FLOAT_32:
         pai_16 = tbe.cast_to(pai_multiple, FLOAT_16)
         round_float = tbe.cast_to(tbe.round(pai_16), cast_dtype)
     else:
@@ -117,7 +117,7 @@ def sin_compute(x, y, kernel_name="sin"):
 
     # if round is odd, the final result need to mutiply -1.Need to multipy 1/2 to get the ceil value
     ran_ = tbe.vmuls(round_float, 1 / 2)
-    if not tbe_platform.api_check_support("impl.util.platform_adapter.ceil", "float32") and cast_dtype == FLOAT_32:
+    if not tbe_platform.api_check_support("tbe.dsl.ceil", "float32") and cast_dtype == FLOAT_32:
         ran_16 = tbe.cast_to(ran_, FLOAT_16)
         ceil_value = tbe.ceil(ran_16)
         ceil_value = tbe.cast_to(ceil_value, cast_dtype)
