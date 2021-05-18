@@ -50,7 +50,7 @@ vector<BufferFusionPattern*> TbeAippCommonFusionPass::DefinePatterns() {
           .SetHead({kPatternAipp})
           .SetOutputs(kPatternAipp, {kPatternConv})
           .SetOutputs(kPatternConv, {kPatternElemwise}, TBE_OUTPUT_BRANCH_SINGLE, true)
-          .SetOutputs(kPatternElemwise, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
+          .SetOutputs(kPatternElemwise, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true, true)
           .SetOutputs(kPatternQuant, {kPatternStridedWrite});
 
   patterns.push_back(pattern1);
