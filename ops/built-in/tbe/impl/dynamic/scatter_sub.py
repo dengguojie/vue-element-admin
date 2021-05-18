@@ -93,7 +93,7 @@ class ScatterSub():
 
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)
@@ -120,7 +120,7 @@ class ScatterSub():
         """
         Check whether the input parameters is valid or not
         """
-        indices_support_dtype_list = ("int32",)
+        indices_support_dtype_list = ("int32", "int64")
         var_support_dtype_list = ("float32", "int32", "float16")
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
         para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")
@@ -193,7 +193,7 @@ class ScatterSub():
         self.updates_ub = self.tik_instance.Tensor(self.var_dtype, (self.updates_ub_num,),
                                                    name="updates_ub",
                                                    scope=tik.scope_ubuf)
-        self.indices_ub = self.tik_instance.Tensor("int32", (self.indices_ub_num,),
+        self.indices_ub = self.tik_instance.Tensor(self.indices_dtype, (self.indices_ub_num,),
                                                    name="indices_ub",
                                                    scope=tik.scope_ubuf)
         self.var_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),

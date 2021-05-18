@@ -764,7 +764,7 @@ class Scatter:
         para_check.check_shape(var_out_shape, param_name="var_out")
 
         check_list_var = ("float16", "float32", "int32", "int8", "uint8")
-        check_list_indices = ("int32")
+        check_list_indices = ("int32", "int64")
         para_check.check_dtype(self.var_dtype, check_list_var, param_name="var")
         para_check.check_dtype(self.indices_dtype, check_list_indices, param_name="indices")
         para_check.check_dtype(self.updates_dtype, check_list_var, param_name="updates")
