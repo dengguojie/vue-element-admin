@@ -46,8 +46,6 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
         x = tbe.cast_to(x, 'float16')
     target_dtype = x.dtype
 
-    if x.dtype == 'int32':
-        mask = tbe.cast_to(mask, 'float16')
     mask = tbe.cast_to(mask, x.dtype)
 
     if value.dtype != x.dtype:
@@ -129,15 +127,6 @@ def masked_fill(x, mask, value, y, kernel_name="masked_fill"):
 
     # check kernel_name
     para_check.check_kernel_name(kernel_name)
-
-    pos_mask_shape = tuple([1] * (len(x_shape) - len(mask_shape))) + tuple(mask_shape)
-    pos_mask_range = [[1, 1]] * (len(x_shape) - len(mask_shape)) + mask_range
-    mask["shape"] = pos_mask_shape
-    mask["range"] = pos_mask_range
-    pos_value = tuple([1] * (len(x_shape) - len(value_shape))) + tuple(value_shape)
-    pos_range = [[1, 1]] * (len(x_shape) - len(value_shape)) + value_range
-    value["shape"] = pos_value
-    value["range"] = pos_range
 
     ins = classify([x, mask, value], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
