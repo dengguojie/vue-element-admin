@@ -734,8 +734,7 @@ class BroadcastSchedule(Schedule):
                 else:
                     src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                               tvm.expr.Call.PureIntrinsic, None, 0)
-                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound],
-                                 no_unknown_broadcast_bound_correction=1)
+                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
             elif compile_broadcast_no_inline:
                 attrs = dict(storage_bound=[tensor_bound])
             elif tensor_i in self._out_tensors and self._is_one_dim:
@@ -839,11 +838,19 @@ class BroadcastSchedule(Schedule):
             _dfs_cur_tensor(cur_tensor)
             self._all_pre_node_broadcast.update(all_pre_node)
 
+        common_in_multi_output = False
         for tensor_i in self._all_pre_node_broadcast:
             common_tensor = self._in_out_map[tensor_i] - \
                             (self._all_pre_node_broadcast | self._broadcast_store_predicate)
             if len(common_tensor) > 0:
+                if tensor_i in self._out_tensors:
+                    common_in_multi_output = True
+                    break
                 self._store_predicate_common_tensors.add(tensor_i)
+        if common_in_multi_output:
+            self._broadcast_store_predicate.clear()
+            self._all_pre_node_broadcast.clear()
+            self._store_predicate_common_tensors.clear()
 
     def _calc_storage_bound(self):
         def _correct_ub_size_by_cmp_sel(_tensor):

@@ -28,10 +28,10 @@ def dsl_dync_vmulout(x, y, z, kernel_name="dsl_dync_vmulout"):
             res1 = tbe.dsl.vmuls(input_x, tvm.const(1, dtype=dtype))
             res = tbe.dsl.vadd(sub, input_y_fp32)
 
-            tensors.append((data1, data2, res1, res))
+            tensors.append((data1, data2, res1, res, input_x))
 
         with tvm.target.cce():
-            sch = tbe.dsl.auto_schedule([res1, res])
+            sch = tbe.dsl.auto_schedule([res1, res, input_x])
         schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}

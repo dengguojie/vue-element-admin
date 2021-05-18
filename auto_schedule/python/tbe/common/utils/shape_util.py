@@ -474,7 +474,6 @@ def variable_shape(inputs: list, op_mode="elewise"):
             else:
                 const_shape = inputs[0]["shape"]
             operation.get_context().get_current_compute().add("_const_shape", const_shape)
-            operation.get_context().get_current_compute().add("_const_origin_inputs", inputs)
         elif mode == para_check.SPECIAL and inputs[0].get("pattern"):
             pattern = inputs[0].get("pattern")
             operation.get_context().get_current_compute().add("_pattern", pattern)
