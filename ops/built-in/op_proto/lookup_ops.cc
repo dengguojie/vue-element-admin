@@ -310,7 +310,6 @@ INFER_FUNC_REG(InitializeTable, InitializeTableInfer);
 IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
   std::vector<int64_t> value_p;
   if (op.GetAttr("value_shape", value_p) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "getOpAttr value_shape failed!");
     return GRAPH_FAILED;
   }
 
@@ -325,19 +324,28 @@ IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
   key_t = op.GetInputDesc(0).GetDataType();
 
   if (op.GetAttr("value_dtype", value_t) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "getOpAttr value_dtype failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+      op.GetName(), string("failed to get attr[value_dtype]"));
     return GRAPH_FAILED;
   }
 
   if (key_t == DT_INT64) {
     if (!((value_t == DT_BOOL) || (value_t == DT_INT64) || (value_t == DT_INT32) || (value_t == DT_FLOAT) ||
           (value_t == DT_DOUBLE))) {
-      OP_LOGE(op.GetName().c_str(), "valueType illegal with keyType is DT_INT64");
+      std::string err_msg = ConcatString(
+        "when attr[key_type] is DT_INT64, attr[value_type] should in ["
+        "DT_INT64, DT_INT32, DT_FLOAT, DT_BOOL], but got [",
+      TypeUtils::DataTypeToSerialString(value_t), "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else if (key_t == DT_INT32) {
     if (!((value_t == DT_INT32) || (value_t == DT_FLOAT) || (value_t == DT_DOUBLE))) {
-      OP_LOGE(op.GetName().c_str(), "valueType illegal with keyType is DT_INT32");
+      std::string err_msg = ConcatString(
+        "when attr[key_type] is DT_INT64, attr[value_type] should in ["
+        "DT_INT64, DT_INT32, DT_FLOAT], but got [",
+      TypeUtils::DataTypeToSerialString(value_t), "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -355,7 +363,8 @@ IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
   auto pcontext = op.GetInferenceContext();
   pcontext->SetOutputHandleShapesAndTypes(std::move(key_value_vec));
   if (op.UpdateOutputDesc("handle", desc_handle) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+      op.GetName(), string("fail to update output[handle] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -366,7 +375,6 @@ INFER_FUNC_REG(MutableDenseHashTable, MutableDenseHashTableInfer);
 IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
   std::vector<int64_t> value_p;
   if (op.GetAttr("value_shape", value_p) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "getOpAttr value_shape failed!");
     return GRAPH_FAILED;
   }
 
@@ -380,21 +388,29 @@ IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
   ge::DataType value_t;
 
   if (op.GetAttr("key_dtype", key_t) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "getOpAttr key_dtype failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+      op.GetName(), string("failed to get attr[key_dtype]"));
     return GRAPH_FAILED;
   }
   if (op.GetAttr("value_dtype", value_t) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "getOpAttr value_dtype failed!");
     return GRAPH_FAILED;
   }
   if (key_t == DT_INT64) {
     if (!((value_t == DT_INT64) || (value_t == DT_INT32) || (value_t == DT_FLOAT) || (value_t == DT_DOUBLE))) {
-      OP_LOGE(op.GetName().c_str(), "valueType illegal with keyType is DT_INT64");
+      std::string err_msg = ConcatString(
+        "when attr[key_type] is DT_INT64, attr[value_type] should in ["
+        "DT_INT32, DT_INT64, DT_FLOAT, DT_DOUBLE], but got [",
+        TypeUtils::DataTypeToSerialString(value_t), "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else if (key_t == DT_INT32) {
     if (!((value_t == DT_INT32) || (value_t == DT_FLOAT) || (value_t == DT_DOUBLE))) {
-      OP_LOGE(op.GetName().c_str(), "valueType illegal with keyType is DT_INT32");
+      std::string err_msg = ConcatString(
+        "when attr[key_type] is DT_INT64, attr[value_type] should in ["
+        "DT_INT32, DT_FLOAT, DT_DOUBLE], but got [",
+        TypeUtils::DataTypeToSerialString(value_t), "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -409,7 +425,8 @@ IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
   pcontext->SetOutputHandleShapesAndTypes(std::move(key_value_vec));
 
   if (op.UpdateOutputDesc("handle", desc_handle) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+      op.GetName(), string("fail to update output[handle] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -426,21 +443,29 @@ IMPLEMT_INFERFUNC(MutableHashTable, MutableHashTableInfer) {
   ge::DataType value_t;
 
   if (op.GetAttr("key_dtype", key_t) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "getOpAttr key_dtype failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+      op.GetName(), string("failed to get attr[key_dtype]"));
     return GRAPH_FAILED;
   }
   if (op.GetAttr("value_dtype", value_t) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "getOpAttr value_dtype failed!");
     return GRAPH_FAILED;
   }
   if (key_t == DT_INT64) {
     if (!((value_t == DT_INT64) || (value_t == DT_INT32) || (value_t == DT_FLOAT) || (value_t == DT_DOUBLE))) {
-      OP_LOGE(op.GetName().c_str(), "valueType illegal with keyType is DT_INT64");
+      std::string err_msg = ConcatString(
+        "when attr[key_type] is DT_INT64, attr[value_type] should in ["
+        "DT_INT64, DT_INT32, DT_FLOAT, DT_DOUBLE], but got [",
+      TypeUtils::DataTypeToSerialString(value_t), "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else if (key_t == DT_INT32) {
     if (!((value_t == DT_INT32) || (value_t == DT_FLOAT) || (value_t == DT_DOUBLE))) {
-      OP_LOGE(op.GetName().c_str(), "valueType illegal with keyType is DT_INT32");
+      std::string err_msg = ConcatString(
+        "when attr[key_type] is DT_INT64, attr[value_type] should in ["
+        "DT_INT32, DT_FLOAT, DT_DOUBLE], but got [",
+      TypeUtils::DataTypeToSerialString(value_t), "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -455,7 +480,6 @@ IMPLEMT_INFERFUNC(MutableHashTable, MutableHashTableInfer) {
   pcontext->SetOutputHandleShapesAndTypes(std::move(key_value_vec));
 
   if (op.UpdateOutputDesc("handle", desc_handle) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
