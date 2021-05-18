@@ -790,6 +790,19 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
     OP_LOGE(op_type.c_str(), "get compile_info[_elewise_vars] error. Error message: %s", e.what());
     return false;
   }
+  if (op_info.contains("_attr_vars")) {
+    try {
+      const auto& all_vars = op_info.at("_attr_vars").at(str_key);
+      for (const auto& var : all_vars) {
+        size_t attr_size = 0;
+        const uint8_t *attr = op_paras.var_attrs.GetData(var.at("name"), var.at("type"), attr_size);
+        ByteBufferPut(run_info.tiling_data, attr, attr_size);
+      }
+    } catch (const std::exception &e) {
+      OP_LOGE(op_type.c_str(), "get compile_info[_attr_vars] error. Error message: %s", e.what());
+      return false;
+    }
+  }
   return true;
 }
 

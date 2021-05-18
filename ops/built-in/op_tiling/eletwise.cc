@@ -244,6 +244,19 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
     OP_LOGE(op_type.c_str(), "get compile_info[_elewise_vars] error. Error message: %s", e.what());
     return false;
   }
+  if (op_info.contains("_attr_vars")) {
+    try {
+      const auto& all_vars = op_info.at("_attr_vars").at(str_key);
+      for (const auto& var : all_vars) {
+        size_t attr_size = 0;
+        const uint8_t *attr = op_paras.var_attrs.GetData(var.at("name"), var.at("type"), attr_size);
+        ByteBufferPut(run_info.tiling_data, attr, attr_size);
+      }
+    } catch (const std::exception &e) {
+      OP_LOGE(op_type.c_str(), "get compile_info[_attr_vars] error. Error message: %s", e.what());
+      return false;
+    }
+  }
   return true;
 }
 
@@ -412,12 +425,25 @@ bool IsEmptyTensor(const std::string& op_type, const TeOpParas& op_paras) {
   return has_zero;
 }
 
-bool WriteConstTiling(const std::string& op_type, const nlohmann::json& op_info,
+bool WriteConstTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                       OpRunInfo& run_info, const int64_t& key, const int64_t& block_dims) {
   OP_LOGD(op_type.c_str(), "tiling key:%lld", key);
   OP_LOGD(op_type.c_str(), "tiling block_dims:%lld", block_dims);
   run_info.block_dim = static_cast<uint32_t>(block_dims);
-  run_info.tiling_key = static_cast<int32_t>(key);
+  run_info.tiling_key = static_cast<uint32_t>(key);
+  if (op_info.contains("_attr_vars")) {
+    try {
+      const auto& all_vars = op_info.at("_attr_vars").at(std::to_string(key));
+      for (const auto& var : all_vars) {
+        size_t attr_size = 0;
+        const uint8_t* attr = op_paras.var_attrs.GetData(var.at("name"), var.at("type"), attr_size);
+        ByteBufferPut(run_info.tiling_data, attr, attr_size);
+      }
+    } catch (const std::exception& e) {
+      OP_LOGE(op_type.c_str(), "get compile_info[_attr_vars] error. Error message: %s", e.what());
+      return false;
+    }
+  }
   return true;
 }
 
@@ -446,9 +472,9 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
     int64_t key{0};
     int64_t block_dims{1};
     ret = ret && CalcConstKey(op_type, op_paras, op_info, is_support_broadcast, key, block_dims);
-    ret = ret && WriteConstTiling(op_type, op_info, run_info, key, block_dims);
+    ret = ret && WriteConstTiling(op_type, op_paras, op_info, run_info, key, block_dims);
   } else if (IsEmptyTensor(op_type, op_paras)) {
-    ret = ret && WriteConstTiling(op_type, op_info, run_info, INT32_MIN, 1);
+    ret = ret && WriteConstTiling(op_type, op_paras, op_info, run_info, INT32_MIN, 1);
   } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
     Eletwise eletwise(op_type, op_paras, op_info, flag_info);
     ret = ret && eletwise.DoTiling();

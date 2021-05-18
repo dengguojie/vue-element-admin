@@ -358,7 +358,7 @@ class Builder:
                 return {
                     "name": attr_var.name,
                     "type": dtype,
-                    "length": length or 0
+                    "length": length or 1
                 }
 
             # key: tiling_key, value: [@see convert_attr_var()]

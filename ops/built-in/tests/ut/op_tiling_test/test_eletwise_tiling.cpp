@@ -3,6 +3,9 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/attr_utils.h"
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -613,4 +616,159 @@ TEST_F(EletwiseTiling, Eletwise_tiling13) {
   op_compile_info.key = "Eletwise_tiling13";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+namespace optiling {
+  class VarAttrHelper {
+   public:
+    static void InitTeOpVarAttr(ge::OpDescPtr &op_desc, optiling::TeOpVarAttrArgs &attr);
+  };
+}
+
+
+TEST_F(EletwiseTiling, Eletwise_tiling14) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  // dynamic_op_exp_432.static_op_exp_433
+  std::string compileInfo = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "_attr_vars": { "210000000": [{"name": "tyun", "type":"Int32"}] } })";
+
+  std::vector<int64_t> inputA{1, 33, 1089};
+  std::vector<int64_t> output{1, 33, 1089};
+  std::string dtype = "float32";
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = dtype;
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+  ge::OpDesc op_desc;
+  ge::OpDescPtr op_desc_ptr = std::make_shared<ge::OpDesc>(op_desc);
+  ge::AttrUtils::SetInt(op_desc_ptr, "tyun", 11);
+  TeOpVarAttrArgs var_attrs;
+  VarAttrHelper::InitTeOpVarAttr(op_desc_ptr, var_attrs);
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  opParas.var_attrs = var_attrs;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "Eletwise_tiling14";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.block_dim, 32);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "35937 1152 1152 11 ");
+}
+
+TEST_F(EletwiseTiling, Eletwise_tiling15) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  // dynamic_op_add_267.static_op_add_269
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "_fusion_index": [[0], [1]], "push_status": 0, "_flag_info": [false, false, true, true, true, false], "_base_info": {"320": [32, 4, 21840, 10920], "000": [32, 4, 21840, 10920]}, "_elewise_vars": { "232000000": [10001, 20000, 30000], "0": [10100], "1": [10100, 20000, 30000], "2": [10100, 20000, 30001], "4": [10100, 20001, 30001] }, "_vars": { "232000000": ["_dim_0_1", "_block_factor_0", "_ub_factor_0"], "0": ["_dim_1_0"], "1": ["_dim_1_0", "_block_factor_0", "_ub_factor_0"], "2": ["_dim_1_0", "_block_factor_0", "_ub_factor_1"], "4": ["_dim_1_0", "_block_factor_1", "_ub_factor_1"] }, "_attr_vars": { "232000000": [{"name": "tyun", "type":"Int32"}], "0": [{"name": "tyun", "type":"Int32"}], "1": [{"name": "tyun", "type":"Int32"}], "2": [{"name": "tyun", "type":"Int32"}], "4": [{"name": "tyun", "type":"Int32"}]} })";
+
+  std::vector<int64_t> inputA{1, 5824};
+  std::vector<int64_t> inputB{100, 1};
+  std::vector<int64_t> output{100, 5824};
+  std::string in_dtype = "float32";
+  std::string dtype = "float32";
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = in_dtype;
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = in_dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = dtype;
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+  ge::OpDesc op_desc;
+  ge::OpDescPtr op_desc_ptr = std::make_shared<ge::OpDesc>(op_desc);
+  ge::AttrUtils::SetInt(op_desc_ptr, "tyun", 100);
+  TeOpVarAttrArgs var_attrs;
+  VarAttrHelper::InitTeOpVarAttr(op_desc_ptr, var_attrs);
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  opParas.var_attrs = var_attrs;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "Eletwise_tiling15";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.block_dim, 25);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "5824 4 2 100 ");
+}
+
+TEST_F(EletwiseTiling, Eletwise_tiling16) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  // dynamic real div const tiling
+  std::string compileInfo = R"({"_fusion_index": [[0]], "_pattern": "Broadcast", "_outs_uint1": false, "_flag_info": [false, true, true, true, false, false], "_const_shapes": [[1], [48985]], "_const_block_dims": [32, 32], "_vars": {"100000000": [], "100000001": []}, "_normal_vars": {"100000000": [], "100000001": []}, "_attr_vars": {"100000000": [{"name": "tyun", "type":"Int32"}], "100000001": [{"name": "tyun", "type":"Int32"}]}, "_custom_vars": {"100000000": [], "100000001": []}, "_elewise_vars": {"100000000": [], "100000001": []}})";
+  std::vector<int64_t> inputA{48985};
+  std::vector<int64_t> inputB{48985};
+  std::vector<int64_t> output{48985};
+  std::string dtype = "float16";
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = dtype;
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = dtype;
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+  ge::OpDesc op_desc;
+  ge::OpDescPtr op_desc_ptr = std::make_shared<ge::OpDesc>(op_desc);
+  ge::AttrUtils::SetInt(op_desc_ptr, "tyun", 101);
+  TeOpVarAttrArgs var_attrs;
+  VarAttrHelper::InitTeOpVarAttr(op_desc_ptr, var_attrs);
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  opParas.var_attrs = var_attrs;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "Eletwise_tiling16";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "101 ");
 }
