@@ -205,6 +205,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             else:
                 d_factor = compute_util.int_ceil_div(c_ddr_deep_outer_value, d_dim)
                 multicore_d, c_ddr_deep_outer_inner = sch[c_ddr].split(c_ddr_deep_outer, factor=d_factor)
+                # d_dim may be larger than uesd
+                tiling['block_dim'][-1] = compute_util.int_ceil_div(c_ddr_deep_outer_value, d_factor)
             # split n axis
             multicore_n, bl1_at_ddr_n_outer_inner = sch[c_ddr].split(bl1_at_ddr_n_outer, nparts=n_dim)
             # split m axis

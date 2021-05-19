@@ -722,8 +722,7 @@ def _conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
     None
     """
     def _conv3dbp_input_achieve_with_tvm():
-        dedy = tvm.placeholder(shape_dedy, name="dedy",
-                               dtype=out_backprop_dtype)
+        dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
         shape_filter_ncdhw = [filter_batch,
                               filter_channel, filter_depth, filter_h, filter_w]
 
