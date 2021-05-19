@@ -118,7 +118,7 @@ set(local_context_inc_path
     ${TOP_DIR}/inc/external/aicpu
     ${TOP_DIR}/libc_sec/include
     ${TOP_DIR}/third_party/protobuf/include
-    ${TOP_DIR}/third_party/eigen/src/eigen-3.3.7
+    ${TOP_DIR}/open_source/eigen
     ${TOP_DIR}/out/${product}
     ${CMAKE_BINARY_DIR}/proto/aicpu/proto/cpu_proto/proto
     ${CMAKE_BINARY_DIR}/proto/aicpu/proto

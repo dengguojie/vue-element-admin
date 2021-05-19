@@ -211,7 +211,7 @@ set(local_kernels_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}/utils
     ${TOP_DIR}/inc/aicpu/cpu_kernels
     ${TOP_DIR}/inc/external/aicpu
-    ${TOP_DIR}/third_party/eigen/src/eigen-3.3.7
+    ${TOP_DIR}/open_source/eigen
     ${TOP_DIR}/inc
     ${TOP_DIR}/libc_sec/include
     ${TOP_DIR}/abl/libc_sec/include
