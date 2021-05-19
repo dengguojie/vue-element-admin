@@ -35,44 +35,36 @@ if (ENABLE_TEST STREQUAL UT)
     set(_ops_cov_data ${_ops_cov_report}/cpp_utest/ops.info)
     # generate coverage
     if(AICPU_ONLY OR CPU_UT)
+        set(depend_module ${depend_module} cpu_kernels_ut)
+    endif()
+    if(PROTO_UT)
+        set(depend_module ${depend_module} ops_cpp_proto_utest)
+    endif()
+    if(PASS_UT)
+        set(depend_module ${depend_module} ops_cpp_fusion_pass_aicore_utest)
+    endif()
+    if(TILING_UT)
+        set(depend_module ${depend_module} ops_cpp_op_tiling_utest)
+    endif()
+    if(ONNX_PLUGIN_UT)
+        set(depend_module ${depend_module} ops_cpp_onnx_plugin_utest)
+    endif()
+    if(PLUGIN_UT)
+        set(depend_module ${depend_module} ops_cpp_plugin_utest)
+    endif()
+    if(UT_TEST_ALL)
+        set(depend_module ops_cpp_proto_utest 
+            ops_cpp_op_tiling_utest 
+            ops_cpp_fusion_pass_aicore_utest
+            cpu_kernels_ut
+            ops_cpp_plugin_utest
+            ops_cpp_onnx_plugin_utest)
+    endif()
+    message("coverage depend_module is ${depend_module}")
+    if(NOT "" STREQUAL "${depend_module}")
         add_custom_target(generate_ops_cpp_cov ALL
-                DEPENDS cpu_kernels_ut
-                COMMENT "Generate cpp coverage for cpu_kernels utest"
-            )
-    elseif(PROTO_UT)
-        add_custom_target(generate_ops_cpp_cov ALL
-                DEPENDS ops_cpp_proto_utest
-                COMMENT "Generate cpp coverage for ops proto utest"
-            )
-    elseif(PASS_UT)
-        add_custom_target(generate_ops_cpp_cov ALL
-                DEPENDS ops_cpp_fusion_pass_aicore_utest
-                COMMENT "Generate cpp coverage for fusion_pass utest"
-        )
-    elseif(TILING_UT)
-        add_custom_target(generate_ops_cpp_cov ALL
-                DEPENDS ops_cpp_op_tiling_utest
-                COMMENT "Generate cpp coverage for tiling utest"
-        )
-    elseif(ONNX_PLUGIN_UT)
-        add_custom_target(generate_ops_cpp_cov ALL
-                DEPENDS ops_cpp_onnx_plugin_utest
-                COMMENT "Generate cpp coverage for ops tf plugin utest"
-        )
-    elseif(PLUGIN_UT)
-        add_custom_target(generate_ops_cpp_cov ALL
-                DEPENDS ops_cpp_plugin_utest
-                COMMENT "Generate cpp coverage for ops tf plugin utest"
-        )
-    else()
-        add_custom_target(generate_ops_cpp_cov ALL
-                DEPENDS ops_cpp_proto_utest
-                ops_cpp_op_tiling_utest
-                ops_cpp_fusion_pass_aicore_utest
-                cpu_kernels_ut
-                ops_cpp_plugin_utest
-                ops_cpp_onnx_plugin_utest
-                COMMENT "Generate cpp coverage for ops all utest"
+            DEPENDS ${depend_module}
+            COMMENT "Generate cpp coverage for ops all utest"
         )
     endif()
     if(NOT UT_NO_EXEC)

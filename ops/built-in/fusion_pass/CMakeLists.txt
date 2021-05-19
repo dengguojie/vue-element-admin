@@ -384,8 +384,6 @@ if(ENABLE_TEST STREQUAL "")
     )
   endif()
 elseif(UT_TEST_ALL OR PASS_UT)
-  message("UT_TEST_ALL is ${UT_TEST_ALL}")
-  message("PASS_UT is ${PASS_UT}")
   add_library(ops_fusion_pass_aicore_llt STATIC ${_llt_aic_srcs})
   target_include_directories(ops_fusion_pass_aicore_llt PUBLIC
     ${_common_fusion_pass_inc}
