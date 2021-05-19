@@ -147,6 +147,7 @@ set(_tf_plugins
   div_no_nan_plugin.cc
   div_plugin.cc
   decode_jpeg_plugin.cc
+  dense_image_warp_plugin.cc
   draw_bounding_boxes_plugin.cc
   drop_out_do_mask_plugin.cc
   drop_out_do_mask_v3_plugin.cc
