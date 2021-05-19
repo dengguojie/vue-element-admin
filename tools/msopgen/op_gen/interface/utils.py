@@ -55,7 +55,7 @@ LEFT_BRACES = "{"
 RIGHT_BRACES = "}"
 SUPPORT_PATH_PATTERN = r"^[A-Za-z0-9_\./:()=\\-]+$"
 FMK_MS = ["ms", "mindspore"]
-FMK_LIST = ["tf", "tensorflow", "caffe", "pytorch", "ms", "mindspore"]
+FMK_LIST = ["tf", "tensorflow", "caffe", "pytorch", "ms", "mindspore", "onnx"]
 PROJ_MS_NAME = "mindspore"
 GEN_MODE_LIST = ['0', '1']
 OP_TEMPLATE_PATH = "../template/op_project_tmpl"

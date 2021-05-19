@@ -95,7 +95,7 @@ class ArgParser:
                                 default="TF",
                                 help="<Required> op framework type(case "
                                      "insensitive) tf, tensorflow, caffe, "
-                                     "mindspore.",
+                                     "ms, mindspore, onnx, pytorch.",
                                 required=True)
         gen_parser.add_argument("-c", "--compute_unit",
                                 dest="compute_unit",
@@ -194,13 +194,6 @@ class ArgParser:
         for unit in compute_unit_list:
             unit_parse_list = unit.split("-", 1)
             if len(unit_parse_list) == 1:
-                if self.framework == "pytorch" and \
-                        unit_parse_list[0].lower() in \
-                        utils.AICPU_CORE_TYPE_LIST:
-                    utils.print_error_log(
-                        "Unsupported compute unit {compute_unit} for Pytorch"
-                            .format(compute_unit=unit_parse_list[0]))
-                    sys.exit(utils.MS_OP_GEN_CONFIG_INVALID_COMPUTE_UNIT_ERROR)
                 self._init_core_type(unit_parse_list,
                                      utils.AICPU_CORE_TYPE_LIST,
                                      utils.CoreType.AICPU)

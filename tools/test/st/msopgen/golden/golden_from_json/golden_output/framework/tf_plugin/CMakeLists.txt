@@ -1,4 +1,4 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 aux_source_directory(. SRCS)
 message(STATUS "SRCS = ${SRCS}")
 

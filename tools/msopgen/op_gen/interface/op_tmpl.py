@@ -4,7 +4,7 @@
 Function:
 This file mainly involves op file content.
 Copyright Information:
-Huawei Technologies Co., Ltd. All Rights Reserved © 2020
+Huawei Technologies Co., Ltd. All Rights Reserved © 2020-2021
 """
 
 # ==================1.ini file==================
@@ -35,7 +35,7 @@ opInterface.value={name}
 # =============================================
 # ==================2.IR file==================
 IR_H_HEAD = """/**
- * Copyright (C)  2020. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (C)  2020-2021. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ VERIFY_FUNC_REG({op_type}, {op_type}Verify);
 """
 # =================================================
 # ==================3.plugin file==================
-TF_PLUGIN_CPP = """/* Copyright (C) 2020. Huawei Technologies Co., Ltd. All 
+TF_PLUGIN_CPP = """/* Copyright (C) 2020-2021. Huawei Technologies Co., Ltd. All
 rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -120,7 +120,38 @@ REGISTER_CUSTOM_OP("{name}")
 {right_braces}  // namespace domi
 """
 
-CAFFE_PLUGIN_CPP = """/* Copyright (C) 2020. Huawei Technologies Co., Ltd. All
+ONNX_PLUGIN_CPP = """/* Copyright (C) 2020-2021. Huawei Technologies Co., Ltd. All
+rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0.
+ * You may not use this file except in compliance with the License.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+#include "register/register.h"
+
+namespace domi {left_braces}
+// Onnx ParseParams
+Status ParseParam{name}(const Message* op_src, ge::Operator& op_dest) {left_braces}
+    // To do: Implement the operator plugin by referring to the Onnx Operator Development Guide.
+    return SUCCESS;
+{right_braces}
+
+// register {name} op info to GE
+REGISTER_CUSTOM_OP("{name}")     // Set the registration name of operator
+    .FrameworkType({fmk_type})   // Operator name with the original framework
+    .OriginOpType("")      // Set the original frame type of the operator
+    .ParseParamsFn(ParseParam{name}); // Registering the callback function for parsing operator parameters
+{right_braces}  // namespace domi
+"""
+
+CAFFE_PLUGIN_CPP = """/* Copyright (C) 2020-2021. Huawei Technologies Co., Ltd. All
 rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -156,7 +187,7 @@ REGISTER_CUSTOM_OP("{name}")
 {right_braces} // namespace domi
 """
 
-PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 aux_source_directory(. SRCS)
 message(STATUS "SRCS = ${SRCS}")
 
@@ -178,7 +209,29 @@ target_compile_definitions(${TF_PLUGIN_TARGET} PRIVATE
 target_link_libraries(${TF_PLUGIN_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)
 """
 
-CAFFE_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+ONNX_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+aux_source_directory(. SRCS)
+message(STATUS "SRCS = ${SRCS}")
+
+if("x${SRCS}" STREQUAL "x")
+    add_custom_target(${ONNX_PLUGIN_TARGET}
+            COMMAND mkdir -p ${ONNX_PLUGIN_TARGET_OUT_DIR}
+            COMMAND echo "no source to make lib${ONNX_PLUGIN_TARGET}.so")
+    return(0)
+endif()
+
+set(LIBRARY_OUTPUT_PATH ${ONNX_PLUGIN_TARGET_OUT_DIR})
+
+add_library(${ONNX_PLUGIN_TARGET} SHARED ${SRCS})
+
+target_compile_definitions(${ONNX_PLUGIN_TARGET} PRIVATE
+    google=ascend_private
+)
+
+target_link_libraries(${ONNX_PLUGIN_TARGET} ${ASCEND_INC}/../lib64/libgraph.so)
+"""
+
+CAFFE_PLUGIN_CMAKLIST = """# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 
 aux_source_directory(. SRCS)
 aux_source_directory(./proto/caffe PROTO_SRCS)
@@ -399,7 +452,7 @@ opInfo.workspaceSize=1024
 # ==================6.AICPU impl cc file==================
 AICPU_IMPL_CPP_STRING = """
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  * Description: implement of {op_type}
  */
 #include "{fix_op_type}_kernels.h"
@@ -421,7 +474,7 @@ REGISTER_CPU_KERNEL({op_type_upper}, {op_type}CpuKernel);
 # ==================7.AICPU impl h file==================
 AICPU_IMPL_H_STRING = """
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  * Description: api of {op_type}
  */
 
@@ -440,5 +493,3 @@ public:
 #endif
 """
 # =======================================================
-
-

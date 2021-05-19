@@ -1,4 +1,4 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 
 cmake_minimum_required(VERSION 3.5.1)
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
@@ -61,6 +61,9 @@ endif()
 if (IS_DIRECTORY "${CMAKE_SOURCE_DIR}/framework/tf_scope_fusion_pass")
     set(ALL_MODULES ${ALL_MODULES} ${TF_SCOPE_FUSION_PASS_TARGET})
 endif ()
+if(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/framework/onnx_plugin")
+   set(ALL_MODULES ${ALL_MODULES} ${ONNX_PLUGIN_TARGET})
+endif()
 
 message(STATUS "ALL_MODULES=${ALL_MODULES}")
 add_custom_target(${RUN_TARGET} ALL DEPENDS ${ALL_MODULES})

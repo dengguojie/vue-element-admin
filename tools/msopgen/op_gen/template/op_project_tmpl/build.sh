@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 ###### Environment variable settings, need to set according to your own device ######
 
 # ASCEND_OPP_PATH: The installation path of the OPP package, where "/usr/local/Ascend/opp" is the

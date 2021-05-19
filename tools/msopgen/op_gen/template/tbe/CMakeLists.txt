@@ -1,4 +1,4 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 
 
 macro(GEN_OPS_INFO_FILE op_type output_dir output_file_name_prefix)

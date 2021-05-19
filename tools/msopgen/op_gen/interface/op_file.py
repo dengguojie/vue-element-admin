@@ -80,6 +80,11 @@ class OPFile(metaclass=ABCMeta):
                                       'tf_plugin')
             self._generate_tf_plugin_cpp(plugin_dir, "tensorflow")
             self._generate_tf_plugin_cmake_list(plugin_dir)
+        elif self.fmk_type == "onnx":
+            plugin_dir = os.path.join(self.output_path, 'framework',
+                                      'onnx_plugin')
+            self._generate_onnx_plugin_cpp(plugin_dir, "onnx")
+            self._generate_onnx_plugin_cmake_list(plugin_dir)
         elif self.fmk_type == "pytorch":
             return
 
@@ -96,6 +101,13 @@ class OPFile(metaclass=ABCMeta):
             cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
             utils.make_dirs(plugin_dir)
             utils.write_files(cmake_list_path, op_tmpl.PLUGIN_CMAKLIST)
+
+    def _generate_onnx_plugin_cmake_list(self, plugin_dir):
+        # create and write
+        if self.mode == utils.GenModeType.GEN_PROJECT:
+            cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
+            utils.make_dirs(plugin_dir)
+            utils.write_files(cmake_list_path, op_tmpl.ONNX_PLUGIN_CMAKLIST)
 
     def _generate_caffe_plugin_cpp(self, plugin_dir, prefix):
         p_str = op_tmpl.CAFFE_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,
@@ -116,6 +128,17 @@ class OPFile(metaclass=ABCMeta):
         # create dir and write
         plugin_path = os.path.join(plugin_dir, prefix + "_" +
                                    self.op_info.fix_op_type + "_plugin.cc")
+        utils.make_dirs(plugin_dir)
+        utils.write_files(plugin_path, p_str)
+
+    def _generate_onnx_plugin_cpp(self, plugin_dir, prefix):
+        p_str = op_tmpl.ONNX_PLUGIN_CPP.format(left_braces=utils.LEFT_BRACES,
+                                               name=self.op_info.op_type,
+                                               fmk_type=prefix.upper(),
+                                               right_braces=utils.RIGHT_BRACES)
+        # create dir and write
+        plugin_path = os.path.join(plugin_dir, self.op_info.fix_op_type
+                                   + "_plugin.cc")
         utils.make_dirs(plugin_dir)
         utils.write_files(plugin_path, p_str)
 

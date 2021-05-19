@@ -1,4 +1,4 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
+# Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 set(CMAKE_CXX_COMPILER g++)
 set(CMAKE_C_COMPILER gcc)
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/caffe_plugin")
@@ -9,4 +9,7 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tf_plugin")
 endif()
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tf_scope_fusion_pass")
     add_subdirectory(tf_scope_fusion_pass)
+endif()
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/onnx_plugin")
+    add_subdirectory(onnx_plugin)
 endif()

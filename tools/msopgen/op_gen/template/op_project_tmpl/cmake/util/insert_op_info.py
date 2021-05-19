@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Feb  28 20:56:45 2020
-Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
+Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
 """
 import json
 import os

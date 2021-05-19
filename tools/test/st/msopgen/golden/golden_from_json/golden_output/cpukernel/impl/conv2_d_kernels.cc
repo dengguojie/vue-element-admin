@@ -1,6 +1,6 @@
 
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  * Description: implement of Conv2D
  */
 #include "conv2_d_kernels.h"
