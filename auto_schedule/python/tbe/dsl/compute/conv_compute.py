@@ -1949,7 +1949,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         Set this flag to define whether is doing conv1d.
         """
-        if not ConvParam.dynamic_flag and data.shape[2].value == 1 \
+        h_dynamic_flag = ConvParam.dynamic_flag and get_te_var("fmap_h")
+        if not h_dynamic_flag and data.shape[2].value == 1 \
             and para_dict.get("filter_h") == 1 \
             and (pad_top + pad_bottom) == 0 and \
             not load2d_to_load3d_flag:

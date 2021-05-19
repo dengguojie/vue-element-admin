@@ -293,10 +293,6 @@ def calc_conv2d(outs, option=None):
             tgt_area["fmap_h"] = tuple(new_in_range[2])
         if tgt_area["fmap_w"][0] != tgt_area["fmap_w"][1]:
             tgt_area["fmap_w"] = tuple(new_in_range[3])
-    if get_te_var("fmap_h") and tgt_area["fmap_h"][0] == 1 and \
-        sum(ConvParam.para_dict["pad_h"]) == 0 and ConvParam.para_dict["filter_h"] == 1 and \
-        not ConvParam.tensor_map["l0a_load2d_flag"]:
-        tgt_area["fmap_h"] = tuple((2, tgt_area["fmap_h"][1]))
     tgt_list.append(tgt_area)
     # >>> start: generate tgt_area by format
     if fuzz_build:
@@ -694,7 +690,8 @@ class Conv2dTiling(CubeTilingOp):
                 tiling['CL0_matrix'][0] * utils.FP16_N * tiling['BL1_shape'][0] * \
                 reduce_k0 * self.k_h * self.k_w * \
                 tiling['manual_pingpong_buffer']['BL1_pbuffer']
-
+        if ConvParam.conv1d_split_w_flag:
+            return int(filter_l1_size) <= utils.L1BUFFER
         return int(fmap_l1_size) + int(filter_l1_size) <= utils.L1BUFFER
 
     def _get_calc_info(self):

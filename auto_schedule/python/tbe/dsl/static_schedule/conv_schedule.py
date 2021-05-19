@@ -3762,7 +3762,10 @@ class CceConvOp:
                 if self._convbn1_flag:
                     howo = res.op.input_tensors[0].shape[2].value
                 else:
-                    howo = res.shape[2].value
+                    if self._dynamic_flag:
+                        howo = res.shape[2]
+                    else:
+                        howo = res.shape[2].value
                 blockdim = tiling.get('block_dim')[2]
 
                 al1_multiple = int_ceil_div(int_ceil_div(ceil(howo, 16),
@@ -3786,8 +3789,12 @@ class CceConvOp:
                 else:
                     wi_extent = kw_dilate + (data_in_l1-1)*stride_w
 
-                sch[al1].buffer_tile((None, None), (None, None), (None, None),
-                                     (wi_offset_with_pad, wi_extent), (None, None))
+                if self._dynamic_flag:
+                    sch[al1].buffer_tile((None, None), (None, None), (None, None), (None, None),
+                                         (wi_offset_with_pad, wi_extent), (None, None))
+                else:
+                    sch[al1].buffer_tile((None, None), (None, None), (None, None),
+                                         (wi_offset_with_pad, wi_extent), (None, None))
 
         def get_al1_bound():
             """
@@ -4039,8 +4046,9 @@ class CceConvOp:
                         al1.op.attrs["input_format"] == "YUV420SP_U8") \
                         or self._conv1d_split_w_flag:
                     sch[al1].compute_at(sch[res_c], al1_at_c_axis)
-                    sch[fmap_col_before].compute_at(
-                        sch[res_c], al1_at_c_axis)
+                    if not self._dynamic_flag:
+                        sch[fmap_col_before].compute_at(
+                            sch[res_c], al1_at_c_axis)
                 else:
                     # wait for pass bug ok
                     if self._l1_fusion_type == 1:
