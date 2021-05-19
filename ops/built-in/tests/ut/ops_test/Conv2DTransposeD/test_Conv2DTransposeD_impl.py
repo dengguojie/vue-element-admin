@@ -130,18 +130,6 @@ def test_op_check_supported(test_arg):
                     offset_x=0, kernel_name="deconvolution")
 
 
-def test_op_check_supported_with_reason(test_arg):
-    from impl.conv2d_transpose_d import check_supported_with_reason
-    x = {"ori_shape": (1, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
-    filter = {"ori_shape": (32, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW"}
-    bias = None
-    y = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
-    input_size = (1, 16, 5, 5)
-    check_supported_with_reason(x, filter, bias, None, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
-                                dilations=(1, 1, 1, 1), groups=1, data_format="NCHW", output_padding=(0, 0, 0, 0),
-                                offset_x=0, kernel_name="deconvolution")
-
-
 def test_split_transposed(test_arg):
     x = {"format": "NC1HWC0","ori_format": "NCHW", "dtype": "float16", "shape": (1, 1, 3, 3, 16), "ori_shape": (1, 16, 3, 3)}
     filter = {"format": "FRACTAL_NZ","ori_format": "NCHW", "dtype": "float16", "shape": (1, 1, 16, 16), "ori_shape": (16, 16, 1, 1)}
@@ -201,7 +189,6 @@ def test_op_compute_int8(test_arg):
 
 _gen_conv2d_transpose_op_case()
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
-ut_case.add_cust_test_func(test_func=test_op_check_supported_with_reason)
 ut_case.add_cust_test_func(test_func=test_split_transposed)
 ut_case.add_cust_test_func(test_func=test_op_group_int8)
 ut_case.add_cust_test_func(test_func=test_op_compute_int8)

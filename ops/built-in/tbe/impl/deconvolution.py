@@ -162,51 +162,18 @@ def _check_param(  # pylint: disable=invalid-name,R0913,R0914,W0613
                           dedy_w * strides[1], inout_limit_min, inout_limit_max)
 
 
-def check_supported(  # pylint: disable=invalid-name,R0913,R0914,W0613
-    x,
-    weight,
-    bias,
-    offset_w,
-    y,
-    strides,
-    pads,
-    dilations=(1, 1, 1, 1),
-    groups=1,
-    data_format="NCHW",
-    offset_x=0,
-    kernel_name="deconvolution"):
-    """
-    the h and w of x or y must be in [1, 4096]
-    the h and w of weight or dilations must be in [1, 255]
-    the h and w of strides must be in [1, 63]
-    the n and c of dilations must be 1
-    the h and w must meet: 
-       hi - (hk - 1)*dk + 1 + padh // strideh = ho
-       wi - (wk - 1)*wk + 1 + padw // stridew = wo
-    """
-    shape_x = x.get("ori_shape")
-    dynamic_flag = any([i < 0 for i in shape_x])
-    if dynamic_flag:
-        return True
-    try:
-        _check_param(x, weight, y, strides, pads, dilations, data_format, offset_x)
-        return True
-    except Exception as e:
-        return False
-
-
-def check_supported_with_reason(x,
-                                weight,
-                                bias,
-                                offset_w,
-                                y,
-                                strides,
-                                pads,
-                                dilations=(1, 1, 1, 1),
-                                groups=1,
-                                data_format="NCHW",
-                                offset_x=0,
-                                kernel_name="deconvolution"):
+def check_supported(x,
+                    weight,
+                    bias,
+                    offset_w,
+                    y,
+                    strides,
+                    pads,
+                    dilations=(1, 1, 1, 1),
+                    groups=1,
+                    data_format="NCHW",
+                    offset_x=0,
+                    kernel_name="deconvolution"):
     """
     the h and w of x or y must be in [1, 4096]
     the h and w of weight or dilations must be in [1, 255]

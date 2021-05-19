@@ -295,7 +295,7 @@ def _conv3d_compute(shape_fm,
     cin1_g = group_dict["cin1_g"]
     cout_g = group_dict["cout_g"]
     cout_ori = group_dict["cout_ori"]
-    
+
     # C and Cout align 16
     shape_fm = list(shape_fm)
     fmp_block_k = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][1]
@@ -305,7 +305,7 @@ def _conv3d_compute(shape_fm,
     shape_filter[1] = ((shape_filter[1] + w_block_k - 1) // w_block_k) * w_block_k
     w_block_n = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
     shape_filter[0] = ((shape_filter[0] + w_block_n - 1) // w_block_n) * w_block_n
-    
+
     batch, cin, fmp_d, fmp_h, fmp_w = shape_fm
     fmp_block_k = tbe_platform.CUBE_MKN[fmp_dtype]['mac'][1]
     shape_fmp_ndc1hwc0 = (batch, fmp_d, cin // fmp_block_k, fmp_h, fmp_w, fmp_block_k)
@@ -322,7 +322,7 @@ def _conv3d_compute(shape_fm,
 
     data = tvm.placeholder(shape_fmp_ndc1hwc0, name='Fmap', dtype=fmp_dtype)
     weight = tvm.placeholder(shape_w_frac_z, name='Filter', dtype=w_dtype)
-    
+
     bias_tensor = None
     if bias is not None:
         bias_tensor = tvm.placeholder((cout_ori,),
@@ -535,10 +535,10 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
     group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0], groups, _C0, _C0)
 
     _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype)
-    
+
     _check_groups_validation(shape_fm[1], shape_filter[1], groups)
 
-    _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, 
+    _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw,
                         dilation_dhw, res_dtype, w_dtype)
 
     return shape_fm, shape_filter, stride_dhw, dilation_dhw, group_dict
@@ -716,7 +716,7 @@ def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
             error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'pad', 'H',
                 '[{}, {}]'.format(_PAD_MIN, _PAD_MAX),
                 'pad_h[0] = {}, pad_h[1] = {}'.format(pad_h[0], pad_h[1]))
-                            
+
         if pad_h[0] >= filter_dilated_h or pad_h[1] >= filter_dilated_h:
             dict_args = {
                 'errCode': 'E60016',
@@ -766,7 +766,7 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
             error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'pad', 'W',
                 '[{}, {}]'.format(_PAD_MIN, _PAD_MAX),
                 'pad_w[0] = {}, pad_w[1] = {}'.format(pad_w[0], pad_w[1]))
-        
+
         if pad_w[0] >= filter_dilated_w or pad_w[1] >= filter_dilated_w:
             dict_args = {
                 'errCode': 'E60017',
@@ -853,55 +853,6 @@ def check_supported(fmap,
                     data_format="NDHWC",
                     offset_x=0,
                     kernel_name="conv3d"):
-    """
-    The H and W dimension of dilation should be in range [1, 255]
-    The D,H or W dimension of the filter should be in range [1, 255]
-    The padding in each dimension should be in range [0, 255]
-    The D,H or W dimension of the stride should be in range [1, 63]
-
-    The groups should <= the feature map's and the filter's channel dimension
-    Feature map's channel dimension or filter's channel dimension must be divisible by groups
-    The channel dimension of the feature map should = filter's channel dimension * groups
-    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation
-    The padding in each dimension should < the filter's corresponding dimension after dilation
-    
-    If the output H dimension is not 1, the output W dimension should >= 2
-    The feature map size in L1 buffer should <= the chip's L1 buffer size
-    """
-    fmp_shape = fmap.get("ori_shape")
-    fmp_dtype = fmap.get("dtype")
-    fmp_format = data_format
-    w_shape = weight.get("ori_shape")
-    w_dtype = weight.get("dtype")
-    w_format = weight.get("ori_format")
-    res_dtype = output.get("dtype")
-
-    fmp_dtype = fmp_dtype.lower()
-    w_dtype = w_dtype.lower()
-    res_dtype = res_dtype.lower()
-
-    # normalized format as NCDHW
-    try:
-        _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype, fmp_format,
-            w_format, bias, strides, pads, dilations, groups)
-        return True
-    except Exception as e:
-        print(e)
-        return False
-
-
-def check_supported_with_reason(fmap,
-                                weight,
-                                bias,
-                                offset_w,
-                                output,
-                                strides,
-                                pads,
-                                dilations=(1, 1, 1, 1, 1),
-                                groups=1,
-                                data_format="NDHWC",
-                                offset_x=0,
-                                kernel_name="conv3d"):
     """
     The H and W dimension of dilation should be in range [1, 255]
     The D,H or W dimension of the filter should be in range [1, 255]

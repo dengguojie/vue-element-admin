@@ -25,7 +25,7 @@ from topi.generic import auto_schedule
 
 from impl.batch_matmul import get_op_support_info
 from impl.batch_matmul import batch_matmul_compute
-from impl.batch_matmul import check_supported_with_reason
+from impl.batch_matmul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
 from impl.add import add_compute
 from impl.relu import relu_compute
@@ -271,7 +271,7 @@ def test_op_check_supported(test_arg):
     def _test_supported(case):
         input_x, input_y, bias, output_z, trans_a, trans_b = case["params"]
         try:
-            check_supported_with_reason(input_x, input_y, bias, output_z, trans_a, trans_b, kernel_name="batch_matmul")
+            check_supported(input_x, input_y, bias, output_z, trans_a, trans_b, kernel_name="batch_matmul")
         except RuntimeError:
             print("The case is not supported!")
             pass

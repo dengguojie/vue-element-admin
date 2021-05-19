@@ -273,7 +273,7 @@ def _get_input_shape(shape_x, transpose, src_dtype):
         factor_2 = 16
     else:
         factor_1 = 16
-        factor_2 = factor_base    
+        factor_2 = factor_base
     if dim_a % factor_1 != 0:
         dim_a = (dim_a // factor_1) * factor_1 + factor_1
         res.append(dim_a)
@@ -303,7 +303,7 @@ def _get_input_shape_b(shape_y, transpose, src_dtype):
         factor_2 = factor_base
     else:
         factor_1 = factor_base
-        factor_2 = 16     
+        factor_2 = 16
     if dim_a % factor_1 != 0:
         dim_a = (dim_a // factor_1) * factor_1 + factor_1
         res.append(dim_a)
@@ -389,7 +389,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w={}, output_z={}, tran
         input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
                                                datatype="int8,int8,int8",
                                                format="ND,ND,ND",
-                                               unknownshape_format="ND,ND,ND")                                               
+                                               unknownshape_format="ND,ND,ND")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                 datatype="float16,int32,float16",
                                                 format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
@@ -407,7 +407,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w={}, output_z={}, tran
                                                    format="ND,ND")
             input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
                                                    datatype="int8,int8",
-                                                   format="ND,ND")                                                     
+                                                   format="ND,ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float",
                                                     format="FRACTAL_NZ,FRACTAL_NZ")
@@ -423,7 +423,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w={}, output_z={}, tran
                                                    format="ND,NHWC,ND,NHWC,ND,ND,ND")
             input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
                                                    datatype="int8,int8,int8,int8,int8,int8,int8",
-                                                   format="ND,ND,ND,ND,ND,ND,ND")                                                       
+                                                   format="ND,ND,ND,ND,ND,ND,ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float,float,int32,int32,int32,int32",
                                                     format="FRACTAL_NZ,NHWC,ND,NHWC,ND,FRACTAL_NZ,FRACTAL_NZ")
@@ -434,83 +434,15 @@ def op_select_format(input_x, input_y, bias=None, offset_w={}, output_z={}, tran
     return param_dynamic_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-arguments,no-member,no-else-return
-# pylint: disable=too-many-statements, unused-argument,too-many-return-statements
-def check_supported(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
-                    trans_b=False, offset_x=0, kernel_name="matmul"):
-    """
-    get the op supported situation
-    """
-
-    shape_a = input_x.get("ori_shape")
-    shape_b = input_y.get("ori_shape")
-    src_dtype = input_x.get("dtype")
-    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
-    if not dynamic_flag:
-        para_check.check_shape(shape_a, param_name="input_x")
-        para_check.check_shape(shape_b, param_name="input_y")
-    else:
-        if not _check_batch_range(input_x, input_y):
-            return False
-
-    src_dtypes = ["float32", "int32"]
-    if src_dtype in src_dtypes and not dynamic_flag:
-        shape_length = len(shape_a)
-        shape_length_b = len(shape_b)
-        if shape_length != shape_length_b:
-            return False
-        elif trans_b:
-            if shape_b[shape_length - 2] == 1:
-                return False
-        elif bool(1-trans_b):
-            if shape_b[shape_length - 1] == 1:
-                return False
-        elif trans_a:
-            if trans_b:
-                if shape_a[shape_length - 2] != shape_b[shape_length - 1]:
-                    return False
-            else:
-                if shape_a[shape_length - 2] != shape_b[shape_length - 2]:
-                    return False
-        else:
-            if trans_b:
-                if shape_a[shape_length - 1] != shape_b[shape_length - 1]:
-                    return False
-            else:
-                if shape_a[shape_length - 1] != shape_b[shape_length - 2]:
-                    return False
-    elif src_dtype in ["float16", "int8"] and not dynamic_flag:
-        shape_length = len(shape_a)
-        if trans_a:
-            k_shape = shape_a[shape_length - 2]
-        else:
-            k_shape = shape_a[shape_length - 1]
-
-        shape_length_b = len(shape_b)
-        if trans_b:
-            k_b_shape = shape_b[shape_length_b - 1]
-        else:
-            k_b_shape = shape_b[shape_length_b - 2]
-
-        if k_shape != k_b_shape:
-            return False
-
-        if len(shape_a) == len(shape_b):
-            if shape_a[:shape_length - 2] != shape_b[:shape_length_b - 2]:
-                return False
-    return True
-
-
-def check_supported_with_reason(input_x,
-                                input_y,
-                                bias=None,
-                                offset_w={},
-                                output_z={},
-                                trans_a=False,
-                                trans_b=False,
-                                offset_x=0,
-                                kernel_name="matmul"):
+def check_supported(input_x,
+                    input_y,
+                    bias=None,
+                    offset_w={},
+                    output_z={},
+                    trans_a=False,
+                    trans_b=False,
+                    offset_x=0,
+                    kernel_name="matmul"):
     """
     get the op supported situation
     """

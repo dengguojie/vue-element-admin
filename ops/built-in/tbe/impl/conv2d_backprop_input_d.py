@@ -400,68 +400,7 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
 
-def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
-    filter,
-    out_backprop,
-    y,
-    input_size,
-    strides,
-    pads,
-    dilations=(1, 1, 1, 1),
-    groups=1,
-    data_format="NHWC",
-    kernel_name="conv2d_backprop_input",):
-    """
-    check the op support situation:
-
-    | Name             | Field    | Scope
-    -------------------|----------|--------------
-    | input_size       | H or W   | [1, 4096]
-    -------------------|----------|--------------
-    | Filter           | H or W   | [1, 255]
-    -------------------|----------|--------------
-    | out_backprop     | H or W   | [1, 4096]
-    -------------------|----------|--------------
-    | y(fmap)          | H or W   | [1, 4096]
-    -------------------|----------|--------------
-    | Stride           | H or W   | [1, 63]
-    -------------------|----------|--------------
-    | Dilation         | H or W   | [1, 255]
-
-    batch_input_size == batch_out_backprop
-    batch_filter == channel_out_backprop
-    channel_filter == channel_input_size * groups
-    out_backprop_height == (fmap_height + pad_top + pad_bottom -
-                          (dilation_h * (filter_height - 1) + 1))
-                           / stride_h + 1
-
-    out_backprop_width == (fmap_width + pad_left + pad_right -
-                         (dilation_w * (filter_width - 1) + 1))
-                          / stride_w + 1
-    """
-    shape_backprop = out_backprop.get("ori_shape")
-    dynamic_flag = any([i < 0 for i in shape_backprop])
-    if dynamic_flag:
-        return True
-    try:
-        _support_situation(
-            filter,
-            out_backprop,
-            y,
-            input_size,
-            strides,
-            pads,
-            dilations,
-            groups,
-            data_format,
-            kernel_name)
-        return True
-    except RuntimeError as e:
-        print(e)
-        return False
-
-
-def check_supported_with_reason(
+def check_supported(
     filter,
     out_backprop,
     y,

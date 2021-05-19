@@ -278,99 +278,16 @@ def get_op_support_info(
     return op_cal_info_in_json
 
 
-def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
-    x,
-    out_backprop,
-    y,
-    filter_size,
-    strides,
-    pads,
-    dilations=(1, 1, 1, 1),
-    groups=1,
-    data_format="NHWC",
-    kernel_name="conv2d_backprop_filter"):
-
-    """
-    check the op support situation:
-
-    | Name             | Field    | Scope
-    -------------------|----------|--------------
-    | x                | H or W   | [1, 4096]
-    -------------------|----------|--------------
-    | out_backprop     | H or W   | [1, 4096]
-    -------------------|----------|--------------
-    | filter_size      | H or W   | [1, 255]
-    -------------------|----------|--------------
-    | y(filter)        | H or W   | [1, 255]
-    -------------------|----------|--------------
-    | Stride           | H or W   | [1, 63]
-    -------------------|----------|--------------
-    | Dilation         | H or W   | [1, 255]
-
-    In Ascend910, out_backprop's H and W not support 1
-    when fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
-    batch_x == batch_out_backprop
-    batch_filter == channel_out_backprop
-    channel_filter == channel_x * groups
-    out_backprop_height == (fmap_height + pad_top + pad_bottom -
-                          (dilation_h * (filter_height - 1) + 1))
-                           / stride_h + 1
-
-    out_backprop_width == (fmap_width + pad_left + pad_right -
-                         (dilation_w * (filter_width - 1) + 1))
-                          / stride_w + 1
-    """
-    shape_x = x.get("ori_shape")
-    dynamic_flag = any([i < 0 for i in shape_x])
-    if dynamic_flag:
-        return True
-    try:
-        res = _check_shape_and_format(x,
-                                      out_backprop,
-                                      y,
-                                      filter_size,
-                                      strides,
-                                      pads,
-                                      dilations,
-                                      groups,
-                                      data_format)
-        [shape_x,
-         shape_out_backprop,
-         shape_res,
-         strides,
-         dilations,
-         x_dtype,
-         out_backprop_dtype,
-         res_dtype] = res
-
-        check_conv2dbp_filter_params(
-            shape_x,
-            shape_out_backprop,
-            shape_res,
-            strides,
-            pads,
-            dilations,
-            groups,
-            x_dtype,
-            out_backprop_dtype,
-            res_dtype,
-            kernel_name)
-        return True
-    except RuntimeError as e:
-        print(e)
-        return False
-
-
-def check_supported_with_reason(x,
-                                out_backprop,
-                                y,
-                                filter_size,
-                                strides,
-                                pads,
-                                dilations=(1, 1, 1, 1),
-                                groups=1,
-                                data_format="NHWC",
-                                kernel_name="conv2d_backprop_filter"):
+def check_supported(x,
+                    out_backprop,
+                    y,
+                    filter_size,
+                    strides,
+                    pads,
+                    dilations=(1, 1, 1, 1),
+                    groups=1,
+                    data_format="NHWC",
+                    kernel_name="conv2d_backprop_filter"):
     """
     check the op support situation:
 

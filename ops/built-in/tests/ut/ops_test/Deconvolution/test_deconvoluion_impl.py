@@ -329,18 +329,6 @@ def test_op_check_supported(test_arg):
                     kernel_name="deconvolution")
 
 
-def test_op_check_supported_with_reason(test_arg):
-    from impl.deconvolution import check_supported_with_reason
-    x = {"ori_shape": (1, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
-    weight = {"ori_shape": (32, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW"}
-    bias = None
-    y = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
-
-    check_supported_with_reason(x, weight, bias, None, y, (1, 1, 2, 2), (0, 0, 0, 0),
-                                dilations=(1, 1, 1, 1), groups=1, data_format="NCHW", offset_x=0,
-                                kernel_name="deconvolution")
-
-
 def test_op_group_requant(test_arg):
     x = {"ori_shape": (1, 192, 48, 80), "dtype": "int8", "ori_format": "NCHW", "shape": (1, 6, 48, 80, 32), "format":"NC1HWC0"}
     weight = {"ori_shape": (144, 64, 3, 3), "dtype": "int8", "ori_format": "NCHW", "shape": (54, 3, 16, 32), "format": "FRACTAL_NZ"}
@@ -399,10 +387,13 @@ for fusion_case in deconvolution_ut_fusion_case:
     ut_case.add_cust_test_func(
         fusion_case[0], test_func=test_deconvolution_fusion(fusion_case)
     )
+
+
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
-ut_case.add_cust_test_func(test_func=test_op_check_supported_with_reason)
 ut_case.add_cust_test_func(test_func=test_op_group_requant)
 ut_case.add_cust_test_func(test_func=test_op_compute_int8)
+
+
 if __name__ == "__main__":
     ut_case.run()
     sys.exit(0)

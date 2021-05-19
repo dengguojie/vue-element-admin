@@ -41,17 +41,8 @@ def test_op_check_supported(test_arg):
             pads, dilations, groups, data_format, _) = _run_api_end_with_d(fmap = fmap)
     check_supported(fmap, weight, bias, offset_w, output, strides, pads, dilations, groups, data_format)
 
-def test_op_check_supported_with_reason(test_arg):
-    from impl.conv3d import check_supported_with_reason
-    fmap = {'ori_shape': (2, 32, 15, 4098, 18), 'shape': (2, 32, 15, 4098, 18),
-        'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
-    (fmap, weight, bias, offset_w, output, strides,
-            pads, dilations, groups, data_format, _) = _run_api_end_with_d(fmap = fmap)
-    check_supported_with_reason(fmap, weight, bias, offset_w, output, strides, pads, dilations, groups, data_format)
-
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
-ut_case.add_cust_test_func(test_func=test_op_check_supported_with_reason)
 
 # test_conv3dbp_succ_d
 case1 = _run_api_end_with_d()

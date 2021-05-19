@@ -43,17 +43,7 @@ def test_op_check_supported(test_arg):
     check_supported(x_dict, out_backprop, y_input, filter_size, strides, pads, dilations, groups, data_format)
 
 
-def test_op_check_supported_with_reason(test_arg):
-    from impl.conv3d_backprop_filter_d import check_supported_with_reason
-    out_backprop = {'ori_shape': (1, 5, 19, 75, 64), 'shape': (1, 5, 19, 75, 64),
-                'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
-    (x_dict, out_backprop, y_input, filter_size, strides, pads, dilations,
-        groups, data_format) = _run_api_end_with_d(out_backprop=out_backprop)
-    check_supported_with_reason(x_dict, out_backprop, y_input, filter_size, strides, pads, dilations, groups, data_format)
-
-
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
-ut_case.add_cust_test_func(test_func=test_op_check_supported_with_reason)
 
 # Define Cases instances
 # test_conv3dbp_filter_succ

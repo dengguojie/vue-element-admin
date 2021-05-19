@@ -88,28 +88,6 @@ def check_supported(  # pylint: disable=I0011, R0913, R0914
     """
     try:
         _check_param(input_x1, input_x2, bias, trans_a, trans_b)
-        return True
-    except Exception as e:
-        return False
-
-
-def check_supported_with_reason(  # pylint: disable=I0011, R0913, R0914
-    input_x1,
-    input_x2,
-    bias,
-    alpha,
-    beta,
-    output_y=None,
-    trans_a=False,
-    trans_b=False,
-    kernel_name="gemm"):
-    """
-    the k-dims of input_x1 must be equal with that of input_x2
-    the m-dims of input_x1 must be equal with that of bias
-    the n-dims of input_x2 must be equal with that of bias
-    """
-    try:
-        _check_param(input_x1, input_x2, bias, trans_a, trans_b)
         return True, ""
     except Exception as e:
         reason = "the input_shape is not supported, input_x1_shape:%s, input_x2_shape:%s, bias_shape:%s, trans_a:%s, trans_b:%s"\

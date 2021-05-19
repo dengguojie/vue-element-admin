@@ -59,19 +59,7 @@ def test_op_check_supported(test_arg):
                     offset_x)
 
 
-def test_op_check_supported_with_reason(test_arg):
-    from impl.conv3d_transpose_d import check_supported_with_reason
-    input_sizes = (2, 16, 120, 176, 32)
-    (out_backprop, filters, bias, offset_w, y_input, input_sizes,
-        strides, pads, dilations, groups, data_format, output_padding,
-        offset_x) = _run_api_end_with_d(input_sizes=input_sizes)
-    check_supported_with_reason(out_backprop, filters, bias, offset_w, y_input, input_sizes,
-                                strides, pads, dilations, groups, data_format, output_padding,
-                                offset_x)
-
-
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
-ut_case.add_cust_test_func(test_func=test_op_check_supported_with_reason)
 
 # test_conv3d_transpose_succ_d
 case1 = _run_api_end_with_d()

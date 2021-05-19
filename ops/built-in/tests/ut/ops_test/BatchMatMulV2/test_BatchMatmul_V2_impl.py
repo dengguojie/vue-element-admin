@@ -20,7 +20,7 @@ import unittest
 ut_case = OpUT("BatchMatmulV2", None, None)
 
 from tbe import tvm
-from impl.batch_matmul_v2 import check_supported_with_reason
+from impl.batch_matmul_v2 import check_supported
 from impl.batch_matmul_v2 import get_op_support_info
 
 case1 = {"params": [{"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"}, #x
@@ -181,7 +181,7 @@ def test_op_check_supported(test_arg):
     def _test_supported(case):
         input_x, input_y, bias, offset_w, output_z, trans_a, trans_b = case["params"]
         try:
-            print(check_supported_with_reason(input_x, input_y, bias, offset_w, output_z, trans_a, trans_b, kernel_name="batch_matmul"))
+            print(check_supported(input_x, input_y, bias, offset_w, output_z, trans_a, trans_b, kernel_name="batch_matmul"))
         except RuntimeError:
             print("The case is not supported!")
             pass

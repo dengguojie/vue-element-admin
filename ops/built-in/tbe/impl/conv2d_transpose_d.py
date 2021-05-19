@@ -160,52 +160,20 @@ def _check_param(  # pylint: disable=invalid-name,R0913,R0914,W0613
                           dedy_w * strides[1], inout_limit_min, inout_limit_max)
 
 
-def check_supported(  # pylint: disable=R0913,R0914,W0613,W0622,C0103
-    x,
-    filter,
-    bias,
-    offset_w,
-    y,
-    input_size,
-    strides,
-    pads,
-    dilations=(1, 1, 1, 1),
-    groups=1,
-    data_format="NHWC",
-    output_padding=(0, 0, 0, 0),
-    offset_x=0,
-    kernel_name="conv2d_transpose_d"):
-    """
-    the h and w of x or y must be in [1, 4096]
-    the h and w of filter or dilations must be in [1, 255]
-    the h and w of strides must be in [1, 63]
-    the n and c of dilations must be 1
-    the h and w must meet: 
-       hi - (hk - 1)*dk + 1 + padh // strideh = ho
-       wi - (wk - 1)*wk + 1 + padw // stridew = wo
-    """
-    try:
-        _check_param(x, filter, y, input_size, strides, pads, dilations, data_format, offset_x)
-        return True
-    except Exception as e:
-        print(e)
-        return False
-
-
-def check_supported_with_reason(x,
-                                filter,
-                                bias,
-                                offset_w,
-                                y,
-                                input_size,
-                                strides,
-                                pads,
-                                dilations=(1, 1, 1, 1),
-                                groups=1,
-                                data_format="NHWC",
-                                output_padding=(0, 0, 0, 0),
-                                offset_x=0,
-                                kernel_name="conv2d_transpose_d"):
+def check_supported(x,
+                    filter,
+                    bias,
+                    offset_w,
+                    y,
+                    input_size,
+                    strides,
+                    pads,
+                    dilations=(1, 1, 1, 1),
+                    groups=1,
+                    data_format="NHWC",
+                    output_padding=(0, 0, 0, 0),
+                    offset_x=0,
+                    kernel_name="conv2d_transpose_d"):
     """
     the h and w of x or y must be in [1, 4096]
     the h and w of filter or dilations must be in [1, 255]

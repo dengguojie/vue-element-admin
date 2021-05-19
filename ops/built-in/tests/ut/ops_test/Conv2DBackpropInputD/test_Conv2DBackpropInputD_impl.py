@@ -120,19 +120,19 @@ def _gen_conv2d_bp_input_op_case():
 
 _gen_conv2d_bp_input_op_case()
 
-def _test_op_check_supported_with_reason(test_arg):
-    from impl.conv2d_backprop_input_d import check_supported_with_reason
+def _test_op_check_supported(test_arg):
+    from impl.conv2d_backprop_input_d import check_supported
     filter = {"ori_shape": (32, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
     out_backprop = {"ori_shape": (16, 32, 2, 2), "dtype": "float16", "ori_format": "NCHW"}
     y = {"ori_shape": (16, 32, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
     input_size = (16, 32, 5, 5)
-    check_supported_with_reason(filter, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
-                                dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
-                                kernel_name="conv2d_backprop_input")
+    check_supported(filter, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
+                    dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
+                    kernel_name="conv2d_backprop_input")
 
 
 def _gen_conv2d_bp_input_check_support_case():
-    ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported_with_reason)
+    ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported)
 
 _gen_conv2d_bp_input_check_support_case()
 
