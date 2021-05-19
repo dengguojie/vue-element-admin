@@ -4143,12 +4143,19 @@ class CceConvOp:
 
                 al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[1], nparts=aub_factor[0])
                 if self._conv1d_split_w_flag:
-                    al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
+                    if self._dynamic_flag:
+                        # al1 is [group, n, c1, h, w, c0] in dynamic
+                        al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[4], nparts=aub_factor[1])
+                    else:
+                        al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
                     sch[al1].reorder(al1_k_outer, al1.op.axis[2], al1_w_outer, al1_k_inner, al1_w_inner)
                     sch[fmap].compute_at(sch[al1], al1_w_outer)
                     sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_w_outer)
                 else:
-                    al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[1])
+                    if self._dynamic_flag:
+                        al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
+                    else:
+                        al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[1])
                     sch[al1].reorder(al1_k_outer, al1_h_outer, al1_k_inner, al1_h_inner)
                     sch[fmap].compute_at(sch[al1], al1_h_outer)
                     sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_h_outer)

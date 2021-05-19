@@ -16,9 +16,9 @@
 depthwise_conv2d
 """
 from tbe import tvm
+from tbe.common import register as tbe_register
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_cube as err_man
-import tbe.common.register as tbe_register
 from .conv2d import conv2d
 from .conv2d import conv2d_fusion_compute
 
