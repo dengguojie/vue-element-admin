@@ -203,9 +203,9 @@ export LD_LIBRARY_PATH=$cur_dir/out/${product}/llt/$test_type/obj/lib:$LD_LIBRAR
 export TVM_AICPU_INCLUDE_PATH=$cur_dir/inc/tensor_engine:$cur_dir/inc/cce:$cur_dir/cce/inc
 export TVM_AICPU_LIBRARY_PATH=$cur_dir/out/${product}/llt/lib:$cur_dir/${TOOLCHAIN_HOME}/aicpu_lib:$TVM_AICPU_LIBRARY_PATH
 
-export TVM_AICPU_OS_SYSROOT=$cur_dir/prebuilts/hcc/linux-x86/aarch64/aarch64-linux-gnu/sysroot
+export TVM_AICPU_OS_SYSROOT=$cur_dir/prebuilts/hcc/linux-x86/aarch64/aarch64-linux-gnu/sysroot:$cur_dir/build/prebuilts/hcc/linux-x86/aarch64/aarch64-linux-gnu/sysroot
 #LD_PRELOAD
-export LD_PRELOAD=$LD_PRELOAD:$cur_dir/prebuilts/gcc/linux-x86/x86/x86_64-unknown-linux-gnu-4.9.3/lib64/libasan.so
+export LD_PRELOAD=$LD_PRELOAD:$cur_dir/prebuilts/gcc/linux-x86/x86/x86_64-unknown-linux-gnu-4.9.3/lib64/libasan.so:$cur_dir/build/prebuilts/gcc/linux-x86/x86/x86_64-unknown-linux-gnu-4.9.3/lib64/libasan.so
 # for tiling cost_model and repository
 export ASCEND_OPP_PATH=$cur_dir/out/${product}/llt/$test_type/obj
 unset LD_PRELOAD
