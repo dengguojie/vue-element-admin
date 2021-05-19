@@ -166,22 +166,6 @@ TEST_F(Conv2DProtoTest, conv2dGroupsInputTest2) {
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-// input x dtype is same as filter dtype
-TEST_F(Conv2DProtoTest, conv2dBaseDtypeTest) {
-    ge::op::Conv2D conv2d;
-    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
-    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 16, 1}, ge::DT_INT8, ge::FORMAT_HWCN,{1, 1, 16, 1},ge::FORMAT_HWCN));
-    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
-    conv2d.SetAttr("strides", {1, 1, 1, 1});
-    conv2d.SetAttr("pads", {0, 0, 0, 0});
-    conv2d.SetAttr("dilations", {1, 1, 1, 1});
-    auto status = conv2d.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_FAILED);
-
-    auto ret = conv2d.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}
-
 // get strides list failed
 TEST_F(Conv2DProtoTest, conv2dBaseStridesTest) {
     ge::op::Conv2D conv2d;

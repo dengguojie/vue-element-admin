@@ -48,8 +48,7 @@ def check_supported(inputs, weights, bias, offset_w, outputs, strides,
     | Format    | NCHW    | NCHW    | ND      | NCHW    |
     |           | NHWC    | HWCN    |         | NHWC    |
 
-    Note: for float32 type, the actual calculation on the chip is based on float16. For int8,
-    a dequant or requant operator must be followed.
+    Note: for float32 type, the actual calculation on the chip is based on float16.
 
     2.The following value range restrictions must be met:
 
