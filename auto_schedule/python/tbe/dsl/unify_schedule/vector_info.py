@@ -133,16 +133,16 @@ class ComputeGraphInfo:
                         # ReduceSch couldn't in the branch, while ReduceSch not support broadcast
                         shape[j] = tvm.max(shape_i[j], shape[j])
 
-            def _compute(*indices):
+            def _compute(*indexes):
                 res_ = tvm.const(1, dtype)
                 for tensor in tensors:
-                    cur_indices = []
+                    cur_indexes = []
                     for idx, dim in enumerate(tensor.shape):
                         if equals_one(dim):
-                            cur_indices.append(0)
+                            cur_indexes.append(0)
                         else:
-                            cur_indices.append(indices[idx])
-                    res_ *= tvm.expr.Cast(dtype, tensor(*cur_indices))
+                            cur_indexes.append(indexes[idx])
+                    res_ *= tvm.expr.Cast(dtype, tensor(*cur_indexes))
                 return res_
 
             with tvm.tag_scope(FAKE_NODE_TAG):
@@ -181,22 +181,22 @@ class ComputeGraphInfo:
                 self.mid_tensor_set.add(tensor)
 
     @staticmethod
-    def _eq_tvm_shape(shapeA: List, shapeB: List):
-        length_a = len(shapeA)
-        length_b = len(shapeB)
+    def _eq_tvm_shape(shape_a: List, shape_b: List):
+        length_a = len(shape_a)
+        length_b = len(shape_b)
         if length_a != length_b:
             return False
         for idx, _ in enumerate(range(length_a)):
-            ret_value = hasattr(shapeA[idx], "value") and hasattr(shapeB[idx], "value")
-            ret_name = hasattr(shapeA[idx], "name") and hasattr(shapeB[idx], "name")
+            ret_value = hasattr(shape_a[idx], "value") and hasattr(shape_b[idx], "value")
+            ret_name = hasattr(shape_a[idx], "name") and hasattr(shape_b[idx], "name")
             if ret_value:
-                if shapeA[idx].value != shapeB[idx].value:
+                if shape_a[idx].value != shape_b[idx].value:
                     return False
             elif ret_name:
-                if shapeA[idx].name != shapeB[idx].name:
+                if shape_a[idx].name != shape_b[idx].name:
                     return False
             else:
-                if shapeA[idx] != shapeB[idx]:
+                if shape_a[idx] != shape_b[idx]:
                     return False
         return True
 
@@ -386,9 +386,9 @@ class ComputeGraphInfo:
             for _tensor_i in _tensor.op.input_tensors:
                 _r_coexisting(_tensor_i, _need_space)
 
-            curr_dict = _analysis_dependent(dependent_map)
-            _current_compute_need_space(_tensor, curr_dict)
-            _need_space.append(curr_dict)
+            _curr_dict = _analysis_dependent(dependent_map)
+            _current_compute_need_space(_tensor, _curr_dict)
+            _need_space.append(_curr_dict)
 
             _refresh_dependent(_tensor)
             if _tensor not in dependent_map:
@@ -431,10 +431,10 @@ class ComputeGraphInfo:
 
         def _calc_value(_graph):
             value = 0
-            for item in _graph.get("_sNodeNum"):
-                value += DTYPE_BYTE_MAPPING[item]
-            for item in _graph.get("_bNodeNum"):
-                value += coefficients * DTYPE_BYTE_MAPPING[item]
+            for _item in _graph.get("_sNodeNum"):
+                value += DTYPE_BYTE_MAPPING[_item]
+            for _item in _graph.get("_bNodeNum"):
+                value += coefficients * DTYPE_BYTE_MAPPING[_item]
 
             if _graph.get("SubGraphBeforeReduce"):
                 # compute_at reduce cause value++
@@ -442,8 +442,7 @@ class ComputeGraphInfo:
                     value += coefficients * DTYPE_BYTE_MAPPING[reduce_type]
                 # rfactor cause value++
                 cond0 = reduce_info.is_reduce_last_axis()
-                cond1 = reduce_info.all_axes[tiling_case.ub_split_axis_index] \
-                        in reduce_info.reduce_axes
+                cond1 = reduce_info.all_axes[tiling_case.ub_split_axis_index] in reduce_info.reduce_axes
                 if tiling_case.type.value in ["NORMAL", ] and cond0 and cond1:
                     # ac_tensor is rf_tensor
                     value += coefficients * DTYPE_BYTE_MAPPING[reduce_type]

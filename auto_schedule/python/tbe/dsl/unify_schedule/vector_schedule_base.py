@@ -30,17 +30,17 @@ class VectorScheduleBase(ABC):
 
     def __init__(self):
         self.schedule: Optional[Schedule] = None
-        self.tiling_case: Optional[TilingCaseBase] = None
+        self.tiling_case = None
 
-    def do_schedule(self, tiling_case: Optional[TilingCaseBase]) -> Schedule:
-        self.tiling_case: TilingCaseBase = tiling_case
+    def do_schedule(self, tiling_case) -> Schedule:
+        self.tiling_case = tiling_case
         self._do_create_schedule()
         self._calc_schedule_generation_strategy()
         self._do_schedule_generation()
         return self.schedule
 
     def _calc_schedule_generation_strategy(self):
-        self._calc_reduced_axis_indices()
+        self._calc_reduced_axis_indexes()
         self._calc_data_flow_control()
         self._calc_compute_inline()
         self._calc_tiling()
@@ -70,96 +70,96 @@ class VectorScheduleBase(ABC):
 
     @abstractmethod
     def _do_create_schedule(self):
-        pass
+        """"""
 
     @abstractmethod
-    def _calc_reduced_axis_indices(self):
-        pass
+    def _calc_reduced_axis_indexes(self):
+        """"""
 
     @abstractmethod
     def _calc_data_flow_control(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_compute_inline(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_storage_bound(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_tiling(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_reorder(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_constraint(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_storage_align(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_compute_at(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_emit_insn(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_pragma(self):
-        pass
+        """"""
 
     @abstractmethod
     def _calc_double_buffer(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_data_flow_control(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_compute_inline(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_storage_bound(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_tiling(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_reorder(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_constraint(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_storage_align(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_compute_at(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_emit_insn(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_pragma(self):
-        pass
+        """"""
 
     @abstractmethod
     def _do_double_buffer(self):
-        pass
+        """"""

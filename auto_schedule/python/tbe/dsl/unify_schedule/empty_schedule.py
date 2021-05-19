@@ -52,7 +52,7 @@ class EmptySchedule(VectorSchedule):
     def _calc_data_flow_control(self):
         pass
 
-    def _calc_reduced_axis_indices(self):
+    def _calc_reduced_axis_indexes(self):
         pass
 
     def _calc_pragma(self):

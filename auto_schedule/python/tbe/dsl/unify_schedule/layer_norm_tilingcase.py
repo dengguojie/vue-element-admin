@@ -44,7 +44,7 @@ from tbe.tvm.tensor import PlaceholderOp
 
 from . import util
 from .util import get_reduce_all_axes
-from .util import get_reduce_axis_indices
+from .util import get_reduce_axis_indexes
 from .vector_tilingcase import TilingCaseBase
 from ...common.utils.errormgr import get_error_message
 
@@ -221,7 +221,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list):
     common_info = [core_num, keep_dims, min_block_size, atomic]
 
     pattern = _get_pattern_key(
-        reduce_info.shape_before_reduce, reduce_info.reduce_axis_indices)
+        reduce_info.shape_before_reduce, reduce_info.reduce_axis_indexes)
     max_ub_count = graph_info.max_single_tensor_ub_size
     pattern_info = [pattern]
     ub_info = [max_ub_count]
@@ -229,7 +229,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list):
     pre_compile_info = get_compile_info()
     if pre_compile_info:
         info_map = {"common_info": common_info, "pattern_info": pattern_info,
-                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indices, "core_num": util.get_core_num(), "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 512}
+                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": util.get_core_num(), "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 512}
         for key in info_map.keys():
             if key not in pre_compile_info.keys():
                 add_compile_info(key, info_map.get(key))
@@ -245,7 +245,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list):
 def _calc_tiling_key(reduce_info, tiling):
     # tiling: single_case
     shape = reduce_info.shape_before_reduce
-    reduce_axis_idx = reduce_info.reduce_axis_indices
+    reduce_axis_idx = reduce_info.reduce_axis_indexes
     block_split_axis = tiling.block_split_axis_index
 
     ub_split_axis_index_reduce = tiling.ub_split_axis_index_reduce
@@ -408,17 +408,17 @@ class LayerNormInfo:
 
         self.shape_before_reduce: List[Union[Var, IntImm]] = list(
             self.reduce_tensor.op.input_tensors[0].shape)
-        self.reduce_axis_indices: List[int] = get_reduce_axis_indices(
+        self.reduce_axis_indexes: List[int] = get_reduce_axis_indexes(
             self.reduce_tensor)
         self.graph_info: ComputeGraphInfo = compute_graph_info
 
     @staticmethod
-    def find_last_reduce_axis(shape, reduce_axis_indices: Iterable[int]):
+    def find_last_reduce_axis(shape, reduce_axis_indexes: Iterable[int]):
         # shape_before_reduce:(a1,a2,a3,...,r2,r1), the last axis must be reduce axis
         # find r1 position, r1 may contain continues axis
         r1_end_index = len(shape) - 1
         for i in range(r1_end_index, -1, -1):
-            if i not in reduce_axis_indices:
+            if i not in reduce_axis_indexes:
                 r1_start_index = i + 1
                 break
             if i == 0:
@@ -451,7 +451,7 @@ class LayerNormInfo:
 
 def _gen_tiling_case(info: LayerNormInfo):
     shape_before_reduce = info.shape_before_reduce
-    reduce_axis_index = info.reduce_axis_indices
+    reduce_axis_index = info.reduce_axis_indexes
     tiling_case_list = []
     for i in range(0, len(shape_before_reduce)):
         # if i not in reduce_axis_index: NOT ALL REDUCE CASE

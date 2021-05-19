@@ -47,7 +47,7 @@ from .constants import ReducePattern
 from .computation import Computation
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
-from .util import get_reduce_axis_indices
+from .util import get_reduce_axis_indexes
 from .util import is_reduce_tensor
 from .util import shape_to_list
 from .vector_info import ComputeGraphInfo
@@ -152,7 +152,7 @@ class SingleReduceInfo:
         else:
             self.shape_before_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.op.input_tensors[0].shape)
         self.shape_after_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.shape)
-        self.reduce_axis_indices: List[int] = get_reduce_axis_indices(self.reduce_tensor)
+        self.reduce_axis_indexes: List[int] = get_reduce_axis_indexes(self.reduce_tensor)
         self.keepdims: bool = len(self.shape_before_reduce) == len(self.shape_after_reduce)
         self.graph_info: ComputeGraphInfo = compute_graph_info
 
@@ -171,19 +171,19 @@ class SingleReduceInfo:
         return set(self.all_axes) == set(self.reduce_axes)
 
     @staticmethod
-    def find_last_reduce_axis(shape, reduce_axis_indices: Iterable[int]):
+    def find_last_reduce_axis(shape, reduce_axis_indexes: Iterable[int]):
         # shape_before_reduce:(ak+1,rk,...,r2,a2,r1,a1) or (ak,rk,...,r2,a1,r1)
         # find r1 position, r1 may contain continues axis
         r1_end_index = None
         for i in range(len(shape) - 1, -1, -1):
-            if i in reduce_axis_indices:
+            if i in reduce_axis_indexes:
                 r1_end_index = i
                 break
         r1_start_index = r1_end_index
         if r1_end_index is None:
             return r1_start_index, r1_end_index
         for i in range(r1_end_index, -1, -1):
-            if i not in reduce_axis_indices:
+            if i not in reduce_axis_indexes:
                 r1_start_index = i + 1
                 break
             if i == 0:
@@ -342,8 +342,7 @@ def apply_dyn_compile_info(reduce_info, tiling_case_list, model="dynamic"):
     # dynamic message from each case of tiling_case_list
     def _is_rfactor(_item):
         cond_0 = reduce_info.is_reduce_last_axis()
-        cond_1 = reduce_info.all_axes[_case.ub_split_axis_index] \
-                 in reduce_info.reduce_axes
+        cond_1 = reduce_info.all_axes[_case.ub_split_axis_index] in reduce_info.reduce_axes
         cond_2 = _item.type == ReduceTilingCase.Type.NORMAL_REDUCE
         if cond_0 and cond_1 and cond_2:
             return True
@@ -354,7 +353,7 @@ def apply_dyn_compile_info(reduce_info, tiling_case_list, model="dynamic"):
         pattern_info = _gen_const_tiling_key(compile_axis)
     else:
         pattern_info = _get_pattern_key(reduce_info.shape_before_reduce,
-                                        reduce_info.reduce_axis_indices)
+                                        reduce_info.reduce_axis_indexes)
 
     pre_compile_info = get_compile_info()
     if pre_compile_info:
@@ -396,7 +395,7 @@ def apply_dyn_compile_info(reduce_info, tiling_case_list, model="dynamic"):
 def _calc_tiling_key(reduce_info, tiling):
     # tiling: single_case
     shape = reduce_info.shape_before_reduce
-    reduce_axis_idx = reduce_info.reduce_axis_indices
+    reduce_axis_idx = reduce_info.reduce_axis_indexes
     block_split_axis = tiling.block_split_axis_index
     ub_split_axis = tiling.ub_split_axis_index
     atomic = tiling.type == tiling.Type.ATOMIC_REDUCE
@@ -420,7 +419,7 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info, const_tiling_
     add_compile_info_inner("_reduce_shape_known", True)
     shape_before_reduce = shape_to_list(single_reduce_info.shape_before_reduce)
     shape_after_reduce = shape_to_list(single_reduce_info.shape_after_reduce)
-    reduce_axis_index = single_reduce_info.reduce_axis_indices
+    reduce_axis_index = single_reduce_info.reduce_axis_indexes
     input_dtype = tuple(compute_graph_info.input_tensor_set)[0].dtype
     output_dtype = tuple(compute_graph_info.output_tensor_set)[0].dtype
     axes_dtype = get_context().get_current_compute().get("_axis_dtype")
@@ -503,7 +502,7 @@ def _calculate_atomic_tiling_cases(info: SingleReduceInfo) -> List[ReduceTilingC
     tiling_case_list = []
     if check_atomic_add_support(info):
         shape_before_reduce = info.shape_before_reduce
-        reduce_axis_index = info.reduce_axis_indices
+        reduce_axis_index = info.reduce_axis_indexes
         if info.is_reduce_all_axes():
             tiling_case_list += _gen_atomic_tiling_case_reduce_all(shape_before_reduce)
 
@@ -539,7 +538,7 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
 
 def _gen_tiling_case_not_last_axis(info: SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]) -> NoReturn:
     shape_before_reduce = info.shape_before_reduce
-    reduce_axis_index = info.reduce_axis_indices
+    reduce_axis_index = info.reduce_axis_indexes
 
     reordered_shape, reorder_to_orignal_axis_map, _ = \
         _reorder_reduce_nlast_shape(shape_before_reduce, reduce_axis_index)
@@ -564,7 +563,7 @@ def _gen_tiling_case_not_last_axis(info: SingleReduceInfo, tiling_case_list: Lis
 
 def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]):
     shape_before_reduce = info.shape_before_reduce
-    reduce_axis_index = info.reduce_axis_indices
+    reduce_axis_index = info.reduce_axis_indexes
 
     reordered_shape, reorder_to_orignal_axis_map, _ = \
         _reorder_reduce_last_shape(shape_before_reduce, reduce_axis_index)
@@ -586,7 +585,7 @@ def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[Re
 
 def _gen_tiling_case_reduce_all(info: SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]):
     shape_before_reduce = info.shape_before_reduce
-    reduce_axis_index = info.reduce_axis_indices
+    reduce_axis_index = info.reduce_axis_indexes
     reordered_shape, reorder_to_orignal_axis_map, _ = \
         _reorder_reduce_last_shape(shape_before_reduce, reduce_axis_index)
     block_split_axis = 0
@@ -751,16 +750,16 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis,
     :return: key(int32)
     """
 
-    def _check(idx, value):
+    def _check(idx, _value):
         rule = [range(2), range(100), range(9), range(9),
                 range(1000)]
         name = ["db", "shape_type", "block_split_axis", "ub_split_axis",
                 "pattern"]
-        if value not in rule[idx]:
+        if _value not in rule[idx]:
             dict_args = dict()
             dict_args["errCode"] = "E90003"
             dict_args["detailed_cause"] = "%s should in %s, but is %d" % (
-                name[idx], str(rule[idx]), value)
+                name[idx], str(rule[idx]), _value)
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     pattern = _get_pattern_key(shape, reduce_idx_list)

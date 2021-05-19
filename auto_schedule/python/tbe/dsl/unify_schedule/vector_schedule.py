@@ -44,7 +44,7 @@ from tbe.tvm.schedule import Stage
 from tbe.tvm.tensor import Tensor
 
 from .util import get_reduce_all_axes
-from .util import get_reduce_axis_indices
+from .util import get_reduce_axis_indexes
 from .util import is_keepdims
 from .util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
@@ -167,7 +167,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
             ComputeGraphInfo.set_map_deepcopy(self.forward_compute_graph_map)
         self.backward_stage_graph_map: Dict[Tensor, Set[Tensor]] = \
             ComputeGraphInfo.set_map_deepcopy(self.backward_compute_graph_map)
-        self.tensor_reduced_axis_indices: Dict[Union[Tensor, VectorSchedule.Placeholder], List[int]] = {}
+        self.tensor_reduced_axis_indexes: Dict[Union[Tensor, VectorSchedule.Placeholder], List[int]] = {}
         # Data Flow Control - Calculate and Do
         self._output_scope: str = ""
         self._tensor_to_scope_map: Dict[Tensor, str] = {}
@@ -526,8 +526,8 @@ class VectorSchedule(VectorScheduleBase, ABC):
                                                         (source_tensor, target_scope, consumers))
         self._data_flow_control_placeholder_map[(source_tensor, target_scope, consumers)] = result_placeholder
         self.__stage_graph_manipulation(result_placeholder, source_tensor, False)
-        if source_tensor in self.tensor_reduced_axis_indices:
-            self.tensor_reduced_axis_indices[result_placeholder] = self.tensor_reduced_axis_indices[source_tensor]
+        if source_tensor in self.tensor_reduced_axis_indexes:
+            self.tensor_reduced_axis_indexes[result_placeholder] = self.tensor_reduced_axis_indexes[source_tensor]
         return result_placeholder
 
     def cache_write(self,
@@ -539,14 +539,14 @@ class VectorSchedule(VectorScheduleBase, ABC):
                                                         (source_tensor, source_scope, None))
         self._data_flow_control_placeholder_map[(source_tensor, source_scope, None)] = result_placeholder
         self.__stage_graph_manipulation(result_placeholder, source_tensor, True)
-        if source_tensor in self.tensor_reduced_axis_indices:
+        if source_tensor in self.tensor_reduced_axis_indexes:
             if is_reduce_tensor(source_tensor) and not is_keepdims(source_tensor):
-                for_original_tensor = self.tensor_reduced_axis_indices[source_tensor]
-                self.tensor_reduced_axis_indices[source_tensor] = \
-                    for_original_tensor + get_reduce_axis_indices(source_tensor)
-                self.tensor_reduced_axis_indices[result_placeholder] = for_original_tensor
+                for_original_tensor = self.tensor_reduced_axis_indexes[source_tensor]
+                self.tensor_reduced_axis_indexes[source_tensor] = \
+                    for_original_tensor + get_reduce_axis_indexes(source_tensor)
+                self.tensor_reduced_axis_indexes[result_placeholder] = for_original_tensor
             else:
-                self.tensor_reduced_axis_indices[result_placeholder] = self.tensor_reduced_axis_indices[source_tensor]
+                self.tensor_reduced_axis_indexes[result_placeholder] = self.tensor_reduced_axis_indexes[source_tensor]
         return result_placeholder
 
     def get_buffers_of(self,
@@ -613,8 +613,8 @@ class VectorSchedule(VectorScheduleBase, ABC):
         placeholder = VectorSchedule.Placeholder(VectorSchedule.Placeholder.PlaceholderType.RFACTOR_TENSOR,
                                                  (source_tensor, tiling_index))
         self.__stage_graph_manipulation(placeholder, source_tensor, True)
-        if source_tensor in self.tensor_reduced_axis_indices:
-            self.tensor_reduced_axis_indices[placeholder] = self.tensor_reduced_axis_indices[source_tensor]
+        if source_tensor in self.tensor_reduced_axis_indexes:
+            self.tensor_reduced_axis_indexes[placeholder] = self.tensor_reduced_axis_indexes[source_tensor]
         return placeholder
 
     def split(self,
@@ -664,28 +664,28 @@ class VectorSchedule(VectorScheduleBase, ABC):
             return self.solve_placeholder(axis_index)
         real_tensor: Tensor = self.solve_placeholder(tensor)
         compute = operation.get_context().get_current_compute()
-        if compute.get("_mode") != "zero" and tensor not in self.tensor_reduced_axis_indices:
+        if compute.get("_mode") != "zero" and tensor not in self.tensor_reduced_axis_indexes:
             return self.schedule[real_tensor].all_iter_vars[axis_index]
         if compute.get("_mode") == "zero":
             reduce_tensors = list(self.graph_info.reduce_tensor_set)
             if real_tensor in reduce_tensors or is_keepdims(reduce_tensors[0]):
-                reduced_indices = []
+                reduced_indexes = []
             else:
-                reduced_indices = [2]
+                reduced_indexes = [2]
         else:
-            reduced_indices = self.tensor_reduced_axis_indices[tensor]
+            reduced_indexes = self.tensor_reduced_axis_indexes[tensor]
 
         real_stage: Stage = self.schedule[real_tensor]
         body = real_tensor.op.body[0]
         calibrated_index = axis_index
-        for reduce_index in reduced_indices:
+        for reduce_index in reduced_indexes:
             if reduce_index < axis_index:
                 calibrated_index -= 1
         if isinstance(body, Reduce) and real_tensor not in self.graph_info.output_tensor_set:
-            reduce_axis_indices = get_reduce_axis_indices(tensor)
+            reduce_axis_indexes = get_reduce_axis_indexes(tensor)
             iter_var = None
-            if calibrated_index in reduce_axis_indices:
-                iter_var = real_stage.all_iter_vars[reduce_axis_indices.index(calibrated_index) + len(tensor.shape)]
+            if calibrated_index in reduce_axis_indexes:
+                iter_var = real_stage.all_iter_vars[reduce_axis_indexes.index(calibrated_index) + len(tensor.shape)]
             else:
                 all_axes_var = get_reduce_all_axes(tensor)
                 var = all_axes_var[calibrated_index]
@@ -700,7 +700,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
             try:
                 return real_stage.all_iter_vars[calibrated_index]
             except IndexError:
-                raise IndexError("Possible victim of false keepdims, use reduced_indices to fix this")
+                raise IndexError("Possible victim of false keepdims, use reduced_indexes to fix this")
 
     def _get_stage_axis_to_relation_map(self,
                                         tensor: Union[Tensor, Placeholder]) -> Dict[IterVar, Union[Split, Fuse]]:

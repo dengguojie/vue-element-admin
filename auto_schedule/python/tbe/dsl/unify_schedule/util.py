@@ -376,7 +376,7 @@ def get_reduce_all_axes(reduce_tensor: Tensor) -> List[Union[Var, tvm.expr.IntIm
     return list(reduce_tensor_body[0].source[0].args)
 
 
-def get_reduce_axis_indices(reduce_tensor: Tensor) -> List[int]:
+def get_reduce_axis_indexes(reduce_tensor: Tensor) -> List[int]:
     """Get all reduce axis index"""
     compute = operation.get_context().get_current_compute()
     if compute.get("_mode") == "zero" and compute.get("_shape") == (1, -1, 0):

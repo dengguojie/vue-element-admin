@@ -35,7 +35,7 @@ from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .reduce_tilingcase import ReduceTilingCase
 from .reduce_tilingcase import SingleReduceInfo
 from .util import get_dsl_insn
-from .util import get_reduce_axis_indices
+from .util import get_reduce_axis_indexes
 from .util import is_keepdims
 from .util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
@@ -45,14 +45,14 @@ from .schedule import Schedule
 
 CONST = "const"
 DEFAULT = "default"
-INT32_MAX = 2**31 - 1
+INT32_MAX = 2 ** 31 - 1
 BLOCK_SIZE_BYTE = 32
 
 
 class EntryReduceSchedule(Schedule):
     def __init__(self, outs, tiling_case):
         self.outs = outs
-        self.tiling_case = tiling_case
+        self.tiling_case: ReduceTilingCase = tiling_case
 
     @classmethod
     def get_instance(cls, outs, tiling_case):
@@ -110,25 +110,25 @@ class ReduceSchedule(VectorSchedule):
         self.reduce_rf = None
         self.rf_tiling_result_pair = None
 
-    def _calc_reduced_axis_indices(self):
+    def _calc_reduced_axis_indexes(self):
         last_input_tensor = None
         for input_tensor in self.graph_info.input_tensor_set:
             if last_input_tensor is None:
                 last_input_tensor = input_tensor
-            self.tensor_reduced_axis_indices[input_tensor] = []
+            self.tensor_reduced_axis_indexes[input_tensor] = []
             # Check through all consumer
             waiting_tensors: List[Tensor] = [input_tensor]
             while waiting_tensors:
                 current_tensor = waiting_tensors.pop()
-                current_indices = self.tensor_reduced_axis_indices[current_tensor]
+                current_indexes = self.tensor_reduced_axis_indexes[current_tensor]
                 for consumer in self.forward_compute_graph_map[current_tensor]:
-                    if consumer in self.tensor_reduced_axis_indices:
+                    if consumer in self.tensor_reduced_axis_indexes:
                         continue
                     if is_reduce_tensor(current_tensor) and not is_keepdims(current_tensor):
-                        self.tensor_reduced_axis_indices[consumer] = \
-                            current_indices + get_reduce_axis_indices(current_tensor)
+                        self.tensor_reduced_axis_indexes[consumer] = \
+                            current_indexes + get_reduce_axis_indexes(current_tensor)
                     else:
-                        self.tensor_reduced_axis_indices[consumer] = current_indices
+                        self.tensor_reduced_axis_indexes[consumer] = current_indexes
                     waiting_tensors.append(consumer)
 
     def _calc_data_flow_control(self) -> NoReturn:
@@ -216,7 +216,7 @@ class ReduceSchedule(VectorSchedule):
             self.block_tiling_info = self._tiling[-1]
 
             # rfactor
-            if ub_split_axis_index == self.reduce_info.reduce_axis_indices[-1]:
+            if ub_split_axis_index == self.reduce_info.reduce_axis_indexes[-1]:
                 # part of last_dim as rfi for rfactor, and [ub_inner, ub_outer] = [rfi, rfo]
                 # tiling_rf_pair[0] set as ub_outer if target is reduce_rf
                 # tiling_rf_pair[1] set as ub_inner if target is reduce_rf
@@ -240,7 +240,7 @@ class ReduceSchedule(VectorSchedule):
                 self.reduce_rf = self.rfactor(reduce_ub_buffer, len(self.reduce_info.shape_before_reduce)-1,
                                               -1, scope="local.UB")
                 # ub tiling
-                _rf_offset = self.reduce_info.reduce_axis_indices.index(ub_split_axis_index)
+                _rf_offset = self.reduce_info.reduce_axis_indexes.index(ub_split_axis_index)
                 rf_ub_split_idx = self.Placeholder(
                     self.Placeholder.PlaceholderType.ITER_VAR, (
                         self.reduce_rf, len(self.reduce_info.reduce_tensor.shape)+1+_rf_offset)
@@ -263,9 +263,9 @@ class ReduceSchedule(VectorSchedule):
             res_block_outer = self.block_tiling_result_pair[0]
 
             fuse_axis_list = [res_block_outer]
-            fusable_axis_indices = [idx for idx in range(0, block_split_axis_index)
-                                    if idx not in self.tensor_reduced_axis_indices[tensor]]
-            fuse_axis_list.extend(fusable_axis_indices)
+            fusable_axis_indexes = [idx for idx in range(0, block_split_axis_index)
+                                    if idx not in self.tensor_reduced_axis_indexes[tensor]]
+            fuse_axis_list.extend(fusable_axis_indexes)
 
             self.multi_core_bind_tensor = \
                 tuple(self.graph_info.output_tensor_set)[0]
@@ -283,28 +283,28 @@ class ReduceSchedule(VectorSchedule):
         is_nlast_reduce = self.reduce_info.is_reduce_not_last_axis()
         # Reduce axes must be placed together, then move last axis of non-reduce axes after reduce axes
         # For Reduce Tensor and Tensors before reduce
-        all_axis_indices = list(range(len(self.reduce_info.all_axes)))
-        reduce_axis_indices: List[Union[VectorSchedule.Placeholder, int]] = self.reduce_info.reduce_axis_indices[:]
-        non_reduce_axis_indices = [axis_idx for axis_idx in all_axis_indices if axis_idx not in reduce_axis_indices]
-        reduce_axis_indices_original = reduce_axis_indices[:]
-        non_reduce_axis_indices_original = non_reduce_axis_indices[:]
+        all_axis_indexes = list(range(len(self.reduce_info.all_axes)))
+        reduce_axis_indexes: List[Union[VectorSchedule.Placeholder, int]] = self.reduce_info.reduce_axis_indexes[:]
+        non_reduce_axis_indexes = [axis_idx for axis_idx in all_axis_indexes if axis_idx not in reduce_axis_indexes]
+        reduce_axis_indexes_original = reduce_axis_indexes[:]
+        non_reduce_axis_indexes_original = non_reduce_axis_indexes[:]
         reduce_ub_stage_tensor = self.get_buffers_of(self.reduce_info.reduce_tensor)[0]
         # Find all split axis
         ub_tiling_axis_index = self.tiling_case.ub_split_axis_index
-        if ub_tiling_axis_index in reduce_axis_indices:
-            idx_of_ub_split_axis_index = reduce_axis_indices.index(ub_tiling_axis_index)
-            reduce_axis_indices.remove(ub_tiling_axis_index)
-            reduce_axis_indices.insert(idx_of_ub_split_axis_index, self.ub_tiling_result_pair[0])
-            reduce_axis_indices.insert(idx_of_ub_split_axis_index + 1, self.ub_tiling_result_pair[1])
-        elif ub_tiling_axis_index in non_reduce_axis_indices:
-            idx_of_ub_split_axis_index = non_reduce_axis_indices.index(ub_tiling_axis_index)
-            non_reduce_axis_indices.remove(ub_tiling_axis_index)
-            non_reduce_axis_indices.insert(idx_of_ub_split_axis_index, self.ub_tiling_result_pair[0])
-            non_reduce_axis_indices.insert(idx_of_ub_split_axis_index + 1, self.ub_tiling_result_pair[1])
+        if ub_tiling_axis_index in reduce_axis_indexes:
+            idx_of_ub_split_axis_index = reduce_axis_indexes.index(ub_tiling_axis_index)
+            reduce_axis_indexes.remove(ub_tiling_axis_index)
+            reduce_axis_indexes.insert(idx_of_ub_split_axis_index, self.ub_tiling_result_pair[0])
+            reduce_axis_indexes.insert(idx_of_ub_split_axis_index + 1, self.ub_tiling_result_pair[1])
+        elif ub_tiling_axis_index in non_reduce_axis_indexes:
+            idx_of_ub_split_axis_index = non_reduce_axis_indexes.index(ub_tiling_axis_index)
+            non_reduce_axis_indexes.remove(ub_tiling_axis_index)
+            non_reduce_axis_indexes.insert(idx_of_ub_split_axis_index, self.ub_tiling_result_pair[0])
+            non_reduce_axis_indexes.insert(idx_of_ub_split_axis_index + 1, self.ub_tiling_result_pair[1])
 
         # Construct reorder target
         if is_nlast_reduce:
-            reorder_target = [*non_reduce_axis_indices[:-1], *reduce_axis_indices, non_reduce_axis_indices[-1]]
+            reorder_target = [*non_reduce_axis_indexes[:-1], *reduce_axis_indexes, non_reduce_axis_indexes[-1]]
         else:
             if self._last_reduction_rf_optimization():
                 """
@@ -313,28 +313,28 @@ class ReduceSchedule(VectorSchedule):
                 """
                 reduce_ub_stage_tensor = self.reduce_rf
                 # [Remove] last_dim for rfactor
-                if reduce_axis_indices_original[-1] in reduce_axis_indices:
-                    reduce_axis_indices.remove(reduce_axis_indices_original[-1])
+                if reduce_axis_indexes_original[-1] in reduce_axis_indexes:
+                    reduce_axis_indexes.remove(reduce_axis_indexes_original[-1])
 
                 # [Replace] rf = sch.rfactor(reduce, rfi, -1), "-1" decides position of rfi is
                 # before reduce_axis and after non_reduce_axis in sch[rf].all_iter_vars.
                 # Replace all non split reduce_axis.
-                for key, reduce_idx in enumerate(reduce_axis_indices):
+                for key, reduce_idx in enumerate(reduce_axis_indexes):
                     if isinstance(reduce_idx, int):
-                        _index = reduce_axis_indices_original.index(reduce_idx) + \
+                        _index = reduce_axis_indexes_original.index(reduce_idx) + \
                                  len(self.reduce_info.reduce_tensor.shape) + 1
-                        reduce_axis_indices[key] = self.Placeholder(
+                        reduce_axis_indexes[key] = self.Placeholder(
                             self.Placeholder.PlaceholderType.ITER_VAR, (self.reduce_rf, _index))
 
                 # [Add] add rfi while rf = sch.rfactor(reduce, rfi, -1)
-                if self.tiling_case.ub_split_axis_index != reduce_axis_indices_original[-1]:
-                    reduce_axis_indices.append(
+                if self.tiling_case.ub_split_axis_index != reduce_axis_indexes_original[-1]:
+                    reduce_axis_indexes.append(
                         self.Placeholder(self.Placeholder.PlaceholderType.ITER_VAR,
                                          (self.reduce_rf, len(self.reduce_info.reduce_tensor.shape))))
 
-                reorder_target = [*non_reduce_axis_indices, *reduce_axis_indices]
+                reorder_target = [*non_reduce_axis_indexes, *reduce_axis_indexes]
             else:
-                reorder_target = [*non_reduce_axis_indices, *reduce_axis_indices]
+                reorder_target = [*non_reduce_axis_indexes, *reduce_axis_indexes]
 
         # Add reorder target for reduce_ub_buffer
         self._tensor_to_reorder_map[reduce_ub_stage_tensor] = reorder_target
@@ -342,12 +342,12 @@ class ReduceSchedule(VectorSchedule):
         # Add reorder target for all tensors before reduce_ub_buffer
         all_producers = self.get_all_producer_stages(reduce_ub_stage_tensor)
         if is_nlast_reduce:
-            reorder_target_original = [*non_reduce_axis_indices_original[:-1],
-                                       *reduce_axis_indices_original,
-                                       non_reduce_axis_indices_original[-1]]
+            reorder_target_original = [*non_reduce_axis_indexes_original[:-1],
+                                       *reduce_axis_indexes_original,
+                                       non_reduce_axis_indexes_original[-1]]
         else:
-            reorder_target_original = [*non_reduce_axis_indices_original,
-                                       *reduce_axis_indices_original]
+            reorder_target_original = [*non_reduce_axis_indexes_original,
+                                       *reduce_axis_indexes_original]
         for producer in all_producers:
             if producer not in self.graph_info.input_tensor_set:
                 self._tensor_to_reorder_map[producer] = reorder_target_original
@@ -366,38 +366,38 @@ class ReduceSchedule(VectorSchedule):
             # shape after reorder must follow:
             # [R,A],[A,R],[A,R,A],[A,R,A,R],...,[A,R,...,A,R]
             in_shape = self.reduce_info.shape_before_reduce
-            reduce_indices = self.reduce_info.reduce_axis_indices
-            i_length, r_length = len(in_shape), len(reduce_indices)
+            reduce_indexes = self.reduce_info.reduce_axis_indexes
+            i_length, r_length = len(in_shape), len(reduce_indexes)
 
-            def _reorder(_r_shape, _r_indices, _r_ou_shape):
+            def _reorder(_r_shape, _r_indexes, _r_ou_shape):
                 # r_shape: in_shape after reorder
-                # r_indices: r_shape[x] == in_shape[r_indices[x]]
+                # r_indexes: r_shape[x] == in_shape[r_indexes[x]]
                 pos_a = 0
-                if reduce_indices[-1] == i_length - 1:
+                if reduce_indexes[-1] == i_length - 1:
                     pos_r = i_length - r_length  # last dim is R
                 else:
                     pos_r = i_length - r_length - 1  # last dim is A
                 for idx, value in enumerate(in_shape):
-                    if idx == i_length - 1 and idx not in reduce_indices:
-                        _r_shape[-1], _r_indices[-1] = value, idx
+                    if idx == i_length - 1 and idx not in reduce_indexes:
+                        _r_shape[-1], _r_indexes[-1] = value, idx
                         _r_ou_shape[-1] = _r_shape[-1]
-                    elif idx in reduce_indices:
-                        _r_shape[pos_r], _r_indices[pos_r] = value, idx
+                    elif idx in reduce_indexes:
+                        _r_shape[pos_r], _r_indexes[pos_r] = value, idx
                         _r_ou_shape[pos_r] = 1
                         pos_r += 1
                     else:
-                        _r_shape[pos_a], _r_indices[pos_a] = value, idx
+                        _r_shape[pos_a], _r_indexes[pos_a] = value, idx
                         _r_ou_shape[pos_a] = value
                         pos_a += 1
 
             r_in_shape = [0] * i_length
-            r_indices = [0] * i_length
+            r_indexes = [0] * i_length
             r_ou_shape = [0] * i_length
             results = []
-            _reorder(r_in_shape, r_indices, r_ou_shape)
+            _reorder(r_in_shape, r_indexes, r_ou_shape)
 
             # do constraint for blk_split and output
-            r_blk_idx = r_indices.index(blk_idx)
+            r_blk_idx = r_indexes.index(blk_idx)
             max_ub_count = self.tiling_case.tensor_ub_size_after_reduce
             output_size = blk_factor
             for _dim in r_ou_shape[r_blk_idx + 1:]:
@@ -408,14 +408,14 @@ class ReduceSchedule(VectorSchedule):
             r_in_shape[r_blk_idx] = blk_factor  # for constraint(ub)
 
             # do constraint for ub_split and input
-            if ub_idx not in reduce_indices and ub_idx < blk_idx:
+            if ub_idx not in reduce_indexes and ub_idx < blk_idx:
                 raise RuntimeError(
                     "ub_idx must >= blk_idx"
-                    "while ub_idx not in reduce_indices."
+                    "while ub_idx not in reduce_indexes."
                     "ub_idx is %d, blk_idx is %d" % (ub_idx, blk_idx))
             else:
                 input_size = ub_factor
-                r_ub_idx = r_indices.index(ub_idx)
+                r_ub_idx = r_indexes.index(ub_idx)
                 max_ub_count = self.tiling_case.tensor_ub_size_before_reduce
                 # [A,R,A,R,A] --> [A,A,R,R,A]
                 #                          |-->BLK(fixed)
@@ -440,12 +440,12 @@ class ReduceSchedule(VectorSchedule):
     def __need_storage_align(self):
         ub_split_axis_index = self.tiling_case.ub_split_axis_index
         shape_before_reduce = self.reduce_info.shape_before_reduce
-        reduce_axis_indices = self.reduce_info.reduce_axis_indices
+        reduce_axis_indexes = self.reduce_info.reduce_axis_indexes
         # for shape(r4,a4,r3,a3,r2,a2,r1,a1), if ub split a1, do not need storage align
         if self.reduce_info.is_reduce_not_last_axis():
             a1_start_index, a1_end_index = \
                 self.reduce_info.find_last_none_reduce_axis(shape_before_reduce,
-                                                            reduce_axis_indices)
+                                                            reduce_axis_indexes)
             if a1_end_index is None:
                 return False
             if a1_start_index <= ub_split_axis_index <= a1_end_index:
@@ -454,7 +454,7 @@ class ReduceSchedule(VectorSchedule):
         else:
             r1_start_index, r1_end_index = self.reduce_info.find_last_reduce_axis(
                 shape_before_reduce,
-                reduce_axis_indices)
+                reduce_axis_indexes)
             if r1_end_index is None:
                 return False
             # for shape(a4,r4,a3,r3,a2,r2,a1,r1), if ub split r1, do not need storage align
@@ -467,10 +467,10 @@ class ReduceSchedule(VectorSchedule):
             return
 
         shape_before_reduce = self.reduce_info.shape_before_reduce
-        reduce_axis_indices = self.reduce_info.reduce_axis_indices
+        reduce_axis_indexes = self.reduce_info.reduce_axis_indexes
 
         a1_start_index, a1_end_index = self.reduce_info.find_last_none_reduce_axis(shape_before_reduce,
-                                                                                   reduce_axis_indices)
+                                                                                   reduce_axis_indexes)
         if self.reduce_info.is_reduce_not_last_axis():
             # None-Last Reduce needs to storage align reduce_tensor and all_other tensors before reduce
             # Align at last reduce axis
@@ -485,7 +485,7 @@ class ReduceSchedule(VectorSchedule):
                                                                align_axis_index,
                                                                align_num)
                     self.storage_align_list.append(storage_align_info)
-            if a1_start_index - len(self.reduce_info.reduce_axis_indices) == 0:
+            if a1_start_index - len(self.reduce_info.reduce_axis_indexes) == 0:
                 return
             align_axis_index -= 1
             if reduce_tensor in self._data_flow_control:
@@ -537,9 +537,9 @@ class ReduceSchedule(VectorSchedule):
         if self.reduce_info.is_reduce_not_last_axis():
             a1_start_index, a1_end_index = self.reduce_info.find_last_none_reduce_axis(
                 self.reduce_info.shape_before_reduce,
-                self.reduce_info.reduce_axis_indices)
+                self.reduce_info.reduce_axis_indexes)
             if a1_start_index <= self.tiling_case.ub_split_axis_index <= a1_end_index:
-                reduce_ub_split_axis_outer = self.reduce_info.reduce_axis_indices[-1]
+                reduce_ub_split_axis_outer = self.reduce_info.reduce_axis_indexes[-1]
 
         # Add anchor point
         self.anchor_point_list.append(reduce_ub_tiling_tensor)
@@ -579,10 +579,10 @@ class ReduceSchedule(VectorSchedule):
         if self.reduce_info.is_reduce_not_last_axis():
             a1_start_index, a1_end_index = self.reduce_info.find_last_none_reduce_axis(
                 self.reduce_info.shape_before_reduce,
-                self.reduce_info.reduce_axis_indices)
-            if ub_split_axis_index < a1_start_index and ub_split_axis_index not in self.reduce_info.reduce_axis_indices:
-                emit_insn_axis = self.reduce_info.reduce_axis_indices[0]
-        elif ub_split_axis_index not in self.reduce_info.reduce_axis_indices:
+                self.reduce_info.reduce_axis_indexes)
+            if ub_split_axis_index < a1_start_index and ub_split_axis_index not in self.reduce_info.reduce_axis_indexes:
+                emit_insn_axis = self.reduce_info.reduce_axis_indexes[0]
+        elif ub_split_axis_index not in self.reduce_info.reduce_axis_indexes:
             compute = get_context().get_current_compute()
             if compute.get("_mode") == "zero":
                 pass
@@ -591,7 +591,7 @@ class ReduceSchedule(VectorSchedule):
                 axis_dom = first_reduce_axis.dom
                 if hasattr(axis_dom.min, "value") and hasattr(axis_dom.extent, "value"):
                     if first_reduce_axis.dom.min.value == 0 and first_reduce_axis.dom.extent.value == 1:
-                        emit_insn_axis = self.reduce_info.reduce_axis_indices[0]
+                        emit_insn_axis = self.reduce_info.reduce_axis_indexes[0]
         # Op of reduce need extra_space
         extra_space = self.tiling_case.tensor_ub_size_before_reduce
         if self._contains_zero_axis():
@@ -674,59 +674,39 @@ class ReduceSchedule(VectorSchedule):
         # Initialization
         reduce_ub_tensor = self.get_buffers_of(self.reduce_info.reduce_tensor)[0]
         before_reduce_tensors = self.get_all_producer_stages(reduce_ub_tensor)
-        reduce_axis_indexes: List[Union[VectorSchedule.Placeholder, int]] = self.reduce_info.reduce_axis_indices[:]
+        ub_tiling_on_reduce_axis = self.ub_tiling_info.tiling_axis_index in self.reduce_info.reduce_axis_indexes
         # For tensor before reduce, try to fuse all continuous reordered axis, Search in reversed order.
         for tensor in before_reduce_tensors:
             # Do not pragma placeholder
             if tensor in self.graph_info.input_tensor_set:
                 continue
-            # Pragma reordered tensor only
-            if tensor in self._tensor_to_reorder_map:
-                reordered_shape_indexes = self._tensor_to_reorder_map[tensor]
+            # For ub tensor
+            if get_dsl_insn(tensor) != "":
+                # Iterate all axis after ub_tiling_axis and check if they need to be in the axis_group
+                for axis_idx in range(self.ub_tiling_info.tiling_axis_index,
+                                      len(self.reduce_info.shape_before_reduce) - 1):
+                    if axis_idx in self.reduce_info.reduce_axis_indexes or not ub_tiling_on_reduce_axis:
+                        self.pragma(tensor, axis_idx, "axis_group", 0)
+                # last axis needs to be in the axis_group
+                self.pragma(tensor, len(self.reduce_info.shape_before_reduce) - 1, "axis_group", 0)
             else:
-                continue
-            # Last pragma axis index
-            start_index = None
-            # UB Split axis index
-            ub_split_axis_index_in_reordered_shape = \
-                reordered_shape_indexes.index(self.ub_tiling_info.tiling_axis_index)
-            # Reversed order axis search, add continuous axis to axis_group for dma_copy, add all axis for vector
-            for reversed_idx, axis in zip(range(len(reordered_shape_indexes) - 1, -1, -1),
-                                          reversed(reordered_shape_indexes)):
-                if (start_index is None or axis + 1 == start_index or get_dsl_insn(tensor) != "") and \
-                        reversed_idx >= ub_split_axis_index_in_reordered_shape:
-                    self.pragma(tensor, axis, "axis_group", 0)
-                    start_index = axis
-                else:
-                    break
-        # For reduce tensor, if reduce tensor is not reordered, skip the procedure
-        if reduce_ub_tensor in self._tensor_to_reorder_map:
-            reordered_shape_indexes = self._tensor_to_reorder_map[reduce_ub_tensor]
-        else:
-            return
-        start_index = None
-        skip_once = None
-        ub_split_axis_index_in_reordered_shape = \
-            reordered_shape_indexes.index(self.ub_tiling_result_pair[1])
-        # Reversed order axis search
-        for reversed_idx, axis in zip(range(len(reordered_shape_indexes) - 1, -1, -1),
-                                      reversed(reordered_shape_indexes)):
-            # Skip last axis if it is nlast reduce
-            if self.reduce_info.is_reduce_not_last_axis() and not skip_once:
-                skip_once = True
-                continue
-            # Add ub_tiling axis directly if ub_tiling axis is reduce axis
-            if axis is self.ub_tiling_result_pair[1]:
-                if self.ub_tiling_info.tiling_axis_index in reduce_axis_indexes:
-                    self.pragma(reduce_ub_tensor, axis, "axis_group", 0)
-                    break
-            elif not isinstance(axis, self.Placeholder):
-                if (start_index is None or axis + 1 == start_index) and \
-                        reversed_idx >= ub_split_axis_index_in_reordered_shape and axis in reduce_axis_indexes:
-                    self.pragma(reduce_ub_tensor, axis, "axis_group", 0)
-                    start_index = axis
-                else:
-                    break
+                # For dma tensor
+                for axis_idx in range(self.ub_tiling_info.tiling_axis_index,
+                                      len(self.reduce_info.shape_before_reduce)):
+                    # Simple last two axis
+                    if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
+                                    len(self.reduce_info.shape_before_reduce) - 2):
+                        self.pragma(tensor, axis_idx, "axis_group", 0)
+
+        # For reduce tensor
+        # ub_tiling_axis inner needs to be in the axis_group if it is reduce axis
+        if ub_tiling_on_reduce_axis:
+            self.pragma(reduce_ub_tensor, self.ub_tiling_result_pair[1], "axis_group", 0)
+        for axis_idx in range(self.ub_tiling_info.tiling_axis_index + 1,
+                              len(self.reduce_info.shape_before_reduce)):
+            # pragma on all reduce axis
+            if axis_idx in self.reduce_info.reduce_axis_indexes:
+                self.pragma(reduce_ub_tensor, axis_idx, "axis_group", 0)
 
     @staticmethod
     def _contains_zero_axis():
