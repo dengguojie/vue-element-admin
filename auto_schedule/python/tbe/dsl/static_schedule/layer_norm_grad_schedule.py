@@ -927,7 +927,9 @@ def schedule_cut_general(sch_list, shape_input, ub_split_reduce_axis, split_fact
         size = size * shape_input[3]
     loop_tail_size = size - outer_factor * loop_size
 
-    if _need_dichotomy_add(loop_size, loop_tail_size, dtype):
+    soc_version = get_soc_spec("SOC_VERSION")
+
+    if _need_dichotomy_add(loop_size, loop_tail_size, dtype) and soc_version not in ("Ascend920", "Ascend920A",):
         sch[final_out_buffer].emit_insn(sum_x_ub_inner, "vector_dichotomy_add_for_bn_reduce")
     else:
         sch[final_out_buffer].emit_insn(sum_x_ub_inner, "vector_reduce_sum")
@@ -1016,7 +1018,9 @@ def schedule_cut_m1_nz(sch_list, res, shape_x,
 
     vector_inst_one_repeat_size = 64
 
-    if ub_split_inner*16 % vector_inst_one_repeat_size == 0:
+    soc_version = get_soc_spec("SOC_VERSION")
+
+    if ub_split_inner * 16 % vector_inst_one_repeat_size == 0 and soc_version not in ("Ascend920", "Ascend920A",):
         sch[final_ub_tensor].emit_insn(ub_inner,
                                        "vector_dichotomy_add_for_bn_reduce")
     else:
