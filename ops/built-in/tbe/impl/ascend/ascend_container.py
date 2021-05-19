@@ -186,6 +186,8 @@ class AContainer(a_lib.ObjWithConst):
         self.const_block_byte = 32
         self.const_vector_proc_max_rpt = 255
         self.const_vector_proc_byte = 256
+        self.const_proposal_data_num = 8
+        self.const_proposal_repeat_num = 16
 
     def _init_vector_base_cmds(self):
         single_cmds = {"vrec": (self.tinst.vrec, a_types.VecGatherCmdType.SINGLE),

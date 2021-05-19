@@ -168,4 +168,120 @@ IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
 }
 
 INFER_FUNC_REG(FusedBatchNormV2, FusedBatchNormV2Infer);
+//-----------------------SegmentSort-------------------------
+IMPLEMT_COMMON_INFERFUNC(SegmentSortInferShape) {
+    TensorDesc tensordesc_output = op.GetOutputDesc("output_proposal");
+    TensorDesc tensordesc_input = op.GetInputDesc("input_data");
+
+    int64_t data_num = tensordesc_input.GetShape().GetDim(0);
+    int64_t k_num = 0;
+    if (GRAPH_SUCCESS != op.GetAttr("k_num", k_num)) {
+        OP_LOGE(op.GetName().c_str(), "Get attr k_num failed");
+        return GRAPH_FAILED;
+    }
+
+    const int64_t merge_channel = 4;
+    const int64_t core_align_num = 1984;
+    const int64_t core_min_num = 7936;
+    const int64_t pro_repeat_num = 16;
+    const int64_t pro_data_num = 8;
+    int64_t ai_core_num = 32;
+
+    int64_t result_data_num = (data_num + ai_core_num - 1) / ai_core_num;
+    result_data_num = (result_data_num + core_align_num - 1) / core_align_num * core_align_num;
+    if (result_data_num < core_min_num) {
+        result_data_num = core_min_num;
+    }
+
+    ai_core_num = (data_num  + result_data_num - 1) / result_data_num;
+    if (ai_core_num > merge_channel) {
+        ai_core_num = (ai_core_num + merge_channel - 1) / merge_channel * merge_channel;
+    }
+
+    result_data_num = result_data_num + pro_repeat_num;
+
+    vector<int64_t> output_shape;
+    output_shape.push_back(ai_core_num);
+    output_shape.push_back(result_data_num);
+    output_shape.push_back(pro_data_num);
+
+    tensordesc_output.SetShape(Shape(output_shape));
+    tensordesc_output.SetDataType(tensordesc_input.GetDataType());
+    (void)op.UpdateOutputDesc("output_proposal", tensordesc_output);
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SegmentSort, SegmentSortInferShape);
+//-----------------------SegmentSort END---------------------
+// ----------------------MultiMerge----------------------
+IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
+    TensorDesc tensordesc_output = op.GetOutputDesc("output_proposal");
+    TensorDesc tensordesc_input = op.GetInputDesc("input_proposal");
+
+    int64_t channel_num = tensordesc_input.GetShape().GetDim(0);
+    int64_t data_num = tensordesc_input.GetShape().GetDim(1);
+    int64_t k_num = 0;
+    if (GRAPH_SUCCESS != op.GetAttr("k_num", k_num)) {
+        OP_LOGE(op.GetName().c_str(), "Get attr k_num failed");
+        return GRAPH_FAILED;
+    }
+
+    const int64_t merge_channel = 4;
+    const int64_t pro_repeat_num = 16;
+    const int64_t pro_data_num = 8;
+    int64_t ai_core_num = 32;
+
+    int64_t result_data_num = (data_num - pro_repeat_num) * merge_channel;
+    k_num = (k_num + pro_repeat_num - 1) / pro_repeat_num * pro_repeat_num;
+    if (k_num < result_data_num) {
+        result_data_num = k_num;
+    }
+    result_data_num = result_data_num + pro_repeat_num;
+
+    ai_core_num = channel_num / 4;
+    if (ai_core_num > merge_channel) {
+        ai_core_num = (ai_core_num + merge_channel - 1) / merge_channel * merge_channel;
+    }
+
+    vector<int64_t> output_shape;
+    output_shape.push_back(ai_core_num);
+    output_shape.push_back(result_data_num);
+    output_shape.push_back(pro_data_num);
+
+    tensordesc_output.SetShape(Shape(output_shape));
+    tensordesc_output.SetDataType(tensordesc_input.GetDataType());
+    (void)op.UpdateOutputDesc("output_proposal", tensordesc_output);
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MultiMerge, MultiMergeInferShape);
+//-----------------------MultiMerge END---------------------
+// ----------------------SingleMerge----------------------
+IMPLEMT_COMMON_INFERFUNC(SingleMergeInferShape) {
+    TensorDesc tensordesc_output_data = op.GetOutputDesc("output_data");
+    TensorDesc tensordesc_output_index = op.GetOutputDesc("output_index");
+    TensorDesc tensordesc_input = op.GetInputDesc("input_proposal");
+
+    int64_t k_num = 0;
+    if (GRAPH_SUCCESS != op.GetAttr("k_num", k_num)) {
+        OP_LOGE(op.GetName().c_str(), "Get attr k_num failed");
+        return GRAPH_FAILED;
+    }
+
+    vector<int64_t> output_shape;
+    output_shape.push_back(k_num);
+
+    tensordesc_output_data.SetShape(Shape(output_shape));
+    tensordesc_output_data.SetDataType(tensordesc_input.GetDataType());
+    (void)op.UpdateOutputDesc("output_data", tensordesc_output_data);
+
+    tensordesc_output_index.SetShape(Shape(output_shape));
+    tensordesc_output_index.SetDataType(DT_INT32);
+    (void)op.UpdateOutputDesc("output_index", tensordesc_output_index);
+
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SingleMerge, SingleMergeInferShape);
+//-----------------------SingleMerge END---------------------
 }//namespace ge
