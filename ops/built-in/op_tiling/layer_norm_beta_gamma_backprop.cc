@@ -34,7 +34,7 @@ bool LayerNormBetaGammaBackpropTiling(const std::string& op_type, const TeOpPara
 
   ByteBufferPut(run_info.tiling_data, dim_0);
   ByteBufferPut(run_info.tiling_data, dim_1);
-  run_info.block_dim = 1;
+  run_info.block_dim = dim_0;
   run_info.tiling_key = 1;
 
   GELOGI("LayerNormBetaGammaBackprop Tiling end.");

@@ -16,7 +16,7 @@
 layer_norm_beta_gamma_backprop schedule
 """
 from te.lang.dynamic.schedule.constants import Pattern
-from te.tvm import schedule as tvm
+from te import tvm
 from tbe.dsl.base.operation import register_schedule
 import te.platform as tbe_platform
 
@@ -111,24 +111,20 @@ class LayerNormBetaGammaSchedule:
                 sch[tensor].set_scope(tbe_platform.scope_ubuf)
                 insn = self._get_emit_insn_map(tensor)
                 emit_insn_list.append((tensor, insn))
-        res_ub = sch.cache_write(res, tbe_platform.scope_ubuf)
 
-        dim_0 = res_ub.op.axis[0]
-        dim_1 = res_ub.op.axis[1]
-        dim_2 = res_ub.op.axis[2]
-        reduce_dim_0 = res_ub.op.reduce_axis[0]
-        reduce_dim_1 = res_ub.op.reduce_axis[1]
+        dim0, dim1, dim2 = res.op.axis
+        reduce_dim0, reduce_dim1 = res.op.reduce_axis
 
-        sch[res_ub].reorder(reduce_dim_0, reduce_dim_1, dim_0, dim_1, dim_2)
+        sch[res].remove_init()
+        sch[res].reorder(reduce_dim0, reduce_dim1, dim0, dim1, dim2)
+        sch[res].bind(reduce_dim0, self.block)
 
-        for tensor,insn in emit_insn_list:
-            sch[tensor].compute_at(sch[res_ub], dim_0)
-        sch[res_ub].compute_at(sch[res], res.op.axis[0])
+        for tensor, insn in emit_insn_list:
+            sch[tensor].compute_at(sch[res], reduce_dim1)
+        for tensor, insn in emit_insn_list:
+            sch[tensor].emit_insn(tensor.op.axis[2], insn)
+        sch[res].emit_insn(res.op.axis[0], tbe_platform.DMA_COPY)
 
-        for tensor,insn in emit_insn_list:
-            sch[tensor].emit_insn(tensor.op.axis[0], insn)
-        sch[res_ub].emit_insn(dim_1, self._get_emit_insn_map(res))
-        sch[res].emit_insn(res.op.axis[1], tbe_platform.DMA_COPY)
 
     def schedule_beta(self, sch, res):
         emit_insn_list = []
@@ -142,26 +138,23 @@ class LayerNormBetaGammaSchedule:
                 sch[tensor].set_scope(tbe_platform.scope_ubuf)
                 insn = self._get_emit_insn_map(tensor)
                 emit_insn_list.append((tensor, insn))
-        res_ub = sch.cache_write(res, tbe_platform.scope_ubuf)
 
-        dim_0 = res_ub.op.axis[0]
-        dim_1 = res_ub.op.axis[1]
-        dim_2 = res_ub.op.axis[2]
-        reduce_dim_0 = res_ub.op.reduce_axis[0]
-        reduce_dim_1 = res_ub.op.reduce_axis[1]
+        dim0, dim1, dim2 = res.op.axis
+        reduce_dim0, reduce_dim1 = res.op.reduce_axis
 
-        sch[res_ub].reorder(reduce_dim_0, reduce_dim_1, dim_0, dim_1, dim_2)
+        sch[res].remove_init()
+        sch[res].reorder(reduce_dim0, reduce_dim1, dim0, dim1, dim2)
+        sch[res].bind(reduce_dim0, self.block)
 
-        for tensor,insn in emit_insn_list:
-            sch[tensor].compute_at(sch[res_ub], dim_0)
-        sch[res_ub].compute_at(sch[res], res.op.axis[0])
-       
-        for tensor,insn in emit_insn_list:
-            sch[tensor].emit_insn(tensor.op.axis[0], insn)
-        sch[res_ub].emit_insn(dim_1, self._get_emit_insn_map(res))
-        sch[res].emit_insn(res.op.axis[1], tbe_platform.DMA_COPY)
+        for tensor, insn in emit_insn_list:
+            sch[tensor].compute_at(sch[res], reduce_dim1)
+        for tensor, insn in emit_insn_list:
+            sch[tensor].emit_insn(tensor.op.axis[2], insn)
+        sch[res].emit_insn(res.op.axis[0], tbe_platform.DMA_COPY)
+
 
     def schedule(self):
+        self.block = tvm.thread_axis("blockIdx.x")
         sch = tvm.create_schedule([self._outs[0].op, self._outs[1].op])
         sch.tiling_key = 1
         self.schedule_gamma(sch, self._outs[0])
