@@ -431,7 +431,7 @@ bool WriteConstTiling(const std::string& op_type, const TeOpParas& op_paras, con
   OP_LOGD(op_type.c_str(), "tiling block_dims:%lld", block_dims);
   run_info.block_dim = static_cast<uint32_t>(block_dims);
   run_info.tiling_key = static_cast<uint32_t>(key);
-  if (op_info.contains("_attr_vars")) {
+  if (op_info.contains("_attr_vars") && op_info.at("_attr_vars").contains(std::to_string(key))) {
     try {
       const auto& all_vars = op_info.at("_attr_vars").at(std::to_string(key));
       for (const auto& var : all_vars) {
