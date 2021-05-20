@@ -846,11 +846,13 @@ def get_max_ub_count(dtype, dim):
 
 
 # pylint: disable=too-many-branches
-def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop, max_ub_count):
+def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop, max_ub_count, dtype):
     """
     get ub tiling
     """
-    last_axis = len(shape) - 1
+    align_num = BLOCK_REDUCE_INT8 // DTYPE_WIDTH_MAP.get(dtype)
+    shape_aligned = shape[:-1] + [(shape[-1] + align_num - 1) // align_num]
+    last_axis = len(shape_aligned) - 1
     ub_split_inner = 1
     ub_split_axis = 0
     if block_tiling_axis < 0 or block_tiling_axis > last_axis:
@@ -859,7 +861,7 @@ def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop, max_ub_coun
     bound_size = max_ub_count
     split_axis = block_tiling_axis
     step = -1
-    shape_c = shape[1]
+    shape_c = shape_aligned[1]
     temp_size = shape_c
     need_split = False
 
@@ -868,17 +870,17 @@ def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop, max_ub_coun
         if i == 1:
             continue
 
-        temp_size = temp_size * shape[i]
+        temp_size = temp_size * shape_aligned[i]
         if temp_size >= bound_size:
             split_axis = i
-            temp_size = temp_size / shape[i]
+            temp_size = temp_size / shape_aligned[i]
             need_split = True
             break
 
     split_size = 1
     # split the split axis
     if need_split:
-        for i in range(1, shape[split_axis] + 1, 1):
+        for i in range(1, shape_aligned[split_axis] + 1, 1):
             if (temp_size * i) == bound_size:
                 split_size = i
                 break
@@ -888,8 +890,8 @@ def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop, max_ub_coun
         if split_size < 1:
             return None, None
 
-        if shape[split_axis] % split_size != 0:
-            while shape[split_axis] % split_size != 0:
+        if shape_aligned[split_axis] % split_size != 0:
+            while shape_aligned[split_axis] % split_size != 0:
                 split_size -= 1
     else:
         split_size = block_tiling_inner_loop
@@ -1041,7 +1043,7 @@ def logits_nchw_schedule(res, input_tensors):
         return None, []
 
     ub_split_axis, ub_split_inner = get_ub_tiling(
-        shape_x, block_split_axis, block_split_inner_size, max_ub_count)
+        shape_x, block_split_axis, block_split_inner_size, max_ub_count, dtype)
 
     split_factor = ub_split_inner
     if split_factor <= 1:
@@ -1093,6 +1095,7 @@ def logits_nchw_schedule(res, input_tensors):
 
     for i in input_tensor_buffer_tensor_map:
         buffer_tensor = input_tensor_buffer_tensor_map[i]
+        sch[buffer_tensor].storage_align(sch[buffer_tensor].op.axis[2], 8, 0)
         sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[2], "dma_copy")
 
     for i in mid_tensor_buffer_tensor_map:
@@ -1104,7 +1107,7 @@ def logits_nchw_schedule(res, input_tensors):
             emit_insn_axis = 0
             if i.op.tag.find("reduce") != -1:
                 emit_insn_axis = 2
-
+            sch[mid_tensor].storage_align(sch[mid_tensor].op.axis[2], 8, 0)
             sch[mid_tensor].emit_insn(mid_tensor.op.axis[emit_insn_axis], insn)
 
     for i in mid_out_tensor_list:
