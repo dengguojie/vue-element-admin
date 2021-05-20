@@ -274,6 +274,18 @@ case17 = {"params": [{"shape": (34300, 4, 16, 16), "dtype": "float32",
          "format_expect": ["NCDHW"],
          "support_expect": False}
 
+case18 = {"params": [{"shape": (384, 32, 16, 16), "dtype": "float32",
+                     "ori_shape": (384, 32, 16, 16), "format": "FRACTAL_Z_3D",
+                     "ori_format": "FRACTAL_Z_3D",
+                     "param_type": "input", "value_range": [-10.0, 10.0]},
+                    {"shape": (512, 2048, 3, 1, 1), "dtype": "float32",
+                     "ori_shape": (512, 2048, 3, 1, 1), "format": "NCDHW", "ori_format": "NCDHW",
+                     "param_type": "output"},
+                    "FRACTAL_Z_3D", "NCDHW"],
+         "expect": "success",
+         "format_expect": ["NCDHW"],
+         "support_expect": False}
+
 ut_case.add_case(["Ascend910"], err1)
 ut_case.add_case(["Ascend910"], err2)
 ut_case.add_case(["Ascend910"], err6)
@@ -293,6 +305,7 @@ ut_case.add_case(["Ascend310","Ascend910A"], case7)
 ut_case.add_case(["Ascend310","Ascend910A"], case15)
 ut_case.add_case(["Ascend310","Ascend910A"], case16)
 ut_case.add_case(["Ascend310","Ascend910A"], case17)
+ut_case.add_case(["Ascend310","Ascend910A"], case18)
 #ut_case.add_precision_case(["Ascend910"], case8)
 #ut_case.add_precision_case(["Ascend910"], case9)
 #ut_case.add_precision_case(["Ascend910"], case12)

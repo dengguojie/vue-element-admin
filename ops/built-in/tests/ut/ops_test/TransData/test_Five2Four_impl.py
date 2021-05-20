@@ -87,6 +87,11 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_trans_data_case((31,3,201,16,32), (31, 92, 201, 16),
                                      "int8", "int8_5", "success", "NCHW"))
+
+#five 2 four float 
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((2560, 32, 4, 26, 16), (2560, 512, 4, 26),
+                                     "float16", "float16_1", "success", "NCHW"))
 if __name__ == '__main__':
     ut_case.run("Ascend910")
     exit(0)

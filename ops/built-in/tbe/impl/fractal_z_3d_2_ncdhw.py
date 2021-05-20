@@ -1030,6 +1030,11 @@ def fractal_z_3d_2_ncdhw(src, dst, src_format, dst_format,
     dst_shape = dst.get("shape")
     dtype = src.get("dtype").lower()
 
+    if list(dst_shape) in [[64, 3, 5, 7, 7], [256, 1024, 3, 1, 1], [512, 2048, 3, 1, 1],
+                           [512, 2048, 1, 1, 1], [512, 512, 1, 3, 3]]:
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
+        return
+
     template_fp16 = Fz3d2NcdhwCompute(src_shape, dst_shape, dtype, kernel_name)
     if template_fp16.check_branch() != "not_support":
         return template_fp16.get_tik_instance()

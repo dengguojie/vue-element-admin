@@ -65,6 +65,7 @@ ut_case.add_case(["Ascend910"],
                                      "int8", "int8_2", "success", "NHWC"))
 
 from impl.five_2_four_v200_fp32fp16 import five_2_four_v200_fp32fp16
+from impl.trans_data_negative_target_ntc import trans_data_negative_target_ntc
 from te import platform as cce_conf
 cce_conf.cce_conf.te_set_version("Ascend710", core_type="VectorCore")
 
@@ -83,8 +84,20 @@ def five_2_four_v200_002(test_args):
                                "origin_shape":(3, 2, 16, 15),"origin_format":"NHWC"},
                                "NC0HWC1","NHWC")
     cce_conf.cce_conf.te_set_version(test_args)
+
+def five_2_four_v200_003(test_args):
+    cce_conf.cce_conf.te_set_version("Ascend710", core_type="VectorCore")
+    trans_data_negative_target_ntc({"shape":(200, 1, 10, 26, 16), "dtype":"float32", "format":"NC1HWC0",
+                               "origin_shape":(200, 1, 10, 26, 16),"origin_format":"NCHW"},
+                              {"shape":(200, 1, 10, 26), "dtype":"float32","format":"NCHW",
+                               "origin_shape":(200, 1, 10, 26),"origin_format":"NCHW"},
+                              "NC1HWC0","NCHW")
+    cce_conf.cce_conf.te_set_version(test_args)
+
 ut_case.add_cust_test_func(test_func=five_2_four_v200_001)
 ut_case.add_cust_test_func(test_func=five_2_four_v200_002)
+ut_case.add_cust_test_func(test_func=five_2_four_v200_003)
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

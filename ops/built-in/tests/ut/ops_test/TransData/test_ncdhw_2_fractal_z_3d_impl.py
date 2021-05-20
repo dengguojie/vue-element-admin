@@ -91,9 +91,9 @@ ut_case.add_case(["Ascend910"],
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((116, 61, 3, 3, 1000), (3, 2, 16, 16),
                                      "float16", "ncdhw_2_fractal_z_3d_006", "success"))
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((116, 61, 3, 3, 1000), (3, 2, 16, 16),
-                                     "float32", "ncdhw_2_fractal_z_3d_007", "success"))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((64, 3, 5, 7, 7), (245, 4, 16, 16),
+                                     "float16", "ncdhw_2_fractal_z_3d_108", "success"))
 
 # exception
 ut_case.add_case(["Ascend910"],

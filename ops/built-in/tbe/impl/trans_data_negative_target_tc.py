@@ -223,7 +223,11 @@ def _tiling_params_negative(args):
 
     # axis c1 tiling parameters
     vnc_col_size = tp_201_ub_offset // tdc.VNC_LINES // block_elem_cnt * block_elem_cnt
-    if axis_src_c1_size * c0_len >= 16 * block_elem_cnt:  # use ubuf_2_ubuf
+    if axis_dst_c_size % c0_len == 0:
+        c_gate = 16 * c0_len
+    else:
+        c_gate = 56 * c0_len
+    if axis_src_c1_size * c0_len >= c_gate:  # use ubuf_2_ubuf
         tp_201_tiling_mode = 2010
         tmp_src_c1_lp_unit = tp_201_ub_offset // c0_len // block_elem_cnt * block_elem_cnt
     elif in_dtype not in INT8_DTYPES:
@@ -663,7 +667,8 @@ def _copy_data_out(copy_out_args):
             burst_len = left_pl_size * r2nd_pl_size * sub_c_size
             _inner_copy(0, 0, burst_len)
         with tik_inst.else_scope():
-            with tik_inst.if_scope(tik.all(tiling_mode == 2011, all_c_in == 1)):
+            with tik_inst.if_scope(tik.all(tik.any(tiling_mode == 2011, sub_c_size % c0_len == 0),
+                                           all_c_in == 1)):
                 with tik_inst.new_stmt_scope(disable_sync=True):
                     with tik_inst.for_range(0, left_pl_size) as left_idx:
                         left_gm_offset = left_idx * src_left_step_out

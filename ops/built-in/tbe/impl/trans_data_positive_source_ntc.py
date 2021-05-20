@@ -514,9 +514,12 @@ def _once_vnchwconv_invert(args):
     (tik_inst, src_ub, mc_pos, ub_offset, vnc_col_size, plp_c_size,
      r1st_src_r2nd_dst_same, plp_cl_size, cr_lp_cnt, plp_cr_size, c_mod_c0, c0_size, ele_per_block) = args
     tensor_dtype = src_ub.dtype.lower()
+    size_factor = tdc.get_dtype_factor(tensor_dtype)
     repeat_cnt = tdc.ceil_div(plp_cr_size, c0_size)
     if tensor_dtype in ("float32", "int32", "uint32"):  # to avoid compile error
         src_ub = src_ub.reinterpret_cast_to("float16")
+        if vnc_col_size % 32 > 0:  # to avoid compile error
+            vnc_col_size = 32
 
     # do cdh -> dhc
     with tik_inst.new_stmt_scope():
@@ -535,7 +538,7 @@ def _once_vnchwconv_invert(args):
                 dst_stride.set_as(plp_cl_size * 16)
 
             src_addr_list = [src_ub[vnc_col_size * i] for i in tdc.ADDR_IDX_LIST]
-            dst_addr_list = [src_ub[ub_offset + dst_gap * i] for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [src_ub[ub_offset + dst_gap * size_factor * i] for i in tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
                 dst_stride.set_as(0)

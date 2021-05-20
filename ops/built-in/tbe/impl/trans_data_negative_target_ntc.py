@@ -17,6 +17,7 @@ trans_data_negative_target_ntc
 """
 
 from te import tik
+from te import platform as cce
 from impl import trans_data_common_func as tdc
 
 
@@ -267,10 +268,12 @@ def _tiling_params_negative(args):
     # dst axis C-RIGHT tiling parameters
     tp_200_dst_cr_dims = 2
     axis_dst_cr_size = tdc.get_shape_size(out_shape[dst_format.index("C") + 1:])
-    cr_gate = 3 * c0_len  # select different tiling mode
+    cr_gate = 15 * c0_len  # select different tiling mode
     # once vnchwconv flow
-    if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32)) and axis_dst_cr_size >= cr_gate:
-        tmp_dst_cr_lp_unit = half_ub_size // c0_len // block_elem_cnt * block_elem_cnt  # block align
+    if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32) or
+        (in_dtype in NEED_CAST_DTYPES and cce.cce_conf.intrinsic_check_support("Intrinsic_vnchwconv", "float32"))) and \
+            axis_dst_cr_size >= cr_gate:
+        tmp_dst_cr_lp_unit = half_ub_size // c0_len // c0_len * c0_len  # block align
     else:  # twice vnchwconv flow
         if in_dtype in INT8_DTYPES:
             tmp_dst_cr_lp_unit = vnc_col_size // 2 // c0_len // block_elem_cnt * block_elem_cnt
@@ -326,10 +329,12 @@ def _tiling_params_negative(args):
     tp_200_dst_cl_dims = 2
     axis_dst_cl_size = tdc.get_shape_size(out_shape[:dst_format.index("C")])
     src_c_dst_cr_size = axis_src_c_size * axis_dst_cr_size
-    if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32)) and axis_dst_cr_size >= cr_gate:
+    if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32) or
+        (in_dtype in NEED_CAST_DTYPES and cce.cce_conf.intrinsic_check_support("Intrinsic_vnchwconv", "float32"))) and \
+            axis_dst_cr_size >= cr_gate:
         tp_200_tiling_mode = 2001
         tmp_dst_cl_lp_unit = half_ub_size // (tp_200_src_c_lp_unit *
-                                              tdc.ceil_fill(tp_200_dst_cr_lp_unit, block_elem_cnt) * c0_len)
+                                              tdc.ceil_fill(tp_200_dst_cr_lp_unit, c0_len) * c0_len)
         tp_200_dst_cl_lp_unit = tmp_dst_cl_lp_unit if axis_dst_cl_size > tmp_dst_cl_lp_unit else axis_dst_cl_size
     # c and c-right cannot move out one time or one vnc line cannot save c0_size c * c-right
     elif axis_src_c_size > tp_200_src_c_lp_unit or src_c_dst_cr_size > tmp_dst_cr_lp_unit:
@@ -553,16 +558,17 @@ def _once_vnchwconv_invert(args):
     with tik_inst.new_stmt_scope():
         src_stride = tik_inst.Scalar(dtype="int32")
         dst_stride = tik_inst.Scalar(dtype="int32")
-        cr_align_block_size = tdc.ceil_fill(cr_pln_size, ele_per_block)
-        repeat_cnt = tdc.ceil_div(cr_pln_size, ele_per_block)
-        if src_ub.dtype.lower() not in VNC_SUPPORT_DTYPES:
+        cr_align_block_size = tdc.ceil_fill(cr_pln_size, tdc.VNC_LINES)
+        repeat_cnt = tdc.ceil_div(cr_pln_size, tdc.VNC_LINES)
+        if (src_ub.dtype.lower() in NEED_CAST_DTYPES and
+                not cce.cce_conf.intrinsic_check_support("Intrinsic_vnchwconv", "float32")):
             src_ub = src_ub.reinterpret_cast_to("float16")
 
         with tik_inst.for_range(0, cl_plp_size) as cl_idx:
             with tik_inst.for_range(0, c_plp_size) as c_idx:
                 src_offset = (cl_idx * c_plp_size + c_idx) * cr_pln_size * c0_len
                 dst_offset = (cl_idx * c_plp_size + c_idx) * cr_align_block_size * c0_len + ub_offset
-                if in_dtype not in INT8_DTYPES:  # for float16
+                if in_dtype in ("float16", "int16", "uint16"):  # for b16
                     # do c1ht -> c1th
                     src_addr_list = [src_ub[c0_len * i + src_offset] for i in tdc.ADDR_IDX_LIST]
                     dst_addr_list = [src_ub[cr_align_block_size * i + dst_offset] for i in tdc.ADDR_IDX_LIST]
@@ -573,6 +579,35 @@ def _once_vnchwconv_invert(args):
                         src_stride.set_as(16)
                         dst_stride.set_as(1)
                     tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+                elif in_dtype in NEED_CAST_DTYPES and cce.cce_conf.intrinsic_check_support("Intrinsic_vnchwconv",
+                                                                                           "float32"):
+                    with tik_inst.for_range(0, c0_len // 8) as c0_idx:  # process 16*8 once
+                        c0_offset = c0_idx * 8 * cr_align_block_size
+                        src_addr_list = [src_ub[c0_len * i + c0_idx * 8 + src_offset] for i in tdc.ADDR_IDX_LIST]
+                        dst_addr_list = [src_ub[c0_offset + dst_offset], src_ub[c0_offset + 8 + dst_offset],
+                                         src_ub[cr_align_block_size + c0_offset + dst_offset],
+                                         src_ub[cr_align_block_size + c0_offset + 8 + dst_offset],
+                                         src_ub[2 * cr_align_block_size + c0_offset + dst_offset],
+                                         src_ub[2 * cr_align_block_size + c0_offset + 8 + dst_offset],
+                                         src_ub[3 * cr_align_block_size + c0_offset + dst_offset],
+                                         src_ub[3 * cr_align_block_size + c0_offset + 8 + dst_offset],
+                                         src_ub[4 * cr_align_block_size + c0_offset + dst_offset],
+                                         src_ub[4 * cr_align_block_size + c0_offset + 8 + dst_offset],
+                                         src_ub[5 * cr_align_block_size + c0_offset + dst_offset],
+                                         src_ub[5 * cr_align_block_size + c0_offset + 8 + dst_offset],
+                                         src_ub[6 * cr_align_block_size + c0_offset + dst_offset],
+                                         src_ub[6 * cr_align_block_size + c0_offset + 8 + dst_offset],
+                                         src_ub[7 * cr_align_block_size + c0_offset + dst_offset],
+                                         src_ub[7 * cr_align_block_size + c0_offset + 8 + dst_offset],
+                                         ]
+                        with tik_inst.if_scope(repeat_cnt == 1):
+                            src_stride.set_as(0)
+                            dst_stride.set_as(0)
+                        with tik_inst.else_scope():
+                            src_stride.set_as(32)
+                            dst_stride.set_as(2)
+                        tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list,
+                                           repeat_cnt, dst_stride, src_stride)
                 else:  # for int8, uint8
                     src_addr_list = [src_ub[c0_len * i + src_offset] for i in tdc.ADDR_IDX_LIST]
                     dst_addr_list = [src_ub[cr_align_block_size * i + dst_offset] for i in tdc.ADDR_IDX_LIST]
@@ -1005,8 +1040,12 @@ def _copy_data_out(copy_out_args):
     (tik_inst, dst_out_gm, src_ub, tiling_mode, src_c_step_out, dst_cl_step_out, cl_plp_size, cr_pln_size, c_plp_size,
      cr_lp_cnt, is_mc_cr, ele_per_block, is_last_c1, c0_len, c_mod_c0) = copy_out_args
 
-    cr_block_align_size = tdc.ceil_fill(cr_pln_size, ele_per_block)
     with tik_inst.new_stmt_scope():
+        cr_block_align_size = tik_inst.Scalar(name="cr_block_align_size")
+        with tik_inst.if_scope(tiling_mode == 2001):
+            cr_block_align_size.set_as(tdc.ceil_fill(cr_pln_size, tdc.VNC_LINES))
+        with tik_inst.else_scope():
+            cr_block_align_size.set_as(tdc.ceil_fill(cr_pln_size, ele_per_block))
         tmp_reg = [tik_inst.Scalar(dtype=src_ub.dtype) for i in tdc.REG_IDX_LIST[:ele_per_block]]
         sub_c_size = tik_inst.Scalar(dtype="int32", name="sub_c_size")
         with tik_inst.if_scope(tik.all(c_mod_c0 > 0, is_last_c1 > 0)):
