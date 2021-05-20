@@ -28,6 +28,7 @@ from .util import get_dsl_insn
 
 MAX_NODE_COUNT = 12
 
+
 class WorkspaceLayerNormSchedule:
     def __init__(self, graph_info, layer_norm_info, outs):
         self.graph_info = graph_info
@@ -131,7 +132,8 @@ class WorkspaceLayerNormSchedule:
             # raw input params
             for input_tensor in self.graph_info.input_tensor_set:
                 for nextest_tensor in self.forward_compute_graph_map[input_tensor]:
-                    input_tensor_ub = self.schedule.cache_read(input_tensor, tbe_platform_info.scope_ubuf, [nextest_tensor])
+                    input_tensor_ub = self.schedule.cache_read(
+                        input_tensor, tbe_platform_info.scope_ubuf, [nextest_tensor])
                     self.input_tensor_ub_list.append(input_tensor_ub)
                     self.input_tensor_2_dict[nextest_tensor] = input_tensor_ub
                 if input_tensor.op.name == "x":
@@ -222,6 +224,9 @@ class WorkspaceLayerNormSchedule:
         ub_fuse_factor = case.ub_fuse_factor
 
         block_inner = block_factor if block_factor is not None else var("block_factor", (1, None))
+        block_factor_1 = case.block_factor_1
+        block_inner_1 = block_factor_1 if block_factor_1 is not None else var(
+            "block_factor_1", (1, None))
         ub_inner = ub_factor if ub_factor is not None else var("ub_factor", (1, None))
         ub_fuse_inner = ub_fuse_factor if ub_fuse_factor is not None else var("ub_fuse_factor", (1, None))
 

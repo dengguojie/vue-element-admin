@@ -490,7 +490,7 @@ def layer_norm(input_x,
     if shape_gamma != shape_beta:
         error_detail = "gamma and beta's shape must be same."
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", "input_beta",
-                                                                error_detail)
+                                                               error_detail)
     no_need_fix_gamma = False
     no_need_fix_beta = False
     if shape_x[begin_params_axis:] != shape_gamma:
@@ -542,18 +542,16 @@ def layer_norm(input_x,
 
     for (dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis) in ins[:1]:
         with tbe.compute():
-
             x_var, gamma_var, beta_var, reduce_axis_var = _reduce_variable_shape(
                 [dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis], var_list)
-
             data_x = tvm.placeholder(x_var, name="x", dtype=dtype)
             data_gamma = tvm.placeholder(gamma_var, name="gamma", dtype=dtype)
             data_beta = tvm.placeholder(beta_var, name="beta", dtype=dtype)
 
             mean, variance, res = layer_norm_compute(data_x, data_gamma, data_beta,
-                                                        output_y, output_mean, output_variance,
-                                                        dy_reduce_axis.get("value"), begin_params_axis, epsilon,
-                                                        kernel_name, impl_mode)
+                                                     output_y, output_mean, output_variance,
+                                                     dy_reduce_axis.get("value"), begin_params_axis, epsilon,
+                                                     kernel_name, impl_mode)
             tensors.append([data_x, data_gamma, data_beta, res, mean, variance])
         with tvm.target.cce():
             sch = tbe.auto_schedule([res, mean, variance])

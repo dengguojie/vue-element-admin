@@ -29,6 +29,7 @@ from .util import get_dsl_insn
 
 MAX_NODE_COUNT = 12
 
+
 @register_schedule(pattern=Pattern.LayerNorm)
 def schedule(outs, tiling_case):
     """
@@ -207,6 +208,7 @@ class NormalLayerNormSchedule:
 
         # get tiling axis
         block_split_axis_index = case.block_split_axis_index
+        block_split_axis_index_1 = case.block_split_axis_index_1
         ub_split_axis_index = case.ub_split_axis_index
         self.ub_split_axis_index = ub_split_axis_index
         ub_fuse_factor = case.ub_fuse_factor
@@ -215,19 +217,52 @@ class NormalLayerNormSchedule:
         block_factor = case.block_factor
         block_inner = block_factor if block_factor is not None else var(
             "block_factor", (1, None))
+        block_factor_1 = case.block_factor_1
+        block_inner_1 = block_factor_1 if block_factor_1 is not None else var(
+            "block_factor_1", (1, None))
+
+        res_axis = []
+        for d_i in range(len(res_tensor.shape)):
+            res_axis.append(res_tensor.op.axis[d_i])
+
         ub_factor = case.ub_factor
         ub_inner = ub_factor if ub_factor is not None else var(
             "ub_factor", (1, None))
-        ub_fuse_inner = ub_fuse_factor if ub_fuse_factor is not None else var("ub_fuse_factor", (1, None))
+        ub_fuse_inner = ub_fuse_factor if ub_fuse_factor is not None else var("ub_fuse_factor", (0, 0))
         ub_inner = ub_inner + ub_fuse_inner
 
         # block tiling
-        block_outer, block_inner = self.schedule[res_tensor].split(res_tensor.op.axis[block_split_axis_index],
-                                                                   factor=block_inner)
+
         if case.is_split_ub:
-            ub_outer, ub_inner = self.schedule[res_tensor].split(res_tensor.op.axis[ub_split_axis_index],
-                                                                 factor=ub_inner)
+            if block_split_axis_index != block_split_axis_index_1:
+                pre_outer, pre_inner = self.schedule[res_tensor].split(res_tensor.op.axis[block_split_axis_index],
+                                                                       factor=block_inner)
+                suf_outer, suf_inner = self.schedule[res_tensor].split(res_tensor.op.axis[block_split_axis_index_1],
+                                                                       nparts=block_inner_1)
+
+                res_axis[block_split_axis_index] = pre_outer
+                res_axis[block_split_axis_index_1] = suf_inner
+                fuse_axis = self.schedule[res_tensor].fuse(pre_inner, suf_outer)
+
+                ub_outer, ub_inner = self.schedule[res_tensor].split(res_axis[ub_split_axis_index],
+                                                                     factor=ub_inner)
+
+                axis_order = [fuse_axis]
+                for idx, r_axis in enumerate(res_axis):
+                    if idx == ub_split_axis_index:
+                        axis_order.append(ub_outer)
+                        axis_order.append(ub_inner)
+                    else:
+                        axis_order.append(r_axis)
+                self.schedule[res_tensor].reorder(*axis_order)
+                block_outer, block_inner = fuse_axis, axis_order[1]
+            else:
+                block_outer, block_inner = self.schedule[res_tensor].split(res_tensor.op.axis[block_split_axis_index],
+                                                                           factor=block_inner)
+                ub_outer, ub_inner = self.schedule[res_tensor].split(res_axis[ub_split_axis_index], factor=ub_inner)
         else:
+            block_outer, block_inner = self.schedule[res_tensor].split(res_tensor.op.axis[block_split_axis_index],
+                                                                       factor=block_inner)
             ub_outer, ub_inner = self.schedule[res_tensor].split(
                 block_inner, factor=ub_inner)
         self.block_spit_result = [block_outer, block_inner]
