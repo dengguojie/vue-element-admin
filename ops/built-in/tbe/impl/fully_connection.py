@@ -314,6 +314,7 @@ def fully_connection_compute(x, w, b, offset_w, y, num_output, transpose, axis, 
             "format_out": out_format,
             "offset_a": offset_x,
             "offset_b": offset_w,
+            "kernel_name": kernel_name
         }
     result = tbe.gemm(tensor_a=x, tensor_b=w, para_dict=para_dict)
     return result
@@ -398,7 +399,7 @@ def fully_connection(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
 
     # Compute
     result = fully_connection_compute(tensor_x, tensor_w, tensor_b, tensor_offset_w, y,
-                                      num_output, False, axis, offset_x)
+                                      num_output, False, axis, offset_x, kernel_name)
 
     out_addr_type = y.get("addr_type", 0)
     result.op.attrs['addr_type'] = out_addr_type

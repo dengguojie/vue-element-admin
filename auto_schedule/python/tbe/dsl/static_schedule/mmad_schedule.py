@@ -840,6 +840,39 @@ def set_compress_info(sch,  # pylint: disable=R0913, R0914
                                     "block_size": block_size,
                                     "hoist_axis": out_axis})
 
+def _get_gemm_integrated_flag(res):
+    all_tensor = _get_all_tensors(res)
+    for name, tensor in all_tensor.items():
+        if "is_gemm_new" in tensor.op.attrs:
+            return True
+    return False
+
+def _get_all_tensors(res):
+    """
+    get all tensor
+    :param res: tensor
+    :return: list
+    """
+    all_tensor = dict()
+    all_tensor["res"] = res
+
+    def get(tensor):
+        """
+        find all tensor
+        :param tensor: c_gm
+        :return: all tensor
+        """
+
+        tensor_list = tensor.op.input_tensors
+        for one_tensor in tensor_list:
+            # check which tensor has not been checked
+            if one_tensor.op.name not in all_tensor:
+                all_tensor[one_tensor.op.name] = one_tensor
+                get(one_tensor)
+
+    get(res)
+    return all_tensor
+
 
 def mmad_schedule(res, sch_list, dynamic_para=None):
     """
@@ -856,7 +889,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
     """
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     res_real = res[0]
-    if "is_gemm_new" in res_real.op.attrs:
+    if _get_gemm_integrated_flag(res_real):
         return gemm_schedule_integrated(res, sch_list, dynamic_para)
     emit_fusion_insn_map = {"dequant_NZ": "phony_insn",
                             "cast_f16_ub": "vector_conv",

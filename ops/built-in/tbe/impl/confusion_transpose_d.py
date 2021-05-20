@@ -21,6 +21,7 @@ from te.utils import shape_util
 from impl.transpose_d import transpose_d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import tbe
 
 SIZE_SIXTEEN = 16
 
@@ -577,12 +578,17 @@ def confusion_transpose_d_compute(x, y, perm, shape, transpose_first,
                                   kernel_name="confusion_transpose_d"):
     "compute for matmul + confusion_transpose_d fusion"
     if _is_matmul_fusion_case(y, perm, shape, transpose_first):
+        tensor_a = getattr(x, "tensor_a")
+        tensor_b = getattr(x, "tensor_b")
+        para_dict = getattr(x, "para_dict")
+        para_dict["confusion_transpose"] = True
+        x = tbe.gemm(tensor_a=tensor_a, tensor_b=tensor_b, para_dict=para_dict)
         setattr(x, "matmul_with_transpose", True)
         setattr(x, "transpose_shape", y.get("shape"))
     else:
         error_detail = "This case does not support fusion with matmul now."
         error_manager_vector.raise_err_specific_reson("confusion_transpose_d", error_detail)
- 
+
     return x
 
 

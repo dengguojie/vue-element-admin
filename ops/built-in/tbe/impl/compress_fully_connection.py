@@ -442,7 +442,7 @@ def compress_fully_connection(x, w, compress_index, b, offset_w, y,
     if offset_w is None:
         tensor_offset_w = None
     else:
-        err_man_cube.raise_err_one_para("E62006", "compress_fully_connection", 
+        err_man_cube.raise_err_one_para("E62006", "compress_fully_connection",
                                         "tensor offset_w must be None!")
 
     index_size = tvm.var("index_size", dtype="int32")
@@ -452,7 +452,7 @@ def compress_fully_connection(x, w, compress_index, b, offset_w, y,
     # Compute
     result = compress_fully_connection_compute(
         tensor_x, tensor_w, compress_index, tensor_b, tensor_offset_w, y,
-        num_output, False, axis, offset_x)
+        num_output, False, axis, offset_x, kernel_name)
 
     out_addr_type = y.get("addr_type", 0)
     result.op.attrs['addr_type'] = out_addr_type

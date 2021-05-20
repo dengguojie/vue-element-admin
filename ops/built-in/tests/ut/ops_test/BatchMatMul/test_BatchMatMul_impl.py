@@ -308,3 +308,4 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported)
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])
     exit(0)
+

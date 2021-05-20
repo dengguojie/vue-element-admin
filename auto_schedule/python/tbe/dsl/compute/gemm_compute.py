@@ -20,6 +20,7 @@ from enum import Enum
 
 import tbe.common.platform as tbe_platform
 import tbe.common.utils as tbe_utils
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import in_dynamic
 from tbe.dsl.compute.mmad_compute import matmul
@@ -29,8 +30,6 @@ from tbe.tvm.tensor import Tensor
 from tbe.dsl.compute.gemm_integrated_compute import gemm as gemm_integrated
 
 BATCH_MATMUL_LENGTH = 5
-
-USE_GEMM_INTERGRATED = False
 
 def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
     tensor_a,
@@ -541,16 +540,49 @@ def gemm(tensor_a, tensor_b, para_dict):
 
     Returns result
     """
+
+    # use is_gemm is temporary
     alpha = para_dict.get("alpha")
     beta = para_dict.get("beta")
     is_gemm = (alpha is not None) and (beta is not None)
-    if USE_GEMM_INTERGRATED or is_gemm:
+
+    para_dict_copy = para_dict.copy()
+    is_dynamic = in_dynamic()
+    cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+    is_confusion_transpose = para_dict.get("confusion_transpose", False)
+    use_old_code = cube_vector_split or is_dynamic or is_confusion_transpose
+    use_old_code = filter_case(use_old_code, tensor_a, tensor_b, para_dict)
+
+    if is_gemm:
         result = gemm_integrated(tensor_a, tensor_b, para_dict)
     else:
         gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)
         result = gemm_compute.calculate()
-
+    setattr(result, "tensor_a", tensor_a)
+    setattr(result, "tensor_b", tensor_b)
+    setattr(result, "para_dict", para_dict_copy)
     return result
+
+
+def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
+    if in_dynamic():
+        return use_old_code
+    black_list_compress_fc = [
+        "304_25088_784_256_16_32_int8"
+    ]
+    black_list_fc = [
+        "304_25088_1568_256_16_16_float16"
+    ]
+    shape_a = [str(x.value) for x in tensor_a.shape]
+    shape_b = [str(x.value) for x in tensor_b.shape]
+    info_list = shape_a + shape_b
+    info_str = "_".join(info_list)
+    if info_str in black_list_compress_fc and "compress_fully_connection" in kernel_name:
+        use_old_code = True
+    if info_str in black_list_fc and "fully_connection" in kernel_name:
+        use_old_code = True
+
+    return use_old_code
 
 
 @tbe_utils.para_check.check_input_type(Tensor)
