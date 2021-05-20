@@ -169,6 +169,9 @@
         "broadcast_schedule",
         "broadcast_tilingcase"
     ],
+    "auto_schedule/python/tbe/dsl/base/classifier/elewise_classifier.py":[
+        "elewise_classify"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/broadcast_tilingcase.py":[
         "vsub",
         "broadcast_classify",

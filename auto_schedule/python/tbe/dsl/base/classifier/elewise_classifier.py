@@ -41,6 +41,6 @@ def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[
     from tbe.common.buildcfg import get_current_build_config
     operation.get_context().add("_support_broadcast", support_broadcast)
     if get_current_build_config("enable_op_prebuild"):
-        return [ins]
+        return [ins] if support_broadcast else [classifer.classify()[0]]
 
     return classifer.classify()
