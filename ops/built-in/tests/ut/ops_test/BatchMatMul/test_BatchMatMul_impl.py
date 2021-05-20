@@ -119,12 +119,23 @@ case8 = {"params": [{"shape": (2, 4, 4, 2, 16, 16), "dtype": "float16", "format"
          "expect": "success",
          "support_expect": True}
 
+case9 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 32, 64),"ori_format": "ND"},
+                    {"shape": (4, 1, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 64, 16),"ori_format": "ND"},
+                    None,
+                    {"shape": (4, 1, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 32, 16),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_v1_9",
+         "expect": "success",
+         "support_expect": True}
+
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
+ut_case.add_case("Ascend920A", case9)
 print("==========add case for batchmamtul fusion===============")
 for fusion_case in batchmatmul_ut_fusion_case:
     ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend710"],
@@ -132,13 +143,15 @@ for fusion_case in batchmatmul_ut_fusion_case:
 
 def test_split_batch_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
-    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
     get_op_support_info(x1, x2, trans_a=True)
 
+def test_split_batch_matmul_1(test_arg):
     x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
     x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
-    get_op_support_info(x1, x2, None, trans_b=True)
+    get_op_support_info(x1, x2, trans_b=True)
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul)
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul_1)
 
 def test_batchmatmul_confusion_transpose_910(test_arg):
     te_set_version("Ascend910")

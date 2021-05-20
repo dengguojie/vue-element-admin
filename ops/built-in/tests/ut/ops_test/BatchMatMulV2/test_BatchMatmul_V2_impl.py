@@ -158,6 +158,17 @@ case13 = {"params": [{"shape": (2, 4, 4, 2, 16, 16), "dtype": "float16", "format
          "expect": "success",
          "support_expect": True}
 
+case14 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 32, 64),"ori_format": "ND"},
+                     {"shape": (4, 1, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 64, 16),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (4, 1, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 32, 16),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_v2_14",
+         "expect": "success",
+         "support_expect": True}
+
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)
@@ -165,16 +176,19 @@ ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case6)
-
+ut_case.add_case(["Ascend920A"], case14)
 
 def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
-    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
     get_op_support_info(x1, x2, trans_a=True)
 
+def test_split_batch_matmul_v2_1(test_arg):
     x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
     x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
-    get_op_support_info(x1, x2, None, trans_b=True)
+    get_op_support_info(x1, x2, trans_b=True)
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2)
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2_1)
 
 
 def test_op_check_supported(test_arg):
@@ -191,8 +205,6 @@ def test_op_check_supported(test_arg):
     _test_supported(case9)
     _test_supported(case10)
 
-
-ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2)
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 if __name__ == '__main__':
