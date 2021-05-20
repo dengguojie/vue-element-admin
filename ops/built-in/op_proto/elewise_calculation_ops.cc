@@ -2184,13 +2184,12 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   auto y_desc = op_info->MutableOutputDesc("y");
 
   // get and set output dtype
-  int type = 0;
-  if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    y_desc->SetDataType(DT_INT64);
-    OP_LOGW(op.GetName().c_str(), "get attr dtype:%d failed. and set default dtype:int64", type);
-  }
-  else {
-    y_desc->SetDataType((ge::DataType)type);
+  ge::DataType dtype;
+  if (op.GetAttr("dtype", dtype) == GRAPH_SUCCESS) {
+    y_desc->SetDataType(dtype);
+  } else {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[dtype] failed."));
+    return GRAPH_FAILED;
   }
 
   // get x shape
@@ -2332,13 +2331,12 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   auto x_shape = input_desc->MutableShape().GetDims();
 
   // get and set output dtype
-  int type = 0;
-  if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    y_desc->SetDataType(DT_INT64);
-    OP_LOGW(op.GetName().c_str(), "get attr dtype:%d failed. and set default dtype:int64", type);
-  }
-  else {
-    y_desc->SetDataType((ge::DataType)type);
+  ge::DataType dtype;
+  if (op.GetAttr("dtype", dtype) == GRAPH_SUCCESS) {
+    y_desc->SetDataType(dtype);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "get attr dtype failed.");
+    return GRAPH_FAILED;
   }
 
   // if x_shape == -2, set output -2
