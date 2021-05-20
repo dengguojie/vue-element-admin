@@ -274,6 +274,13 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
         Check width shape.
         """
+        if ConvParam.dynamic_flag:
+            if shape_w[2] > FILTER_HW_MAX:
+                range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
+                err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel H", str(shape_w[2]))
+            if shape_w[3] > FILTER_HW_MAX:
+                range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
+                err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
         if shape_w[2] < FILTER_HW_MIN:
             range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel H", str(shape_w[2]))
