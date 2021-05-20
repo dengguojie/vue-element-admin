@@ -16,6 +16,7 @@ def dsl_dync_reduce_sum(x, y, axis, keepdims, kernel_name="dsl_dync_reduce_sum")
     x["rel_pos_to_reduce"] = 'before'
     input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
     ins = tbe.dsl.classify([x, input_axis], "reduce", {"keepdims": keepdims is True})
+
     schedules, tensors = [], []
 
     for (x, axis) in ins:
@@ -35,7 +36,7 @@ def dsl_dync_reduce_sum(x, y, axis, keepdims, kernel_name="dsl_dync_reduce_sum")
 
 ut_case = OpUT("reduce_sum", "reduce_sum.test_dynamic_reduce_sum_impl", "dsl_dync_reduce_sum")
 
-case1 = {
+case_float32_1 = {
     "params": [{
         "shape": (-1, -1, -1, -1),
         "dtype": "float32",
@@ -46,14 +47,14 @@ case1 = {
         "range": [(1, None), (1, None)]
     }, [1, 3], False],
     "case_name":
-        "test_dync_reduce_sum_1",
+        "test_dync_reduce_sum_float32_1",
     "expect":
         "success",
     "support_expect":
         True
 }
 
-case2 = {
+case_float32_2 = {
     "params": [{
         "shape": (-1, -1, -1, -1),
         "dtype": "float32",
@@ -64,12 +65,43 @@ case2 = {
         "range": [(1, None), (1, None)]
     }, [0, 2], False],
     "case_name":
-        "test_dync_reduce_sum_2",
+        "test_dync_reduce_sum_float32_2",
     "expect":
         "success",
     "support_expect":
         True
 }
 
-ut_case.add_case(["Ascend910A"], case1)
-ut_case.add_case(["Ascend910A"], case2)
+case_int32_1 = {
+    "params": [{
+        "shape": (-1, -1, -1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None), (1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    }, [0, 2], False],
+    "case_name":
+        "test_dync_reduce_sum_int32_1",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+
+def calc_expect_func(x, y, axis, keepdims):
+    x_value = x.get("value")
+    res = np.prod(x_value, axis=axis, keepdims=keepdims)
+    return (res,)
+
+
+compile_case_list = [
+    case_float32_1,
+    case_float32_2,
+    case_int32_1
+]
+
+for item in compile_case_list:
+    ut_case.add_case(["Ascend910A", "Ascend310"], case=item)

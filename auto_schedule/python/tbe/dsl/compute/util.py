@@ -213,12 +213,12 @@ DSL_CHECK_SUPPORT_MAP = {
     # reduce
     "reduce_sum": {
         "AllSoc": ("float16",),
-        ASCEND_310: ("float16", "float32"),
-        ASCEND_910: ("float16", "float32"),
-        ASCEND_920A: ("float16", "float32"),
-        ASCEND_710: ("float16", "float32"),  # int32: nlst support, last not
-        ASCEND_610: ("float16", "float32"),
-        ASCEND_615: ("float16", "float32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_920A: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),  # int32: nlst support, last not
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
         ASCEND_SHISI: ("float16",),
     },
     "reduce_max": {
@@ -243,12 +243,12 @@ DSL_CHECK_SUPPORT_MAP = {
     },
     "reduce_prod": {
         "AllSoc": ("float16",),
-        ASCEND_310: ("float16", "float32"),  # int32: nlst/last support
-        ASCEND_910: ("float16", "float32"),
-        ASCEND_920A: ("float16", "float32"),
-        ASCEND_710: ("float16", "float32"),
-        ASCEND_610: ("float16", "float32"),
-        ASCEND_615: ("float16", "float32"),
+        ASCEND_310: ("float16", "float32", "int32"),  # int32: nlst/last support
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_920A: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
         ASCEND_SHISI: ("float16",),
     },
 
@@ -643,12 +643,12 @@ DSL_CHECK_SUPPORT_MAP = {
 UNIFY_DSL_CHECK_SUPPORT_MAP = {
     "reduce_prod": {
         "AllSoc": ("float16",),
-        ASCEND_310: ("float16", "float32"),
-        ASCEND_910: ("float16", "float32"),
-        ASCEND_920A: ("float16", "float32"),
-        ASCEND_710: ("float16", "float32"),
-        ASCEND_610: ("float16", "float32"),
-        ASCEND_615: ("float16", "float32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_920A: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
         ASCEND_SHISI: ("float16",),
     },
     "vsel": {

@@ -71,8 +71,35 @@ case2 = {
     True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend310"], case1)
-ut_case.add_case(["Ascend910A"], case2)
+
+case3 = {
+    "params": [{
+        "shape": (-1, -1, -1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None), (1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    }, [0, 2], False],
+    "case_name":
+    "test_dync_reduce_prod_2",
+    "expect":
+    "success",
+    "support_expect":
+    True
+}
+
+
+compile_case_list = [
+    case1,
+    case2,
+    case3
+]
+
+
+for item in compile_case_list:
+    ut_case.add_case(["Ascend910A", "Ascend310"], case=item)
 
 
 def calc_expect_func(x, y, axis, keepdims):
@@ -106,5 +133,33 @@ ut_case.add_precision_case(
         "precision_standard":
         precision_info.PrecisionStandard(0.0001, 0.0001),
         "case_name":
-        "test_dync_reduce_prod_prec_01"
+        "test_dync_reduce_prod_prec_float32"
+    })
+
+ut_case.add_precision_case(
+    ["all"], {
+        "params": [
+            {
+                "shape": (-1, -1),
+                "dtype": "int32",
+                "range": [(1, None), (1, None)],
+                "run_shape": (16, 16),
+                "param_type": "input"
+            },
+            {
+                "shape": (-1, ),
+                "dtype": "int32",
+                "range": [(1, None)],
+                "run_shape": (16, ),
+                "param_type": "output"
+            },
+            (0, ),
+            False
+        ],
+        "calc_expect_func":
+        calc_expect_func,
+        "precision_standard":
+        precision_info.PrecisionStandard(0.0001, 0.0001),
+        "case_name":
+        "test_dync_reduce_prod_prec_int32"
     })

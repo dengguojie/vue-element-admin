@@ -24,7 +24,7 @@ def dsl_reduce_prod(x, _, axis, keep_dim, kernel_name='dsl_reduce_prod'):
         "name": kernel_name,
         "tensor_list": tensor_list
     }
-    tbe.cce_build_code(sch, config)
+    tbe.cce_build_code(sch, config)   
 
 
 ut_case = OpUT("reduce_prod", "reduce_prod.test_reduce_prod_impl", "dsl_reduce_prod")
@@ -44,6 +44,7 @@ test_func_list = [
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)
+
 
 case1 = {
     "params": [{"shape": (5, 1024), "dtype": "float16", "format": "ND"},
@@ -87,18 +88,6 @@ ut_case.add_precision_case(
                    False
                    ],
         "case_name": "test_reduce_prod_precision_1",
-        "calc_expect_func": calc_expect_func,
-        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-    })
-
-ut_case.add_precision_case(
-    "Ascend910A", {
-        "params": [{"shape": (16, 128), "dtype": "int32", "param_type": "input"},
-                   {"shape": (16,), "dtype": "int32", "param_type": "output"},
-                   (1, ),
-                   False
-                   ],
-        "case_name": "test_reduce_prod_precision_2",
         "calc_expect_func": calc_expect_func,
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
     })
