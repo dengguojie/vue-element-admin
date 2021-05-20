@@ -45,7 +45,8 @@ set_st_env() {
 run_st() {
   local op_type="$1"
   local msopst="$DDK_PATH/toolkit/python/site-packages/bin/msopst"
-  local supported_soc="Ascend310"
+  local supported_soc="$2"
+  echo "[INFO]===============now run st on ${supported_soc}==================="
   \which msopst >/dev/null 2>&1
   if [[ $? -eq 0 ]]; then
     msopst="$(which msopst)"
@@ -69,7 +70,7 @@ run_st() {
   json_cases=$(find "${op_dir}" -name *.json 2>/dev/null)
   for op_case in $(echo $json_cases); do
     echo "[INFO] run case file: $op_case"
-    python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "$CANN_ST_OUT"
+    python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}"
     if [[ $? -ne 0 ]]; then
       echo "[ERROR] run ops stest failed, case file is: $op_case."
       exit $STATUS_FAILED
@@ -83,6 +84,20 @@ run_st() {
         echo "[INFO] get results for ${op_type}:" && cat "${op_result}"
     fi
   done
+}
+
+delete_unmatch_cases() {
+  supported_soc="$1"
+  if [[ $supported_soc == "Ascend310" ]]; then
+      find "${CANN_ST_SOURCE}" -name *910*.json|xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name *710*.json|xargs rm -rf
+  elif [[ $supported_soc == "Ascend910" ]]; then
+      find "${CANN_ST_SOURCE}" -name *310*.json|xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name *710*.json|xargs rm -rf
+  elif [[ $supported_soc == "Ascend710" ]]; then
+      find "${CANN_ST_SOURCE}" -name *310*.json|xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name *910*.json|xargs rm -rf
+  fi
 }
 
 gen_all_cases() {
@@ -104,17 +119,24 @@ get_results() {
 main() {
   local base_path="$1"
   local op_type="$2"
+  local soc_version="$3"
+
   if [[ -z "${op_type}" ]]; then
-    op_type="all"
+     op_type="all"
   fi
+
+  if [[ -z "${soc_version}" ]]; then
+     soc_version="Ascend310"
+  fi
+  delete_unmatch_cases $soc_version
   gen_all_cases
   set_st_env "${base_path}"
-  run_st "${op_type}"
+  run_st "${op_type}" "${soc_version}"
   get_results
 }
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 ASCEND_PATH [OP_TYPE]" && exit $STATUS_FAILED
+  echo "Usage: $0 ASCEND_PATH OP_TYPE [SOC_VERSION]" && exit $STATUS_FAILED
 fi
 
 main $@
