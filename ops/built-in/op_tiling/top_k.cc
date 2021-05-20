@@ -72,7 +72,7 @@ int32_t GetLoopTimes(int32_t cols) {
 }
 
 bool GetTopkCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info_json, int32_t& core_num,
-                          int32_t& k_num, int32_t& batch_cols_padding, int32_t& ub_size) {
+                          int32_t& k_num, int32_t& batch_cols_padding, int32_t& ub_size, int32_t& max_k) {
   using namespace nlohmann;
   if (op_compile_info_json == nullptr) {
     ge::OpsGetCompileParamsErrReport("Topk", "op_compile_info_json");
@@ -92,6 +92,9 @@ bool GetTopkCompileParams(const std::string& op_type, const nlohmann::json& op_c
   // k num
   if (all_vars.count("k_num")) {
     k_num = all_vars["k_num"].get<std::int32_t>();
+  }
+  if (all_vars.count("max_k")) {
+    max_k = all_vars["max_k"].get<std::int32_t>();
   }
 
   // batch_cols_padding num
@@ -143,14 +146,6 @@ bool GetConstValue(const TeOpParas& paras, const string& name, const string& dty
 bool TopkTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
                 OpRunInfo& run_info) {
   GELOGI("TopkTiling running.");
-  std::vector<int64_t> values;
-  GetConstValue(op_paras, "k", op_paras.inputs[1].tensor[0].dtype, values);
-  if (values.size() != 0){
-    int32_t k_element = values[0];
-    if (k_element > 4096) {
-      return false;
-    }
-  }
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   int32_t input_dims = input_shape.size();
   int32_t row = 1;
@@ -164,19 +159,28 @@ bool TopkTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
   int32_t k_num = 0;
   int32_t batch_cols_padding = 0;
   int32_t ub_size = 0;
+  int32_t max_k = 0;
 
-  bool flag = GetTopkCompileParams(op_type, op_compile_info_json, core_max, k_num, batch_cols_padding, ub_size);
+  bool flag = GetTopkCompileParams(op_type, op_compile_info_json, core_max, k_num, batch_cols_padding, ub_size, max_k);
   if (!flag) {
     OP_LOGE("op[%s] GetTopkCompileParams failed.", op_type.c_str());
     return false;
   }
   GELOGI("op[%s] GetTopkCompileParams success.", op_type.c_str());
 
+  std::vector<int64_t> values;
+  GetConstValue(op_paras, "k", op_paras.inputs[1].tensor[0].dtype, values);
+  if (values.size() != 0){
+    int32_t k_element = values[0];
+    if (k_element > max_k) {
+      return false;
+    }
+  }
   int32_t rows_per_core = 0;
   int32_t turning = 0;
   int32_t cols_padding = 0;
   int32_t remain = 0;
-  if (row < core_max) {
+  if (row <= core_max) {
     rows_per_core = 1;
     need_core = row;
     batch = 1;

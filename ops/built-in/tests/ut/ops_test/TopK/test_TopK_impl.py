@@ -380,18 +380,23 @@ case_k_multi_core_single_not_aligned_fp16 = {
     "expect": "success"
 }
 
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_lt_16_fp16)
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_lt_4096_fp16)
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_between_4096_and_5120_fp16)
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_not_aligned_gt_one_block_fp16)
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_big_shape_not_aligned_fp16)
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_last_dim_lt_4096_fp16)
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_last_dim_gt_4096_fp16)
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_multi_dim_aligned_fp16)
-ut_case.add_case(["Ascend910", "Ascend310"], case_k_multi_core_single_not_aligned_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_lt_16_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_lt_4096_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_between_4096_and_5120_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_not_aligned_gt_one_block_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_big_shape_not_aligned_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_last_dim_lt_4096_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_last_dim_gt_4096_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_multi_dim_aligned_fp16)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_multi_core_single_not_aligned_fp16)
 
+def test_1981(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.top_k import top_k
+    te_set_version("Ascend920A", "VectorCore")
+    top_k(*(case_k_lt_16_fp16["params"]))
 
-# ut_case.add_case(["Ascend310"], case1)
+ut_case.add_cust_test_func(test_func=test_1981)
 
 
 if __name__ == '__main__':

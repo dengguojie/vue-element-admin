@@ -24,6 +24,7 @@ from te import platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.dynamic.top_k_d import top_k_d as top_k_template
 
 FP16_MINIMUM = -65504
 
@@ -1512,6 +1513,17 @@ def top_k(input_tensor,
     -------
     None
     """
+
+    if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend920":
+        return top_k_template(input_tensor,
+                              indices_tensor,
+                              out_tensor,
+                              out_indices_tensor,
+                              k,
+                              sorted=sorted,
+                              dim=dim,
+                              largest=largest,
+                              kernel_name=kernel_name, mode="static")
 
     shape = input_tensor.get("shape")
     input_dtype = input_tensor.get("dtype").lower()

@@ -35,7 +35,7 @@ TEST_F(TopKDTiling, topkd_tiling_0) {
     auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TopKD");
     ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
     
-    std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"batch_cols_padding\":4835, \"k_num\":139}}";
+    std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"batch_cols_padding\":4835, \"k_num\":139, \"max_k\":4096}}";
 
     std::vector<int64_t> input_tensor_shape{32, 20308};
     std::vector<int64_t> indices_tensor_shape{8192};
