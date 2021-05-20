@@ -168,6 +168,11 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     dtype_batch_mean = batch_mean.get("dtype")
     dtype_batch_variance = batch_variance.get("dtype")
 
+    range_grads = grads.get("range")
+    range_x = x.get("range")
+    range_batch_mean = batch_mean.get("range")
+    range_batch_variance = batch_variance.get("range")
+
     input_grads_dtype = dtype_grads.lower()
     input_x_dtype = dtype_x.lower()
     batch_mean_dtype = dtype_batch_mean.lower()
@@ -188,36 +193,6 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
 
     schedules = []
     tensors = []
-
-    range_grads = []
-    range_x = []
-    range_batch_mean = []
-    range_batch_variance = []
-
-    for i in range(len(shape_grads)):
-        if shape_grads[i] != -1:
-            v = shape_grads[i]
-            range_grads.append((v, v))
-        else:
-            range_grads.append((1, None))
-
-        if shape_x[i] != -1:
-            v = shape_x[i]
-            range_x.append((v, v))
-        else:
-            range_x.append((1, None))
-
-        if shape_batch_mean[i] != -1:
-            v = shape_batch_mean[i]
-            range_batch_mean.append((v, v))
-        else:
-            range_batch_mean.append((1, None))
-
-        if shape_batch_variance[i] != -1:
-            v = shape_batch_variance[i]
-            range_batch_variance.append((v, v))
-        else:
-            range_batch_variance.append((1, None))
     
     ins = [[{'shape': shape_grads, 'range': range_grads, 'const_shape': shape_grads},
             {'shape': shape_x, 'range': range_x, 'const_shape': shape_x},
@@ -228,10 +203,10 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     for (grads, x, batch_mean, batch_variance) in ins:
         with tbe.compute():
 
-            dim_0_0 = operation.var("dim_0_0")
-            dim_0_1 = operation.var("dim_0_1")
-            dim_0_2 = operation.var("dim_0_2")
-            dim_0_3 = operation.var("dim_0_3")
+            dim_0_0 = operation.var("dim_0_0", range_grads[0])
+            dim_0_1 = operation.var("dim_0_1", range_grads[1])
+            dim_0_2 = operation.var("dim_0_2", range_grads[2])
+            dim_0_3 = operation.var("dim_0_3", range_grads[3])
 
             shape1 = [dim_0_0, dim_0_1, dim_0_2, dim_0_3, 16]
             shape2 = [1, dim_0_1, 1, 1, 16]

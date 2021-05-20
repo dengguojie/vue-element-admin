@@ -409,7 +409,7 @@ class BNUpdateGradSchedule():
             input_buffer_list.append(buffer_tensor)
         tensor_storage_bound_set = set(mid_buffer_list) | set(input_buffer_list)
         # storage bound which is the maximum memory of UB allocated by the backend
-        self.storage_bound = int(1024*9)
+        self.storage_bound = int(1024*7)
         add_compile_info("max_ub_count", self.storage_bound)
         for stage_tensor in tensor_storage_bound_set:
             self.schedule[stage_tensor].set_storage_bound(self.storage_bound)
@@ -582,8 +582,8 @@ class BNUpdateGradSchedule():
         for tensor in self.mid_tensor_buffer_map:
             buffer_tensor = self.mid_tensor_buffer_map[tensor]
             if tensor.op.tag == "unified_broadcast":
-                insn = "unified_broadcast"
-                sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[4], insn)
+                insn = "vector_broadcast"
+                sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[0], insn)
                 continue
             insn = self._get_emit_insn_map(tensor)
             sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[0], insn)
@@ -600,6 +600,18 @@ class BNUpdateGradSchedule():
                 self.final_out_tensor_global.op.axis[1], "dma_copy")
             sch[self.out].emit_insn(sch[self.out].op.axis[0], "phony_insn")
 
+        self.sch_list[0] = sch
+    
+    def _do_double_buffer(self):
+        sch = self.sch_list[0]
+        for tensor in self.input_tensor_buffer_map:
+            shape = shape_to_list(tensor.shape)
+            if shape == self.shape_x:
+                buffer_tensor = self.input_tensor_buffer_map[tensor]
+                sch[buffer_tensor].double_buffer()
+                sch[buffer_tensor].preload()
+                break
+        
         self.sch_list[0] = sch
     
     def do_schedule(self, outs, tiling_case: BNTrainingUpdateGradTilingCase):
@@ -627,6 +639,8 @@ class BNUpdateGradSchedule():
         self._do_compute_inline()
         
         self._do_compute_at()
+
+        self._do_double_buffer()
 
         self._do_emit_insn()
 
