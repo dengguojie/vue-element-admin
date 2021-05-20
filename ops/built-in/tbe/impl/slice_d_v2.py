@@ -95,43 +95,35 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
     # dynamic slice does not use offsets, end params.
     def init_tiling(tiling_inst: StridedSlice.TilingParam):
         begin_dtype = offsets.get("dtype")
+        input_shape = x.get("shape")
 
         def gen_shape(name, index):
             name += str(index)
             return tiling_inst.tik_instance.Scalar(begin_dtype, name=name)
 
-        tiling_inst.begin = tuple(map(lambda x: gen_shape("begin_", x[0]), enumerate(tiling_inst.input_shape)))
+        begin = tuple(map(lambda x: gen_shape("begin_", x[0]), enumerate(input_shape)))
 
         with tiling_inst.tik_instance.new_stmt_scope():
-            need_ub_size = ceil_32bytes_align_count(len(tiling_inst.input_shape), tiling_inst.dtype)
+            need_ub_size = ceil_32bytes_align_count(len(input_shape), tiling_inst.dtype)
             ub = tiling_inst.tik_instance.Tensor(begin_dtype, (need_ub_size,), name="begin_ub", scope=tik.scope_ubuf)
             _data_move(tiling_inst.tik_instance, ub, strided_slice_instance.begin_gm, need_ub_size)
             # set begin values
-            for index, value in enumerate(tiling_inst.begin):
+            for index, value in enumerate(begin):
                 value.set_as(ub[index])
 
-        # set input shape
-        input_shape = x.get("shape")
-
         # set end
+        end = tuple(map(lambda x: gen_shape("end_", x[0]), enumerate(input_shape)))
         for index, value in enumerate(size):
             if value == -1:
-                tiling_inst.end[index].set_as(input_shape[index])
+                end[index].set_as(input_shape[index])
                 size[index] = input_shape[index]
             else:
-                tiling_inst.end[index].set_as(tiling_inst.begin[index] + value)
+                end[index].set_as(begin[index] + value)
 
         # set stride
-        for index, value in enumerate(tiling_inst.stride):
+        stride = tuple(map(lambda x: gen_shape("stride_", x[0]), enumerate(input_shape)))
+        for index, value in enumerate(stride):
             value.set_as(1)
-
-        tmp_begin = tuple(map(lambda x: gen_shape("begin_", x[0]), enumerate(tiling_inst.input_shape)))
-        for index, value in enumerate(tmp_begin):
-            value.set_as(tiling_inst.begin[index])
-
-        tmp_end = tuple(map(lambda x: gen_shape("end_", x[0]), enumerate(tiling_inst.end)))
-        for index, value in enumerate(tmp_end):
-            value.set_as(tiling_inst.end[index])
 
         def _make_perf_params(output_shape, input_shape, input_begin, input_end):
             last_same = False
@@ -177,46 +169,59 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
                 perf_input_begin.pop(-1)
                 perf_input_end.pop(-1)
 
-            if len(input_shape) > len(perf_input_shape):
-                delta = len(input_shape) - len(perf_input_shape)
-                output_shape = [1] * delta
-                input_shape = [1] * delta
-                input_begin = [0] * delta
-                input_end = [1] * delta
-                output_shape += perf_output_shape
-                input_shape += perf_input_shape
-                input_begin += perf_input_begin
-                input_end += perf_input_end
+            output_shape = perf_output_shape
+            input_shape = perf_input_shape
+            input_begin = perf_input_begin
+            input_end = perf_input_end
 
             return output_shape, input_shape, input_begin, input_end
 
         perf_output_shape, perf_input_shape, perf_input_begin, perf_input_end = _make_perf_params(size,
                                                                                                   input_shape,
-                                                                                                  tmp_begin,
-                                                                                                  tmp_end
+                                                                                                  begin,
+                                                                                                  end
                                                                                                   )
 
-        # set input shape
-        for index, value in enumerate(perf_input_shape):
-            tiling_inst.input_shape[index].set_as(value)
+        tiling_inst.shape_length.set_as(len(perf_input_shape))
+        tiling_ub = tiling_inst.tik_instance.ScalarArray(dtype=tiling_inst.dtype, name="tiling_ub",
+                                                         length=2 + len(perf_input_shape) * 5)
+        tiling_ub[0].set_as(0)
+        tiling_ub[1].set_as(len(perf_input_shape))
+        index = 2
+        items = (perf_input_shape, perf_output_shape, perf_input_begin, perf_input_end, [1] * len(perf_input_shape))
+        for item in items:
+            for value in item:
+                tiling_ub[index].set_as(value)
+                index += 1
 
-        # set begin
-        for index, value in enumerate(perf_input_begin):
-            tiling_inst.begin[index].set_as(value)
-
-        # set end
-        for index, value in enumerate(perf_input_end):
-            tiling_inst.end[index].set_as(value)
-
-        # set output shape
-        for index, value in enumerate(perf_output_shape):
-            tiling_inst.output_shape[index].set_as(value)
+        with tiling_inst.tik_instance.new_stmt_scope():
+            index = tiling_inst.tik_instance.Scalar(init_value=2)
+            items = (tiling_inst.input_shape, tiling_inst.output_shape, tiling_inst.begin, tiling_inst.end,
+                     tiling_inst.stride)
+            for item in items:
+                with tiling_inst.tik_instance.for_range(0, tiling_inst.shape_length) as dim_idx:
+                    item[dim_idx].set_as(tiling_ub[index])
+                    index.set_as(index + 1)
 
         # set out_dim
         tiling_inst.out_dim.set_as(1)
-        for index, dim in enumerate(tiling_inst.output_shape):
-            if index != len(tiling_inst.output_shape) - 1:
+        tiling_inst.out_dim_with_vnchwconv.set_as(1)
+        with tiling_inst.tik_instance.for_range(0, tiling_inst.shape_length) as index:
+            dim = tiling_inst.output_shape[index]
+            with tiling_inst.tik_instance.if_scope(index < tiling_inst.shape_length - 1):
                 tiling_inst.out_dim.set_as(tiling_inst.out_dim * dim)
+            with tiling_inst.tik_instance.if_scope(index < tiling_inst.shape_length - 2):
+                tiling_inst.out_dim_with_vnchwconv.set_as(tiling_inst.out_dim_with_vnchwconv * dim)
+
+        with tiling_inst.tik_instance.for_range(0, tiling_inst.shape_length) as index:
+            dim_idx = tiling_inst.shape_length - 1 - index
+            input_steps = tiling_inst.input_steps
+            output_steps = tiling_inst.output_steps
+            input_steps[index].set_as(tiling_inst.input_shape[dim_idx])
+            output_steps[index].set_as(tiling_inst.output_shape[dim_idx])
+            with tiling_inst.tik_instance.if_scope(index > 0):
+                input_steps[index].set_as(input_steps[index] * input_steps[index - 1])
+                output_steps[index].set_as(output_steps[index] * output_steps[index - 1])
 
     input_shape = x.get("shape")
     input_dtype = x.get("dtype").lower()
@@ -232,6 +237,8 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
                                                                                  x.get("shape"),
                                                                                  scope=tik.scope_gm,
                                                                                  name="input_gm")
+    strided_slice_instance.tiling_param = strided_slice_instance.TilingParam(x.get("shape"),
+                                                                             strided_slice_instance.tik_instance)
     _check_parameters(input_shape, size, kernel_name)
     strided_slice_instance.tiling_param.init = MethodType(init_tiling, strided_slice_instance.tiling_param)
     strided_slice_instance.strided_slice()

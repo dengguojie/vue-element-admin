@@ -39,3 +39,6 @@ kernel_meta/
 
 # Visual Studio Code
 .vscode
+
+# UT report file
+ut_report.txt

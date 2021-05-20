@@ -68,7 +68,7 @@ Status ConstToAttrSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   FUSION_PASS_CHECK(fuseDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
-  if (HasUnKnowDimShape(fused_node)) {
+  if (HasUnKnowShape(fused_node)) {
     FUSION_PASS_CHECK(CheckOpSupported(fuseDesc), OP_LOGI(FUSED_NODE, "dynamic shape supported."), return NOT_CHANGED);
     OP_LOGD(FUSED_NODE, "CheckOpSupported false.");
   }
