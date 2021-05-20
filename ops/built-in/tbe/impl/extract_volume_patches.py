@@ -1793,10 +1793,6 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             sch[tensor0].compute_at(sch[workspace_8bit], workspace_8bit_khkw_outer)
             sch[tensor00].compute_at(sch[workspace_8bit], workspace_8bit_khkw_outer)
 
-        sch[tensor0].emit_insn(tensor0.op.axis[0], tbe_platform.DMA_COPY)
-        sch[tensor00].emit_insn(tensor00.op.axis[0], tbe_platform.DMA_COPY)
-        sch[workspace_8bit].emit_insn(workspace_8bit_n_inner, tbe_platform.DMA_COPY)
-
         tensor10_shape = tensor10.shape
         tensor1_shape = tensor1.shape
         tensor3_shape = tensor3.shape
