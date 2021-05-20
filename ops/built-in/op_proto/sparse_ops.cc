@@ -64,20 +64,30 @@ INFER_FUNC_REG(SparseTensorDenseAdd, SparseTensorDenseAddInfer);
 IMPLEMT_INFERFUNC(AddSparseToTensorsMap, AddSparseToTensorsMapInfer) {
   Shape unused;
   if (WithRank(op.GetInputDesc(0), 2, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of indices must be 2");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(op.GetInputDesc(0).GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of values must be 1");
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(2), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of shape must be 1");
+    std::string err_msg = GetShapeErrMsg(2,
+        DebugString(op.GetInputDesc(2).GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "create Scalar fail");
+      std::string err_msg = ConcatString("failed to call function Scalar to create a scalar shape");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -906,15 +916,26 @@ IMPLEMT_INFERFUNC(AddManySparseToTensorsMap, AddManySparseToTensorsMapInfer) {
   auto values_tensor = op.get_input_desc_values();
   auto shape_tensor = op.get_input_desc_shape();
   if (WithRank(indices_tensor, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input indices must be 2-D");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(indices_tensor.GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
-  if (WithRank(values_tensor, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input values must be 1-D");
+  if (WithRank(values_tensor, 1, unused_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(values_tensor.GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
-  if (WithRank(shape_tensor, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input shape must be 1-D");
+  if (WithRank(shape_tensor, 1, unused_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(2,
+        DebugString(shape_tensor.GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
   auto output_shape = Shape({ge::UNKNOWN_DIM});
@@ -922,7 +943,8 @@ IMPLEMT_INFERFUNC(AddManySparseToTensorsMap, AddManySparseToTensorsMapInfer) {
   y_desc.SetShape(output_shape);
   y_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("handles", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handles desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("update output[handles] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

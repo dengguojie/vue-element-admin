@@ -159,3 +159,76 @@ TEST_F(SparseTest, DeserializeManySparseInferShapeError2) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+
+TEST_F(SparseTest, AddManySparseToTensorsMapInferShape) {
+  ge::op::AddManySparseToTensorsMap op;
+  op.UpdateInputDesc("indices", create_desc({2, 3}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({2}, ge::DT_INT64));
+  op.UpdateInputDesc("shape", create_desc({3}, ge::DT_INT64));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(SparseTest, AddManySparseToTensorsMapInferShape2) {
+  ge::op::AddManySparseToTensorsMap op;
+  op.UpdateInputDesc("indices", create_desc({2, 3}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({0}, ge::DT_INT64));
+  op.UpdateInputDesc("shape", create_desc({3,2}, ge::DT_INT64));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SparseTest, AddManySparseToTensorsMapInferShape3) {
+  ge::op::AddManySparseToTensorsMap op;
+  op.UpdateInputDesc("indices", create_desc({2, 3}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({1}, ge::DT_INT64));
+  op.UpdateInputDesc("shape", create_desc({1}, ge::DT_INT64));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(SparseTest, AddManySparseToTensorsMapInferShape4) {
+  ge::op::AddManySparseToTensorsMap op;
+  op.UpdateInputDesc("indices", create_desc({2, 3, 1}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({1}, ge::DT_INT64));
+  op.UpdateInputDesc("shape", create_desc({0}, ge::DT_INT64));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SparseTest, AddSparseToTensorsMapInferShape) {
+  ge::op::AddSparseToTensorsMap op;
+  op.UpdateInputDesc("indices", create_desc({2, 3}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({2}, ge::DT_INT64));
+  op.UpdateInputDesc("shape", create_desc({3}, ge::DT_INT64));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(SparseTest, AddSparseToTensorsMapInferShape1) {
+  ge::op::AddSparseToTensorsMap op;
+  op.UpdateInputDesc("indices", create_desc({2, 3, 3}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({2,1}, ge::DT_INT64));
+  op.UpdateInputDesc("shape", create_desc({3,1}, ge::DT_INT64));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SparseTest, AddSparseToTensorsMapInferShape2) {
+  ge::op::AddSparseToTensorsMap op;
+  op.UpdateInputDesc("indices", create_desc({2, 3}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({2,2,3}, ge::DT_INT64));
+  op.UpdateInputDesc("shape", create_desc({3, 1}, ge::DT_INT64));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(SparseTest, AddSparseToTensorsMapInferShape3) {
+  ge::op::AddSparseToTensorsMap op;
+  op.UpdateInputDesc("indices", create_desc({2, 3}, ge::DT_INT64));
+  op.UpdateInputDesc("values", create_desc({1}, ge::DT_INT64));
+  op.UpdateInputDesc("shape", create_desc({2,1,3}, ge::DT_INT64));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

@@ -26,17 +26,26 @@
 namespace ge {
 IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
   Shape unused;
-  if (WithRank(op.GetInputDesc(0), 3, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input spectrogram must be 3-D");
+  if (WithRank(op.GetInputDesc(0), 3, unused, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(op.GetInputDesc(0).GetShape().GetDims()), "3D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input sample_rate must be scalar");
+  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   DataType sample_rate_dtype = op.GetInputDesc(1).GetDataType();
   if (sample_rate_dtype != DT_INT32) {
-    OP_LOGE(op.GetName().c_str(), "date type of sample_rate must be int32");
+    std::string err_msg = ConcatString("invalid data type", "[" , DTypeStr(sample_rate_dtype) ,"]", " of 1st input[sample_rate], it must be equal to int32");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -45,11 +54,13 @@ IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
   int64_t output_channels;
   op.GetAttr("dct_coefficient_count", output_channels);
   if (output_channels <= 0) {
-    OP_LOGE(op.GetName().c_str(), "attr dct_coefficient_count must be greater than 0");
+    std::string err_msg = ConcatString("invalid value", "[" , output_channels ,"]", " of attr[dct_coefficient_count], it should be greater than 0");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (channel_count < output_channels) {
-    OP_LOGE(op.GetName().c_str(), "attr filterbank_channel_count >= dct_coefficient_count is required");
+    std::string err_msg = ConcatString("attr[dct_coefficient_count] must be greater than attr[filterbank_channel_count] , ", "[" , channel_count ,"] and ", "[" , output_channels ,"]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -103,22 +114,28 @@ IMPLEMT_INFERFUNC(AudioSpectrogram, AudioSpectrogramInfer) {
   Shape input;
   auto tensor = op.GetInputDesc(0);
   if (WithRank(tensor, 2, input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input value must be 2-D.");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(tensor.GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t window_size = 0;
   if (op.GetAttr("window_size", window_size) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op AudioSpectrogram GetAttr window_size failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("get attr[window_size] failed"));
     return GRAPH_FAILED;
   }
   int64_t stride = 0;
   if (op.GetAttr("stride", stride) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op AudioSpectrogram GetAttr stride failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("get attr[stride] failed"));
     return GRAPH_FAILED;
   }
   if (stride == 0) {
-    OP_LOGE(op.GetName().c_str(), "Op AudioSpectrogram attr stride value invalid, stride=%d.", stride);
+    std::string err_msg = ConcatString("invalid value", "[" , stride ,"]", " of attr[stride], it should be not equal to 0");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

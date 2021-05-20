@@ -1790,7 +1790,10 @@ IMPLEMT_INFERFUNC(AccumulatorApplyGradient, AccumulatorApplyGradientInfer) {
   Shape unused_shape;
   auto local_step_tensor = op.get_input_desc_local_step();
   if (WithRank(local_step_tensor, 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input local_step must be 0-D");
+    std::string err_msg = GetShapeErrMsg(0,
+    DebugString(local_step_tensor.GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1799,16 +1802,18 @@ IMPLEMT_INFERFUNC(AccumulatorApplyGradient, AccumulatorApplyGradientInfer) {
 INFER_FUNC_REG(AccumulatorApplyGradient, AccumulatorApplyGradientInfer);
 
 IMPLEMT_INFERFUNC(AccumulatorNumAccumulated, AccumulatorNumAccumulatedInfer) {
-  Shape scalar_shape;
-  if (Scalar(scalar_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "create scalar shape failed");
+  Shape shape;
+  if (Scalar(shape) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("failed to call function Scalar to create a scalar shape");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   TensorDesc y_desc = op.get_output_desc_y();
-  y_desc.SetShape(scalar_shape);
+  y_desc.SetShape(shape);
   y_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1817,10 +1822,13 @@ IMPLEMT_INFERFUNC(AccumulatorNumAccumulated, AccumulatorNumAccumulatedInfer) {
 INFER_FUNC_REG(AccumulatorNumAccumulated, AccumulatorNumAccumulatedInfer);
 
 IMPLEMT_INFERFUNC(AccumulatorSetGlobalStep, AccumulatorSetGlobalStepInfer) {
-  Shape unused_shape;
+  Shape shape;
   auto new_global_step_tensor = op.get_input_desc_new_global_step();
-  if (WithRank(new_global_step_tensor, 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input new_global_step must be 0-D");
+  if (WithRank(new_global_step_tensor, 0, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(0,
+    DebugString(new_global_step_tensor.GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1829,22 +1837,28 @@ IMPLEMT_INFERFUNC(AccumulatorSetGlobalStep, AccumulatorSetGlobalStepInfer) {
 INFER_FUNC_REG(AccumulatorSetGlobalStep, AccumulatorSetGlobalStepInfer);
 
 IMPLEMT_INFERFUNC(AccumulatorTakeGradient, AccumulatorTakeGradientInfer) {
-  Shape unused_shape;
+  Shape shape;
   auto num_required_tensor = op.get_input_desc_num_required();
-  if (WithRank(num_required_tensor, 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input num_required must be 0-D");
+  if (WithRank(num_required_tensor, 0, shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(0,
+    DebugString(num_required_tensor.GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   DataType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
   TensorDesc y_desc = op.get_output_desc_y();
   y_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
   y_desc.SetDataType(dtype);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y desc failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
