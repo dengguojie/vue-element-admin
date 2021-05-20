@@ -20,6 +20,7 @@ if(NOT ENABLE_TEST)
           ${REPO_ROOT}/ops
           ${REPO_ROOT}/metadef/inc
           ${REPO_ROOT}/third_party/protobuf/include
+          ${REPO_ROOT}/open_source/protobuf/include
   )
 
   aux_source_directory(. SRCS)

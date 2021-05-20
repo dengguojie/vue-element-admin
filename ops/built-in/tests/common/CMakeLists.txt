@@ -20,6 +20,7 @@ include_directories(
         ${REPO_ROOT}/inc/fusion_engine
         ${REPO_ROOT}/inc/framework
         ${REPO_ROOT}/third_party/protobuf/include
+        ${REPO_ROOT}/open_source/protobuf/include
 )
 aux_source_directory(src/fusion_pass_utils OP_TEST_SRC)
 add_library(op_test_frame SHARED ${OP_TEST_SRC})

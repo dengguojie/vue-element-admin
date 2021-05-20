@@ -130,7 +130,7 @@ if(BUILD_OPEN_PROJECT)
 else()
   # includes path
   set(JSON_INCLUDE "${TOP_DIR}/third_party/json/include ${TOP_DIR}/open_source/json/include")
-  set(Protobuf_INCLUDE "${TOP_DIR}/third_party/protobuf/include")
+  set(Protobuf_INCLUDE "${TOP_DIR}/third_party/protobuf/include ${TOP_DIR}/open_source/protobuf/include")
   set(OPS_DIR ${TOP_DIR}/cann/ops)
   set(OPS_INCLUDE ${TOP_DIR}/cann/ops/common/inc)
   set(FWKACLLIB_INCLUDE ${TOP_DIR}/inc)
