@@ -3,6 +3,9 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/attr_utils.h"
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -298,6 +301,61 @@ TEST_F(ReduceTiling, ReduceTiling7) {
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "REDUCE__COUNTER__7";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+namespace optiling {
+    class VarAttrHelper {
+    public:
+        static void InitTeOpVarAttr(ge::OpDescPtr &op_desc, optiling::TeOpVarAttrArgs &attr);
+    };
+}
+
+TEST_F(ReduceTiling, ReduceTiling8) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce",
+                                "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1],
+                                "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512],
+                                "_reduce_shape_known": true, "_const_shape_post": true,
+                                "_compile_pattern": 1, "_block_dims":{"1":32},
+                                "_atomic_flags":{"1": true},
+                                "_attr_vars": { "1": [{"name": "Test", "type":"Int32"}] },
+                                "_vars": {"1": []}})";
+  std::vector<int64_t> input{64,64};
+  std::vector<int64_t> output{1,64};
+  std::string in_dtype = "float32";
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = in_dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = in_dtype;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_input);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg_out;
+  tensor_arg_out.tensor.push_back(tensor_output);
+  tensor_arg_out.arg_type = TA_SINGLE;
+
+  ge::OpDesc op_desc;
+  ge::OpDescPtr op_desc_ptr = std::make_shared<ge::OpDesc>(op_desc);
+  ge::AttrUtils::SetInt(op_desc_ptr, "Test", 11);
+  TeOpVarAttrArgs var_attrs;
+  VarAttrHelper::InitTeOpVarAttr(op_desc_ptr, var_attrs);
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_arg);
+  opParas.outputs.push_back(tensor_arg_out);
+  opParas.op_type = op_name;
+  opParas.var_attrs = var_attrs;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "REDUCE__COUNTER__8";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }

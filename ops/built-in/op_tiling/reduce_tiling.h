@@ -93,6 +93,7 @@ class Reduce {
 
   bool GetBlockTilingInfo();
   void GetNotMulCoreBlockTiling();
+  bool SetAttrVars(int32_t key);
   int32_t CalcTilingKey();
   std::vector<int64_t> GetInputShape();
   std::vector<int32_t> GetReduceAxis();

@@ -871,19 +871,36 @@ bool Reduce::IsZero() {
   return exit_zero_axis;
 }
 
+bool Reduce::SetAttrVars(int32_t key) {
+  try {
+    if (op_info.count("_attr_vars") > 0) {
+      const auto& all_vars = op_info.at("_attr_vars").at(std::to_string(key));
+      for (const auto& var : all_vars) {
+        size_t attr_size = 0;
+        const uint8_t *attr = op_paras.var_attrs.GetData(var.at("name"), var.at("type"), attr_size);
+        ByteBufferPut(run_info.tiling_data, attr, attr_size);
+      }
+    }
+  } catch (const std::exception &e) {
+    OP_LOGE(op_type.c_str(), "SetAttrVars error. Error message: %s", e.what());
+    return false;
+  }
+  return true;
+}
+
 bool Reduce::WriteTilingData() {
   if (exit_zero_axis) {
     ByteBufferPut(run_info.tiling_data, (int32_t)fusion_dim_value);
     ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
     run_info.block_dim = (int32_t)1;
     run_info.tiling_key = (int32_t)zero_tiling_key;
-    return true;
+    return SetAttrVars(zero_tiling_key);
   }
 
   if (compileInfo.is_const_post) {
     // runtime
     ConstInputProcPost();
-    return true;
+    return SetAttrVars(pattern);
   }
 
   if (compileInfo.is_const) {
@@ -920,7 +937,7 @@ bool Reduce::WriteTilingData() {
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling axis:%d", tilingInfo.ub_tiling_axis);
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling factor:%d", tilingInfo.ub_tiling_factor);
 
-  return true;
+  return SetAttrVars(tiling_key);
 }
 
 bool Reduce::DoTiling() {
