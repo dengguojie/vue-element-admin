@@ -275,7 +275,8 @@ class ReduceMultiSchedule(ElewiseSchedule):
         if is_softmax and is_reduce_matched_fractalz and \
            is_tiling_matched and \
            self._is_matched_softmax_fractalz_emit_insn_limit():
-            if insn == "vector_reduce_sum" and tensor.dtype == "float32":
+            if insn == "vector_reduce_sum" and tensor.dtype == "float32" and \
+                (get_soc_spec("SOC_VERSION") not in ("Ascend920", "Ascend920A",)):
                 ret_insn = "vector_reduce_sum_softmax_fractalz"
             elif insn == "vector_reduce_max" and tensor.dtype == "float16":
                 ret_insn = "vector_reduce_max_softmax_fractalz"
