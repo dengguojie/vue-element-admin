@@ -53,7 +53,6 @@ aipp_config_dict = {"aipp_mode":"static",
                     }
 aipp_config = json.dumps(aipp_config_dict)
 
-
 def gen_static_aipp_case(input_shape, output_shape, dtype_x, dtype_y, format, output_format,
                          aipp_config_json, case_name_val, expect):
     return {"params": [{"shape": input_shape, "dtype": dtype_x, "ori_shape": input_shape, "ori_format": format, "format": format},

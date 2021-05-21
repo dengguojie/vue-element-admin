@@ -37,12 +37,27 @@ static const char kPatternStridedWrite[] = "stridedwrite";
 
 vector<BufferFusionPattern*> TbeAippCommonFusionPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
+
   string pattern_name1 = "TbeAippCommonFusionPattern1";
   BufferFusionPattern* pattern1 = new (std::nothrow) BufferFusionPattern(pattern_name1);
   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name1.c_str());
-  // define pattern rules
   pattern1->AddOpDesc(kPatternAipp, {OP_PATTERN_AIPP}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternElemwise, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+          .SetHead({kPatternAipp})
+          .SetOutputs(kPatternAipp, {kPatternConv})
+          .SetOutputs(kPatternConv, {kPatternElemwise}, TBE_OUTPUT_BRANCH_SINGLE, true)
+          .SetOutputs(kPatternElemwise, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true, true);
+  patterns.push_back(pattern1);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name1.c_str());
+
+  string pattern_name2 = "TbeAippCommonFusionPattern2";
+  BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pattern_name2);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name2.c_str());
+  pattern2->AddOpDesc(kPatternAipp, {OP_PATTERN_AIPP}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(kPatternElemwise, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_MAX)
           .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
@@ -50,11 +65,10 @@ vector<BufferFusionPattern*> TbeAippCommonFusionPass::DefinePatterns() {
           .SetHead({kPatternAipp})
           .SetOutputs(kPatternAipp, {kPatternConv})
           .SetOutputs(kPatternConv, {kPatternElemwise}, TBE_OUTPUT_BRANCH_SINGLE, true)
-          .SetOutputs(kPatternElemwise, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true, true)
+          .SetOutputs(kPatternElemwise, {kPatternQuant}, TBE_OUTPUT_BRANCH_SINGLE, true)
           .SetOutputs(kPatternQuant, {kPatternStridedWrite});
-
-  patterns.push_back(pattern1);
-  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name1.c_str());
+  patterns.push_back(pattern2);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name2.c_str());
 
   return patterns;
 }
