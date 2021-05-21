@@ -3,6 +3,7 @@ set(SUB_SO_WITH_VERSION libcpu_kernels_v1.0.1.so)
 set(local_kernels_src_files
     kernels/normalized/adaptive_max_pool_2d.cc
     kernels/normalized/add.cc
+    kernels/normalized/asin.cc
     kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
     kernels/normalized/concatv2.cc
@@ -20,8 +21,8 @@ set(local_kernels_src_files
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
     kernels/normalized/round.cc
-    kernels/normalized/split_v.cc
     kernels/normalized/sparse_to_dense.cc
+    kernels/normalized/split_v.cc
     kernels/normalized/strided_slice.cc
     kernels/normalized/strided_slice_v2.cc
     kernels/normalized/top_k.cc

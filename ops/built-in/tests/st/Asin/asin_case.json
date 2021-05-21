@@ -1,0 +1,242 @@
+[
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_FLOAT_4K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["float32"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_DOUBLE_4K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["double"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 10, 10]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_FLOAT_64K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["float32"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_DOUBLE_64K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["double"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[40, 40, 40]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_FLOAT_1M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["float32"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_DOUBLE_1M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["double"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 100, 100]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_FLOAT_2M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["float32"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_DOUBLE_2M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["double"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 100, 100]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_FLOAT_8M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["float32"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_DOUBLE_8M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["double"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 200, 200]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_FLOAT_128M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["float32"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Asin",
+    "case_name": "DATA_TYPE_DT_DOUBLE_128M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["double"],
+        "value_range": [[0.0, 1.0]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[800, 400, 400]],
+        "type": ["double"]
+      }
+    ]
+  }
+]

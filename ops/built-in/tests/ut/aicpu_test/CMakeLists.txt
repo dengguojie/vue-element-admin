@@ -59,19 +59,17 @@ set(_cpu_context
 )
 
 set(_cpu_kernels_src
-  ${CPU_KERNELS_DIR}/utils/bcast.cc
-  ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
-  ${CPU_KERNELS_DIR}/utils/kernel_util.cc
-  ${CPU_KERNELS_DIR}/utils/sparse_group.cc
-  ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
-  ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
-  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
-  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_utils.cc
-  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_z.cc
+  ${CPU_KERNELS_DIR}/kernels/device/avg_pool1d_avg_matrix.cc
+  ${CPU_KERNELS_DIR}/kernels/device/where.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_nz.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_z.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractalz_3d.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_utils.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
+  ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
@@ -88,13 +86,16 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/realdiv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reshape.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/split_v.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
-  ${CPU_KERNELS_DIR}/kernels/device/avg_pool1d_avg_matrix.cc
-  ${CPU_KERNELS_DIR}/kernels/device/where.cc
+  ${CPU_KERNELS_DIR}/utils/bcast.cc
+  ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
+  ${CPU_KERNELS_DIR}/utils/kernel_util.cc
+  ${CPU_KERNELS_DIR}/utils/sparse_group.cc
+  ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
 )
 
 set(cpu_kernels_llt_src
@@ -150,6 +151,12 @@ set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_read_file.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_test_utils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
+  testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
+  testcase/add/src/add_utest.cpp
+  testcase/asin/src/asin_utest.cpp
+  testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
+  testcase/cast/src/cast_utest.cpp
+  testcase/ceil/src/ceil_utest.cpp
   testcase/common/src/attr_value_utest.cpp
   testcase/common/src/context_utest.cpp
   testcase/common/src/cpu_kernels_register_utest.cpp
@@ -159,18 +166,12 @@ set(_cpu_kernels_ut_files
   testcase/common/src/node_def_utest.cpp
   testcase/common/src/sharder_utest.cpp
   testcase/common/src/tensor_utest.cpp
-  testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
-  testcase/add/src/add_utest.cpp
-  testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
-  testcase/cast/src/cast_utest.cpp
-  testcase/ceil/src/ceil_utest.cpp
   testcase/concatv2/src/concatv2_utest.cpp
   testcase/equal/src/equal_utest.cpp
   testcase/fill/src/fill_utest.cpp
-  testcase/trans_data/src/trans_data_utest.cpp
-  testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
   testcase/identity/src/identity_utest.cpp
+  testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
   testcase/less/src/less_utest.cpp
   testcase/logging/src/logging_utest.cpp
   testcase/mul/src/mul_utest.cpp
@@ -179,14 +180,15 @@ set(_cpu_kernels_ut_files
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
   testcase/round/src/round_utest.cpp
-  testcase/strided_slice/src/strided_slice_utest.cpp
-  testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
   testcase/split_v/src/split_v_utest.cpp
+  testcase/strided_slice/src/strided_slice_utest.cpp
+  testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
   testcase/top_k/src/top_k_utest.cpp
+  testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
+  testcase/trans_data/src/trans_data_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/where/src/where_utest.cpp
-  testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
