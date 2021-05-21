@@ -31,6 +31,36 @@ public:
     virtual ~OpRunner();
 
     /**
+     * @brief Get Acl Recent Error Message.
+     */
+    void GetRecentErrMsg() const;
+
+    /**
+     * @brief Op Execute acl Init.
+     */
+    bool OpExecuteInit();
+
+    /**
+     * @brief Check Device Count.
+     */
+    bool CheckDeviceCount(uint32_t deviceId);
+
+    /**
+     * @brief Set op Execute Device.
+     */
+    bool SetOpExecuteDevice(uint32_t deviceId);
+
+    /**
+     * @brief Get Device Run Mode.
+     */
+    bool GetDeviceRunMode();
+
+    /**
+     * @brief Reset Device.
+     */
+    bool ResetDevice(uint32_t deviceId);
+
+    /**
     * @brief Init op runner
     */
     bool Init();

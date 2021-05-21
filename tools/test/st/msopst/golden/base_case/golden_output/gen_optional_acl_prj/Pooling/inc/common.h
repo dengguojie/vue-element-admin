@@ -24,6 +24,33 @@
 #define INFO_LOG(fmt, args...) fprintf(stdout, "[INFO]  " fmt "\n", ##args)
 #define WARN_LOG(fmt, args...) fprintf(stdout, "[WARN]  " fmt "\n", ##args)
 #define ERROR_LOG(fmt, args...) fprintf(stdout, "[ERROR]  " fmt "\n", ##args)
+#define ACL_ERROR_LOG(fmt, args...) fprintf(stdout, "[ACL_ERROR]  " fmt "\n", ##args)
+
+#define RETURN_IF_NOT_SUCCESS(expr, format, action)  \
+    do {                             \
+        if ((expr) != ACL_SUCCESS) { \
+            ERROR_LOG(format);       \
+            action;                  \
+        }                            \
+    } while (0)
+
+#define IF_NOT_SUCCESS_RETURN_FALSE(expr, format, action)  \
+    do {                             \
+        if ((expr) != ACL_SUCCESS) { \
+            ERROR_LOG(format);       \
+            action;                  \
+            return false;            \
+        }                            \
+    } while (0)
+
+#define IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(expr, format, args, action)  \
+    do {                             \
+        if ((expr) != ACL_SUCCESS) { \
+            ERROR_LOG(format, args); \
+            action;                  \
+            return false;            \
+        }                            \
+    } while (0)
 
 /**
  * @brief Read data from file

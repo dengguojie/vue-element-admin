@@ -34,7 +34,7 @@ OpTestDesc &OpTestDesc::AddInputTensorDesc(aclDataType dataType,
     int numDims, const int64_t *dims, aclFormat format)
 {
     if (numDims > 0 && dims == nullptr) {
-        ERROR_LOG("dims is nullptr while numDims > 0");
+        ERROR_LOG("Dims is nullptr while numDims > 0.");
         return *this;
     }
     if (format == ACL_FORMAT_UNDEFINED) {
@@ -49,7 +49,7 @@ OpTestDesc &OpTestDesc::AddOutputTensorDesc(aclDataType dataType,
     int numDims, const int64_t *dims, aclFormat format)
 {
     if (numDims > 0 && dims == nullptr) {
-        ERROR_LOG("dims is nullptr while numDims > 0");
+        ERROR_LOG("Dims is nullptr while numDims > 0.");
         return *this;
     }
 

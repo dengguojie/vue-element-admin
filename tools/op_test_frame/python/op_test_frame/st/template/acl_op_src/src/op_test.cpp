@@ -39,10 +39,10 @@ void RecordPartResult(OpTestDesc &opDesc, bool assert, std::string caseName)
     std::ofstream resultFile;
     resultFile.open("./result_files/result.txt", std::ios::out | std::ios::app);
     if (!resultFile.is_open()) {
-        std::cout << "open result summary file fail" << std::endl;
+        std::cout << "Fail to open result summary file." << std::endl;
     } else {
         resultFile << resStr << std::endl;
-        std::cout << "result file append successfully" << std::endl;
+        std::cout << "Result file append successfully." << std::endl;
     }
 }
 

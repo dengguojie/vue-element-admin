@@ -9,11 +9,14 @@
 */
 #include "op_runner.h"
 #include <limits>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fstream>
 #include "common.h"
 
 using namespace std;
 
-extern bool g_isDevice;
+bool g_isDevice = false;
 const size_t DEFAULT_WHITE_COUNT = 10;
 const size_t DEFAULT_PRECISION_COUNT = 4;
 
@@ -26,32 +29,129 @@ OpRunner::OpRunner(OpTestDesc *opDesc) : opDesc_(opDesc)
 OpRunner::~OpRunner()
 {
     for (size_t i = 0; i < inputBuffers_.size(); ++i) {
-        (void)aclDestroyDataBuffer(inputBuffers_[i]);
+        RETURN_IF_NOT_SUCCESS(aclDestroyDataBuffer(inputBuffers_[i]),
+            "Failed to destroy inputs data buffer.", GetRecentErrMsg());
     }
     for (size_t i = 0; i < devInputs_.size(); ++i) {
         if (devInputs_[i] != nullptr) {
-            (void)aclrtFree(devInputs_[i]);
+            RETURN_IF_NOT_SUCCESS(aclrtFree(devInputs_[i]),
+                "Failed to free devInputs memory.", GetRecentErrMsg());
         }
         if (g_isDevice) {
             if (hostInputs_[i] != nullptr) {
-                (void)aclrtFree(hostInputs_[i]);
+                RETURN_IF_NOT_SUCCESS(aclrtFree(hostInputs_[i]),
+                    "Failed to free host inputs memory.", GetRecentErrMsg());
             }
         } else {
             if (hostInputs_[i] != nullptr) {
-                (void)aclrtFreeHost(hostInputs_[i]);
+                RETURN_IF_NOT_SUCCESS(aclrtFreeHost(hostInputs_[i]),
+                    "Failed to free host or device inputs memory.", GetRecentErrMsg());
             }
         }
     }
 
     for (size_t i = 0; i < outputBuffers_.size(); ++i) {
-        (void)aclDestroyDataBuffer(outputBuffers_[i]);
-        (void)aclrtFree(devOutputs_[i]);
+        RETURN_IF_NOT_SUCCESS(aclDestroyDataBuffer(outputBuffers_[i]),
+            "Failed to destroy outputs data buffer.", GetRecentErrMsg());
+
+        RETURN_IF_NOT_SUCCESS(aclrtFree(devOutputs_[i]),
+            "Failed to free devOutputs memory.", GetRecentErrMsg());
         if (g_isDevice) {
-            (void)aclrtFree(hostOutputs_[i]);
+            RETURN_IF_NOT_SUCCESS(aclrtFree(hostOutputs_[i]),
+                "Failed to free hostOutputs memory.", GetRecentErrMsg());
         } else {
-            (void)aclrtFreeHost(hostOutputs_[i]);
+            RETURN_IF_NOT_SUCCESS(aclrtFreeHost(hostOutputs_[i]),
+                "Failed to free host or device outputs memory.", GetRecentErrMsg());
         }
     }
+}
+
+void OpRunner::GetRecentErrMsg() const
+{
+    const char *aclRecentErrMsg = nullptr;
+    aclRecentErrMsg = aclGetRecentErrMsg();
+    if (aclRecentErrMsg != nullptr) {
+        ACL_ERROR_LOG("%s", aclRecentErrMsg);
+    } else {
+        ACL_ERROR_LOG("Failed to get recent error message.");
+    }
+}
+
+bool OpRunner::OpExecuteInit()
+{
+    static bool hasInited = false;
+    if (hasInited == false) {
+        hasInited = true;
+
+        std::string output = "./result_files";
+        if (access(output.c_str(), 0) == -1) {
+            int ret = mkdir(output.c_str(), 0700);
+            if (ret == 0) {
+                INFO_LOG("Make output directory successfully.");
+            }else {
+                ERROR_LOG("Failed to make output directory.");
+                return false;
+            }
+        }
+
+        std::ofstream resultFile;
+        resultFile.open("./result_files/result.txt", std::ios::out);
+        if (!resultFile.is_open()) {
+            ERROR_LOG("Failed to prepare result file.");
+            return false;
+        }
+        resultFile << "Test Result:" << std::endl;
+        resultFile.close();
+
+        IF_NOT_SUCCESS_RETURN_FALSE(aclInit("test_data/config/acl.json"),
+            "Failed to init acl.", GetRecentErrMsg());
+
+        IF_NOT_SUCCESS_RETURN_FALSE(aclopSetModelDir("op_models"),
+            "Failed to load single op model.", GetRecentErrMsg());
+    }
+    return true;
+}
+
+bool OpRunner::CheckDeviceCount(uint32_t deviceId)
+{
+    uint32_t deviceCount = 0;
+    aclError getDeviceStatus = aclrtGetDeviceCount(&deviceCount);
+    IF_NOT_SUCCESS_RETURN_FALSE(getDeviceStatus,
+        "Failed to get device count.", GetRecentErrMsg());
+    if (deviceId >= deviceCount) {
+        ERROR_LOG("Device[%d] is out of range, device id maximum is [%d]", deviceId, deviceCount - 1);
+        return false;
+    }
+    return true;
+}
+
+
+bool OpRunner::SetOpExecuteDevice(uint32_t deviceId)
+{
+    INFO_LOG("------------------Open device[%d]------------------", deviceId);
+    if (aclrtSetDevice(deviceId) != ACL_SUCCESS) {
+        std::cerr << "Open device failed. device id = " << deviceId << std::endl;
+        GetRecentErrMsg();
+        return false;
+    }
+    INFO_LOG("Open device[%d] success", deviceId);
+    return true;
+}
+
+bool OpRunner::GetDeviceRunMode()
+{
+    aclrtRunMode runMode;
+    IF_NOT_SUCCESS_RETURN_FALSE(aclrtGetRunMode(&runMode),
+        "Failed to get acl run mode.", GetRecentErrMsg());
+    g_isDevice = (runMode == ACL_DEVICE);
+    return true;
+}
+
+bool OpRunner::ResetDevice(uint32_t deviceId)
+{
+    IF_NOT_SUCCESS_RETURN_FALSE(aclrtResetDevice(deviceId),
+        "Failed to reset device.", GetRecentErrMsg());
+    return true;
 }
 
 bool OpRunner::Init()
@@ -72,25 +172,20 @@ bool OpRunner::InputsInit()
         // if size is zero, input is an optional
         void *devMem = nullptr;
         if (size != 0) {
-            if (aclrtMalloc(&devMem, size, ACL_MEM_MALLOC_NORMAL_ONLY) != ACL_ERROR_NONE) {
-                ERROR_LOG("Malloc device memory for input[%zu] failed", i);
-                return false;
-            }
+            IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(aclrtMalloc(&devMem, size, ACL_MEM_MALLOC_NORMAL_ONLY),
+                "Failed to malloc device memory for input[%zu].", i, GetRecentErrMsg());
             devInputs_.emplace_back(devMem);
+
             void *hostMem = nullptr;
             if (g_isDevice) {
-                if (aclrtMalloc(&hostMem, size, ACL_MEM_MALLOC_NORMAL_ONLY) != ACL_ERROR_NONE) {
-                    ERROR_LOG("Malloc device memory for input[%zu] failed", i);
-                    return false;
-                }
+                IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(aclrtMalloc(&hostMem, size, ACL_MEM_MALLOC_NORMAL_ONLY),
+                    "Failed to malloc device memory for input[%zu].", i, GetRecentErrMsg());
             } else {
-                if (aclrtMallocHost(&hostMem, size) != ACL_ERROR_NONE) {
-                    ERROR_LOG("Malloc device memory for input[%zu] failed", i);
-                    return false;
-                }
+                IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(aclrtMallocHost(&hostMem, size),
+                    "Failed to malloc host or device memory for input[%zu].", i, GetRecentErrMsg());
             }
             if (hostMem == nullptr) {
-                ERROR_LOG("Malloc memory for input[%zu] failed", i);
+                ERROR_LOG("Failed to malloc memory for input[%zu].", i);
                 return false;
             }
             hostInputs_.emplace_back(hostMem);
@@ -105,27 +200,21 @@ bool OpRunner::OutputsInit()
     for (size_t i = 0; i < numOutputs_; ++i) {
         auto size = GetOutputSize(i);
         void *devMem = nullptr;
-        if (aclrtMalloc(&devMem, size, ACL_MEM_MALLOC_NORMAL_ONLY) != ACL_ERROR_NONE) {
-            ERROR_LOG("Malloc device memory for output[%zu] failed", i);
-            return false;
-        }
+        IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(aclrtMalloc(&devMem, size, ACL_MEM_MALLOC_NORMAL_ONLY),
+            "Failed to malloc device memory for output[%zu].", i, GetRecentErrMsg());
         devOutputs_.emplace_back(devMem);
         outputBuffers_.emplace_back(aclCreateDataBuffer(devMem, size));
 
         void *hostOutput = nullptr;
         if (g_isDevice) {
-            if (aclrtMalloc(&hostOutput, size, ACL_MEM_MALLOC_NORMAL_ONLY)!= ACL_ERROR_NONE) {
-                ERROR_LOG("Malloc device memory for output[%zu] failed", i);
-                return false;
-            }
+            IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(aclrtMalloc(&hostOutput, size, ACL_MEM_MALLOC_NORMAL_ONLY),
+                "Failed to malloc device memory for output[%zu].", i, GetRecentErrMsg());
         } else {
-            if (aclrtMallocHost(&hostOutput, size) != ACL_ERROR_NONE) {
-                ERROR_LOG("Malloc device memory for output[%zu] failed", i);
-                return false;
-            }
+            IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(aclrtMallocHost(&hostOutput, size),
+                "Failed to malloc host or device memory for output[%zu].", i, GetRecentErrMsg());
         }
         if (hostOutput == nullptr) {
-            ERROR_LOG("Malloc host memory for output[%zu] failed", i);
+            ERROR_LOG("Failed to Malloc host memory for output[%zu].", i);
             return false;
         }
         hostOutputs_.emplace_back(hostOutput);
@@ -146,7 +235,7 @@ const size_t OpRunner::NumOutputs()
 const size_t OpRunner::GetInputSize(size_t index) const
 {
     if (index >= opDesc_->inputDesc.size()) {
-        ERROR_LOG("index out of range. index = %zu, numInputs = %zu", index, numInputs_);
+        ERROR_LOG("Index out of range. index = %zu, numInputs = %zu.", index, numInputs_);
         return 0;
     }
 
@@ -157,7 +246,7 @@ std::vector<int64_t> OpRunner::GetInputShape(size_t index) const
 {
     std::vector<int64_t> ret;
     if (index >= opDesc_->inputDesc.size()) {
-        ERROR_LOG("index out of range. index = %zu, numInputs = %zu", index, numInputs_);
+        ERROR_LOG("Index out of range. index = %zu, numInputs = %zu.", index, numInputs_);
         return ret;
     }
 
@@ -165,7 +254,8 @@ std::vector<int64_t> OpRunner::GetInputShape(size_t index) const
     for (size_t i = 0; i < aclGetTensorDescNumDims(desc); ++i) {
         int64_t dimSize;
         if (aclGetTensorDescDimV2(desc, i, &dimSize) != ACL_SUCCESS) {
-            ERROR_LOG("get dimension size from tensor desc failed, dimension index = %zu", i);
+            ERROR_LOG("Failed to get dimension size from tensor desc , dimension index = %zu.", i);
+            GetRecentErrMsg();
             ret.clear();
             return ret;
         }
@@ -179,7 +269,7 @@ std::vector<int64_t> OpRunner::GetOutputShape(size_t index) const
 {
     std::vector<int64_t> ret;
     if (index >= opDesc_->outputDesc.size()) {
-        ERROR_LOG("index out of range. index = %zu, numOutputs = %zu", index, numOutputs_);
+        ERROR_LOG("Index out of range. index = %zu, numOutputs = %zu.", index, numOutputs_);
         return ret;
     }
 
@@ -187,7 +277,8 @@ std::vector<int64_t> OpRunner::GetOutputShape(size_t index) const
     for (size_t i = 0; i < aclGetTensorDescNumDims(desc); ++i) {
         int64_t dimSize;
         if (aclGetTensorDescDimV2(desc, i, &dimSize) != ACL_SUCCESS) {
-            ERROR_LOG("get dimension size from tensor desc failed, dimension index = %zu", i);
+            ERROR_LOG("Failed to get dimension size from tensor desc, dimension index = %zu.", i);
+            GetRecentErrMsg();
             ret.clear();
             return ret;
         }
@@ -199,7 +290,7 @@ std::vector<int64_t> OpRunner::GetOutputShape(size_t index) const
 size_t OpRunner::GetInputElementCount(size_t index) const
 {
     if (index >= opDesc_->inputDesc.size()) {
-        ERROR_LOG("index out of range. index = %zu, numInputs = %zu", index, numInputs_);
+        ERROR_LOG("Index out of range. index = %zu, numInputs = %zu.", index, numInputs_);
         return 0;
     }
 
@@ -209,7 +300,7 @@ size_t OpRunner::GetInputElementCount(size_t index) const
 size_t OpRunner::GetOutputElementCount(size_t index) const
 {
     if (index >= opDesc_->outputDesc.size()) {
-        ERROR_LOG("index out of range. index = %zu, numOutputs = %zu", index, numOutputs_);
+        ERROR_LOG("Index out of range. index = %zu, numOutputs = %zu.", index, numOutputs_);
         return 0;
     }
 
@@ -219,7 +310,7 @@ size_t OpRunner::GetOutputElementCount(size_t index) const
 size_t OpRunner::GetOutputSize(size_t index) const
 {
     if (index >= opDesc_->outputDesc.size()) {
-        ERROR_LOG("index out of range. index = %zu, numOutputs = %zu", index, numOutputs_);
+        ERROR_LOG("Index out of range. index = %zu, numOutputs = %zu.", index, numOutputs_);
         return 0;
     }
 
@@ -234,19 +325,16 @@ bool OpRunner::RunOp()
         if (g_isDevice) {
             kind = ACL_MEMCPY_DEVICE_TO_DEVICE;
         }
-        if (aclrtMemcpy(devInputs_[i], size, hostInputs_[i], size, kind) != ACL_ERROR_NONE) {
-            ERROR_LOG("Copy input[%zu] failed", i);
-            return false;
-        }
-        INFO_LOG("Copy input[%zu] success", i);
+
+        IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(aclrtMemcpy(devInputs_[i], size, hostInputs_[i], size, kind),
+            "Failed to copy input[%zu].", i, GetRecentErrMsg());
+        INFO_LOG("Copy input[%zu] success.", i);
     }
 
     aclrtStream stream = nullptr;
-    if (aclrtCreateStream(&stream) != ACL_ERROR_NONE) {
-        ERROR_LOG("Create stream failed");
-        return false;
-    }
-    INFO_LOG("Create stream success");
+    IF_NOT_SUCCESS_RETURN_FALSE(aclrtCreateStream(&stream),
+        "Failed to create stream.", GetRecentErrMsg());
+    INFO_LOG("Create stream success.");
 
     auto ret = aclopExecuteV2(opDesc_->opType.c_str(),
                               numInputs_,
@@ -261,17 +349,16 @@ bool OpRunner::RunOp()
         ret == ACL_ERROR_OP_OUTPUT_NOT_MATCH || ret == ACL_ERROR_OP_ATTR_NOT_MATCH) {
         ERROR_LOG("[%s] op with the given description is not compiled. Please run atc first", opDesc_->opType.c_str());
         return false;
-    } else if (ret != ACL_ERROR_NONE) {
+    } else if (ret != ACL_SUCCESS) {
         ERROR_LOG("Execute %s failed. ret = %d", opDesc_->opType.c_str(), ret);
+        GetRecentErrMsg();
         return false;
     }
-    INFO_LOG("Execute %s success", opDesc_->opType.c_str());
+    INFO_LOG("Execute %s success.", opDesc_->opType.c_str());
 
-    if (aclrtSynchronizeStream(stream) != ACL_ERROR_NONE) {
-        ERROR_LOG("Synchronize stream failed");
-        return false;
-    }
-    INFO_LOG("Synchronize stream success");
+    IF_NOT_SUCCESS_RETURN_FALSE(aclrtSynchronizeStream(stream),
+        "Failed to synchronize stream.", GetRecentErrMsg());
+    INFO_LOG("Synchronize stream success.");
 
     for (size_t i = 0; i < numOutputs_; ++i) {
         auto size = GetOutputSize(i);
@@ -279,14 +366,14 @@ bool OpRunner::RunOp()
         if (g_isDevice) {
             kind = ACL_MEMCPY_DEVICE_TO_DEVICE;
         }
-        if (aclrtMemcpy(hostOutputs_[i], size, devOutputs_[i], size, kind) != ACL_ERROR_NONE) {
-            INFO_LOG("Copy output[%zu] success", i);
-            return false;
-        }
-        INFO_LOG("Copy output[%zu] success", i);
+
+        IF_NOT_SUCCESS_RETURN_FALSE_WITH_ARGS(aclrtMemcpy(hostOutputs_[i], size, devOutputs_[i], size, kind),
+            "Failed to copy output[%zu].", i, GetRecentErrMsg());
+        INFO_LOG("Copy output[%zu] success.", i);
     }
 
-    (void) aclrtDestroyStream(stream);
+    IF_NOT_SUCCESS_RETURN_FALSE(aclrtDestroyStream(stream),
+        "Failed to Destroy Stream.", GetRecentErrMsg());
     return true;
 }
 
@@ -321,7 +408,7 @@ void DoPrintFp16Data(const aclFloat16 *data, size_t count, size_t elementsPerRow
 void PrintData(const void *data, size_t count, aclDataType dataType, size_t elementsPerRow)
 {
     if (data == nullptr) {
-        ERROR_LOG("Print data failed. data is nullptr");
+        ERROR_LOG("Failed to print data, data is nullptr.");
         return;
     }
 
@@ -370,7 +457,7 @@ void PrintData(const void *data, size_t count, aclDataType dataType, size_t elem
 void OpRunner::PrintInput(size_t index, size_t numElementsPerRow)
 {
     if (index >= opDesc_->inputDesc.size()) {
-        ERROR_LOG("index out of range. index = %zu, numOutputs = %zu", index, numInputs_);
+        ERROR_LOG("Index out of range. index = %zu, numOutputs = %zu.", index, numInputs_);
         return;
     }
 
@@ -381,7 +468,7 @@ void OpRunner::PrintInput(size_t index, size_t numElementsPerRow)
 void OpRunner::PrintOutput(size_t index, size_t numElementsPerRow)
 {
     if (index >= opDesc_->outputDesc.size()) {
-        ERROR_LOG("index out of range. index = %zu, numOutputs = %zu", index, numOutputs_);
+        ERROR_LOG("Index out of range. index = %zu, numOutputs = %zu.", index, numOutputs_);
         return;
     }
 

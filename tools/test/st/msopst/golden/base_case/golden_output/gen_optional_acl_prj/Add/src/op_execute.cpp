@@ -21,20 +21,19 @@
 
 #include "common.h"
 
-bool g_isDevice = false;
 bool CreateOpDesc(OpTestDesc &desc)
 {
-    if (desc.inputShape.size() <= 0 || 
+    if (desc.inputShape.size() <= 0 ||
         desc.inputShape.size() != desc.inputDataType.size() ||
         desc.inputShape.size() != desc.inputFormat.size()) {
-        ERROR_LOG("input opreator desc errror");
+        ERROR_LOG("Input operator desc error");
         return false;
     }
 
-     if (desc.outputShape.size() <= 0 || 
+     if (desc.outputShape.size() <= 0 ||
         desc.outputShape.size() != desc.outputDataType.size() ||
         desc.outputShape.size() != desc.outputFormat.size()) {
-        ERROR_LOG("output opreator desc errror");
+        ERROR_LOG("Output operator desc error");
         return false;
     }
 
@@ -65,7 +64,7 @@ bool SetInputData(OpRunner &runner)
         std::string filePath = runner.GetOpTestDesc().inputFilePath[i] + ".bin";
         bool result = ReadFile(filePath, fileSize, runner.GetInputBuffer<void>(i), runner.GetInputSize(i));
         if (!result) {
-            ERROR_LOG("Read input[%zu] failed", i);
+            ERROR_LOG("Failed to read input[%zu].", i);
             return false;
         }
         char realPath[PATH_MAX];
@@ -87,7 +86,7 @@ bool ProcessOutputData(OpRunner &runner)
 
         std::string filePath = runner.GetOpTestDesc().outputFilePath[i] + ".bin";
         if (!WriteFile(filePath, runner.GetOutputBuffer<void>(i), runner.GetOutputSize(i))) {
-            ERROR_LOG("Write output[%zu] failed.", i);
+            ERROR_LOG("Failed to write output[%zu].", i);
             return false;
         }
         char realPath[PATH_MAX];
@@ -101,7 +100,37 @@ bool ProcessOutputData(OpRunner &runner)
     return true;
 }
 
-bool DoRunOp(OpTestDesc &opDesc)
+bool DoRunOp(OpRunner &opRunner)
+{
+    if (!opRunner.Init()) {
+        ERROR_LOG("Failed to init OpRunner.");
+        return false;
+    }
+
+    // Load inputs
+    if (!SetInputData(opRunner)) {
+        ERROR_LOG("Failed to set input data.");
+        return false;
+    }
+
+    // Run op
+    if (!opRunner.RunOp()) {
+        ERROR_LOG("Failed to run op test.");
+        return false;
+    }
+
+    // process output data
+    if (!ProcessOutputData(opRunner)) {
+        ERROR_LOG("Failed to process output data.");
+        return false;
+    }
+
+    INFO_LOG("Run op success");
+
+    return true;
+}
+
+bool OpExecute(OpTestDesc &opDesc, uint32_t deviceId = 0)
 {
     // create and init op desc
     if (CreateOpDesc(opDesc) == false) {
@@ -109,103 +138,30 @@ bool DoRunOp(OpTestDesc &opDesc)
     }
     // create Runner
     OpRunner opRunner(&opDesc);
-    if (!opRunner.Init()) {
-        ERROR_LOG("Init OpRunner failed");
+    if (!opRunner.CheckDeviceCount(deviceId)) {
+        ERROR_LOG("Failed to get device count.");
         return false;
     }
 
-    // Load inputs
-    if (!SetInputData(opRunner)) {
-        ERROR_LOG("Set input data failed");
+    if (!opRunner.OpExecuteInit()) {
+        ERROR_LOG("Failed to init operator execute.");
         return false;
     }
 
-    // Run op
-    if (!opRunner.RunOp()) {
-        ERROR_LOG("Run op failed");
+    if (!opRunner.SetOpExecuteDevice(deviceId)) {
+        ERROR_LOG("Failed to set device.");
+        return false;
+    }
+    // get acl run mode.
+    if (!opRunner.GetDeviceRunMode()) {
+        ERROR_LOG("Failed to get device run mode.");
         return false;
     }
 
-    // process output data
-    if (!ProcessOutputData(opRunner)) {
-        ERROR_LOG("Process output data failed");
-        return false;
-    }
-
-    INFO_LOG("Run op success");
-    return true;
-}
-
-bool OpExecuteInit()
-{
-    static bool hasInited = false;
-    if (hasInited == false) {
-        hasInited = true;
-
-        std::string output = "./result_files";
-        if (access(output.c_str(), 0) == -1) {
-            int ret = mkdir(output.c_str(), 0700);
-            if (ret == 0) {
-                INFO_LOG("make output directory successfully");
-            }else {
-                ERROR_LOG("make output directory fail");
-                return false;
-            }
+    if (!DoRunOp(opRunner)) {
+        if (!opRunner.ResetDevice(deviceId)) {
+            ERROR_LOG("Failed to reset device.");
         }
-
-        std::ofstream resultFile;
-        resultFile.open("./result_files/result.txt", std::ios::out);
-        if (!resultFile.is_open()) {
-            ERROR_LOG("prepare result file failed");
-            return false;
-        }
-        resultFile << "Test Result:" << std::endl;
-        resultFile.close();
-
-        if (aclInit("test_data/config/acl.json") != ACL_ERROR_NONE) {
-            ERROR_LOG("Init acl failed");
-            return false;
-        }
-
-        if (aclopSetModelDir("op_models") != ACL_ERROR_NONE) {
-            std::cerr << "Load single op model failed" << std::endl;
-            return false;
-        }
-    }
-    return true;
-}
-
-bool OpExecute(OpTestDesc &opDesc, uint32_t deviceId = 0)
-{
-    uint32_t deviceCount = 0;
-    aclError getDeviceStatus = aclrtGetDeviceCount(&deviceCount);
-    if (getDeviceStatus != ACL_SUCCESS) {
-        ERROR_LOG("Get Device count failed");
-        return false;
-    }
-    if (deviceId >= deviceCount) {
-        ERROR_LOG("Device[%d] is out of range, device id maximum is [%d]", deviceId, deviceCount - 1);
-        return false;
-    }
-    if (OpExecuteInit() == false) {
-        return false;
-    }
-    INFO_LOG("------------------Open device[%d]------------------", deviceId);
-    if (aclrtSetDevice(deviceId) != ACL_ERROR_NONE) {
-        std::cerr << "Open device failed. device id = " << deviceId << std::endl;
-        return false;
-    }
-    INFO_LOG("Open device[%d] success", deviceId);
-
-    aclrtRunMode runMode;
-    if (aclrtGetRunMode(&runMode) != ACL_ERROR_NONE) {
-        ERROR_LOG("acl get run mode failed");
-        return false;
-    }
-    g_isDevice = (runMode == ACL_DEVICE);
-
-    if (!DoRunOp(opDesc)) {
-        (void) aclrtResetDevice(deviceId);
         return false;
     }
 
