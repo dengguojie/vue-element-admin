@@ -130,6 +130,13 @@ x_dict = {'ori_shape': (2, 16, 120, 176, 32), 'shape': (2, 16, 120, 176, 32),
         'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
 case19 = _run_api_end_with_d(x_dict=x_dict)
 
+
+out_backprop={'ori_shape': (1, 9, 61, 89, 64), 'shape': (1, 9, 61, 89, 64),
+              'ori_format': 'NDHWC', 'format': 'NDHWC',
+              'dtype': 'float16'}
+pads=(1, 1, 1, 1, 1, 1)
+case20 = _run_api_end_with_d(out_backprop=out_backprop, pads=pads)
+
 # Add test Cases
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case1, "success", "case1", True))
@@ -188,6 +195,8 @@ ut_case.add_case(["Ascend910", "Ascend310"],
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case19, RuntimeError, "case19", True))
 
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case20, "success", "case20", True))
 if __name__ == '__main__':
     ut_case.run()
     exit(0)

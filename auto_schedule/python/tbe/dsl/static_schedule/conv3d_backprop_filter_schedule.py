@@ -678,35 +678,46 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     batch_dim_npart) == (batch_dim_npart - 1),
                     (batch_grads * depth_grads - (batch_dim_npart - 1) * batch_insn_o_size),
                     batch_insn_o_size)
-                mid = tvm.select(tvm.floordiv(batch_insn_o_size1, 3) >= 1,
-                    tvm.floordiv(batch_insn_o_size1, 2),
-                    batch_insn_o_size1 - 1)
+                mid = tvm.floordiv(batch_insn_o_size1, 2)
+                mid2 = tvm.floordiv(mid, 2)
+                mid3 = mid + mid2
                 ddr_condition_left = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
                     batch_dim_npart) * batch_dim_factor + batch_insn_o_size1 - 1
                 ddr_condition_mid = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
                     batch_dim_npart) * batch_dim_factor + mid
+                ddr_condition_mid2 = (
+                    (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
+                    batch_dim_npart) * batch_dim_factor + mid2
+                ddr_condition_mid3 = (
+                    (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
+                    batch_dim_npart) * batch_dim_factor + mid3
                 ddr_condition_right = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
                     batch_dim_npart) * batch_dim_factor
 
                 sch[dw_ddr].set_store_predicate(
-                    tvm.any(tvm.all(batch_insn_o_size1 > depth_grads,
-                                     tvm.floordiv(dilation_height, 1) == 1,
-                                     tvm.floordiv(dilation_width, 1) == 1),
-                            tvm.all(tvm.any((ddr_condition_left % depth_grads) * stride_depth +
-                                             dk_c1_axis // c1_fmap_info >= pad_front,
-                                             (ddr_condition_right % depth_grads) * stride_depth +
-                                             dk_c1_axis // c1_fmap_info >= pad_front,
-                                             (ddr_condition_mid % depth_grads) * stride_depth +
-                                             dk_c1_axis // c1_fmap_info >= pad_front),
-                                    tvm.any((ddr_condition_right % depth_grads) * stride_depth +
-                                             dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
-                                             (ddr_condition_left % depth_grads) * stride_depth +
-                                             dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
-                                             (ddr_condition_mid % depth_grads) * stride_depth +
-                                             dk_c1_axis // c1_fmap_info < pad_front + depth_fmap)))
+                    tvm.all(tvm.any((ddr_condition_left % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info >= pad_front,
+                                    (ddr_condition_right % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info >= pad_front,
+                                    (ddr_condition_mid % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info >= pad_front,
+                                    (ddr_condition_mid2 % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info >= pad_front,
+                                    (ddr_condition_mid3 % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info >= pad_front),
+                            tvm.any((ddr_condition_right % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
+                                    (ddr_condition_left % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
+                                    (ddr_condition_mid % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
+                                    (ddr_condition_mid2 % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
+                                    (ddr_condition_mid3 % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info < pad_front + depth_fmap))
                 )
 
             # move dw form UB to ddr
