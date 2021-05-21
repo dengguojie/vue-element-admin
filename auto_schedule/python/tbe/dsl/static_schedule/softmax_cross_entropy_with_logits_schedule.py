@@ -851,7 +851,7 @@ def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop, max_ub_coun
     get ub tiling
     """
     align_num = BLOCK_REDUCE_INT8 // DTYPE_WIDTH_MAP.get(dtype)
-    shape_aligned = shape[:-1] + [(shape[-1] + align_num - 1) // align_num]
+    shape_aligned = shape[:-1] + [(shape[-1] + align_num - 1) // align_num * align_num]
     last_axis = len(shape_aligned) - 1
     ub_split_inner = 1
     ub_split_axis = 0
