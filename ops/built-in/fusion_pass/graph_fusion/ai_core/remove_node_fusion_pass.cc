@@ -30,6 +30,7 @@ namespace fe {
 REGISTER_PASS("ARemoveNodeFusionPass", BUILT_IN_GRAPH_PASS, RemoveNodeFusionPass);
 
 static const uint32_t PASS_UINT_ONE = 1;
+static const std::string kOpTypeData = "Data";
 
 vector<FusionPattern*> RemoveNodeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -310,6 +311,10 @@ Status RemoveNodeFusionPass::HandleUnlinkedInAnchor(map<uint32_t, InDataAnchorPt
 
     // then remove node
     for (NodePtr removeNode : inAnchorRelatedInfo.removeNode) {
+      if (removeNode->GetType() == kOpTypeData) {
+        OP_LOGI(removeNode->GetType().c_str(), "Data node[%s] cannot be removed.", removeNode->GetName().c_str());
+        continue;
+      }
       FUSION_PASS_CHECK(
           ge::GRAPH_SUCCESS != graph.RemoveNode(removeNode),
           OP_LOGE("HandleUnlinkedInAnchor", "Fail to remove Node[%s] while handling unlinked inDataAnchor.",
