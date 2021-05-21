@@ -52,7 +52,7 @@ if (ENABLE_TEST STREQUAL UT)
     if(PLUGIN_UT)
         set(depend_module ${depend_module} ops_cpp_plugin_utest)
     endif()
-    if(UT_TEST_ALL)
+    if(UT_TEST_ALL AND NOT AICPU_ONLY)
         set(depend_module ops_cpp_proto_utest 
             ops_cpp_op_tiling_utest 
             ops_cpp_fusion_pass_aicore_utest
