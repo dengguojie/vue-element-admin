@@ -137,6 +137,22 @@ out_backprop={'ori_shape': (1, 9, 61, 89, 64), 'shape': (1, 9, 61, 89, 64),
 pads=(1, 1, 1, 1, 1, 1)
 case20 = _run_api_end_with_d(out_backprop=out_backprop, pads=pads)
 
+# test_conv3dbp_filter Not flag all one
+x_dict={'ori_shape': (1, 32, 240, 352, 16), 'shape': (1, 32, 240, 352, 16),
+              'ori_format': 'NDHWC', 'format': 'NDHWC',
+              'dtype': 'float16'}
+out_backprop={'ori_shape': (1, 32, 240, 352, 16), 'shape': (1, 32, 240, 352, 16),
+            'ori_format': 'NDHWC', 'format': 'NDHWC',
+            'dtype': 'float16'}
+y_input = {'ori_shape': (3, 3, 3, 16, 16), 'shape': (3, 3, 3, 16, 16),
+            'ori_format': 'DHWCN', 'format': 'DHWCN',
+            'dtype': 'float32'}
+filter_size = (3, 3, 3, 16, 16)
+pads=(1, 1, 1, 1, 1, 1)
+strides=(1,1,1,1,1)
+case21 = _run_api_end_with_d(x_dict=x_dict, out_backprop=out_backprop,
+                             y_input=y_input, filter_size=filter_size, pads=pads, strides=strides)
+
 # Add test Cases
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case1, "success", "case1", True))
@@ -197,6 +213,9 @@ ut_case.add_case(["Ascend910", "Ascend310"],
 
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case20, "success", "case20", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case21, "success", "case20", True))
 if __name__ == '__main__':
     ut_case.run()
     exit(0)

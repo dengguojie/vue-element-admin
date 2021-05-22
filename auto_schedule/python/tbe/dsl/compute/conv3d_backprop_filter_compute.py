@@ -30,6 +30,7 @@ from tbe.tvm.expr import Var
 from tbe.tvm.expr import IntImm
 from tbe.tvm.tensor import Tensor
 
+
 # fractal size, only support 16 for now
 _BLOCK_SIZE = 16
 # maximum of int64 (2**63 - 1)
@@ -291,7 +292,7 @@ class Conv3dBackpropFilter:
         # check of data type
         tbe_utils.para_check.check_dtype_rule(self.fmap_dtype, ('float16'), "fmap")
         tbe_utils.para_check.check_dtype_rule(self.grads_dtype, ('float16'), "grads")
-       
+
         if not tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32"):
             tbe_utils.para_check.check_dtype_rule(self.res_dtype, ('float16'), "res_dtype_lhisi")
         else:
@@ -495,8 +496,13 @@ class Conv3dBackpropFilter:
                                    grads_hw_index, grads_c0_index))
 
             return tvm.compute(grads_shape_fractal,
-                               lambda *indices:
-                               __grads_2_fractal_compute(indices,
+                               lambda g, n_dout, grads_c1, hw_mad_1, grads_c0, hw_mad_0:
+                               __grads_2_fractal_compute((g,
+                                                          n_dout,
+                                                          grads_c1,
+                                                          hw_mad_1,
+                                                          grads_c0,
+                                                          hw_mad_0),
                                                          grads_2_matrix),
                                name='grads_2_fractal',
                                tag='grads_2_fractal')
@@ -536,8 +542,11 @@ class Conv3dBackpropFilter:
 
             return tvm.compute(
                 fmap_shape_fractal,
-                lambda *indices: __fmap_2_fractal_load2d_compute(
-                    indices, fmap_2_matrix),
+                lambda g, n_dout, hw_mad_1, dk_cing_hk_wk, fmap_c0, unit_size:
+                    __fmap_2_fractal_load2d_compute((g, n_dout, hw_mad_1,
+                                                     dk_cing_hk_wk, fmap_c0,
+                                                     unit_size),
+                                                    fmap_2_matrix),
                 name='famp_2_fractal',
                 tag='famp_2_fractal')
 
@@ -578,19 +587,24 @@ class Conv3dBackpropFilter:
 
         def _tensor_to_al1():
             fmap_al1_shape = (batch_size * grads_depth,
-                              kernel_depth * fmap_channel_1, fmap_height,
+                              real_g * kernel_depth * fmap_channel1_g,
+                              fmap_height,
                               fmap_width, fmap_c0)
             fmap_l1 = tvm.compute(
                 fmap_al1_shape,
-                lambda i, j, k, l, m: tvm.select(
-                    tvm.all((i % grads_depth) * stride_depth + j //
-                            fmap_channel_1 >= pad_front,
-                            (i % grads_depth) * stride_depth + j //
-                            fmap_channel_1 < pad_front + fmap_depth),
-                    self.fmap(
-                        i // grads_depth, i % grads_depth * stride_depth + j //
-                        fmap_channel_1 - pad_front, j % fmap_channel_1, k, l, m
-                    )),
+                lambda n_dout, g_dk_cing, h, w, al1_c0: tvm.select(
+                    tvm.all(((n_dout % grads_depth) * stride_depth
+                            + (g_dk_cing // fmap_channel1_g) % kernel_depth)
+                            >= pad_front,
+                            ((n_dout % grads_depth) * stride_depth
+                            + (g_dk_cing // fmap_channel1_g) % kernel_depth)
+                            < pad_front + fmap_depth),
+                    self.fmap(n_dout // grads_depth,
+                              (n_dout % grads_depth * stride_depth
+                              + (g_dk_cing // fmap_channel1_g) % kernel_depth - pad_front),
+                              g_dk_cing // (kernel_depth * fmap_channel1_g)
+                              * fmap_channel1_g + g_dk_cing % fmap_channel1_g,
+                              h, w, al1_c0)),
                 name='fmap_l1',
                 tag='fmap_l1')
             return fmap_l1
@@ -701,7 +715,11 @@ class Conv3dBackpropFilter:
 
         return tvm.compute(
             grads_shape_matrix,
-            lambda *indices: __grads_2_matrix_compute(indices, grads),
+            lambda n_dout, grads_c1, hw_ori, grads_c0:
+                __grads_2_matrix_compute((n_dout,
+                                          grads_c1,
+                                          hw_ori,
+                                          grads_c0), grads),
             name='grads_2_matrix',
             tag='grads_2_matrix')
 
@@ -731,7 +749,6 @@ class Conv3dBackpropFilter:
         """
         def __fmap_2_matrix_compute(indices,
                                     fmap,
-                                    kernel_width,
                                     pad_left=0,
                                     pad_right=0,
                                     pad_top=0,
@@ -743,7 +760,7 @@ class Conv3dBackpropFilter:
             do coordinate calculation
 
             """
-
+            _, kernel_depth, _, _, kernel_width = self.weight_shape
             _, _, fmap_c1, fmap_height, fmap_width, _ = self.shape_list['fmap_6hd']
 
             (g_indices, batch_indices, hw_fuse_indices, fmap_c1_indices, kernel_height_indices,
@@ -756,8 +773,8 @@ class Conv3dBackpropFilter:
             n_index = batch_indices
             depth_index = fmap_c1_indices // self.group_dict['cin1_g']
             cin_index = fmap_c1_indices % self.group_dict['cin1_g']
-            c1_index = (depth_index * fmap_c1 +
-                        g_indices * self.group_dict['cin1_g'] + cin_index)
+            c1_index = (g_indices * self.group_dict['cin1_g'] * kernel_depth +
+                        depth_index * self.group_dict['cin1_g'] + cin_index)
             h_index = (hw_fuse_indices // width_out) * strideh + kernel_height_indices * dilationh
             w_index = (hw_fuse_indices % width_out) * stridew + kernel_width_indices * dilationw
             c0_index = fmap_c0_indices
@@ -774,19 +791,19 @@ class Conv3dBackpropFilter:
         _, strideh, stridew = self.stride
         _, _, _, dilationh, dilationw = self.dilation
 
-        kernel_width = fmap_shape_original_matrix[5]
         return tvm.compute(
             fmap_shape_original_matrix,
-            lambda *indices: __fmap_2_matrix_compute(indices,
-                                                     fmap,
-                                                     kernel_width,
-                                                     pad_left=pad_left,
-                                                     pad_right=pad_right,
-                                                     pad_top=pad_top,
-                                                     strideh=strideh,
-                                                     stridew=stridew,
-                                                     dilationh=dilationh,
-                                                     dilationw=dilationw),
+            lambda g, n_dout, hw_ori, dk_cing, hk, wk, fmap_c0:
+                __fmap_2_matrix_compute((g, n_dout, hw_ori,
+                                         dk_cing, hk, wk, fmap_c0),
+                                        fmap,
+                                        pad_left=pad_left,
+                                        pad_right=pad_right,
+                                        pad_top=pad_top,
+                                        strideh=strideh,
+                                        stridew=stridew,
+                                        dilationh=dilationh,
+                                        dilationw=dilationw),
             name='fmap_2_col_matrix',
             tag='fmap_2_col_matrix',
             attrs={
@@ -839,7 +856,8 @@ class Conv3dBackpropFilter:
 
         return tvm.compute(
             fmap_shape_matrix,
-            lambda *indices: __fmap_2_matrix_load2d_compute(indices, fmap),
+            lambda n_dout, dk_fmap_c1, hk_wk, fmap_c0:
+                __fmap_2_matrix_load2d_compute((n_dout, dk_fmap_c1, hk_wk, fmap_c0), fmap),
             name='fmap_2_matrix',
             tag='fmap_2_matrix',
             attrs={
@@ -910,8 +928,12 @@ class Conv3dBackpropFilter:
                                   kh_vm_index, kw_vm_index, c0_vm_index))
 
         return tvm.compute(fmap_shape_fmap_matrix,
-                           lambda *indices: __fmap_2_fractal_compute(
-                               indices, fmap_2_col_matrix),
+                           lambda g, n_dout, hw_mad_1, dk_cing_hk_wk, fmap_c0, unit_c0:
+                                __fmap_2_fractal_compute((g, n_dout,
+                                                          hw_mad_1,
+                                                          dk_cing_hk_wk,
+                                                          fmap_c0, unit_c0),
+                                                         fmap_2_col_matrix),
                            name='fmap_2_col_fractal',
                            tag='fmap_2_col_fractal')
 
