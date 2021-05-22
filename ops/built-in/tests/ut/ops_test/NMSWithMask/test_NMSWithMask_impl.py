@@ -17,6 +17,8 @@ NMSWithMask ut case
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
+from impl.nms_with_mask import nms_with_mask
+from te import platform as cce_conf
 
 ut_case = OpUT("NMSWithMask", "impl.nms_with_mask", "nms_with_mask")
 
@@ -137,6 +139,18 @@ ut_case.add_case(["Ascend910", "Ascend310"], case_aligned_with_iou_equal_one)
 
 
 def nms_proposals_reduce(proposals, downscale):
+    """
+    down scaling of proposals
+
+    Parameters:
+    ----------
+    proposals: to be scaled
+    downscale: scaling factor
+
+    Returns
+    -------
+    reduced_proposals
+    """
     reduced_proposals = np.zeros(proposals.shape, dtype=np.float16)
     for i in range(proposals.shape[0]):
         for j in range(2):
@@ -148,6 +162,17 @@ def nms_proposals_reduce(proposals, downscale):
 
 
 def nms_proposals_area(proposals):
+    """
+    area calculation
+
+    Parameters:
+    ----------
+    proposals: from proposals calculate areas
+
+    Returns
+    -------
+    area
+    """
     area = np.zeros(proposals.shape[0], dtype=np.float16)
     for i in range(proposals.shape[0]):
         area[i] = (proposals[i][2] - proposals[i][0] + 1) * (proposals[i][3] - proposals[i][1] + 1)
@@ -155,10 +180,35 @@ def nms_proposals_area(proposals):
 
 
 def nms_proposal_aadd(area_0, area_1, thresh):
+    """
+    area add
+
+    Parameters:
+    ----------
+    area_0: area 0
+    area_1: area 1
+    thresh: threshold
+
+    Returns
+    -------
+    aadd
+    """
     return (area_0 + area_1) * thresh
 
 
 def nms_proposal_iou(proposal_0, proposal_1):
+    """
+    intersection calc, which is used for iou
+
+    Parameters:
+    ----------
+    proposal_0: one proposal
+    proposal_1: another proposal
+
+    Returns
+    -------
+    intersection
+    """
     xx1 = max(proposal_0[0], proposal_1[0])
     yy1 = max(proposal_0[1], proposal_1[1])
     xx2 = min(proposal_0[2], proposal_1[2])
@@ -169,6 +219,21 @@ def nms_proposal_iou(proposal_0, proposal_1):
 
 
 def calc_expect_func(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr):
+    """
+    expect function
+
+    Parameters:
+    ----------
+    box_scores: input boxes and scores
+    selected_boxes: output selected boxes
+    selected_idx: output selected idx
+    selected_mask: output selected mask
+    iou_thr: iou threshold
+
+    Returns
+    -------
+    [boxes_proposals, out_idx, out_mask]
+    """
     proposals_in = box_scores["value"]
     downscale = 0.054395
     thresh = iou_thr / (1 + iou_thr)
@@ -211,36 +276,213 @@ def calc_expect_func(box_scores, selected_boxes, selected_idx, selected_mask, io
             out_mask.astype(selected_mask["dtype"])]
 
 
-# ut_case.add_precision_case("all", {
-#     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (6, 8), "shape": (6, 8), "param_type": "input"},
-#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (6, 5), "shape": (6, 5), "param_type": "output"},
-#                {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (6,), "shape": (6,), "param_type": "output"},
-#                {"dtype": "uint8", "format": "ND", "ori_format": "ND", "ori_shape": (6,), "shape": (6,), "param_type": "output"},
-#                1.0],
-#     "calc_expect_func": calc_expect_func,
-#     "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
-# })
+def test_1981_fp16_small_shape(test_arg):
+    """
+    test small shape, dtype is fp16, 1981
 
-# ut_case.add_precision_case("all", {
-#     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (16, 8), "shape": (16, 8), "param_type": "input"},
-#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (16, 5), "shape": (16, 5), "param_type": "output"},
-#                {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (16,), "shape": (16,), "param_type": "output"},
-#                {"dtype": "uint8", "format": "ND", "ori_format": "ND", "ori_shape": (16,), "shape": (16,), "param_type": "output"},
-#                1.0],
-#     "calc_expect_func": calc_expect_func,
-#     "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
-# })
-#
-# ut_case.add_precision_case("all", {
-#     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (64, 8), "shape": (64, 8), "param_type": "input"},
-#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (64, 5), "shape": (64, 5), "param_type": "output"},
-#                {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (64,), "shape": (64,), "param_type": "output"},
-#                {"dtype": "uint8", "format": "ND", "ori_format": "ND", "ori_shape": (64,), "shape": (64,), "param_type": "output"},
-#                1.0],
-#     "calc_expect_func": calc_expect_func,
-#     "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
-# })
+    Parameters:
+    ----------
+    test_arg: may be used for te_set_version()
+
+    Returns
+    -------
+    None
+    """
+    cce_conf.cce_conf.te_set_version('Ascend920A', 'VectorCore')
+    n_proposals = 6
+    dtype = 'float16'
+
+    nms_with_mask(
+        {
+            "shape": (n_proposals, 8),
+            "format": "ND",
+            "dtype": dtype,
+            "ori_shape": (n_proposals, 8),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals, 5),
+            "format": "ND",
+            "dtype": dtype,
+            "ori_shape": (n_proposals, 5),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals,),
+            "format": "ND",
+            "dtype": "int32",
+            "ori_shape": (n_proposals,),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals,),
+            "format": "ND",
+            "dtype": "uint8",
+            "ori_shape": (n_proposals,),
+            "ori_format": "ND"
+        },
+        0.5)
+
+    cce_conf.cce_conf.te_set_version(test_arg)
+
+
+def test_1981_fp16_big_shape(test_arg):
+    """
+    test big shape, dtype is fp16, 1981
+
+    Parameters:
+    ----------
+    test_arg: may be used for te_set_version()
+
+    Returns
+    -------
+    None
+    """
+    cce_conf.cce_conf.te_set_version('Ascend920A', 'VectorCore')
+    n_proposals = 2007
+    dtype = 'float16'
+
+    nms_with_mask(
+        {
+            "shape": (n_proposals, 8),
+            "format": "ND",
+            "dtype": dtype,
+            "ori_shape": (n_proposals, 8),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals, 5),
+            "format": "ND",
+            "dtype": dtype,
+            "ori_shape": (n_proposals, 5),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals,),
+            "format": "ND",
+            "dtype": "int32",
+            "ori_shape": (n_proposals,),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals,),
+            "format": "ND",
+            "dtype": "uint8",
+            "ori_shape": (n_proposals,),
+            "ori_format": "ND"
+        },
+        0.5)
+
+    cce_conf.cce_conf.te_set_version(test_arg)
+
+
+def test_1981_fp32_small_shape(test_arg):
+    """
+    test small shape, dtype is fp32, 1981
+
+    Parameters:
+    ----------
+    test_arg: may be used for te_set_version()
+
+    Returns
+    -------
+    None
+    """
+    cce_conf.cce_conf.te_set_version('Ascend920A', 'VectorCore')
+    n_proposals = 6
+    dtype = 'float32'
+
+    nms_with_mask(
+        {
+            "shape": (n_proposals, 8),
+            "format": "ND",
+            "dtype": dtype,
+            "ori_shape": (n_proposals, 8),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals, 5),
+            "format": "ND",
+            "dtype": dtype,
+            "ori_shape": (n_proposals, 5),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals,),
+            "format": "ND",
+            "dtype": "int32",
+            "ori_shape": (n_proposals,),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals,),
+            "format": "ND",
+            "dtype": "uint8",
+            "ori_shape": (n_proposals,),
+            "ori_format": "ND"
+        },
+        0.5)
+
+    cce_conf.cce_conf.te_set_version(test_arg)
+
+
+def test_1981_fp32_big_shape(test_arg):
+    """
+    test big shape, dtype is fp32, 1981
+
+    Parameters:
+    ----------
+    test_arg: may be used for te_set_version()
+
+    Returns
+    -------
+    None
+    """
+    cce_conf.cce_conf.te_set_version('Ascend920A', 'VectorCore')
+    n_proposals = 1001
+    dtype = 'float32'
+
+    nms_with_mask(
+        {
+            "shape": (n_proposals, 8),
+            "format": "ND",
+            "dtype": dtype,
+            "ori_shape": (n_proposals, 8),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals, 5),
+            "format": "ND",
+            "dtype": dtype,
+            "ori_shape": (n_proposals, 5),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals,),
+            "format": "ND",
+            "dtype": "int32",
+            "ori_shape": (n_proposals,),
+            "ori_format": "ND"
+        },
+        {
+            "shape": (n_proposals,),
+            "format": "ND",
+            "dtype": "uint8",
+            "ori_shape": (n_proposals,),
+            "ori_format": "ND"
+        },
+        0.5)
+
+    cce_conf.cce_conf.te_set_version(test_arg)
+
+
+ut_case.add_cust_test_func(test_func=test_1981_fp16_small_shape)
+ut_case.add_cust_test_func(test_func=test_1981_fp16_big_shape)
+ut_case.add_cust_test_func(test_func=test_1981_fp32_small_shape)
+ut_case.add_cust_test_func(test_func=test_1981_fp32_big_shape)
 
 if __name__ == '__main__':
+    ut_case.run('Ascend310')
     ut_case.run('Ascend910')
+    ut_case.run('Ascend920A')
     exit(0)
