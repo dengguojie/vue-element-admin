@@ -33,33 +33,6 @@ namespace {
 }
 
 namespace optiling {
-void deal_with_compile_info(const nlohmann::json& compile_info, nlohmann::json &opInfo)
-{
-  if (compile_info.is_object()) {
-    opInfo = compile_info;
-  } else if (compile_info.is_array()) {
-    nlohmann::json item;
-    opInfo = compile_info[0];
-    for (size_t i = 1; i < compile_info.size(); i++) {
-      item = compile_info[i];
-      std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
-      for (auto key : key_list) {
-        if (item[key].is_object() && !item[key].empty()) {
-          std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
-          opInfo[key][item[key].begin().key()] = list_value;
-        }
-      }
-      std::vector<std::string> key_int = {"block_dim"};
-      for (auto key: key_int) {
-        if (item[key].is_object() && !item[key].empty()) {
-          int32_t int_value = item[key].begin().value().get<int32_t>();
-          opInfo[key][item[key].begin().key()] = int_value;
-        }
-      }
-    }
-  }
-}
-
 /*
  * @brief: tiling function of conv3d_backprop_input
  * @param [in] op_type: op_type of the conv3d_backprop_input

@@ -29,6 +29,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+from tbe.common.register import register_param_generalization
 
 
 BIAS_LENGTH = 1
@@ -831,12 +832,122 @@ def _conv3d_compute(fmap,
         "kernel_name": kernel_name,
         "group_dict": group_dict,
         "correct_range_flag":correct_range_flag,
+        "groups": groups,
+        "ori_tensors": {"fmap": fmap,
+                        "weight": weight,
+                        "bias": bias,
+                        "output": output}
     }
     conv_res = tbe.conv3d(data, weight, shape_filter, para_dict)
 
     if bias:
         return {"op_placeholder": [data, weight, bias_tensor], "op_res": [conv_res]}
     return {"op_placeholder": [data, weight], "op_res": [conv_res]}
+
+
+def _generate_unkown_shape(obj_shape, obj_format):
+    if obj_format == "NDC1HWC0":
+        idx_tup = (0, 1, 3, 4)
+    else:
+        idx_n = obj_format.find('N')
+        idx_d = obj_format.find('D')
+        idx_h = obj_format.find('H')
+        idx_w = obj_format.find('W')
+        idx_tup = (idx_n, idx_d, idx_h, idx_w)
+    obj_shape = list(obj_shape)
+    for idx in idx_tup:
+        obj_shape[idx] = DYNAMIC_FLAG
+    return tuple(obj_shape)
+
+
+def _generalize_input_keep_rank(param_dict):
+    param_dict["ori_shape"] = _generate_unkown_shape(param_dict["ori_shape"], param_dict["ori_format"])
+    param_dict["shape"] = _generate_unkown_shape(param_dict["shape"], param_dict["format"])
+
+
+@register_param_generalization("Conv3D")
+def conv3d_generalization(fmap,
+                          weight,
+                          bias,
+                          offset_w,
+                          output,
+                          strides,
+                          pads,
+                          dilations=(1, 1, 1, 1, 1),
+                          groups=1,
+                          data_format="NDHWC",
+                          offset_x=0,
+                          kernel_name="conv3d",
+                          generalize_config={"mode": "keep_rank"}):
+    """
+    algorithm: conv3d_generalization
+
+    Parameters
+    ----------
+    fmap: A dict with keys(shape and dtype)
+        Input 5d feature map tensor
+
+    weight: A dict with keys(shape and dtype)
+        Input 5d weight tensor
+
+    bias: A dict with keys(shape and dtype) or None
+        Input bias tensor
+
+    offset_w: A dict with keys(shape and dtype) or None
+        Input offset_w tensor
+
+    output: A dict with keys(shape and dtype)
+        Output tensor, dtype must be assigned
+
+    strides: A tuple/list of 5 integers, format sensitive
+        [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
+
+    pads: A tuple/list of 6 integers
+        [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: A tuple/list of 5 integers
+        Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
+
+    groups: Int of blocked connections from input channels to output channels
+        Default value is 1
+
+    data_format: The data format of the input and output data
+        Default format is "NDHWC"
+
+    offset_x: Int
+        Input offset_x value, default value is 0
+
+    kernel_name: Str
+        Kernel name, default value is "conv3d"
+
+    generalize_config: dict
+        support keep_rank
+
+    Returns
+    -------
+    None
+    """
+    result = []
+    if generalize_config["mode"] == "keep_rank":
+        _generalize_input_keep_rank(fmap)
+        _generalize_input_keep_rank(output)
+    else:
+        error_manager_cube.raise_err_one_para("E2306",
+                                              "Conv3D",
+                                              "Invalid generalize mode, currently only support keep_rank")
+    result.append([fmap,
+                   weight,
+                   bias,
+                   offset_w,
+                   output,
+                   strides,
+                   pads,
+                   dilations,
+                   groups,
+                   data_format,
+                   offset_x,
+                   kernel_name])
+    return result
 
 
 @register_operator("Conv3D")

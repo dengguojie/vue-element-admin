@@ -43,6 +43,16 @@ bool cube_tiling(const std::string& op_type,
                 OpRunInfo& run_info);
 
 /*
+ * @brief: tiling function of cube operators
+ * @param [in] compile_info: compile time generated info of operator
+ * @param [in] opInfo: merge compile time generated info of operator
+ * @param [out] runInfo: result data
+ * @return : void
+ */
+void deal_with_compile_info(const nlohmann::json& compile_info,
+                            nlohmann::json &opInfo);
+
+/*
 * @brief: tiling function of conv3d forward and backprop
 * @param [in] op_type: op_type of the conv3d forward and backprop
 * @param [in] input_shape: input shape of the conv3d forward and backprop

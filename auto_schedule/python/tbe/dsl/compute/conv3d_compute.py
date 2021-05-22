@@ -71,6 +71,7 @@ class Conv3DParam(object):
     tiling_query_param = {}
     var_map = {}
     tiling_info_dict = {}
+    para_dict = {}
 
 
 def _cube_3d_compute(fmap,
@@ -988,6 +989,7 @@ def conv3d(x, filter, filter_size, para_dict):
     w_dtype = filter.dtype
     Conv3DParam.dynamic_para = _get_dynamic_para(x, para_dict)
     Conv3DParam.var_map = Conv3DParam.dynamic_para.get("var_map")
+    Conv3DParam.para_dict = para_dict
 
     bias_tensor = para_dict["bias_tensor"]
     bias_flag = (bias_tensor is not None)

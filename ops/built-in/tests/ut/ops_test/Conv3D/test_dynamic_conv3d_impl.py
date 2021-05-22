@@ -33,6 +33,32 @@ def _run_api_end_with_d(
             pads, dilations, groups, data_format, offset_x]
 
 
+def test_conv3d_fuzzy_build_generalization(test_arg):
+    from impl.dynamic.conv3d import conv3d_generalization
+    input_list = [
+        {
+            'shape': (2, 8, 20, 8, 8, 16),
+            'ori_shape': (2, 8, 8 ,8 ,320),
+            'ori_format': 'NDHWC',
+            'format': 'NDC1HWC0',
+            'dtype': 'float16',
+            'range': [(2, 3), (8, 15), (20, 20), (8, 15), (8, 15), (16, 16)]
+        }, {
+            'shape': (160, 20, 16, 16),
+            'ori_shape': (2, 2, 2, 320, 320),
+            'ori_format': 'DHWCN',
+            'format': 'FRACTAL_Z_3D',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (2, 4, 20, 4, 4, 16),
+            'ori_shape': (2, 4, 4, 4, 320),
+            'ori_format': 'NDHWC',
+            'format': 'NDC1HWC0',
+            'dtype': 'float16'
+        }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization']
+    conv3d_generalization(*input_list)
+
+
 # test_conv3dbp_succ_d
 case1 = _run_api_end_with_d()
 
@@ -257,6 +283,10 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case27, "success", "dynamic_case27", True))
+
+# test_conv3d_fuzzy_build_generalization
+print("adding conv3d test_conv3d_fuzzy_build_generalization testcase")
+ut_case.add_cust_test_func(test_func=test_conv3d_fuzzy_build_generalization)
 
 if __name__ == '__main__':
     ut_case.run()
