@@ -4006,6 +4006,7 @@ class MatMulCompute:
         self.block_in = tbe_platform.BLOCK_IN
         self.block_out = tbe_platform.BLOCK_OUT
         self.block_reduce = tbe_platform.BLOCK_REDUCE
+        self.origin_reduce_axis = 0
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         if self.cube_vector_split and self.tensor_bias is not None:
             self.matrix_type = self.tensor_bias.dtype
@@ -4069,11 +4070,15 @@ class MatMulCompute:
                 tensor_a_nz_shape = [km_shape, m_shape, block_in, block_reduce]
             if self.batch_shape_a:
                 tensor_a_nz_shape.insert(0, self.batch_shape_a)
+            d_axis_origin_length = self.tensor_a.shape[-1]
             temp_tensor_a = tvm.compute(
                 tensor_a_nz_shape,
-                lambda *indices: temp_tensor_a(*indices[:-4],
-                                               indices[-3]*block_in + indices[-2],
-                                               indices[-4]*block_reduce + indices[-1]),
+                lambda *indices: tvm.select(tvm.any(
+                    (indices[-4] * block_reduce + indices[-1]) < d_axis_origin_length),
+                    temp_tensor_a(*indices[:-4],
+                    indices[-3]*block_in + indices[-2],
+                    indices[-4]*block_reduce + indices[-1]),
+                    tvm.const(0).astype(self.src_dtype)),
                 name="tensor_a_fract")
 
         if self.src_dtype == "float16" or (self.src_dtype == "int8" and not self.trans_a):
@@ -4085,13 +4090,13 @@ class MatMulCompute:
                     a_matrix_shape,
                     lambda *indices: temp_tensor_a(*indices[:-2], indices[-1], indices[-2]),
                     name="tensor_a_matrix",
-                    attrs={"trans": "1"})
+                    attrs={"transpose_a": "true"})
             else:
                 a_matrix = tvm.compute(
                     a_matrix_shape,
                     lambda *indices: temp_tensor_a(*indices[:-4], indices[-3], indices[-4], *indices[-2:]),
                     name="tensor_a_matrix",
-                    attrs={"trans": "0"})
+                    attrs={"transpose_a": "false"})
         else:
             a_matrix_shape = [m_shape*2, self._ceil_div(km_shape, 2), block_in, block_reduce]
             if self.batch_shape_a:
@@ -4104,7 +4109,7 @@ class MatMulCompute:
                               indices[-1] % self.block_in,
                               indices[-2] + (indices[-4]%2)*self.block_in),
                 name="tensor_a_matrix",
-                attrs={"trans": "1"})
+                attrs={"transpose_a": "true"})
 
         return a_matrix
 
@@ -4136,11 +4141,15 @@ class MatMulCompute:
                 tensor_b_nz_shape = [n_shape, kn_shape, block_out, block_reduce]
             if self.batch_shape_b:
                 tensor_b_nz_shape.insert(0, self.batch_shape_b)
+            d_axis_origin_length = self.tensor_b.shape[-1]
             temp_tensor_b = tvm.compute(
                 tensor_b_nz_shape,
-                lambda *indices: temp_tensor_b(*indices[:-4],
-                                               indices[-3]*block_out + indices[-2],
-                                               indices[-4]*block_reduce + indices[-1]),
+                lambda *indices: tvm.select(tvm.any(
+                    (indices[-4] * block_reduce + indices[-1]) < d_axis_origin_length),
+                    temp_tensor_b(*indices[:-4],
+                    indices[-3]*block_out + indices[-2],
+                    indices[-4]*block_reduce + indices[-1]),
+                    tvm.const(0).astype(self.src_dtype)),
                 name="tensor_b_fract")
         # to Zn
         if self.src_dtype == "float16" or (self.src_dtype == "int8" and self.trans_b):
@@ -4152,13 +4161,13 @@ class MatMulCompute:
                     b_matrix_shape,
                     lambda *indices: temp_tensor_b(*indices),
                     name="tensor_b_matrix",
-                    attrs={"trans": "1"})
+                    attrs={"transpose_b": "true"})
             else:
                 b_matrix = tvm.compute(
                     b_matrix_shape,
                     lambda *indices: temp_tensor_b(*indices[:-4], indices[-3], indices[-4], indices[-1], indices[-2]),
                     name="tensor_b_matrix",
-                    attrs={"trans": "0"})
+                    attrs={"transpose_b": "false"})
         else:
             b_matrix_shape = [self._ceil_div(kn_shape, 2), n_shape * 2, block_out, block_reduce]
             if self.batch_shape_b:
@@ -4171,7 +4180,7 @@ class MatMulCompute:
                                 indices[-4]*2 + indices[-1] // self.block_out,
                                 indices[-1] % self.block_out, indices[-2] + (indices[-3]%2)*self.block_out),
                 name="tensor_b_matrix",
-                attrs={"trans":"0"}
+                attrs={"transpose_b":"false"}
             )
 
         return b_matrix
@@ -4194,7 +4203,6 @@ class MatMulCompute:
         nz2nd_flag = True if self.format_out == "ND" else False
         reduce_kb = tvm.reduce_axis((0, k_shape_l0), name="kb")
         reduce_kp = tvm.reduce_axis((0, self.block_reduce), name="kp")
-        reduce_axis = self.kn_shape * self.block_reduce
 
         l0c_shape = [n_shape_l0, m_shape_l0, self.block_in, self.block_out]
         if self.batch_shape_a:
@@ -4203,7 +4211,7 @@ class MatMulCompute:
             tensor_c_matrix = tvm.compute(
                 l0c_shape,
                 lambda *indices: tvm.sum(tvm.select(
-                    tvm.all(reduce_kb.var * self.block_reduce + reduce_kp.var < reduce_axis),
+                    tvm.all(reduce_kb.var * self.block_reduce + reduce_kp.var < self.origin_reduce_axis),
                     (a_matrix_in(*indices[:-4], indices[-3], reduce_kb, indices[-2], reduce_kp) *
                      (b_matrix_in(*indices[:-4], reduce_kb, indices[-4], indices[-1], reduce_kp)
                      if self.batch_shape_b else b_matrix_in(reduce_kb, indices[-4], indices[-1], reduce_kp))
@@ -4216,7 +4224,7 @@ class MatMulCompute:
                 l0c_shape,
                 lambda *indices: tvm.sum(tvm.select(tvm.all(
                     reduce_kb.var * self.block_reduce +
-                    reduce_kp.var < reduce_axis), tvm.select(
+                    reduce_kp.var < self.origin_reduce_axis), tvm.select(
                     tvm.all(reduce_kb.var == 0, reduce_kp.var == 0),
                     (a_matrix_in(*indices[:-4], indices[-3], reduce_kb, indices[-2], reduce_kp) *
                      (b_matrix_in(*indices[:-4], reduce_kb, indices[-4], indices[-1], reduce_kp)
@@ -4294,10 +4302,14 @@ class MatMulCompute:
             # [(batch), K, M, 16, 16/32] or [(batch), M, K, 16, 16/32]
             self.m_shape = self.tensor_a.shape[-4].value if self.trans_a else self.tensor_a.shape[-3].value
             self.km_shape = self.tensor_a.shape[-3].value if self.trans_a else self.tensor_a.shape[-4].value
+            self.origin_reduce_axis = self.tensor_a.shape[-3] * self.block_in if\
+                self.trans_a else self.tensor_a.shape[-4].value * self.block_reduce
         else:
             # [batch, M, K] or [batch, K, M]
             self.m_shape = self.tensor_a.shape[-1].value if self.trans_a else self.tensor_a.shape[-2].value
             self.km_shape = self.tensor_a.shape[-2].value if self.trans_a else self.tensor_a.shape[-1].value
+            self.origin_reduce_axis = self.tensor_a.shape[-2].value if\
+                self.trans_a else self.tensor_a.shape[-1].value
 
         # matrix B
         if self.format_b == "FRACTAL_NZ":
@@ -4313,3 +4325,4 @@ class MatMulCompute:
             # [(batch), K, N] or [(batch), N, K]
             self.kn_shape = self.tensor_b.shape[-1].value if self.trans_b else self.tensor_b.shape[-2].value
             self.n_shape = self.tensor_b.shape[-2].value if self.trans_b else self.tensor_b.shape[-1].value
+
