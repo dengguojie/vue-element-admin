@@ -6353,12 +6353,12 @@ static void GetShapeGear(int64_t dim_val,
 }
 
 static int32_t CalcShapeGear(const GeTensorDescPtr& obj_desc,
-                             const std::vector<int64_t> &dim_ops,
+                             const std::vector<size_t> &dim_ops,
                              std::vector<std::pair<int64_t, int64_t>> &single_point_range)
 {
   std::vector<int64_t> obj_sizes = obj_desc->MutableShape().GetDims();
 
-  for (int i = 0; i < dim_ops.size(); i++) {
+  for (size_t i = 0; i < dim_ops.size(); i++) {
     if (obj_sizes[dim_ops[i]] > MAX_RANGE) {
       return -1;
     }
@@ -6379,12 +6379,12 @@ static int32_t CalcShapeRange(const GeTensorDescPtr& obj_desc,
 {
   Format obj_format = obj_desc->GetFormat();
   std::string obj_format_str = format2str[obj_format];
-  int32_t n_pos = obj_format_str.find("N");
-  int32_t c_pos = obj_format_str.find("C");
-  int32_t d_pos = obj_format_str.find("D");
-  int32_t h_pos = obj_format_str.find("H");
-  int32_t w_pos = obj_format_str.find("W");
-  std::vector<int64_t> dim_ops;
+  size_t n_pos = obj_format_str.find("N");
+  size_t c_pos = obj_format_str.find("C");
+  size_t d_pos = obj_format_str.find("D");
+  size_t h_pos = obj_format_str.find("H");
+  size_t w_pos = obj_format_str.find("W");
+  std::vector<size_t> dim_ops;
   dim_ops.push_back(n_pos);
   dim_ops.push_back(c_pos);
   dim_ops.push_back(d_pos);

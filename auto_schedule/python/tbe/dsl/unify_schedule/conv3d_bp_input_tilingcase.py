@@ -69,7 +69,7 @@ def _parse_fuzz_build_range(info_list):
     info_list: list support info
         [{
             "inputs": [{
-                "index": 0,
+                "index": 2,
                 "tensor": [{
                     "range": [
                         [1, 1],
@@ -118,7 +118,7 @@ def _get_pad_mode(conv_info):
     return pad_mode
 
 
-def gen_support_info(range_x, ori_tensors):
+def gen_support_info(range_x):
     """
     kernel list support info part
 
@@ -130,8 +130,6 @@ def gen_support_info(range_x, ori_tensors):
     ----------
     range_x: list
          input x range
-    ori_tensors: dict
-        orginal vaild tensors
 
     Returns
     -------
@@ -143,6 +141,7 @@ def gen_support_info(range_x, ori_tensors):
     item["index"] = 2
     item["tensor"] = []
     tensor_info = {}
+    ori_tensors = DynamicConv3dBpInputParams.para_dict.get("ori_tensors")
     ori_tensors_input = ori_tensors.get("out_backprop")
     ori_shape = ori_tensors_input.get("ori_shape")
     tensor_info["shape"] = ori_shape
@@ -206,8 +205,7 @@ def add_covered_shape_range(compile_info):
         new_compile["_vars"] = {kernel_id: var_list}
         range_x = new_compile["repo_range"].get(kernel_id) or new_compile["cost_range"].get(kernel_id)
         new_range = [range_x[:2], range_x[2:4], range_x[4:6], range_x[6:8]]
-        ori_tensors = DynamicConv3dBpInputParams.para_dict.get("ori_tensors")
-        new_support = gen_support_info(new_range, ori_tensors)
+        new_support = gen_support_info(new_range)
         info_list.append({"supportInfo": new_support, "compileInfo": new_compile})
     return info_list, id_list[-1]
 
@@ -223,7 +221,7 @@ def build_pointcut_conv3d_backprop_input(func, *args, **kwargs):
         {
             "supportInfo": {
                 "inputs": [{
-                    "index": 0,
+                    "index": 2,
                     "tensor": [{
                     "range": [
                         [1, 1],

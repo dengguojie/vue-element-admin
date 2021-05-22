@@ -118,8 +118,6 @@ def gen_support_info(range_x):
     ----------
     range_x: list
          input x range
-    ori_tensors: dict
-        orginal vaild tensors
 
     Returns
     -------
