@@ -15,7 +15,6 @@
 """
 dynamic softplus
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -64,19 +63,32 @@ def softplus_compute(input_x, y, kernel_name="softplus"):
 
     positive_part = tbe.vmaxs(input_x, tvm.const(0, dtype="float32"))
     negative_part = tbe.vmins(input_x, tvm.const(0, dtype="float32"))
-
     # calculate positive part softplus
     pos_to_neg = tbe.vmuls(positive_part, tvm.const(NEG_ONE, dtype="float32"))
-    exp_pos = tbe.vexp(pos_to_neg)
-    exp_add_one = tbe.vadds(exp_pos, SCALAR_ONE)
-    log_pos = tbe.vlog(exp_add_one)
-    res_positive = tbe.vadd(log_pos, positive_part)
-
-    # calculate positive part softplus
-    exp_neg = tbe.vexp(negative_part)
-    add_one = tbe.vadds(exp_neg, SCALAR_ONE)
-    res_negative = tbe.vlog(add_one)
-
+    # dtype is float32 and tbe_platform not support float32
+    if dtype == "float32" and not tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+        positive_part = tbe.cast_to(positive_part, "float16")
+        pos_to_neg = tbe.cast_to(pos_to_neg, "float16")
+        negative_part = tbe.cast_to(negative_part, "float16")
+        exp_pos = tbe.vexp(pos_to_neg)
+        exp_add_one = tbe.vadds(exp_pos, SCALAR_ONE)
+        log_pos = tbe.vlog(exp_add_one)
+        res_positive = tbe.vadd(log_pos, positive_part)
+        # calculate positive part softplus
+        exp_neg = tbe.vexp(negative_part)
+        add_one = tbe.vadds(exp_neg, SCALAR_ONE)
+        res_negative = tbe.vlog(add_one)
+    else:
+        exp_pos = tbe.vexp(pos_to_neg)
+        exp_add_one = tbe.vadds(exp_pos, SCALAR_ONE)
+        log_pos = tbe.vlog(exp_add_one)
+        res_positive = tbe.vadd(log_pos, positive_part)
+        # calculate positive part softplus
+        exp_neg = tbe.vexp(negative_part)
+        add_one = tbe.vadds(exp_neg, SCALAR_ONE)
+        res_negative = tbe.vlog(add_one)
+    res_positive = tbe.cast_to(res_positive, "float32")
+    res_negative = tbe.cast_to(res_negative, "float32")
     res_tmp = tbe.vadd(res_positive, res_negative)
     res = tbe.vadds(res_tmp, NEG_LN_2)
 
@@ -112,13 +124,11 @@ def softplus(x, y, kernel_name="softplus"):
 
     ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for (_x,) in ins:
+    for (input_x,) in ins:
         # op compute
         with tbe.compute():
-            x_shape = shape_util.variable_shape([_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            input_data = tvm.placeholder(fuseshape, name="input_data", dtype=x_dtype)
+            x_shape = shape_util.variable_shape([input_x])
+            input_data = tvm.placeholder(x_shape[0], name="input_data", dtype=x_dtype)
 
             res = softplus_compute(input_data, y, kernel_name)
             tensors.append([input_data, res])

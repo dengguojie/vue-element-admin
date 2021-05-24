@@ -17,7 +17,6 @@ power
 """
 # pylint: disable=redefined-outer-name
 import math
-from functools import reduce as reduceIns
 
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
@@ -290,9 +289,7 @@ def power(input_x, output_y, power=1.0, scale=1.0,
         with tbe.compute():
             # shape
             x_shape = shape_util.variable_shape([input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, name="data_input",
+            data_input = tvm.placeholder(x_shape[0], name="data_input",
                                          dtype=input_dtype)
             if cur_cce_product in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
                 if input_dtype == "float32":
