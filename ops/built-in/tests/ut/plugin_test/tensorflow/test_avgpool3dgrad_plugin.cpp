@@ -18,13 +18,24 @@ class avgpool3dgrad_plugin_test : public testing::Test {
   }
 };
 
-TEST_F(avgpool3dgrad_plugin_test, avgpool3dgrad_plugin_test_1) {
+TEST_F(avgpool3dgrad_plugin_test, avgpool3dgrad_plugin_test_format_NDHWC) {
   ge::Graph graph;
 
   std::string caseDir = __FILE__;
   std::size_t idx = caseDir.find_last_of("/");
   caseDir = caseDir.substr(0, idx);
   std::string modelFile = caseDir + "/avgpool3dgrad_case_1.pb";
+
+  auto status = aclgrphParseTensorFlow(modelFile.c_str(), graph);
+}
+
+TEST_F(avgpool3dgrad_plugin_test, avgpool3dgrad_plugin_test_format_NCDHW) {
+  ge::Graph graph;
+
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string modelFile = caseDir + "/avgpool3dgrad_case_2.pb";
 
   auto status = aclgrphParseTensorFlow(modelFile.c_str(), graph);
 }
