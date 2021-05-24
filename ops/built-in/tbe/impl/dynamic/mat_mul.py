@@ -18,6 +18,7 @@ dynamic mat_mul
 import math
 
 from impl.util import fusion_util
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import error_manager_cube
@@ -40,6 +41,63 @@ DYNAMIC_FLAG = -1
 DYNAMIC_FLAG_UNRANK = [-2]
 NZ_LENGTH = 4
 ND_LENGTH = 2
+L1FUSION_INPUT_CTR = 2
+
+
+
+def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
+                        trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
+    """
+    get the matmul split, which only split the m and n, cannot cut k with bias
+
+    """
+    format_a = input_x1.get("format")
+    format_b = input_x2.get("format")
+    dtype_b = input_x2.get("dtype")
+    if format_a == 'FRACTAL_NZ':
+        trans_a = not trans_a
+    if format_b == 'FRACTAL_NZ':
+        trans_b = not trans_b
+
+    # cut m
+    if not trans_a:
+        m_split_list = [0, [0], [-1], [-1]]
+        mk_split_list = [0, [1]]
+    else:
+        m_split_list = [0, [1], [-1], [-1]]
+        mk_split_list = [0, [0]]
+    # cut n
+    if not trans_b:
+        n_split_list = [[1, [1], [-1], [-1]]]
+        nk_split_list = [1, [0]]
+    else:
+        n_split_list = [[1, [0], [-1], [-1]]]
+        nk_split_list = [1, [1]]
+
+    if bias:
+        axis_reduce_list = None
+        n_split_list.append([2, [0], [-1], [-1]])
+    else:
+        # cut k_dim which is reduce dim
+        axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
+                            util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]]
+
+    # cut m
+    axis_split_matrix_a = [
+        [util_select_op_base.SplitInput(m_split_list),
+            util_select_op_base.SplitOutput([0, [1]])],
+    ]
+    # cut n
+    axis_split_matrix_b = [
+        [util_select_op_base.SplitInput(*n_split_list),
+            util_select_op_base.SplitOutput([0, [0]])],
+    ]
+
+    axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, None)
+
+    return op_cal_info_in_json
 
 
 def _check_format(real_format, expect_format, param_name):

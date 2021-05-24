@@ -10,6 +10,7 @@ from impl.ascend_dequant import ascend_dequant_compute
 from impl.ascend_quant import ascend_quant_compute
 from impl.ascend_requant import ascend_requant_compute
 from impl.deconvolution import deconvolution_compute
+from impl.deconvolution import get_op_support_info
 from impl.leaky_relu import leaky_relu_compute
 from impl.prelu import prelu_compute
 from op_test_frame.ut import OpUT
@@ -388,10 +389,18 @@ for fusion_case in deconvolution_ut_fusion_case:
         fusion_case[0], test_func=test_deconvolution_fusion(fusion_case)
     )
 
+def test_split_deconvolution(test_arg):
+    x = {"ori_shape": (1, 192, 48, 80), "dtype": "int8", "ori_format": "NCHW", "shape": (1, 6, 48, 80, 32), "format":"NC1HWC0"}
+    weight = {"ori_shape": (144, 64, 3, 3), "dtype": "int8", "ori_format": "NCHW", "shape": (54, 3, 16, 32), "format": "FRACTAL_NZ"}
+    bias = None
+    y = {"ori_shape": (1, 144, 48, 80), "dtype": "int8", "ori_format": "NCHW",  "shape": (1, 5, 48, 80, 32), "format":"NC1HWC0"}
+    get_op_support_info(x, weight, bias, None, y, (1, 1), (0, 0, 0, 0))
+
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_group_requant)
 ut_case.add_cust_test_func(test_func=test_op_compute_int8)
+ut_case.add_cust_test_func(test_func=test_split_deconvolution)
 
 
 if __name__ == "__main__":

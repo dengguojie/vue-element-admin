@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from impl.dynamic.conv2d_backprop_filter import get_op_support_info
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Conv2DBackpropFilter", "impl.dynamic.conv2d_backprop_filter",
@@ -478,6 +479,33 @@ def test_conv2d_backprop_filter_fuzz_build_generalization_1(test_arg):
 print("adding conv2d test_conv2d_backprop_filter_fuzz_build_generalization_1 testcase")
 ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_generalization_1)
 
+
+
+gen_dynamic_conv2d_backprop_filter_case([3, 3, 64, 64], [-1, -1, -1, 64], [-1, -1, -1, 64],
+                                        "float32", "float16", "float16",
+                                        "HWCN", "NHWC", "NHWC",
+                                        [(1, 1), (1, 1), (64, 64), (64, 64)],
+                                        [(64, 128), (50, 71), (50, 71), (64, 64)],
+                                        [(64, 128), (56, 142), (112, 142), (64, 64)],
+                                        (1, 1, 2, 1), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case1",
+                                        "success")
+
+def test_get_op_support_info_dynamic_dw(test_arg):
+    x = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
+         "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
+         "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
+        }
+    out_backprop = {"shape":  (-1, 4, -1, -1, 16), 'ori_shape':(-1, -1, -1, 64),
+                    "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
+                    "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
+                   }
+    y = {"shape":  (36, 4, 16, 16), 'ori_shape':(3, 3, 64, 64),
+         "ori_format": "NHWC", "format": "FRATAL_NZ", "dtype": "float16",
+         "range": ((36, 36), (4, 4), (16, 16), (16, 16))
+        }
+    get_op_support_info(x, (3, 3, 64, 64), out_backprop, y, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1))
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_dw)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

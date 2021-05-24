@@ -4,6 +4,7 @@ from sys import flags
 from op_test_frame.ut import OpUT
 from math import ceil
 
+from impl.dynamic.batch_matmul_v2 import get_op_support_info
 CUBE_BLOCK = 16
 ut_case = OpUT("BatchMatMulV2", "impl.dynamic.batch_matmul_v2", "batch_matmul_v2")
 
@@ -183,6 +184,14 @@ for case in normal_case:
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+
+def test_get_op_support_info_dynamic_batchmatmul_v2(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1, 16, 16), "ori_shape": (-1, -1, -1),
+          "range": ((1, 6), (16, 48), (16, 48), (16, 16), (16, 16))}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1, 16, 16), "ori_shape": (-1, -1, -1),
+          "range": ((1, 6), (16, 48), (16, 48), (16, 16), (16, 16))}
+    get_op_support_info(x1, x2, trans_b=True)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_batchmatmul_v2)
 
 if __name__ == "__main__":
     ut_case.run(["Ascend310", "Ascend910"])

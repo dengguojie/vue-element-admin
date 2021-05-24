@@ -17,9 +17,22 @@ dynamic batch_matmul_v2
 """
 from impl.dynamic.batch_matmul import batch_matmul
 from impl.dynamic.batch_matmul import batch_matmul_fuse_compute
+from impl.dynamic.batch_matmul import get_op_support_info as get_op_support_info_batchmatmul
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
+
+def get_op_support_info(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
+                        trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul"):
+    """
+    get the batch_matmul_v2 split, which only split batch, m and n, cannot cut k with bias
+
+    """
+    op_cal_info_in_json = get_op_support_info_batchmatmul(
+        input_x1, input_x2, bias, output_z, trans_a, trans_b, kernel_name
+    )
+    return op_cal_info_in_json
 
 
 @register_operator_compute("BatchMatMul", op_mode="dynamic", support_fusion=False)

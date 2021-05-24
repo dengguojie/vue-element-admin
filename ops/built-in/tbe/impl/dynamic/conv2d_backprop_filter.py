@@ -18,6 +18,7 @@ dynamic conv2d_backprop_filter
 from __future__ import absolute_import
 
 import warnings
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
@@ -91,6 +92,37 @@ RANGE_DIM_LEN = 2
 
 ORI_SHAPE_LEN = 4
 SHAPE_LEN = 5
+
+L1FUSION_INPUT_CTR = 2
+
+
+def get_op_support_info(x, filter_size, out_backprop, y, strides, pads,
+                        dilations, groups=1, data_format='NHWC',
+                        kernel_name="conv2d_backprop_filter"):
+    """
+    get the conv2d_backprop_filter split info
+
+    """
+
+    format_x = x.get("format")
+    axis_reduce_list = None
+    if format_x == "NC1HWC0":
+        # only Cout1 can be cut without overlap
+        axis_split_matrix = [
+            [util_select_op_base.SplitInput([1, [1], [-1], [-1]]),
+             util_select_op_base.SplitOutput([0, [1]])]
+        ]
+        axis_reduce_list = [
+            [util_select_op_base.ReduceInput([0, [0]], [1, [0]]),
+             util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+        ]
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, None)
+    return op_cal_info_in_json
 
 
 def _ceil(x_1, x_2):

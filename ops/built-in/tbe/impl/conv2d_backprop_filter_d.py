@@ -247,17 +247,18 @@ def get_op_support_info(
     """
 
     format_x = x.get("format")
+    axis_split_matrix = None
     axis_reduce_list = None
     if format_x == "NC1HWC0":
-        # only Cout1 can be cut
+        # only Cout1 can be cut without overlap
         axis_split_matrix = [
-            [
-                util_select_op_base.SplitInput([1, [1], [0], [0]]),
-                util_select_op_base.SplitOutput([0, [1]])
-            ]
+            [util_select_op_base.SplitInput([1, [1], [-1], [-1]]),
+             util_select_op_base.SplitOutput([0, [1]])]
         ]
-    else:
-        axis_split_matrix = None
+        axis_reduce_list = [
+            [util_select_op_base.ReduceInput([0, [0]], [1, [0]]),
+             util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+        ]
 
     ori_format_x = x.get("ori_format")
     ori_shape_x = x.get("ori_shape")

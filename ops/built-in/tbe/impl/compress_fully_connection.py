@@ -21,12 +21,14 @@ from te import tvm
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
+from impl.util import util_select_op_base
+from impl.util.util_common import cal_mini_l1_size_matmul
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from tbe.common.utils.errormgr import error_manager_cube as err_man_cube
 
 NoneType = type(None)
-
+L1FUSION_INPUT_CTR = 2
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
 # pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
@@ -354,6 +356,82 @@ def compress_fully_connection_compute(
     result = te.lang.cce.gemm(tensor_a=x, tensor_b=w, para_dict=para_dict)
 
     return result
+
+
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.REQUIRED_ATTR_INT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+def get_op_support_info(x, w, compress_index, b, offset_w, y, num_output, transpose, axis, offset_x=0,
+                        kernel_name="fully_connection"):
+    """
+    get the compress_fully_connection split
+
+    """
+    shape_x = x.get('shape')
+    dtype_w = w.get('dtype')
+    format_x = x.get('format')
+
+    if axis == 2:
+        b_split_list = [0, [0], [-1], [-1]]
+        m_split_list = [0, [2], [-1], [-1]]
+        n_split_list = [[1, [1], [-1], [-1]]]
+        if b is not None:
+            n_split_list.append([3, [1], [-1], [-1]])
+            axis_reduce_list = None
+        else:
+            axis_reduce_list = [
+                [util_select_op_base.ReduceInput([0, [1]], [1, [0]]),
+                 util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+            ]
+        axis_split_matrix = [
+            [util_select_op_base.SplitInput(b_split_list),
+             util_select_op_base.SplitOutput([0, [0]])],
+            [util_select_op_base.SplitInput(m_split_list),
+             util_select_op_base.SplitOutput([0, [2]])],
+            [util_select_op_base.SplitInput(*n_split_list),
+             util_select_op_base.SplitOutput([0, [1]])]
+        ]
+    else:
+        if format_x == 'NC1HWC0':
+            m_split_list = [0, [0], [-1], [-1]]
+            n_split_list = [[1, [1], [-1], [-1]]]
+            if b is not None:
+                n_split_list.append([3, [1], [-1], [-1]])
+                axis_reduce_list = None
+            else:
+                axis_reduce_list = [
+                    [util_select_op_base.ReduceInput([0, [1]], [1, [0]]),
+                     util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+                ]
+            axis_split_matrix = [
+                [util_select_op_base.SplitInput(m_split_list),
+                 util_select_op_base.SplitOutput([0, [0]])],
+                [util_select_op_base.SplitInput(*n_split_list),
+                 util_select_op_base.SplitOutput([0, [1]])]
+            ]
+        else:
+            m_split_list = [0, [1], [-1], [-1]]
+            n_split_list = [[1, [1], [-1], [-1]]]
+            if b is not None:
+                n_split_list.append([3, [1], [-1], [-1]])
+                axis_reduce_list = None
+            else:
+                axis_reduce_list = [
+                    [util_select_op_base.ReduceInput([0, [0]], [1, [0]]),
+                     util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+                ]
+            axis_split_matrix = [
+                [util_select_op_base.SplitInput(m_split_list),
+                 util_select_op_base.SplitOutput([0, [1]])],
+                [util_select_op_base.SplitInput(*n_split_list),
+                 util_select_op_base.SplitOutput([0, [0]])]
+            ]
+    min_l1space = cal_mini_l1_size_matmul(dtype_w)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
+
+    return op_cal_info_in_json
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

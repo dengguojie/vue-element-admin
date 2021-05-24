@@ -9,6 +9,8 @@ conv2d_backprop_input
 from __future__ import absolute_import
 
 from impl.util import fusion_util
+from impl.util import util_deconv_comm
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -26,6 +28,64 @@ H_DIM = 2
 W_DIM = 3
 ORI_SHAPE_LEN = 4
 SHAPE_LEN = 5
+L1FUSION_INPUT_CTR = 2
+
+
+def get_op_support_info(input_size, filter, out_backprop, y, strides,
+                        pads, dilations=(1, 1, 1, 1), groups=1,
+                        data_format="NHWC", kernel_name="conv2d_backprop_input"):
+    """
+    get the conv2d_backprop_input split info
+
+    """
+    h_pos = data_format.find("H")
+    w_pos = data_format.find("W")
+    shape_out_backprop = out_backprop.get("ori_shape")
+    shape_filters = util_deconv_comm.get_filter_shape(filter.get("ori_format"),
+                                                      filter.get("ori_shape"))
+    if list(shape_out_backprop) != [-2]:
+        shape_out_backprop = util_deconv_comm.get_filter_shape(out_backprop.get("ori_format"),
+                                                               shape_out_backprop)
+
+    head_overlap_h = -1 if (shape_filters[2] == 1 and strides[h_pos] == 1) else 0
+    tail_overlap_h = head_overlap_h
+    head_overlap_w = -1 if (shape_filters[3] == 1 and strides[w_pos] == 1) else 0
+    tail_overlap_w = head_overlap_w
+
+    format_out_backprop = out_backprop.get("format")
+    # input/output Serial， axis Serial, (headoverlap, tailoverlap, 0 means with overlap, -1 means without it)
+    if format_out_backprop == "NC1HWC0":
+        # cut N
+        axis_split_matrix = [
+            [util_select_op_base.SplitInput([1, [0], [-1], [-1]]),
+             util_select_op_base.SplitOutput([0, [0]])]
+        ]
+        # cut Cin
+        axis_split_matrix += [
+            [util_select_op_base.SplitInput([0, [0], [0], [0]]),
+             util_select_op_base.SplitOutput([0, [1]])]
+        ]
+        # cut H
+        if head_overlap_h == -1 or (list(shape_out_backprop) != [-2] and shape_out_backprop[2] > 0):
+            axis_split_matrix += [
+                [util_select_op_base.SplitInput([1, [2], [head_overlap_h], [tail_overlap_h]]),
+                 util_select_op_base.SplitOutput([0, [2]])]
+            ]
+        # cut w
+        if head_overlap_w == -1 or (list(shape_out_backprop) != [-2] and shape_out_backprop[3] > 0):
+            axis_split_matrix += [
+                [util_select_op_base.SplitInput([1, [3], [head_overlap_w], [tail_overlap_w]]),
+                 util_select_op_base.SplitOutput([0, [3]])]
+            ]
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, None
+    )
+
+    return op_cal_info_in_json
 
 
 @tbe_register.register_param_generalization("Conv2DBackpropInput")

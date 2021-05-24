@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from impl.compress_fully_connection import get_op_support_info
+
 from op_test_frame.ut import OpUT
 ut_case = OpUT("FullyConnectionCompress", "impl.compress_fully_connection", "compress_fully_connection")
 """
@@ -132,6 +134,24 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
+
+def test_split_fc_compress(test_arg):
+    compress_index = {"shape": (1, ), "dtype": "int8", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"}
+    x = {'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 1, 2, 2, 16)}
+    w = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
+    b =  {'shape': (1, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)}
+    y = {'shape': (1, 1, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 1, 1, 1, 16)}
+    get_op_support_info(x, w, compress_index, b, None, y, 16, False, 1, 0, kernel_name="compress_fully_connection")
+
+def test_split_fc_compress_1(test_arg):
+    compress_index = {"shape": (1, ), "dtype": "int8", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"}
+    x = {'shape': (2, 1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 1, 2, 16, 16)}
+    w = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
+    b =  {'shape': (1, 2, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)}
+    y = {'shape': (2, 1, 1, 1, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 1, 1, 1, 16)}
+    get_op_support_info(x, w, compress_index, b, None, y, 16, False, 2, 0, kernel_name="compress_fully_connection")
+ut_case.add_cust_test_func(test_func=test_split_fc_compress)
+ut_case.add_cust_test_func(test_func=test_split_fc_compress_1)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910")

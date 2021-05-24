@@ -18,6 +18,7 @@ dynamic batch_matmul
 import math
 
 from impl.util import fusion_util
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
@@ -37,6 +38,79 @@ DYNAMIC_FLAG = -1
 DYNAMIC_FLAG_UNRANK = [-2]
 BATCH_NZ_LENGTH = 5
 BATCH_ND_LENGTH = 3
+ND_LENGTH = 2
+L1FUSION_INPUT_CTR = 2
+
+
+def get_op_support_info(input_x1, input_x2, bias=None, output_z=None,
+                        trans_a=False, trans_b=False, kernel_name="matmul"):
+    """
+    get the batch_matmul split, which only split batch, m and n, cannot cut k with bias
+
+    """
+    format_a = input_x1.get("format")
+    format_b = input_x2.get("format")
+    a_shape = input_x1.get("ori_shape")
+    b_shape = input_x2.get("ori_shape")
+    if format_a == 'FRACTAL_NZ':
+        trans_a = not trans_a
+    if format_b == 'FRACTAL_NZ':
+        trans_b = not trans_b
+
+    batch_len_a = len(a_shape) - ND_LENGTH
+    batch_len_b = len(b_shape) - ND_LENGTH
+    if list(a_shape) == DYNAMIC_FLAG_UNRANK:
+        batch_len_a = 1
+    if list(b_shape) == DYNAMIC_FLAG_UNRANK:
+        batch_len_b = 1
+
+    # cut m
+    if not trans_a:
+        m_split_list = [0, [batch_len_a], [-1], [-1]]
+        mk_split_list = [0, [batch_len_a + 1]]
+    else:
+        m_split_list = [0, [batch_len_a + 1], [-1], [-1]]
+        mk_split_list = [0, [batch_len_a]]
+    # cut n
+    if not trans_b:
+        n_split_list = [[1, [batch_len_b + 1], [-1], [-1]]]
+        nk_split_list = [1, [batch_len_b]]
+    else:
+        n_split_list = [[1, [batch_len_b], [-1], [-1]]]
+        nk_split_list = [1, [batch_len_b + 1]]
+
+    if bias:
+        axis_reduce_list = None
+        n_split_list.append([2, [0], [-1], [-1]])
+    else:
+        # cut k_dim which is reduce dim
+        axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
+                            util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]]
+
+    axis_split_matrix_batch = []
+    for i in range(batch_len_a):
+        batch_split_list = [[0, [i], [0], [0]]]
+        if batch_len_b != 0:
+            batch_split_list.append([1, [i], [0], [0]])
+        axis_split_matrix_batch.append(
+            [util_select_op_base.SplitInput(*batch_split_list),
+             util_select_op_base.SplitOutput([0, [i]])]
+        )
+
+    axis_split_matrix_a = [
+        [util_select_op_base.SplitInput(m_split_list),
+         util_select_op_base.SplitOutput([0, [batch_len_a + 1]])]
+    ]
+    axis_split_matrix_b = [
+        [util_select_op_base.SplitInput(*n_split_list),
+         util_select_op_base.SplitOutput([0, [batch_len_a]])]
+    ]
+
+    axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b + axis_split_matrix_batch
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, None)
+
+    return op_cal_info_in_json
 
 
 def _check_format(real_format, expect_format, param_name):

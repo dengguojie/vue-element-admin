@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
+from impl.dynamic.mat_mul import get_op_support_info
 CUBE_BLOCK = 16
 ut_case = OpUT("MatMul", "impl.dynamic.mat_mul", "mat_mul")
 
@@ -207,6 +208,14 @@ for case in matmul_case_succ:
 
 for error_case in matmul_case_error:
     ut_case.add_case("Ascend910A", gen_matmul_dynamic_errorcase(*error_case))
+
+def test_get_op_support_info_dynamic_matmul(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, 16, 16), "ori_shape": (-1, -1),
+         "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, 16, 16), "ori_shape": (-1, -1),
+         "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
+    get_op_support_info(x1, x2, None)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_matmul)
 
 if __name__ == "__main__":
     ut_case.run()

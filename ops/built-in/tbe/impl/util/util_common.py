@@ -35,6 +35,10 @@ MININUM_NUM_FLOAT = 2 ** (-126)
 SCALAR_MUL1_FP32 = 2 ** (50)
 SCALAR_MUL2_FP32 = 2 ** (26)
 
+# the bytes length of several dtype
+BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
+                  "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
+
 def ceil(x_1, x_2):
     """
     do ceiling division
@@ -546,3 +550,13 @@ def div_align_scalar(input_num, align_factor, div_mode="ceil"):
         return ceil_div_scalar(input_num, align_factor) * align_factor
 
     return floor_div_scalar(input_num, align_factor) * align_factor
+
+
+def cal_mini_l1_size_matmul(dtype_w):
+    """
+    cal the mini l1 size of matmul, batchmatmul and fc
+    """
+    block_reduce = tbe_platform.CUBE_MKN[dtype_w]["mac"][1]
+    block_out = tbe_platform.CUBE_MKN[dtype_w]["mac"][2]
+    mini_l1space = block_out * block_reduce * BIT_RATIO_DICT.get(dtype_w)
+    return mini_l1space

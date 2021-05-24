@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from impl.dynamic.conv2d_transpose import get_op_support_info
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Conv2DTranspose", "impl.dynamic.conv2d_transpose",
@@ -200,7 +201,42 @@ def test_conv2d_transpose_fuzz_build_generalization(test_arg):
 print("adding conv2d test_conv2d_transpose_fuzz_build_generalization testcase")
 ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_generalization)
 
-
+def test_get_op_support_info_dynamic_conv2dtranspose_0(test_arg):
+    y = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
+         "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
+         "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
+        }
+    out_backprop = {"shape":  (-1, 4, -1, -1, 16), 'ori_shape':(-1, -1, -1, 64),
+                    "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
+                    "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
+                   }
+    filter = {"shape":  (36, 4, 16, 16), 'ori_shape':(3, 3, 64, 64),
+              "ori_format": "NHWC", "format": "FRATAL_NZ", "dtype": "float16",
+              "range": ((36, 36), (4, 4), (16, 16), (16, 16))
+             }
+    input_size =  (-1, -1, -1, 64)
+    get_op_support_info(input_size, out_backprop, filter, None, None, y, (1, 1, 1, 1), (0, 0, 0, 0))
+def test_get_op_support_info_dynamic_conv2dtranspose_1(test_arg):
+    y = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
+         "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
+         "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
+        }
+    out_backprop = {"shape":  (-1, 4, -1, -1, 16), 'ori_shape':(-1, -1, -1, 64),
+                    "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
+                    "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
+                   }
+    filter = {"shape":  (4, 4, 16, 16), 'ori_shape':(1, 1, 64, 64),
+              "ori_format": "NHWC", "format": "FRATAL_NZ", "dtype": "float16",
+              "range": ((4, 4), (4, 4), (16, 16), (16, 16))
+             }
+    bias = {"shape": (64, ), 'ori_shape': (64, ),
+            "ori_format": "ND", "format": "ND", "dtype": "float32",
+            "range": ((64, 64), )
+            }
+    input_size =  (-1, -1, -1, 64)
+    get_op_support_info(input_size, out_backprop, filter, bias, None, y, (1, 1, 1, 1), (0, 0, 0, 0))
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_conv2dtranspose_0)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_conv2dtranspose_1)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

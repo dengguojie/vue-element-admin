@@ -15,6 +15,8 @@
 """
 matmulcompress
 """
+from impl.util import util_select_op_base
+from impl.util.util_common import cal_mini_l1_size_matmul
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
@@ -25,7 +27,7 @@ from te.utils.error_manager import error_manager_vector
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 NoneType = type(None)
-
+L1FUSION_INPUT_CTR = 2
 
 def _shape_check_quantification(shape_a, shape_b, trans_a, trans_b, format_a):
     if trans_a:
@@ -331,6 +333,70 @@ def compress_mat_mul_compute_self(input_x1,
     result = tbe.gemm(tensor_a=input_x1, tensor_b=input_x2, para_dict=para_dict)
 
     return result
+
+
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT,
+                            para_check.KERNEL_NAME)
+def get_op_support_info(input_x1,
+                        input_x2,
+                        compress_index,
+                        bias=None,
+                        offset_w=None,
+                        output_y=None,
+                        trans_a=False,
+                        trans_b=False,
+                        offset_x=0,
+                        kernel_name="compress_matmul"):
+    """
+    get the matmul split, which only split the m and n, cannot cut k with bias
+
+    """
+    dtype_b = input_x2.get("dtype")
+    trans_a = not trans_a
+
+    # input/output Serial, axis Serial, (0: overlap -1: without overlap)
+    # cut m
+    if not trans_a:
+        m_split_list = [0, [0], [-1], [-1]]
+        mk_split_list = [0, [1]]
+    else:
+        m_split_list = [0, [1], [-1], [-1]]
+        mk_split_list = [0, [0]]
+    # cut n
+    if not trans_b:
+        n_split_list = [[1, [1], [-1], [-1]]]
+        nk_split_list = [1, [0]]
+    else:
+        n_split_list = [[1, [0], [-1], [-1]]]
+        nk_split_list = [1, [1]]
+
+    if bias:
+        axis_reduce_list = None
+        n_split_list.append([3, [0], [-1], [-1]])
+    else:
+        # cut k_dim which is reduce dim
+        axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
+                            util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]]
+
+    # cut m
+    axis_split_matrix_a = [
+        [util_select_op_base.SplitInput(m_split_list),
+         util_select_op_base.SplitOutput([0, [1]])],
+    ]
+    # cut n
+    axis_split_matrix_b = [
+        [util_select_op_base.SplitInput(*n_split_list),
+         util_select_op_base.SplitOutput([0, [0]])],
+    ]
+
+    axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b
+    min_l1space = cal_mini_l1_size_matmul(dtype_b)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
+
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments

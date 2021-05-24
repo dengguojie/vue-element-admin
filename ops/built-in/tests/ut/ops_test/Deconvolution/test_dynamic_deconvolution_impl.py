@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from impl.dynamic.deconvolution import get_op_support_info
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Deconvolution", "impl.dynamic.deconvolution",
@@ -176,9 +177,19 @@ def test_deconvolution_fuzz_build_generalization(test_arg):
         'deconvolution_fuzz_build_generalization']
     deconvolution_generalization(*input_list)
 
-
 print("adding conv2d test_deconvolution_fuzz_build_generalization testcase")
 ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_generalization)
+
+def test_get_op_support_info_dynamic_deconv(test_arg):
+    x = {"ori_shape": (1, 16, -1, -1), "dtype": "float16", "ori_format": "NCHW", "shape": (1, 1, -1, -1, 16), "format":"NC1HWC0",
+         "range": ((1, 1), (1, 1), (10, 20), (10, 20), (16, 16))}
+    weight = {"ori_shape": (16, 16, 1, 1), "dtype": "float16", "ori_format": "NCHW", "shape": (1, 1, 16, 16), "format": "FRACTAL_NZ",
+              "range": ((1, 1), (1, 1), (16, 16), (16, 16))}
+    bias = None
+    y = {"ori_shape": (1, 16, -1, -1), "dtype": "float16", "ori_format": "NCHW",  "shape": (1, 1, -1, -1, 16), "format":"NC1HWC0",
+         "range": ((1, 1), (1, 1), (10, 20), (10, 20), (16, 16))}
+    get_op_support_info(x, weight, bias, None, y, (1, 1), (0, 0, 0, 0))
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_deconv)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

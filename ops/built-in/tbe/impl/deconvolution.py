@@ -251,31 +251,38 @@ def get_op_support_info(x,  # pylint: disable=invalid-name,R0913,R0914,W0613
     """
     format_x = x.get("format")
     dtype_x = x.get("dtype")
+    shape_filters = util_deconv_comm.get_filter_shape(weight.get("ori_format"), weight.get("ori_shape"))
+    head_overlap_h = -1 if (shape_filters[2] == 1 and strides[0] == 1) else 0
+    tail_overlap_h = head_overlap_h
+    head_overlap_w = -1 if (shape_filters[3] == 1 and strides[1] == 1) else 0
+    tail_overlap_w = head_overlap_w
 
-    # input/output Serial， axis Serial, （split enable(0:enable, -1：unable), split enable）
+    # input/output Serial， axis Serial, (headoverlap, tailoverlap, 0 means with overlap, -1 means without it)
     if format_x == "NC1HWC0":
         axis_split_matrix = [
             # cut N
-            [util_select_op_base.SplitInput([0, [0], [0], [0]]),
+            [util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
              util_select_op_base.SplitOutput([0, [0]])],
             # cut H
-            [util_select_op_base.SplitInput([0, [2], [0], [0]]),
+            [util_select_op_base.SplitInput([0, [2], [head_overlap_h], [tail_overlap_h]]),
              util_select_op_base.SplitOutput([0, [2]])],
             # cut W
-            [util_select_op_base.SplitInput([0, [3], [0], [0]]),
+            [util_select_op_base.SplitInput([0, [3], [head_overlap_w], [tail_overlap_w]]),
              util_select_op_base.SplitOutput([0, [3]])],
         ]
         # cut Cin
         c_axis = 0 if dtype_x == "float16" else 1
+        head_overlap_c = 0 if dtype_x == "float16" else -1
+        tail_overlap_c = head_overlap_c
         if bias:
             axis_split_matrix_bias = [
-                [util_select_op_base.SplitInput([1, [c_axis], [0], [0]],
-                                                [2, [0], [0], [0]]),
+                [util_select_op_base.SplitInput([1, [c_axis], [head_overlap_c], [tail_overlap_c]],
+                                                [2, [0], [-1], [-1]]),
                  util_select_op_base.SplitOutput([0, [1]])],
             ]
         else:
             axis_split_matrix_bias = [
-                [util_select_op_base.SplitInput([1, [c_axis], [0], [0]]),
+                [util_select_op_base.SplitInput([1, [c_axis], [head_overlap_c], [tail_overlap_c]]),
                  util_select_op_base.SplitOutput([0, [1]])],
             ]
         axis_split_matrix += axis_split_matrix_bias
