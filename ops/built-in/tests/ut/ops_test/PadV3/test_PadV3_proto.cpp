@@ -7,34 +7,33 @@
 using namespace ge;
 using namespace op;
 
-class pad_v3_d_test : public testing::Test {
+class pad_v3_test : public testing::Test {
 protected:
     static void SetUpTestCase() {
-        std::cout << "pad_v3_d_test SetUp" << std::endl;
+        std::cout << "pad_v3_test SetUp" << std::endl;
     }
 
     static void TearDownTestCase() {
-        std::cout << "pad_v3_d_test TearDown" << std::endl;
+        std::cout << "pad_v3_test TearDown" << std::endl;
     }
 };
 
 
-TEST_F(pad_v3_d_test, pad_v3_d_infer_shape_01) {
-  ge::op::PadV3D op;
-  std::cout<< "pad_v3_d test_1!!!"<<std::endl;
+TEST_F(pad_v3_test, pad_v3_infer_shape_01) {
+  ge::op::PadV3 op;
+  std::cout<< "pad_v3 test_1!!!"<<std::endl;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{1,-1},{1,-1},{1,-1},{1,-1}};
-  auto tensor_desc = create_desc_shape_range({-1,64,-1,20},
-                                             ge::DT_FLOAT16, ge::FORMAT_ND,
-                                             {-1,64,-1,20},
-                                             ge::FORMAT_ND, shape_range);
+  auto tensor_desc = create_desc_shape_range({-1,64,-1,20}, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {-1,64,-1,20}, ge::FORMAT_ND, shape_range);
 
-  auto paddings_desc = create_desc_shape_range({-1},
-                                           ge::DT_INT32, ge::FORMAT_ND,
-                                           {-1},
-                                           ge::FORMAT_ND, {{1,-1}});
+  auto paddings_desc = create_desc_shape_range({-1}, ge::DT_INT32, ge::FORMAT_ND,
+                                               {-1}, ge::FORMAT_ND, {{1,-1}});
+
+  auto constant_values_desc = create_desc_shape_range({1}, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                      {1}, ge::FORMAT_ND, {{1,1}});
   op.UpdateInputDesc("x", tensor_desc);
   op.UpdateInputDesc("paddings", paddings_desc);
-  op.SetAttr("constant_values", -1);
+  op.UpdateInputDesc("constant_values", constant_values_desc);
   op.SetAttr("mode", "constant");
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
@@ -48,22 +47,21 @@ TEST_F(pad_v3_d_test, pad_v3_d_infer_shape_01) {
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
 
-TEST_F(pad_v3_d_test, pad_v3_d_infer_shape_02) {
-  ge::op::PadV3D op;
-  std::cout<< "pad_v3_d test_1!!!"<<std::endl;
+TEST_F(pad_v3_test, pad_v3_infer_shape_02) {
+  ge::op::PadV3 op;
+  std::cout<< "pad_v3 test_1!!!"<<std::endl;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{1,-1},{1,-1},{1,-1},{1,-1}};
-  auto tensor_desc = create_desc_shape_range({-1,96,10,20},
-                                             ge::DT_FLOAT16, ge::FORMAT_ND,
-                                             {-1,96,10,20},
-                                             ge::FORMAT_ND, shape_range);
+  auto tensor_desc = create_desc_shape_range({-1,20,-1,-1}, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {-1,20,-1,-1}, ge::FORMAT_ND, shape_range);
 
-  auto paddings_desc = create_desc_shape_range({-1},
-                                           ge::DT_INT32, ge::FORMAT_ND,
-                                           {-1},
-                                           ge::FORMAT_ND, {{1, -1}});
+  auto paddings_desc = create_desc_shape_range({-1}, ge::DT_INT32, ge::FORMAT_ND,
+                                               {-1}, ge::FORMAT_ND, {{1,-1}});
+
+  auto constant_values_desc = create_desc_shape_range({1}, ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                      {1}, ge::FORMAT_ND, {{1,1}});
   op.UpdateInputDesc("x", tensor_desc);
   op.UpdateInputDesc("paddings", paddings_desc);
-  op.SetAttr("constant_values", -1);
+  op.UpdateInputDesc("constant_values", constant_values_desc);
   op.SetAttr("mode", "constant");
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);

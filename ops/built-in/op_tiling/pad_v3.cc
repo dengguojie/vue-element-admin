@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file pad_v3_d.cc
+ * \file pad_v3.cc
  * \brief
  */
 #include <string>
@@ -35,14 +35,14 @@ static const int64_t TILING_MODE_1 = 1;
 
 static const int64_t TILING_MODE_2 = 2;
 
-struct PadV3DCompileParams {
+struct PadV3CompileParams {
   int64_t core_num;
   int64_t ub_size;
   int64_t dtype_rate;
   std::string op_type;
 };
 
-struct PadV3DTilingParams {
+struct PadV3TilingParams {
   int64_t tiling_key;
   int64_t tiling_input_dim_0;
   int64_t tiling_input_dim_1;
@@ -65,7 +65,7 @@ struct PadV3DTilingParams {
   int64_t tiling_input_dim_cut_axis;
 };
 
-static void InitRunningParams(PadV3DTilingParams& params) {
+static void InitRunningParams(PadV3TilingParams& params) {
   OP_LOGD("begin to InitRunningParams.");
   params.tiling_key = TILING_MODE_1;
   params.tiling_input_dim_0 = 1;
@@ -117,10 +117,10 @@ static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
   return true;
 }
 
-static bool GetPadV3DCompileParams(const nlohmann::json& compile_info,
-                                PadV3DCompileParams& compile_params) {
+static bool GetPadV3CompileParams(const nlohmann::json& compile_info,
+                                PadV3CompileParams& compile_params) {
   using namespace nlohmann;
-  OP_LOGD("begin to GetPadV3DCompileParams.");
+  OP_LOGD("begin to GetPadV3CompileParams.");
   auto allVars = compile_info["vars"];
   if (allVars.count("core_num") == 0) {
     OP_LOGE(compile_params.op_type, "GetCompileParams, get core_num error");
@@ -140,7 +140,7 @@ static bool GetPadV3DCompileParams(const nlohmann::json& compile_info,
   return true;
 }
 
-static void SetRuningParams(const PadV3DTilingParams& params, OpRunInfo& run_info) {
+static void SetRuningParams(const PadV3TilingParams& params, OpRunInfo& run_info) {
   OP_LOGD("begin to SetRuningParams.");
   ByteBufferPut(run_info.tiling_data, params.tiling_key);
   ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_0);
@@ -164,7 +164,7 @@ static void SetRuningParams(const PadV3DTilingParams& params, OpRunInfo& run_inf
   ByteBufferPut(run_info.tiling_data, params.tiling_input_dim_cut_axis);
 }
 
-static void PrintTilingParams(const PadV3DTilingParams& params, const std::string& op_type) {
+static void PrintTilingParams(const PadV3TilingParams& params, const std::string& op_type) {
   OP_LOGD("begin to PrintTilingParams.");
   OP_LOGD(op_type, "tiling_key=%ld. ", params.tiling_key);
   OP_LOGD(op_type, "tiling_input_dim_0=%ld.", params.tiling_input_dim_0);
@@ -188,7 +188,7 @@ static void PrintTilingParams(const PadV3DTilingParams& params, const std::strin
   OP_LOGD(op_type, "tiling_input_dim_cut_axis=%ld.", params.tiling_input_dim_cut_axis);
 }
 
-static void _printTensorValue(const PadV3DCompileParams& compile_params,
+static void _printTensorValue(const PadV3CompileParams& compile_params,
                        const std::vector<int64_t>& in,
                        const std::string& name) {
   using namespace std;
@@ -203,8 +203,8 @@ static void _printTensorValue(const PadV3DCompileParams& compile_params,
 
 static bool GetTilingParam(const std::vector<int64_t>& input_shape,
                            const std::vector<int64_t>& paddings_const_values,
-                           const PadV3DCompileParams& compile_params,
-                           PadV3DTilingParams& tiling_params) {
+                           const PadV3CompileParams& compile_params,
+                           PadV3TilingParams& tiling_params) {
   OP_LOGD("begin to GetTilingParam.");
   auto shape_len = input_shape.size();
   std::vector<int64_t> merge_input_shape_dims;
@@ -291,13 +291,13 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   return true;
 }
 
-bool PadV3DTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
+bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
                OpRunInfo& run_info) {
   using namespace ge;
 
   OP_LOGD("begin to run tiling.");
   if (op_compile_info == nullptr) {
-    OP_LOGE(op_type, "op [PadV3DTiling] : op_compile_info json error.");
+    OP_LOGE(op_type, "op [PadV3Tiling] : op_compile_info json error.");
     return false;
   }
 
@@ -305,13 +305,13 @@ bool PadV3DTiling(const std::string& op_type, const TeOpParas& op_paras, const n
       op_paras.inputs[1].tensor.empty()) {
     ge::OpsOneInputShapeErrReport(op_type.c_str(), "input_x or paddings",
                                   "The input may be empty");
-    OP_LOGE(op_type, "op [PadV3DTiling] : input shape error");
+    OP_LOGE(op_type, "op [PadV3Tiling] : input shape error");
     return false;
   }
   // begin to get compile data
-  PadV3DCompileParams compile_params;
+  PadV3CompileParams compile_params;
   compile_params.op_type = op_type;
-  if (!GetPadV3DCompileParams(op_compile_info, compile_params)) {
+  if (!GetPadV3CompileParams(op_compile_info, compile_params)) {
     OP_LOGE(op_type, "get compile info from nlohmann json failed.");
     return false;
   }
@@ -337,7 +337,7 @@ bool PadV3DTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   _printTensorValue(compile_params, paddings_const_values, "paddings");
 
   // end to get compile data
-  PadV3DTilingParams run_params;
+  PadV3TilingParams run_params;
   InitRunningParams(run_params);
   GetTilingParam(input_shape, paddings_const_values, compile_params, run_params);
   SetRuningParams(run_params, run_info);
@@ -346,6 +346,7 @@ bool PadV3DTiling(const std::string& op_type, const TeOpParas& op_paras, const n
 
   run_info.block_dim = compile_params.core_num;
   std::vector<int64_t> workspace;
+  workspace.push_back(128);
   run_info.workspaces = workspace;
 
   OP_LOGI(op_type, "end to run tiling, succ!");
@@ -353,6 +354,6 @@ bool PadV3DTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(PadV3D, PadV3DTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(PadV3, PadV3Tiling);
 }  // namespace optiling
 

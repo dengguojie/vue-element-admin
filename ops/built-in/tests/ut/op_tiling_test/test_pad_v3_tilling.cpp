@@ -6,14 +6,14 @@
 
 using namespace std;
 
-class PadV3DTiling : public testing::Test {
+class PadV3Tiling : public testing::Test {
   protected:
   static void SetUpTestCase() {
-    std::cout << "PadV3DTiling SetUp" << std::endl;
+    std::cout << "PadV3Tiling SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "PadV3DTiling TearDown" << std::endl;
+    std::cout << "PadV3Tiling TearDown" << std::endl;
   }
 };
 
@@ -30,9 +30,9 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-TEST_F(PadV3DTiling, rpad_v3_d_tiling_0) {
+TEST_F(PadV3Tiling, rpad_v3_tiling_0) {
   using namespace optiling;
-  std::string op_name = "PadV3D";
+  std::string op_name = "PadV3";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
@@ -78,9 +78,9 @@ TEST_F(PadV3DTiling, rpad_v3_d_tiling_0) {
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 33554432 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 }
 
-TEST_F(PadV3DTiling, rpad_v3_d_tiling_1) {
+TEST_F(PadV3Tiling, rpad_v3_tiling_1) {
   using namespace optiling;
-  std::string op_name = "PadV3D";
+  std::string op_name = "PadV3";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
@@ -126,9 +126,9 @@ TEST_F(PadV3DTiling, rpad_v3_d_tiling_1) {
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 1 512 40 20 0 0 0 0 0 0 0 0 1 1 2 2 2 ");
 }
 
-TEST_F(PadV3DTiling, rpad_v3_d_tiling_2) {
+TEST_F(PadV3Tiling, rpad_v3_tiling_2) {
   using namespace optiling;
-  std::string op_name = "PadV3D";
+  std::string op_name = "PadV3";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
@@ -174,9 +174,9 @@ TEST_F(PadV3DTiling, rpad_v3_d_tiling_2) {
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 1 512 40 2000 0 0 0 0 0 0 0 0 1 1 2 2 1 ");
 }
 
-TEST_F(PadV3DTiling, rpad_v3_d_tiling_3) {
+TEST_F(PadV3Tiling, rpad_v3_tiling_3) {
   using namespace optiling;
-  std::string op_name = "PadV3D";
+  std::string op_name = "PadV3";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
@@ -222,9 +222,9 @@ TEST_F(PadV3DTiling, rpad_v3_d_tiling_3) {
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 1 512 40 20000 0 0 0 0 0 0 0 0 1 1 2 2 1 ");
 }
 
-TEST_F(PadV3DTiling, rpad_v3_d_tiling_4) {
+TEST_F(PadV3Tiling, rpad_v3_tiling_4) {
   using namespace optiling;
-  std::string op_name = "PadV3D";
+  std::string op_name = "PadV3";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
@@ -270,9 +270,9 @@ TEST_F(PadV3DTiling, rpad_v3_d_tiling_4) {
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 1 1 400 2000 0 0 0 0 0 0 0 0 1 1 2 2 1 ");
 }
 
-TEST_F(PadV3DTiling, rpad_v3_d_tiling_5) {
+TEST_F(PadV3Tiling, rpad_v3_tiling_5) {
   using namespace optiling;
-  std::string op_name = "PadV3D";
+  std::string op_name = "PadV3";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 

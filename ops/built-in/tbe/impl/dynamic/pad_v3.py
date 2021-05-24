@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-pad_v3_d.py
+pad_v3.py
 """
 import functools
 from impl.util.platform_adapter import para_check
@@ -134,21 +134,22 @@ class Barrier(object):
 
 # pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
 # pylint: disable=too-many-arguments,invalid-name
-class PadV3DInit(object):
+class PadV3Init(object):
     """
-    Function: class that execute pad_v3_d
+    Function: class that execute pad_v3
     """
-    def __init__(self, x, paddings, y, constant_values, mode, padding_contiguous=True, kernel_name='pad_v3_d'):
-        '''
+    def __init__(self, x, paddings, constant_values, y, mode='constant', padding_contiguous=True,
+                 kernel_name='pad_v3'):
+        """
         init the op
         :param
         x: the input tensor
         :param
         paddings: the list of paddings
         :param
-        y: the output of op
-        :param
         constant_values: the value to fill the tensor
+        :param
+        y: the output of op
         :param
         mode: the fill mode
         :param
@@ -157,7 +158,7 @@ class PadV3DInit(object):
         kernel_name: the kernel name of op
         :return
         None
-        '''
+        """
 
         self.tik_instance = tik.Tik()
         self.unknown_max_shape = (MAX_INT64,)
@@ -167,6 +168,7 @@ class PadV3DInit(object):
         self.x_dtype = x.get("dtype")
         self.inner_dtype = "float16"
         self.paddings_dtype = paddings.get('dtype')
+        self.constant_values_dtype = constant_values.get('dtype')
         self.y_dtype = y.get('dtype')
         self.kernel_name = kernel_name
         self.input_gm = None
@@ -190,7 +192,9 @@ class PadV3DInit(object):
         self.barrier_workspace = self.tik_instance.Tensor(
             'int64', (4 * self.core_nums,), tik.scope_gm, 'barrier_workspace', is_workspace=True,
             is_atomic_add=True)
-        self.pad_scalar = constant_values
+        self.pad_scalar = self.tik_instance.Scalar(dtype=self.constant_values_dtype, name='pad_scalar')
+        self.constant_values_gm = self.tik_instance.Tensor(self.constant_values_dtype, (self.block_num, ),
+                                                        name='constant_values_gm', scope=tik.scope_gm)
         self.mode = mode
         self.padding_contiguous = padding_contiguous
         # tiling scaler init
@@ -240,6 +244,12 @@ class PadV3DInit(object):
         self.core_outer_start = self.tik_instance.Scalar(self.tiling_dtype, "core_outer_start", init_value=0)
         self.core_inner_num = self.tik_instance.Scalar(self.tiling_dtype, "core_inner_num", init_value=0)
         self.core_inner_start = self.tik_instance.Scalar(self.tiling_dtype, "core_inner_start", init_value=0)
+
+    def get_pad_scalar(self):
+        constant_values_ub = self.tik_instance.Tensor(self.constant_values_dtype, (self.block_num, ),
+                                                      name='constant_values_ub', scope=tik.scope_ubuf)
+        self.tik_instance.data_move(constant_values_ub, self.constant_values_gm, 0, 1, 1, 0, 0)
+        self.pad_scalar.set_as(constant_values_ub[0])
 
     def core_schedule_args(self, core_index):
         """
@@ -380,14 +390,14 @@ class PadV3DInit(object):
             input_gm = self.tik_instance.Tensor(input_dtype, self.unknown_max_shape,
                                                 name="input_gm_" + str(i), scope=tik.scope_gm)
             self.input_gm_list.append(input_gm)
+        self.input_gm_list.append(self.constant_values_gm)
 
         for i, output_dict in enumerate(output_dict_list):
             output_dtype = output_dict.get("dtype")
             if pad_outnput_idx == i:
                 # the pad output must will atomic_add to clear the output_gm to all zero
                 output_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape,
-                                                     name="output_gm_" + str(i), scope=tik.scope_gm,
-                                                     is_atomic_add=True)
+                                                     name="output_gm_" + str(i), scope=tik.scope_gm)
                 self.input_bytes_size = tbe_platform.get_bit_len(output_dtype) // EIGHT_BIT
             else:
                 output_gm = self.tik_instance.Tensor(output_dtype, self.unknown_max_shape,
@@ -549,11 +559,12 @@ class PadV3DInit(object):
 
     def pad_v3_d_compute_tiling(self):
         """
-        pad_v3_d operation
+        pad_v3 operation
         """
 
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
             self.barrier = Barrier(self.tik_instance, self.barrier_workspace, self.core_nums, core_index)
+            self.get_pad_scalar()
             self.tiling_args()
             self.core_schedule_args(core_index)
             self.fill_gm_output_tensor(core_index)
@@ -1358,19 +1369,19 @@ class PadV3DInit(object):
         do_pad with different tiling key
         """
         with self.tik_instance.if_scope(self.tiling_key == MODE0):
-            # use data move to pad_v3_d, cut by last dim
+            # use data move to pad_v3, cut by last dim
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_0()
         with self.tik_instance.if_scope(self.tiling_key == MODE1):
-            # use data move to pad_v3_d, cut by 0-4 dims
+            # use data move to pad_v3, cut by 0-4 dims
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_1()
         with self.tik_instance.if_scope(self.tiling_key == MODE2):
-            # use vnchw to pad_v3_d, cut by 0-3 dims
+            # use vnchw to pad_v3, cut by 0-3 dims
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_2()
         with self.tik_instance.if_scope(self.tiling_key == MODE3):
-            # use vnchw to pad_v3_d, cut by 0-2 dims
+            # use vnchw to pad_v3, cut by 0-2 dims
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_3()
 
@@ -1403,9 +1414,9 @@ class PadV3DInit(object):
         return self.tik_instance
 
 
-@register_operator("PadV3D")
-def pad_v3_d(x, paddings, y, constant_values, mode, padding_contiguous=True, kernel_name="pad_v3_d"):
-    """ calculating pad_v3_d tensor by paddings parameters
+@register_operator("PadV3")
+def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=True, kernel_name="pad_v3"):
+    """ calculating pad_v3 tensor by paddings parameters
 
     Parameters
     ----------
@@ -1418,11 +1429,16 @@ def pad_v3_d(x, paddings, y, constant_values, mode, padding_contiguous=True, ker
         before the contents of tensor in that dimension, and paddings[D, 1]
         indicates
         how many values to add after the contents of tensor in that dimension.
+    constant_values: dict
+        the value to fill the tensor
     y: dict
         shape and dtype of output
-
+    mode:str
+        the cal mode of op
+    padding_contiguous: bool
+        judge whether the memory is contiguous
     kernel_name : str
-        cce kernel name, default value is "pad_v3_d"
+        cce kernel name, default value is "pad_v3"
 
     Returns
     -------
@@ -1435,7 +1451,7 @@ def pad_v3_d(x, paddings, y, constant_values, mode, padding_contiguous=True, ker
     para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
     para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
 
-    obj = PadV3DInit(x, paddings, y, constant_values, mode, padding_contiguous, kernel_name)
+    obj = PadV3Init(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
     obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
 
     return obj.pad_compute()

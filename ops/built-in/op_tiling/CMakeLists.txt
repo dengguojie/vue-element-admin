@@ -68,7 +68,7 @@ set(_optiling_files
   pad_common.cc
   pad_d.cc
   pad.cc
-  pad_v3_d.cc
+  pad_v3.cc
   prelu.cc
   reverse.cc
   reduce_tiling.cc

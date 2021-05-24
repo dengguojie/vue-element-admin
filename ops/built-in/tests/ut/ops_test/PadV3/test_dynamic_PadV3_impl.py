@@ -17,7 +17,7 @@ Dynamic PadV3D ut case
 """
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("PadV3D", "impl.dynamic.pad_v3_d", "pad_v3_d")
+ut_case = OpUT("PadV3", "impl.dynamic.pad_v3", "pad_v3")
 
 case1 = {
     "params": [
@@ -25,15 +25,16 @@ case1 = {
         "format": "ND", "ori_format": "ND", "range": ((-1, 1), (-1, 1), (-1, 1), (-1, 1))},
         {"shape": (-1), "dtype": "int32", "ori_shape": (-1),
         "format": "ND", "ori_format": "ND", "range": ((1, -1))},
+        {"shape": (1), "dtype": "float16", "ori_shape": (1),
+        "format": "ND", "ori_format": "ND", "range": ((1, 1))},
         {"shape": (-1, -1, -1, -1), "dtype": "float16", "ori_shape": (-1, -1, -1, -1),
         "format": "ND", "ori_format": "ND", "range": ((1, -1), (1, -1), (-1, -1), (-1, -1))},
-        1,
         "constant"
     ],
-    "case_name": "dynamic_pad_v3_d_01",
+    "case_name": "dynamic_pad_v3_01",
     "expect": "success",
     "format_expect": [],
-    "support_expect": True  
+    "support_expect": True
 }
 
 
