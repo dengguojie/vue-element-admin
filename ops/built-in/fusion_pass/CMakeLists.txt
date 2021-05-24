@@ -44,6 +44,7 @@ set(_common_fusion_pass_dep
     error_manager
     platform
     ascend_protobuf
+    aicore_utils
   -Wl,--as-needed
     c_sec
     json
@@ -293,11 +294,6 @@ set(_aicore_fusion_srcs
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")
 
-set(fe_lxfusion_srcs
-  ${FUSION_ENGINE_INCLUDE}/common/lxfusion_json_util.cc
-  ${FUSION_ENGINE_INCLUDE}/common/op_slice_info.cc
-)
-
 set(_aic_srcs
   ${_common_srcs}
   ${_aicore_fusion_srcs}
@@ -305,7 +301,6 @@ set(_aic_srcs
 
 set(_llt_aic_srcs
   ${_aic_srcs}
-  ${fe_lxfusion_srcs}
 )
 if(ENABLE_TEST STREQUAL "")
   add_library(ops_fusion_pass_aicore SHARED ${_aic_srcs})
@@ -388,7 +383,6 @@ elseif(UT_TEST_ALL OR PASS_UT)
   add_library(ops_fusion_pass_aicore_llt STATIC ${_llt_aic_srcs})
   target_include_directories(ops_fusion_pass_aicore_llt PUBLIC
     ${_common_fusion_pass_inc}
-    ${FUSION_ENGINE_INCLUDE}/utils
   )
   target_compile_options(ops_fusion_pass_aicore_llt PUBLIC
     -O0

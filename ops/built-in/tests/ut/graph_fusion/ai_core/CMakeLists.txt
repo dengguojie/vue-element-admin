@@ -22,7 +22,6 @@ add_executable(ops_cpp_fusion_pass_aicore_utest
 target_include_directories(ops_cpp_fusion_pass_aicore_utest PRIVATE
         ${OPS_DIR}/built-in/op_proto/inc
         ${OPS_DIR}/built-in/fusion_pass
-        ${OPS_DIR}/../third_party/fusion_engine/inc
         ${OP_TEST_FUSION_PASS_INCLUDE}
         ${GTEST_INCLUDE}
         ${OP_TEST_PLUFIN_AND_PROTO_INCLUDE}
@@ -38,6 +37,13 @@ target_link_libraries(ops_cpp_fusion_pass_aicore_utest PRIVATE
         -Wl,--whole-archive
         ops_fusion_pass_aicore_llt
         opsproto_llt
+        -Wl,--no-as-needed
+        runtime_compile
+        mmpa
+        error_manager
+        c_sec
+        ascend_protobuf
+        -Wl,--as-needed
         -Wl,--no-whole-archive
         -Wl,--allow-multiple-definition
         )
