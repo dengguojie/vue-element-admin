@@ -93,7 +93,7 @@ class MapIndexProcess:
 
         self.x = self.tik_instance.Tensor("int32", x_shape, name="x", scope=tik.scope_gm)
         self.data_seq = self.tik_instance.Tensor("int32", data_seq_shape, name="data_seq", scope=tik.scope_gm)
-        if self.have_level_index == True:
+        if self.have_level_index:
             self.level_index = self.tik_instance.Tensor("int32",
                                                         level_index_shape,
                                                         name="level_index",
@@ -106,12 +106,13 @@ class MapIndexProcess:
 
         self.y = self.tik_instance.Tensor("int32", [8], name="y", scope=tik.scope_gm)
 
-        self.x_ub = self.tik_instance.Tensor("int32", [8], name="x_ub", scope=tik.scope_ubuf)
+        x_dim_align = (x_shape[0] + 7) // 8 * 8
+        self.x_ub = self.tik_instance.Tensor("int32", (x_dim_align,), name="x_ub", scope=tik.scope_ubuf)
         self.data_seq_ub = self.tik_instance.Tensor("int32", data_seq_shape, name="data_seq_ub", scope=tik.scope_ubuf)
         self.y_ub = self.tik_instance.Tensor("int32", [8], name="y_ub", scope=tik.scope_ubuf)
         self.tik_instance.vec_dup(8, self.y_ub, -1, 1, 8)
 
-        self.tik_instance.data_move(self.x_ub, self.x, 0, 1, 1, 0, 0, 0)
+        self.tik_instance.data_move(self.x_ub, self.x, 0, 1, x_dim_align // 8, 0, 0, 0)
         self.tik_instance.data_move(self.data_seq_ub, self.data_seq, 0, 1, self.data_seq_length // 8, 0, 0, 0)
 
     # pylint: disable=too-many-locals,too-many-statements,too-few-public-methods
@@ -131,7 +132,7 @@ class MapIndexProcess:
         with tik_instance.for_range(0, self.x_length) as i:
             # compute ===> tmp : vec_dup(x[i])
             tmp = tik_instance.Tensor("int32", [length], name="tmp", scope=tik.scope_ubuf)
-            x_scalar = tik_instance.Scalar(dtype="int32")
+            x_scalar = tik_instance.Scalar(dtype="int32", name="x_scalar")
             x_scalar.set_as(self.x_ub[i])
 
             # compute ===> data_seq[i*length]-x[i]
@@ -162,25 +163,25 @@ class MapIndexProcess:
                 tik_instance.vec_cmpv_eq(cmp_res, sub_fp16, zero_ub, max // 128, 8, 8)
                 tik_instance.vec_and(16, res, cmp_res, res, count // 16, 1, 1, 1)
 
-        flag = tik_instance.Scalar(dtype="uint8")
+        flag = tik_instance.Scalar(dtype="uint8", name="flag")
         flag.set_as(0)
         with tik_instance.for_range(0, count) as i:
             with tik_instance.if_scope(res[i] > 0):
                 with tik_instance.if_scope(flag == 0):
-                    uint16_scalar = tik_instance.Scalar(dtype="uint16")
+                    uint16_scalar = tik_instance.Scalar(dtype="uint16", name="uint16_scalar")
                     uint16_scalar.set_as(res[i])
-                    src_scalar = tik_instance.Scalar(dtype="uint64")
+                    src_scalar = tik_instance.Scalar(dtype="uint64", name="src_scalar")
                     src_scalar.set_as(uint16_scalar)
 
-                    countbit1 = tik_instance.Scalar(dtype="uint64")
+                    countbit1 = tik_instance.Scalar(dtype="uint64", name="countbit1")
                     countbit1.set_as(0)
                     tik_instance.scalar_countleading0(countbit1, src_scalar)
                     with tik_instance.if_scope(countbit1 == 1):
                         flag.set_as(1)
 
-                        dst_scalar = tik_instance.Scalar(dtype="uint64")
+                        dst_scalar = tik_instance.Scalar(dtype="uint64", name="dst_scalar")
                         tik_instance.scalar_countleading0(dst_scalar, src_scalar)
-                        if self.have_level_index == True:
+                        if self.have_level_index:
                             self.y_ub[0].set_as(self.level_index_ub[i * 16 + (63 - dst_scalar)])
                         else:
                             self.y_ub[0].set_as(i * 16 + (63 - dst_scalar))
@@ -189,7 +190,7 @@ class MapIndexProcess:
                             with tik_instance.if_scope(flag == 0):
                                 with tik_instance.if_scope(src_scalar % 2 != 0):
                                     flag.set_as(1)
-                                    if self.have_level_index == True:
+                                    if self.have_level_index:
                                         self.y_ub[0].set_as(self.level_index_ub[i * 16 + j])
                                     else:
                                         self.y_ub[0].set_as(i * 16 + j)
@@ -198,7 +199,7 @@ class MapIndexProcess:
 
         tik_instance.data_move(self.y, self.y_ub, 0, 1, 1, 0, 0, 0)
 
-        if self.have_level_index == True:
+        if self.have_level_index:
             tik_instance.BuildCCE(kernel_name, inputs=[self.x, self.data_seq, self.level_index], outputs=[self.y])
         else:
             tik_instance.BuildCCE(kernel_name, inputs=[self.x, self.data_seq], outputs=[self.y])
@@ -230,8 +231,8 @@ def map_index(x_dic, data_seq_dic, level_index_dic, y_dic, kernel_name="map_inde
     y_dtype = y_dic.get("dtype")
     para_check.check_dtype(y_dtype.lower(), check_list, param_name="y")
 
-    if x_shape[0] > 8:
-        raise RuntimeError("the length of x should " "be less than or equal to 8")
+    if x_shape[0] > 128:
+        raise RuntimeError("the length of x should be less than or equal to 128")
 
     if data_seq_shape[0] % x_shape[0] != 0:
         raise RuntimeError("the length of data_seq must " "be multiple of the length of x")

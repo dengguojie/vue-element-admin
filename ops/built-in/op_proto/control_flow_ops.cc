@@ -476,9 +476,10 @@ IMPLEMT_COMMON_INFERFUNC(MapIndexInferShape) {
   }
   int64_t data_seq_length = data_seq_shape[0];
 
-  if (x_length > 8 || x_length == 0) {
-    OP_LOGE(op.GetName().c_str(), "the length of x should be less than or equal to 8");
-    OpsOneInputShapeErrReport(op.GetName().c_str(), "x", "the length of x should be less than or equal to 8 and not 0");
+  if (x_length > 128 || x_length <= 0) {
+    OP_LOGE(op.GetName().c_str(), "the length of x should be less than or equal to 128");
+    OpsOneInputShapeErrReport(op.GetName().c_str(), "x",
+                              "the length of x should be less than or equal to 128 and not 0");
     return GRAPH_FAILED;
   }
 
