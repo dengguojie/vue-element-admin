@@ -50,12 +50,12 @@ namespace detail {
 template <typename T>
 inline std::uint32_t ComputeAsinKernel(const CpuKernelContext &ctx) {
   using i64 = std::int64_t;
-  const auto ParallelFor{aicpu::CpuKernelUtils::ParallelFor};
-  const auto ScalarAsin{internal::ScalarAsin<T>};
-  auto input{static_cast<T *>(ctx.Input(0)->GetData())};
-  auto output{static_cast<T *>(ctx.Output(0)->GetData())};
-  i64 total{ctx.Input(0)->NumElements()};
-  auto cores{aicpu::CpuKernelUtils::GetCPUNum(ctx)};
+  const auto ParallelFor = aicpu::CpuKernelUtils::ParallelFor;
+  const auto ScalarAsin = internal::ScalarAsin<T>;
+  auto input = static_cast<T *>(ctx.Input(0)->GetData());
+  auto output = static_cast<T *>(ctx.Output(0)->GetData());
+  i64 total = ctx.Input(0)->NumElements();
+  uint32_t cores = aicpu::CpuKernelUtils::GetCPUNum(ctx);
   i64 per_unit_size{total / std::min(std::max(1L, cores - 2L), total)};
   return ParallelFor(ctx, total, per_unit_size, [&](i64 begin, i64 end) {
     std::transform(input + begin, input + end, output + begin, ScalarAsin);
@@ -64,8 +64,8 @@ inline std::uint32_t ComputeAsinKernel(const CpuKernelContext &ctx) {
 
 template <typename T>
 inline std::uint32_t ComputeAsin(const CpuKernelContext &ctx) {
-  auto result{ComputeAsinKernel<T>(ctx)};
-  if (result) {
+  uint32_t result = ComputeAsinKernel<T>(ctx);
+  if (result != 0) {
     KERNEL_LOG_ERROR("Asin compute failed.");
   }
   return result;
