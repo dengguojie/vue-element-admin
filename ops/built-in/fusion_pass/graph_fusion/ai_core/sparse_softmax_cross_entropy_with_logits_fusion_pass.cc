@@ -157,7 +157,7 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   *ptr2 = size_zero;
   FUSION_PASS_MAKE_SHARED(
       (assitPtr3 = std::make_shared<ge::GeTensor>(tensorDesc2, reinterpret_cast<uint8_t*>(inputAssit2.get()),
-                                             sizeof(int32_t) * size_zero)),
+                                             sizeof(int32_t))),
       return FAILED);
   // set weight
   vector<ge::GeTensorPtr> weights = {assitPtr2, assitPtr3};

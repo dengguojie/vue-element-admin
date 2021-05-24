@@ -237,6 +237,7 @@ class MaxPoolWithargmaxResnet50(object):
                               self.window_w, self.window_h,
                               1, 1, 1, 1, 4 * 56 // 16, 0, self.pad_value)
 
+    # pylint: disable=too-many-arguments
     def _load_gm_to_ub_ping(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
         """
         load data from gm to ub
@@ -287,6 +288,91 @@ class MaxPoolWithargmaxResnet50(object):
                                                      (w_loop * self.in_size_w + w_index) * c0_dim],
                                        0, gm_len, 1, 1, 0)
 
+    # pylint: disable=too-many-arguments
+    def _ub_rearrangement_ping(self, ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph,
+                               src_offsets_gm):
+        """
+        rearrange data of ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        ub_load: address of ub_load
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+        src_offsets_gm: src_offsets
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_instance
+        gm_len_ping = instance.Scalar("int32", name="gm_len_ping")
+        filter_size = self.window_h * self.window_w
+        instance.vector_dup(16,
+                            ub_load[((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 16],
+                            self.pad_value, 1, 1, 1)
+        gm_len_ping.set_as(((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w)
+        src_offsets_size = output_block_h * self.out_size_w * filter_size
+        src_offsets = instance.Tensor("int32", (src_offsets_size,), name="src_offsets", scope=tik.scope_ubuf)
+        repeat_times = src_offsets_size // 8
+        instance.data_move(ub_load,
+                           input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h) * self.stride_h *
+                                         self. in_size_w * 16],
+                           0, 1, gm_len_ping, 0, 0)
+        instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 16, 0, 0)
+        instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
+
+    # pylint: disable=too-many-arguments,too-many-locals
+    def _ub_rearrangement_pong(self, ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h,
+                               src_offsets_gm, src_offsets_last_gm):
+        """
+        rearrange data of ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        ub_load: address of ub_load
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+        loop_h: number of loop
+        src_offsets_gm: src_offsets
+        src_offsets_last_gm: src_offsets
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_instance
+        gm_len_pong = instance.Scalar("int32", name="gm_len_pong")
+        filter_size = self.window_h * self.window_w
+        instance.vector_dup(16,
+                            ub_load[((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 16],
+                            self.pad_value, 1, 1, 1)
+        if looph == loop_h // 2 - 1:
+            gm_len_pong.set_as(((output_block_h - 1) * self.stride_h + self.window_h - 1) * self.in_size_w)
+        else:
+            gm_len_pong.set_as(((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w)
+
+        src_offsets_size = output_block_h * self.out_size_w * filter_size
+        src_offsets = instance.Tensor("int32", (src_offsets_size,), name="src_offsets", scope=tik.scope_ubuf)
+        repeat_times = src_offsets_size // 8
+        instance.data_move(ub_load,
+                           input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h) * self.stride_h *
+                                         self. in_size_w * 16],
+                           0, 1, gm_len_pong, 0, 0)
+        if looph == loop_h // 2 - 1:
+            instance.data_move(src_offsets, src_offsets_last_gm, 0, 1, src_offsets_size // 16, 0, 0)
+        else:
+            instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 16, 0, 0)
+
+        instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
+
+    # pylint: disable=too-many-arguments,too-many-locals
     def _load_gm_to_ub_pong(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h):
         """
         load data from gm to ub
@@ -364,7 +450,48 @@ class MaxPoolWithargmaxResnet50(object):
                                                          (w_loop * self.in_size_w + w_index) * c0_dim],
                                            0, gm_len, 1, 1, 0)
 
-    # pylint: disable=too-many-locals, too-many-statements
+    def _calc_src_offsets(self, output_block_h):
+        """
+        calc src_offsets
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        src_offsets_value
+        src_offsets_last_value
+        """
+        filter_size = self.window_h * self.window_w
+        src_offsets_value = [0] * filter_size * output_block_h * self.out_size_w
+        src_offsets_last_value = [0] * filter_size * output_block_h * self.out_size_w
+
+        for window_index in range(filter_size):
+            w_index = window_index % self.window_w
+            w_loop = window_index // self.window_w
+            for output_block_h_index in range(output_block_h):
+                for output_w_index in range(self.out_size_w):
+                    offset_value = (window_index * output_block_h + output_block_h_index) * \
+                                   self.out_size_w + output_w_index
+                    if output_w_index == self.out_size_w - 1 and w_index == 2:
+                        tensor_value = ((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 32
+                    else:
+                        tensor_value = ((output_block_h_index * self.stride_h + w_loop) * self.in_size_w +
+                                        output_w_index * self.stride_w + w_index) * 32
+
+                    if output_block_h_index == output_block_h - 1 and w_loop == 2:
+                        tensor_last_value = ((output_block_h - 1) * self.stride_h + self.window_h) * \
+                                            self.in_size_w * 32
+                    else:
+                        tensor_last_value = tensor_value
+
+                    src_offsets_value[offset_value] = tensor_value
+                    src_offsets_last_value[offset_value] = tensor_last_value
+
+        return src_offsets_value, src_offsets_last_value
+
+    # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def tik_instance_function(self, kernel_name):
         """
         implementation of max_pool_with_argmax and return the tik instance
@@ -383,6 +510,7 @@ class MaxPoolWithargmaxResnet50(object):
         output_w = self.out_size_w
         input_h, input_w = input_shape[2:4]
         check_load3d_supported = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
+        check_vgatherb_supported = tbe_platform.cce_conf.api_check_support("tik.vgatherb")
         output_block_h = 2
         if check_load3d_supported:
             output_block_h = 4
@@ -413,6 +541,24 @@ class MaxPoolWithargmaxResnet50(object):
             l1_buff0_size = input_h * input_w * c0_dim + 32 * 1024
             l1_buff0 = instance.Tensor(dtype, (l1_buff0_size,), name="l1_buff0",
                                        scope=tik.scope_cbuf)
+        elif check_vgatherb_supported:
+            src_offsets_size = output_block_h * self.out_size_w * filter_size
+            src_offsets_value, src_offsets_last_value = self._calc_src_offsets(output_block_h)
+            src_offsets_gm = instance.Tensor("int32", (src_offsets_size,), name="src_offsets_gm", scope=tik.scope_gm,
+                                             init_value=src_offsets_value)
+            src_offsets_last_gm = instance.Tensor("int32", (src_offsets_size,), name="src_offsets_last_gm",
+                                                  scope=tik.scope_gm, init_value=src_offsets_last_value)
+            ub_load_size = ((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * c0_dim + c0_dim
+            ub_load0 = instance.Tensor(dtype, (ub_load_size,),
+                                       name="ub_load0", scope=tik.scope_ubuf)
+            ub_load1 = instance.Tensor(dtype, (ub_load_size,),
+                                       name="ub_load1", scope=tik.scope_ubuf)
+        else:
+            ub_load_size = ((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * c0_dim + c0_dim
+            ub_load0 = instance.Tensor(dtype, (ub_load_size,),
+                                       name="ub_load0", scope=tik.scope_ubuf)
+            ub_load1 = instance.Tensor(dtype, (ub_load_size,),
+                                       name="ub_load1", scope=tik.scope_ubuf)
 
         ub_max_buff_size = self.stride_h * output_block_h * output_w * c0_dim
         ub_max_buff = instance.Tensor(dtype, (ub_max_buff_size,),
@@ -477,7 +623,11 @@ class MaxPoolWithargmaxResnet50(object):
                     self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
                                           looph * 2 * output_block_h *
                                           self.stride_h)
-                #when load3d is not supported
+                #when load3d is not supported and vgatherb is supported
+                elif check_vgatherb_supported:
+                    ub_load = ub_load0
+                    self._ub_rearrangement_ping(ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph,
+                                                src_offsets_gm)
                 else:
                     self._load_gm_to_ub_ping(ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph)
 
@@ -586,7 +736,11 @@ class MaxPoolWithargmaxResnet50(object):
                     self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
                                           (looph * 2 + 1) * output_block_h *
                                           self.stride_h)
-                # when load3d is not supported
+                #when load3d is not supported and vgatherb is supported
+                elif check_vgatherb_supported:
+                    ub_load = ub_load1
+                    self._ub_rearrangement_pong(ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx,
+                                                looph, loop_h, src_offsets_gm, src_offsets_last_gm)
                 else:
                     self._load_gm_to_ub_pong(ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h)
 
