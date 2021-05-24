@@ -374,7 +374,7 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
         "print_ir": False,
         "name": kernel_name,
         "tensor_list": tensor_list,
-        "build_args": {"constant_realize_extent_in_infer_bound": False}
+        "build_args": {"constant_realize_extent_in_infer_bound": False, "dummy_placeholder": True}
     }
 
     build(sch, config)

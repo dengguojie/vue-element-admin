@@ -554,7 +554,8 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         "print_ir": need_print,
         "need_build": need_build,
         "name": kernel_name,
-        "tensor_list": tensor_list
+        "tensor_list": tensor_list,
+        "dummy_placeholder": True
     }
 
     build(sch, config)
