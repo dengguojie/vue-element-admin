@@ -554,6 +554,48 @@ class Conv2dParaProcess(CubeParaProcess):
                               group_para.get("cout1_opt"), block_size_n, block_size_k)
         return in_shape, w_shape, in_shape_nc1hwc0, w_shape_frac_z
 
+    def correct_in_range(self, in_range_nchw, w_shape_nchw):
+        #correct in_range when w_range=[1, None]
+        DYNAMIC_FMAP_W_MIN = 1
+        DYNAMIC_FMAP_W_MAX = 4096
+        m_bit_ratio = {"float16": 2, "int8": 1}
+        c0 = tbe_platform.CUBE_MKN[self.weights["dtype"]]["mac"][1]
+        fmap_w_upper = in_range_nchw[W_DIM][1]
+        new_in_range_nchw = list(in_range_nchw)
+
+        if not fmap_w_upper:
+            stride_h = self.strides[H_DIM]
+            stride_w = self.strides[W_DIM]
+            hk_dilation = (w_shape_nchw[H_DIM] - 1) * self.dilations[H_DIM] + 1
+            wk_dilation = (w_shape_nchw[W_DIM] - 1) * self.dilations[W_DIM] + 1
+            l1size_limit_upper = tbe_platform.get_soc_spec("L1_SIZE")
+            w_left = DYNAMIC_FMAP_W_MIN
+            w_right = DYNAMIC_FMAP_W_MAX
+            current_w = DYNAMIC_FMAP_W_MAX
+            while (w_right - w_left) != 1:
+                if -1 in self.pads:
+                    w_out = (current_w + stride_w - 1) // stride_w
+                else:
+                    w_out = math.floor((current_w - wk_dilation + self.pads[2] + self.pads[3]) / stride_w) + 1
+                ho_num = math.floor(tbe_platform.CUBE_MKN[self.weights["dtype"]]["mac"][0] / w_out) + 2
+                l1_m = ((ho_num - 1) * stride_h + hk_dilation) * current_w
+                max_feature_map_l1 = c0 * l1_m * m_bit_ratio[self.weights["dtype"]]
+                if max_feature_map_l1 > l1size_limit_upper:
+                    w_right = current_w
+                else:
+                    w_left = current_w
+                current_w = w_left + (w_right - w_left)//2
+
+                if w_left == DYNAMIC_FMAP_W_MAX:
+                    break
+
+            cor_w_range = (1, w_left)
+            new_in_range_nchw[W_DIM] = cor_w_range
+            to_print = "conv2d fmap ori_range changed from {} to {}.".format(in_range_nchw, new_in_range_nchw)
+            warnings.warn(to_print)
+
+        return new_in_range_nchw
+
     def check_paras(self):
         """
         check original paras
@@ -601,9 +643,10 @@ class Conv2dParaProcess(CubeParaProcess):
                 in_shape_nchw[1] = w_shape_nchw[1]*self.groups
             self.check_range_valid(in_shape_nchw, in_range_nchw, "fmap", self.data_format)
 
+        cor_in_range_nchw = self.correct_in_range(in_range_nchw, w_shape_nchw)
         self.check_support_valid(in_shape_nchw, w_shape_nchw)
         self.get_attr_nchw(self.data_format)
-        y_range, correct_range_flag, new_in_range_nchw = self.get_output_range(w_shape_nchw, in_range_nchw)
+        y_range, correct_range_flag, new_in_range_nchw = self.get_output_range(w_shape_nchw, cor_in_range_nchw)
         self.check_range_valid(out_shape_nchw, y_range, "output", self.data_format)
 
         group_para = self.set_group_para(in_shape_nchw, w_shape_nchw, self.dtype)
