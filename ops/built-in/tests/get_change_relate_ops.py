@@ -212,6 +212,19 @@ def get_change_file_op(change_file_list):
                 break
     return effect_ops
 
+def get_case_change_op(change_dir_list):
+    print("[INFO]change_dir_list is ", str(change_dir_list))
+    if not change_dir_list:
+        return []
+    op_type_file_map = op_file_map()
+    effect_ops = []
+    for op_type, _ in op_type_file_map.items():
+        op_type_dir = os.path.join(repo_root, "ops", "built-in", "tests", "st", str(op_type))
+        if op_type_dir in change_dir_list:
+            effect_ops.append(str(op_type))
+            break
+    return effect_ops
+
 
 class FileChangeInfo:
     def __init__(self, ops_files=[], op_test_frame_files=[], test_files=[], other_files=[]):
@@ -294,6 +307,24 @@ def get_change_relate_op_type_list(changed_file_info_from_ci):
         _deal_ops_file_change()
 
         def _deal_op_test_frame_change():
+            case_changed_files = file_change_info.test_files
+            if not case_changed_files:
+                return
+            case_changed_dirs = []
+
+            for case_changed_file in case_changed_files:
+                case_changed_file = str(case_changed_file)
+                if case_changed_file.startswith(os.path.join("ops", "built-in", "tests", "st")) \
+                   and (case_changed_file.endswith("json") or case_changed_file.endswith("py")):
+                    case_changed_file = os.path.join(repo_root, case_changed_file)
+                    case_changed_dir,_ = os.path.split(case_changed_file)
+                    case_changed_dirs.append(case_changed_dir)
+
+            op_types = get_case_change_op(case_changed_dirs)
+            for op_type in op_types:
+                if op_type not in relate_op_type_list:
+                    relate_op_type_list.append(op_type)
+
             if not relate_op_type_list:
                 # if test frame change, test one op at least
                 relate_op_type_list.append("Add")
