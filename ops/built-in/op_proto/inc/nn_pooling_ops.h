@@ -227,12 +227,12 @@ REG_OP(AvgPool3DD)
 * @brief Computes AvgPool3DGrad function.
 
 * @par Inputs:
-* @li orig_input_shape: An NDHWC tensor of type float16, float32, or double.
-* @li grads: An NDHWC tensor of type int32.
+* @li orig_input_shape: An NDHWC tensor of type int32.
+* @li grads: An NDHWC tensor of type float16, float32, or double.
 
 * @par Attributes:
-* @li ksize: List of ints that has length 1, 3 or 5. The size of the window for each dimension of the input tensor.
-* @li strides:List of ints that has length 1, 3 or 5. The stride of the sliding window for each dimension of the input tensor.
+* @li ksize: List of ints that has length 3 (HWD). The size of the window for each dimension of the input tensor.
+* @li strides:List of ints that has length 3 (HWD). The stride of the sliding window for each dimension of the input tensor.
 * @li pads: List of ints, implicit zero paddings on both sides of the input.
 * @li ceil_mode: When true, will use ceil instead of floor in the formula to compute the output shape.
 * @li count_include_pad: When true, will include the zero-padding in the averaging calculation.
@@ -241,6 +241,9 @@ REG_OP(AvgPool3DD)
 
 * @par Outputs:
 * @output: A mutable tensor with the same shape and type as "orig_input_shape".
+
+* @attention Constraints:
+* @li "ksize" is in the range [1, 255]. "strides" is in the range [1, 63]
 
 * @par Third-party framework compatibility
 * @li Compatible with the TensorFlow operator AvgPoolGrad.
@@ -269,8 +272,8 @@ REG_OP(AvgPool3DGrad)
 
 * @par Attributes:
 * @li orig_input_shape: List of ints that has length 5. The size of the window for each dimension of the input tensor.
-* @li ksize: List of ints that has length 3. The size of the window for each dimension of the input tensor.
-* @li strides:List of ints that has length 3. The stride of the sliding window for each dimension of the input tensor.
+* @li ksize: List of ints that has length 3 (HWD). The size of the window for each dimension of the input tensor.
+* @li strides:List of ints that has length 3 (HWD). The stride of the sliding window for each dimension of the input tensor.
 * @li pads: List of ints, implicit zero paddings on both sides of the input.
 * @li ceil_mode: When true, will use ceil instead of floor in the formula to compute the output shape.
 * @li count_include_pad: When true, will include the zero-padding in the averaging calculation.
@@ -290,7 +293,7 @@ REG_OP(AvgPool3DGradD)
     .INPUT(grads, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(filter, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(multiplier, TensorType({DT_FLOAT16}))
-    .OUTPUT(output, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
+    .OUTPUT(output, TensorType({DT_FLOAT16}))
     .REQUIRED_ATTR(orig_input_shape, ListInt)
     .REQUIRED_ATTR(ksize, ListInt)
     .REQUIRED_ATTR(strides, ListInt)

@@ -310,7 +310,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             tag=self.op_tag + "w_col")
         return w_col
 
-    def generate_c(self, dy_col, w_col):  # pylint: disable=W0221,R0914
+    def generate_c(self, dy_col, w_col, tensor_bias=None):  # pylint: disable=W0221,R0914
         """
         generate dx_ddr
 
@@ -320,10 +320,22 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
         w_col : w tensor of fractal shape after transformation in L0B
 
+        tensor_bias : bias tensor of shape in UB
+
         Returns
         ----------
         dx_ddr: dx tensor in ddr
         """
+
+        def _add_bias_in_ub(in_tensor0, in_tensor1):
+            c_add_vector = tvm.compute(
+                in_tensor0.shape,
+                lambda *indice: in_tensor0(*indice) +
+                                in_tensor1(indice[2] * tbe_platform.CUBE_MKN[in_tensor0.dtype]["mac"][2] +
+                                indice[4]),
+                name="bias_add_vector")
+            return c_add_vector
+
         c_dtype = "float32"
         if tbe_platform_info.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             c_dtype = "float16"
@@ -383,6 +395,9 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             name="c_ub_vn",
             tag=self.op_tag + "c_ub_vn"
         )
+
+        if tensor_bias is not None and tensor_bias.dtype == "float16":
+            dx_ub_vn = _add_bias_in_ub(dx_ub_vn, tensor_bias)
 
         dx_ddr = tvm.compute(
             out_shape,

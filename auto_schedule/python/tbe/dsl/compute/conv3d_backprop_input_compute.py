@@ -19,6 +19,7 @@ from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common import utils as tbe_utils
 from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.dsl.base.operation import get_te_var
@@ -81,11 +82,12 @@ def _get_var_map(out_backprop):
     return var_map
 
 
-@tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
+@tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor,
+                             (tvm.tensor.Tensor, para_check.NONE_TYPE), (list, tuple),
                              (list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), str, str, dict, dict, dict)
 def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
-                                   out_backprop, filter_sizes,
+                                   out_backprop, bias, filter_sizes,
                                    input_sizes, strides, padding,
                                    dilations, res_dtype="float16",
                                    kernel_name="conv3d_backprop_input_cce",
@@ -98,6 +100,8 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     filters : weight tensor of fractal shape
 
     out_backprop : 5D dE/dY tensor
+
+    bias : 1D tensor or None
 
     filter_sizes : shape of weight, [D, H, W, N, C]
 
@@ -171,7 +175,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
                                            var_map=var_map)
     dy_col = pattc.generate_a(out_backprop)
     w_col = pattc.generate_b(filters)
-    dx_ddr = pattc.generate_c(dy_col, w_col)
+    dx_ddr = pattc.generate_c(dy_col, w_col, tensor_bias=bias)
     return dx_ddr
 
 
@@ -481,6 +485,8 @@ def conv3d_dx(filter,
     ----------
     dx_ddr: dE/dX tensor
     """
+
+    bias_tensor = para_dict.get("tensor_bias", None)
     strides = para_dict.get("strides")
     pads = para_dict.get("pads")
     dilations = para_dict.get("dilations", [1, 1, 1, 1, 1])
@@ -513,7 +519,7 @@ def conv3d_dx(filter,
                                         res_dtype, var_map=var_map)
 
     return _conv3d_backprop_input_compute(filter,
-                                          out_backprop, filter_size,
+                                          out_backprop, bias_tensor, filter_size,
                                           input_size, strides, pads,
                                           dilations, res_dtype,
                                           kernel_name,

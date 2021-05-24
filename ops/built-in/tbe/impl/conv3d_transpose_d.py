@@ -27,6 +27,7 @@ from impl.util.platform_adapter import tvm
 
 
 _L1FUSION_INPUT_CTR = 2
+_BIAS_LENGTH = 1
 
 _OUT_BACKPROP_TARGET_FORMAT = "NDHWC"
 _OUT_BACKPROP_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
@@ -358,6 +359,20 @@ def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R091
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
+    if bias:
+        bias_dtype = bias.get("dtype")
+        para_check.check_dtype_rule(bias_dtype, ('float16'), "bias")
+        bias_shape = bias.get("ori_shape")
+        if len(bias_shape) != _BIAS_LENGTH:
+            dict_args = {
+                'errCode': 'E60006',
+                'param_name': 'bias',
+                'expected_length': '1',
+                'length': '{}'.format(len(bias_shape))
+            }
+            raise RuntimeError(dict_args,
+                               error_manager_util.get_error_message(dict_args))
+
     return (shape_filters, shape_out_backprop, shape_res, shape_strides, pads,
             groups, shape_dilations, filters_dtype, out_backprop_dtype, res_dtype, kernel_name)
 
@@ -488,7 +503,7 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
                                       bias, offset_w, y_input, input_size,
                                       strides, pads, dilations, groups,
                                       data_format, output_padding, offset_x, kernel_name)
-
+    bias_flag = bias is not None
     _conv3d_transpose_cce(shape_filters,
                           shape_out_backprop,
                           shape_res,
@@ -496,6 +511,7 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
                           pads,
                           groups,
                           shape_dilations,
+                          bias_flag,
                           filters_dtype,
                           out_backprop_dtype,
                           res_dtype,
@@ -504,14 +520,15 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), (str, list, tuple), int,
-                             (list, tuple), str, str, str, str)
+                             (list, tuple), bool, str, str, str, str)
 def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
-                         shape_out_backprop, input_sizes,
-                         strides, pads, groups, dilations=(1, 1, 1, 1, 1),
-                         filter_dtype='float16',
-                         out_backprop_dtype='float16',
-                         res_dtype='float16',
-                         kernel_name="_conv3d_transpose_cce"):
+                          shape_out_backprop, input_sizes,
+                          strides, pads, groups, dilations=(1, 1, 1, 1, 1),
+                          bias_flag=False,
+                          filter_dtype='float16',
+                          out_backprop_dtype='float16',
+                          res_dtype='float16',
+                          kernel_name="_conv3d_transpose_cce"):
     """
     Topi interface of conv3d transpose
 
@@ -553,12 +570,17 @@ def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
 
         filters = tvm.placeholder(shape_filter_frac,
                                   name="filter", dtype=filter_dtype)
-
+        tensor_bias = None
+        if bias_flag:
+            tensor_bias = tvm.placeholder((util_common.align(filter_channel * groups,
+                                                            tbe_platform.C0_SIZE),),
+                                           name="bias", dtype=filter_dtype)
         para_dict = {
             "strides": strides,
             "pads": padding,
             "dilations": dilations,
             "res_dtype": res_dtype,
+            "tensor_bias": tensor_bias,
             "kernel_name": kernel_name,
             "group_dict": group_dict
         }
@@ -568,8 +590,10 @@ def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
                                          filter_size=shape_filter_ncdhw,
                                          input_size=input_sizes,
                                          para_dict=para_dict)
-        tensor_list = [dedy, filters, dedx]
-
+        if bias_flag:
+            tensor_list = [dedy, filters, tensor_bias, dedx]
+        else:
+            tensor_list = [dedy, filters, dedx]
         with tvm.target.cce():
             sch = tbe.auto_schedule(dedx)
 
@@ -600,6 +624,7 @@ def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
     real_g = group_dict["real_g"]
     cin1_g = group_dict["cin1_g"]
     cout_g = group_dict["cout_g"]
+    cout_ori = group_dict["cout_ori"]
 
     shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
                          cout_g // c0_size, c0_size, c0_size)

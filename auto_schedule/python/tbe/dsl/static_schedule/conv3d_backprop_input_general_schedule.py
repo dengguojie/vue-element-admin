@@ -469,6 +469,16 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         tensor_attr['kernel_d'] = kernel_d
         tensor_attr['kernel_h'] = kernel_h
         tensor_attr['kernel_w'] = kernel_w
+
+        if "bias_add_vector" in tensor_map:
+            bias_add_vector = tensor_map.get("bias_add_vector")
+            sch[bias_add_vector].set_scope(tbe_platform_info.scope_ubuf)
+            bias_tensor = bias_add_vector.op.input_tensors[1]
+            bias_ub = sch.cache_read(
+                bias_tensor, tbe_platform_info.scope_ubuf, [bias_add_vector]
+            )
+            tensor_map["bias_ub"] = bias_ub
+
         return tensor_attr, group_dict
 
     def _tiling_l0_process():
@@ -637,6 +647,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         sch[c_ub_vn].compute_at(sch[c_ddr], cddr_m_outer_inner)
         sch[c_col].compute_at(sch[c_ddr], col_at_ddr_axis)
         sch[a_col].compute_at(sch[c_col], c_col_m_outer)
+        if bias_add_vector is not None:
+            sch[bias_add_vector].compute_at(sch[c_ddr], cddr_m_outer_inner)
+            sch[bias_ub].compute_at(sch[c_ddr], cddr_m_outer_inner)
         if not tiling['BL0_matrix'] and not tiling['BL1_shape']:
             sch[b_col].compute_at(sch[c_ddr], c_ddr_deep_outer)
         else:
@@ -680,6 +693,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             sch[c_ub].double_buffer()
             sch[c_fill_zero].double_buffer()
             sch[c_ub_vn].double_buffer()
+            if bias_add_vector is not None:
+                sch[bias_add_vector].double_buffer()
+                sch[bias_ub].double_buffer()
 
     def _default_tiling():
         tiling = {}
@@ -726,6 +742,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         sch[b_l1].emit_insn(sch[b_l1].op.axis[1], "dma_copy")
         sch[b_col].emit_insn(sch[b_col].op.axis[3], "dma_copy")
 
+        if bias_add_vector is not None:
+            sch[bias_ub].emit_insn(sch[bias_ub].op.axis[0], "dma_copy")
+            sch[bias_add_vector].emit_insn(sch[bias_add_vector].op.axis[0], "vector_auto")
         if mean_flag:
             sch[mean_matrix_init].emit_insn(mean_matrix_init.op.axis[-1], "vector_dup")
             sch[mean_matrix_mul].emit_insn(mean_matrix_mul.op.axis[-1], "vector_auto")
@@ -911,6 +930,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                    "conv3d_backprop_input_dy_zero": "a_zero",
                    "conv3d_backprop_input_dy_vn": "a_vn",
                    "elewise_binary_mul": "elewise_mul",
+                   "bias_add_vector": "bias_add_vector",
                    "mean_matrix_init": "a_ub_init",
                    "mean_matrix_fp16": "a_ub_fp16",
                    "mean_matrix_mul": "a_ub_mul"}
@@ -927,6 +947,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             if op["op"] in tag_map.keys():
                 tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
             if "mean_matrix_" in op["op"]:
+                continue
+            if "bias" in op["op"]:
                 continue
             tmp_read_map = []
             for nop in op["next_op"]:
@@ -1015,6 +1037,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     stride_w = tensor_attr.get("stride_w")
     stride_d = tensor_attr.get("stride_d")
     b_ddr_kd = tensor_attr.get("kernel_d")
+    bias_add_vector = tensor_map.get("bias_add_vector")
+    bias_ub = tensor_map.get("bias_ub")
     c_fill_zero = tensor_map.get("c_fill_zero")
     _, dilation_h, dilation_w = tensor_map.get("dilation")
 
@@ -1203,6 +1227,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         (1, 1),
         (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
         (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
+    if bias_add_vector is not None:
+        sch[c_ub_vn].reused_by(bias_add_vector)
+        sch[bias_add_vector].buffer_align(
+            (1, 1),
+            (1, 1),
+            (1, 1),
+            (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
+            (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
     (batch_outer, c_ddr_deep_outer, bl1_at_ddr_n_outer, al1_at_ddr_m_outer,
      g_axis, blockidx, blocks) = _multi_core()
 
@@ -1332,7 +1364,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
     if var_map:
         _handle_dynamic_workspace(stride_w)
-
     return sch
 
 

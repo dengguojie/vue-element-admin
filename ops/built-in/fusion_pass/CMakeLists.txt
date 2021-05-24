@@ -273,6 +273,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/fusedbatchnorm3d_fusion_pass.cc
   graph_fusion/ai_core/fusedbatchnorm3dgrad_fusion_pass.cc
   graph_fusion/ai_core/conv2d_backprop_input_bias_add_fusion_pass.cc
+  graph_fusion/ai_core/conv3d_backprop_input_bias_add_fusion_pass.cc
   graph_fusion/ai_core/triu_fusion_pass.cc
   graph_fusion/ai_core/prelu_grad_fusion_pass.cc
   graph_fusion/ai_core/tril_fusion_pass.cc

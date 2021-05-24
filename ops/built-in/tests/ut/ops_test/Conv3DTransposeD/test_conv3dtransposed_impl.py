@@ -146,50 +146,65 @@ y_input = {
     'ori_format': 'NWCDH', 'format': 'NWCDH', 'dtype': 'float16'}
 case14 = _run_api_end_with_d(y_input=y_input)
 
+bias = {
+    "ori_shape": (32,), 'shape': (32,), 'ori_format': 'ND',
+    'format': 'ND', 'dtype': 'float16'
+}
+case15 = _run_api_end_with_d(bias=bias)
+
+bias = {
+    "ori_shape": (32,1), 'shape': (32,1), 'ori_format': 'ND',
+    'format': 'ND', 'dtype': 'float16'
+}
+case16 = _run_api_end_with_d(bias=bias)
+
 # Add test Cases
 # Params is the input params of the operator. Fro example, [fmap,filter,bias...]
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case1, "success", "case1", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case2, "success", "case2", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case3, "success", "case3", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case4, RuntimeError, "case4", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case5, RuntimeError, "case5", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case6, ValueError, "case6", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case7, RuntimeError, "case7", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case8, RuntimeError, "case8", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case9, RuntimeError, "case9", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case10, RuntimeError, "case10", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case11, RuntimeError, "case11", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case12, RuntimeError, "case12", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case13, RuntimeError, "case13", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case14, RuntimeError, "case14", True))
-
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case15, "success", "case15", True))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case16, RuntimeError, "case16", True))
 
 if __name__ == '__main__':
     ut_case.run()
