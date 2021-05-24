@@ -25,6 +25,7 @@ class Pattern:
     ELEMWISE = "ElemWise"
     BROADCAST = "Broadcast"
     REDUCE = "CommReduce"
+    NORM = "Norm"
     OPAQUE = "Opaque"
     SOFTMAX = "Softmax"
     CONV2D = "Convolution"
@@ -69,6 +70,14 @@ class ReducePattern:
     # generic
     R_0 = "R_0"
 
+
+class NormPattern:
+    """
+    Norm sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    # generic
+    N_0 = "N_0"
 
 class CompileInfo:
     """

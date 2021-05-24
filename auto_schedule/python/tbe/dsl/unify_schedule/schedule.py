@@ -138,7 +138,7 @@ def _listize(_x):
     return list(_x) if isinstance(_x, (list, tuple)) else [_x]
 
 
-@register_schedule(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST, Pattern.REDUCE))
+@register_schedule(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST, Pattern.REDUCE, Pattern.NORM))
 def _schedule(outs, tiling_case):
     cpt = operation.get_context().get_current_compute()
     sub_pattern = cpt.get_sub_pattern()

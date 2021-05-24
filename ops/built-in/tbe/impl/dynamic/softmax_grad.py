@@ -20,14 +20,13 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import classify
 
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=unused-variable
-@register_operator("SoftmaxGrad", pattern="Softmax")
+@register_operator("SoftmaxGrad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x,
                          kernel_name="softmax_grad"):
     """
@@ -71,7 +70,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
     return res
 
 
-@register_operator("SoftmaxGrad", pattern="Softmax")
+@register_operator("SoftmaxGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
@@ -100,28 +99,29 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
     grad_shape = grad_softmax.get("shape")
     dtype = softmax.get("dtype").lower()
 
-    axis = -1
-    tbe_context.get_context().add_compile_info("ori_axis", axis)
-    tbe_context.get_context().add_compile_info("kernel_name", "SoftmaxGrad")
+    axis = [-1]
     para_check.check_shape(shape, param_name="softmax")
     para_check.check_shape(grad_shape, param_name="grad_softmax")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="softmax")
+    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
 
-    with tbe.compute():
-        new_shape = []
-        a = operation.var("a")
-        new_shape.append(a)
-        b = operation.var("b")
-        new_shape.append(b)
-        softmax = tvm.placeholder(new_shape, dtype=dtype, name="softmax")
-        grad_softmaxgrad = tvm.placeholder(new_shape, dtype=dtype, name="grad_softmaxgrad")
-        output = softmax_grad_compute(softmax, grad_softmaxgrad, grad_x, kernel_name)
     schedules = []
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(output)
-    schedules.append(sch)
-    tensor_list = [softmax, grad_softmaxgrad, output]
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": tensor_list}
+    tensors = []
+    ins = classify([softmax, grad_softmax, input_axis], "norm")
+
+    for (x, grad, axis) in ins:
+        with tbe.compute():
+            shape_var_new, grad_shape_var_new, _= shape_util.variable_shape([x, grad, axis], op_mode="norm")
+            softmax = tvm.placeholder(shape_var_new, dtype=dtype, name="softmax")
+            grad_softmax = tvm.placeholder(grad_shape_var_new, dtype=dtype, name="grad_softmax")
+            output = softmax_grad_compute(softmax, grad_softmax, grad_x, kernel_name)
+            tensors.append([softmax, grad_softmax, output])
+
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(output)
+        schedules.append(sch)
+
+    # build
+    config = {"name": kernel_name,
+              "tensor_list": tensors}
     tbe.build(schedules, config)

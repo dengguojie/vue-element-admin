@@ -20,13 +20,13 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import classify
 
 
 # pylint: disable = locally-disabled,unused-argument
-@register_operator("LogSoftmaxV2", pattern="Softmax")
+@register_operator("LogSoftmaxV2")
 def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
     """
     process of calculating data's log_softmax, x - log(sum(exp(x)))
@@ -75,7 +75,7 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
     return res
 
 
-@register_operator("LogSoftmaxV2", pattern="Softmax")
+@register_operator("LogSoftmaxV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
                             para_check.KERNEL_NAME)
@@ -105,50 +105,29 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
     if not isinstance(axis, int):
         axis = list(axis)
 
-    tbe_context.get_context().add_compile_info("ori_axis", axis)
-    tbe_context.get_context().add_compile_info("kernel_name", "LogSoftmaxV2")
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
     axis = shape_util.axis_check(len(shape), axis)
     if isinstance(axis, int):
         axis = [axis]
+    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
 
-    with tbe.compute():
-        new_shape = []
-        if len(shape) == 1:
-            a = operation.var("a")
-            new_shape.append(a)
-            b = operation.var("b")
-            new_shape.append(b)
-            axis = [1]
-        elif axis[0] == 0:
-            b = operation.var("b")
-            new_shape.append(b)
-            a = operation.var("a")
-            new_shape.append(a)
-            axis = [0]
-        elif axis[0] == len(shape) - 1:
-            a = operation.var("a")
-            new_shape.append(a)
-            b = operation.var("b")
-            new_shape.append(b)
-            axis = [1]
-        else:
-            a = operation.var("a")
-            new_shape.append(a)
-            b = operation.var("b")
-            new_shape.append(b)
-            c = operation.var("c")
-            new_shape.append(c)
-            axis = [1]
-        data_input = tvm.placeholder(new_shape, dtype=dtype, name="data")
-        output = log_softmax_v2_compute(data_input, output_y, axis, kernel_name)
     schedules = []
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(output)
-    schedules.append(sch)
-    tensor_list = [data_input, output]
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": tensor_list}
+    tensors = []
+    ins = classify([input_x, input_axis], "norm")
+
+    for (x, axis) in ins:
+        with tbe.compute():
+            shape_var_new, _= shape_util.variable_shape([x, axis], op_mode="norm")
+            input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x")
+            output = log_softmax_v2_compute(input_x, output_y, axis.get("value"), kernel_name)
+            tensors.append([input_x, output])
+
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(output)
+        schedules.append(sch)
+
+    # build
+    config = {"name": kernel_name,
+              "tensor_list": tensors}
     tbe.build(schedules, config)

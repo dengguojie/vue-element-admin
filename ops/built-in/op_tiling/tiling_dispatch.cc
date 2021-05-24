@@ -54,6 +54,8 @@ bool AutoTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     ret = ReduceTiling(op_type, op_paras, op_info, run_info);
   } else if (pattern == "ElemWise" || pattern == "Broadcast") {
     ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
+  } else if (pattern == "Norm") {
+    ret = NormTiling(op_type, op_paras, op_info, run_info);
   } else {
     ret = false;
     GELOGI("Auto tiling not supported patten: %s.", pattern.c_str());

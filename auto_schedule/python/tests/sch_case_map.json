@@ -240,5 +240,8 @@
     ],
     "auto_schedule/python/tbe/dsl/static_schedule/reduce_multi_schedule.py":[
         "reduce_multi"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/norm_schedule.py":[
+        "norm"
     ]
 }

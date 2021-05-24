@@ -17,6 +17,7 @@ auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
 from enum import Enum, auto  # pylint: disable=E0611
+from typing import Tuple
 
 from tbe import tvm
 from tbe.common.register import get_operator
@@ -142,10 +143,14 @@ def get_pattern(outs):
 
 
 def _parse_pattern(outs):
+    # compute_type_size_map
     # key: compute type, @see enum(ComputeType)
     # value: size of the special compute type
     # the "any" key means total of compute
-    compute_type_size_map = _dfs_compute(outs)
+    # compute_type_tensor_map
+    # key: compute type, @see enum(ComputeType)
+    # value: the special compute type tensor
+    compute_type_size_map, compute_type_tensor_map = _dfs_compute(outs)
 
     if ComputeType.CONV3D in compute_type_size_map:
         return Pattern.CONV3D
@@ -165,6 +170,8 @@ def _parse_pattern(outs):
         return Pattern.BROADCAST
     if _is_reduce(compute_type_size_map):
         return Pattern.REDUCE
+    if _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
+        return Pattern.NORM
     if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
         return Pattern.CONV3D_BACKPROP_FILTER
 
@@ -197,17 +204,91 @@ def _is_reduce(compute_type_size_map):
     return placeholder_size + elewise_size + reduce_size + cast_size == total
 
 
-def _dfs_compute(outs) -> dict:
+def _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
+    # norm
+    # 1. only one out and out shape is before reduce shape(current support)
+    # 2. exist reduce and broadcast at the same time
+    # 3. the number of reduce is equal to the number of broadcast(current support)
+    # 4. the axis of all reduce and broadcast is same
+    # 5. after reduce shape is equal to before broadcast shape
+    # 6. before reduce shape is equal to after broadcast shape
+
+    def _eq_tvm_shape(shape_a, shape_b):
+        length_a = len(shape_a)
+        length_b = len(shape_b)
+        if length_a != length_b:
+            return False
+        for idx, _ in enumerate(range(length_a)):
+            ret_value = hasattr(shape_a[idx], "value") and hasattr(shape_b[idx], "value")
+            ret_name = hasattr(shape_a[idx], "name") and hasattr(shape_b[idx], "name")
+            if ret_value:
+                if shape_a[idx].value != shape_b[idx].value:
+                    return False
+            elif ret_name:
+                if shape_a[idx].name != shape_b[idx].name:
+                    return False
+            else:
+                if shape_a[idx] != shape_b[idx]:
+                    return False
+        return True
+
+    if hasattr(outs, "__index__") and len(outs) != 1:
+        return False
+    placeholder_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
+    elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
+    broadcast_size = compute_type_size_map.get(ComputeType.BROADCAST, 0)
+    cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
+    reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
+    total = compute_type_size_map.get(ComputeType.ANY, 0)
+
+    if reduce_size == 0 or broadcast_size == 0:
+        return False
+    if reduce_size != broadcast_size:
+        return False
+    if placeholder_size + elewise_size + reduce_size + cast_size + broadcast_size != total:
+        return False
+
+    reduce_tensor_list = compute_type_tensor_map[ComputeType.REDUCE]
+    broadcast_tensor_list = compute_type_tensor_map[ComputeType.BROADCAST]
+
+    before_reduce_shape = reduce_tensor_list[0].op.input_tensors[0].shape
+    after_reduce_shape = reduce_tensor_list[0].shape
+    before_broadcast_shape = broadcast_tensor_list[0].op.input_tensors[0].shape
+    after_broadcast_shape = broadcast_tensor_list[0].shape
+
+    out_shape = outs[0].shape if hasattr(outs, "__index__") else outs.shape
+    if not _eq_tvm_shape(before_reduce_shape, out_shape):
+        return False
+
+    if not (_eq_tvm_shape(before_reduce_shape, after_broadcast_shape) and
+            _eq_tvm_shape(after_reduce_shape, before_broadcast_shape)):
+        return False
+
+    if reduce_size > 1:
+        for i in range(1, reduce_size):
+            illegal_condition = \
+                not (_eq_tvm_shape(before_reduce_shape, reduce_tensor_list[i].op.input_tensors[0].shape) and
+                     _eq_tvm_shape(after_reduce_shape, reduce_tensor_list[i].shape) and
+                     _eq_tvm_shape(before_broadcast_shape, broadcast_tensor_list[i].op.input_tensors[0].shape) and
+                     _eq_tvm_shape(after_broadcast_shape, broadcast_tensor_list[i].shape))
+            if illegal_condition:
+                return False
+
+    return True
+
+
+def _dfs_compute(outs) -> Tuple[dict, dict]:
     outs = list(outs) if isinstance(outs, (tuple, list)) else [outs]
     visited = set()
     compute_type_size_map = {}
+    compute_type_tensor_map = {}
     for out in outs:
-        _dfs_compute_inner(out, visited, compute_type_size_map)
-    return compute_type_size_map
+        _dfs_compute_inner(out, visited, compute_type_size_map, compute_type_tensor_map)
+    return compute_type_size_map, compute_type_tensor_map
 
 
 def _dfs_compute_inner(tensor: tvm.tensor.Tensor, visited: set,
-                       compute_type_size_map: dict):
+                       compute_type_size_map: dict, compute_type_tensor_map: dict):
     if tensor in visited:
         return
     visited.add(tensor)
@@ -215,11 +296,18 @@ def _dfs_compute_inner(tensor: tvm.tensor.Tensor, visited: set,
     compute_type = _get_compute_type(tensor)
     compute_type_size_map[compute_type] = compute_type_size_map.get(
         compute_type, 0) + 1
+    if compute_type not in compute_type_tensor_map:
+        compute_type_tensor_map[compute_type] = []
+    compute_type_tensor_map[compute_type].append(tensor)
+
     compute_type_size_map[ComputeType.ANY] = compute_type_size_map.get(
         ComputeType.ANY, 0) + 1
+    if ComputeType.ANY not in compute_type_tensor_map:
+        compute_type_tensor_map[ComputeType.ANY] = []
+    compute_type_tensor_map[ComputeType.ANY].append(tensor)
 
     for tensor_i in tensor.op.input_tensors:
-        _dfs_compute_inner(tensor_i, visited, compute_type_size_map)
+        _dfs_compute_inner(tensor_i, visited, compute_type_size_map, compute_type_tensor_map)
 
 
 def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:

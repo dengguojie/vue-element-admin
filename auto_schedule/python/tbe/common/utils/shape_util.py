@@ -581,12 +581,12 @@ def _reduce_and_norm_variable_shape(inputs: list):
     shape_out = []
     for single_input in inputs:
         input_type = single_input.get("rel_pos_to_reduce")
-        if input_type == "before":
-            shape_out.append(shape_before_reduce[:])
+        if input_type == "axis":
+            shape_out.append(input_axis[0].get("shape")[:])
         elif input_type == "after":
             shape_out.append(shape_after_reduce[:])
         else:
-            shape_out.append(input_axis[0].get("shape")[:])
+            shape_out.append(shape_before_reduce[:])
 
     return shape_out
 

@@ -283,8 +283,4 @@ bool SoftmaxTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(SoftmaxV2, SoftmaxTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(SoftmaxGrad, SoftmaxTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(LogSoftmaxV2, SoftmaxTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(LogSoftmaxGrad, SoftmaxTiling);
 }  // namespace optiling

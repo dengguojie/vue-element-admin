@@ -72,6 +72,7 @@ set(_optiling_files
   prelu.cc
   reverse.cc
   reduce_tiling.cc
+  norm.cc
   resize_nearest_neighbor_v2.cc
   resize_bilinear_v2_grad.cc
   resize_bilinear_v2.cc

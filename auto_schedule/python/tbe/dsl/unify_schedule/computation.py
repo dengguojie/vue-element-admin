@@ -130,7 +130,7 @@ def _listize(_x):
     return list(_x) if isinstance(_x, (list, tuple)) else [_x]
 
 
-@register_tiling_case(pattern=[Pattern.ELEMWISE, Pattern.BROADCAST, Pattern.REDUCE])
+@register_tiling_case(pattern=[Pattern.ELEMWISE, Pattern.BROADCAST, Pattern.REDUCE, Pattern.NORM])
 def _tiling_case(outs, option=None):
     cpt = operation.get_context().get_current_compute()
     pattern = cpt.get_pattern()
