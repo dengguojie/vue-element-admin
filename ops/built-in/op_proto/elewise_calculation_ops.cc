@@ -3723,6 +3723,13 @@ IMPLEMT_INFERFUNC(ArgMaxWithK, ArgMaxWithKInfer) {
 }
 
 IMPLEMT_VERIFIER(ArgMaxWithK, ArgMaxWithKVerify) {
+  int topk = op.get_attr_topk();
+  if (topk < 1) {
+    ge::OpsAttrValueErrReport(op.GetName(), "topk", "Greater than 0", 
+                              ConcatString(topk));
+    OP_LOGE(op.GetName().c_str(), "topk must be greater than 0, current topk is %d", topk);
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
