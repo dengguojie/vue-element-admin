@@ -221,4 +221,41 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
 }
 
 INFER_FUNC_REG(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer);
+
+IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
+
+  TensorDesc tensordesc_log_probs = op.GetInputDesc("log_probs");
+  TensorDesc tensordesc_targets = op.GetInputDesc("targets");
+
+  Shape shape_log_probs = tensordesc_log_probs.GetShape();
+  Shape shape_targets = tensordesc_targets.GetShape();
+  
+  DataType dtype = tensordesc_log_probs.GetDataType();
+
+  std::vector<int64_t> dims_log_probs = shape_log_probs.GetDims();
+  std::vector<int64_t> dims_targets = shape_targets.GetDims();
+  int64_t N, C, T, S;
+  T = dims_log_probs[0];
+  N = dims_log_probs[1];
+  C = dims_log_probs[2];
+  S = dims_targets[1];
+
+  TensorDesc tensordesc_log_alpha = op.GetOutputDesc("log_alpha");
+  TensorDesc tensordesc_neg_log_likelihood = op.GetOutputDesc("neg_log_likelihood");
+  
+  std::vector<int64_t> dims_log_alpha = {N, T, 2*S + 1};
+  std::vector<int64_t> dims_neg_log_likelihood = {N};
+
+  tensordesc_log_alpha.SetShape(ge::Shape(dims_log_alpha));
+  tensordesc_log_alpha.SetDataType(dtype);
+  tensordesc_neg_log_likelihood.SetShape(ge::Shape(dims_neg_log_likelihood));
+  tensordesc_neg_log_likelihood.SetDataType(dtype);
+  (void)op.UpdateOutputDesc("log_alpha", tensordesc_log_alpha);
+  (void)op.UpdateOutputDesc("neg_log_likelihood", tensordesc_neg_log_likelihood);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(CTCLossV2, CTCLossV2Infer);
+
 }  // namespace ge
