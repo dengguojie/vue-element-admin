@@ -128,7 +128,7 @@ class ResizeNearestNeighbor:
         flag = tbe_platform.intrinsic_check_support("Intrinsic_vconv",
                                                     "s322f32")
         with ib.if_scope(flag):
-            reset_mask_insn(ib, "float32", bits=1)
+            reset_mask_insn(ib, "float32", bits=8)
             with ib.new_scope():
                 ib.emit(
                     tvm.call_extern("float32", "vconv_s322f32",
@@ -136,7 +136,7 @@ class ResizeNearestNeighbor:
                                     ub_int32.access_ptr("r", offset=0), 1, 1, 1,
                                     8, 8))
         with ib.else_scope():
-            reset_mask_insn(ib, "float16", bits=1)
+            reset_mask_insn(ib, "float16", bits=16)
             with ib.new_scope():
                 ib.emit(
                     tvm.call_extern("float16", "set_deqscale",
@@ -471,6 +471,28 @@ class ResizeNearestNeighbor:
             "float32", [self.c0],
             name="ub_fp32_w",
             scope=tbe_platform.scope_ubuf)
+
+        reset_mask_insn(ib, "int32", bits=16)
+        ib.emit(
+            tvm.call_extern("int32", "vector_dup", ub_int32_h.access_ptr("w", offset=0),
+                            tvm.const(0, dtype="int32"), 1, 1, 1, 8, 8))
+        ib.emit(
+            tvm.call_extern("int32", "vector_dup", ub_int32_w.access_ptr("w", offset=0),
+                            tvm.const(0, dtype="int32"), 1, 1, 1, 8, 8))
+        reset_mask_insn(ib, "float16", bits=16)
+        ib.emit(
+            tvm.call_extern("float16", "vector_dup", ub_fp16_h.access_ptr("w", offset=0),
+                            tvm.const(0, dtype="float16"), 1, 1, 1, 8, 8))
+        ib.emit(
+            tvm.call_extern("float16", "vector_dup", ub_fp16_w.access_ptr("w", offset=0),
+                            tvm.const(0, dtype="float16"), 1, 1, 1, 8, 8))
+        reset_mask_insn(ib, "float32", bits=16)
+        ib.emit(
+            tvm.call_extern("float32", "vector_dup", ub_fp32_h.access_ptr("w", offset=0),
+                            tvm.const(0, dtype="float32"), 1, 1, 1, 8, 8))
+        ib.emit(
+            tvm.call_extern("float32", "vector_dup", ub_fp32_w.access_ptr("w", offset=0),
+                            tvm.const(0, dtype="float32"), 1, 1, 1, 8, 8))
 
         with ib.for_range(0, b_loop) as b_loop_idx:
             start = b_loop_idx * b_out
@@ -1104,6 +1126,28 @@ def resize_nearest_neighbor_v2_d_compute(images,
                 "float32", [resize.c0],
                 name="ub_fp32_w",
                 scope=tbe_platform.scope_ubuf)
+            reset_mask_insn(ib, "int32", bits=16)
+            ib.emit(
+                tvm.call_extern("int32", "vector_dup", ub_int32_h.access_ptr("w", offset=0),
+                                tvm.const(0, dtype="int32"), 1, 1, 1, 8, 8))
+            ib.emit(
+                tvm.call_extern("int32", "vector_dup", ub_int32_w.access_ptr("w", offset=0),
+                                tvm.const(0, dtype="int32"), 1, 1, 1, 8, 8))
+            reset_mask_insn(ib, "float16", bits=16)
+            ib.emit(
+                tvm.call_extern("float16", "vector_dup", ub_fp16_h.access_ptr("w", offset=0),
+                                tvm.const(0, dtype="float16"), 1, 1, 1, 8, 8))
+            ib.emit(
+                tvm.call_extern("float16", "vector_dup", ub_fp16_w.access_ptr("w", offset=0),
+                                tvm.const(0, dtype="float16"), 1, 1, 1, 8, 8))
+            reset_mask_insn(ib, "float32", bits=16)
+            ib.emit(
+                tvm.call_extern("float32", "vector_dup", ub_fp32_h.access_ptr("w", offset=0),
+                                tvm.const(0, dtype="float32"), 1, 1, 1, 8, 8))
+            ib.emit(
+                tvm.call_extern("float32", "vector_dup", ub_fp32_w.access_ptr("w", offset=0),
+                                tvm.const(0, dtype="float32"), 1, 1, 1, 8, 8))
+
             with ib.if_scope(loop_idx < one_core_loop - 1):
                 dst_offset_h_loop = loop_idx * core_number * \
                                     resize.output_w * resize.c0
