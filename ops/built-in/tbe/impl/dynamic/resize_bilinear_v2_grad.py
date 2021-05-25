@@ -595,8 +595,6 @@ class ResizeBilinearV2Grad(object):
         with self.tik_instance.for_range(0, self.nc1) as nc1_idx:
             self.dup_zero(output_ub, num=640 * 16)
             self.dup_zero(output_ub2, num=640 * 16)
-            self.dup_zero(mul_out0, num=512 * 16)
-            self.dup_zero(mul_out1, num=512 * 16)
 
             src_w_idx.set_as(0)
             with self.tik_instance.for_range(0, self.w_loop) as loop_idx:
@@ -669,9 +667,6 @@ class ResizeBilinearV2Grad(object):
 
             src_w_idx.set_as(src_w_idx + 1)
             dst_w_idx.set_as(dst_w_idx + add_repeat)
-
-        self.dup_zero(mul_out0, num=512 * 16)
-        self.dup_zero(mul_out1, num=512 * 16)
 
     def normal_big(self, core_idx):
         """
