@@ -29,6 +29,10 @@ ut_case.add_case("all",
                                         "dynamic_add_n_fp16_ND", "success"))
 ut_case.add_case("all",
                  gen_dynamic_accumulate_nv2_case((-1,), ((1, None),), "float32", 3,
-                                        "dynamic_add_n_fp32_ND", "failed"))
+                                        "dynamic_add_n_fp32_f_ND", "failed"))
+ut_case.add_case("all",
+                 gen_dynamic_accumulate_nv2_case((-1,), ((1, None),), "float32", 2,
+                                        "dynamic_add_n_fp32_ND", "success"))
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
+    ut_case.run("Ascend310")

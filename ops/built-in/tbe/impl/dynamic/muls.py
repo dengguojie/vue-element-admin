@@ -79,9 +79,7 @@ def muls(input_x, output_y, value, kernel_name="muls"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)
+            data_input = tvm.placeholder(x_shape[0], name="data_input", dtype=input_dtype)
             res = muls_compute(data_input, scalar)
             tensors.append([data_input, res])
         with tvm.target.cce():

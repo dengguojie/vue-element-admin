@@ -61,13 +61,13 @@ def _accumulate_nv2_compute(input_x, output_y, num, kernel_name='accumulate_nv2'
     result = input_x[0]
     # in order to improve the accuracy, convert float16 to float32
     if dtype == 'float16' and length > 1 and \
-            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         result = tbe.cast_to(result, 'float32')
 
     for i in range(1, length):
         rhs = input_x[i]
         if dtype == 'float16' and \
-                tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+                tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
             rhs = tbe.cast_to(input_x[i], 'float32')
         result = tbe.vadd(result, rhs)
 
@@ -177,11 +177,9 @@ def accumulate_nv2(input_x, output_y, num, kernel_name="accumulate_nv2"):
     for inputs in ins:
         with tbe.compute():
             shape_normlize = shape_util.variable_shape(inputs)
-            fuse_shape = [1]
             datas = []
             for (i, _), shape_i in zip(enumerate(inputs), shape_normlize):
-                fuse_shape[0] = functools.reduce(lambda x, y: x * y, shape_i)
-                datas.append(tvm.placeholder(fuse_shape,
+                datas.append(tvm.placeholder(shape_i,
                                              name="data_%d" % i,
                                              dtype=dtype))
             # _accumulate_nv2_compute
