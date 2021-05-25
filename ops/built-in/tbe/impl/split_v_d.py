@@ -467,6 +467,12 @@ def split_v_d(input_value, output_data, size_splits, split_dim, num_split, kerne
     ori_format = input_value.get("ori_format")
     ori_shape = input_value.get("ori_shape")
     split_dim = util_common.update_axis_for_other_format(ori_shape, split_dim, input_format, ori_format)
+
+    if size_splits[-1] == 0:
+        size_splits = list(size_splits)
+        del(size_splits[-1])
+        num_split = num_split - 1
+
     if input_format == "NC1HWC0":
         split_with_5hd_not_align = SplitWith5HD(input_value, output_data, split_dim, num_split, kernel_name)
         if split_with_5hd_not_align.check_5hd_vnchw():

@@ -1946,12 +1946,26 @@ def _check_optimization_nchw(input_x, paddings):
     check whether the shape and padding mode are able to optimize
     """
     shape = list(input_x.get("shape"))
+    out_shape = _get_output_shape(shape, paddings)
     dtype = input_x.get("dtype")
+    block_len = 16
+    if dtype in ("float32", "int32"):
+        block_len = 8
+    elif dtype in ("int8", "uint8"):
+        block_len = 32
+
     dtype_size = tbe_platform.get_bit_len(dtype) // 8
     ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if len(shape) < 2:
         return False
     rows_padding_bottom = paddings[-2][1]
+
+    cols_padding_out = int(out_shape[-1])
+    cols_align = ((cols_padding_out + block_len - 1) // block_len) * block_len
+    batch_row = _get_batch_rows(rows_padding_bottom, cols_align, dtype)
+    if batch_row <= 0:
+        return False
+
     cols_padding = shape[-1] + paddings[-1][0] + paddings[-1][1]
 
     if paddings[-1][0] == 0 and paddings[-1][1] == 0:
