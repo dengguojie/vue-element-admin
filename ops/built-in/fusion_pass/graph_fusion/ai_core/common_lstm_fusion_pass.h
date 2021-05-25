@@ -43,10 +43,6 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
                         int32_t num_directions, vector<ge::GeTensorPtr> &tensorPtr);
   Status ProcessLSTMBias(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo,
                          int32_t num_directions, int32_t hiddenSize, vector<ge::GeTensorPtr> &tensorPtr);
-  Status ProcessLSTMInitH(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, bool hasInitH,
-                          vector<ge::GeTensorPtr> &tensorPtr);
-  Status ProcessLSTMInitC(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, bool hasInitC,
-                          vector<ge::GeTensorPtr> &tensorPtr);
   void SetTensorDescription(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims, const ge::Format &format,
                             const ge::DataType &dtype);
   Status AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
@@ -57,6 +53,8 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
   Status AddSliceConcatNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnForwardNode,
                             ge::NodePtr dynamicRnnReverseNode, ge::GeTensorDesc dynamicRnnOutputDesc,
                             vector<ge::NodePtr> &newNodes, std::string nodeName, int nodeIndex);
+  ge::OpDescPtr CreateSplitDesc(ge::OpDescPtr splitDesc, ge::OpDescPtr fusedDesc,
+                                string tensorName, int64_t splitDim);
   const string FUSED_OP_TYPE = "CommonLSTM";
 };
 }  // namespace fe
