@@ -30,13 +30,14 @@ class OpFileAiCpu(OPFile):
         Return Value:
         """
         op_info = self.op_info
-        if self.mode == utils.GenModeType.GEN_PROJECT:
-            self._generate_cmake_lists()
+        self._generate_cmake_lists()
         self._generate_impl_cc(op_info)
         self._generate_impl_h(op_info)
 
     def _generate_cmake_lists(self):
         impl_dir = os.path.join(self.output_path, 'cpukernel')
+        if os.path.exists(impl_dir):
+            return
         utils.make_dirs(impl_dir)
         template_path = os.path.join(
             os.path.split(os.path.realpath(__file__))[0],

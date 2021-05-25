@@ -39,6 +39,8 @@ class OpFileAiCore(OPFile):
 
     def _generate_cmake_lists(self):
         tbe_dir = os.path.join(self.output_path, 'tbe')
+        if os.path.exists(tbe_dir):
+            return
         utils.make_dirs(tbe_dir)
         template_path = os.path.join(
             os.path.split(os.path.realpath(__file__))[0],
@@ -52,8 +54,7 @@ class OpFileAiCore(OPFile):
         Parameter:
         Return Value:
         """
-        if self.mode == utils.GenModeType.GEN_PROJECT:
-            self._generate_cmake_lists()
+        self._generate_cmake_lists()
         if not self.op_info.fix_op_type:
             utils.print_warn_log("The op type is empty, failed to generate "
                                  "impl files. Please check.")
