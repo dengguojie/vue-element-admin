@@ -1095,7 +1095,7 @@ def logits_nchw_schedule(res, input_tensors):
 
     for i in input_tensor_buffer_tensor_map:
         buffer_tensor = input_tensor_buffer_tensor_map[i]
-        sch[buffer_tensor].storage_align(sch[buffer_tensor].op.axis[2], 8, 0)
+        sch[buffer_tensor].storage_align(sch[buffer_tensor].op.axis[1], 8, 0)
         sch[buffer_tensor].emit_insn(buffer_tensor.op.axis[2], "dma_copy")
 
     for i in mid_tensor_buffer_tensor_map:
@@ -1107,7 +1107,7 @@ def logits_nchw_schedule(res, input_tensors):
             emit_insn_axis = 0
             if i.op.tag.find("reduce") != -1:
                 emit_insn_axis = 2
-            sch[mid_tensor].storage_align(sch[mid_tensor].op.axis[2], 8, 0)
+            sch[mid_tensor].storage_align(sch[mid_tensor].op.axis[1], 8, 0)
             sch[mid_tensor].emit_insn(mid_tensor.op.axis[emit_insn_axis], insn)
 
     for i in mid_out_tensor_list:
