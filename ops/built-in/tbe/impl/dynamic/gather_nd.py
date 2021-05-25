@@ -20,6 +20,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from te import platform as tbe_platform
 
 # data type of int32
 INT32 = "int32"
@@ -1172,7 +1173,7 @@ class GatherNd():
         """
         tik_instance = self.tik_instance
         x_ub = tik_instance.Tensor(self.params_dtype, (CACHE_UB_SIZE // self.params_dsize,),
-                                   name="x_ub", scope=tik.scope_cbuf)
+                                   name="x_ub", scope=tik.scope_ubuf)
         # cache params data in UB from gm
         tik_instance.data_move(x_ub, self.x, 0, 1,
                                ceil_value(self.params_total, self.block_elem), 0, 0)
@@ -1192,14 +1193,17 @@ class GatherNd():
         -------
         None
         """
-        tik_instance = self.tik_instance
-        x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
-                                     name="x_l1", scope=tik.scope_cbuf)
-        # cache params data in L1 from gm
-        tik_instance.data_move(x_cbuf, self.x, 0, 1,
-                               ceil_value(self.params_total, self.block_elem), 0, 0)
+        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend920", "Ascend920A"):
+            self.compute_mode_32b_aligned(half_ub_size, block_id, self.x)
+        else:
+            tik_instance = self.tik_instance
+            x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
+                                         name="x_l1", scope=tik.scope_cbuf)
+            # cache params data in L1 from gm
+            tik_instance.data_move(x_cbuf, self.x, 0, 1,
+                                   ceil_value(self.params_total, self.block_elem), 0, 0)
 
-        self.compute_mode_32b_aligned(half_ub_size, block_id, x_cbuf)
+            self.compute_mode_32b_aligned(half_ub_size, block_id, x_cbuf)
 
     def compute_mode_4(self, half_ub_size, block_id):
         """
