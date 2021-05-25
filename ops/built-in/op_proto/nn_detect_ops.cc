@@ -1639,7 +1639,8 @@ IMPLEMT_COMMON_INFERFUNC(YoloBoxesEncodeInferShape)
   auto input_shape = op.GetInputDesc("anchor_boxes").GetShape();
   auto input_type = op.GetInputDesc("anchor_boxes").GetDataType();
   if (input_shape.GetDims().size() != 2) {
-      return GRAPH_FAILED;
+    OP_LOGI("YoloBoxesEncode", "Infershape input anchor boxes dims isn't equal to 2!");
+    return GRAPH_FAILED;
   }
   
   std::vector<int64_t> vec_dims;
@@ -1657,16 +1658,30 @@ IMPLEMT_COMMON_INFERFUNC(YoloBoxesEncodeInferShape)
 
 IMPLEMT_VERIFIER(YoloBoxesEncode, YoloBoxesEncodeVerify)
 {
-  auto input_shape_x1 = op.GetInputDesc("anchor_boxes").GetShape().GetDims();
-  auto input_shape_x2 = op.GetInputDesc("gt_bboxes").GetShape().GetDims();
-  auto input_shape_x3 = op.GetInputDesc("stride").GetShape().GetDims();
+  TensorDesc anchor_boxes_desc = op.get_input_desc_anchor_boxes();
+  auto input_shape_x1 = anchor_boxes_desc.GetShape().GetDims();
+  TensorDesc gt_bboxes_desc = op.get_input_desc_gt_bboxes();
+  auto input_shape_x2 = gt_bboxes_desc.GetShape().GetDims();
+  TensorDesc stride_desc = op.get_input_desc_stride();
+  auto input_shape_x3 = stride_desc.GetShape().GetDims();
+
   if (input_shape_x1[0] != input_shape_x2[0] ||
     input_shape_x1[1] != input_shape_x2[1]) {
+    OP_LOGI("YoloBoxesEncode", "Verify anchor boxes dim size is not equal to gt_bboxes!");
     return GRAPH_FAILED;
   }
   if (input_shape_x1[0] != input_shape_x3[0]) {
+    OP_LOGI("YoloBoxesEncode", "Verify anchor_boxes dim[0] != stride[0]!");
     return GRAPH_FAILED;
   }
+  
+  std::string calc_mode = op.get_attr_performance_mode();
+  if(calc_mode.compare("high_precision") != 0 &&
+    calc_mode.compare("high_performance") != 0) {
+    OP_LOGI("YoloBoxesEncode", "performance_mode only support high_precision or high_performance!");
+    return GRAPH_FAILED;   
+  }
+
   return GRAPH_SUCCESS;
 }
 

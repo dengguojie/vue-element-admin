@@ -25,7 +25,7 @@ TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_test_case_1) {
     op.UpdateOutputDesc("encoded_bboxes", create_desc_with_ori(
         {6400, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
 
-    op.SetAttr("impl_mode", "high_precision");
+    op.SetAttr("performance_mode", "high_precision");
 
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
@@ -47,7 +47,7 @@ TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_test_case_2) {
     op.UpdateOutputDesc("encoded_bboxes", create_desc_with_ori(
         {6400, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
 
-    op.SetAttr("impl_mode", "high_precision");
+    op.SetAttr("performance_mode", "high_precision");
 
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
@@ -69,7 +69,7 @@ TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_test_case_3) {
     op.UpdateOutputDesc("encoded_bboxes", create_desc_with_ori(
         {6400, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
 
-    op.SetAttr("impl_mode", "high_performance");
+    op.SetAttr("performance_mode", "high_performance");
 
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
@@ -78,6 +78,23 @@ TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_test_case_3) {
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
     std::vector<int64_t> expected_output_shape = {6400, 4};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_test_case_4) {
+    ge::op::YoloBoxesEncode op;
+    op.UpdateInputDesc("anchor_boxes", create_desc_with_ori(
+        {1, 6400, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
+    op.UpdateInputDesc("gt_bboxes", create_desc_with_ori(
+        {1, 6400, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
+    op.UpdateInputDesc("stride", create_desc_with_ori(
+        {6400}, ge::DT_INT32, ge::FORMAT_ND, {6400}, ge::FORMAT_ND));
+    op.UpdateOutputDesc("encoded_bboxes", create_desc_with_ori(
+        {6400, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
+
+    op.SetAttr("performance_mode", "high_precision");
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_verify_test_1) {
@@ -91,7 +108,7 @@ TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_verify_test_1) {
     op.UpdateOutputDesc("encoded_bboxes", create_desc_with_ori(
         {6400, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
 
-    op.SetAttr("impl_mode", "high_precision");
+    op.SetAttr("performance_mode", "high_precision");
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
@@ -107,7 +124,7 @@ TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_verify_test_2) {
     op.UpdateOutputDesc("encoded_bboxes", create_desc_with_ori(
         {6400, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
 
-    op.SetAttr("impl_mode", "high_precision");
+    op.SetAttr("performance_mode", "high_precision");
     auto status = op.VerifyAllAttr(true);
 
     EXPECT_EQ(status, ge::GRAPH_FAILED);
@@ -124,8 +141,24 @@ TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_verify_test_3) {
     op.UpdateOutputDesc("encoded_bboxes", create_desc_with_ori(
         {6400, 3}, ge::DT_FLOAT, ge::FORMAT_ND, {6400, 3}, ge::FORMAT_ND));
 
-    op.SetAttr("impl_mode", "high_precision");
+    op.SetAttr("performance_mode", "high_precision");
     auto status = op.VerifyAllAttr(true);
 
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(YoloBoxesEncodeTest, yolo_boxes_encode_verify_test_4) {
+    ge::op::YoloBoxesEncode op;
+    op.UpdateInputDesc("anchor_boxes", create_desc_with_ori(
+        {6400, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
+    op.UpdateInputDesc("gt_bboxes", create_desc_with_ori(
+        {6400, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {6300, 4}, ge::FORMAT_ND));
+    op.UpdateInputDesc("stride", create_desc_with_ori(
+        {6400}, ge::DT_INT32, ge::FORMAT_ND, {6400}, ge::FORMAT_ND));
+    op.UpdateOutputDesc("encoded_bboxes", create_desc_with_ori(
+        {6400, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {6400, 4}, ge::FORMAT_ND));
+
+    op.SetAttr("performance_mode", "high");
+    auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }

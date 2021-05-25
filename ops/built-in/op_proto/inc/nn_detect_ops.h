@@ -1757,7 +1757,7 @@ REG_OP(AnchorResponseFlags)
 * "N" indicates the number of ROIs. \n
 
 *@par Attributes:
-*@li impl_mode: select calcution mode, "high_precision" or "high_performance".
+*@li performance_mode: select performance mode, "high_precision" or "high_performance".
 * select "high_precision" when input type is float32, the output tensor precision
 * will be smaller than 0.0001, select "high_performance" when input type is float32,
 * the ops will be best performance, but precision will be only smaller than 0.005.
@@ -1773,7 +1773,7 @@ REG_OP(YoloBoxesEncode)
     .INPUT(anchor_boxes, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(gt_bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(stride, TensorType({DT_INT32}))
-    .ATTR(impl_mode, String, "high_precision")
+    .ATTR(performance_mode, String, "high_precision")
     .OUTPUT(encoded_bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(YoloBoxesEncode)
 

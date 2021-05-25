@@ -630,7 +630,7 @@ class YoloBoxesEncode(object):
 # pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
-def yolo_boxes_encode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, impl_mode="high_precision",
+def yolo_boxes_encode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, performance_mode="high_precision",
                       kernel_name="yolo_boxes_encode"):
     """
     algorithm: bounding_box_encode
@@ -654,7 +654,7 @@ def yolo_boxes_encode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, impl_mode
     -------
     None
     """
-    bounding_box_encode_ = YoloBoxesEncode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, impl_mode, kernel_name)
+    bounding_box_encode_ = YoloBoxesEncode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, performance_mode, kernel_name)
     bounding_box_encode_.tik_inst_function()
 
     return bounding_box_encode_.tik_inst

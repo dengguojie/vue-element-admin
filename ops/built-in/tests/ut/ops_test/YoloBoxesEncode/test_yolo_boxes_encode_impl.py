@@ -5,16 +5,16 @@ from op_test_frame.ut import BroadcastOpUT
 ut_case = BroadcastOpUT("yolo_boxes_encode")
 
 
-def gen_yolo_boxes_encode_case(bboxes, gt_bboxes, stride, encoded_bboxes, impl_mode, kernel_name_val,
+def gen_yolo_boxes_encode_case(bboxes, gt_bboxes, stride, encoded_bboxes, performance_mode, kernel_name_val,
                                expect, calc_expect_func=None):
     if calc_expect_func:
-        return {"params": [bboxes, gt_bboxes, stride, encoded_bboxes, impl_mode],
+        return {"params": [bboxes, gt_bboxes, stride, encoded_bboxes, performance_mode],
                 "case_name": kernel_name_val,
                 "expect": expect,
                 "support_expect": True,
                 "calc_expect_func": calc_expect_func}
     else:
-        return {"params": [bboxes, gt_bboxes, stride, encoded_bboxes, impl_mode],
+        return {"params": [bboxes, gt_bboxes, stride, encoded_bboxes, performance_mode],
                 "case_name": kernel_name_val,
                 "expect": expect,
                 "support_expect": True}
