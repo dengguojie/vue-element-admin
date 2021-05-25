@@ -1673,4 +1673,28 @@ IMPLEMT_VERIFIER(YoloBoxesEncode, YoloBoxesEncodeVerify)
 COMMON_INFER_FUNC_REG(YoloBoxesEncode, YoloBoxesEncodeInferShape);
 VERIFY_FUNC_REG(YoloBoxesEncode, YoloBoxesEncodeVerify);
 
+// ---------------AnchorResponseFlags Op start-------------------
+IMPLEMT_INFERFUNC(AnchorResponseFlags, AnchorResponseFlagsInfer) {
+  std::vector<int64_t> featmap_size, output_shape;
+  int64_t featmap_h, featmap_w, num_base_anchors, output_size;
+  op.GetAttr("featmap_size", featmap_size);
+  op.GetAttr("num_base_anchors", num_base_anchors);
+
+  CHECK(featmap_size.size() != 2, OP_LOGE(op.GetName().c_str(), "size of featmap_size must be 2."),
+        return GRAPH_FAILED);
+  featmap_h = featmap_size[0];
+  featmap_w = featmap_size[1];
+
+  output_size = featmap_h * featmap_w * num_base_anchors;
+  output_shape.push_back(output_size);
+
+  TensorDesc output_desc = op.GetOutputDesc("flags");
+  output_desc.SetShape(ge::Shape(output_shape));
+  output_desc.SetDataType(ge::DT_UINT8);
+  (void)op.UpdateOutputDesc("flags", output_desc);
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(AnchorResponseFlags, AnchorResponseFlagsInfer);
+// ----------------AnchorResponseFlags END---------------------
+
 }  // namespace ge
