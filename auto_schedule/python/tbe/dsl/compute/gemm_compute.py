@@ -540,20 +540,15 @@ def gemm(tensor_a, tensor_b, para_dict):
 
     Returns result
     """
-
-    # use is_gemm is temporary
-    alpha = para_dict.get("alpha")
-    beta = para_dict.get("beta")
-    is_gemm = (alpha is not None) and (beta is not None)
-
+    kernel_name = para_dict.get("kernel_name", "")
     para_dict_copy = para_dict.copy()
     is_dynamic = in_dynamic()
     cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
     is_confusion_transpose = para_dict.get("confusion_transpose", False)
     use_old_code = cube_vector_split or is_dynamic or is_confusion_transpose
-    use_old_code = filter_case(use_old_code, tensor_a, tensor_b, para_dict)
+    use_old_code = filter_case(use_old_code, tensor_a, tensor_b, kernel_name)
 
-    if is_gemm:
+    if not use_old_code:
         result = gemm_integrated(tensor_a, tensor_b, para_dict)
     else:
         gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)
@@ -573,13 +568,23 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
     black_list_fc = [
         "304_25088_1568_256_16_16_float16"
     ]
+
+    block_list_1980 = [
+        "64_512_16_16_64_64_16_16_float16",
+        "512_4_16_16_16_512_4_16_16_16_float16",
+        "512_16_16_16_16_512_4_16_16_16_float16",
+        "64_512_16_16_64_512_16_16_float16"
+    ]
     shape_a = [str(x.value) for x in tensor_a.shape]
     shape_b = [str(x.value) for x in tensor_b.shape]
     info_list = shape_a + shape_b
+    info_list.append(tensor_a.dtype)
     info_str = "_".join(info_list)
-    if info_str in black_list_compress_fc and "compress_fully_connection" in kernel_name:
+    if info_str in black_list_compress_fc and kernel_name.find("compress_fully_connection") != -1:
         use_old_code = True
-    if info_str in black_list_fc and "fully_connection" in kernel_name:
+    if info_str in black_list_fc and kernel_name.find("fully_connection") != -1:
+        use_old_code = True
+    if info_str in block_list_1980:
         use_old_code = True
 
     return use_old_code
