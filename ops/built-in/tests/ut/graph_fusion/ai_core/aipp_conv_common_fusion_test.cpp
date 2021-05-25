@@ -66,4 +66,3 @@ TEST_F(AippConvCommonFusionTest, AippConvCommonFusionTest_1) {
   EXPECT_EQ(fusion_nodes.size(), 1);
   fusion_desc_ptr = nullptr;
 }
-
