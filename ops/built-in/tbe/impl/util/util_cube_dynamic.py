@@ -157,7 +157,7 @@ class CubeParaProcess:
         """
         check if is unknown scene
         """
-        if in_shape == UNKNOWN_SHAPE and out_shape == [DYNAMIC_FLAG, channel, DYNAMIC_FLAG, DYNAMIC_FLAG]:
+        if list(in_shape) == UNKNOWN_SHAPE and out_shape == [DYNAMIC_FLAG, channel, DYNAMIC_FLAG, DYNAMIC_FLAG]:
             return True
         return False
 

@@ -1432,7 +1432,11 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
       return GRAPH_FAILED;
     }
   }
-  y_desc->SetShape(GeShape(input_sizes));
+  if (input_sizes.size() == 4) {
+    y_desc->SetShape(GeShape(input_sizes));
+  }
+  OP_LOGI(op.GetName().c_str(), "Leaving DepthwiseConv2dBackpropInput inferfunction!");
+
   return GRAPH_SUCCESS;
 }
 
@@ -2835,15 +2839,29 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     }
     std::vector<std::pair<int64_t, int64_t>> dy_range;
     x_desc->GetShapeRange(dy_range);
+    if (dy_range.size() != dy_sizes.size() && dy_range.size() != 0 && !unknown_rank) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), 
+        "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
+        dy_range.size(), dy_sizes.size());
+      return GRAPH_FAILED;
+    }
+    if (dy_range.size() == 0 && !unknown_rank) {
+      dy_range.resize(dy_sizes.size());
+      for (int i = 0; i < dy_sizes.size(); i++) {
+        dy_range[i].first = std::max(dy_sizes[i], kDynamicRangeLowerBound);
+        dy_range[i].second = dy_sizes[i];
+      }
+      x_desc->SetShapeRange(dy_range);
+    }
     std::vector<std::pair<int64_t, int64_t>> dx_range;
     std::vector<int64_t> pre_op_range;
     ge::AttrUtils::GetListInt(*input_sizes_desc, kPreOpInputShapeRange, pre_op_range);
-    dx_range.resize(pre_op_range.size()/2);
+    dx_range.resize(pre_op_range.size() / 2);
     for (int i = 0; i < pre_op_range.size(); i = i + 2) {
-      dx_range[i/2].first = pre_op_range[i];
-      dx_range[i/2].second = pre_op_range[i+1];
+      dx_range[i / 2].first = pre_op_range[i];
+      dx_range[i / 2].second = pre_op_range[i + 1];
     }
-    if (!dx_range.empty() && dx_range.size() == 4 && dy_range.size() == 4) {
+    if (!dx_range.empty() && dx_range.size() == 4 && !unknown_rank) {
       std::string dx_format_str = format2str[input_format];
       int32_t c_input_position = dx_format_str.find("C");
       std::string filterFormatStr = format2str[filter_format];

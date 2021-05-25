@@ -229,6 +229,86 @@ TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputSpecialShape) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+// dynamic opti ut outbackprop shape [-1, c, -1, -1] with no range
+TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputSpecialRange) {
+    ge::op::Conv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, 32, -1, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, 32, -1, -1},
+                                               ge::FORMAT_NCHW,
+                                               {}));
+    op.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {1, -1}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic opti ut outbackprop shape [-1, c, -1, -1] with range < 4
+TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputSpecialRange_1) {
+    ge::op::Conv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, 32, -1, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, 32, -1, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}}));
+    op.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {1, -1}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
 // dynamic general ut with dilations<0
 TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputGeneWithDilation) {
     ge::op::Conv2DBackpropInput op;

@@ -5173,7 +5173,9 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
       reset_avg_pool_grad_out_shape(op, input_grad_shape, data_format, orig_input_size, data_format);
     }
   }
-  tensordesc_output->SetShape(GeShape(orig_input_size));
+  if (orig_input_size.size() == input_grad_shape.size()) {
+    tensordesc_output->SetShape(GeShape(orig_input_size));
+  }
   tensordesc_output->SetDataType(output_dtype);
   OP_LOGD(op.GetName().c_str(), "Leave AvgPoolGrad inferfunction!");
   return GRAPH_SUCCESS;
