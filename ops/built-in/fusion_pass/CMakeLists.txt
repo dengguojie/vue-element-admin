@@ -162,6 +162,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/fusedbatchnorminfgrad_fusion_pass.cc
   graph_fusion/ai_core/gather_v2_fusion_pass.cc
   graph_fusion/ai_core/gelu_fusion_pass.cc
+  graph_fusion/ai_core/gelu_onnx_fusion_pass.cc
   graph_fusion/ai_core/gemm_transpose_fusion_pass.cc
   graph_fusion/ai_core/gru_fusion_pass.cc
   graph_fusion/ai_core/hostbn_fusion_pass.cc
