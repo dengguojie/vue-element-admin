@@ -323,3 +323,8 @@ from .shrink import shrink
 from .addcmul import addcmul
 from .confusion_softmax_grad import confusion_softmax_grad
 from .sort import sort
+from .acts_ulq import acts_ulq
+from .acts_ulq_input_grad import acts_ulq_input_grad
+from .act_ulq_clamp_max_grad import act_ulq_clamp_max_grad
+from .act_ulq_clamp_min_grad import act_ulq_clamp_min_grad
+from .wts_arq import wts_arq

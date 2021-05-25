@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT('WtsARQ', None, None)
+ut_case = OpUT('wts_arq', None, None)
 
 ut_case.add_case(
     ['Ascend910'],

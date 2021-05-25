@@ -432,3 +432,8 @@ from .deformable_offsets_grad import deformable_offsets_grad
 from .fill import fill
 from .strided_slice_grad import strided_slice_grad
 from .im2col import im2col
+from .act_ulq_clamp_max_grad import act_ulq_clamp_max_grad
+from .act_ulq_clamp_min_grad import act_ulq_clamp_min_grad
+from .acts_ulq_input_grad import acts_ulq_input_grad
+from .acts_ulq import acts_ulq
+from .ifmr import ifmr
