@@ -507,7 +507,7 @@ class GatherV2():
                         res_ub_offset = (row_h * block_per_loop_num + row_i) * self.params_row
                         block_ub_offset = row_i * self.block_elem
                         with tik_instance.for_range(0, self.params_row) as i:
-                            res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset])
+                            res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset + i])
 
                 # move tail data from ub to gm
                 with tik_instance.new_stmt_scope(disable_sync=True):
@@ -530,7 +530,7 @@ class GatherV2():
                     res_ub_offset = row_i * self.params_row
                     block_ub_offset = (row_i - tail_indices) * self.block_elem
                     with tik_instance.for_range(0, self.params_row) as i:
-                        res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset])
+                        res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset + i])
 
                 # copy result data from ub to gm
                 tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
@@ -599,7 +599,7 @@ class GatherV2():
                     res_ub_offset = (row_h * block_per_loop_num + row_i) * self.params_row
                     block_ub_offset = row_i * self.block_elem
                     with tik_instance.for_range(0, self.params_row) as i:
-                        res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset])
+                        res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset + i])
 
             with tik_instance.new_stmt_scope(disable_sync=True):
                 tail_indices = x_to_block_loop_num * block_per_loop_num
@@ -620,7 +620,7 @@ class GatherV2():
                 res_ub_offset = row_i * self.params_row
                 block_ub_offset = (row_i - tail_indices) * self.block_elem
                 with tik_instance.for_range(0, self.params_row) as i:
-                    res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset])
+                    res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset + i])
 
             # move result data from ub to gm
             tail_elem = (row_num_last_remaining * self.params_row) % self.block_elem
