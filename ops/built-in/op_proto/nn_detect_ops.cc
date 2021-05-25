@@ -1633,4 +1633,44 @@ VERIFY_FUNC_REG(RoiExtractor, RoiExtractorVerify);
 // ----------------RoiExtractor-------------------
 
 
+// ----------------YoloBoxesEncode-------------------
+IMPLEMT_COMMON_INFERFUNC(YoloBoxesEncodeInferShape)
+{
+  auto input_shape = op.GetInputDesc("anchor_boxes").GetShape();
+  auto input_type = op.GetInputDesc("anchor_boxes").GetDataType();
+  if (input_shape.GetDims().size() != 2) {
+      return GRAPH_FAILED;
+  }
+  
+  std::vector<int64_t> vec_dims;
+  vec_dims.push_back(input_shape.GetDim(0));
+  vec_dims.push_back(input_shape.GetDim(1));
+  ge::Shape y_shape(vec_dims);
+  
+  auto output_desc = op.GetOutputDesc("encoded_bboxes");
+  output_desc.SetShape(y_shape);
+  output_desc.SetDataType(ge::DataType(input_type));
+  (void)op.UpdateOutputDesc("encoded_bboxes", output_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(YoloBoxesEncode, YoloBoxesEncodeVerify)
+{
+  auto input_shape_x1 = op.GetInputDesc("anchor_boxes").GetShape().GetDims();
+  auto input_shape_x2 = op.GetInputDesc("gt_bboxes").GetShape().GetDims();
+  auto input_shape_x3 = op.GetInputDesc("stride").GetShape().GetDims();
+  if (input_shape_x1[0] != input_shape_x2[0] ||
+    input_shape_x1[1] != input_shape_x2[1]) {
+    return GRAPH_FAILED;
+  }
+  if (input_shape_x1[0] != input_shape_x3[0]) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(YoloBoxesEncode, YoloBoxesEncodeInferShape);
+VERIFY_FUNC_REG(YoloBoxesEncode, YoloBoxesEncodeVerify);
+
 }  // namespace ge
