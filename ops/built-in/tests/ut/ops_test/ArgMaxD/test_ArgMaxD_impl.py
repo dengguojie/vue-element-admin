@@ -285,7 +285,7 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case7)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case9)
 ut_case.add_case(["Ascend910A", "Ascend710"], case10)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case11)
-ut_case.add_cust_test_func(test_func=test_argmax_ascend920)
+#ut_case.add_cust_test_func(test_func=test_argmax_ascend920)
 
 
 def calc_expect_func(x, y, dimension):
