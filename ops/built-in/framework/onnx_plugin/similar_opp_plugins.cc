@@ -84,6 +84,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Div, RealDiv, DivV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Abs, Abs, AbsV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Relu, Relu, ReluV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Mul, Mul, MulV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV11);
 
 //onnx::8
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Acos, Acos, AcosV8);
@@ -134,6 +135,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Div, RealDiv, DivV8);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Abs, Abs, AbsV8);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Relu, Relu, ReluV8);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Mul, Mul, MulV8);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV8);
 
 
 //onnx::9
@@ -183,6 +185,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Div, RealDiv, DivV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Abs, Abs, AbsV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Relu, Relu, ReluV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Mul, Mul, MulV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV9);
 
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Acos, Acos, AcosV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Acosh, Acosh, AcoshV10);
@@ -231,6 +234,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Div, RealDiv, DivV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Abs, Abs, AbsV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Relu, Relu, ReluV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Mul, Mul, MulV10);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV10);
 
 //onnx::12
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Acos, Acos, AcosV12);
@@ -280,6 +284,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Div, RealDiv, DivV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Abs, Abs, AbsV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Relu, Relu, ReluV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Mul, Mul, MulV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV12);
 
 //onnx::13
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Acos, Acos, AcosV13);
@@ -328,4 +333,5 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Div, RealDiv, DivV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Abs, Abs, AbsV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Relu, Relu, ReluV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Mul, Mul, MulV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV13);
 }  // namespace domi

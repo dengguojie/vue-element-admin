@@ -113,6 +113,7 @@ set(_op_proto_srcs
   wts_arq.cc
   avg_pool_1d_ops.cc
   correlation.cc
+  globalavgpool.cc
 )
 
 set(_op_proto_include

@@ -290,6 +290,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.cc
   graph_fusion/ai_core/correlation_fusion_pass.cc
   graph_fusion/ai_core/cast_cast_fusion_pass.cc
+  graph_fusion/ai_core/globalavgpool_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")
