@@ -1697,4 +1697,52 @@ IMPLEMT_INFERFUNC(AnchorResponseFlags, AnchorResponseFlagsInfer) {
 INFER_FUNC_REG(AnchorResponseFlags, AnchorResponseFlagsInfer);
 // ----------------AnchorResponseFlags END---------------------
 
+// ----------------GridAssignPositive Op start-------------------
+IMPLEMT_COMMON_INFERFUNC(GridAssignPositiveInferShape) {
+    TensorDesc tensordesc_output = op.GetOutputDesc("assigned_gt_inds_pos");
+    TensorDesc tensordesc_input = op.GetInputDesc("assigned_gt_inds");
+    tensordesc_output.SetShape(tensordesc_input.GetShape());
+    tensordesc_output.SetDataType(tensordesc_input.GetDataType());
+    (void)op.UpdateOutputDesc("assigned_gt_inds_pos", tensordesc_output);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(GridAssignPositive, GridAssignPositiveVerify)
+{
+  auto input_shape_0 = op.GetInputDesc("assigned_gt_inds").GetShape().GetDims();
+  auto input_shape_1 = op.GetInputDesc("overlaps").GetShape().GetDims();
+  auto input_shape_2 = op.GetInputDesc("box_responsible_flags").GetShape().GetDims();
+  auto input_shape_3 = op.GetInputDesc("max_overlaps").GetShape().GetDims();
+  auto input_shape_4 = op.GetInputDesc("argmax_overlaps").GetShape().GetDims();
+  auto input_shape_5 = op.GetInputDesc("gt_max_overlaps").GetShape().GetDims();
+  auto input_shape_6 = op.GetInputDesc("gt_argmax_overlaps").GetShape().GetDims();
+  if (input_shape_0.size() != 1 ||
+      input_shape_1.size() != 2 ||
+      input_shape_2.size() != 1 ||
+      input_shape_3.size() != 1 ||
+      input_shape_4.size() != 1 ||
+      input_shape_5.size() != 1 ||
+      input_shape_6.size() != 1) {
+    OP_LOGI(op.GetName().c_str(), "input shape doesn't support");
+    return GRAPH_FAILED;
+  }
+  if (input_shape_0[0] != input_shape_1[1] ||
+      input_shape_2[0] != input_shape_1[1] ||
+      input_shape_3[0] != input_shape_1[1] ||
+      input_shape_4[0] != input_shape_1[1]) {
+    OP_LOGI(op.GetName().c_str(), "input shape doesn't support");
+    return GRAPH_FAILED;
+  }
+  if (input_shape_5[0] != input_shape_1[0] ||
+      input_shape_6[0] != input_shape_1[0]) {
+    OP_LOGI(op.GetName().c_str(), "input shape doesn't support");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(GridAssignPositive, GridAssignPositiveInferShape);
+VERIFY_FUNC_REG(GridAssignPositive, GridAssignPositiveVerify);
+// ----------------GridAssignPositive END-------------------
+
 }  // namespace ge

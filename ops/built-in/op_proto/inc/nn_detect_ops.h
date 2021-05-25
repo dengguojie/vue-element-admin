@@ -1776,6 +1776,43 @@ REG_OP(YoloBoxesEncode)
     .ATTR(impl_mode, String, "high_precision")
     .OUTPUT(encoded_bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(YoloBoxesEncode)
+
+/**
+*@brief Performs Position Sensitive PS ROI Pooling Grad.
+
+*@par Inputs:
+* Eight inputs, including:
+*@li assigned_gt_inds: Tensor of type float16 or float32, shape (n, )
+*@li overlaps: A Tensor. Datatype is same as assigned_gt_inds. IOU between gt_bboxes and bboxes. shape(k, n)
+*@li box_responsible_flags: A Tensor. Support uint8. Flag to indicate whether box is responsible.
+*@li max_overlaps: A Tensor. Datatype is same as assigned_gt_inds. overlaps.max(axis=0).
+*@li argmax_overlaps: A Tensor. Support int32. overlaps.argmax(axis=0).
+*@li gt_max_overlaps: A Tensor. Datatype is same as assigned_gt_inds. overlaps.max(axis=1).
+*@li gt_argmax_overlaps: A Tensor. Support int32. overlaps.argmax(axis=1).
+*@li num_gts: A Tensor. Support int32. real k. shape (1, )
+
+*@par Attributes:
+*@li output_dim: float. IOU threshold for positive bboxes.
+*@li group_size: float. minimum iou for a bbox to be considered as a positive bbox
+*@li spatial_scale: bool. whether to assign all bboxes with the same highest overlap with some gt to that gt.
+
+*@par Outputs:
+*@li assigned_gt_inds_pos: A Tensor. Support float16/float32. shape (n, ).
+*/
+REG_OP(GridAssignPositive)
+    .INPUT(assigned_gt_inds, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(overlaps, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(box_responsible_flags, TensorType({ DT_UINT8 }))
+    .INPUT(max_overlaps, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(argmax_overlaps, TensorType({ DT_INT32 }))
+    .INPUT(gt_max_overlaps, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(gt_argmax_overlaps, TensorType({ DT_INT32 }))
+    .INPUT(num_gts, TensorType({ DT_INT32 }))
+    .OUTPUT(assigned_gt_inds_pos, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .REQUIRED_ATTR(pos_iou_thr, Float)
+    .REQUIRED_ATTR(min_pos_iou, Float)
+    .REQUIRED_ATTR(gt_max_assign_all, Bool)
+    .OP_END_FACTORY_REG(GridAssignPositive)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_DETECT_OPS_H_
