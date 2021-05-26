@@ -222,7 +222,6 @@ def get_case_change_op(change_dir_list):
         op_type_dir = os.path.join(repo_root, "ops", "built-in", "tests", "st", str(op_type))
         if op_type_dir in change_dir_list:
             effect_ops.append(str(op_type))
-            break
     return effect_ops
 
 
