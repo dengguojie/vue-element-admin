@@ -66,18 +66,9 @@ def main(argv):
         run_file_path = os.path.join(root_path, "auto_schedule", "python",
                                      "tests", "sch_run_ut.py")
         cmd = ["python3", run_file_path] + params
-        res_msg = subprocess.Popen(cmd,
-                                   shell=False,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-        #msg = res_msg.stdout.read().decode('utf-8').strip('\n')
-        while res_msg.poll() is None:
-            line = res_msg.stdout.readline().decode('utf-8').strip()
-            print(line)
-
-        sch_code = res_msg.returncode
-        if sch_code:
-            exit(-1)
+        print("[INFO]cmd is ", str(cmd))
+        res_msg = os.system(" ".join(cmd))
+        exit(res_msg)
 
     if ops_tag:
         print("[INFO]Run ops ut case!!!")
@@ -87,17 +78,9 @@ def main(argv):
         run_file_path = os.path.join(root_path, "ops", "built-in", "tests",
                                      "run_ut.py")
         cmd = ["python3", run_file_path] + params
-        res_msg = subprocess.Popen(cmd,
-                                   shell=False,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-        while res_msg.poll() is None:
-            line = res_msg.stdout.readline().decode('utf-8').strip()
-            print(line)
-
-        ops_code = res_msg.returncode
-        if ops_code:
-            exit(-1)
+        print("[INFO]cmd is ", str(cmd))
+        res_msg = os.system(" ".join(cmd))
+        exit(res_msg)
 
     exit(0)
 
