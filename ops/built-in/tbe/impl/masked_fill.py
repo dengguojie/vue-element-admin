@@ -68,7 +68,7 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
         y = masked_fill_compute_int32(x, mask, value, tensor_ones)
         return y
 
-    y = tbe.vcmpsel(mask, tensor_ones, 'eq', value, x)
+    y = tbe.vcmpsel(mask, tensor_ones, 'ne', x, value)
 
     if y.dtype != ori_dtype:
         y = tbe.cast_to(y, ori_dtype)
