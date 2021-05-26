@@ -17,7 +17,6 @@ dynamic axpy
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -25,128 +24,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
-# constant, value is 16
-SIZE_SIXTEEN = 16
-
-
-# pylint: disable=unused-argument, too-many-nested-blocks
-# pylint: disable=invalid-name,too-many-locals,too-many-branches
-# pylint: disable=too-many-statements,too-many-boolean-expressions
-def _add_check_format(x, y):
-    """
-    check format of add
-
-    Parameters
-    ----------
-    x: dict
-    y: dict
-
-    Returns
-    -------
-    format_pattern: int
-    """
-    shape1 = x.get("shape")
-    shape2 = y.get("shape")
-    list_format = [x.get("format"), y.get("format")]
-    shape1 = shape_util.scalar2tensor_one(shape1)
-    shape2 = shape_util.scalar2tensor_one(shape2)
-    list_shape = [shape1, shape2]
-
-    format_list = ("ND", "NCHW", "NHWC")
-    if (list_format[0] == "FRACTAL_NZ" and len(list_shape[1]) == 1 \
-        and list_shape[1][0] % SIZE_SIXTEEN == 0) \
-            or (list_format[1] == "FRACTAL_NZ" and len(list_shape[0]) == 1 \
-                and list_shape[0][0] % SIZE_SIXTEEN == 0):
-        format_pattern = 3
-    elif list_format[0] == "FRACTAL_NZ" and list_format[1] in format_list \
-            and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
-        format_pattern = 1
-    elif list_format[0] in format_list and list_format[1] == "FRACTAL_NZ" \
-            and (len(shape1) != 1 or (len(shape1) == 1 and shape1[0] != 1)):
-        format_pattern = 2
-    else:
-        format_pattern = 0
-
-    return format_pattern
-
-
-def _infer_shape(format_pattern, x, y):
-    """
-    infer shape for x and y
-
-    Parameters
-    ----------
-    format_pattern: format type
-    x: dict
-    y: dict
-
-    Returns
-    -------
-    shape_x: shape of x
-    shape_y: shape of y
-    """
-    shape_x = x.get("shape")
-    shape_y = y.get("shape")
-    ori_shape_x = x.get("ori_shape")
-    ori_shape_y = y.get("ori_shape")
-    shape_x = shape_util.scalar2tensor_one(shape_x)
-    shape_y = shape_util.scalar2tensor_one(shape_y)
-
-    if format_pattern == 1:
-        ori_shape_x, shape_y, _ = shape_util.broadcast_shapes(ori_shape_x, shape_y,
-                                                              param_name_input1='x',
-                                                              param_name_input2='y')
-        if shape_y[-2] == 1 and shape_y[-1] == ori_shape_x[-1]:
-            shape_y.append(1)
-            shape_y.append(1)
-            shape_y[-3] = 1
-            shape_y[-1] = shape_x[-1]
-            shape_y[-4] = shape_x[-4]
-        elif shape_y[-2] == ori_shape_x[-2] and shape_y[-1] == 1:
-            shape_y.append(1)
-            shape_y.append(1)
-            shape_y[-4] = 1
-            shape_y[-2] = shape_x[-2]
-            shape_y[-3] = shape_x[-3]
-        elif shape_y[-2] == shape_y[-1] == 1:
-            shape_y.append(1)
-            shape_y.append(1)
-
-    elif format_pattern == 2:
-        shape_x, ori_shape_y, _ = shape_util.broadcast_shapes(shape_x, ori_shape_y,
-                                                              param_name_input1='x',
-                                                              param_name_input2='y')
-        if shape_x[-2] == 1 and shape_x[-1] == ori_shape_y[-1]:
-            shape_x.append(1)
-            shape_x.append(1)
-            shape_x[-3] = 1
-            shape_x[-1] = shape_y[-1]
-            shape_x[-4] = shape_y[-4]
-        elif shape_x[-2] == ori_shape_y[-2] and shape_x[-1] == 1:
-            shape_x.append(1)
-            shape_x.append(1)
-            shape_x[-4] = 1
-            shape_x[-2] = shape_y[-2]
-            shape_x[-3] = shape_y[-3]
-        elif shape_x[-2] == shape_x[-1] == 1:
-            shape_x.append(1)
-            shape_x.append(1)
-    elif format_pattern == 3:
-        def _get_new_shape(_nz_shape, _nd_shape):
-            _nd_new_shape = [1 for _ in _nz_shape]
-            _nd_new_shape[-1] = _nz_shape[-1]
-            _nd_new_shape[-4] = _nz_shape[-4]
-
-            return _nz_shape, _nd_new_shape
-
-        if len(shape_y) == 1:
-            shape_x, shape_y = _get_new_shape(shape_x, shape_y)
-        else:
-            shape_y, shape_x = _get_new_shape(shape_y, shape_x)
-
-    return shape_x, shape_y
-
-
+# pylint: disable=invalid-name,too-many-locals, unused-argument
 @register_operator_compute("Axpy", op_mode="dynamic", support_fusion=True)
 def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     """
@@ -191,62 +69,41 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
         x2 = tbe.broadcast(x2, shape_max)
 
     # start the main logic
-    if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910":
-        if dtype in ("float16", "float32"):
-            # fp16 or fp32
-            if neg_1_axis_flag:
-                res_muls = tbe.vmuls(x2, alpha)
-                res = tbe.vadd(x1, res_muls)
-            else:
-                res = tbe.vaxpy(x2, x1, tvm.const(alpha, dtype=dtype))
-        else:
-            # int32
-            if alpha != 1:
-                # add+muls use fp32
-                to_type = "float32"
-                input_x_cast = tbe.cast_to(x1, to_type)
-                input_y_cast = tbe.cast_to(x2, to_type)
-
-                if neg_1_axis_flag:
-                    res_muls = tbe.vmuls(input_y_cast, alpha)
-                    res_tmp = tbe.vadd(input_x_cast, res_muls)
-                else:
-                    res_tmp = tbe.vaxpy(input_y_cast, input_x_cast,
-                                        tvm.const(alpha, dtype=to_type))
-
-                res = tbe.cast_to(res_tmp, dtype)
-
-            else:
-                # if alpha == 1
-                res = tbe.vadd(x2, x1)
-    else:
-        if dtype in ("float16", "float32"):
-            # fp16 or fp32
+    if dtype in ("float16", "float32"):
+        # fp16 or fp32
+        if neg_1_axis_flag:
             res_muls = tbe.vmuls(x2, alpha)
             res = tbe.vadd(x1, res_muls)
         else:
-            # int32
-            if alpha != 1:
-                # add+muls use fp32
-                to_type = "float32"
-                input_x1_cast = tbe.cast_to(x1, to_type)
-                input_x2_cast = tbe.cast_to(x2, to_type)
+            res = tbe.vaxpy(x2, x1, tvm.const(alpha, dtype=dtype))
+    else:
+        # int32
+        if alpha != 1:
+            # add+muls use fp32
+            to_type = "float32"
+            input_x_cast = tbe.cast_to(x1, to_type)
+            input_y_cast = tbe.cast_to(x2, to_type)
 
-                res_muls = tbe.vmuls(input_x2_cast, alpha)
-                res_tmp = tbe.vadd(input_x1_cast, res_muls)
-
-                res = tbe.cast_to(res_tmp, dtype)
+            if neg_1_axis_flag:
+                res_muls = tbe.vmuls(input_y_cast, alpha)
+                res_tmp = tbe.vadd(input_x_cast, res_muls)
             else:
-                # if alpha == 1
-                res = tbe.vadd(x2, x1)
+                res_tmp = tbe.vaxpy(input_y_cast, input_x_cast,
+                                    tvm.const(alpha, dtype=to_type))
+
+            res = tbe.cast_to(res_tmp, dtype)
+
+        else:
+            # if alpha == 1
+            res = tbe.vadd(x2, x1)
 
     return res
 
 
 @register_operator("Axpy")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.OPTION_OUTPUT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_OUTPUT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def axpy(x1, x2, y, alpha, kernel_name="axpy"):
     """
     calculating data
@@ -268,16 +125,6 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
     -------
     None
     """
-
-    format_pattern = _add_check_format(x1, x2)
-    shape_x1, shape_x2 = _infer_shape(format_pattern, x1, x2)
-
-    # check shape
-    shape_x1 = shape_util.scalar2tensor_one(shape_x1)
-    shape_x2 = shape_util.scalar2tensor_one(shape_x2)
-    x1["shape"] = shape_x1
-    x2["shape"] = shape_x2
-
     # check dtype
     dtype_list = ("float16", "float32", "int32")
     dtype_x1 = x1.get("dtype").lower()
