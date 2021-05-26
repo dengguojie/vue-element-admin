@@ -64,6 +64,8 @@ ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((10,27,330,2001),"float16", "nchw_6", "success", "NCHW"))
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_trans_data_case((10,27,330,2001),"int8", "nchw_7", "success", "NCHW", "NC1HWC0", (10, 1, 330, 2001, 32)))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((16,240,7,7),"float16", "nchw_8", "success", "NCHW", "NC1HWC0", (16, 15, 7, 7, 16)))
 
 # error
 ut_case.add_case(["Ascend910"],

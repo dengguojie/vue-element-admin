@@ -42,13 +42,24 @@ case3 = {"params": [{"shape": (2,5,3,4,4), "dtype": "float16", "format": "NCHW",
          "expect": "success",
          "support_expect": True}
 
+case4 = {"params": [{"shape": (2,5,3,4,4), "dtype": "float16", "format": "NCHW", "ori_shape": (2,5,3,4,4),"ori_format": "NCHW"}, #x,
+                    {"shape": (2,5,3,4,4), "dtype": "bool", "format": "NCHW", "ori_shape": (2,5,3,4,4),"ori_format": "NCHW"},
+                    12,
+                    ],
+         "case_name": "Cast_4",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
 # ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 
 def calc_expect_func(x, y, dst):
+    if dst == 12:
+        dst = 6
     dst_list = ["float32", "float16", "int8", "int32", "uint8", "uint64", "bool"]
     dst_type = dst_list[dst]
     input_A_Arr = x['value']
@@ -56,6 +67,8 @@ def calc_expect_func(x, y, dst):
         outputArr = np.maximum(input_A_Arr,0).astype(dst_type)
     else:
         outputArr = input_A_Arr.astype(dst_type)
+        if dst_type == 'bool':
+            outputArr = outputArr.astype("int8")
     return outputArr
 
 ut_case.add_precision_case("all", {"params": [{"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND", "param_type": "input"},
@@ -83,3 +96,9 @@ ut_case.add_precision_case("all", {"params": [{"shape": (16, 32), "dtype": "floa
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 
+#ut_case.add_precision_case("all", {"params": [{"shape": (16, 32), "dtype": "float16", "format": "ND", "ori_shape": (16, 1),"ori_format": "ND", "param_type": "input"},
+#                                              {"shape": (16, 32), "dtype": "bool", "format": "ND", "ori_shape": (16, 32),"ori_format": "ND", "param_type": "output"},
+#                                              12],
+#                                   "calc_expect_func": calc_expect_func,
+#                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                   })

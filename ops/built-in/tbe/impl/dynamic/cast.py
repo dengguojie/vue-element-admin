@@ -28,6 +28,8 @@ from impl.util.platform_adapter import register_operator
 
 MAX_SUPPORT_SHAPE = 1 << 30  # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000  # Limit of one dim
+DTYPE_BOOL = 12
+DTYPE_UINT8 = 4
 
 
 # pylint: disable=inconsistent-return-statements
@@ -161,6 +163,8 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     check_result = False
     if src_type == "bool":
         src_type = "int8"
+    if dst_type == DTYPE_BOOL:
+        dst_type = DTYPE_UINT8
 
     dst_type = _cast_dsttype_conversion(dst_type)
 
@@ -191,6 +195,8 @@ def check_supported_with_reason(input_x, output_y, dst_type, kernel_name="cast")
     check_result = False
     if src_type == "bool":
         src_type = "int8"
+    if dst_type == DTYPE_BOOL:
+        dst_type = DTYPE_UINT8
 
     dst_type = _cast_dsttype_conversion(dst_type)
 
@@ -311,6 +317,8 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
 
     if src_type == "bool":
         src_type = "int8"
+    if dst_type == DTYPE_BOOL:
+        dst_type = DTYPE_UINT8
 
     schedules, tensors = [], []
     ins = classify([input_x], OpPatternMode.ELEWISE)
