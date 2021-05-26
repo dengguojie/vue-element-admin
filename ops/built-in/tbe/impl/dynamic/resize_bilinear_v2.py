@@ -20,6 +20,7 @@ from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.dynamic.resize_bilinear_v2_1981 import resize_bilinear_v2_with_gatherb
 
 # max uint16
 MAX_UINT16 = 2 ** 16 - 1
@@ -894,6 +895,12 @@ def resize_bilinear_v2(images, size, y, align_corners=False, half_pixel_centers=
     -------
     tik_instance
     """
+    check_vgatherb_supported = tbe_platform.api_check_support("tik.vgatherb")
+    check_vbi_supported = tbe_platform.api_check_support("tik.vbi", "float32")
+    if check_vgatherb_supported and check_vbi_supported:
+        return resize_bilinear_v2_with_gatherb(images, size, y, align_corners, half_pixel_centers,
+                                               kernel_name)
+
     obj = ResizeBilinearV2(images, size, y, align_corners, half_pixel_centers,
                            kernel_name)
 

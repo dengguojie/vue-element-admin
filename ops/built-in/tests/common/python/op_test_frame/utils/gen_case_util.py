@@ -30,7 +30,16 @@ def get_special_shape(ori_shape, ori_format, dst_format, align_num=16):
             _ceil_div(ori_shape[-1]),
             _ceil_div(ori_shape[-2]), align_num, align_num
         ]
+    if dst_format in ("NC1HWC0",):
+        foramt_dim = dict(zip(list(ori_format), ori_shape))
+        dst_shape = [foramt_dim["N"],
+                     _ceil_div(foramt_dim["C"]),
+                     foramt_dim["H"],
+                     foramt_dim["W"],
+                     align_num]
+
     dst_shape_len = len(dst_shape)
+
     return dst_shape if dst_shape_len != 0 else ori_shape
 
 

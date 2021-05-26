@@ -121,9 +121,10 @@ class OpBase:
         """
         op_build_cce
         """
+        flowtable = [self.tiling_gm] if self.tiling_gm is not None else None
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=self.input_gm_list,
-                                   flowtable=[self.tiling_gm],
+                                   flowtable=flowtable,
                                    outputs=self.output_gm_list,
                                    config=self.opt_config)
 
@@ -305,60 +306,51 @@ def tik_func_vcomple(tik_instance, function, out_dst, src0, src1, copy_num,
                 dst_rep, src0_rep, src1_rep)
 
 
-def tik_func_vmuls(tik_instance, dst_ub, src_ub, value, do_len):
+def _tik_func_single_input_with_scalar(tik_api, dst_ub, src_ub, value, do_len,
+                                       dst_blk=1, src_blk=1, dst_rep=8, src_rep=8):
     """
-    tik_func_vmuls
+    _tik_func_single
     """
     vmuls_type = dst_ub.dtype
     byte_num_one = common_util.get_data_size(vmuls_type)
     block_num = constant_util.BLOCK_SIZE // byte_num_one
-    vector_num = block_num*constant_util.REPEAT_STRIDE_EIGHT
+    vector_num = block_num * constant_util.REPEAT_STRIDE_EIGHT
     repeat = do_len // vector_num
     repeat_tail = do_len % vector_num
     dst_offset = ub_offset(dst_ub)
     src_offset = ub_offset(src_ub)
     while repeat > MAX_REPEAT_NUM:
-        tik_instance.vmuls(vector_num, dst_ub[dst_offset], src_ub[src_offset], value,
-                           MAX_REPEAT_NUM, 1, 1, 8, 8)
+        tik_api(vector_num, dst_ub[dst_offset], src_ub[src_offset], value,
+                MAX_REPEAT_NUM, dst_blk, src_blk, dst_rep, src_rep)
         repeat = repeat - MAX_REPEAT_NUM
-        dst_offset = dst_offset + vector_num * MAX_REPEAT_NUM
-        src_offset = src_offset + vector_num * MAX_REPEAT_NUM
+        dst_offset = dst_offset + block_num * MAX_REPEAT_NUM * dst_rep
+        src_offset = src_offset + block_num * MAX_REPEAT_NUM * src_rep
     if repeat > 0:
-        tik_instance.vmuls(vector_num, dst_ub[dst_offset], src_ub[src_offset], value,
-                           repeat, 1, 1, 8, 8)
-        dst_offset = dst_offset + vector_num * repeat
-        src_offset = src_offset + vector_num * repeat
+        tik_api(vector_num, dst_ub[dst_offset], src_ub[src_offset], value,
+                repeat, dst_blk, src_blk, dst_rep, src_rep)
+        dst_offset = dst_offset + block_num * repeat * dst_rep
+        src_offset = src_offset + block_num * repeat * src_rep
     if repeat_tail > 0:
-        tik_instance.vmuls(repeat_tail, dst_ub[dst_offset], src_ub[src_offset], value,
-                           1, 1, 1, 8, 8)
+        tik_api(repeat_tail, dst_ub[dst_offset], src_ub[src_offset], value,
+                1, dst_blk, src_blk, dst_rep, src_rep)
 
 
-def tik_func_vadds(tik_instance, dst_ub, src_ub, value, do_len):
+def tik_func_vmuls(tik_instance, dst_ub, src_ub, value, do_len,
+                   dst_blk=1, src_blk=1, dst_rep=8, src_rep=8):
     """
     tik_func_vadds
     """
-    do_type = dst_ub.dtype
-    byte_num_one = common_util.get_data_size(do_type)
-    block_num = constant_util.BLOCK_SIZE // byte_num_one
-    vector_num = block_num*constant_util.REPEAT_STRIDE_EIGHT
-    repeat = do_len // vector_num
-    repeat_tail = do_len % vector_num
-    dst_offset = ub_offset(dst_ub)
-    src_offset = ub_offset(src_ub)
-    while repeat > MAX_REPEAT_NUM:
-        tik_instance.vadds(vector_num, dst_ub[dst_offset], src_ub[src_offset], value,
-                           MAX_REPEAT_NUM, 1, 1, 8, 8)
-        repeat = repeat - MAX_REPEAT_NUM
-        dst_offset = dst_offset + vector_num * MAX_REPEAT_NUM
-        src_offset = src_offset + vector_num * MAX_REPEAT_NUM
-    if repeat > 0:
-        tik_instance.vadds(vector_num, dst_ub[dst_offset], src_ub[src_offset], value,
-                           repeat, 1, 1, 8, 8)
-        dst_offset = dst_offset + vector_num * repeat
-        src_offset = src_offset + vector_num * repeat
-    if repeat_tail > 0:
-        tik_instance.vadds(repeat_tail, dst_ub[dst_offset], src_ub[src_offset], value,
-                           1, 1, 1, 8, 8)
+    _tik_func_single_input_with_scalar(tik_instance.vmuls, dst_ub, src_ub, value, do_len,
+                                       dst_blk, src_blk, dst_rep, src_rep)
+
+
+def tik_func_vadds(tik_instance, dst_ub, src_ub, value, do_len,
+                   dst_blk=1, src_blk=1, dst_rep=8, src_rep=8):
+    """
+    tik_func_vadds
+    """
+    _tik_func_single_input_with_scalar(tik_instance.vadds, dst_ub, src_ub, value, do_len,
+                                       dst_blk, src_blk, dst_rep, src_rep)
 
 
 def tik_func_vconcat(tik_instance, proposals_ub, _ub, trans_repeat, mode):
