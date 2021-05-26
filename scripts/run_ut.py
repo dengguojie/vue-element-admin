@@ -68,7 +68,8 @@ def main(argv):
         cmd = ["python3", run_file_path] + params
         print("[INFO]cmd is ", str(cmd))
         res_msg = os.system(" ".join(cmd))
-        exit(res_msg)
+        if res_msg != 0:
+            exit(res_msg)
 
     if ops_tag:
         print("[INFO]Run ops ut case!!!")
@@ -80,7 +81,8 @@ def main(argv):
         cmd = ["python3", run_file_path] + params
         print("[INFO]cmd is ", str(cmd))
         res_msg = os.system(" ".join(cmd))
-        exit(res_msg)
+        if res_msg != 0:
+            exit(res_msg)
 
     exit(0)
 
