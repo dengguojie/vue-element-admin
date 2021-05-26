@@ -45,7 +45,7 @@ UNKNOWN_FLAG = -2
 UNKNOWN_SHAPE = [-2]
 DIM_TO_NAME = {0: "N", 2: "H", 3: "W"}
 INPUT_SIZE_DEFAULT_SHAPE = [4]
-DX_OP_TYPE = ["deconvolution", "conv2d_transpose", "conv2d_backprop_input"]
+DX_OP_TYPE = ["deconvolution", "conv2d_transpose", "conv2d_backprop_input", "depthwise_conv2d_backprop_input"]
 _K_MIN_RANGE = 1
 _K_MAX_RANGE = 4096
 _K_DIM_SIZE = 5
@@ -140,7 +140,7 @@ class CubeParaProcess:
         """
 
         if self.groups != 1 and self.op_type not in (
-            "conv2d", "conv2d_backprop_input", "depthwise_conv2d_backprop_input"):
+            "conv2d", "conv2d_backprop_input", "depthwise_conv2d_backprop_input", "conv2d_transpose", "deconvolution"):
             err_man.raise_err_specific_user(
                 self.op_type, "group != 1 is not supported yet in dynamic")
         if in_shape[N_DIM] != DYNAMIC_FLAG and in_shape[H_DIM] != DYNAMIC_FLAG and in_shape[W_DIM] != DYNAMIC_FLAG:
@@ -895,9 +895,6 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
         if self.paras.get("offset_w"):
             err_man.raise_err_specific_user(
                 self.op_type, "offset_w is not supported in dynamic shape yet.")
-        if self.paras.get("bias"):
-            err_man.raise_err_specific_user(
-                self.op_type, "bias is not supported in dynamic shape yet.")
         if self.paras.get("output_padding") != (0, 0, 0, 0):
             err_man.raise_err_specific_user(
                 self.op_type, "output_padding is not supported in dynamic shape yet.")
@@ -1089,7 +1086,8 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
         x_tensor = tvm.placeholder(param.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
         filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
         if self.paras.get("bias"):
-            bias_tensor = tvm.placeholder((param.get("filter_shape")[N_DIM],), name="tensor_bias", dtype=self.dtype)
+            input_channel = align(param.get("input_size")[C_DIM], tbe_platform.CUBE_MKN[self.dtype]['mac'][2])
+            bias_tensor = tvm.placeholder((input_channel,), name="tensor_bias", dtype=self.dtype)
         else:
             bias_tensor = None
 

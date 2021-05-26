@@ -1088,7 +1088,7 @@ def general_schedule(
                       (al0_tiling_ka, al0_tiling_g), (bl0_tiling_kb, bl0_tiling_g))
         illegal_k_g = any([(k_g[0] != (kernel_w * kernel_h * cou1_g) and k_g[1] > 1) for k_g in tiling_k_g])
         if illegal_k_g:
-            _raise_dx_general_err("Illegal tiling：If split k, factor of g in buffer must be 1")
+            _raise_dx_general_err("Illegal tiling: If split k, factor of g in buffer must be 1")
 
     def _tiling_check_load():
         if stride_h == 1 and stride_w == 1:
@@ -2120,7 +2120,7 @@ def general_schedule(
 
             return al1_bound, al1_h, al1_w
 
-        def _set_aub_bound(al1_h, al1_w):
+        def _set_aub_bound():
             _, _, _, dx_w, _ = output_shape
             if stride_h > 1 or stride_w > 1:
                 aub_co0 = tbe_platform.CUBE_MKN[c_col.dtype]["mac"][1]
@@ -2144,7 +2144,7 @@ def general_schedule(
 
         al1_bound, al1_h, al1_w = _get_al1_bound()
         sch[a_l1].set_storage_bound(al1_bound)
-        _set_aub_bound(al1_h, al1_w)
+        _set_aub_bound()
         if "batch_n" in var_map:
             sch.set_var_range(a_ddr.shape[0], *var_range.get("batch_n"))
             sch.set_var_range(output_shape[0], *var_range.get("batch_n"))
@@ -2166,7 +2166,7 @@ def general_schedule(
         sch[b_l1].mem_unique()
         sch[b_col].mem_unique()
         sch[c_col].mem_unique()
-        if deconv_res.op.tag != "elewise_multiple_sel":
+        if deconv_res.op.tag != "elewise_multiple_sel" and bias_add_vector is None:
             sch[c_ub].mem_unique()
 
     def _handle_workspace():

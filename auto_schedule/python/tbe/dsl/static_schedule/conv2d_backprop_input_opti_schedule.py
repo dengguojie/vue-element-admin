@@ -2408,14 +2408,17 @@ class Conv2dDxOptiSchedule:
 
             if dilate_ub is not None:
                 filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
-
+                if var_map:
+                    tensor_vn = TENSOR_MAP["tensor_vn"]
+                    sch[dilate_ub].reused_by(tensor_vn)
+                    sch[tensor_vn].emit_insn(sch[tensor_vn].op.axis[0], "phony_insn")
                 if bias_add_vector_ub is not None:
-                    sch[dilate_ub].reused_by(filling_zero_ub, bias_add_vector_ub)
+                    if var_map:
+                        sch[filling_zero_ub].reused_by(dilate_ub, bias_add_vector_ub)
+                    else:
+                        sch[dilate_ub].reused_by(filling_zero_ub, bias_add_vector_ub)
                 else:
                     if var_map:
-                        tensor_vn = TENSOR_MAP["tensor_vn"]
-                        sch[dilate_ub].reused_by(tensor_vn)
-                        sch[tensor_vn].emit_insn(sch[tensor_vn].op.axis[0], "phony_insn")
                         sch[filling_zero_ub].reused_by(dilate_ub)
                     else:
                         sch[dilate_ub].reused_by(filling_zero_ub)
@@ -2548,7 +2551,9 @@ class Conv2dDxOptiSchedule:
             sch[b_l1].mem_unique()
             sch[b_l0b].mem_unique()
             sch[c_l0c].mem_unique()
-            if fusion_type not in (FUSION_DX_DRELU, FUSION_DX_ADD_DRELU):
+            # in some specific fusion mode cub_tensor need to be reused_by
+            if (fusion_type not in (FUSION_DX_DRELU, FUSION_DX_ADD_DRELU) and
+                not (bias_add_vector_ub is not None and dilate_ub is None)):
                 sch[c_ub].mem_unique()
 
         def _check_overload_dy(overload_flag_gm, overload_flag_l0c):

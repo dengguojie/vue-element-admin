@@ -720,6 +720,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     dy_6gd_shape = [g_extend, shape_dy[0], dy_c1_extend] + shape_dy[2:]
     dx_6gd_shape = [g_extend, shape_dx[0], dx_c1_extend] + list(shape_dx)[2:]
 
+    bias_flag = False if tensor_bias is None else True
+
     DynamicConv2dBpInputParams.ori_tensor = para_dict.get("ori_tensors")
     DynamicConv2dBpInputParams.tiling_info_dict = {
         "op_type": "conv2d_backprop_input",
@@ -741,7 +743,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         "dilationH": dilations[2],
         "dilationW": dilations[3],
         "group": group_dict.get(cube_util.GroupDictKeys.g_extend),
-        "bias_flag": False,
+        "bias_flag": bias_flag,
         "fused_double_operand_num": 0,
         "in_fm_memory_type": [],
         "out_fm_memory_type": [],
