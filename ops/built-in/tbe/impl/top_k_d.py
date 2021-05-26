@@ -1487,59 +1487,6 @@ def check_supported(input_tensor,
     unknown_shape = input_tensor.get('shape')
     unknwon_dim_status = unknown_shape[0]
     if unknwon_dim_status == -2:
-        return False
-
-    shape = input_tensor.get("ori_shape")
-    sorted_axis = dim
-    if (sorted_axis < 0):
-        sorted_axis = sorted_axis + len(shape)
-
-    shape_range = input_tensor.get("range")
-    if shape_range:
-        max_last_dim = shape_range[sorted_axis][-1]
-        if not max_last_dim:
-            return False
-        if max_last_dim > 1024 * 2048:
-            return False
-        if k > 4096:
-            return False
-        return True
-
-    input_size = functools.reduce(lambda x, y: x * y, shape)
-    # 1458176 indicates max size of the last dimension.
-    # Due to the UB memory limitation, the value of k must be less than or equal to 5120.
-    if shape[sorted_axis] > 1458176 or k > 5120:
-        return False
-    # Special adaptation to pytorch ("sorted" is false indicates the pytorch operator)
-    if sorted is not True:
-        return True
-    # When input_size > 32768 and k < 16, the AICPU performance is better than the AICore performance.
-    # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
-    if input_size > 32768 and k > 0 and k < 16:
-        return False
-    return True
-
-
-# pylint: disable=unused-argument,redefined-builtin
-def check_supported_with_reason(input_tensor,
-                                indices_tensor,
-                                out_tensor,
-                                out_indices_tensor,
-                                k,
-                                sorted=True,
-                                dim=-1,
-                                largest=True,
-                                kernel_name='top_k'):
-    """
-    check whether ai_core is supported
-    max last dim should exist and max last dim of input_tensor should <= 1024 * 2048 and k
-    should <= 4096 and last dim of input_tensor should <= 1458176 and k should <= 5120
-    sorted should == True
-    input size > 32768 and k > 0 and k < 16 three conditions cannot be met at the same time
-    """
-    unknown_shape = input_tensor.get('shape')
-    unknwon_dim_status = unknown_shape[0]
-    if unknwon_dim_status == -2:
         reason = "dynamic shape is not supported by aicore. unknwon_dim_status == -2"
         return False, reason
 

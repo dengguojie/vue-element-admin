@@ -65,6 +65,8 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
         ut_path = os.path.join("ops", "built-in", "tests", "ut")
         for line in lines:
             line = line.strip()
+            if line.endswith(".py"):
+                continue
             if line.startswith(os.path.join(base_path, "aicpu")) or line.startswith(
                     os.path.join(ut_path, "aicpu_test")):
                 aicpu_changed_files.append(line)

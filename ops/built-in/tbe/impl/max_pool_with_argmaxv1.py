@@ -57,9 +57,10 @@ def check_supported(x, y, argmax, ksize, strides, pads, dtype, dilation,
     check whether ai_core is supported
     """
     if ksize[1] * ksize[2] > SCALAR_255:
-        return False
+        reason  = "ksize is too large, kszie is %s" %(str(ksize),)
+        return False, reason
 
-    return True
+    return True, ""
 
 
 def _ceil_div(value, factor):

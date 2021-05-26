@@ -611,52 +611,6 @@ def check_supported(grads, y, size, align_corners=False,
             grads_w = grads_shape[3]
             grads_h = grads_shape[2]
         else:
-            return False
-        if (grads_w + grads_h) >= 8 * 1024:
-            return False
-    except RuntimeError:
-        return False
-
-    return True
-
-
-def check_supported_with_reason(grads, y, size, align_corners=False,
-                                kernel_name="resize_nearest_neighbor_v2_grad"):
-    """
-    algorithm: floor
-    calculating element-wise largest integer not greater than input_x,
-    the type of input_data is "float32"
-
-    Parameters
-    ----------
-    grads: dict
-        dict with keys(shape and dtype) of input grads
-    y: dict
-        dict with keys(shape and dtype) of output y
-    size: list
-        (orig_height, orig_width)
-    align_corners: bool
-        whether align_corners
-    kernel_name: str
-        kernel_name
-
-    Returns
-    -------
-    check_supported: bool
-    """
-    grads_format = grads.get("format")
-    grads_shape = grads.get("shape")
-    try:
-        if grads_format == "NCHW":
-            grads_w = grads_shape[3]
-            grads_h = grads_shape[2]
-        elif grads_format == "NHWC":
-            grads_w = grads_shape[2]
-            grads_h = grads_shape[1]
-        elif grads_format == "NC1HWC0":
-            grads_w = grads_shape[3]
-            grads_h = grads_shape[2]
-        else:
             reason = "the format is not in \"NCHW, NHWC, NC1HWC0\", format:%s" % grads_format
             return False, reason
         if (grads_w + grads_h) >= 8 * 1024:

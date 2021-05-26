@@ -165,7 +165,8 @@ def check_supported(x,
         rate_h = rates[2]
         rate_w = rates[3]
     else:
-        return False
+        reason = "data_format[%s] is not supported by aicore" % data_format
+        return False, reason
 
     if x_format == "NHWC":
         filter_h = filter_shape[0]
@@ -183,18 +184,25 @@ def check_supported(x,
         x_h = x_shape[2]
         x_w = x_shape[3]
     else:
-        return False
+        reason = "x_format[%s] is not supported by aicore" % x_format
+        return False, reason
 
     window_h = (filter_h - 1) * rate_h + 1
     window_w = (filter_w - 1) * rate_w + 1
 
     if window_w < 1 or window_w > 255 or window_h < 1 or window_h > 255 or window_h * window_w > 512:
-        return False
+        reason = "size of window is not supported, window_w is %s, window_h is %s" % (
+            str(window_w), str(window_h))
+        return False, reason
     if stride_h < 1 or stride_h > 255 or stride_w < 1 or stride_w > 255:
-        return False
+        reason = "size of stride is not supported, stride_h is %s, stride_w is %s" % (
+            str(stride_h), str(stride_w))
+        return False, reason
     if window_w > x_w or window_h > x_h:
-        return False
-    return True
+        reason  = "window_w gt x_w or window_h gt x_h,window_w is %s, window_h is %s, x_shape is %s" \
+                  % (str(window_w), str(window_h), str(x_shape))
+        return False, reason
+    return True, ""
 
 
 def _cal_pads(params):

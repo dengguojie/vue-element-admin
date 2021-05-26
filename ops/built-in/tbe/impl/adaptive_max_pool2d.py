@@ -64,8 +64,9 @@ def check_supported(x, y, argmax, output_size, kernel_name='adaptive_max_pool2d'
     ub_cell_available = (tbe_platform.cce_conf.get_soc_spec(
         tbe_platform.cce_conf.UB_SIZE) - 8 * 1024) // BLOCK_BYTES // dtype_bytes // UB_DIVIDE_NUM
     if k_max_h * k_max_w > ub_cell_available:
-        return False
-    return True
+        reason = "size is too large to compute in ub,k_max_h is %s, k_max_w is %s" % (k_max_h, k_max_w)
+        return False, reason
+    return True, ""
 
 
 def ceil_div(num, factor):

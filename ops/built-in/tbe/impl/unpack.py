@@ -119,19 +119,6 @@ def check_supported(x, y, num=None, axis=0, kernel_name="unpack"):
     real_num = _process_num_param(input_shape, num, axis, False, kernel_name)
     max_output_num = 63 * 63
     if real_num > max_output_num:
-        return False
-    return True
-
-
-# pylint: disable=unused-argument
-def check_supported_with_reason(x, y, num=None, axis=0, kernel_name="unpack"):
-    """
-    The maximum number of outputs supported by the unpack must be less than 63*63
-    """
-    input_shape = x.get("ori_shape")
-    real_num = _process_num_param(input_shape, num, axis, False, kernel_name)
-    max_output_num = 63 * 63
-    if real_num > max_output_num:
         reason = "real_num is bigger than max_output_num, real_num=%s, max_output_num=%s"\
                   % (real_num, max_output_num)
         return False, reason

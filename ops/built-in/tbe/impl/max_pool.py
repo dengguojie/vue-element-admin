@@ -31,38 +31,6 @@ SCALAR_20 = 20
 
 # pylint: disable=unused-argument,unused-variable
 def check_supported(input_data, output_data, ksize, strides, padding,
-                    data_format="NC1HWC0", kernel_name="max_pool"):
-    """
-    check whether ai_core is supported
-    """
-    input_format = input_data.get("ori_format").upper()
-    input_shape = input_data.get("ori_shape")
-    if input_format == "NHWC":
-        in_size_h = input_shape[1]
-        in_size_w = input_shape[2]
-    else:
-        in_size_h = input_shape[2]
-        in_size_w = input_shape[3]
-
-    if data_format == "NHWC":
-        window_h = ksize[1]
-        window_w = ksize[2]
-    else:
-        window_h = ksize[2]
-        window_w = ksize[3]
-
-    is_global = False
-    if in_size_h <= window_h and in_size_w <= window_w:
-        is_global = True
-
-    if window_h * window_w > SCALAR_255 and (window_h > SCALAR_20 or window_w > SCALAR_20) and is_global == False:
-        return False
-
-    return True
-
-
-# pylint: disable=unused-argument,unused-variable
-def check_supported_with_reason(input_data, output_data, ksize, strides, padding,
                                 data_format="NC1HWC0", kernel_name="max_pool"):
     """
     check whether ai_core is supported

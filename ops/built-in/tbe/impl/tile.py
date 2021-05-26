@@ -25,12 +25,14 @@ def check_supported(input_x, input_m, output_x, kernel_name="tile"):
     verify the types of cast supported by tbe
     """
     if -2 in input_x["shape"] or -2 in output_x["shape"] or -2 in input_m["shape"]:
-        return False
+        reason = "-2 is not supported now"
+        return False, reason
     input_x_shape = list(input_x.get("shape"))
     # currently , ai_core tile operator only support 5 or less dimension input
     if len(input_x_shape) > 5:
-        return False
-    return True
+        reason = "ai_core tile operator only support 5 or less dimension input"
+        return False, reason
+    return True, ""
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

@@ -42,32 +42,6 @@ def check_supported(x, indices, v, y, kernel_name="inplace_update"):
 
     try:
         if len(shape_indices) != 1 or (reg_v_size % 32 != 0):
-            return False
-
-    except RuntimeError:
-        return False
-
-    return True
-
-def check_supported_with_reason(x, indices, v, y, kernel_name="inplace_update"):
-    """
-    To check whether the AICORE operator can support the shape of indices or not
-    """
-    shape_indices = indices.get("shape")
-    shape_v = v.get("shape")
-    dtype_v = v.get("dtype").lower()
-    reg_v_len = 1
-    for i in range(1, len(shape_v)):
-        reg_v_len = reg_v_len * shape_v[i]
-
-    if dtype_v in ("float32", "int32"):
-        dtype_size = 4
-    else:
-        dtype_size = 2
-    reg_v_size = reg_v_len * dtype_size
-
-    try:
-        if len(shape_indices) != 1 or (reg_v_size % 32 != 0):
             reason = "the input_shape is not supported, shape_indices:%s, reg_v_size % 32:"\
                       % (str(shape_indices), str(reg_v_size % 32)) 
             return False, reason 

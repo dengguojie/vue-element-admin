@@ -63,9 +63,10 @@ def check_supported(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation
     check whether ai_core is supported
     """
     if ksize[1] * ksize[2] > SCALAR_255:
-        return False
+        reason = "ksize is too large, ksize is %s" %(str(ksize),)
+        return False, reason
 
-    return True
+    return True, ""
 
 
 # pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in

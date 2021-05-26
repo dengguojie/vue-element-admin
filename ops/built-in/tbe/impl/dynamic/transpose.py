@@ -96,21 +96,23 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     x_shape = input_x.get("ori_shape")
     x_dtype = input_x.get("dtype")
 
-    if x_dtype not in ("float", "float32", "int32", "uint32", "int16", "uint16", "float16"):
-        return False
+    check_list = ["float", "float32", "int32", "uint32", "int16", "uint16", "float16"]
+    if x_dtype not in check_list:
+        reason = "x_dtype[%s] not in %s" %(x_dtype, str(check_list))
+        return False, reason
 
     if util_common.is_unknown([input_x, perm, output_y]):
-        return True
+        return True, ""
 
     if _by_dynamic_static_union_version(x_shape, CORE_NUM):
-        return True
+        return True, ""
 
     if tbe_context.get_context():
         if hasattr(tbe_context.get_context(), "get_build_type"):
             if tbe_context.get_context().get_build_type() == "fuzzily_build":
-                return True
+                return True, ""
 
-    return False
+    return False, ""
 
 
 def _assert(tik_inst, ub_input, p, v):

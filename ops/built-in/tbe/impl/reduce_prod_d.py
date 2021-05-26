@@ -24,23 +24,7 @@ from te.utils import shape_util
 NoneType = type(None)
 
 
-# pylint: disable=invalid-name,unused-argument
-# pylint: disable=locally-disabled,too-many-arguments
 def check_supported(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
-    """
-    check the op support situation.
-    Go to AICPU when doing reduction with float32 type on the last axis. 
-    """
-    input_shape = x.get("shape")
-    input_dtype = x.get("dtype").lower()
-    dim_num = len(input_shape)
-    for axis in axes:
-        if axis in [-1, dim_num - 1] and input_dtype == "float32" and input_shape[-1] == 1:
-            return False
-    return True
-
-
-def check_supported_with_reason(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
     """
     check the op support situation.
     Go to AICPU when doing reduction with float32 type on the last axis. 

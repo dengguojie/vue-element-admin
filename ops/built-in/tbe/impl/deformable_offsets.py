@@ -101,19 +101,26 @@ def check_supported(x,
     x_dtype = x.get("dtype").lower()
     x_format = x.get("format")
     if not modulated:
-        return False
+        reason = "modulated is False"
+        return False, reason
     if x_dtype not in check_list:
-        return False
+        reason = "dtype is x is not supported, x_dtype is %s,supported list is %s" % (x_dtype, check_list)
+        return False, reason
     if len(x_shape) != 4:
-        return False
+        reason = "len of x_shape is not 4, x_shape is %s" %(str(x_shape),)
+        return False, reason
     if x_format != "NHWC" or data_format != "NHWC":
-        return False
+        reason = "x_format is not NHWC or data_format is not NHWC"
+        return False, reason
     if x_shape[3] % deformable_groups != 0:
-        return False
+        reason = "x_shape[3][%s] is not a multiple of deformable_groups[%s] != 0 " % (
+            str(x_shape[3]), str(deformable_groups))
+        return False, reason
     group_c = x_shape[3] // deformable_groups
     if group_c % 8 != 0 or deformable_groups != 1:
-        return False
-    return True
+        reason = "group_c[%s] is not multiple of 8, or deformable_groups is not 1" %(str(group_c),)
+        return False, reason
+    return True, ""
 
 # pylint: disable=too-many-instance-attributes,too-many-arguments
 class DeformableOffsets:

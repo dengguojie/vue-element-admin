@@ -27,18 +27,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = locally-disabled,invalid-name,too-many-arguments
-# pylint: disable = unused-argument,no-member
-
 def check_supported(x, y, axis, kernel_name="pack"):
-    """
-    support aicpu route
-    """
-    if axis == -1 or axis == len((x[0].get("shape"))):
-        return False
-    return True
-
-def check_supported_with_reason(x, y, axis, kernel_name="pack"):
     """
     support aicpu route
     """

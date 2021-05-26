@@ -564,11 +564,9 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                     compile_info = tbe.common.context.get_context().get_compile_info()
                     self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
             else:
-                import tbe  # pylint: disable=import-outside-toplevel
-                import tbe.common.context.op_info as operator_info # pylint: disable=import-outside-toplevel
+                import tbe
+                # import tbe.common.context.op_info as operator_info #pylint:disable=import-outside-toplevel
                 with tbe.common.context.op_context.OpContext("pre-static"):
-                    op_info = operator_info.OpInfo(self.op_type, self.op_type)
-                    tbe.common.context.op_context.get_context().add_op_info(op_info)
                     op_func(*case_info.op_params, **addition_params)
         except BaseException as run_err:  # pylint: disable=broad-except
             if case_info.expect != op_status.SUCCESS:
@@ -913,10 +911,10 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         run_success = True
         err_trace = None
         try:
-            import tbe  # pylint: disable=import-outside-toplevel
-            import tbe.common.context.op_info as operator_info # pylint: disable=import-outside-toplevel
+            import tbe
+            # import tbe.common.context.op_info as operator_info #pylint:disable=import-outside-toplevel
             with tbe.common.context.op_context.OpContext("pre-static"):
-                case_info.test_func(run_soc_version)
+              case_info.test_func(run_soc_version)
         except BaseException as _:  # pylint: disable=broad-except
             run_success = False
             err_trace = get_trace_info()

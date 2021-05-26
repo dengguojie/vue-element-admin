@@ -134,7 +134,7 @@ def check_supported(input_x1,
     cube_type = ["float16", "int8"]
     if (input_x1.get("format") == "FRACTAL_NZ" or input_x2.get("format") == "FRACTAL_NZ") and \
             input_x1.get("dtype") in cube_type:
-        return True
+        return True,""
     shape_a = input_x1.get("ori_shape")
     shape_b = input_x2.get("ori_shape")
     dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
@@ -142,24 +142,26 @@ def check_supported(input_x1,
         para_check.check_shape(shape_a, param_name="input_x1")
         para_check.check_shape(shape_b, param_name="input_x2")
     target_type = ["float32", "int32"]
-    res = True
+    res = True,""
+    reason = "shape of input_x1 and input_x2 is not supported by aicore, shape_a is %s,shape_b is %s" \
+              % (str(shape_a), str(shape_b))
     if input_x1.get("dtype") in target_type and not dynamic_flag:
         if len(shape_a) != 2 and len(shape_b) != 2:
-            res = False
+            res = False, reason
         elif trans_a:
             if trans_b:
                 if shape_a[0] != shape_b[1]:
-                    res = False
+                    res = False, reason
             elif shape_a[0] != shape_b[0]:
-                res = False
+                res = False, reason
         elif trans_b:
             if shape_a[1] != shape_b[1]:
-                res = False
+                res = False, reason
         elif shape_a[1] != shape_b[0]:
-            res = False
+            res = False, reason
     elif input_x1.get("dtype") in cube_type:
         if len(shape_a) != 2 and len(shape_b) != 2:
-            res = False
+            res = False, reason
         if trans_a:
             k_shape = shape_a[0]
         else:
@@ -171,7 +173,7 @@ def check_supported(input_x1,
             k_b_shape = shape_b[0]
 
         if not dynamic_flag and k_shape != k_b_shape:
-            res = False
+            res = False, reason
 
     return res
 

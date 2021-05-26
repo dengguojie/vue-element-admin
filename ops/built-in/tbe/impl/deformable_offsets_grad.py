@@ -159,20 +159,26 @@ def check_supported(grad, x, offsets, helper, grad_x, grad_offsets, strides, pad
     check_list = ["float32"]
 
     if not modulated:
-        return False
+        reason = "modulated is False"
+        return False, reason
 
     if x_dtype not in check_list:
-        return False
+        reason = "dtype is x is not supported, x_dtype is %s,supported list is %s" % (x_dtype, check_list)
+        return False, reason
 
     if x_format != "NHWC" or data_format != "NHWC":
-        return False
+        reason = "x_format is not NHWC or data_format is not NHWC"
+        return False, reason
 
     if x_shape[3] % deformable_groups != 0:
-        return False
+        reason = "x_shape[3][%s] is not a multiple of deformable_groups[%s] != 0 " % (
+            str(x_shape[3]), str(deformable_groups))
+        return False, reason
 
     group_c = x_shape[3] // deformable_groups
     if group_c % BLOCK_FP32_SIZE != 0:
-        return False
+        reason = "group_c[%s] is not multiple of BLOCK_FP32_SIZE[%s]" %(str(group_c), str(BLOCK_FP32_SIZE))
+        return False, reason
 
     dsize = common_util.get_data_size(x_dtype)
     k_h, k_w = ksize
@@ -186,9 +192,10 @@ def check_supported(grad, x, offsets, helper, grad_x, grad_offsets, strides, pad
     ub_size = (MAX_UB_SIZE - RESERVED_UB_SIZE) // dsize
     size = _get_ub_need_size(min_grad_size, min_offsets_align, group_c)
     if size > ub_size:
-        return False
+        reason = "size needed exceed ub_size"
+        return False, reason
 
-    return True
+    return True, ""
 
 
 def _get_shape_size(shape):

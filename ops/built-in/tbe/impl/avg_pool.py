@@ -86,66 +86,6 @@ def check_supported(x, filter, bias, y, ksize, strides,
     is_support_kernel = (ksize_h * ksize_w <= AVG_KERNEL_SIZE_H_MUL_W) or \
                         (ksize_h <= AVG_KERNEL_SIZE and ksize_w <= AVG_KERNEL_SIZE)
     if not is_support_kernel and outputh != 1 and outputw == 1:
-        return False
-    if not is_support_kernel and not (outputh == 1 and outputw == 1):
-        return False
-    if input_h == 1 and input_w > 100000:
-        return False
-    return True
-  
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,unused-variable,unnecessary-lambda
-def check_supported_with_reason(x, filter, bias, y, ksize, strides,
-                    padding="VALID", data_format="NHWC", offset_x=0,
-                    kernel_name="avg_pool"):
-    """
-    Parameters
-    ----------
-    x : dict, shape and dtype of input_data, only support float16 or int8
-
-    filter : dict, optional input, shape and dtype of input_data, only support float16 or int8
-
-    bias : dict, optional input, shape and dtype of input_data, only support int32
-
-    y : dict, shape and dtype of output_data, only support float16 or int32
-
-    ksize : list or tuple, the window of avgpooling, only support avgpooling
-            in H or W
-
-    strides : list or tuple, the stride of avgpooling window, only support
-              avgpooling in H or W
-
-    padding : str, the mode of padding, support padding and not padding
-
-    data_format : str, default = "NHWC"
-
-    offset_x : int, quantization parameter
-
-    kernel_name : cce kernel name, default value is "avg_pool_cce"
-
-    Returns
-    -------
-    True or False
-    """
-    ori_shape = y.get("ori_shape")
-    input_shape = x.get("ori_shape")
-    if data_format == "NHWC":
-        ksize_h = ksize[1]
-        ksize_w = ksize[2]
-        outputh = ori_shape[1]
-        outputw = ori_shape[2]
-        input_h = input_shape[1]
-        input_w = input_shape[2]
-    else:
-        ksize_h = ksize[2]
-        ksize_w = ksize[3]
-        outputh = ori_shape[2]
-        outputw = ori_shape[3]
-        input_h = input_shape[2]
-        input_w = input_shape[3]
-    is_support_kernel = (ksize_h * ksize_w <= AVG_KERNEL_SIZE_H_MUL_W) or \
-                        (ksize_h <= AVG_KERNEL_SIZE and ksize_w <= AVG_KERNEL_SIZE)
-    if not is_support_kernel and outputh != 1 and outputw == 1:
         reason = "the shape is not supported by schedule, ksize:%s ori_shape:%s" %(str(ksize),str(ori_shape))
         return False, reason
     if not is_support_kernel and not (outputh == 1 and outputw == 1):

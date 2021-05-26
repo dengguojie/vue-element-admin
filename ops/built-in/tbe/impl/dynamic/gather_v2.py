@@ -124,26 +124,6 @@ def check_supported(x_dict, indices_dict, axis_dict, y_dict, kernel_name="Gather
     shape_axis = axis_dict.get("ori_shape")
 
     if -2 in shape_x:
-        return False
-    if -2 in shape_indices:
-        return False
-    if -2 in shape_axis:
-        return False
-
-    return True
-
-
-def check_supported_with_reason(x_dict, indices_dict, axis_dict, y_dict, kernel_name="GatherV2"):
-    """
-    Parameters
-    ----------
-    x_dict: input params shape, dtype and range, if shape contains -2, the process doesn't support
-    """
-    shape_x = x_dict.get("ori_shape")
-    shape_indices = indices_dict.get("ori_shape")
-    shape_axis = axis_dict.get("ori_shape")
-
-    if -2 in shape_x:
         reason = "shape_x contains -2."
         return False, reason
     if -2 in shape_indices:

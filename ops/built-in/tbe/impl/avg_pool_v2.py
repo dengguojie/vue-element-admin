@@ -82,68 +82,6 @@ def check_supported(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0,
         outputw = ori_shape[3]
     is_support_kernel = (ksize_h * ksize_w <= AVGV2_KERNEL_SIZE_H_MUL_W) or \
                         (ksize_h <= AVGV2_KERNEL_SIZE and ksize_w <= AVGV2_KERNEL_SIZE)
-    if not is_support_kernel and outputh != 1 and outputw == 1:
-        return False
-    if not is_support_kernel and not (outputh == 1 and outputw == 1):
-        return False
-    return True
-
-
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,no-else-raise,unnecessary-lambda
-def check_supported_with_reason(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
-                    data_format="NCHW", global_pooling=False, ceil_mode=False,
-                    exclusive=True, kernel_name="avg_pool_v2",
-                    impl_mode="high_performance"):
-    """
-    Parameters
-    ----------
-    x : dict, shape and dtype of input_data, only support float16, shape is 4
-        dims, format is NCHW
-
-    filter : assist matrix
-
-    y : dict, shape and dtype of output_data, only support float16
-
-    ksize : list or tuple, the window of avgpooling, only support avgpooling
-            in H or W
-
-    strides : list or tuple, the stride of avgpooling window, only support
-              avgpooling in H or W
-
-    padding : str, the mode of padding, support VALID, SAME and CALCULATED
-
-    pads : padding value when padding_mode is CALCULATED
-
-    data_format : str, default = "NCHW"
-
-    global_pooling : global pooling or not
-
-    ceil_mode : use ceil or floor to calculate ho and wo when padding_mode is CALCULATED
-
-    exclusive : ignore padding area or not when calculating the average
-
-    kernel_name : cce kernel name, default value is "avg_pool_v2"
-
-    impl_mode : assign high_performance or high_precision
-
-    Returns
-    -------
-    True or False
-    """
-    ori_shape = y.get("ori_shape")
-    if data_format == "NHWC":
-        ksize_h = ksize[1]
-        ksize_w = ksize[2]
-        outputh = ori_shape[1]
-        outputw = ori_shape[2]
-    else:
-        ksize_h = ksize[2]
-        ksize_w = ksize[3]
-        outputh = ori_shape[2]
-        outputw = ori_shape[3]
-    is_support_kernel = (ksize_h * ksize_w <= AVGV2_KERNEL_SIZE_H_MUL_W) or \
-                        (ksize_h <= AVGV2_KERNEL_SIZE and ksize_w <= AVGV2_KERNEL_SIZE)
     reason = "the shape is not supported by schedule, ksize:%s ori_shape:%s" %(str(ksize),str(ori_shape))
     if not is_support_kernel and outputh != 1 and outputw == 1:
         return False, reason

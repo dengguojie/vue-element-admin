@@ -51,42 +51,6 @@ L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
 
 # pylint: disable=unused-argument,unused-variable
 def check_supported(input_x, out_y, output_argmax, ksize, strides,
-                    padding, kernel_name="max_pool_with_argmax"):
-    """
-    check whether ai_core is supported
-    """
-    if ksize[1] * ksize[2] > SCALAR_255:
-        return False
-    input_format = input_x.get("ori_format").upper()
-    input_shape = input_x.get("ori_shape")
-    if input_format == "NHWC": 
-        in_size_h = input_shape[1]
-        in_size_w = input_shape[2]
-    else:
-        in_size_h = input_shape[2]
-        in_size_w = input_shape[3]
-    window_h = ksize[1]
-    window_w = ksize[2]
-    stride_h = strides[1]
-    stride_w = strides[2]
-
-    # caculate output size in VALID mode
-    if padding == "VALID":
-        # Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)
-        out_size_h = (in_size_h - window_h + 1 + (stride_h - 1)) // stride_h
-        out_size_w = (in_size_w - window_w + 1 + (stride_w - 1)) // stride_w
-    if padding == "SAME":
-        # Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)
-        out_size_h = (in_size_h + stride_h - 1) // stride_h
-        out_size_w = (in_size_w + stride_w - 1) // stride_w
-    if out_size_w == 1 and out_size_h > 1:
-        return False
-
-    return True
-
-
-# pylint: disable=unused-argument,unused-variable
-def check_supported_with_reason(input_x, out_y, output_argmax, ksize, strides,
                                 padding, kernel_name="max_pool_with_argmax"):
     """
     check whether ai_core is supported

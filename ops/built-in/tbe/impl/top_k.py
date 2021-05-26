@@ -1473,11 +1473,13 @@ def check_supported(input_tensor,
     shape = input_tensor.get("shape")
     # 1458176 indicates max size of the last dimension.
     if shape[-1] > 1458176:
-        return False
+        reason = "1458176 indicates max size of the last dimension"
+        return False, reason
     # ub size limitation
     if k > 5120:
-        return False
-    return True
+        reason = "ub size limitation"
+        return False, reason
+    return True, ""
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

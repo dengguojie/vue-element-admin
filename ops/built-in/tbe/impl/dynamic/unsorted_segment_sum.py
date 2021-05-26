@@ -214,66 +214,6 @@ def op_select_format(x, segment_ids, num_segments, y,
 
 
 def check_supported(x, segment_ids, num_segments, y,
-                    kernel_name="unsorted_segment_sum"):
-    """
-    dynamic -2 not support
-    dynamic -1 support
-    segment_ids int64 not support
-    static shape x_shape ends with 1 or lens equals 1 not support
-    temporary support x_dtype of "float32" in compilestatic process
-    """
-    shapex = x.get("ori_shape")
-    shapeid = segment_ids.get("ori_shape")
-    shape_seg = num_segments.get("ori_shape")
-    shapey = y.get("ori_shape")
-    id_dtype = segment_ids.get("dtype").lower()
-    x_dtype = x.get("dtype").lower()
-    dynamic_x = True
-    dynamic_id = True
-    dynamic_seg = True
-    dynamic_y = True
-
-    if id_dtype != "int32":
-        return False
-    if x_dtype in ("int8", "uint8"):
-        return False
-
-    for i in range(len(shapex)):
-        if shapex[i] == -2:
-            return False
-        if shapex[i] == -1:
-            dynamic_x = False
-            break
-    for i in range(len(shapeid)):
-        if shapeid[i] == -2:
-            return False
-        if shapeid[i] == -1:
-            dynamic_id = False
-            break
-    for i in range(len(shape_seg)):
-        if shape_seg[i] == -2:
-            return False
-        if shape_seg[i] == -1:
-            dynamic_seg = False
-            break
-    for i in range(len(shapey)):
-        if shapey[i] == -2:
-            return False
-        if shapey[i] == -1:
-            dynamic_y = False
-            break
-
-    if dynamic_x and dynamic_id and dynamic_seg and dynamic_y:
-        if x_dtype in ("float16", "int32"):
-            return False
-        # when the input0_shape ends wtih 1, the compilestatic process dose not support
-        if shapex[-1] == 1 or len(shapex) == 1:
-            return False
-
-    return True
-
-
-def check_supported_with_reason(x, segment_ids, num_segments, y,
                                 kernel_name="unsorted_segment_sum"):
     """
     dynamic -2 not support

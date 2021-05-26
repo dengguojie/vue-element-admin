@@ -32,57 +32,6 @@ def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
     """
     input_shape = x.get("ori_shape")
     if -1 in input_shape or -2 in input_shape:
-        return False
-
-    input_type = x.get("dtype")
-    input_format = x.get("ori_format")
-    output_h, output_w = crop_size
-    boxes_shape = boxes.get("ori_shape")
-    boxes_num = boxes_shape[0]
-
-    if boxes_num <= 50 or boxes_num > 4000:
-        # boxes_num is more, the performance is better than aicpu
-        return False
-
-    if input_type in ("float32", "float16",) and method in ("bilinear",) and len(input_shape) == 4:
-        # shape must be [N, H, W, C] or [N, C, H, W]
-        # method only support bilinear
-        # c0 // num in one block
-        copy_block = 1
-    else:
-        return False
-
-    # format must be ("NHWC", "NCHW")
-    if input_format in ("NHWC",):
-        input_c = input_shape[3]
-        input_h = input_shape[1]
-        input_w = input_shape[2]
-    elif input_format in ("NCHW",):
-        input_c = input_shape[1]
-        input_h = input_shape[2]
-        input_w = input_shape[3]
-    else:
-        # format must be NHWC or NCHW
-        return False
-
-    if input_c > 2048 or input_c < 256 or max(output_h, output_w) > 16:
-        return False
-
-    if input_h * input_w * copy_block > 65530 or output_h * output_w * copy_block > 65530 // 2:
-        # will use stride when copy data
-        return False
-
-    return True
-
-
-# pylint: disable=locally-disabled,invalid-name,too-many-arguments,too-many-locals
-# pylint: disable=unused-argument,too-many-branches
-def check_supported_with_reason(x, boxes, box_index, y, crop_size, extrapolation_value,
-                    method, kernel_name="crop_and_resize"):
-    """To check whether the AICORE operator can support the length of w/h or not
-    """
-    input_shape = x.get("ori_shape")
-    if -1 in input_shape or -2 in input_shape:
         reason = "dynamic shape is not supported by aicore."
         return False, reason
 

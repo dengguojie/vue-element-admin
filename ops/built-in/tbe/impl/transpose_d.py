@@ -23916,25 +23916,6 @@ def check_supported(input_x, output_y, perm, kernel_name="transpose_d"):
     x_dtype = input_x.get("dtype")
 
     if -2 in x_shape:
-        return False
-
-    if -1 in x_shape and len(x_shape) > 3:
-        return False
-    if -1 in x_shape and x_dtype not in ("float32",):
-        return False
-
-    return True
-
-
-def check_supported_with_reason(input_x, output_y, perm, kernel_name="transpose_d"):
-    """
-    when input is -2 dynamic shape, aicore can not support
-    when input is -1 dynamic shape and the dim len is more than three, aicore can not support
-    """
-    x_shape = input_x.get("ori_shape")
-    x_dtype = input_x.get("dtype")
-
-    if -2 in x_shape:
         reason = "when input is -2 dynamic shape, aicore can not support"
         return False, reason
 

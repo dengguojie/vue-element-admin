@@ -931,51 +931,6 @@ def check_supported(images,
     images_format = images.get("ori_format")
     if len(images_shape) != 4:
         # the size of image_shape must be 4
-        return False
-
-    if images_format == "NHWC":
-        in_size_h = images_shape[1]
-        in_size_w = images_shape[2]
-    elif images_format in ("NCHW", "NC1HWC0"):
-        in_size_h = images_shape[2]
-        in_size_w = images_shape[3]
-    else:
-        # format is not in "NHWC,NCHW,NC1HWC0", not suppord
-        return False
-
-    try:
-        if in_size_h > 7680 or in_size_w > 4320:
-            return False
-
-        if size[0] > 7680 or size[1] > 4320:
-            return False
-
-        if in_size_h < 1 or in_size_w < 1 or size[0] < 1 or size[1] < 1:
-            return False
-
-    except RuntimeError:
-        return False
-
-    return True
-
-
-def check_supported_with_reason(images,
-                                y,
-                                size,
-                                align_corners=False,
-                                half_pixel_centers=False,
-                                kernel_name="resize_nearest_neighbor"):
-    """
-    To check whether the AICORE operator can support
-    1. when the shape of input images is unrank shape or dim size not equal 4, will change to aicpu
-    2. when the format of input images is not in "NHWC,NCHW", AICORE do not support, will change to aicpu
-    3. when the height of input images or output images is more than 7680, will change to aicpu
-    3. when the weight of input images or output images is more than 4320, will change to aicpu
-    """
-    images_shape = images.get("ori_shape")
-    images_format = images.get("ori_format")
-    if len(images_shape) != 4:
-        # the size of image_shape must be 4
         reason = "the size of image_shape must be 4, len(images_shape):%s" % len(images_shape)
         return False, reason
 

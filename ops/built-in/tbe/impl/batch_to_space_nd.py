@@ -39,45 +39,6 @@ def check_supported(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
     block_s = block_shape.get("shape")
     crop_s = crops.get("shape")
     if ori_format not in ("NHWC", "NCHW", "NDHWC", "NCDHW"):
-        return False
-    if len(block_s) != 1 or len(crop_s) != 2 or crop_s[1] != 2:
-        return False
-    if ori_format in ("NHWC",):
-        if len(ori_shape) != 4 or block_s[0] != 2 or crop_s[0] != 2:
-            if len(ori_shape) != 3 or block_s[0] != 1 or crop_s[0] != 1:
-                return False
-    elif ori_format in ("NCHW",):
-        if len(ori_shape) != 4 or block_s[0] != 3 or crop_s[0] != 3:
-            return False
-    elif ori_format in ("NDHWC",):
-        if len(ori_shape) != 5 or block_s[0] != 3 or crop_s[0] != 3:
-            return False
-    elif ori_format in ("NCDHW",):
-        if len(ori_shape) != 5 or block_s[0] != 4 or crop_s[0] != 4:
-            return False
-
-    return True
-
-
-# pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements
-def check_supported_with_reason(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
-    """check supported dynamiclly.
-    only spported format NHWC,NCHW,NC1HWC0,NDHWC,NCDHW,NDC1HWC0
-    ori_format:NHWC
-        ori shape must be 4([-1,-1,-1,-1]), block_shape must be 1([2]), crops must be 2([2,2])
-        ori shape must be 3([-1,-1,-1]), block_shape must be 1([1]), crops must be 2([1,2])
-    ori format:NCHW
-        ori shape must be 4([-1,-1,-1,-1]), block_shape must be 1([3]), crops must be 2([3,2])
-    ori format:NDHWC
-        ori shape must be 5([-1,-1,-1,-1,-1]), block_shape must be 1([3]), crops must be 2([3,2])
-    ori format:NCDHW
-        ori shape must be 5([-1,-1,-1,-1,-1]), block_shape must be 1([4]), crops must be 2([4,2])
-    """
-    ori_format = x.get("ori_format")
-    ori_shape = x.get("ori_shape")
-    block_s = block_shape.get("shape")
-    crop_s = crops.get("shape")
-    if ori_format not in ("NHWC", "NCHW", "NDHWC", "NCDHW"):
         reason = "ori_format[%s] not in [NHWC, NCHW, NDHWC, NCDHW]"
         return False, reason
     if len(block_s) != 1 or len(crop_s) != 2 or crop_s[1] != 2:

@@ -39,24 +39,28 @@ def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"
     block_s = block_shape.get("shape")
     pad_s = paddings.get("shape")
     if ori_format not in ("NHWC", "NCHW", "NDHWC", "NCDHW"):
-        return False
+        reason = 'ori_format[%s] is not in ("NHWC", "NCHW", "NDHWC", "NCDHW")' % ori_format
+        return False, reason
     if len(block_s) != 1 or len(pad_s) != 2 or pad_s[1] != 2:
-        return False
+        reason = "shape of input is not supported, block_s is [%s], pad_s is [%s]" %(str(block_s), str(pad_s))
+        return False, reason
+    reason = "when ori_format is [%s], shape of input is not supported," \
+             "ori_shape is [%s], block_s is [%s], pad_s is [%s]" %(ori_format, str(ori_shape), str(block_s), str(pad_s))
     if ori_format in ("NHWC",):
         if len(ori_shape) != 4 or block_s[0] != 2 or pad_s[0] != 2:
             if len(ori_shape) != 3 or block_s[0] != 1 or pad_s[0] != 1:
-                return False
+                return False, reason
     elif ori_format in ("NCHW",):
         if len(ori_shape) != 4 or block_s[0] != 3 or pad_s[0] != 3:
-            return False
+            return False, reason
     elif ori_format in ("NDHWC",):
         if len(ori_shape) != 5 or block_s[0] != 3 or pad_s[0] != 3:
-            return False
+            return False, reason
     elif ori_format in ("NCDHW",):
         if len(ori_shape) != 5 or block_s[0] != 4 or pad_s[0] != 4:
-            return False
+            return False, reason
 
-    return True
+    return True, ""
 
 
 def op_select_format(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):

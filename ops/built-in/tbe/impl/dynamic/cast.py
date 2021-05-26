@@ -160,39 +160,6 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     verify the types of cast supported by tbe
     """
     src_type = input_x.get("dtype").lower()
-    check_result = False
-    if src_type == "bool":
-        src_type = "int8"
-    if dst_type == DTYPE_BOOL:
-        dst_type = DTYPE_UINT8
-
-    dst_type = _cast_dsttype_conversion(dst_type)
-
-    check_list = []
-    if src_type == "float16":
-        check_list = ["float32", "int32", "uint8"]
-    elif src_type == "float32":
-        check_list = ["float16", "int32"]
-    elif src_type == "int8":
-        check_list = ["float32", "float16", "int32", "uint8"]
-    elif src_type == "uint8":
-        check_list = ["float32", "float16", "int32"]
-    elif src_type == "int32":
-        check_list = ["bool", "uint8", "int8", "float32", "float16"]
-
-    if dst_type in check_list:
-        check_result = True
-
-    return check_result
-
-
-# pylint: disable=unused-argument
-def check_supported_with_reason(input_x, output_y, dst_type, kernel_name="cast"):
-    """
-    verify the types of cast supported by tbe
-    """
-    src_type = input_x.get("dtype").lower()
-    check_result = False
     if src_type == "bool":
         src_type = "int8"
     if dst_type == DTYPE_BOOL:

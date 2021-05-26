@@ -710,21 +710,6 @@ def check_supported(boxes, scores, max_output_size_per_class,
     """
     valid_detections_shape = valid_detections.get("ori_shape")
 
-    return len(valid_detections_shape) == 2
-
-# pylint: disable=unused-argument
-def check_supported_with_reason(boxes, scores, max_output_size_per_class,
-                    max_total_size, iou_threshold, score_threshold,
-                    nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections,
-                    pad_per_class, clip_boxes,
-                    kernel_name="combined_non_max_suppression"):
-    """
-    check_supported: check whether the aicore support this case
-
-    if the valid_detections_shape shape len = 2, do in aicore
-    """
-    valid_detections_shape = valid_detections.get("ori_shape")
-
     if(len(valid_detections_shape) == 2):
       return True, ""
     else:
