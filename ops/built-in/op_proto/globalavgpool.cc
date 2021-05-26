@@ -45,17 +45,23 @@ IMPLEMT_INFERFUNC(GlobalAveragePool, GlobalAveragePoolInferShape) {
   output_shape.push_back(input_shape[0]);
   output_shape.push_back(input_shape[1]);
 
-  if (x_shape == 5 && input_format == FORMAT_NCDHW) {
+  if (x_shape == 5 && (input_format == FORMAT_NCDHW || input_format == FORMAT_ND)) {
     output_shape.push_back(num_shape);
     output_shape.push_back(num_shape);
     output_shape.push_back(num_shape);
-  } else if (x_shape == 4 && input_format == FORMAT_NCHW) {
+    if (input_format == FORMAT_ND) {
+      OP_LOGW(op.GetName().c_str(), "input format is ND, but use format is NCDHW");
+    }
+  } else if (x_shape == 4 && (input_format == FORMAT_NCHW || input_format == FORMAT_ND)) {
     output_shape.push_back(num_shape);
     output_shape.push_back(num_shape);
+    if (input_format == FORMAT_ND) {
+      OP_LOGW(op.GetName().c_str(), "input format is ND, but use format is NCHW");
+    }
   } else if (x_shape == 3 && input_format == FORMAT_ND) {
     output_shape.push_back(num_shape);
   } else {
-    OP_LOGE(op.GetName().c_str(), "x_shape error or format error");
+    OP_LOGE(op.GetName().c_str(), "x_shape or format is error");
     return GRAPH_FAILED;
   }
 
