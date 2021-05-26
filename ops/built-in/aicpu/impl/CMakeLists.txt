@@ -204,6 +204,7 @@ if(BUILD_OPEN_PROJECT)
     )
   endif()
 else()
+get_filename_component(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(local_kernels_inc_path

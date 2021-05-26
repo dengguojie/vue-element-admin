@@ -191,7 +191,7 @@ cp $cur_dir/tensor_engine/tiling_config $cur_dir/out/${product}/llt/$test_type/o
 mkdir -p $cur_dir/out/${product}/llt/$test_type/obj/lib/simulator/common/data
 cp $cur_dir/bin/cmodel/data/* $cur_dir/out/${product}/llt/$test_type/obj/lib/simulator/common/data/.
 #PYTHONPATH
-export PYTHONPATH=$cur_dir/tensor_engine/python:$cur_dir/tensor_engine/topi/python:$cur_dir/asl/ops/cann/ops/built-in/tbe:$cur_dir/toolchain/tensor_utils/op_test_frame/python:$PYTHONPATH
+export PYTHONPATH=$cur_dir/tensor_engine/python:$cur_dir/tensor_engine/topi/python:$cur_dir/cann/ops/built-in/tbe:$cur_dir/toolchain/tensor_utils/op_test_frame/python:$PYTHONPATH
 
 #PATH
 export PATH=$cur_dir/${TOOLCHAIN_HOME}/bin:$PATH

@@ -19,9 +19,9 @@ flags.DEFINE_string("simulator_mode", None, "simulator_mode")
 flags.DEFINE_string("simulator_lib_path", None, "simulator_lib_path")
 
 cur_dir = os.path.realpath(__file__)
-repo_root = os.path.sep.join(cur_dir.split(os.path.sep)[:-9])
-ini_cfg_root = os.path.join(repo_root, "asl", "ops", "cann", "ops", "built-in", "tbe", "op_info_cfg", "ai_core")
-impl_file_root = os.path.join(repo_root, "asl", "ops", "cann", "ops", "built-in", "tbe", "impl")
+repo_root = os.path.sep.join(cur_dir.split(os.path.sep)[:-7])
+ini_cfg_root = os.path.join(repo_root, "cann", "ops", "built-in", "tbe", "op_info_cfg", "ai_core")
+impl_file_root = os.path.join(repo_root, "cann", "ops", "built-in", "tbe", "impl")
 
 
 def get_op_info_from_ini_file(ini_file_full_path, no_sep_module_map: Dict[str, str]):
