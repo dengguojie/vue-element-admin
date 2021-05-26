@@ -349,8 +349,13 @@ INFER_FUNC_REG(Qr, QrInfer);
 IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
   bool judge = false;
   Shape input;
+  std::string error_msg;
   if (MakeBatchSquareMatrix(op.get_input_desc_x(), input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input x make batch square matrix failed");
+    error_msg = ConcatString("failed to call MakeBatchSquareMatrix function, ",
+      "Op SelfAdjointEig first input[x] tensor make batch square matrix failed ",
+      "the input[x] dim is ",
+      op.get_input_desc_x().GetShape().GetDimNum(), ".");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
     return GRAPH_FAILED;
   }
 
