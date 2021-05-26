@@ -34,12 +34,12 @@ STRIDES_SHAPE_DIM = 2
 # the dim of pads in conv_backprop must be 4
 PADDING_SHAPE_DIM = 4
 
-# fmapH, fmapW must be in [2,4096]
-FMAP_HW_MIN = 2
+# fmapH, fmapW must be in [1,4096]
+FMAP_HW_MIN = 1
 FMAP_HW_MAX = 4096
 
-# DeDy H,W must be in [2,4096]
-DEDY_HW_MIN = 2
+# DeDy H,W must be in [1,4096]
+DEDY_HW_MIN = 1
 DEDY_HW_MAX = 4096
 
 # filterH, filterW must be in [1,255]
@@ -611,13 +611,14 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
 
     def _is_load3d_special():
         # limitation by chip:
-        # Ascend910
-        # load3d not support when only fmap w after padding equals to filter w
-        if 'Ascend910' in get_soc_spec("SOC_VERSION") \
-            and fmap_h_padding != filter_h \
-            and fmap_w_padding == filter_w:
-            return False
-        return True
+        # load3d instruction not support out_w = 1
+        # only Ascend310/Hi3796CS/SD3403 can support
+        # in dx, out is fmap
+        if get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]  \
+            and fmap_h != 1 \
+            and fmap_w == 1:
+            return True
+        return False
 
     def _fusion_para_check(fusion_para):
         l1_fusion_type = fusion_para.get("l1_fusion_type")
@@ -665,13 +666,11 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     def _change_hw_limitation(dedy_hw_min, fmap_hw_min,
                               dedy_hw_max, fmap_hw_max):
         if _is_load3d_special():
-            dedy_hw_min = 1
-            fmap_hw_min = 1
+            dedy_hw_min = 2
+            fmap_hw_min = 2
 
         # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
         if _is_conv1d_situation():
-            dedy_hw_min = 1
-            fmap_hw_min = 1
             dedy_hw_max = CONV1D_W_MAX
             fmap_hw_max = CONV1D_W_MAX
         return dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max

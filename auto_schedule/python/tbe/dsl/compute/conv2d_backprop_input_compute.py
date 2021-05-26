@@ -51,11 +51,12 @@ DILATION_MAX = 255
 FILTER_HW_MIN = 1
 FILTER_HW_MAX = 255
 
-DY_FILLING_HW_MIN = 2
+# dyH, dyW must be in [1,4096]
+DY_FILLING_HW_MIN = 1
 DY_FILLING_HW_MAX = 4096
 
-# fmapH, fmapW must be in [2,4096]
-DX_HW_MIN = 2
+# fmapH, fmapW must be in [1,4096]
+DX_HW_MIN = 1
 DX_HW_MAX = 4096
 
 # conv1d situation support w not larger than 2^31-1
@@ -283,11 +284,13 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     # limitation by chip
     def _is_load3d_special_case():
         # limitation by chip:
-        # Ascend910 load3d not support
-        # when only fmap w after padding equals to filter w
-        if (cube_util.is_cloud_version() and dx_h_after_pad != filter_h and dx_w_after_pad == filter_w):
-            return False
-        return True
+        # load3d instruction not support out_w = 1
+        # only Ascend310/Hi3796CS/SD3403 can support
+        # in dx, out is fmap
+        if (tbe_platform_info.get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]
+            and dx_h != 1 and dx_w == 1):
+            return True
+        return False
 
     # limitation under conv1d
     def _is_conv1d_situation():
@@ -339,16 +342,15 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     dy_filling_hw_max, dx_hw_max = DY_FILLING_HW_MAX, DX_HW_MAX
 
     # limitation by chip:
-    # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
-    # load3d support h,w is 1
-
+    # load3d instruction not support out_w = 1
+    # only Ascend310/Hi3796CS/SD3403 can support
+    # in dx, out is fmap
     if _is_load3d_special_case():
-        dy_filling_hw_min = 1
-        dx_hw_min = 1
+        dy_filling_hw_min = 2
+        dx_hw_min = 2
+
     # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
     if _is_conv1d_situation():
-        dy_filling_hw_min = 1
-        dx_hw_min = 1
         dy_filling_hw_max = CONV1D_W_MAX
         dx_hw_max = CONV1D_W_MAX
 
