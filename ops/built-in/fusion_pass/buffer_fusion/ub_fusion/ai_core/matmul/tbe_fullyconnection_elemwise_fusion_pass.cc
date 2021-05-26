@@ -15,6 +15,9 @@
 #include "pattern_fusion_util.h"
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 
@@ -66,6 +69,59 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName.c_str());
   return patterns;
+}
+
+void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> fcNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
+  vector<ge::NodePtr> reluNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE1, mapping);
+  vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);
+  vector<ge::NodePtr> dequantNodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
+
+  int n_axis;
+  for (const auto& fcNode : fcNodes) {
+    if (fcNode->GetType() == "FullyConnection") {
+      int axis;
+      if (!ge::AttrUtils::GetInt(fcNode->GetOpDesc(), "axis", axis)) {
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "FullyConnection op[%s] type[%s] node does not have axis attr!",
+                fcNode->GetName().c_str(), fcNode->GetType().c_str());
+        return;
+      }
+      if (axis == 2) {
+        n_axis = 1;
+      } else if(fcNode->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_FRACTAL_NZ) {
+        n_axis = 0;
+      } else {
+        n_axis = 1;
+      }
+    } else {
+      n_axis = 0;
+    }
+  }
+
+  int pre = fcNodes[0]->GetInDataNodes().size() - 1;
+  vector<AxisSplitMap> split_maps;
+  if (!GetSplitMap(split_maps, fcNodes[0], FUSED_OP_TYPE)) {
+    return;
+  }
+
+  bool tensor_mode = false;
+  if (dequantNodes.size() > 0) {
+    auto deq_scale = dequantNodes[0]->GetOpDesc()->MutableInputDesc("deq_scale");
+    vector<int64_t> scalar = {1};
+    tensor_mode = deq_scale != nullptr && deq_scale->GetOriginShape().GetDims() != scalar;
+  }
+  // the dequant is scala mode, can not split c_dim
+  if (!tensor_mode) {
+    DelSplitInfoByOutputAxis(split_maps, n_axis);
+  }
+  pre += 1;
+
+  if (elemWiseNodes.empty()) {
+    elemWiseNodes = reluNodes;
+  }
+
+  AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
 }
 
 /*
@@ -155,6 +211,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
       return SUCCESS;
     }
   }
+  SetSplitInfo(mapping, fusionNodes);
   OP_LOGD("End to do TbeFullyconnectionElemwiseFusionPass!");
   return SUCCESS;
 }

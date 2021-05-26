@@ -24,6 +24,9 @@
 #include "pattern_fusion_util.h"
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 
@@ -59,6 +62,31 @@ vector<BufferFusionPattern*> MatmulReduceSumUbFusion::DefinePatterns() {
   return patterns;
 }
 
+void MatmulReduceSumUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
+  vector<ge::NodePtr> ReduceSumNodes = GetMatchedNodesByDescName(PATTERN_REDUCESUM, mapping);
+  if (matmulNodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched");
+    return;
+  }
+  if (ReduceSumNodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "ReduceSum node not matched");
+    return;
+  }
+
+  vector<AxisSplitMap> split_maps;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
+    return;
+  }
+
+  int batch_lenth = matmulNodes[0]->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDims().size() - 2;
+  for (int batch_index = 0; batch_index < batch_lenth; batch_index++){
+    DelSplitInfoByOutputAxis(split_maps, batch_index);
+  }
+
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+}
+
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -89,7 +117,7 @@ Status MatmulReduceSumUbFusion::GetFusionNodes(const BufferFusionMapping& mappin
   }
 
   fusionNodes = GetMatchedNodes(mapping);
-
+  SetSplitInfo(mapping, fusionNodes);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do MatmulReduceSumUbFusion!");
 
   return SUCCESS;

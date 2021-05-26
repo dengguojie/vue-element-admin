@@ -59,6 +59,7 @@ set(_common_srcs
   common/fusion_precheck_func.cc
   common/fusion_removenode_registry.cc
   common/pattern_fusion_util.cc
+  common/lx_fusion_func.cc
   common/quant_host_cpu_op_common.cc
 )
 

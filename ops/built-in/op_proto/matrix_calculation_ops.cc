@@ -46,6 +46,91 @@ using namespace std;
 
 namespace ge {
 // ----------------FullyConnection-------------------
+
+bool InferFullyConnectionDataSlice(ge::Operator& op) {
+  auto x_tensor = op.GetInputDesc("x");
+  auto w_tensor = op.GetInputDesc("w");
+  auto y_tensor = op.GetOutputDesc("y");
+
+  auto w_shape = w_tensor.GetShape().GetDims();
+  auto x_format = x_tensor.GetFormat();
+  auto y_format = y_tensor.GetFormat();
+
+  int64_t num_output;
+  int64_t axis;
+  if (GRAPH_SUCCESS != op.GetAttr("num_output", num_output) || GRAPH_SUCCESS != op.GetAttr("axis", axis)){
+    return false;
+  }
+  vector<vector<int64_t>> x_data_slice;
+  if (x_format == FORMAT_NC1HWC0 || axis == 2) {
+    x_data_slice = {{}, {}, {}, {}, {}};
+  } else {
+    x_data_slice = {{}, {}, {}, {}};
+  }
+  vector<vector<int64_t>> w_data_slice = {{}, {}, {}, {}};
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("w");
+  vector<vector<int64_t>> y_data_slice;
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return false;
+  }
+
+  bool infer_x = false;
+  bool infer_w = false;
+  for (int i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      if (i == 0) {
+        if (x_format == FORMAT_NC1HWC0 || axis == 2){
+          x_data_slice[i] = y_data_slice[i];
+          infer_x = true;
+        } else {
+          w_data_slice[1] = y_data_slice[i];
+          num_output = (w_data_slice[1][1] - w_data_slice[1][0] + 1) * w_shape[2];
+          infer_w = true;
+        }
+      } else if (i == 1){
+        if (x_format == FORMAT_NC1HWC0 || axis == 2) {
+          w_data_slice[i] = y_data_slice[i];
+          num_output = (w_data_slice[1][1] - w_data_slice[1][0] + 1) * w_shape[2];
+          infer_w = true;
+        } else {
+          x_data_slice[i] = y_data_slice[i];
+          infer_x = true;
+        }
+      } else {
+        if (axis == 2) {
+          x_data_slice[i] = y_data_slice[i];
+          infer_x = true;
+        }
+      }
+    }
+  }
+
+  if (!infer_x && !infer_w ) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return false;
+  }
+
+  if (infer_x) {
+    if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+      return false;
+    }
+    OP_LOGI(op.GetName().c_str(), "infer input x success");
+  }
+  if (infer_w) {
+    if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
+      return false;
+    }
+    op.SetAttr("num_output", num_output);
+    OP_LOGI(op.GetName().c_str(), "infer input w success");
+  }
+  return true;
+}
+
 IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
   auto xShape = op.get_input_desc_x().GetShape().GetDims();
   auto wShape = op.get_input_desc_w().GetShape().GetDims();
@@ -221,142 +306,12 @@ IMPLEMT_INFERFUNC(FullyConnection, FullyConnectionInfer) {
   return GRAPH_SUCCESS;
 }
 
-static void InferFC4DataSlice(ge::Format x_format, vector<vector<int64_t>>& output_slice,
-                              vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
-                              int64_t& num_output, int64_t co, bool& have_slice, bool& need_infer) {
-  if (x_format == FORMAT_NC1HWC0) {
-    for (int i = 0; i < output_slice.size(); i++) {
-      if (output_slice[i].size() > 0) {
-        have_slice = true;
-        if (i == 0) {
-          need_infer = true;
-          w_data_slice[1] = {output_slice[i][0], output_slice[i][1]};
-          num_output = (w_data_slice[1][1] - w_data_slice[1][0]) * co;
-        } else if (i == 1) {
-          need_infer = true;
-          x_data_slice[0] = {output_slice[i][0], output_slice[i][1]};
-        }
-      }
-    }
-  } else if (x_format == FORMAT_FRACTAL_NZ || x_format == FORMAT_FRACTAL_Z) {
-    for (int i = 0; i < output_slice.size(); i++) {
-      if (output_slice[i].size() > 0) {
-        have_slice = true;
-        if (i == 0) {
-          need_infer = true;
-          w_data_slice[1] = {output_slice[i][0], output_slice[i][1]};
-          num_output = (w_data_slice[1][1] - w_data_slice[1][0]) * co;
-        } else if (i == 1) {
-          need_infer = true;
-          x_data_slice[i] = {output_slice[i][0], output_slice[i][1]};
-        }
-      }
-    }
-  }
-
-}
-
-static void InferFC5DataSlice(vector<vector<int64_t>>& output_slice, vector<vector<int64_t>>& x_data_slice,
-                              vector<vector<int64_t>>& w_data_slice, int64_t& num_output, int64_t co,
-                              bool& have_slice, bool& need_infer) {
-  for (int i = 0; i < output_slice.size(); i++) {
-    if (output_slice[i].size() > 0) {
-      have_slice = true;
-      if (i == 0) {
-        need_infer = true;
-        x_data_slice[i] = {output_slice[i][0], output_slice[i][1]};
-      } else if (i == 1) {
-        need_infer = true;
-        w_data_slice[i] = {output_slice[i][0], output_slice[i][1]};
-        num_output = (w_data_slice[i][1] - w_data_slice[i][0]) * co;
-      } else if (i == 2) {
-        need_infer = true;
-        x_data_slice[i] = {output_slice[i][0], output_slice[i][1]};
-      }
-    }
-  }
-
-}
-
 IMPLEMT_INFER_DATA_SLICE(FullyConnection, FullyConnectionInferDataSlice) {
   OP_LOGD(op.GetName().c_str(), "Enter FullyConnection InferDataSlice");
-  auto x_tensor = op.GetInputDesc("x");
-  auto w_tensor = op.GetInputDesc("w");
-  auto y_tensor = op.GetOutputDesc("y");
-
-  auto w_shape = w_tensor.GetShape().GetDims();
-  auto x_format = x_tensor.GetFormat();
-  auto y_format = y_tensor.GetFormat();
-
-  int64_t num_output;
-  int64_t axis;
-  if (GRAPH_SUCCESS != op.GetAttr("num_output", num_output) || GRAPH_SUCCESS != op.GetAttr("axis", axis)){
-    return GRAPH_FAILED;
-  }
-
-  vector<vector<int64_t>> x_data_slice;
-  if (axis == 2) {
-    x_data_slice = {{}, {}, {}, {}, {}};
-  } else if (axis == 1) {
-    if (x_format == FORMAT_NC1HWC0) {
-      x_data_slice = {{}, {}, {}, {}, {}};
-    } else if (x_format == FORMAT_FRACTAL_NZ || x_format == FORMAT_FRACTAL_Z) {
-      x_data_slice = {{}, {}, {}, {}};
-    }
-  }
-
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
-  GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
-  GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("w");
-  vector<vector<int64_t>> y_data_slice;
-  vector<vector<int64_t>> w_data_slice = {{}, {}, {}, {}};
-  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
-    return GRAPH_FAILED;
-  }
-
-  bool need_infer = false;
-  bool have_slice = false;
-  if (y_format == FORMAT_NC1HWC0) {
-    for (int i = 0; i < y_data_slice.size(); i++) {
-      if (y_data_slice[i].size() > 0) {
-        have_slice = true;
-        if (i == 0) {
-          need_infer = true;
-          x_data_slice[i] = {y_data_slice[i][0], y_data_slice[i][1]};
-        } else if (i == 1) {
-          need_infer = true;
-          w_data_slice[i] = {y_data_slice[i][0], y_data_slice[i][1]};
-          num_output = (w_data_slice[i][1] - w_data_slice[i][0]) * w_shape[2];
-        }
-      }
-    }
-  } else if (y_format == FORMAT_FRACTAL_NZ) {
-    if (y_data_slice.size() == 4 && axis == 1) {
-      InferFC4DataSlice(x_format, y_data_slice, x_data_slice, w_data_slice, num_output, w_shape[2], have_slice,
-                        need_infer);
-    } else if (y_data_slice.size() == 5 && axis == 2) {
-      InferFC5DataSlice(y_data_slice, x_data_slice, w_data_slice, num_output, w_shape[2], have_slice, need_infer);
-    }
-  }
-
-  op.SetAttr("num_output", num_output);
-  OP_LOGD(op.GetName().c_str(), "FullyConnection new num_output is [%d]", num_output);
-
-  if (have_slice == false) {
-    return GRAPH_FAILED;
-  }
-  if (need_infer == false) {
-    return NO_OVERLAP_DIM;
-  } else{
-    if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice) ||
-       !AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
-      return GRAPH_FAILED;
-    }
+  if (InferFullyConnectionDataSlice(op)) {
     return GRAPH_SUCCESS;
   }
-  OP_LOGD(op.GetName().c_str(), "Calc FullyConnection InferDataSlice end!");
+  return GRAPH_FAILED;
 }
 
 INFER_FUNC_REG(FullyConnection, FullyConnectionInfer);
@@ -461,9 +416,19 @@ IMPLEMT_INFERFUNC(FullyConnectionCompress, FullyConnectionCompressInfer) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFER_DATA_SLICE(FullyConnectionCompress, FullyConnectionCompressInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter FullyConnectionCompress InferDataSlice");
+  if (InferFullyConnectionDataSlice(op)) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
 INFER_FUNC_REG(FullyConnectionCompress, FullyConnectionCompressInfer);
 
 VERIFY_FUNC_REG(FullyConnectionCompress, FullyConnectionCompressVerify);
+
+INFER_DATA_SLICE_FUNC_REG(FullyConnectionCompress, FullyConnectionCompressInferDataSlice);
 
 // ----------------Matmul-------------------
 string GetMatMulInfo(const Operator &op, const std::string &name_attr) {

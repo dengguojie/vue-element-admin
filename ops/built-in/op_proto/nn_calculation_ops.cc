@@ -70,6 +70,7 @@ namespace {
   const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
   const std::vector<int64_t> BATCH_GEAR = {0, 1, 3, 7, 15, 31, MAX_RANGE};
   const std::vector<int64_t> SHAPE_GEAR = {0, 3, 7, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4095, MAX_RANGE};
+  const std::vector<int64_t> DYNAMIC_DIM_ALL = {-2};
 }
 
 // ----------------LSTM begin-------------------
@@ -2503,8 +2504,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
   op.GetAttr("dilations", dilation_list);
   std::vector<int32_t> input_sizes;
   op.GetAttr("input_size", input_sizes);
-  int32_t ih = 0;
-  int32_t iw = 0;
+  int32_t ih = -1;
+  int32_t iw = -1;
   int32_t strh = 0;
   int32_t strw = 0;
   int32_t dilh = 0;
@@ -2531,15 +2532,19 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
     return GRAPH_FAILED;
   }
   if (dedy_format == FORMAT_NCHW) {
-    ih = dedy_shape[2];
-    iw = dedy_shape[3];
+    if (dedy_shape != DYNAMIC_DIM_ALL) {
+      ih = dedy_shape[2];
+      iw = dedy_shape[3];
+    }
     strh = stride_list[2];
     strw = stride_list[3];
     dilh = dilation_list[2];
     dilw = dilation_list[3];
   } else if (dedy_format == FORMAT_NHWC) {
-    ih = dedy_shape[1];
-    iw = dedy_shape[2];
+    if (dedy_shape != DYNAMIC_DIM_ALL) {
+      ih = dedy_shape[1];
+      iw = dedy_shape[2];
+    }
     strh = stride_list[1];
     strw = stride_list[2];
     dilh = dilation_list[1];
@@ -2604,7 +2609,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
   }
 
   for(int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 1) {
+    if (y_data_slice[i].size() > 0) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
         int64_t cin_start = y_data_slice[i][0] * kh * kw;
@@ -2617,7 +2622,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
         op.SetAttr("input_size", input_sizes);
         OP_LOGI(op.GetName().c_str(), "infer input in Cin success");
         return GRAPH_SUCCESS;
-      } else if(i == 2 && (kh != 1 || strh != 1)) {
+      } else if(i == 2 && (kh != 1 || strh != 1) && ih > 0) {
         vector<int64_t> input_h;
         InferHWConv2DbpInput(kh, dilh, strh, pad_list, y_data_slice[i], input_h, 0, ih);
         dedy_data_slice[i] = input_h;
@@ -2629,7 +2634,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in H success");
         return GRAPH_SUCCESS;
-      } else if(i == 3 && (kw != 1 || strw != 1)) {
+      } else if(i == 3 && (kw != 1 || strw != 1) && iw > 0) {
         vector<int64_t> input_w;
         InferHWConv2DbpInput(kw, dilw, strw, pad_list, y_data_slice[i], input_w, 2, iw);
         dedy_data_slice[i] = input_w;
@@ -2999,8 +3004,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
   std::vector<int32_t> input_sizes;
   op.GetAttr("input_size", input_sizes);
 
-  int32_t ih = 0;
-  int32_t iw = 0;
+  int32_t ih = -1;
+  int32_t iw = -1;
   int32_t strh = 0;
   int32_t strw = 0;
   int32_t dilh = 0;
@@ -3027,15 +3032,19 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
     return GRAPH_FAILED;
   }
   if (dedy_format == FORMAT_NCHW) {
-    ih = dedy_shape[2];
-    iw = dedy_shape[3];
+    if (dedy_shape != DYNAMIC_DIM_ALL) {
+      ih = dedy_shape[2];
+      iw = dedy_shape[3];
+    }
     strh = stride_list[2];
     strw = stride_list[3];
     dilh = dilation_list[2];
     dilw = dilation_list[3];
   } else if (dedy_format == FORMAT_NHWC) {
-    ih = dedy_shape[1];
-    iw = dedy_shape[2];
+    if (dedy_shape != DYNAMIC_DIM_ALL) {
+      ih = dedy_shape[1];
+      iw = dedy_shape[2];
+    }
     strh = stride_list[1];
     strw = stride_list[2];
     dilh = dilation_list[1];
@@ -3099,7 +3108,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
   }
 
   for(int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 1) {
+    if (y_data_slice[i].size() > 0) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
         int64_t cin_start = y_data_slice[i][0] * kh * kw;
@@ -3112,7 +3121,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
         op.SetAttr("input_size", input_sizes);
         OP_LOGI(op.GetName().c_str(), "infer input in Cin success");
         return GRAPH_SUCCESS;
-      } else if(i == 2 && (kh != 1 || strh != 1)) {
+      } else if(i == 2 && (kh != 1 || strh != 1) && ih > 0) {
         vector<int64_t> input_h;
         InferHWConv2DbpInput(kh, dilh, strh, pad_list, y_data_slice[i], input_h, 0, ih);
         dedy_data_slice[i] = input_h;
@@ -3124,7 +3133,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in H success");
         return GRAPH_SUCCESS;
-      } else if(i == 3 && (kw != 1 || strw != 1)) {
+      } else if(i == 3 && (kw != 1 || strw != 1) && iw > 0) {
         vector<int64_t> input_w;
         InferHWConv2DbpInput(kw, dilw, strw, pad_list, y_data_slice[i], input_w, 2, iw);
         dedy_data_slice[i] = input_w;
@@ -3300,7 +3309,7 @@ bool InferConv2DBackpropFilter(ge::Operator& op) {
   }
 
   for(int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 1) {
+    if (y_data_slice[i].size() > 0) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
         dedy_data_slice[i] = y_data_slice[i];
@@ -5455,8 +5464,12 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
   auto x_shape = x_tensor.GetOriginShape().GetDims();
   auto w_shape = w_tensor.GetOriginShape().GetDims();
   auto x_dtype = x_tensor.GetDataType();
-  int32_t ih = x_shape[2];
-  int32_t iw = x_shape[3];
+  int32_t ih = -1;
+  int32_t iw = -1;
+  if (x_shape != DYNAMIC_DIM_ALL) {
+    ih = x_shape[2];
+    iw = x_shape[3];
+  }
   int32_t kh = w_shape[2];
   int32_t kw = w_shape[3];
   int32_t strh = 0;
@@ -5505,7 +5518,7 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
   }
 
   for(int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 1) {
+    if (y_data_slice[i].size() > 0) {
       if (i == 1) {
         if (x_dtype != DT_INT8) {
           int64_t cin_start = y_data_slice[i][0] * kh * kw;
@@ -5519,7 +5532,7 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
         }
         OP_LOGI(op.GetName().c_str(), "infer input in Cin success");
         return GRAPH_SUCCESS;
-      } else if(i == 2 && (kh != 1 || strh != 1)) {
+      } else if(i == 2 && (kh != 1 || strh != 1) && ih > 0) {
         vector<int64_t> input_h;
         InferHWConv2DbpInput(kh, dilh, strh, pad_list, y_data_slice[i], input_h, 0, ih);
         x_data_slice[i] = input_h;
@@ -5529,7 +5542,7 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in H success");
         return GRAPH_SUCCESS;
-      } else if(i == 3 && (kw != 1 || strw != 1)) {
+      } else if(i == 3 && (kw != 1 || strw != 1) && iw > 0) {
         vector<int64_t> input_w;
         InferHWConv2DbpInput(kw, dilw, strw, pad_list, y_data_slice[i], input_w, 2, iw);
         x_data_slice[i] = input_w;
@@ -9113,9 +9126,12 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
   int32_t c_y_position = y_format_str.find("C");
   int32_t h_y_position = y_format_str.find("H");
   int32_t w_y_position = y_format_str.find("W");
-
-  int32_t ih = x_shape[h_input_position];
-  int32_t iw = x_shape[w_input_position];
+  int32_t ih = -1;
+  int32_t iw = -1;
+  if (x_shape != DYNAMIC_DIM_ALL) {
+    ih = x_shape[h_input_position];
+    iw = x_shape[w_input_position];
+  }
   int32_t strh = stride_list[h_input_position];
   int32_t strw= stride_list[h_input_position];
   int32_t dilh = dilations_list[h_input_position];
@@ -9155,7 +9171,7 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
     return false;
   }
   for(int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 1) {
+    if (y_data_slice[i].size() > 0) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
         if (x_dtype != DT_INT8) {
@@ -9172,7 +9188,7 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
         op.SetAttr("input_size", input_sizes);
         OP_LOGI(op.GetName().c_str(), "infer input in Cin success");
         return true;
-      } else if(i == 2 && (kh != 1 || strh != 1)) {
+      } else if(i == 2 && (kh != 1 || strh != 1) && ih > 0) {
         vector<int64_t> input_h;
         InferHWConv2DbpInput(kh, dilh, strh, pad_list, y_data_slice[i], input_h, 0, ih);
         x_data_slice[i] = input_h;
@@ -9184,7 +9200,7 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in H success");
         return true;
-      } else if(i == 3 && (kw != 1 || strw != 1)) {
+      } else if(i == 3 && (kw != 1 || strw != 1) && iw > 0) {
         vector<int64_t> input_w;
         InferHWConv2DbpInput(kw, dilw, strw, pad_list, y_data_slice[i], input_w, 2, iw);
         x_data_slice[i] = input_w;

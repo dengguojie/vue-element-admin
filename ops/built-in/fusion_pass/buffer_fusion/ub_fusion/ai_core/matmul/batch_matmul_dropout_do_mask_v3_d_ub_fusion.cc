@@ -24,6 +24,9 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 namespace {
@@ -58,6 +61,27 @@ vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatter
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Define pattern %s success.", pass_name.c_str());
 
   return patterns;
+}
+
+void BatchMatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
+  vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_DROPOUTDOMASKV3D, mapping);
+  if (matmulNodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched");
+    return;
+  }
+  if (elemWiseNodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "DropOutV3 node not matched");
+    return;
+  }
+
+  int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
+  vector<AxisSplitMap> split_maps;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
+    return;
+  }
+  AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
 }
 
 Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionMapping& mapping,
@@ -156,6 +180,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
     ge::AttrUtils::SetStr(batch_matmul_node->GetOpDesc(), UB_FUSION_OP_TYPE, "DropOutDoMaskV3D");
   }
 
+  SetSplitInfo(mapping, fusion_nodes);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do BatchMatmulDropOutDoMaskV3DFusion!");
   return SUCCESS;
 }

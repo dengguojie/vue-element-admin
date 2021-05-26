@@ -43,7 +43,6 @@ class TbeDxDeqElemQuantPass : public BufferFusionPassBase {
 
  private:
   void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
-  void DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis);
   const std::string FUSED_OP_TYPE = "FusedOp";
 };
 

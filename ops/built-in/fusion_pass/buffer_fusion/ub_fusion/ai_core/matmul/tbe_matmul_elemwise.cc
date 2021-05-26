@@ -24,6 +24,9 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 namespace {
@@ -72,6 +75,27 @@ vector<BufferFusionPattern*> TbeMatmulElemwiseFusionPass::DefinePatterns() {
   patterns.push_back(pattern1);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName1.c_str());
   return patterns;
+}
+
+void TbeMatmulElemwiseFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
+  vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(OP_PATTERN_MATMUL, mapping);
+  if (matmulNodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched");
+    return;
+  }
+  if (elemWiseNodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Elemwise node not matched");
+    return;
+  }
+
+  int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
+  vector<AxisSplitMap> split_maps;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
+    return;
+  }
+  AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
 }
 
 /*
@@ -127,6 +151,7 @@ Status TbeMatmulElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping& ma
       }
     }
   }
+  SetSplitInfo(mapping, fusionNodes);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do TbeMatmulElemwiseFusion!");
   return SUCCESS;
 }

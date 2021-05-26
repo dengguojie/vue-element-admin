@@ -24,6 +24,9 @@
 #include "pattern_fusion_util.h"
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 
@@ -114,6 +117,27 @@ vector<BufferFusionPattern*> MatmulGelugradUbFusion::DefinePatterns() {
   return patterns;
 }
 
+void MatmulGelugradUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
+  vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE, mapping);
+  if (matmulNodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched");
+    return;
+  }
+  if (elemWiseNodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Elemwise node not matched");
+    return;
+  }
+
+  int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
+  vector<AxisSplitMap> split_maps;
+  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
+    return;
+  }
+  AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
+}
+
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -151,6 +175,7 @@ Status MatmulGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& mapping
       }
     }
   }
+  SetSplitInfo(mapping, fusionNodes);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do MatmulGelugradUbFusion!");
   return SUCCESS;
 }

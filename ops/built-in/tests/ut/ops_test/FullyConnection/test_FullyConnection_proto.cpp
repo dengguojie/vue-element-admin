@@ -64,7 +64,7 @@ TEST_F(FullyConnectionProtoTest, fullyConnectionSplicDataTest_1) {
     ge::AttrUtils::GetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice);
 
     std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0, 2}, {}, {}};
-    std::vector<std::vector<int64_t>> expect_w_data_slice = {{}, {}, {}, {}};
+    std::vector<std::vector<int64_t>> expect_w_data_slice = {};
     EXPECT_EQ(expect_x_data_slice, x_data_slice);
     EXPECT_EQ(expect_w_data_slice, w_data_slice);
 }
@@ -92,7 +92,7 @@ TEST_F(FullyConnectionProtoTest, fullyConnectionSplicDataTest_2) {
     ge::AttrUtils::GetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice);
 
     std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {0, 3}, {}, {}};
-    std::vector<std::vector<int64_t>> expect_w_data_slice = {{}, {}, {}, {}};
+    std::vector<std::vector<int64_t>> expect_w_data_slice = {};
     EXPECT_EQ(expect_x_data_slice, x_data_slice);
     EXPECT_EQ(expect_w_data_slice, w_data_slice);
 }
@@ -100,8 +100,8 @@ TEST_F(FullyConnectionProtoTest, fullyConnectionSplicDataTest_2) {
 TEST_F(FullyConnectionProtoTest, fullyConnectionSplicDataTest_3) {
     ge::op::FullyConnection fullyConnection;
     fullyConnection.UpdateInputDesc("x", create_desc_with_ori({4, 1, 1, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,{4, 16, 1, 1}, ge::FORMAT_NCHW));
-    fullyConnection.UpdateInputDesc("w", create_desc_with_ori({1, 2, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z,{32, 16, 1, 1}, ge::FORMAT_NCHW));
-    fullyConnection.UpdateOutputDesc("y", create_desc_with_ori({4, 2, 1, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,{4, 32, 1, 1}, ge::FORMAT_NCHW));
+    fullyConnection.UpdateInputDesc("w", create_desc_with_ori({1, 4, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z,{64, 16, 1, 1}, ge::FORMAT_NCHW));
+    fullyConnection.UpdateOutputDesc("y", create_desc_with_ori({4, 4, 1, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0,{4, 64, 1, 1}, ge::FORMAT_NCHW));
     fullyConnection.SetAttr("num_output", 32);
     fullyConnection.SetAttr("transpose", false);
     fullyConnection.SetAttr("axis", 1);
@@ -126,7 +126,7 @@ TEST_F(FullyConnectionProtoTest, fullyConnectionSplicDataTest_3) {
 
     std::int64_t num_output;
     fullyConnection.GetAttr("num_output", num_output);
-    std::int64_t expect_num_output = 16;
+    std::int64_t expect_num_output = 32;
     EXPECT_EQ(expect_num_output, num_output);
 }
 

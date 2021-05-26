@@ -21,8 +21,9 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_FUSEDMULADD_UB_FUSION_H_
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_BATCH_MATMUL_FUSEDMULADD_UB_FUSION_H_
 
-#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 #include <vector>
+#include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+#include "common/lxfusion_json_util.h"
 
 namespace fe {
 
@@ -38,6 +39,7 @@ class TbeBatchMatmulFusedMulAddFusionPass : public BufferFusionPassBase {
 
   private:
     const string FUSED_OP_TYPE = "FusedOp";
+    void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
 };
 
 }  // namespace fe

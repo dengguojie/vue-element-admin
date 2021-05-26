@@ -25,6 +25,7 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 
@@ -87,26 +88,18 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
     return;
   }
 
-  int inpre = 0;
-  string op_slice_info_str = "";
-  for (auto deconv_node: deconv_nodes) {
-    inpre = deconv_node->GetInDataNodes().size() - 1;
-    ge::AttrUtils::GetStr(deconv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
-  }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+  int inpre = deconv_nodes[0]->GetInDataNodes().size() - 1;
+  vector<AxisSplitMap> split_maps;
 
-  OpCalcInfo op_calc_info;
-  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
-  auto split_maps = op_calc_info.GetAxisSplitMapVec();
-  if (split_maps.empty()) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "axis split map vector is empty");
-    return;
+  if (!GetSplitMap(split_maps, deconv_nodes[0], FUSED_OP_TYPE)) {
+     return;
   }
+
   // when deconv + prelu, add one input
   if (elemwise_nodes[0]->GetType() == "PRelu") {
     inpre += 1;
     vector<int64_t> cout_dim = {1};
-    vector<int64_t> split_flag = {0};
+    vector<int64_t> split_flag = {-1};
     for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
       auto output_split_infos = (*it).GetOutputSplitInfoVec();
       auto input_split_infos = (*it).GetInputSplitInfoVec();
@@ -122,13 +115,9 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
         (*it).AddInputSplitInfo(input_split_info);
       }
     }
-    op_calc_info.SetAxisSplitMaps(split_maps);
   }
-  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
-  for (auto fusion_node : fusion_nodes) {
-    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
-  }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
+
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
 }
 
 /*

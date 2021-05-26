@@ -23,6 +23,7 @@
 
 #include <vector>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+#include "common/lxfusion_json_util.h"
 
 namespace fe {
 
@@ -46,6 +47,7 @@ class MatmulFastGelugradUbFusion : public BufferFusionPassBase {
 
  private:
   const string FUSED_OP_TYPE = "FusedOp";
+  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
 };
 
 }  // namespace fe
