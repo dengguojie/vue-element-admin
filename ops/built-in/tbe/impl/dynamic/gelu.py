@@ -68,7 +68,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
     has_improve_precision = False
 
     if dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
         has_improve_precision = True
         input_x = tbe.cast_to(input_x, "float32")
 
@@ -147,10 +147,7 @@ def gelu(x, y, kernel_name="gelu"):
         with tbe.compute():
             shape_x = shape_util.variable_shape([x1])
 
-            fuse_shape = [1]
-            fuse_shape[0] = functools.reduce(lambda x1, y: x1 * y, shape_x[0])
-
-            input_data = tvm.placeholder(fuse_shape, name="input_data",
+            input_data = tvm.placeholder(shape_x[0], name="input_data",
                                          dtype=dtype_x)
             res = gelu_compute(input_data, y, kernel_name)
 
