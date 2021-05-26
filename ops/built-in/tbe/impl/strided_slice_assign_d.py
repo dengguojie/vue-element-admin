@@ -44,14 +44,6 @@ def _check_parameter(input_shape, begin, end, strides, ellipsis_mask, new_axis_m
         error_manager_vector.raise_err_specific_reson("strided_slice_assign_d",
                                                       "end shape, begin shape and strides shape length must be equal!")
 
-    if ellipsis_mask > 0 and new_axis_mask > 0:
-        error_manager_vector.raise_err_specific_reson(
-            "strided_slice_assign_d", "ellipsis_mask and new_axis_mask can not both be greater than 0!")
-
-    if ellipsis_mask > 0 and shrink_axis_mask > 0:
-        error_manager_vector.raise_err_specific_reson(
-            "strided_slice_assign_d", "ellipsis_mask and shrink_axis_mask can not both be greater than 0!")
-
     for i, _ in enumerate(begin):
         if strides[i] <= 0:
             error_manager_vector.raise_err_specific_reson("strided_slice_assign_d",

@@ -672,6 +672,13 @@ def max_pool_grad_grad_with_argmax(x,
 
     ori_format_x = x.get("ori_format")
 
+    if ksize[0] != 1 or ksize[3] != 1 or ksize[1] <= 0 or ksize[2] <= 0:
+        error_manager_vector.raise_err_check_params_rules(kernel_name, 'the dimensions of ksize are invalid',
+                                                          ['ksize'], [ksize])
+    if strides[0] != 1 or strides[3] != 1 or strides[1] <= 0 or strides[2] <= 0:
+        error_manager_vector.raise_err_check_params_rules(kernel_name, 'the dimensions of strides are invalid',
+                                                          ['strides'], [strides])
+
     x_tensor = tvm.placeholder(shape_x, dtype=dtype_x, name="input_x")
 
     # argmax is continuous bool, real type is uint16

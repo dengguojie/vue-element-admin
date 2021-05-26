@@ -69,8 +69,20 @@ case1 = {"params":[x, grad, argmax, y, ksize, strides, pad],
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case2 = {"params":[x, grad, argmax, y, (3,3,3,1), strides, pad],
+         "case_name": "max_pool_grad_grad_with_argmax_2",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+case3 = {"params":[x, grad, argmax, y, ksize, (3,1,1,1), pad],
+         "case_name": "max_pool_grad_grad_with_argmax_3",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 
 def tf_get_windowed_output_size_verbose_V2(input_size, filter_size,
                                            stride, padding_type,
