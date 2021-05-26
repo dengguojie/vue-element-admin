@@ -49,8 +49,8 @@ static graphStatus MergeAsMaxInput(Operator &op) {
       string reason = "x[0]'s dtype[" + std::to_string(x0_type) + "] must be equal to x[" + std::to_string(i) +
                       "]'s dtype[" + std::to_string(xi_type) + "]";
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
-      OP_LOGE(op.GetName(), "Check type failed: x[0]'s dtype[%u] must be equal to x[%zu]'s dtype[%u]",
-              x0_type, i, xi_type);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
 
@@ -75,8 +75,10 @@ static graphStatus MergeAsMaxInput(Operator &op) {
           break;
         }
         if (size != 0 && INT64_MAX / size < dim) {
-          GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dim", "the dim size is overflow");
-          OP_LOGE(op.GetName(), "The dim size is overflow");
+          std::string reason = "size of input " + std::to_string(i) + " overflow int64";
+          GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dim", reason);
+          REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape failed, as %s", op.GetName().c_str(), reason.c_str());
+          GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check shape failed, as %s", reason.c_str());
           return GRAPH_FAILED;
         }
         size *= dim;
@@ -92,7 +94,8 @@ static graphStatus MergeAsMaxInput(Operator &op) {
     }
   }
   if (size_to_index.empty()) {
-    OP_LOGE(op.GetName(), "No valid input shape");
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check valid shape failed, no valid input shape", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check valid shape failed, no valid input shape");
     return GRAPH_FAILED;
   }
   auto index = size_to_index.rbegin()->second;
@@ -114,9 +117,11 @@ static graphStatus MergeAsRunInput(Operator &op, int merge_index) {
     (void)td_x.SetShapeRange({});
     return op.UpdateOutputDesc("y", td_x);
   }
-  string reason = "merge index[" + std::to_string(merge_index) + "] not in range [0, " + std::to_string(in_num) + ")";
+  string reason = "specific merge index[" + std::to_string(merge_index) + "] not in range [0, " +
+                  std::to_string(in_num) + ")";
   GeInfershapeErrReport(op.GetName(), op.GetOpType(), "input", reason);
-  OP_LOGE(op.GetName(), "Invalid merge index: %s", reason.c_str());
+  REPORT_INNER_ERROR("E19999", "[Node:%s] Check input index failed, as %s", op.GetName().c_str(), reason.c_str());
+  GE_OP_LOGE(op.GetName().c_str(), "[InferShapeWhenRun][Check] Check input index failed, as %s", reason.c_str());
   return GRAPH_FAILED;
 }
 
@@ -125,9 +130,10 @@ graphStatus MergeInferImpl(Operator &op) {
   OP_LOGD(op.GetName(), "Begin to infer merge node shape, input size %zu", in_num);
   // Check N of "x" >= 1
   if (in_num < 1) {
-    string reason = "inputs size[" + std::to_string(in_num) + "] must be greater than or equal to 1";
+    string reason = "input num should >= 1, actually input_num=" + std::to_string(in_num);
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "input", reason);
-    OP_LOGE(op.GetName(), "Check inputs failed: %s", reason.c_str());
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check input num failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input num failed, as %s", reason.c_str());
     return GRAPH_FAILED;
   }
 
@@ -135,7 +141,8 @@ graphStatus MergeInferImpl(Operator &op) {
   td_v.SetShape(Shape());
   td_v.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("value_index", td_v) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName(), "Failed to update value_index tensor.");
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Update output desc of value_index failed", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Update] Update output desc of value_index failed");
     return GRAPH_FAILED;
   }
 
@@ -157,7 +164,7 @@ graphStatus MergeInferImpl(Operator &op) {
     // Check is while_loop, order of InferShape: Enter -> Merge -> Switch -> NextIteration -> Merge -> Switch -> Exit
     // So when processing InferShape on Merge op, shape & datatype of NextIteration op is set as default.
     // Therefore, shape & datatype of Merge op should be set as the Enter op.
-    const auto &node_x1 = node->GetInDataNodes().at(1); // NextIteration
+    const auto &node_x1 = node->GetInDataNodes().at(1);   // NextIteration
     if (node_x1->GetType() == "NextIteration" || node_x1->GetType() == "RefNextIteration") {
       bool need_infer_again = false;
       if (op.GetAttr(ATTR_NAME_NEED_INFER_AGAIN, need_infer_again) != GRAPH_SUCCESS) {  // first time infer.
@@ -185,7 +192,8 @@ graphStatus MergeInferImpl(Operator &op) {
       string reason = "x[0]'s dtype[" + std::to_string(x0_type) + "] must be equal to x[" + std::to_string(i) +
                       "]'s dtype["  + std::to_string(xi_type) + "]";
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
-      OP_LOGE(op.GetName(), "Check dtype failed: %s", reason.c_str());
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
 
@@ -273,14 +281,18 @@ graphStatus SwitchInferImpl(Operator& op) {
   // check "pred" scalar type be bool
   auto pred_dims = pred_desc->GetShape().GetDims();
   if (pred_dims.size() != 0) {
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "pred dims", "pred should be a scalar");
-    OP_LOGE(op.GetName(), "pred should be a scalar, actually size=%zu", pred_dims.size());
+    string reason = "input pred should be a scalar, actually rank=" + std::to_string(pred_dims.size());
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "pred dims", reason);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check shape rank failed, as %s", reason.c_str());
     return GRAPH_FAILED;
   }
   DataType pred_type = pred_desc->GetDataType();
   if (pred_type != DT_BOOL) {
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", "pred should be bool type");
-    OP_LOGE(op.GetName(), "pred should be bool type, actually type=%u", pred_type);
+    string reason = "input pred should be DT_BOOL, actually is " + DataTypeToStringDesc(pred_type);
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
     return GRAPH_FAILED;
   }
 
@@ -361,16 +373,20 @@ graphStatus PassThroughInferImpl(Operator& op, const std::string& in_name, const
 graphStatus LoopCondInferImpl(Operator& op) {
   auto input_dims = op.GetInputDesc("x").GetShape().GetDims();
   if (input_dims.size() != 0) {
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "x dims", "x should be a scalar");
-    OP_LOGE(op.GetName(), "x should be a scalar, actually size=%zu", input_dims.size());
+    string reason = "input x should be a scalar, actually rank=" + std::to_string(input_dims.size());
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "pred dims", reason);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check shape rank failed, as %s", reason.c_str());
     return GRAPH_FAILED;
   }
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   tensordesc_output.SetShape(ge::Shape(input_dims));
   DataType input_type = op.GetInputDesc("x").GetDataType();
   if (input_type != DT_BOOL) {
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", "x should be bool type");
-    OP_LOGE(op.GetName(), "x should be bool type, actually type=%u", input_type);
+    string reason = "input x should be DT_BOOL, actually is " + DataTypeToStringDesc(input_type);
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
     return GRAPH_FAILED;
   }
   tensordesc_output.SetDataType(input_type);

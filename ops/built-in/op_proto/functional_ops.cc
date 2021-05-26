@@ -21,6 +21,8 @@
 #include "inc/functional_ops.h"
 #include "common/inc/op_log.h"
 #include "common_shape_fns.h"
+#include "util/error_util.h"
+#include "util/util.h"
 
 namespace ge {
 namespace {
@@ -28,12 +30,18 @@ graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& inpu
   for (const std::string& name : input_names) {
     auto dims = op.GetInputDesc(name).GetShape().GetDims();
     if (dims.size() != 0) {
-      OP_LOGE(op.GetName().c_str(), "input %s should be a scalar, actually size=%lu", name.c_str(), dims.size());
+      string reason = "input " + name + " should be a scalar, actually rank=" + std::to_string(dims.size());
+      GeInfershapeErrReport(op.GetName(), op.GetOpType(), name + "dims", reason);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[Verify][Check] Check shape rank failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
     DataType type = op.GetInputDesc(name).GetDataType();
     if (type != DT_INT32) {
-      OP_LOGE(op.GetName().c_str(), "input %s should be int32 type, actually type=%u", name.c_str(), type);
+      string reason = "input " + name + " should be DT_INT32, actually is " + DataTypeToStringDesc(type);
+      GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
   }

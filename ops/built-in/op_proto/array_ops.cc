@@ -73,8 +73,7 @@ IMPLEMT_INFERFUNC(UniqueWithCounts, UniqueWithCountsInfer) {
 
   DataType type;
   if (op.GetAttr("out_idx", type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-                                       string("get attr[out_idx] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[out_idx] failed"));
     return GRAPH_FAILED;
   }
 
@@ -104,8 +103,7 @@ IMPLEMT_INFERFUNC(Unique, UniqueInfer) {
 
   GeShape x_shape;
   if (WithRank(x_input, 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(0,
-        DebugString(x_input->GetShape().GetDims()), "1D");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(x_input->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -187,9 +185,8 @@ IMPLEMT_INFERFUNC(InvertPermutation, InvertPermutationInfer) {
   Shape shape;
   if (WithRank(op.GetInputDesc(0), 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "1D");
-    std::string err_msg = ConcatString("failed to call WithRank function, ",
-      "input[x] rank must be 1D, but got rank[",
-      op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+    std::string err_msg = ConcatString("failed to call WithRank function, input[x] rank must be 1D, but got rank[",
+                                       op.GetInputDesc(0).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -239,15 +236,13 @@ IMPLEMT_INFERFUNC(UnravelIndex, UnravelIndexInfer) {
 
   Shape dims_shape;
   if (WithRank(dims_desc, 1, dims_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    string err_msg = ConcatString("input[dims] must be 1D, real rank is ",
-                     dims_shape.GetDimNum());
+    string err_msg = ConcatString("input[dims] must be 1D, real rank is ", dims_shape.GetDimNum());
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Shape indices_shape;
   if (WithRankAtMost(indices_desc, 1, indices_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    string err_msg = ConcatString("input[indices] must be less than 1D, real rank is ",
-                     dims_shape.GetDimNum());
+    string err_msg = ConcatString("input[indices] must be less than 1D, real rank is ", dims_shape.GetDimNum());
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -277,25 +272,22 @@ IMPLEMT_INFERFUNC(UpperBound, UpperBoundInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "2D");
-    string err_msg = ConcatString(
-        "failed to call WithRank function, input[sorted_x] rank must be 2D, "
-        "got rank[", op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+    string err_msg = ConcatString("failed to call WithRank function, input[sorted_x] rank must be 2D, got rank[",
+                                  op.GetInputDesc(0).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D");
-    string err_msg = ConcatString(
-        "failed to call WithRank function, input[values] rank must be 2D, "
-        "got rank[", op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+    string err_msg = ConcatString("failed to call WithRank function, input[values] rank must be 2D, got rank[",
+                                  op.GetInputDesc(1).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   DataType type;
   if (op.GetAttr("out_type", type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-                                       string("get attr[out_type] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[out_type] failed"));
     return GRAPH_FAILED;
   }
 
@@ -319,8 +311,7 @@ IMPLEMT_INFERFUNC(UniqueWithCountsExt2, UniqueWithCountsExt2Infer) {
 
   DataType type;
   if (op.GetAttr("out_idx", type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-                                       string("get attr[out_idx] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[out_idx] failed"));
     return GRAPH_FAILED;
   }
 
@@ -366,18 +357,14 @@ IMPLEMT_INFERFUNC(ListDiff, ListDiffInfer) {
 
   Shape unused_shape;
   std::string error_msg;
-  if (WithRank(x_desc, 1, unused_shape, op.GetName().c_str()) !=
-      GRAPH_SUCCESS) {
-    std::string error_msg =
-        GetShapeErrMsg(0, DebugString(x_desc->GetShape().GetDims()), "1D");
+  if (WithRank(x_desc, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string error_msg = GetShapeErrMsg(0, DebugString(x_desc->GetShape().GetDims()), "1D");
     error_msg = string("failed to call WithRank function, ") + error_msg;
     return GRAPH_FAILED;
   }
 
-  if (WithRank(y_desc, 1, unused_shape, op.GetName().c_str()) !=
-      GRAPH_SUCCESS) {
-    std::string error_msg =
-        GetShapeErrMsg(1, DebugString(y_desc->GetShape().GetDims()), "1D");
+  if (WithRank(y_desc, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string error_msg = GetShapeErrMsg(1, DebugString(y_desc->GetShape().GetDims()), "1D");
     error_msg = string("failed to call WithRank function, ") + error_msg;
     return GRAPH_FAILED;
   }
@@ -385,8 +372,7 @@ IMPLEMT_INFERFUNC(ListDiff, ListDiffInfer) {
   DataType output_type = x_desc->GetDataType();
   DataType index_type;
   if (op.GetAttr("out_idx", index_type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-                                       string("failed to get attr[out_idx]."));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("failed to get attr[out_idx]."));
     return GRAPH_FAILED;
   }
 
@@ -417,9 +403,8 @@ IMPLEMT_INFERFUNC(ReverseSequence, ReverseSequenceInfer) {
 
   // Check whether seq_lengths's rank is equal to 1
   if (WithRank(seq_lengths_desc, 1, seq_lengths_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = ConcatString(
-        "failed to call WithRank function, input[seq_lengths] rank must "
-        "be 1, got rank[", seq_lengths_desc.GetShape().GetDimNum(), "]");
+    std::string err_msg = ConcatString("failed to call WithRank function, input[seq_lengths] rank must be 1, "
+        "got rank[", seq_lengths_desc.GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -444,27 +429,26 @@ IMPLEMT_INFERFUNC(ReverseSequence, ReverseSequenceInfer) {
   int64_t input_rank = input_shape.GetDimNum();
   if (seq_dim >= input_rank) {
     string err_msg = GetAttrValueErrMsg("seq_dim", ConcatString(seq_dim),
-        ConcatString("< the rank of 0th input[", input_rank, "], 0th input shape is ",
-            DebugString(input_shape.GetDims())));
+                                        ConcatString("< the rank of 0th input[", input_rank, "], 0th input shape is ",
+                                                     DebugString(input_shape.GetDims())));
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (batch_dim >= input_rank) {
     string err_msg = GetAttrValueErrMsg("batch_dim", ConcatString(batch_dim),
-        ConcatString("< the rank of 0th input[", input_rank, "], 0th input shape is ",
-            DebugString(input_shape.GetDims())));
+                                        ConcatString("< the rank of 0th input[", input_rank, "], 0th input shape is ",
+                                                     DebugString(input_shape.GetDims())));
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t batch_dim_dim = input_shape.GetDim(batch_dim);
   if (Merge(batch_dim_dim, seq_lengths_shape.GetDim(0), batch_dim_dim) != GRAPH_SUCCESS) {
-    string err_msg = ConcatString(
-        "failed to call Merge function, the batch_dim[", batch_dim, "]th dim "
-        "value[", batch_dim_dim, "] of 0th input should be equal to 0th dim "
-        "value[", seq_lengths_shape.GetDim(0), "] of 1th input. 0th input "
-        "shape", DebugString(input_shape.GetDims()), ", 1th input shape",
-        DebugString(seq_lengths_shape.GetDims()));
+    string err_msg = ConcatString("failed to call Merge function, the batch_dim[", batch_dim, "]th dim value[",
+                                  batch_dim_dim, "] of 0th input should be equal to 0th dim value[",
+                                  seq_lengths_shape.GetDim(0), "] of 1th input. 0th input shape",
+                                  DebugString(input_shape.GetDims()), ", 1th input shape",
+                                  DebugString(seq_lengths_shape.GetDims()));
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -523,11 +507,13 @@ graphStatus ConstAndConstantInferFormat(ge::Operator& op) {
   auto format = op_desc->MutableOutputDesc(0)->GetOriginFormat();
   ConstGeTensorPtr tensor_value;
   if (!AttrUtils::GetTensor(op_desc, "value", tensor_value)) {
-    OP_LOGE(op.GetName().c_str(), "Get attr value failed!");
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Get attr value failed", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get attr value failed");
     return GRAPH_FAILED;
   }
   if (!tensor_value) {
-    OP_LOGE(op.GetName().c_str(), "attr tensor is not exist!");
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr value failed, as value is empty", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check attr value failed, as value is empty");
     return GRAPH_FAILED;
   }
   auto tensor_ptr = const_cast<GeTensor*>(tensor_value.get());
@@ -807,7 +793,8 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto node = NodeUtils::GetNodeFromOperator(op);
   if (node == nullptr) {
-    GE_OP_LOGE(op.GetName().c_str(), "get null node ptr");
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as get null node from op", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node from op failed, as node is null");
     return GRAPH_FAILED;
   }
   auto x_desc = op_desc->MutableInputDesc("x");
@@ -819,9 +806,11 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
   auto x_type = x_desc->GetDataType();
 
   if (axis_type != DT_INT32 && axis_type != DT_INT64) {
-    string reason = "axis dtype[" + std::to_string(axis_type) + "] must int32 or int64";
+    string reason = "axis dtype must DT_INT32 or DT_INT64, actually is " + DataTypeToStringDesc(axis_type);
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrDtype, reason);
-    GE_OP_LOGE(op.GetName().c_str(), "axis dtype[%d] must int32 or int64", axis_type);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check input axis dtype failed, as %s", op.GetName().c_str(),
+                       reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input axis dtype failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
 
@@ -839,9 +828,11 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
   if (axis_nums != 1) {
     // Shape::GetDims().size() == 0, means it's a scalar, its shape is [].
     if (!(axis_nums == 0 && axis_desc->MutableShape().GetDims().size() == 0)) {
-      string reason = "axis input must be a tensor with a single value, but [" + std::to_string(axis_nums) + "] nums";
+      string reason = "axis input must be a tensor with a single value, actually rank = " + std::to_string(axis_nums);
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), "axis", reason);
-      GE_OP_LOGE(op.GetName().c_str(), "'axis' input must be a tensor with a single value, but %d nums", axis_nums);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check input axis shape failed, as %s", op.GetName().c_str(),
+                         reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input axis shape failed, as %s", reason.c_str());
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -864,8 +855,12 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
       return GRAPH_SUCCESS;
     }
     if (x_range.size() != x_shape_size) {
-      GE_OP_LOGE(op.GetName().c_str(),
-        "input range size num[%zu] should be same with input shape size[%zu]", x_range.size(), x_shape_size);
+      string reason = "input shape range rank should be same with input shape rank, actually shape_rank=" +
+                      std::to_string(x_shape_size) + ", shape_range_rank=" + std::to_string(x_range.size());
+      GeInfershapeErrReport(op.GetName(), op.GetOpType(), "x shape range", reason);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check input x shape range failed, as %s", op.GetName().c_str(),
+                         reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input x shape range failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
     int64_t max_range_value = 1;
@@ -874,14 +869,17 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
         max_range_value = ele.second;
       }
     }
-    std::vector<std::pair<int64_t, int64_t>> y_range(x_shape_size + 1, std::pair<int64_t, int64_t>({1, max_range_value}));
+    std::vector<std::pair<int64_t, int64_t>> y_range(x_shape_size + 1,
+                                                     std::pair<int64_t, int64_t>({1, max_range_value}));
     y_desc->SetShapeRange(y_range);
     return GRAPH_SUCCESS;
   }
 
   auto pbuff = tensor_axis->GetData().GetData();
   if (pbuff == nullptr) {
-    GE_OP_LOGE(op.GetName().c_str(), "no const data when get data from tensor!");
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Get attr value from axis input failed, as data buff is null",
+                       op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get attr value from axis input failed, as data buff is null");
     return GRAPH_FAILED;
   }
   int64_t axis;
@@ -897,7 +895,8 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
     string reason = "axis[" + std::to_string(axis) + "] is not in [" + std::to_string(-1 - dim_num) + " , " +
                     std::to_string(dim_num) + "]";
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "axis", reason);
-    GE_OP_LOGE(op.GetName().c_str(), "axis[%d] is not in [%d, %d]", axis, -1 - dim_num, dim_num);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check input axis failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input axis failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
 
@@ -921,8 +920,12 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
     return GRAPH_SUCCESS;
   }
   if (x_range.size() != x_shape_size) {
-    GE_OP_LOGE(op.GetName().c_str(),
-      "input range size num[%zu] should be same with input shape size[%zu]", x_range.size(), x_shape_size);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check input x shape range failed, as input shape range size num should be "
+                       "same with input shape size, actually shape_rank=%zu, shape_range_rank=%zu",
+                       op.GetName().c_str(), x_shape_size, x_range.size());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input x shape range failed, as input shape range size "
+               "num should be same with input shape size, actually shape_rank=%zu, shape_range_rank=%zu",
+               x_shape_size, x_range.size());
     return GRAPH_FAILED;
   }
   x_range.emplace(x_range.begin() + axis, std::pair<int64_t, int64_t>{1, 1});
@@ -933,13 +936,16 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
 INFER_FUNC_REG(ExpandDims, ExpandDimsInfer);
 
 template <typename T>
-static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTensorPtr& tenosr, int64_t& product,
-                                 int& unknow_index, GeShape& output, Operator& op) {
+static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTensorPtr &tenosr, int64_t &product,
+                                 int &unknow_index, GeShape &output, Operator &op) {
   int64_t dim_num = tenosr->MutableTensorDesc().MutableShape().GetDim(0);
   const T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tenosr->GetData().GetData()));
   std::vector<int64_t> out_dims = output.GetDims();
   if (shape_data == nullptr) {
-    GE_OP_LOGE(op.GetName().c_str(), "truth shape data is invalid");
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Get attr value from shape input node failed, as data buff is null",
+                       op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(),
+               "[InferShape][Check] Get attr value from shape input node failed, as data buff is null");
     return GRAPH_PARAM_INVALID;
   }
 
@@ -951,18 +957,21 @@ static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTe
     OP_LOGD(op.GetName().c_str(), "i: %ld, shape_data[i]: %ld.", i, shape_data[i]);
     if (shape_data[i] == -1) {
       if (unknow_index != -1) {
-        string reason = "only one dim may be -1, not both dim[ " + std::to_string(unknow_index) + "] and dim[" +
-                        std::to_string(i) + "]";
+        string reason = "only one dim can be -1, but both dim[ " + std::to_string(unknow_index) + "] and dim[" +
+                        std::to_string(i) + "] is -1";
         GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
-        GE_OP_LOGE(op.GetName().c_str(), "Only one dim may be -1, not both dim[%lld] and dim[%lld]", unknow_index, i);
+        REPORT_INNER_ERROR("E19999", "[Node:%s] Check -1 num failed, as %s", op.GetName().c_str(), reason.c_str());
+        GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check -1 num failed, as %s", reason.c_str());
         return GRAPH_PARAM_INVALID;
       }
       unknow_index = i;
       out_dims.push_back(1);
     } else if (shape_data[i] < 0) {
-      string reason = "Size[" + std::to_string(i) + "] must be non-negative";
+      string reason = "shape dim must be -1 or non-negative, actually dim[" + std::to_string(i) +
+                      "]=" + std::to_string(shape_data[i]);
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
-      GE_OP_LOGE(op.GetName().c_str(), "Size[%lld] must be non-negative", i);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check shape failed, as %s", reason.c_str());
       return GRAPH_PARAM_INVALID;
     } else {
       auto dim = shape_data[i];
@@ -970,11 +979,11 @@ static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTe
         dim = x_shape[i];
       }
       if (dim != 0 && product > (INT64_MAX / dim)) {
-        string reason = "Mul overflow of int64, product[" + std::to_string(product) + "] dim[" +
-                        std::to_string((int64_t)dim) + "]";
+        string reason = "mul overflow of int64, product=[" + std::to_string(product) +
+                        "] * dim=[" + std::to_string((int64_t)dim) + "]";
         GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
-        GE_OP_LOGE(op.GetName().c_str(), "Mul overflow of int64, product[%lld] dim[%lld]", product,
-                   (int64_t)dim);
+        REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape failed, as %s", op.GetName().c_str(), reason.c_str());
+        GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check shape failed, as %s", reason.c_str());
         return GRAPH_PARAM_INVALID;
       }
       out_dims.push_back(dim);
@@ -986,8 +995,8 @@ static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTe
   return GRAPH_SUCCESS;
 }
 
-static graphStatus CaffeReshapeInferShape(const vector<int64_t>& dims, const int64_t& axis, const int64_t& num_axes,
-                                          Operator& op) {
+static graphStatus CaffeReshapeInferShape(const vector<int64_t> &dims, const int64_t &axis, const int64_t &num_axes,
+                                          Operator &op) {
   GE_OP_LOGI(op.GetName().c_str(), "Reshape infer shape start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto x_desc = op_desc->MutableInputDesc("x");
@@ -1192,29 +1201,32 @@ graphStatus EmptyTensorProcess(const Operator &op, const GeTensorDesc &x_desc, c
   auto shape_type = op_desc->MutableInputDesc("shape")->GetDataType();
   std::vector<int64_t> shape_shape;
   graphStatus ret = GRAPH_SUCCESS;
-
   if (shape_type == DT_INT32) {
     ret = GetOutShapeFromTensor<int32_t>(op_desc, shape_tensor, shape_shape);
   } else if (shape_type == DT_INT64) {
     ret = GetOutShapeFromTensor<int32_t>(op_desc, shape_tensor, shape_shape);
   } else {
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShapeDtype,
-      "Dim type must be DT_INT32 or DT_INT64.");
-    GE_OP_LOGE(op.GetName().c_str(), "Dim type must be DT_INT32 or DT_INT64.");
+    string reason =
+        "dtype of shape input must be DT_INT32 or DT_INT64, actually is " + DataTypeToStringDesc(shape_type);
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShapeDtype, reason);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
 
   if (ret != GRAPH_SUCCESS) {
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Get output shape from tensor failed", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get output shape from tensor failed");
     return ret;
   }
 
   GE_OP_LOGD(op.GetName().c_str(), "x shape: %s shape shape: %s", x_desc.GetShape().ToString().c_str(),
-      GeShape(shape_shape).ToString().c_str());
+             GeShape(shape_shape).ToString().c_str());
 
   int64_t num_of_neg_1 = 0;
   int64_t product = 1;
   for (auto &dim : shape_shape) {
-    if (dim == -1) { // -1 stand for highest dim here
+    if (dim == -1) {  // -1 stand for highest dim here
       num_of_neg_1++;
       dim = 0;
     }
@@ -1229,8 +1241,10 @@ graphStatus EmptyTensorProcess(const Operator &op, const GeTensorDesc &x_desc, c
     out_desc.SetOriginDataType(x_desc.GetDataType());
     return GRAPH_SUCCESS;
   }
-  GE_OP_LOGE(op.GetName().c_str(),
-    "Param is invalid!.Please check!Input shape contains -1 num is %ld, product is %ld", num_of_neg_1, product);
+  REPORT_INNER_ERROR("E19999", "[Node:%s] Check -1 num in input shape failed, -1 num is %ld, product of specific "
+                     "shape is %ld", op.GetName().c_str(), num_of_neg_1, product);
+  GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check -1 num in input shape failed, -1 num is %ld, "
+             "product of specific shape is %ld", num_of_neg_1, product);
   return GRAPH_FAILED;
 }
 
@@ -1269,7 +1283,8 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   GeTensorPtr tensor = nullptr;
   auto node = NodeUtils::GetNodeFromOperator(op);
   if (node == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "get null node ptr!");
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as get null node from op", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node from op failed, as node is null");
     return GRAPH_PARAM_INVALID;
   }
   graphStatus state = NodeUtils::GetInputConstData(node, "shape", tensor);
@@ -1281,11 +1296,10 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
     // because shape's value stand for output shape, so it should be smaller than 1 dim
     auto shape_rank = shape_shape.GetDims().size();
     if (shape_rank > 1) {
-      string reason =
-          "shape dim[" + std::to_string(shape_shape.GetDims().size()) + "] should be smaller or equal than 1";
+      string reason = "shape rank should <= 1, actually is " + std::to_string(shape_shape.GetDims().size());
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
-      GE_OP_LOGE(op.GetName().c_str(), "shape dim[%zu] should be smaller or equal than 1",
-                 shape_shape.GetDims().size());
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check shape failed, as %s", reason.c_str());
       return GRAPH_PARAM_INVALID;
     }
     if (shape_shape.GetDims() != UNKNOWN_RANK && shape_shape.GetDims() != UNKNOWN_SHAPE) {
@@ -1346,12 +1360,16 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   } else if (shape_type == DT_INT64) {
     ret = ValidateShape<int64_t>(x_shape, tensor, product, unknow_index, output_shape, op);
   } else if (shape_size > 0) {
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShapeDtype, "Dim type must be DT_INT32 or DT_INT64.");
-    GE_OP_LOGE(op.GetName().c_str(), "Dim type must be DT_INT32 or DT_INT64.");
+    string reason =
+        "dtype of shape input must be DT_INT32 or DT_INT64, actually is " + DataTypeToStringDesc(shape_type);
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShapeDtype, reason);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
   if (ret != GRAPH_SUCCESS) {
-    GE_OP_LOGE(op.GetName().c_str(), "ValidateShape failed, ret: %d", ret);
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Shape validate failed", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Shape validate failed");
     return ret;
   }
 
@@ -1365,7 +1383,8 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
 
   if (unknow_index != -1) {
     if (product <= 0) {
-      GE_OP_LOGE(op.GetName().c_str(), "Reshape Op can't infer an empty tensor");
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Reshape can't infer an empty tensor", op.GetName().c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Reshape can't infer an empty tensor");
       return GRAPH_PARAM_INVALID;
     }
     if (input_shape.GetShapeSize() < 0) {
@@ -1390,9 +1409,10 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
     }
     int64_t missing = input_size / product;
     if (product * missing != input_size) {
-      string reason = "The shape of the input cannot be divisible from [" + std::to_string(product) + "]";
+      string reason = "shape of the input cannot be divided from [" + std::to_string(product) + "]";
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
-      GE_OP_LOGE(op.GetName().c_str(), "The shape of the input cannot be divisible from %lld", product);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check input shape failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input shape failed, as %s", reason.c_str());
       return GRAPH_PARAM_INVALID;
     }
     output_shape.SetDim(unknow_index, missing);
@@ -1424,10 +1444,8 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
                     std::to_string(is_exist_unknown_shape) + "], but requested shape has [" +
                     std::to_string(output_shape.GetShapeSize()) + "] values";
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
-    GE_OP_LOGE(op.GetName().c_str(),
-               "Shape size is %lld, input tensor with %lld values, is input dynamic shape :%d, but \
-        requested shape has %lld values",
-               shape_size, input_size, is_exist_unknown_shape, output_shape.GetShapeSize());
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check shape failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
 
@@ -1486,19 +1504,24 @@ IMPLEMT_VERIFIER(Squeeze, SqueezeVerify) {
   input_desc_x->GetShapeRange(x_range);
   if ((xShape != UNKNOWN_RANK) && (!x_range.empty()) && (x_range.size() != xShape.size())) {
     // if it has set shape range, it should be same with input dim num
-    GE_OP_LOGE("x_shape_range num [%zu] does not match x dims_num [%zu]", x_range.size(), xShape.size());
+    string reason = "input shape range rank should be same with input shape rank, actually shape_rank=" +
+                    std::to_string(xShape.size()) + ", shape_range_rank=" + std::to_string(x_range.size());
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape range failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check shape range failed, as %s", reason.c_str());
     return GRAPH_FAILED;
   }
 
   auto node = NodeUtils::GetNodeFromOperator(op);
   if (node == nullptr) {
-    GE_OP_LOGE("node pointer is nullptr");
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as get null node from op", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node from op failed, as node is null");
     return GRAPH_FAILED;
   }
   bool is_unknow = false;
   auto status = NodeUtils::GetNodeUnknownShapeStatus(*node, is_unknow);
   if (status != GRAPH_SUCCESS) {
-    GE_OP_LOGE("Get node unknown shape status failed!");
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Get unknown shape status failed", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node unknown shape status failed");
     return GRAPH_FAILED;
   }
   if (is_unknow) {
@@ -1512,14 +1535,18 @@ IMPLEMT_VERIFIER(Squeeze, SqueezeVerify) {
         axis[i] += xShape.size();
       bool flag = (0 <= axis[i]) && (axis[i] < static_cast<int64_t>(xShape.size()));
       if (!flag) {
-        GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis,
-                              "axis value is out of range of [-rank(input), rank(input)).");
-        GE_OP_LOGE(op.GetName().c_str(), "axis value is out of range of [-rank(input), rank(input)).");
+        string reason = "axis is out range of [-input_rank, input_rank), input_rank=" + std::to_string(xShape.size()) +
+                        ", axis=" + std::to_string(axis[i]);
+        GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
+        REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axis failed, as %s", op.GetName().c_str(), reason.c_str());
+        GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check attr axis failed, as %s", reason.c_str());
         return GRAPH_FAILED;
       }
       if (!(xShape[axis[i]] == 1)) {
-        GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, "input shape has dim not equal to 1.");
-        GE_OP_LOGE(op.GetName().c_str(), "input shape has dim not equal to 1.");
+        string reason = "input shape dim[" + std::to_string(axis[i]) + "] != 1";
+        GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
+        REPORT_INNER_ERROR("E19999", "[Node:%s] Check input shape failed, as %s", op.GetName().c_str(), reason.c_str());
+        GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input shape failed, as %s", reason.c_str());
         return GRAPH_FAILED;
       }
     }
@@ -1558,11 +1585,11 @@ IMPLEMT_INFERFUNC(Squeeze, SqueezeInfer) {
   for (int32_t i = 0; i < axis_num; ++i) {
     int32_t dim = axis[i];
     if (dim < -dim_size || dim >= dim_size) {
-      string reason = "Tried to squeeze dim index[" + std::to_string(dim) + "] for tensor with [" +
-                      std::to_string(dim_size) + "] dimensions";
+      string reason = "squeeze dim index[" + std::to_string(dim) + "] for tensor with [" + std::to_string(dim_size) +
+                      "] dimensions not supported";
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
-      GE_OP_LOGE(op.GetName().c_str(), "Tried to squeeze dim index[%d] for tensor with [%lld] dimensions", dim,
-                 dim_size);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axis failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check attr axis failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
     if (dim < 0) {
@@ -1579,11 +1606,12 @@ IMPLEMT_INFERFUNC(Squeeze, SqueezeInfer) {
       if (squeeze_dims.count(i) > 0) {
         // If dim is -1 and been pointed by axis , do think -1 is 1.because no method to do verify
         if (exist_dim != 1 && exist_dim != UNKNOWN_DIM) {
-          string reason = "Can not squeeze dim[" + std::to_string(i) + "], expected a dimension of 1, got [" +
-                          std::to_string(exist_dim) + "]";
+          string reason = "squeeze dim[" + std::to_string(i) + "] not supported, expected dim[" + std::to_string(i) +
+                          "]=1, actually dim[" + std::to_string(i) + "]=" + std::to_string(exist_dim);
           GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
-          GE_OP_LOGE(op.GetName().c_str(), "Can not squeeze dim[%d], expected a dimension of 1, got %lld", i,
-                     exist_dim);
+          REPORT_INNER_ERROR("E19999", "[Node:%s] Check input x shape failed, as %s", op.GetName().c_str(),
+                             reason.c_str());
+          GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input x shape failed, as %s", reason.c_str());
           return GRAPH_FAILED;
         }
       } else {
@@ -1624,16 +1652,18 @@ IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
   auto axis_arr = op.get_attr_axes();
   auto axis_nums = axis_arr.size();
   if (axis_nums <= 0) {
-    string reason = "Axis_nums[" + std::to_string(axis_nums) + "] must be greater than 0";
+    string reason = "rank of axes should >= 0, actually axes_rank=" + std::to_string(axis_nums);
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
-    GE_OP_LOGE(op.GetName().c_str(), "Axis_nums[%zu] must be greater than 0", axis_nums);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
   std::unordered_set<int64_t> values(axis_arr.begin(), axis_arr.end());
   if (values.size() != axis_arr.size()) {
-    string reason = "Axis attribute must not contain any duplicates.";
+    string reason = "axes should not contain duplicate values";
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
-    GE_OP_LOGE(op.GetName().c_str(), "Axis attribute must not contain any duplicates.");
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
   Shape input_shape = op.get_input_desc_x().GetShape();
@@ -1643,10 +1673,11 @@ IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
   for (size_t i = 0; i < axis_nums; i++) {
     int64_t axis = axis_arr[i];
     if ((axis < -dim_num) || (axis > (dim_num - 1))) {
-      string reason = "axis[" + std::to_string(axis_nums) + "]'s range is not in [" + std::to_string(-dim_num) + ", " +
-                      std::to_string(dim_num - 1) + "]";
+      string reason = "axes[" + std::to_string(i) + "]=" + std::to_string(axis) + " out range of [-"+
+                      std::to_string(dim_num) +", " + std::to_string(dim_num) + ")";
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
-      GE_OP_LOGE(op.GetName().c_str(), "Axis %ld not in [%ld, %ld]", axis, -dim_num, dim_num);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
       return GRAPH_PARAM_INVALID;
     }
     if (axis < 0) {
@@ -1728,7 +1759,7 @@ IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
   if (input_dims == UNKNOWN_RANK) {
     td->SetShape(ge::GeShape(UNKNOWN_SHAPE));
     td->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
-    td->SetShapeRange(std::vector<std::pair<int64_t, int64_t>>{{1,kMaxDimNum}});
+    td->SetShapeRange(std::vector<std::pair<int64_t, int64_t>>{{1, kMaxDimNum}});
   } else {
     int64_t size = static_cast<int64_t>(input_dims.size());
     std::vector<int64_t> size_v{size};
@@ -1743,10 +1774,10 @@ IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
   op_desc->MutableInputDesc("x")->GetShapeRange(inRange);
   if (!inRange.empty()) {
     std::vector<int64_t> pre_op_range;
-    pre_op_range.resize(2*inRange.size());
+    pre_op_range.resize(2 * inRange.size());
     for (int i = 0; i < pre_op_range.size(); i = i + 2) {
-      pre_op_range[i] = inRange[i/2].first;
-      pre_op_range[i + 1] = inRange[i/2].second;
+      pre_op_range[i] = inRange[i / 2].first;
+      pre_op_range[i + 1] = inRange[i / 2].second;
     }
     ge::AttrUtils::SetListInt(*td, kPreOpInputShapeRange, pre_op_range);
     OP_LOGD(op.GetName().c_str(), "Shape op set pre_op_range success");
@@ -1764,7 +1795,7 @@ IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
     if (input_dims == UNKNOWN_RANK) {
       td->SetShape(ge::GeShape(UNKNOWN_SHAPE));
       td->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
-      td->SetShapeRange(std::vector<std::pair<int64_t, int64_t>>{{1,kMaxDimNum}});
+      td->SetShapeRange(std::vector<std::pair<int64_t, int64_t>>{{1, kMaxDimNum}});
     } else {
       int64_t size = static_cast<int64_t>(input_dims.size());
       GE_OP_LOGD(op.GetName().c_str(), "output value %ld", size);
@@ -1780,10 +1811,10 @@ IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
     op_desc->MutableInputDesc(i)->GetShapeRange(inRange);
     if (!inRange.empty()) {
       std::vector<int64_t> pre_op_range;
-      pre_op_range.resize(2*inRange.size());
+      pre_op_range.resize(2 * inRange.size());
       for (int i = 0; i < pre_op_range.size(); i = i + 2) {
-        pre_op_range[i] = inRange[i/2].first;
-        pre_op_range[i + 1] = inRange[i/2].second;
+        pre_op_range[i] = inRange[i / 2].first;
+        pre_op_range[i + 1] = inRange[i / 2].second;
       }
       ge::AttrUtils::SetListInt(*td, kPreOpInputShapeRange, pre_op_range);
       OP_LOGD(op.GetName().c_str(), "ShapeN op set pre_op_range success");
@@ -1798,7 +1829,6 @@ IMPLEMT_INFERFUNC(IdentityN, IdentityNInfer) {
   OP_LOGI(op.GetName().c_str(), "IdentityN infershape start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   for (size_t i = 0; i < op.GetInputsSize(); i++) {
-
     auto input_desc = op_desc->MutableInputDesc(i);
     auto input_dims = input_desc->MutableShape().GetDims();
     auto output_desc = op_desc->MutableOutputDesc(i);
@@ -1815,7 +1845,6 @@ IMPLEMT_INFERFUNC(IdentityN, IdentityNInfer) {
   OP_LOGI(op.GetName().c_str(), "IdentityN infershape end");
 
   return GRAPH_SUCCESS;
-
 }
 
 INFER_FUNC_REG(IdentityN, IdentityNInfer);
@@ -1840,7 +1869,6 @@ IMPLEMT_INFERFUNC(Identity, IdentityInfer) {
   output_desc_y->SetShapeRange(x_range);
   OP_LOGI(op.GetName().c_str(), "Identity infershape end");
   return GRAPH_SUCCESS;
-
 }
 
 INFER_FUNC_REG(Identity, IdentityInfer);
@@ -1857,7 +1885,7 @@ template <typename T>
 static void CaclDims(const Tensor& data, std::vector<int64_t>& vec_dim) {
   int32_t size = data.GetSize() / sizeof(T);
   for (int32_t i = 0; i < size; i++) {
-    T dim = *((T*)data.GetData() + i);
+    T dim = *((T *)data.GetData() + i);
     if (dim != 0) {
       vec_dim.push_back(dim);
     } else {
@@ -1875,7 +1903,7 @@ static void CaclDims(const GeTensorPtr& data, std::vector<int64_t>& vec_dim) {
     if (data_ptr == nullptr) {
       return;
     }
-    T dim = *((T*)data_ptr + i);
+    T dim = *((T *)data_ptr + i);
     if (dim != 0) {
       vec_dim.push_back(dim);
     } else {
@@ -1903,8 +1931,11 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
   if (data_type == DT_INT32) {
     vec_dim = input_desc_shape->MutableShape().GetDims();
   } else {
-    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", "Empty only support shape type 'DT_INT32'");
-    GE_OP_LOGE(op.GetName().c_str(), "Empty only support shape type 'DT_INT32'");
+    string reason = "shape input dtype must be DT_INT32, actually is " + DataTypeToStringDesc(data_type);
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dtype", reason);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check input shape dtype failed, as %s", op.GetName().c_str(),
+                       reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input shape dtype failed, as %s", reason.c_str());
     return GRAPH_PARAM_INVALID;
   }
 
@@ -1929,23 +1960,24 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
 
   auto node = NodeUtils::GetNodeFromOperator(op);
   if (node == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get null node ptr.");
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as get null node from op", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node from op failed, as node is null");
     return GRAPH_PARAM_INVALID;
   }
 
   GeTensorPtr shape_data;
   std::vector<int64_t> shape_dims;
   auto result = NodeUtils::GetInputConstData(node, "shape", shape_data);
-  if(result == GRAPH_SUCCESS) {
+  if (result == GRAPH_SUCCESS) {
     DataType data_type = shape_data->GetTensorDesc().GetDataType();
     if (data_type == DT_INT32) {
-      CaclDims<int32_t>(shape_data,shape_dims);
+      CaclDims<int32_t>(shape_data, shape_dims);
     } else if (data_type == DT_INT64) {
       CaclDims<int64_t>(shape_data, shape_dims);
     }
 
     OP_LOGD(op.GetName().c_str(), "Get input const data success.");
-    std::pair<int64_t, int64_t> pair({1,shape_range.size()});
+    std::pair<int64_t, int64_t> pair({1, shape_range.size()});
     y_range.emplace_back(pair);
     output_desc_y->SetShape(GeShape(shape_dims));
     output_desc_y->SetOriginShape(GeShape(shape_dims));
@@ -1954,7 +1986,7 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
     return GRAPH_SUCCESS;
   } else {
     OP_LOGD(op.GetName().c_str(), "Get input const data failed!");
-    std::pair<int64_t, int64_t> pair({1,shape_range.size()});
+    std::pair<int64_t, int64_t> pair({1, shape_range.size()});
     y_range.emplace_back(pair);
     output_desc_y->SetShape(GeShape(UNKNOWN_SHAPE));
     output_desc_y->SetOriginShape(GeShape(UNKNOWN_SHAPE));
@@ -1976,17 +2008,13 @@ IMPLEMT_INFERFUNC(LowerBound, LowerBoundInfer) {
   TensorDesc sorted_x_desc = op.GetInputDesc("sorted_x");
   TensorDesc values_desc = op.GetInputDesc("values");
   Shape unused_shape;
-  if (WithRank(sorted_x_desc, 2, unused_shape, op.GetName().c_str()) !=
-      GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(),
-                   DebugString(sorted_x_desc.GetShape().GetDims()), "2D");
+  if (WithRank(sorted_x_desc, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    ShapeErrReport(0, op.GetName(), DebugString(sorted_x_desc.GetShape().GetDims()), "2D");
     OP_LOGE(op.GetName().c_str(), "Input [sorted_x] rank must be 2.");
     return GRAPH_FAILED;
   }
-  if (WithRank(values_desc, 2, unused_shape, op.GetName().c_str()) !=
-      GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(),
-                   DebugString(values_desc.GetShape().GetDims()), "2D");
+  if (WithRank(values_desc, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    ShapeErrReport(1, op.GetName(), DebugString(values_desc.GetShape().GetDims()), "2D");
     OP_LOGE(op.GetName().c_str(), "Input [values] rank must be 2.");
     return GRAPH_FAILED;
   }
@@ -2081,8 +2109,7 @@ IMPLEMT_INFERFUNC(Fingerprint, FingerprintInfer) {
     int64_t method_dim;
     method_dim = method_tensor.GetTensorDesc().GetShape().GetDimNum();
     if (method_dim != 0) {
-      OP_LOGE(op.GetName().c_str(),
-                            "Input method_tensor rank must be 0, real value is [%ld].", method_dim);
+      OP_LOGE(op.GetName().c_str(), "Input method_tensor rank must be 0, real value is [%ld].", method_dim);
       return GRAPH_FAILED;
     }
     std::string method_string;
@@ -2114,7 +2141,8 @@ IMPLEMT_INFERFUNC(TransShape, TransShapeInfer) {
   vector<int64_t> output_shape;
   auto ret = op.GetAttr("outShape", output_shape);
   if (ret != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get attribute value.");
+    REPORT_CALL_ERROR("E19999", "[Node:%s] Get attr outShape failed", op.GetName().c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get attr outShape failed");
     return GRAPH_SUCCESS;
   }
   y_desc.SetShape(Shape(output_shape));
@@ -2170,9 +2198,8 @@ IMPLEMT_INFERFUNC(EditDistance, EditDistanceInfer) {
   auto hypothesis_shape_num_elements = hypothesis_shape_desc.GetShape().GetShapeSize();
   auto truth_shape_num_elements = truth_shape_desc.GetShape().GetShapeSize();
   if (hypothesis_shape_num_elements != truth_shape_num_elements) {
-    OP_LOGE(op.GetName().c_str(),
-                          "Num elements of hypothesis_shape does not match truth_shape: %ld vs %ld",
-                          hypothesis_shape_num_elements, truth_shape_num_elements);
+    OP_LOGE(op.GetName().c_str(), "Num elements of hypothesis_shape does not match truth_shape: %ld vs %ld",
+            hypothesis_shape_num_elements, truth_shape_num_elements);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2229,9 +2256,8 @@ VERIFY_FUNC_REG(SortV2, SortV2Verify);
 // ----------------SortV2 END---------------------
 
 // ----------------Expand Begin-------------------
-template<typename T> static bool ExpandCalDim(const Tensor &data,
-                                               std::vector<int64_t> &vec_dim,
-                                               std::vector<int64_t> &vec_x) {
+template<typename T> static bool ExpandCalDim(const Tensor &data, std::vector<int64_t> &vec_dim,
+                                              std::vector<int64_t> &vec_x) {
   uint32_t size_shape = data.GetSize() / sizeof(T);
   uint32_t size_x = vec_x.size();
   if (size_shape < size_x) {
@@ -2258,7 +2284,7 @@ template<typename T> static bool ExpandCalDim(const Tensor &data,
       if (i < diff) {
         vec_dim.push_back(dim);
       } else {
-        if ((vec_x[i - diff] != dim) && (vec_x[i-diff] != 1) && (dim != 1)) {
+        if ((vec_x[i - diff] != dim) && (vec_x[i - diff] != 1) && (dim != 1)) {
           return false;
         }
         if (vec_x[i - diff] > dim) {
@@ -2277,10 +2303,10 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
   PREPARE_DYNAMIC_SHAPE(depend_names);
   Shape x_shape = op.GetInputDesc("x").GetShape();
   DataType x_dtype = op.GetInputDesc("x").GetDataType();
-  std::vector <int64_t> dims_x = x_shape.GetDims();
+  std::vector<int64_t> dims_x = x_shape.GetDims();
   Tensor data;
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  std::vector <int64_t> vec_dim;
+  std::vector<int64_t> vec_dim;
   TensorDesc td = op.GetOutputDesc("y");
   if (op.GetInputConstData("shape", data) != GRAPH_SUCCESS) {
     OP_LOGI(op.GetName().c_str(), "Get constValue failed of [shape]");
@@ -2312,16 +2338,15 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
     output_desc->SetShapeRange(range_vector);
     output_desc->SetDataType(input_dtype);
     return GRAPH_SUCCESS;
-    }else {
-
+  } else {
     DataType data_type = data.GetTensorDesc().GetDataType();
     if (data_type == DT_INT32) {
-      if (!ExpandCalDim <int32_t>(data, vec_dim, dims_x)) {
+      if (!ExpandCalDim<int32_t>(data, vec_dim, dims_x)) {
         OP_LOGE(op.GetName().c_str(), "Data shape are not compatible!");
         return GRAPH_FAILED;
       }
     } else if (data_type == DT_INT64) {
-      if (!ExpandCalDim <int64_t>(data, vec_dim, dims_x)) {
+      if (!ExpandCalDim<int64_t>(data, vec_dim, dims_x)) {
         OP_LOGE(op.GetName().c_str(), "Data shape are not compatible!");
         return GRAPH_FAILED;
       }
