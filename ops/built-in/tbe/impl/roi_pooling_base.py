@@ -523,6 +523,17 @@ class RoiClass():
                                        self.proposal_num_per_tiling * 5 // 64,
                                        8, 2 * TYPELEN_DICT[self.dtype])
 
+            self.tik_instance.vec_dup(64, self.const_value, self.fm_h, 1, 0)
+            self.tik_instance.vec_min(64, self.proposals_ub_int32[2, 0], self.proposals_ub_int32[2, 0],
+                                      self.const_value, self.proposal_num_per_tiling // 64, 8, 8, 0)
+            self.tik_instance.vec_min(64, self.proposals_ub_int32[4, 0], self.proposals_ub_int32[4, 0],
+                                      self.const_value, self.proposal_num_per_tiling // 64, 8, 8, 0)
+            self.tik_instance.vec_dup(64, self.const_value, self.fm_w, 1, 0)
+            self.tik_instance.vec_min(64, self.proposals_ub_int32[1, 0], self.proposals_ub_int32[1, 0],
+                                      self.const_value, self.proposal_num_per_tiling // 64, 8, 8, 0)
+            self.tik_instance.vec_min(64, self.proposals_ub_int32[3, 0], self.proposals_ub_int32[3, 0],
+                                      self.const_value, self.proposal_num_per_tiling // 64, 8, 8, 0)
+
         self.tik_instance.vec_sub(128 // 2, self.roi_height, \
                                   self.proposals_ub_int32[4, 0], \
                                   self.proposals_ub_int32[2, 0], \
