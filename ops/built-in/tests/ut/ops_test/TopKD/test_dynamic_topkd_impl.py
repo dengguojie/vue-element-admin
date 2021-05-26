@@ -33,6 +33,19 @@ case1 = {"params": [{"shape": (-1, -1), "dtype": "float16", "ori_shape": (880, 4
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710", "Ascend920A"], case1)
 
+
+def test_1981(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.top_k import top_k
+    te_set_version("Ascend920A", "VectorCore")
+    top_k({"shape": (100000, ), "format": "ND", "dtype": "float16", "ori_shape": (100000, ), "ori_format": "ND"},
+          {"shape": (100000, ), "format": "ND", "dtype": "float16", "ori_shape": (100000, ), "ori_format": "ND"},
+          {"shape": (10, ), "format": "ND", "dtype": "float16", "ori_shape": (10, ), "ori_format": "ND"},
+          {"shape": (10, ), "format": "ND", "dtype": "int32", "ori_shape": (10, ), "ori_format": "ND"},
+          10, False, -1, True)
+
+ut_case.add_cust_test_func(test_func=test_1981)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710", "Ascend920A"])
     exit(0)

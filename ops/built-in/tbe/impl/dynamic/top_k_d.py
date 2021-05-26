@@ -868,9 +868,9 @@ class GlobalVarFunction(object):
                                   largest=largest)
 
         vadds_len = tbe_platform.VECTOR_INST_BLOCK_WIDTH // _get_dtype_byte(indices_out_final_ub.dtype)
-        indices_num = min(indices_per_part, cols_per_part)
-        indices_block_num = indices_num * _get_dtype_byte(indices_gm.dtype) // tbe_platform.BLOCK_REDUCE_INT8
         if SOC_VERSION_1981:
+            indices_num = min(indices_per_part, cols_per_part)
+            indices_block_num = indices_num * _get_dtype_byte(indices_gm.dtype) // tbe_platform.BLOCK_REDUCE_INT8
             tik_instance.data_move(indices_ub, indices_gm, 0, 1, indices_block_num, 0, 0)
             self.conv_fp162s32(tik_instance, indices_out_final_ub, 0, indices_ub.reinterpret_cast_to(indices_gm.dtype),
                                0, indices_num)
@@ -881,6 +881,7 @@ class GlobalVarFunction(object):
             self.sort_region_1981(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1, cols_per_part)
         else:
             # indices_ub is used to store multiplier
+            indices_block_num = indices_ub.buffer_size * _get_dtype_byte(indices_gm.dtype) // tbe_platform.BLOCK_REDUCE_INT8
             tik_instance.data_move(offset_ub, indices_gm, 0, 1, indices_block_num, 0, 0)
             tik_instance.vector_dup(indices_block_num, indices_ub, 0.0,
                                     indices_ub.buffer_size // tbe_platform.VECTOR_INST_BLOCK_WIDTH,
