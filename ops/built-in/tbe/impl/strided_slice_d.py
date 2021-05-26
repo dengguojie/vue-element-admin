@@ -1259,7 +1259,7 @@ def strided_slice_d(input_x,
 
     output_shape = list(map(lambda x, y, z: (x - y) // z, end, begin, strides))
     output_shape, input_shape, begin, end, strides = make_perf_params(
-        output_shape, input_shape_new, begin, end, strides)
+        output_shape, input_shape, begin, end, strides)
     input_tensor = tvm.placeholder(input_shape,
                                    dtype=input_dtype,
                                    name='input_tensor')
