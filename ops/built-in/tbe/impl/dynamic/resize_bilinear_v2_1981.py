@@ -1100,9 +1100,9 @@ class ResizeBilinearV2(OpBase):
         max_input_w = self.width_idx_sigment_num * 2
         max_output_w = max_input_w // w_input_output_rate
         with self.tik_instance.if_scope(w_loop_sigment > max_output_w):
-            max_output_w.set_as(max_output_w)
+            w_loop_sigment.set_as(max_output_w)
         with self.tik_instance.if_scope(w_loop_sigment == 0):
-            max_output_w.set_as(1)
+            w_loop_sigment.set_as(1)
 
         w_loop_num = self.tik_instance.Scalar("int32", name="w_loop_num")
         w_tail_num = self.tik_instance.Scalar("int32", name="w_tail_num")
