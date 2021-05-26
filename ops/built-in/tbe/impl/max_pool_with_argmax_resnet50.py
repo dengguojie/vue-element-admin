@@ -322,7 +322,7 @@ class MaxPoolWithargmaxResnet50(object):
                            input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h) * self.stride_h *
                                          self. in_size_w * 16],
                            0, 1, gm_len_ping, 0, 0)
-        instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 16, 0, 0)
+        instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 8, 0, 0)
         instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
 
     # pylint: disable=too-many-arguments,too-many-locals
@@ -365,10 +365,10 @@ class MaxPoolWithargmaxResnet50(object):
                            input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h) * self.stride_h *
                                          self. in_size_w * 16],
                            0, 1, gm_len_pong, 0, 0)
-        if looph == loop_h // 2 - 1:
-            instance.data_move(src_offsets, src_offsets_last_gm, 0, 1, src_offsets_size // 16, 0, 0)
-        else:
-            instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 16, 0, 0)
+        with instance.if_scope(looph == loop_h // 2 - 1):
+            instance.data_move(src_offsets, src_offsets_last_gm, 0, 1, src_offsets_size // 8, 0, 0)
+        with instance.else_scope():
+            instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 8, 0, 0)
 
         instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
 
