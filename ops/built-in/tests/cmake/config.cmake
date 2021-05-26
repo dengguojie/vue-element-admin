@@ -36,7 +36,7 @@ if (USE_ATC)
     # these two variable will used everywhere for the sub project to find .h and .cpp
     set(TOP_INC_ROOT ${ASCEND_ATC_INC})
     if ("${OPS_SOURCE_CODE_ROOT}" STREQUAL "")
-        set(OPS_SOURCE_CODE_ROOT ${TOP_DIR}/cann/ops/built-in)
+        set(OPS_SOURCE_CODE_ROOT ${TOP_DIR}/asl/ops/cann/ops/built-in)
     endif ()
 
     link_directories(${ASCEND_ATC_LIB}
@@ -64,7 +64,7 @@ else ()
     # these two variable will used everywhere for the sub project to find .h and .cpp
     set(TOP_INC_ROOT ${TOP_DIR}/inc/external)
     if ("${OPS_SOURCE_CODE_ROOT}" STREQUAL "")
-        set(OPS_SOURCE_CODE_ROOT ${TOP_DIR}/cann/ops/built-in)
+        set(OPS_SOURCE_CODE_ROOT ${TOP_DIR}/asl/ops/cann/ops/built-in)
     endif ()
 
     link_directories(${TOP_DIR}/llt/third_party/googletest/lib/4.9

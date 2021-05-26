@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.14.1)
 project(constant_folding_ops)
-get_filename_component(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 set(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(BUILD_OPEN_PROJECT)
