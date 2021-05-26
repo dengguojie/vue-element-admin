@@ -436,7 +436,7 @@ class AscendOpKernelRunner:
                                                       self.profiling_times)
         if not kernel.is_registered_to_device():
             registered_binary = self.ascend_device.register_device_binary_kernel(
-                kernel.bin_path)
+                kernel.bin_path, kernel.magic)
             stub_func_p = self.ascend_device.register_function(
                 registered_binary, kernel.stub_func_name, 0)
             kernel.set_stub_func_p(stub_func_p)

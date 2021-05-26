@@ -140,7 +140,8 @@ class AscendRTSApi:
         model_so_list = {
             "pv": ("lib_pvmodel.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so"),
             "ca": ("libcamodel.so", "libtsch_camodel.so", "libnpu_drv_camodel.so", "libruntime_camodel.so"),
-            "tm": ("libpem_davinci.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so")
+            "tm": ("libpem_davinci.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so"),
+            "esl": ("libnpu_drv_camodel.so", "libruntime_camodel.so")
         }
         simulator_so_list = model_so_list[simulator_mode]
         so_full_path_list = []
@@ -176,8 +177,8 @@ class AscendRTSApi:
         logger.log_info("start load ascend simulator")
         if not isinstance(simulator_mode, str):
             raise TypeError("simulator_mode need to be a str, actual is: %s." % str(type(simulator_mode)))
-        if simulator_mode not in ["pv", "ca", "tm"]:
-            raise ValueError("simulator_mode need to be 'pv', 'ca' or 'tm', actual is %s" % simulator_mode)
+        if simulator_mode not in ["pv", "ca", "tm", "esl"]:
+            raise ValueError("simulator_mode need to be 'pv', 'ca', 'tm' or 'esl', actual is %s" % simulator_mode)
         simulator_dump_path = os.path.realpath(simulator_dump_path)
         if not os.path.exists(simulator_dump_path):
             raise RuntimeError("simulator_dump_path is not exist.")
@@ -333,7 +334,7 @@ class AscendRTSApi:
         rt_error = self.rtsdll.rtStreamDestroy(stream)
         self.parse_error(rt_error, "rtStreamDestroy")
 
-    def register_device_binary_kernel(self, kernel_path: str):
+    def register_device_binary_kernel(self, kernel_path: str, magic="RT_DEV_BINARY_MAGIC_ELF"):
         """
         Register device kernel on current thread
 
@@ -351,7 +352,7 @@ class AscendRTSApi:
         rts_device_binary = rtDevBinary_t(data=c_kernel_p,
                                           length=ctypes.c_uint64(len(kernel)),
                                           version=ctypes.c_uint32(0),
-                                          magic=ctypes.c_uint32(rts_info.RT_DEV_BINARY_MAGIC_ELF))
+                                          magic=ctypes.c_uint32(rts_info.magic_map[magic]))
         rts_binary_handle = ctypes.c_void_p()
         self.rtsdll.rtDevBinaryRegister.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtDevBinaryRegister(ctypes.c_void_p(ctypes.addressof(rts_device_binary)),
