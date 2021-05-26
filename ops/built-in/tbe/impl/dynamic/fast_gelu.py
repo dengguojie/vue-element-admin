@@ -107,10 +107,7 @@ def fast_gelu(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpImplMode.H
     for (_input_x,) in ins:
         with tbe.compute():
             shape = shape_util.variable_shape([_input_x])
-
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, shape[0])
-            data = tvm.placeholder(fuseshape, name="data", dtype=input_dtype)
+            data = tvm.placeholder(shape[0], name="data", dtype=input_dtype)
             result = fast_gelu_compute(data, output_y, kernel_name, impl_mode)
 
             tensors.append([data, result])

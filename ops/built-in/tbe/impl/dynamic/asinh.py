@@ -435,9 +435,7 @@ def asinh(input_x, output_y, kernel_name="asinh"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=dtype_input,
+            data_input = tvm.placeholder(x_shape[0], dtype=dtype_input,
                                          name="data_input")
             res = asinh_compute_cloud(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
