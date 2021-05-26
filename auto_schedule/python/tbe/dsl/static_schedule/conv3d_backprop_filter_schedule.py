@@ -298,7 +298,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                                       dw_k * _CUBE_DIM)
                 k_1_multicore, real_k = sch[res_cc].split(real_k, hw_single_core_factor)
                 sch[res_cc].reorder(k_1_multicore, batch_core, batch_in, real_k)
-            else:                                        
+            else:
                 real_k, k_in = sch[res_cc].split(real_k, _CUBE_DIM)
                 k_1_multicore, real_k = sch[res_cc].split(real_k, nparts=block_dim_hw)
                 sch[res_cc].reorder(k_1_multicore, batch_core, batch_in, real_k, k_in)
@@ -454,7 +454,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 else:
                     sch[grads_fractal].compute_at(sch[dw_cc], hw_mad_1_mad_at)
             else:  # else: fully load, attach to thread_axis
-                sch[grads_fractal].compute_at(sch[dw_ddr], fused_multi_core)
+                sch[grads_fractal].compute_at(sch[dw_ddr], g_axis)
 
             if tiling["BL0_matrix"]:
                 if l0b_attach_mode:
@@ -462,7 +462,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 else:
                     sch[fmap_fractal].compute_at(sch[dw_cc], hw_mad_1_mad_at)
             else:  # else: fully load, attach to thread_axis
-                sch[fmap_fractal].compute_at(sch[dw_ddr], fused_multi_core)
+                sch[fmap_fractal].compute_at(sch[dw_ddr], g_axis)
 
         def _al1_attach():
             """
@@ -482,7 +482,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 else:  # if axis K fully load in L1, attach to dw_ddr
                     sch[grads_matrix].compute_at(sch[dw_ddr], c_grads_l1_at)
             else:  # else: fully load, attach to thread_axis
-                sch[grads_matrix].compute_at(sch[dw_ddr], fused_multi_core)
+                sch[grads_matrix].compute_at(sch[dw_ddr], g_axis)
 
         def _bl1_attach():
             """
@@ -508,9 +508,9 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                         sch[fmap_l1].compute_at(sch[dw_ddr], c_fmap_l1_at)
 
             else:  # else: fully load, attach to thread_axis
-                sch[fmap_matrix].compute_at(sch[dw_ddr], fused_multi_core)
+                sch[fmap_matrix].compute_at(sch[dw_ddr], g_axis)
                 if not load2d_flag:
-                    sch[fmap_l1].compute_at(sch[dw_ddr], fused_multi_core)
+                    sch[fmap_l1].compute_at(sch[dw_ddr], g_axis)
 
         def _double_buffer():
             """
@@ -743,7 +743,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             if isinstance(width_fmap, Var):
                 sch.set_var_range(width_fmap, *var_range.get('fmap_w'))
                 sch.set_var_range(width_grads, *var_range.get('dedy_w'))
-            
+
         def _get_attach_flag():
             dynamic_l0a_attach = None
             dynamic_l0b_attach = None
@@ -864,7 +864,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             _set_var_range()
             dynamic_l0a_attach, dynamic_l0b_attach, dynamic_al1_attach, \
             dynamic_bl1_attach = _get_attach_flag()
-        
+
         if not self.dynamic_mode:
             _l1_limit_check()
 
@@ -1182,7 +1182,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     hw_mad_1_l1_out_at *
                     (grads_l1_tiling_nparts[0] // fmap_l1_tiling_nparts[0]) +
                     hw_mad_1_l1_in_at) * grads_l1_tiling_factor_k + hw_mad_1_mad_at
-  
+
             else:
                 # the factor of fmap_l1 is smaller than grads_l1
                 if tiling["AL1_shape"] and tiling["BL1_shape"]:
@@ -1229,7 +1229,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     hw_mad_1_l1_out_at, hw_mad_1_l1_in_at, batch_insn,
                     axis_k_reduce_for_mad, batch_insn_o_size)
 
-        
+
         if self.dynamic_mode and not load2d_flag:
             al1_at_axis, bl1_at_axis, hw_mad_1_mad_at, batch_insn_o, \
             hw_mad_1_l1_out_at, hw_mad_1_l1_in_at, batch_insn, \
@@ -1297,7 +1297,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 al1_m = grads_matrix_c1 * grads_matrix_c0
                 al1_bound = grads_matrix_howo * al1_m
             return al1_bound
-        
+
         def _get_bl1_bound():
             """
             for bl1_bound set for dynamic
@@ -1308,7 +1308,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             additional_rows: int
                 param for buffer_tile in multi-core cases
                 -1 indicates not used
-            
+
             ho_len: int
                 actually number of lines loaded in dynamic_batch
                 -1 indicates not used
@@ -1395,7 +1395,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 bl1_bound = bl1_k_full * c1_fmap * c0_fmap
                 ho_len = height_fmap
                 additional_rows = -1
-            
+
             return bl1_bound, additional_rows, ho_len
 
         def _dynamic_bl1_buffer_tile(ho_len):
@@ -1406,13 +1406,13 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 if dynamic_bl1_attach == "dw_cc":
                     # hw need both multi-core offset and k_axis offset
                     return "tile_h_dw_cc"
-                
+
                 elif dynamic_bl1_attach == "dw_ddr":
                     # hw only need multi_core offset
                     return "tile_h_dw_ddr"
-                
+
                 return "None"
-            
+
             def _set_tile_params(ho_len, tile_mode):
                 ho_min = 0
 
@@ -1424,7 +1424,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 al1_k = grads_matrix_howo
                 if tiling.get("AL1_shape"):
                     al1_k = tiling.get("AL1_shape")[0]
-                
+
                 if bl1_at_axis == hw_mad_1_l1_in_at:
                     # hw splited two times before BL1 attach
                     axis_k_var = (hw_mad_1_l1_out_at.var * al1_k +
@@ -1518,5 +1518,5 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             bl1_bound, additional_rows, ho_len = _get_bl1_bound()
             _dynamic_bl1_buffer_tile(ho_len)
             _dynamic_memory_management()
-                    
+
         return True

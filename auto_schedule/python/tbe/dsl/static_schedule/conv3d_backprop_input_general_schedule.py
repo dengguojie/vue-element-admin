@@ -249,7 +249,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         _tiling_check_value()
         _tiling_check_factor()
         _tiling_check_pbuffer()
-        if stride_h == 1 and stride_w == 1 and dsl_flag == False:
+        if stride_h == 1 and stride_w == 1 and aub_fusion_flag == False:
             if tiling.get("AUB_shape") is not None:
                 cube_err.raise_err_specific("conv3d_backprop_input",
                     'stride = 1 but AUB_shape is not None.')
@@ -338,12 +338,12 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             sch[mean_matrix_mul].set_scope(tbe_platform.scope_ubuf)
             sch[mean_matrix_fp16].set_scope(tbe_platform.scope_ubuf)
 
-        stride_d = c_ddr.op.attrs["stride_d"].value
-        group_dict = c_ddr.op.attrs["group_dict"]
+        stride_d = c_ub_exact_hw.op.attrs["stride_d"].value
+        group_dict = c_ub_exact_hw.op.attrs["group_dict"]
         c_ub_vn = tensor_map.get("c_ub_vn")
         c_fill_zero = tensor_map.get("c_fill_zero")
         c_ub = tensor_map.get("c_ub")
-        output_shape = cube_util.shape_to_list(c_ddr.op.attrs["output_shape"])
+        output_shape = cube_util.shape_to_list(c_ub_exact_hw.op.attrs["output_shape"])
         sch[c_fill_zero].set_scope(tbe_platform_info.scope_ubuf)
         sch[c_ub_vn].set_scope(tbe_platform_info.scope_ubuf)
         c_col = tensor_map.get("c_col")
@@ -352,13 +352,12 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         b_l1 = tensor_map.get("b_l1")
         sch[b_l1].set_scope(tbe_platform_info.scope_cbuf)
         b_ddr = b_l1.op.input_tensors[0]  # weight in ddr
-        kernel_d, kernel_h, kernel_w = list(i.value for i in c_ddr.op.attrs["kernels"])
+        kernel_d, kernel_h, kernel_w = list(i.value for i in c_ub_exact_hw.op.attrs["kernels"])
         a_col_before = a_col.op.input_tensors[0]  # im2col_row_major in L1
         dilation = list(i.value for i in a_col_before.op.attrs["dilation"])
         padding = cube_util.shape_to_list(a_col_before.op.attrs["padding"])
         padding_var = a_col_before.op.attrs["padding_var"]
         weight_out_var = a_col_before.op.attrs["width_out_var"]
-        output_shape = cube_util.shape_to_list(c_ddr.op.attrs["output_shape"])
 
         tensor_map['c_fill_zero'] = c_fill_zero
         tensor_map['c_ub_vn'] = c_ub_vn
@@ -438,11 +437,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         if stride_h == 1 and stride_w == 1:
             sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
             tensor_map['a_l1'] = a_l1
-            if dsl_flag:
-                tensor_map['a_filling'] = tensor_map['elewise_mul'] if not mean_flag else tensor_map['a_ub_mul']
+            if aub_fusion_flag:
+                tensor_map['a_filling'] = tensor_map['elewise_mul_before'] if not mean_flag else tensor_map['a_ub_mul']
         else:
-            if dsl_flag:
-                tensor_map['a_ub'] = tensor_map['elewise_mul'] if not mean_flag else tensor_map['a_ub_mul']
+            if aub_fusion_flag:
+                tensor_map['a_ub'] = tensor_map['elewise_mul_before'] if not mean_flag else tensor_map['a_ub_mul']
                 if var_map:
                     sch[a_vn].set_scope(tbe_platform.scope_ubuf)
             else:
@@ -469,15 +468,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         tensor_attr['kernel_d'] = kernel_d
         tensor_attr['kernel_h'] = kernel_h
         tensor_attr['kernel_w'] = kernel_w
-
-        if "bias_add_vector" in tensor_map:
-            bias_add_vector = tensor_map.get("bias_add_vector")
-            sch[bias_add_vector].set_scope(tbe_platform_info.scope_ubuf)
-            bias_tensor = bias_add_vector.op.input_tensors[1]
-            bias_ub = sch.cache_read(
-                bias_tensor, tbe_platform_info.scope_ubuf, [bias_add_vector]
-            )
-            tensor_map["bias_ub"] = bias_ub
 
         return tensor_attr, group_dict
 
@@ -591,9 +581,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                         compute_util.int_ceil_div(aub_tiling_m_factor, stride_h))
         dy_filing_size = d_factor * aub_tiling_k_factor * aub_tiling_m_factor * (dy_w * stride_w) * c0_size * 2
         c_ub_size = cub_tiling_nc_factor * cub_tiling_mc_factor * c0_size**2 * cub_pbuffer * 2
-
+        c_ub_size = c_ub_size * (cub_fused_num + 1)
         ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
-        if (dedy_ub_size * (fused_num + 1) + dy_filing_size + c_ub_size) > ub_size:
+        if (dedy_ub_size * (aub_fused_num + 1) + dy_filing_size + c_ub_size) > ub_size:
             return True
 
         return False
@@ -602,7 +592,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         if _check_exceed_l1_buffer(howo_size):
             return True
 
-        if stride_h > 1 or stride_w > 1 or dsl_flag:
+        if stride_h > 1 or stride_w > 1 or aub_fusion_flag:
             if _check_exceed_ub_buffer():
                 return True
 
@@ -647,9 +637,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         sch[c_ub_vn].compute_at(sch[c_ddr], cddr_m_outer_inner)
         sch[c_col].compute_at(sch[c_ddr], col_at_ddr_axis)
         sch[a_col].compute_at(sch[c_col], c_col_m_outer)
-        if bias_add_vector is not None:
-            sch[bias_add_vector].compute_at(sch[c_ddr], cddr_m_outer_inner)
-            sch[bias_ub].compute_at(sch[c_ddr], cddr_m_outer_inner)
         if not tiling['BL0_matrix'] and not tiling['BL1_shape']:
             sch[b_col].compute_at(sch[c_ddr], c_ddr_deep_outer)
         else:
@@ -662,7 +649,20 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             else:
                 sch[a_ub].compute_at(sch[a_l1], a_l1_h_outer)
 
+    def _fused_double_buffer():
+        if aub_pbuffer == 2:
+            for tensor in aub_body_tensors:
+                sch[tensor].double_buffer()
 
+            for tensor in aub_input_tensors:
+                sch[tensor].double_buffer()
+
+        if cub_pbuffer == 2:
+            for tensor in cub_body_tensors:
+                sch[tensor].double_buffer()
+        
+            for tensor in cub_input_tensors:
+                sch[tensor].double_buffer()
 
     def _double_buffer():
         if stride_h > 1 or stride_w > 1:
@@ -693,9 +693,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             sch[c_ub].double_buffer()
             sch[c_fill_zero].double_buffer()
             sch[c_ub_vn].double_buffer()
-            if bias_add_vector is not None:
-                sch[bias_add_vector].double_buffer()
-                sch[bias_ub].double_buffer()
+
+        _fused_double_buffer()
 
     def _default_tiling():
         tiling = {}
@@ -703,7 +702,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         k0_size = tbe_platform.CUBE_MKN[a_ddr.dtype]["mac"][1]
         k_al1 = kernel_h * kernel_w * k0_size
 
-        if stride_h > 1 or stride_w > 1 or dsl_flag:
+        if stride_h > 1 or stride_w > 1 or aub_fusion_flag:
             tiling["AUB_shape"] = [kernel_h * kernel_w * k0_size, 1, 1, 1]
             tiling["BUB_shape"] = None
         else:
@@ -742,9 +741,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         sch[b_l1].emit_insn(sch[b_l1].op.axis[1], "dma_copy")
         sch[b_col].emit_insn(sch[b_col].op.axis[3], "dma_copy")
 
-        if bias_add_vector is not None:
-            sch[bias_ub].emit_insn(sch[bias_ub].op.axis[0], "dma_copy")
-            sch[bias_add_vector].emit_insn(sch[bias_add_vector].op.axis[0], "vector_auto")
         if mean_flag:
             sch[mean_matrix_init].emit_insn(mean_matrix_init.op.axis[-1], "vector_dup")
             sch[mean_matrix_mul].emit_insn(mean_matrix_mul.op.axis[-1], "vector_auto")
@@ -752,7 +748,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             sch[mean_matrix_fp16].reused_by(mean_matrix_mul)
 
         if stride_h > 1 or stride_w > 1:
-            if dsl_flag == False and not var_map:
+            if aub_fusion_flag == False and not var_map:
                 sch[a_ub].emit_insn(sch[a_ub].op.axis[0], "dma_copy")
             afill_n, afill_d, afill_c, afill_h, afill_w, _ = sch[a_filling].op.axis
             afill_w_out, afill_w_inner = sch[a_filling].split(
@@ -913,6 +909,20 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             bl0_pbuffer = 1
         return al1_pbuffer, bl1_pbuffer, bl0_pbuffer
 
+    def _get_cub_fuse_num(tensor_map, color_op):
+        fuse_num = 0
+        for op in color_op.input_ops:
+            if "_Before" in op["op"]:
+                continue
+            fuse_num += 1
+
+        # add c_ub_exact_hw
+        fuse_num = fuse_num + 1
+        # subtract filters and dx_filing_zero
+        fuse_num = fuse_num - 2
+
+        return fuse_num
+
     def _get_op_infor(color_op):
         tensor_map = {}
         tag_map = {"conv3d_backprop_input_dx_filing_zero": "c_fill_zero",
@@ -927,20 +937,23 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                    "conv3d_backprop_input_dy_l1": "a_l1",
                    "conv3d_backprop_input_dy_l1_s1": "a_l1",
                    "conv3d_backprop_input_dy_filling": "a_filling",
+                   "conv3d_backprop_input_dy_zero_bp_A_Before": "a_zero",
                    "conv3d_backprop_input_dy_zero": "a_zero",
                    "conv3d_backprop_input_dy_vn": "a_vn",
-                   "elewise_binary_mul": "elewise_mul",
                    "bias_add_vector": "bias_add_vector",
-                   "mean_matrix_init": "a_ub_init",
-                   "mean_matrix_fp16": "a_ub_fp16",
-                   "mean_matrix_mul": "a_ub_mul"}
+                   "elewise_binary_mul_bp_A_Before": "elewise_mul_before",
+                   "mean_matrix_init_Before": "a_ub_init",
+                   "mean_matrix_fp16_Before": "a_ub_fp16",
+                   "mean_matrix_mul_bp_A_Before": "a_ub_mul",
+                   "c_ub_exact_hw": "c_ub_exact_hw"}
 
         for op in color_op.body_ops:
             if op["op"] in tag_map.keys():
                 tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
             if "mean_matrix_" in op["op"]:
                 continue
-            if "conv3d_backprop_input_" not in op["op"] and op["op"] != "c_ddr":
+
+            if "conv3d_backprop_input_" not in op["op"] and op["next_op"]:
                 sch[op["dst_buffer"]].set_scope(tbe_platform_info.scope_ubuf)
 
         for op in color_op.input_ops:
@@ -948,8 +961,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                 tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
             if "mean_matrix_" in op["op"]:
                 continue
-            if "bias" in op["op"]:
-                continue
+
             tmp_read_map = []
             for nop in op["next_op"]:
                 if (nop["op"] in _FUSION_NODE_WHITELIST):
@@ -965,51 +977,91 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         return tensor_map, color_op.body_ops, color_op.input_ops
 
     def _emit_insn_fusion_op():
-        # emit insn
-        for lop in body_ops:
-            if "mean_matrix_" in lop["op"]:
-                continue
-            if "conv3d_backprop_input_" not in lop["op"] and lop["op"] != "c_ddr":
-                sch[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0],
-                                                 "vector_auto")
+        for tensor in aub_body_tensors:
+            sch[tensor].emit_insn(tensor.op.axis[0], "vector_auto")
 
-        for lop in input_ops:
-            if "mean_matrix_" in lop["op"]:
-                continue
-            if "conv3d_backprop_input_" in lop["op"]:
-                continue
-            if (lop["next_op"][0]["op"] in _FUSION_NODE_WHITELIST):
-                continue
+        for tensor in cub_body_tensors:
+            sch[tensor].emit_insn(tensor.op.axis[0], "vector_auto")
 
-            sch[lop["cache_buffer"]].emit_insn(lop["cache_buffer"].op.axis[0],
-                                               "dma_copy")
+        for tensor in aub_input_tensors:
+            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
+
+        for tensor in cub_input_tensors:
+            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
 
     def _fusion_op_compute_at():
+        for tensor in aub_body_tensors:
+            sch[tensor].compute_at(sch[compute_at_buffer[0]],
+                                   compute_at_axis[0])
+
+        for tensor in aub_input_tensors:
+            sch[tensor].compute_at(sch[compute_at_buffer[0]],
+                                   compute_at_axis[0])
+
+        for tensor in cub_body_tensors:
+            sch[tensor].compute_at(sch[compute_at_buffer[1]],
+                                   compute_at_axis[1])
+
+        for tensor in cub_input_tensors:
+            sch[tensor].compute_at(sch[compute_at_buffer[1]],
+                                   compute_at_axis[1])
+
+    def _get_ubfusion_tensors():
+        aub_input_tensors = []
+        cub_input_tensors = []
+        aub_body_tensors = []
+        cub_body_tensors = []
         for lop in body_ops:
-            if "mean_matrix_" in lop["op"]:
+            if "conv3d_backprop_input_" in lop["op"] or "mean_matrix_" in lop["op"]:
                 continue
-            if "conv3d_backprop_input_" not in lop["op"] and lop["op"] != "c_ddr":
-                sch[lop["dst_buffer"]].compute_at(sch[compute_at_buffer[0]],
-                                                  compute_at_axis[0])
+
+            if "_Before" in lop["op"]:
+                aub_body_tensors.append(lop["dst_buffer"])
+                continue
+
+            if lop["next_op"]:
+                cub_body_tensors.append(lop["dst_buffer"])
+
         for lop in input_ops:
-            if "mean_matrix_" in lop["op"]:
+            if "conv3d_backprop_input_" in lop["op"] or \
+               "cache_buffer" not in lop.keys() or \
+               "mean_matrix_" in lop["op"]:
                 continue
-            if "conv3d_backprop_input_" in lop["op"]:
+
+            if "_Before" in lop["op"]:
+                aub_input_tensors.append(lop["cache_buffer"])
                 continue
-            if (lop["next_op"][0]["op"] in _FUSION_NODE_WHITELIST):
+
+            if lop["next_op"][0]["op"] in _FUSION_NODE_WHITELIST:
                 continue
-            sch[lop["cache_buffer"]].compute_at(sch[compute_at_buffer[0]],
-                                                compute_at_axis[0])
+
+            cub_input_tensors.append(lop["cache_buffer"])
+
+        return aub_input_tensors, cub_input_tensors, aub_body_tensors, cub_body_tensors
 
     c_ddr = tensor
     sch = sch_list[0]
     color_op = AutoScheduleOp(c_ddr)
     var_map = _get_var_map(var_range)
     tensor_map, body_ops, input_ops = _get_op_infor(color_op)
-    dsl_flag = True if "elewise_mul" in tensor_map.keys() else False
+    aub_fusion_flag = True if "elewise_mul_before" in tensor_map.keys() else False
+    cub_fusion_flag = True if "c_ub_exact_hw" in tensor_map.keys() else False
+
+    if cub_fusion_flag:
+        c_ub_exact_hw = tensor_map["c_ub_exact_hw"]
+        res_ub = sch.cache_write(c_ddr, tbe_platform_info.scope_ubuf)
+        body_ops[0]["next_op"] = color_op.output_ops
+        body_ops[0]["dst_buffer"] = res_ub
+        cub_fused_num = _get_cub_fuse_num(tensor_map, color_op)
+    else:
+        c_ub_exact_hw = c_ddr
+        cub_fused_num = 0
+
+    aub_input_tensors, cub_input_tensors, \
+        aub_body_tensors, cub_body_tensors = _get_ubfusion_tensors()
     mean_flag = False
     if "a_ub_init" in tensor_map.keys():
-        dsl_flag = True
+        aub_fusion_flag = True
         mean_flag = True
         mean_matrix_init = tensor_map.get("a_ub_init")
         mean_matrix_mul = tensor_map.get("a_ub_mul")
@@ -1038,7 +1090,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     stride_d = tensor_attr.get("stride_d")
     b_ddr_kd = tensor_attr.get("kernel_d")
     bias_add_vector = tensor_map.get("bias_add_vector")
-    bias_ub = tensor_map.get("bias_ub")
     c_fill_zero = tensor_map.get("c_fill_zero")
     _, dilation_h, dilation_w = tensor_map.get("dilation")
 
@@ -1050,7 +1101,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
     padu, padd, padl, padr = padding
     padu_var, padd_var, padl_var, padr_var = padding_var
-    pad_head, pad_tail = cube_util.shape_to_list(c_ddr.op.attrs["depth_pad"])
+    pad_head, pad_tail = cube_util.shape_to_list(c_ub_exact_hw.op.attrs["depth_pad"])
     tensor_attr['pad_head'] = pad_head
     tensor_attr['pad_tail'] = pad_tail
     if not var_map:
@@ -1075,7 +1126,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     tiling_output = [cddr_batch,
                      cddr_depth, cddr_h, cddr_w, cddr_c1 * cdder_c0]
     kd_reduce_flag = bool(len(c_col.op.reduce_axis) == _NUM_3)
-    fused_num = 1 if dsl_flag else 0
+    aub_fused_num = 1 if aub_fusion_flag else 0
 
     tiling_img_shape = img_shape
     tiling_img_shape[2] = cout1_g
@@ -1097,10 +1148,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             "stridew_expand": stride_w,
             "dilation": [1, dilation_h, dilation_w],
             "group": real_g,
-            "fused_coefficient": [0, 0, fused_num],
+            "fused_coefficient": [aub_fused_num, 0, cub_fused_num],
             "bias_flag": False,
             "op_type": "conv3d_backprop_input",
-            "kernel_name": c_ddr.op.attrs["kernel_name"].value
+            "kernel_name": c_ub_exact_hw.op.attrs["kernel_name"].value
         }
         tiling = get_tiling(info_dict)
     else:
@@ -1109,7 +1160,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     if tiling["AL0_matrix"][2] == _DEFAULT_TILING_FLAG:
         tiling = _default_tiling()
 
-    if stride_w == 1 and stride_h == 1 and dsl_flag == False:
+    if stride_w == 1 and stride_h == 1 and aub_fusion_flag == False:
         tiling['AUB_shape'] = None
     _, n_dim, m_dim, _ = tiling.get("block_dim")
     aub_pbuffer = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
@@ -1134,10 +1185,19 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     # tiling_check
     _tiling_check()
 
+    if cub_fusion_flag:
+        batch_after_multicore, d_after_multicore = \
+            sch[c_ddr].split(c_ddr.op.axis[0], factor=cddr_depth)
+        n_after_multicore = c_ddr.op.axis[1]
+        m_after_multicore = c_ddr.op.axis[2]
+    else:
+        batch_after_multicore = c_ddr.op.axis[0]
+        d_after_multicore = c_ddr.op.axis[1]
+        n_after_multicore = c_ddr.op.axis[2]
+        m_after_multicore = c_ddr.op.axis[3]
+
     # axis management
-    g_axis, n_after_multicore = sch[c_ddr].split(c_ddr.op.axis[2], factor=cin1_g)
-    batch_after_multicore, d_after_multicore, m_after_multicore = (
-        c_ddr.op.axis[0], c_ddr.op.axis[1], c_ddr.op.axis[3])
+    g_axis, n_after_multicore = sch[c_ddr].split(n_after_multicore, factor=cin1_g)
     sch[c_ddr].reorder(g_axis,
                        batch_after_multicore,
                        d_after_multicore,
@@ -1153,10 +1213,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     (batch_outer, al1_at_ddr_m_outer, batch_inner, bl1_at_ddr_n_outer, bl1_at_ddr_n_inner,
      col_at_ddr_axis, cddr_m_outer_inner, _, c_ddr_deep_outer, _) = _l0c_procees()
 
-    if not var_map:
-        c_ddr_deep_outer_value = compute_util.int_ceil_div(c_ddr.op.axis[1].dom.extent.value, cddr_deep_factor)
-    else:
-        c_ddr_deep_outer_value = compute_util.int_ceil_div(c_ddr.op.axis[1].dom.extent, cddr_deep_factor)
+    c_ddr_deep_outer_value = compute_util.int_ceil_div(cddr_depth, cddr_deep_factor)
     # l0a_l0b
     al0_m_factor = al0_tiling_ma * al0_tiling_m0
     if kd_reduce_flag is False:
@@ -1171,7 +1228,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     k_bl1_factor = bl1_tiling_k // bl0_tiling_kb // tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0]
     reduce_axis_serial, bl1_at_l0c_axis, al1_at_l0c_axis = _al1_and_bl1_process()
 
-    if stride_h > 1 or stride_w > 1 or dsl_flag:
+    a_l1_h_outer = None
+    if stride_h > 1 or stride_w > 1 or aub_fusion_flag:
         a_l1_h_outer = _aub_process()
 
     _reorder_management()
@@ -1240,20 +1298,19 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
     compute_at_buffer = []
     compute_at_axis = []
-    if dsl_flag:
-        compute_at_buffer.append(a_l1)
-        compute_at_axis.append(a_l1_h_outer)
+    compute_at_buffer.append(a_l1)
+    compute_at_axis.append(a_l1_h_outer)
+    compute_at_buffer.append(c_ddr)
+    compute_at_axis.append(cddr_m_outer_inner)
 
     _do_compute_at()
-    if dsl_flag:
-        _fusion_op_compute_at()
+    _fusion_op_compute_at()
 
     _double_buffer()
 
     # emit insn
     _emit_insn_process()
-    if dsl_flag:
-        _emit_insn_fusion_op()
+    _emit_insn_fusion_op()
 
     def _handle_dynamic_workspace(stride_w):
         def _get_al1_m_extent(al0_m):
@@ -1305,7 +1362,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             return bl1_bound
 
         def _set_aub_bound(al1_h):
-            if stride_h > 1 or stride_w > 1 or dsl_flag:
+            if stride_h > 1 or stride_w > 1 or aub_fusion_flag:
                 d_factor = _dfactor_dynamic(var_map)
                 aub_co0 = tbe_platform.CUBE_MKN[c_col.dtype]["mac"][1]
                 aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
@@ -1415,7 +1472,7 @@ class AutoScheduleOp:
         tmp_op["dst_buffer"] = tensor
         tmp_op["src_buffer"] = list(operator.input_tensors)
 
-        if "conv3d_backprop_input_A" in tmp_op["op"]:
+        if "bp_A" in tmp_op["op"] and "conv3d_backprop_input_" not in tmp_op["op"]:
             self._before_conv_flag = True
         if self._before_conv_flag:
             tmp_op["op"] = tmp_op["op"] + "_Before"
@@ -1433,6 +1490,9 @@ class AutoScheduleOp:
                     i.next = operation
                     operation.prev = i
                     tmp_operation_list.append(i)
+                    if tmp_op["op"] == "conv3d_backprop_input_dy_l1_s1" or \
+                       tmp_op["op"] == "conv3d_backprop_input_dy_filling":
+                        i.tag = "bp_A"
 
             operation_list = list(set(tmp_operation_list))
 

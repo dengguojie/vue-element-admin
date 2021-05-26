@@ -144,7 +144,7 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
     return shape_filters, shape_out_backprop, shape_strides, shape_dilations, shape_res
 
 
-@tbe_platform.fusion_manager.register("conv3d_backprop_input")
+@tbe_platform.fusion_manager.register("conv3d_backprop_input_d")
 def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
                                          out_backprop, y_input, input_sizes, strides,
                                          pads, dilations=(1, 1, 1, 1, 1), groups=1,
@@ -154,6 +154,10 @@ def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
     for i in filters.op.attrs['ori_shape']:
         shape_filter.append(i.value)
     filter_format = filters.op.attrs['ori_format']
+
+    dsl_flag = False
+    if isinstance(out_backprop.op, tvm.tensor.PlaceholderOp):
+        dsl_flag = True
 
     shape_out_backprop = []
     for i in out_backprop.op.attrs['ori_shape']:
@@ -169,7 +173,7 @@ def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
                          dilations,
                          data_format,
                          input_sizes)
-    filter_dtype = filters.op.attrs['data_type'].value
+    filter_dtype = filters.op.dtype
     out_backprop_dtype = out_backprop.dtype
     res_dtype = "float16"
 
@@ -218,7 +222,8 @@ def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
         "dilations": dilations,
         "res_dtype": res_dtype,
         "kernel_name": kernel_name,
-        "group_dict": group_dict
+        "group_dict": group_dict,
+        "dsl_flag": dsl_flag
     }
 
     dedx = tbe.conv3d_backprop_input(filter=filters,

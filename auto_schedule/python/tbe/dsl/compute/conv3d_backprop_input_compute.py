@@ -142,7 +142,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     _, _, filter_d, filter_h, filter_w = filter_sizes
     filter_frac_6d = [cout_g, filter_d, cin1_g, filter_h, filter_w, _BLOCK_SIZE]
     input_sizes[-1] = compute_util.align(dx_c, _BLOCK_SIZE)
-
+    dsl_flag = para_dict.get('dsl_flag', False)
     if var_map:
         DynamicConv3dBpInputParams.tiling_info_dict = {
             "op_type": "conv3d_backprop_input",
@@ -159,7 +159,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
             "stridew_expand": strides[3],
             "dilation": [1, dilations[2], dilations[3]],
             "group": real_g,
-            "fused_coefficient": [0, 0, var_map.get("fused_num", 0)],
+            "fused_coefficient": [var_map.get("fused_num", 0), 0, 0],
             "bias_flag": False,
             "kernel_name": kernel_name,
             "dynamic_shape_flag": True,
@@ -172,7 +172,8 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
                                            dilations=dilations,
                                            kernel_name=kernel_name,
                                            group_dict=group_dict,
-                                           var_map=var_map)
+                                           var_map=var_map,
+                                           dsl_flag=dsl_flag)
     dy_col = pattc.generate_a(out_backprop)
     w_col = pattc.generate_b(filters)
     dx_ddr = pattc.generate_c(dy_col, w_col, tensor_bias=bias)

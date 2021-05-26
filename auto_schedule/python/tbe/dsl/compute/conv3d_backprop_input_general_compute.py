@@ -61,7 +61,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
     def __init__(self,  # pylint: disable=R0913
                  kernel_sizes, strides, pad, output_shape, dilations,
-                 kernel_name, group_dict, var_map):
+                 kernel_name, group_dict, var_map, dsl_flag):
         super(DeConvPattern, self).__init__()
         _, _, kernel_d, kernel_h, kernel_w = kernel_sizes
         self._kernel_d = kernel_d
@@ -80,6 +80,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         self.dy_d = 0
         _, self._dilate_d, self._dilate_h, self._dilate_w, _ = dilations
         self.op_tag = "conv3d_backprop_input_"
+        self.dsl_flag = dsl_flag
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914
         """
@@ -347,7 +348,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         # mad dx shape
         dx_group, dx_batch, dx_deep, dx_c1, dx_hw, dx_c0 = cube_util.shape_to_list(dx_col.shape)
         # real dx shape
-        _, _, dx_cin1, dx_h, dx_w, dx_cin0 = self.output_shape
+        _, dx_d, dx_cin1, dx_h, dx_w, dx_cin0 = self.output_shape
         out_shape = (dx_batch, dx_deep, dx_cin1, dx_h * dx_w, dx_cin0)
 
         # float32->float16
@@ -398,6 +399,24 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
         if tensor_bias is not None and tensor_bias.dtype == "float16":
             dx_ub_vn = _add_bias_in_ub(dx_ub_vn, tensor_bias)
+
+        if self.dsl_flag:
+            dx_ub_out = tvm.compute(
+                (dx_batch * dx_deep, dx_cin1, dx_h * dx_w, dx_cin0),
+                lambda batch_d_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                dx_ub_vn[batch_d_idx // dx_d, batch_d_idx % dx_d,
+                         dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
+                name="c_ub_exact_hw",
+                tag="c_ub_exact_hw",
+                attrs={"output_shape": self.output_shape,
+                       "stride_d": self._stride_d,
+                       'depth_pad': (self._pad_head, self._pad_tail),
+                       'kernels': (self._kernel_d,
+                                   self._kernel_h, self._kernel_w),
+                       "kernel_name": self._kernel_name,
+                       "group_dict": self._group_dict})
+
+            return dx_ub_out
 
         dx_ddr = tvm.compute(
             out_shape,
