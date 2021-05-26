@@ -4090,41 +4090,72 @@ graphStatus ReplenishShape(std::vector<int64_t>& dims_x,
   return GRAPH_SUCCESS;
 }
 
-graphStatus InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
-                                               const string& input_name1,
-                                               const string& input_name2,
-                                               const string& input_name3,
-                                               const string& output_name) {
-  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
-  ge::Shape shape_x = op.GetInputDesc(input_name3).GetShape();
-  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
-  ge::Shape shape_z = op.GetInputDesc(input_name1).GetShape();
+bool InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
+                                        const string& input_name1,
+                                        const string& input_name2,
+                                        const string& input_name3,
+                                        const string& output_name) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(input_name1);
+  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(input_name2);
+  GeTensorDescPtr tensordesc_input3 = op_desc->MutableInputDesc(input_name3);
+  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_name);
+  CHECK(op_desc == nullptr ||
+        tensordesc_output == nullptr ||
+        tensordesc_input1 == nullptr ||
+        tensordesc_input2 == nullptr ||
+        tensordesc_input3 == nullptr,
+        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
+  DataType input_dtype = tensordesc_input1->GetDataType();
+  
+  // output Desc
+  tensordesc_output->SetDataType(input_dtype);
+  
+  // shape
+  ge::GeShape shape_x = tensordesc_input1->GetShape();
+  ge::GeShape shape_y = tensordesc_input2->GetShape();
+  ge::GeShape shape_z = tensordesc_input3->GetShape();
+  OP_LOGI(op.GetName().c_str(), "shape %s: %s, shape %s: %s, shape %s: %s.",
+          input_name1.c_str(), to_string(shape_x).c_str(),
+          input_name2.c_str(), to_string(shape_y).c_str(),
+          input_name3.c_str(), to_string(shape_z).c_str());
   std::vector<int64_t> dims_x = shape_x.GetDims();
   std::vector<int64_t> dims_y = shape_y.GetDims();
   std::vector<int64_t> dims_z = shape_z.GetDims();
-  if (dims_x.size() < dims_y.size()) {
-    std::vector<int64_t> dims_tmp = dims_x;
-    dims_x = dims_y;
-    dims_y = dims_tmp;
+  
+  // unknown rank
+  if (IsUnknownRankShape(dims_x) || IsUnknownRankShape(dims_y) || IsUnknownRankShape(dims_z)) {
+    tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
+    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.",
+            to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
+            input_dtype);
+    return true;
   }
-
-  std::vector<int64_t> dims_vec;
-  if (ReplenishShape(dims_x, dims_y, dims_z, dims_vec) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "ReplenishShape run failed");
-    return GRAPH_FAILED;
+  
+  // range
+  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+  tensordesc_input1->GetShapeRange(shape_range_x);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_y;
+  tensordesc_input2->GetShapeRange(shape_range_y);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_z;
+  tensordesc_input3->GetShapeRange(shape_range_z);
+  
+  std::vector<int64_t> dim_vec;
+  std::vector<std::pair<int64_t, int64_t>> vec_range;
+  dim_vec = dims_x;
+  vec_range = shape_range_x;
+  MakeUpShapeRange(dims_x, shape_range_x);
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dim_vec, vec_range, dims_y, shape_range_y, "x1", "x2")) {
+    return false;
   }
-
-  ge::Shape output_shape = ge::Shape(dims_vec);
-
-  v_output_desc.SetShape(output_shape);
-  v_output_desc.SetDataType(input_dtype);
-  v_output_desc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, v_output_desc);
-
-  return GRAPH_SUCCESS;
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dim_vec, vec_range, dims_z, shape_range_z,
+                                            "x1_broadcast", "input_data")) {
+    return false;
+  }
+  ge::GeShape output_shape = ge::GeShape(dim_vec);
+  tensordesc_output->SetShape(output_shape);
+  tensordesc_output->SetShapeRange(vec_range);
+  return true;
 }
 
 // ----------------Addcdiv begin-------------------
@@ -4143,8 +4174,7 @@ IMPLEMT_VERIFIER(Addcdiv, AddcdivVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(AddcdivInferShape) {
-  if (InferShapeAndTypeAddcdivAndAddcmul(op, "input_data", "x1", "x2", "y") ==
-      GRAPH_SUCCESS) {
+  if (InferShapeAndTypeAddcdivAndAddcmul(op, "x1", "x2", "input_data", "y")) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -4171,72 +4201,10 @@ IMPLEMT_VERIFIER(Addcmul, AddcmulVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(AddcmulInferShape) {
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  
-  string input_name1 = "x1";
-  string input_name2 = "x2";
-  string input_name3 = "input_data";
-  string output_name = "y";
-  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_name);
-  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(input_name1);
-  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(input_name2);
-  GeTensorDescPtr tensordesc_input3 = op_desc->MutableInputDesc(input_name3);
-  CHECK(op_desc == nullptr ||
-        tensordesc_output == nullptr ||
-        tensordesc_input1 == nullptr ||
-        tensordesc_input2 == nullptr ||
-        tensordesc_input3 == nullptr,
-        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
-  DataType input_dtype = tensordesc_input1->GetDataType();
-  
-  // output Desc
-  tensordesc_output->SetDataType(input_dtype);
-  
-  // shape
-  ge::GeShape shapeX = tensordesc_input1->GetShape();
-  ge::GeShape shapeY = tensordesc_input2->GetShape();
-  ge::GeShape shapeZ = tensordesc_input3->GetShape();
-  OP_LOGI(op.GetName().c_str(), "shape %s: %s, shape %s: %s, shape %s: %s.",
-          input_name1.c_str(), to_string(shapeX).c_str(),
-          input_name2.c_str(), to_string(shapeY).c_str(),
-          input_name3.c_str(), to_string(shapeZ).c_str());
-  std::vector<int64_t> dimsX = shapeX.GetDims();
-  std::vector<int64_t> dimsY = shapeY.GetDims();
-  std::vector<int64_t> dimsZ = shapeZ.GetDims();
-  
-  // unknown rank
-  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY) || IsUnknownRankShape(dimsZ)) {
-    tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
-    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.",
-            to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
-            input_dtype);
+  if (InferShapeAndTypeAddcdivAndAddcmul(op, "x1", "x2", "input_data", "y")) {
     return GRAPH_SUCCESS;
   }
-  
-  // range
-  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  tensordesc_input1->GetShapeRange(shape_range_x);
-  std::vector<std::pair<int64_t, int64_t>> shape_range_y;
-  tensordesc_input2->GetShapeRange(shape_range_y);
-  std::vector<std::pair<int64_t, int64_t>> shape_range_z;
-  tensordesc_input3->GetShapeRange(shape_range_z);
-  
-  std::vector<int64_t> dimVec;
-  std::vector<std::pair<int64_t, int64_t>> Vec_range;
-  dimVec = dimsX;
-  Vec_range = shape_range_x;
-  MakeUpShapeRange(dimsX, shape_range_x);
-  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsY, shape_range_y, "x1", "x2")) {
-    return GRAPH_FAILED;
-  }
-  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsZ, shape_range_z,
-                                            "x1_broadcast", "input_data")) {
-    return GRAPH_FAILED;
-  }
-  ge::GeShape outputShape = ge::GeShape(dimVec);
-  tensordesc_output->SetShape(outputShape);
-  tensordesc_output->SetShapeRange(Vec_range);
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 // Registered inferfunction
 COMMON_INFER_FUNC_REG(Addcmul, AddcmulInferShape);

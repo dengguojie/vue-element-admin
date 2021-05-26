@@ -10,7 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file test_addcmul_proto.cpp
+ * @file test_addcdiv_proto.cpp
  *
  * @brief
  *
@@ -23,19 +23,19 @@
 #include "op_proto_test_util.h"
 #include "elewise_calculation_ops.h"
 
-class addcmul : public testing::Test {
+class addcdiv : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "addcmul test SetUp" << std::endl;
+    std::cout << "addcdiv test SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "addcmul test TearDown" << std::endl;
+    std::cout << "addcdiv test TearDown" << std::endl;
   }
 };
 
-TEST_F(addcmul, addcmul_infershape_fp16_test) {
-  ge::op::Addcmul op;
+TEST_F(addcdiv, addcdiv_infershape_fp16_test) {
+  ge::op::Addcdiv op;
   auto input_data_desc = create_desc_shape_range({-1,-1,-1,1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,16,16,1}, ge::FORMAT_NCHW,
    {{1, 3}, {1, 16}, {16, 16}, {1, 1}});
   op.UpdateInputDesc("input_data", input_data_desc);

@@ -3415,7 +3415,7 @@ REG_OP(Addcdiv)
     .INPUT(input_data, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .INPUT(value, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT32 }))
+    .INPUT(value, TensorType({ DT_FLOAT16, DT_FLOAT, DT_INT32}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(Addcdiv)
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-addcmul
+addcdiv
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -25,10 +25,10 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
-@register_operator_compute("Addcmul", op_mode="dynamic", support_fusion=True)
-def addcmul_compute(input_data, x1, x2, value, y, kernel_name="addcmul"):
+@register_operator_compute("Addcdiv", op_mode="dynamic", support_fusion=True)
+def addcdiv_compute(input_data, x1, x2, value, y, kernel_name="addcdiv"):
     """
-    calculating data's addcmul, y = input_data + value * (x1 * x2)
+    calculating data's addcdiv, y = input_data + value * (x1 / x2)
     :param input_data: TVM tensor
     :param x1: TVM tensor
     :param x2: TVM tensor
@@ -53,7 +53,7 @@ def addcmul_compute(input_data, x1, x2, value, y, kernel_name="addcmul"):
     x2 = tbe.broadcast(x2, shape_max)
     value = tbe.broadcast(value, shape_max)
 
-    vmul_val = tbe.vmul(x1, x2)
+    vmul_val = tbe.vdiv(x1, x2)
     vmul_val2 = tbe.vmul(vmul_val, value)
     res = tbe.vadd(input_data, vmul_val2)
 
@@ -63,28 +63,28 @@ def addcmul_compute(input_data, x1, x2, value, y, kernel_name="addcmul"):
 
 
 #register op
-@register_operator("Addcmul")
+@register_operator("Addcdiv")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def addcmul(input_data, x1, x2, value, y, kernel_name="addcmul"):
+def addcdiv(input_data, x1, x2, value, y, kernel_name="addcdiv"):
     """
-    algorithm: addcmul
-    calculating data's addcmul, y = input_data + value * (x1 * x2)
+    algorithm: addcdiv
+    calculating data's addcdiv, y = input_data + value * (x1 / x2)
 
     Parameters
     ----------
     input_data : dict
-        shape and dtype of first input, only support float16, float32, int32, int8, uint8
+        shape and dtype of first input, only support float16, float32
     x1 : dict
-        shape and dtype of second input, only support float16, float32, int32, int8, uint8
+        shape and dtype of second input, only support float16, float32
     x2 : dict
-        shape and dtype of third input, only support float16, float32, int32, int8, uint8
+        shape and dtype of third input, only support float16, float32
     value: dict
-        shape and dtype of value, only support float16, float32, int32, int8, uint8
+        shape and dtype of value, only support float16, float32, int32
     y: dict
         shape and dtype of output, should be broadcast shape and type as input
     kernel_name : str
-        cce kernel name, default value is addcmul
+        cce kernel name, default value is addcdiv
 
     Returns
     -------
@@ -95,23 +95,24 @@ def addcmul(input_data, x1, x2, value, y, kernel_name="addcmul"):
     dtype_x2 = x2.get("dtype").lower()
     dtype_value = value.get("dtype").lower()
 
-    check_list = ["float16", "float32", "int32", "int8", "uint8"]
+    check_list = ["float16", "float32"]
+    value_list = ["float16", "float32", "int32"]
 
     para_check.check_dtype(dtype_input, check_list)
     para_check.check_dtype(dtype_x1, check_list)
     para_check.check_dtype(dtype_x2, check_list)
-    para_check.check_dtype(dtype_value, check_list)
+    para_check.check_dtype(dtype_value, value_list)
 
     if dtype_input != dtype_x1:
-        error_manager_vector.raise_err_two_input_dtype_invalid('addcmul', "input_data", "x1", \
+        error_manager_vector.raise_err_two_input_dtype_invalid('addcdiv', "input_data", "x1", \
                         "the dtype of input_data, x1, must be the same")
 
     if dtype_input != dtype_x2:
-        error_manager_vector.raise_err_two_input_dtype_invalid('addcmul', "input_data", "x2", \
+        error_manager_vector.raise_err_two_input_dtype_invalid('addcdiv', "input_data", "x2", \
                         "the dtype of input_data, x2, must be the same.")
 
     if dtype_input != dtype_value:
-        error_manager_vector.raise_err_two_input_dtype_invalid('addcmul', "input_data", "value", \
+        error_manager_vector.raise_err_two_input_dtype_invalid('addcdiv', "input_data", "value", \
                         "the dtype of input_data, value must be the same")
 
     ins = classify([input_data, x1, x2, value], OpPatternMode.ELEWISE_WITH_BROADCAST)
@@ -126,7 +127,7 @@ def addcmul(input_data, x1, x2, value, y, kernel_name="addcmul"):
             data_x2 = tvm.placeholder(shape_x2, dtype=dtype_x2, name="data_x2")
             data_value = tvm.placeholder(shape_value, dtype=dtype_value, name="data_value")
 
-            res = addcmul_compute(data_input, data_x1, data_x2, data_value, y, kernel_name)
+            res = addcdiv_compute(data_input, data_x1, data_x2, data_value, y, kernel_name)
             input_list = [data_input, data_x1, data_x2, data_value, res]
             tensors.append(input_list)
 

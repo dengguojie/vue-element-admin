@@ -17,6 +17,7 @@ dynamic operator
 """
 # pylint: disable=W0622
 from __future__ import absolute_import as _abs
+from .addcdiv import addcdiv
 from .avg_pool_1d import avg_pool_1d
 from .avg_pool import avg_pool
 from .avg_pool_grad import avg_pool_grad
