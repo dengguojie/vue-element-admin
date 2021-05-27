@@ -1586,6 +1586,7 @@ IMPLEMT_VERIFIER(GEMM, GemmVerify) {
   support_list_ab.push_back(DT_FLOAT);
   support_list_ab.push_back(DT_INT32);
   support_list_ab.push_back(DT_FLOAT16);
+  OP_LOGD(op.GetName().c_str(), "[GEMM Verify] Start GEMM Verify.");
 
   if (CheckInputDataType(op, "a", support_list) == false) {
     TbeInputDataTypeErrReport(op.GetName().c_str(), "a", "float16,int8",
@@ -1618,6 +1619,7 @@ IMPLEMT_VERIFIER(GEMM, GemmVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(GemmInferShape) {
+  OP_LOGD(op.GetName().c_str(), "[GEMM Infershape] Start GEMM infershape.");
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   ge::TensorDesc inputTensorDescC = op.GetInputDesc("c");
   DataType dtype = inputTensorDescC.GetDataType();
@@ -1629,6 +1631,10 @@ IMPLEMT_COMMON_INFERFUNC(GemmInferShape) {
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
+
+// not change inferformat
+IMPLEMT_INFERFORMAT_FUNC(GEMM, GemmInferFormat) { return GRAPH_SUCCESS;}
+INFER_FORMAT_FUNC_REG(GEMM, GemmInferFormat);
 
 // Registered inferfunction
 COMMON_INFER_FUNC_REG(GEMM, GemmInferShape);

@@ -98,3 +98,4 @@ TEST_F(GemmProtoTest, GemmInferShapeTest) {
    auto status = op.InferShapeAndType();
    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
+
