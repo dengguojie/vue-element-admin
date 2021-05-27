@@ -1868,19 +1868,21 @@ INFER_FUNC_REG(AccumulatorTakeGradient, AccumulatorTakeGradientInfer);
 IMPLEMT_INFERFUNC(SparseConditionalAccumulator, SparseConditionalAccumulatorInfer) {
   DataType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
   Shape output_shape;
   if (Vector(2, output_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "create output shape failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(
+        op.GetName(),
+        string("call Vector function failed to create output shape"));
     return GRAPH_FAILED;
   }
   TensorDesc handle_desc = op.get_output_desc_handle();
   handle_desc.SetShape(output_shape);
   handle_desc.SetDataType(DT_STRING_REF);
   if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update output[handle] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1891,8 +1893,13 @@ INFER_FUNC_REG(SparseConditionalAccumulator, SparseConditionalAccumulatorInfer);
 IMPLEMT_INFERFUNC(SparseAccumulatorApplyGradient, SparseAccumulatorApplyGradientInfer) {
   Shape unused_shape;
   auto local_step_tensor = op.get_input_desc_local_step();
-  if (WithRank(local_step_tensor, 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input local_step must be 0-D");
+  if (WithRank(local_step_tensor, 0, unused_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[local_step] rank must "
+        "be 0-D, got rank[",
+        local_step_tensor.GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1903,8 +1910,13 @@ INFER_FUNC_REG(SparseAccumulatorApplyGradient, SparseAccumulatorApplyGradientInf
 IMPLEMT_INFERFUNC(SparseAccumulatorTakeGradient, SparseAccumulatorTakeGradientInfer) {
   Shape unused_shape;
   auto num_required_tensor = op.get_input_desc_num_required();
-  if (WithRank(num_required_tensor, 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input num_required must be 0-D");
+  if (WithRank(num_required_tensor, 0, unused_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[num_required] rank must "
+        "be 0-D, got rank[",
+        num_required_tensor.GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1912,20 +1924,23 @@ IMPLEMT_INFERFUNC(SparseAccumulatorTakeGradient, SparseAccumulatorTakeGradientIn
   indices_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
   indices_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("indices", indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update indices desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[indices] desc failed"));
     return GRAPH_FAILED;
   }
 
   DataType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
   TensorDesc values_desc = op.get_output_desc_values();
   values_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
   values_desc.SetDataType(dtype);
   if (op.UpdateOutputDesc("values", values_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update values desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[values] desc failed"));
     return GRAPH_FAILED;
   }
 
@@ -1933,7 +1948,8 @@ IMPLEMT_INFERFUNC(SparseAccumulatorTakeGradient, SparseAccumulatorTakeGradientIn
   shape_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
   shape_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("shape", shape_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update shape desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[shape] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

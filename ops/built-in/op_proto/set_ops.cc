@@ -251,8 +251,11 @@ IMPLEMT_INFERFUNC(DenseToSparseSetOperation, DenseToSparseSetOperationInfer) {
 INFER_FUNC_REG(DenseToSparseSetOperation, DenseToSparseSetOperationInfer);
 
 IMPLEMT_INFERFUNC(SparseToSparseSetOperation, SparseToSparseSetOperationInfer) {
-  if (op.GetInputsSize() != 6) {
-    OP_LOGE(op.GetName().c_str(), "Inputs size is not 6.");
+  int64_t inputs_size = op.GetInputsSize();
+  std::string err_msg;
+  if (inputs_size != 6) {
+    err_msg = ConcatString("inputs size must be 6, got ", inputs_size);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -262,14 +265,23 @@ IMPLEMT_INFERFUNC(SparseToSparseSetOperation, SparseToSparseSetOperationInfer) {
   auto x2_indices_tensor = op.GetInputDesc(3);
   auto x2_values_tensor = op.GetInputDesc(4);
   auto x2_shape_tensor = op.GetInputDesc(5);
-  graphStatus status = ValidateSparseTensor(x1_indices_tensor, x1_values_tensor, x1_shape_tensor, op.GetName().c_str());
+  graphStatus status =
+      ValidateSparseTensor(x1_indices_tensor, x1_values_tensor, x1_shape_tensor,
+                           op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Validate Sparse x1 parameters error.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(
+        op.GetName(),
+        string("failed to call ValidateSparseTensor function for "
+               "input[x1_indices], input[x1_values], input[x1_shape]."));
     return GRAPH_FAILED;
   }
-  status = ValidateSparseTensor(x2_indices_tensor, x2_values_tensor, x2_shape_tensor, op.GetName().c_str());
+  status = ValidateSparseTensor(x2_indices_tensor, x2_values_tensor,
+                                x2_shape_tensor, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Validate Sparse x2 parameters error.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(
+        op.GetName(),
+        string("failed to call ValidateSparseTensor function for "
+               "input[x2_indices], input[x2_values], input[x2_shape]."));
     return GRAPH_FAILED;
   }
 
@@ -280,17 +292,24 @@ IMPLEMT_INFERFUNC(SparseToSparseSetOperation, SparseToSparseSetOperationInfer) {
   if (ValueKnown(x1_shape, 0)) {
     const int64_t input_rank_dim1 = x1_shape.GetDim(0);
     if (input_rank_dim1 < 2) {
-      OP_LOGE(op.GetName().c_str(), "Input sparse x1 rank must > = 2.");
+      err_msg = ConcatString("input[x1_shape] rank must > = 2, got rank[",
+                             input_rank_dim1, "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     if (input_rank_dim1 != input_rank_dim2) {
-      OP_LOGE(op.GetName().c_str(), "Input x1 rank must match x2 rank.");
+      err_msg = ConcatString("input[x1_shape] rank[", input_rank_dim1,
+                             "] is not equal to input[x2_shape] rank[",
+                             input_rank_dim2, "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     output_rank_dim = input_rank_dim1;
   } else if (ValueKnown(x2_shape, 0)) {
     if (input_rank_dim2 < 2) {
-      OP_LOGE(op.GetName().c_str(), "Input sparse x2 rank must > = 2.");
+      err_msg = ConcatString("input[x2_shape] rank must > = 2, got rank[",
+                             input_rank_dim2, "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     output_rank_dim = input_rank_dim2;
@@ -311,14 +330,16 @@ IMPLEMT_INFERFUNC(SparseToSparseSetOperation, SparseToSparseSetOperationInfer) {
   y_indices_tensor.SetShape(output_indices);
   y_indices_tensor.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("y_indices", y_indices_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Updata output y_indices error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y_indices] failed."));
     return GRAPH_FAILED;
   }
   TensorDesc y_values_tensor = op.GetOutputDesc("y_values");
   y_values_tensor.SetShape(output_values);
   y_values_tensor.SetDataType(x1_values_type);
   if (op.UpdateOutputDesc("y_values", y_values_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Updata output y_values error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y_values] failed."));
     return GRAPH_FAILED;
   }
   TensorDesc y_shape_tensor = op.GetOutputDesc("y_shape");
