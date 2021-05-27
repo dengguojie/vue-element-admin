@@ -815,12 +815,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                         fmap_al1 = tvm.compute(fmap_l1_shape, lambda group0, n, c1, h, w, c0:
                                                fmap(n, c1 + group0*ConvParam.para_dict["c1_opt"],
                                                     h, w, c0), name="fmap_l1")
-                        img2col_para = (fmap_al1, filter_h, filter_w, padding, stride, width_out)
+                        img2col_para = (fmap_al1, filter_h, filter_w, padding, stride, dilate, width_out)
                         TENSOR_MAP["fmap_l1"] = fmap_al1
                     else:
-                        img2col_para = (fmap, filter_h, filter_w, padding, stride, width_out)
+                        img2col_para = (fmap, filter_h, filter_w, padding, stride, dilate, width_out)
                 else:
-                    img2col_para = (fmap_l1, filter_h, filter_w, padding, (1, stride_w), width_out)
+                    img2col_para = (fmap_l1, filter_h, filter_w, padding, (1, stride_w), dilate, width_out)
                 fmap_im2col_fractal_res = img2col(fmap_im2col_fractal_shape, img2col_para)
                 TENSOR_MAP["fmap_im2col_fractal_res"] = fmap_im2col_fractal_res
 
@@ -1155,7 +1155,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         tensor: im2col result tensor
         """
         block_size = 16
-        fmap, kernel_h, kernel_w, padding, stride, fmap_wo = img2col_para
+        fmap, kernel_h, kernel_w, padding, stride, dilate, fmap_wo = img2col_para
 
         def __im2col_idx(idx):
             """
@@ -1172,10 +1172,11 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
             virtual_h = col_h * block_size + block_size_h
             virtual_w = col_w * block_size + block_size_w
+            dilate_h, dilate_w = dilate
 
             back_c1 = virtual_w // block_size // kernel_w // kernel_h
-            back_h = (virtual_h // fmap_wo) * stride[0] + (col_w // kernel_w % kernel_h)
-            back_w = (virtual_h % fmap_wo) * stride[1] + (col_w % kernel_w)
+            back_h = (virtual_h // fmap_wo) * stride[0] + (col_w // kernel_w % kernel_h)*dilate_h
+            back_w = (virtual_h % fmap_wo) * stride[1] + (col_w % kernel_w)*dilate_w
 
             if len(fmap.shape) == len(ConvParam.para_dict["a_shape"]):
                 return tvm.select(tvm.any(back_h < padding[0],

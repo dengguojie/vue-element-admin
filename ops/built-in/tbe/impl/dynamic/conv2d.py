@@ -176,6 +176,7 @@ def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pad
     return result
 
 
+
 def set_default_para():
     """
     set default parameter value
