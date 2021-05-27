@@ -4149,7 +4149,10 @@ class CceConvOp:
                         else:
                             aub_factor[1] = fmap_shape_nc1hwc0[2]
 
-                al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[1], nparts=aub_factor[0])
+                if self._dynamic_flag:
+                    al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[0])
+                else:
+                    al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[1], nparts=aub_factor[0])
                 if self._conv1d_split_w_flag:
                     if self._dynamic_flag:
                         # al1 is [group, n, c1, h, w, c0] in dynamic
@@ -4167,7 +4170,30 @@ class CceConvOp:
                     sch[al1].reorder(al1_k_outer, al1_h_outer, al1_k_inner, al1_h_inner)
                     sch[fmap].compute_at(sch[al1], al1_h_outer)
                     sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_h_outer)
-                sch[al1].emit_insn(al1_k_inner, 'dma_copy')
+                if self._dynamic_flag:
+                    if strideh_opti_flag:
+                        strideh_update = 1
+                    else:
+                        strideh_update = ConvParam.stride_h
+                    im2col_attr = {
+                        'set_fmatrix': 1,
+                        'conv_kernel_h': ConvParam.filter_h,
+                        'conv_kernel_w': ConvParam.filter_w,
+                        'conv_padding_top': ConvParam.padding[0],
+                        'conv_padding_bottom': ConvParam.padding[1],
+                        'conv_padding_left': ConvParam.padding[2],
+                        'conv_padding_right': ConvParam.padding[3],
+                        'conv_stride_h': strideh_update,
+                        'conv_stride_w': ConvParam.stride_w,
+                        'conv_fm_c': fmap.shape[4]*fmap.shape[1],
+                        'conv_fm_c1': fmap.shape[1],
+                        'conv_fm_h': fmap.shape[2],
+                        'conv_fm_w': fmap.shape[3],
+                        'conv_fm_c0': fmap.shape[4],
+                    }
+                    sch[al1].emit_insn(al1_k_inner, 'dma_copy', im2col_attr)
+                else:
+                    sch[al1].emit_insn(al1_k_inner, 'dma_copy')
                 self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
 
             if self._l0a_dma_flag and "fmap_ub_for_dma_im2col" in tensor_map:
