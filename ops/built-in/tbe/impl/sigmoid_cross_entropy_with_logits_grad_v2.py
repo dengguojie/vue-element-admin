@@ -56,10 +56,13 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target, dout, wei
         target = tbe.cast_to(target, precision_dtype)
 
     # calculate sigmoid(predict)
-    exp_predict = tbe.vexp(predict)
-    exp_add1 = tbe.vadds(exp_predict, tvm.const(1, precision_dtype))
-    sigmoid_tmp = tbe.vdiv(exp_predict, exp_add1)
-    sigmoid_res = tbe.cast_to(sigmoid_tmp, precision_dtype)
+    const_num_neg_one = tvm.const(-1, dtype="float32")
+    const_num_one = tvm.const(1, dtype="float32")
+    tmp_negative = tbe.vmuls(predict, const_num_neg_one)
+    tmp_exp = tbe.vexp(tmp_negative)
+    tmp_sum = tbe.vadds(tmp_exp, const_num_one)
+    tensor_one = tbe.broadcast(tvm.const(1, "float32"), predict_shape)
+    sigmoid_res = tbe.vdiv(tensor_one, tmp_sum)
 
     # calculate the result of gradient = ((log_weight + 1 - target) * sigmoid(predict) - log_weight) * dout
     if pos_weight is not None:
