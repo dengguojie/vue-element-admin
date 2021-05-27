@@ -401,6 +401,36 @@ REG_OP(EmbeddingRankId)
     .OP_END_FACTORY_REG(EmbeddingRankId)
 
 /**
+*@brief EmbeddingLocalIndex, Sort statistics index according to rank_id \n
+
+*@par Inputs:
+* @li addr_table: A 2D tensor which last dimension must be 3.
+* @li index: A tensor with data type int32, int64, uint32, uint64.
+
+*@par Attributes:
+* @li row_memory: The size of Embedding vector in a row, the default is 320.
+* @li mode: String type, currently there are two options: 'mod' and 'order'
+
+*@par Outputs:
+* @li local_idx:Index on each server.
+* @li nums:The number of local_idx found on each server.
+* @li recover_idx:The sorted local_idx element is at the position corresponding
+* to the original input index.
+
+*@par Third-party framework compatibility
+* Compatible with the TensorFlow operator Diag.
+*/
+REG_OP(EmbeddingLocalIndex)
+    .INPUT(addr_table, TensorType({DT_UINT64}))
+    .INPUT(index, TensorType({DT_INT64,DT_INT32,DT_UINT32,DT_UINT64}))
+    .OUTPUT(local_idx, TensorType({DT_INT64,DT_INT32,DT_UINT32,DT_UINT64}))
+    .OUTPUT(nums, TensorType({DT_INT64,DT_INT32,DT_UINT32,DT_UINT64}))
+    .OUTPUT(recover_idx, TensorType({DT_INT64,DT_INT32,DT_UINT32,DT_UINT64}))
+    .ATTR(row_memory, Int, 320)
+    .ATTR(mode, String, "mod")
+    .OP_END_FACTORY_REG(EmbeddingLocalIndex)
+
+/**
 * @brief Fill the value to a tensor has the specified shape.
 
 * @par Inputs:

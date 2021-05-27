@@ -939,6 +939,82 @@ IMPLEMT_COMMON_INFERFUNC(EmbeddingRankIdInferShape) {
 COMMON_INFER_FUNC_REG(EmbeddingRankId, EmbeddingRankIdInferShape);
 // ---------------------EmbeddingRankId END-------------------------------------
 
+// ---------------------EmbeddingLocalIndex-------------------------------------
+IMPLEMT_COMMON_INFERFUNC(EmbeddingLocalIndexInferShape) {
+  Shape addr_shape;
+  std::string err_msg;
+  auto addr_desc = op.GetInputDesc(0);
+  if (WithRank(addr_desc, 2, addr_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    err_msg =
+        GetShapeErrMsg(0, DebugString(addr_desc.GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  auto addr_rank = addr_shape.GetDimNum();
+  auto addr_dims = addr_shape.GetDims();
+
+  if (addr_dims[addr_rank - 1] != 3) {
+    err_msg = ConcatString("the last dim of input[addr_table] must be 3, got[",
+                           addr_dims[addr_rank - 1], "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (addr_dims[0] <= 0) {
+    err_msg =
+        ConcatString("the first dim of input[addr_table] must be > 0, got[",
+                     addr_dims[0], "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape index_shape;
+  auto index_desc = op.GetInputDesc(1);
+  if (WithRank(index_desc, 1, index_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    err_msg =
+        GetShapeErrMsg(1, DebugString(index_desc.GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  int32_t row_memory = 0;
+  if (op.GetAttr("row_memory", row_memory) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("fail to get attr[row_memory]."));
+    return GRAPH_FAILED;
+  }
+  if (row_memory <= 0) {
+    err_msg =
+        ConcatString("attr[row_memory] should be > 0, got[", row_memory, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_PARAM_INVALID;
+  }
+
+  auto local_idx_desc = op.GetOutputDesc(0);
+  local_idx_desc.SetShape(index_shape);
+  local_idx_desc.SetDataType(index_desc.GetDataType());
+  (void)op.UpdateOutputDesc("local_idx", local_idx_desc);
+
+  std::vector<int64_t> nums_dims = {addr_dims[0]};
+  auto nums_desc = op.GetOutputDesc(1);
+  nums_desc.SetShape(Shape(nums_dims));
+  nums_desc.SetDataType(index_desc.GetDataType());
+  (void)op.UpdateOutputDesc("nums", nums_desc);
+
+  auto recover_idx_desc = op.GetOutputDesc(2);
+  recover_idx_desc.SetShape(index_shape);
+  recover_idx_desc.SetDataType(index_desc.GetDataType());
+  (void)op.UpdateOutputDesc("recover_idx", recover_idx_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(EmbeddingLocalIndex, EmbeddingLocalIndexInferShape);
+// ---------------------EmbeddingLocalIndex END-------------------------------------
+
 // ----------------FillV2 Begin-------------------
 IMPLEMT_INFERFUNC(FillV2, FillV2InferShape) {
   Tensor data;

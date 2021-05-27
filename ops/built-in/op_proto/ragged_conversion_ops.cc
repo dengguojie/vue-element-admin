@@ -70,8 +70,6 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
       int64_t dim_val = rt_dense_values_shape.GetDim(i);
       if (dim_val == UNKNOWN_DIM) {
         found_unknown = true;
-      } else if (dim_val == 0) {
-        num_values = 0;
       } else {
         size *= dim_val;
       }

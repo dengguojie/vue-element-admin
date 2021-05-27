@@ -1442,6 +1442,12 @@ REGISTER_CUSTOM_OP("EmbeddingRankId")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+REGISTER_CUSTOM_OP("EmbeddingLocalIndex")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("EmbeddingLocalIndex")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register SparseSegmentMeanGrad op to GE
 REGISTER_CUSTOM_OP("SparseSegmentMeanGrad")
     .FrameworkType(TENSORFLOW)
