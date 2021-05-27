@@ -228,10 +228,15 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
         workspace_type = []
 
         workspace_info = get_compile_info().get("_workspace_info")
-        before_reduce_product = functools.reduce(lambda x1, x2: x1 * x2,
-                                                 util.shape_to_list(norm_info.shape_before_reduce))
-        after_reduce_product = functools.reduce(lambda x1, x2: x1 * x2,
-                                                util.shape_to_list(norm_info.shape_after_reduce))
+
+        block_size = get_block_size(compute_graph_info.min_type)
+        before_reduce_align_shape = util.shape_to_list(norm_info.shape_before_reduce)[:]
+        before_reduce_align_shape[-1] = (before_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
+        after_reduce_align_shape = util.shape_to_list(norm_info.shape_before_reduce)[:]
+        after_reduce_align_shape[-1] = (after_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
+        before_reduce_product = functools.reduce(lambda x1, x2: x1 * x2, before_reduce_align_shape)
+        after_reduce_product = functools.reduce(lambda x1, x2: x1 * x2, after_reduce_align_shape)
+
         for i in range(len(workspace_info["_workspace_type"])):
             workspace_num += 1
             if workspace_info["_workspace_type"][i] == 1:

@@ -322,24 +322,21 @@ bool Norm::GetBlockTilingInfo() {
   if (is_need_workspace && compileInfo.workspace_type.size() != 0) {
     return GetWorkspaceBlockTilingInfo();
   }
-  int64_t left_product = 1;
   int64_t right_product = shape_after_reduce_product;
+  int64_t left_product = 1;
+  // output of each block > 32B, normal sch's output include reduce axis
+  right_product = right_product * reduce_product;
   // if after shape product < block_size, block_dim = 1
   if (right_product < block_size) {
     tilingInfo.block_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
     tilingInfo.block_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
     return true;
   }
-  // output of each block > 32B, normal sch's output include reduce axis
-  right_product = right_product * reduce_product;
   for (std::size_t i = 0; i < input_shape.size(); i++) {
     // block split A
     if (IsInVector(reduce_axis, i)) {
+      right_product = right_product / input_shape[i];
       continue;
-    }
-    // block split last A, reduce axis can not be considered when output of each block > 32B
-    if (!is_last_axis_reduce && i == input_shape.size() - 1) {
-      right_product = right_product / reduce_product;
     }
     if (right_product / input_shape[i] <= block_size && left_product * input_shape[i] < compileInfo.core_num) {
       int64_t cur_block_factor =
@@ -503,7 +500,7 @@ int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_a
 
 bool Norm::GetUbTilingInfo() {
   // if after shape product < block_size, don't split ub
-  if (!is_need_workspace && shape_after_reduce_product < block_size) {
+  if (!is_need_workspace && shape_after_reduce_product * reduce_product < block_size) {
     tilingInfo.ub_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
     tilingInfo.ub_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
     return true;
