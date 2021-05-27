@@ -21,6 +21,7 @@ from te import tik
 from impl import common_util
 from impl import constant_util as constant
 from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_context
 
 # min value of fp16
 MIN_VALUE_FP16 = -65504.0
@@ -362,7 +363,7 @@ class MaxPoolWithargmaxResnet50(object):
         src_offsets = instance.Tensor("int32", (src_offsets_size,), name="src_offsets", scope=tik.scope_ubuf)
         repeat_times = src_offsets_size // 8
         instance.data_move(ub_load,
-                           input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h) * self.stride_h *
+                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h) * self.stride_h *
                                          self. in_size_w * 16],
                            0, 1, gm_len_pong, 0, 0)
         with instance.if_scope(looph == loop_h // 2 - 1):
@@ -836,6 +837,10 @@ class MaxPoolWithargmaxResnet50(object):
                 if check_load3d_supported:
                     input_idx.set_as(input_idx + load_fm_size * c0_dim)
                     l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
+
+        if check_vgatherb_supported:
+            # which will result in global variable in cce file with wrong address
+            tbe_context.get_context().add_compile_info("global_variable_link", True)
 
         instance.BuildCCE(kernel_name=kernel_name,
                           inputs=(input_fmap_gm),
