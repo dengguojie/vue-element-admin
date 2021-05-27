@@ -107,6 +107,7 @@ set(_onnx_plugins
   quant/int8_dequantize_plugin.cc
   quant/Int8Transpose_plugin.cc
   random_normal_like_plugin.cc
+  quant/int8conv_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
