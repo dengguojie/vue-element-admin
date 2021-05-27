@@ -625,9 +625,9 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
   auto y_desc = op_desc->MutableOutputDesc(0);
   auto size_desc = op_desc->MutableInputDesc(1);
   auto grads_desc = op_desc->MutableInputDesc(0);
-  if (op.GetInputDesc(0).GetShape().GetShapeSize() == UNKNOWN_DIM ||
-      op.GetInputDesc(1).GetShape().GetShapeSize() == UNKNOWN_DIM) {
-    y_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  if (op.GetInputDesc(0).GetShape().GetDims() == UNKNOWN_RANK ||
+      op.GetInputDesc(1).GetShape().GetDims() == UNKNOWN_RANK) {
+    y_desc->SetShape(GeShape(UNKNOWN_RANK));
     y_desc->SetDataType(grads_desc->GetDataType());
     return GRAPH_SUCCESS;
   }

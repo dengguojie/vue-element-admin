@@ -66,6 +66,5 @@ ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
 
-
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

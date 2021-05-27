@@ -33,7 +33,7 @@ class ResizeNearestNeighborV2Grad : public testing::Test {
   }
 };
 
-TEST_F(ResizeNearestNeighborV2Grad, resize_nearest_neighbor_v2_grad_infer_shape) {
+TEST_F(ResizeNearestNeighborV2Grad, resize_nearest_neighbor_v2_grad_infer_shape01) {
   ge::op::ResizeNearestNeighborV2Grad op;
   std::vector<std::pair<int64_t,int64_t>> shape_grad_range = {{22, 22}, {10, 10}, {4, 4}, {1, 1}};
   std::vector<std::pair<int64_t,int64_t>> shape_size_range = {{2, 2}};
@@ -45,6 +45,22 @@ TEST_F(ResizeNearestNeighborV2Grad, resize_nearest_neighbor_v2_grad_infer_shape)
                                              ge::DT_INT32, ge::FORMAT_ND,
                                              {2},
                                              ge::FORMAT_ND, shape_size_range);
+  op.UpdateInputDesc("grads", tensor_grad_desc);
+  op.UpdateInputDesc("size", tensor_size_desc);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(ResizeNearestNeighborV2Grad, resize_nearest_neighbor_v2_grad_infer_shape02) {
+  ge::op::ResizeNearestNeighborV2Grad op;
+  auto tensor_grad_desc = create_desc_shape_range({-2},
+                                             ge::DT_INT32, ge::FORMAT_NHWC,
+                                             {-2},
+                                             ge::FORMAT_NHWC, {{}});
+  auto tensor_size_desc = create_desc_shape_range({2},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {2},
+                                             ge::FORMAT_ND, {{2, 2}});
   op.UpdateInputDesc("grads", tensor_grad_desc);
   op.UpdateInputDesc("size", tensor_size_desc);
   auto ret = op.InferShapeAndType();
