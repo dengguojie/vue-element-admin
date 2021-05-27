@@ -117,7 +117,6 @@ set(local_context_inc_path
     ${TOP_DIR}/inc/aicpu/aicpu_schedule/aicpu_sharder
     ${TOP_DIR}/inc/external/aicpu
     ${TOP_DIR}/libc_sec/include
-    ${TOP_DIR}/third_party/protobuf/include
     ${TOP_DIR}/open_source/eigen
     ${TOP_DIR}/out/${product}
     ${CMAKE_BINARY_DIR}/proto/aicpu/proto/cpu_proto/proto
@@ -190,6 +189,7 @@ target_compile_options(cpu_kernels_context_static PRIVATE
 
 target_link_libraries(cpu_kernels_context_static PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    ascend_protobuf_inc
     -Wl,-z,relro,-z,now
     -s
     -ldl
