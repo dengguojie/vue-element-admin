@@ -179,16 +179,10 @@ class CaseGenerator:
         try:
             params = importlib.import_module(module_name)
             mindspore_ops_info = getattr(params, class_name)
-        except NameError as name_error:
+        except Exception as error:
             utils.print_error_log(
-                '%s in %s, please modify it.' % (
-                    name_error, self.input_file_path))
-            raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-        except ValueError as value_error:
-            utils.print_error_log(
-                '%s in %s, please modify it.' % (
-                    value_error, self.input_file_path))
+                'Failed to import "%s" to get operation information of "%s",'
+                ' the reason is %s.' % (module_name, class_name, error))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 

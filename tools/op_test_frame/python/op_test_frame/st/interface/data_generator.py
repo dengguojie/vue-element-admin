@@ -186,7 +186,7 @@ class DataGenerator:
                 utils.print_info_log("There is no inputs, skip generate input data.")
                 return
             case_name = case['case_name']
-            calc_func_params_tmp = list()
+            calc_func_params_tmp = {}
             utils.print_info_log(
                 'Start to generate the data for %s.' % case_name)
             param_info = ""
@@ -217,7 +217,6 @@ class DataGenerator:
                         'shape': input_shape,
                         'format': input_desc.get('format')
                     }
-                    calc_func_params_tmp.append(input_dic)
                     data.tofile(file_path)
                     os.chmod(file_path, utils.WRITE_MODES)
                 except OSError as error:
@@ -227,10 +226,11 @@ class DataGenerator:
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
                 if input_desc.get('name'):
+                    input_name = input_desc.get('name')
+                    calc_func_params_tmp.update(
+                        {input_name: input_dic})
                     param_info_list.append("{input_name}".format(
-                        input_name=input_desc.get('name')))
-                else:
-                    param_info_list.append("input_{index}".format(index=index))
+                        input_name=input_name))
             # get output param
             for index, output_desc in enumerate(case['output_desc']):
                 output_shape = dynamic_handle.replace_shape_to_typical_shape(
@@ -240,24 +240,32 @@ class DataGenerator:
                     'shape': output_shape,
                     'format': output_desc.get('format')
                 }
-                calc_func_params_tmp.append(output_dic)
                 if output_desc.get('name'):
+                    output_name = output_desc.get('name')
+                    calc_func_params_tmp.update(
+                        {output_name: output_dic})
                     param_info_list.append("{output_name}".format(
-                        output_name=output_desc.get('name')))
-                else:
-                    param_info_list.append("output_{index}".format(index=index))
+                        output_name=output_name))
             # get attr param
             if case.get('attr'):
-                for index, attr in enumerate(case['attr']):
-                    calc_func_params_tmp.append(attr.get('value'))
+                for index, attr in enumerate(case.get('attr')):
+                    attr_name = attr.get('name')
                     param_info_list.append("{attr_name}".format(
-                        attr_name=attr.get('name')))
+                        attr_name=attr_name))
+                    calc_func_params_tmp.update(
+                        {attr_name: attr.get('value')})
             if case.get("calc_expect_func_file") \
                     and case.get("calc_expect_func_file_func"):
                 param_info += ', '.join(param_info_list)
                 utils.print_info_log(
-                    "Input parameters of the comparison function: %s(%s)"
+                    '-------------------------------->>>>>> Expect function information <<<<<<-----------------------')
+                utils.print_info_log(
+                    "The parameter information passed by user's cases is: %s(%s)."
                     % (case.get("calc_expect_func_file_func"), param_info))
+                utils.print_info_log("Please ensure that the above parameters "
+                                     "in the expected function are consistent.")
+                utils.print_info_log(
+                    '------------------------------------------------------------------------------------------------')
             expect_data_paths = self._generate_expect_data(
                 case, calc_func_params_tmp)
             # deal with report
@@ -291,7 +299,7 @@ class DataGenerator:
             module = importlib.import_module(module_name)
             try:
                 func = getattr(module, expect_func)
-                expect_result_tensors = func(*calc_func_params_tmp)
+                expect_result_tensors = func(**calc_func_params_tmp)
             except Exception as ex:
                 utils.print_error_log(
                     'Failed to execute function "%s" in %s. %s' % (

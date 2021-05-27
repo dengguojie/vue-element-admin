@@ -166,12 +166,12 @@ class MsOpGenerator:
         try:
             params = importlib.import_module(op_name_impl)
             mindspore_ops_info = getattr(params, op_name_op_info)
-        except (NameError, ValueError) as error:
+        except Exception as error:
             utils.print_error_log(
-                '%s in %s, please modify it.' % (error, op_name_impl))
+                'Failed to import "%s" to get operation information of "%s",'
+                ' the reason is %s.' % (op_name_impl, op_name_op_info, error))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-
         ms_ops_input_list = mindspore_ops_info.get('inputs')
         # get input param type
         for input_list in ms_ops_input_list:
@@ -259,7 +259,8 @@ class MsOpGenerator:
                 inputs += code_snippet.TESTCASE_TEST_NET_INPUT.format(
                     input_name=input_name,
                     file=bin_file,
-                    np_type=ms_type)
+                    np_type=ms_type,
+                    op_shape=input_desc.get('shape'))
                 input_name_list.append(input_name)
                 count_input += 1
             tensor_total = ','.join(tensor_list)
@@ -294,7 +295,7 @@ class MsOpGenerator:
                 op_lower=op_name_lower,
                 op_name=op_name,
                 input_args=input_args,
-                inputs=input_name)
+                inputs=input_name_join)
         else:
             attr_value_list = []
             for attr_info in self.testcase_list[0]['attr']:

@@ -118,6 +118,7 @@ class Net(nn.Cell):
 """
 TESTCASE_TEST_NET_INPUT = """
     {input_name} = np.fromfile('{file}', np.{np_type})
+    {input_name}.shape = {op_shape}
 """
 
 TESTCASE_TEST_TENSOR = """Tensor({input_name})"""
