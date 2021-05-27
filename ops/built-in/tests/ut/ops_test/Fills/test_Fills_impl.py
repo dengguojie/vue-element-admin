@@ -88,12 +88,12 @@ ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100, 16), "dtype
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-#ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "input"},
-#                    {"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "output"},
-#                    3.0],
-#    "calc_expect_func": calc_expect_func,
-#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-#})
+ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND", "param_type": "output"},
+                    3.0],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
 
 ut_case.add_precision_case("all", {
     "params": [{"shape": (3, 30, 10, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 10, 16, 17),"ori_format": "ND", "param_type": "input"},

@@ -124,25 +124,25 @@ def calc_expect_func_infer(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12):
     result = np.array([result]).reshape(y.get("shape"))
     return (result, )
 
-#idx = 1
-#param_gen = gen_params()
-#for x_shape, y_shape, dtype, p, axes, keepdim, epsilon in param_gen:
-#    if dtype == "float16":
-#        platform_select = platforms + platforms_only_fp16
-#    else:
-#        platform_select = platforms
-#    ut_case.add_precision_case(platform_select, {"params": [
-#                                    {"shape": x_shape, "dtype": dtype, "format": "ND", "ori_shape": x_shape, "ori_format": "ND", "param_type": "input", "value_range": [-2, 2]},
-#                                    {"shape": y_shape, "dtype": dtype, "format": "ND", "ori_shape": y_shape,"ori_format": "ND", "param_type": "output"},
-#                                    p,
-#                                    axes,
-#                                    keepdim,
-#                                    epsilon],
-#         "case_name": "lp_norm_precision" + str(idx),
-#         "calc_expect_func": calc_expect_func_infer,
-#         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
-#         })
-#    idx += 1
+idx = 1
+param_gen = gen_params()
+for x_shape, y_shape, dtype, p, axes, keepdim, epsilon in param_gen:
+    if dtype == "float16":
+        platform_select = platforms + platforms_only_fp16
+    else:
+        platform_select = platforms
+    ut_case.add_precision_case(platform_select, {"params": [
+                                    {"shape": x_shape, "dtype": dtype, "format": "ND", "ori_shape": x_shape, "ori_format": "ND", "param_type": "input", "value_range": [-2, 2]},
+                                    {"shape": y_shape, "dtype": dtype, "format": "ND", "ori_shape": y_shape,"ori_format": "ND", "param_type": "output"},
+                                    p,
+                                    axes,
+                                    keepdim,
+                                    epsilon],
+         "case_name": "lp_norm_precision" + str(idx),
+         "calc_expect_func": calc_expect_func_infer,
+         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+         })
+    idx += 1
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

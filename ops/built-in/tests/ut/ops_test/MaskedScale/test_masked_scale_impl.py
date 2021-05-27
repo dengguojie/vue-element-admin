@@ -65,16 +65,16 @@ for x_dtype in x_dtypes:
             ut_case.add_case(["Ascend310", "Ascend910A"],case)
 
 # do test UT_AddPrecisionCase(ut_case)
-#for x_dtype_1 in x_dtypes:
-#    for mask_dtype_1 in mask_dtypes:
-#        # todo: test not support the case
-#        if x_dtype_1 == "float16" and mask_dtype_1 == "float32":
-#            continue
-#        for format_item_1 in format_list:
-#            test_case_name = "MaskedScalePrecision_"+x_dtype_1+"_"+mask_dtype_1+"_"+format_item_1
-#            case = MaskedScalePrecisions(shape_data, x_dtype_1, format_item_1, shape_data, mask_dtype_1,
-#                                         shape_data, x_dtype_1, 0.5, test_case_name)
-#            ut_case.add_precision_case(["Ascend310"],case)
+for x_dtype_1 in x_dtypes:
+    for mask_dtype_1 in mask_dtypes:
+        # todo: test not support the case
+        if x_dtype_1 == "float16" and mask_dtype_1 == "float32":
+            continue
+        for format_item_1 in format_list:
+            test_case_name = "MaskedScalePrecision_"+x_dtype_1+"_"+mask_dtype_1+"_"+format_item_1
+            case = MaskedScalePrecisions(shape_data, x_dtype_1, format_item_1, shape_data, mask_dtype_1,
+                                         shape_data, x_dtype_1, 0.5, test_case_name)
+            ut_case.add_precision_case(["Ascend310"],case)
 
 # pylint: disable=unused-argument
 def test_op_select_format(test_arg):

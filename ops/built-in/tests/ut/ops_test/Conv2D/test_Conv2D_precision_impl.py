@@ -109,8 +109,8 @@ def gen_trans_precision_data_case(inputs, weights, bias, offset_w, outputs, stri
 
 
 print("adding Conv2D op precision testcases")
-#for test_case in tc.conv2D_ut_precision_testcase:
-#    ut_case.add_precision_case(test_case[0], gen_trans_precision_data_case(*test_case[1:]))
+for test_case in tc.conv2D_ut_precision_testcase:
+    ut_case.add_precision_case(test_case[0], gen_trans_precision_data_case(*test_case[1:]))
 
 
 if __name__ == '__main__':
