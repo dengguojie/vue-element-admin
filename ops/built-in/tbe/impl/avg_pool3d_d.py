@@ -478,7 +478,7 @@ def avg_pool3d_d(x,
 
         _avg_pool3d_schedule(res, sch, ksize_dhw, strides_dhw)
 
-        with tbe_build.build_config:
+        with tbe_build.build_config():
             tvm.build(sch, [tensor_in, res], "cce", name=kernel_name)
     else:
         dilations = (1, 1, 1, 1, 1)

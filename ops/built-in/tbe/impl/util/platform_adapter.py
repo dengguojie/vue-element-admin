@@ -18,6 +18,7 @@ platform adapter
 
 from tbe.dsl.base import operation as tbe_operation
 import tbe as platform_tbe
+import tbe.common.buildcfg as tbe_build
 import tbe.common.register as tbe_register
 from tbe import tik as tbe_tik
 from tbe import tvm as tbe_tvm
@@ -28,7 +29,6 @@ from tbe.common.platform import platform_info
 from tbe.common.utils import log as tbe_log
 from te.platform.fusion_manager import fusion_manager as tbe_fusion_manager
 import te.platform.cce_build as tbe_cce_build
-import te.platform as old_platform
 from te.lang.cce import tuple_sum as te_tuple_sum
 
 register_operator = tbe_register.register_operator
@@ -269,7 +269,6 @@ op_tiling = platform_tbe.common.utils.op_tiling
 error_manager_vector = platform_tbe.common.utils.errormgr
 error_manager_util = platform_tbe.common.utils.errormgr.error_manager_util
 error_manager_cube = platform_tbe.common.utils.errormgr.error_manager_cube
-tbe_build = old_platform
 classify = tbe.classify
 operation = tbe_operation
 tik = tbe_tik

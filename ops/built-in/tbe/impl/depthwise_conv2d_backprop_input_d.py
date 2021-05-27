@@ -380,5 +380,5 @@ def depthwise_conv2d_backprop_input_d(filter,
                                                     strides, pads, kernel_name)
 
     sch = depthwise_conv2d_backprop_input_d_schedule(res)
-    with tbe_build.build_config:
+    with tbe_build.build_config():
         tvm.build_module.build(sch, [filter_init, dout, res], "cce", name=kernel_name)

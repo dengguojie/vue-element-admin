@@ -294,5 +294,5 @@ def depthwise_conv2d_backprop_filter_d(input_fm,
                                                      (dilations[dim_h], dilations[dim_w]), w_dtype.lower(), kernel_name)
     sch = depthwise_conv2d_backprop_filter_d_schedule(res)
 
-    with tbe_build.build_config:
+    with tbe_build.build_config():
         tvm.build_module.build(sch, [fmap_placeholder, dout_placeholder, res], "cce", name=kernel_name)
