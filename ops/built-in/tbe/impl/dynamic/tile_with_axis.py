@@ -79,7 +79,7 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
     """
     # check dtype
     dtype_x = input_x.get("dtype").lower()
-    check_list = ["int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float16", "float32"]
+    check_list = ["int8", "int16", "int32", "uint8", "uint16", "uint32", "float16", "float32"]
     para_check.check_dtype(dtype_x, check_list, param_name="input_x")
 
     # check tiles

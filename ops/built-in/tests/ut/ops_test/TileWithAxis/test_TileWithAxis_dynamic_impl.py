@@ -34,7 +34,7 @@ case2 = {
     "params": [
         {
             "shape": (-1, 2, 4), 
-            "dtype": "float16",
+            "dtype": "float32",
             "format": "NCHW",
             "ori_shape": (1, 2, 4),
             "ori_format": "NCHW",
@@ -42,7 +42,7 @@ case2 = {
         },
         {
             "shape": (-1, 2, 4),
-            "dtype": "float16",
+            "dtype": "float32",
             "format": "NCHW",
             "ori_shape": (2, 2, 4),
             "ori_format": "NCHW",
