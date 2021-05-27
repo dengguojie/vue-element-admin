@@ -5679,7 +5679,8 @@ VERIFY_FUNC_REG(Upsample, UpsampleVerify);
 IMPLEMT_INFERFUNC(FractionalMaxPoolGrad, FractionalMaxPoolGradInfer) {
   Shape input_shape;
   if (WithRank(op.GetInputDesc(0), 4, input_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "4D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),ConcatString("call WithRank failed, ",
+        GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "4D")));
     return GRAPH_FAILED;
   }
 
@@ -5688,8 +5689,8 @@ IMPLEMT_INFERFUNC(FractionalMaxPoolGrad, FractionalMaxPoolGradInfer) {
   output_desc.SetShape(Shape(input_shape));
   output_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update y desc failed.");
-    OpsOPUpdateErrReport(op.GetName(), "y");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
 
@@ -5701,14 +5702,15 @@ INFER_FUNC_REG(FractionalMaxPoolGrad, FractionalMaxPoolGradInfer);
 IMPLEMT_INFERFUNC(FractionalAvgPool, FractionalAvgPoolInfer) {
   Shape input;
   if (WithRank(op.GetInputDesc(0), 4, input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "4D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("Call WithRank function failed, ",
+        GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "4D")));
     return GRAPH_FAILED;
   }
   std::vector<float> pooling_ratio;
   op.GetAttr("pooling_ratio", pooling_ratio);
   if (pooling_ratio.size() != 4) {
-    AttrSizeErrReport("pooling_ratio", op.GetName(), ConcatString(pooling_ratio.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "pooling_ratio field must specify 4 dimensions.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrValueErrMsg("pooling_ratio", ConcatString(pooling_ratio.size()), "4"));
     return GRAPH_PARAM_INVALID;
   }
   auto x_dims = op.GetInputDesc(0).GetShape().GetDims();
@@ -5717,9 +5719,8 @@ IMPLEMT_INFERFUNC(FractionalAvgPool, FractionalAvgPoolInfer) {
   for (int i = 0; i < 4; ++i) {
     auto val = static_cast<int64_t>(x_dims[i] / pooling_ratio[i]);
     if (val < 0) {
-      string err_msg = ConcatString("size computed for ", i, "th dim is ", val, ", please check");
-      OP_LOGE(op.GetName().c_str(), "%s.", err_msg.c_str());
-      InferShapeOtherErrReport(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+          ConcatString("size computed for ", i, "th dim is ", val, ", should be >= 0"));
       return GRAPH_PARAM_INVALID;
     }
     dims.push_back(val);
@@ -5757,15 +5758,15 @@ IMPLEMT_INFERFUNC(FractionalMaxPool, FractionalMaxPoolInfer) {
   Shape input_value;
 
   if (WithRank(tensor, 4, input_value, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(tensor.GetShape().GetDims()), "4D");
-    OP_LOGE(op.GetName().c_str(), "input value must be 4-D.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("call WithRank failed, ",
+        GetShapeErrMsg(0, DebugString(tensor.GetShape().GetDims()), "4D")));
     return GRAPH_FAILED;
   }
   std::vector<float> pooling_ratio;
   pooling_ratio = op.get_attr_pooling_ratio();
   if (pooling_ratio.size() != 4) {
-    AttrSizeErrReport("pooling_ratio", op.GetName(), ConcatString(pooling_ratio.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "pooling_ratio field must specify 4-D.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("pooling_ratio", DebugString(tensor.GetShape().GetDims()), "4D"));
     return GRAPH_FAILED;
   }
 
@@ -5775,9 +5776,8 @@ IMPLEMT_INFERFUNC(FractionalMaxPool, FractionalMaxPoolInfer) {
     if (dim != UNKNOWN_DIM) {
       auto real_dim = static_cast<int64_t>(dim / pooling_ratio[i]);
       if (real_dim < 0) {
-        string err_msg = ConcatString("size computed for ", i, "th dim is ", real_dim, ", please check");
-        OP_LOGE(op.GetName().c_str(), "%s.", err_msg.c_str());
-        InferShapeOtherErrReport(op.GetName(), err_msg);
+        string err_msg = ConcatString("size computed for ", i, "th dim of output[y] is ", real_dim);
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       output_dims.push_back(real_dim);
@@ -5790,7 +5790,8 @@ IMPLEMT_INFERFUNC(FractionalMaxPool, FractionalMaxPoolInfer) {
   y_desc.SetShape(Shape(output_dims));
   y_desc.SetDataType(op.GetInputDesc("x").GetDataType());
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output y.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -5798,7 +5799,8 @@ IMPLEMT_INFERFUNC(FractionalMaxPool, FractionalMaxPoolInfer) {
   row_pooling_desc.SetShape(Shape({output_dims[1] + 1}));
   row_pooling_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("row_pooling_sequence", row_pooling_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to  update output row_pooling_sequence.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[row_pooling_sequence] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -5806,7 +5808,8 @@ IMPLEMT_INFERFUNC(FractionalMaxPool, FractionalMaxPoolInfer) {
   col_pooling_desc.SetShape(Shape({output_dims[2] + 1}));
   col_pooling_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("col_pooling_sequence", col_pooling_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output col_pooling_sequence.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[col_pooling_sequence] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -5837,13 +5840,16 @@ INFER_FUNC_REG(DataFormatVecPermute, DataFormatVecPermuteInfer);
 IMPLEMT_INFERFUNC(FractionalAvgPoolGrad, FractionalAvgPoolGradInfer) {
   Tensor tensor;
   if (op.GetInputConstData("orig_input_tensor_shape", tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input orig_input_tensor_shape GetInputConstData failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        ConcatString("get const data from input[orig_input_tensor_shape] failed"));
     return GRAPH_FAILED;
   }
 
   Shape result;
   if (MakeShapeFromShapeTensor(tensor, result, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Make shape from ShapeTensor failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call MakeShapeFromShapeTensor function failed to make",
+            " shape from input[orig_input_tensor_shape] data"));
     return GRAPH_FAILED;
   }
 
@@ -5852,7 +5858,8 @@ IMPLEMT_INFERFUNC(FractionalAvgPoolGrad, FractionalAvgPoolGradInfer) {
   out_desc.SetShape(Shape(result));
   out_desc.SetDataType(y_type);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

@@ -3019,7 +3019,8 @@ IMPLEMT_COMMON_INFERFUNC(InplaceAddInferShape) {
   const std::string indices_name = "indices";
   Tensor indices;
   if (GRAPH_SUCCESS != op.GetInputConstData(indices_name, indices)) {
-    OP_LOGE("GetInputConstData %s failed.", indices_name.c_str());
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        ConcatString("get const data from input[", indices_name, "] failed"));
     return GRAPH_FAILED;
   }
 
@@ -3065,7 +3066,8 @@ IMPLEMT_COMMON_INFERFUNC(InplaceSubInferShape) {
   const std::string indices_name = "indices";
   Tensor indices;
   if (GRAPH_SUCCESS != op.GetInputConstData(indices_name, indices)) {
-    OP_LOGE("GetInputConstData %s failed.", indices_name.c_str());
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        ConcatString("get const data from input[", indices_name, "] failed"));
     return GRAPH_FAILED;
   }
 

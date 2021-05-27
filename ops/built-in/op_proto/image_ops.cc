@@ -914,7 +914,9 @@ IMPLEMT_INFERFUNC(DrawBoundingBoxes, DrawBoundingBoxesInfer) {
   Shape images;
 
   if (WithRank(op.GetInputDesc(0), 4, images, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of images must be 4");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank function failed, ",
+            GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "4D")));
     return GRAPH_FAILED;
   }
 
@@ -925,18 +927,23 @@ IMPLEMT_INFERFUNC(DrawBoundingBoxes, DrawBoundingBoxesInfer) {
   }
   if (depth != ge::UNKNOWN_DIM) {
     if (!(depth == 1 || depth == 3 || depth == 4)) {
-      OP_LOGE(op.GetName().c_str(), "The value of dim-3 must be 1, 3 or 4");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+          ConcatString("invalid 3th dim[", depth, "] of input[images], should be 1, 3 or 4"));
       return GRAPH_FAILED;
     }
   }
 
   Shape boxes;
   if (WithRank(op.GetInputDesc(1), 3, boxes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 3");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank function failed, ",
+            GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "3D")));
     return GRAPH_FAILED;
   }
   if (boxes.GetDim(2) != 4) {
-    OP_LOGE(op.GetName().c_str(), "The value of dim-2 for boxes must be  4");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        ConcatString("invalid 2th dim[", boxes.GetDim(2),
+            "] of input[boxes], should 4"));
     return GRAPH_FAILED;
   }
   DataType type = op.GetInputDesc("images").GetDataType();
@@ -2068,7 +2075,10 @@ IMPLEMT_INFERFUNC(DrawBoundingBoxesV2, DrawBoundingBoxesV2Infer) {
 
   Shape images;
   if (WithRankAtLeast(imagesTensor, 3, images, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input images rank must be at least 3.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRankAtLeast function failed, ",
+            GetShapeErrMsg(0, DebugString(imagesTensor.GetShape().GetDims()),
+            "at least 3D")));
     return GRAPH_FAILED;
   }
 
@@ -2076,11 +2086,7 @@ IMPLEMT_INFERFUNC(DrawBoundingBoxesV2, DrawBoundingBoxesV2Infer) {
   TensorDesc outputDesc = op.GetOutputDesc("y");
   outputDesc.SetDataType(type);
   outputDesc.SetShape(images);
-  if (op.UpdateOutputDesc("y", outputDesc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output y.");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
+  return op.UpdateOutputDesc("y", outputDesc);
 }
 
 INFER_FUNC_REG(DrawBoundingBoxesV2, DrawBoundingBoxesV2Infer);
@@ -2364,27 +2370,33 @@ IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
   Shape unused_shape;
 
   if (WithRank(op.GetInputDesc(0), 4, boxes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 4");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "4D"));
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 3, scores, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 3");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "3D"));
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(2), 0, max_output_size_per_class, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size_per_class must be 0");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "scalar"));
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(3), 0, max_total_size, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_total_size must be 0");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        GetShapeErrMsg(3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "scalar"));
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(4), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of unused_shape1 must be 0");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        GetShapeErrMsg(4, DebugString(op.GetInputDesc(4).GetShape().GetDims()), "scalar"));
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(5), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of unused_shape2 must be 0");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        GetShapeErrMsg(5, DebugString(op.GetInputDesc(5).GetShape().GetDims()), "scalar"));
     return GRAPH_FAILED;
   }
 
@@ -2392,18 +2404,23 @@ IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
   int64_t dim1 = boxes.GetDim(0);
   int64_t dim2 = scores.GetDim(0);
   if (Merge(dim1, dim2, unused) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Merge boxes and scores dim 0 failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call Merge function failed to merge 0th dim of input[boxes]"
+        " and input[scores], ", dim1, " and ", dim2));
     return GRAPH_FAILED;
   }
   int64_t dim3 = boxes.GetDim(1);
   int64_t dim4 = scores.GetDim(1);
   if (Merge(dim3, dim4, unused) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Merge boxes and scores dim 1 failed.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call Merge function failed to merge 1th dim of input[boxes]"
+        " and input[scores], ", dim3, " and ", dim4));
     return GRAPH_FAILED;
   }
 
   if (boxes.GetDim(3) != 4) {
-    OP_LOGE(op.GetName().c_str(), "The value of dim-3 for boxes must be 4, real value is %ld.", boxes.GetDim(3));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        ConcatString("invalid 3th dim value[", boxes.GetDim(3), "], it should be 4"));
     return GRAPH_FAILED;
   }
 
@@ -2411,50 +2428,59 @@ IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
   Shape scores_shape = op.GetInputDesc(1).GetShape();
   if (ValueKnown(boxes_shape, 2) && ValueKnown(scores_shape, 2)) {
     if (boxes_shape.GetDim(2) != 1 && boxes_shape.GetDim(2) != scores_shape.GetDim(2)) {
-      OP_LOGE(op.GetName().c_str(), "boxes_shape and scores_shape do not match.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+          ConcatString("2th dim of input[boxes] and input[scores] are not equal, ",
+              boxes_shape.GetDim(2), " and ", scores_shape.GetDim(2)));
       return GRAPH_FAILED;
     }
   }
 
   Tensor maxTotalSizeTensor;
   if (op.GetInputConstData("max_total_size", maxTotalSizeTensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get maxTotalSizeTensor error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get const data from input[max_total_size] failed"));
     return GRAPH_FAILED;
   }
   int64_t maxTotalSize;
   if (MakeDimForScalarInput(maxTotalSizeTensor, maxTotalSize, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input maxTotalSize MakeDimForScalarInput error, real value is %ld.", maxTotalSize);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call MakeDimForScalarInput failed to get value from input[max_total_size] tensor"));
     return GRAPH_FAILED;
   }
   if (maxTotalSize <= 0) {
-    OP_LOGE(op.GetName().c_str(), "max_total_size should be > 0, real value is %ld.", maxTotalSize);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        ConcatString("invalid value[", maxTotalSize, "] of input[max_total_size], should be > 0"));
     return GRAPH_FAILED;
   }
 
   Tensor maxOutputSizePerClassTensor;
   if (op.GetInputConstData("max_output_size_per_class", maxOutputSizePerClassTensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get maxOutputSizePerClassTensor error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get const data from input[max_output_size_per_class] failed"));
     return GRAPH_FAILED;
   }
   int64_t maxOutputSizePerClass;
   if (MakeDimForScalarInput(maxOutputSizePerClassTensor, maxOutputSizePerClass, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input maxOutputSizePerClass MakeDimForScalarInput error.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call MakeDimForScalarInput failed to get value from input[max_output_size_per_class] tensor"));
     return GRAPH_FAILED;
   }
 
   int64_t output_size;
   bool pad_per_class;
   if (op.GetAttr("pad_per_class", pad_per_class) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr pad_per_class failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(),
+        std::string("get attr[pad_per_class] failed"));
     return GRAPH_FAILED;
   }
   if (!pad_per_class) {
     output_size = maxTotalSize;
   } else {
     if (maxOutputSizePerClass <= 0) {
-      OP_LOGE(op.GetName().c_str(), "max_output_size_per_class should be > 0, real value is %ld.",
-              maxOutputSizePerClass);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+          ConcatString("invalid value[", maxOutputSizePerClass,
+              "] of input[max_output_size_per_class], should be > 0"));
       return GRAPH_FAILED;
     }
     if (maxTotalSize <= maxOutputSizePerClass * scores_shape.GetDim(2)) {
@@ -2474,28 +2500,32 @@ IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
   desc1.SetShape(shape1);
   desc1.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("nmsed_boxes", desc1) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output nmsed_boxes.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(),
+        std::string("update output[nmsed_boxes] desc failed"));
     return GRAPH_FAILED;
   }
   TensorDesc desc2 = op.GetOutputDesc("nmsed_scores");
   desc2.SetShape(shape2);
   desc2.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("nmsed_scores", desc2) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output nmsed_scores.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(),
+        std::string("update output[nmsed_scores] desc failed"));
     return GRAPH_FAILED;
   }
   TensorDesc desc3 = op.GetOutputDesc("nmsed_classes");
   desc3.SetShape(shape3);
   desc3.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("nmsed_classes", desc3) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output nmsed_classes.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(),
+        std::string("update output[nmsed_classes] desc failed"));
     return GRAPH_FAILED;
   }
   TensorDesc desc4 = op.GetOutputDesc("valid_detections");
   desc4.SetShape(shape4);
   desc4.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("valid_detections", desc4) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output valid_detections.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(),
+        std::string("update output[valid_detections] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

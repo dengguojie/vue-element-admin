@@ -1766,19 +1766,18 @@ INFER_FUNC_REG(RecordInput, RecordInputInfer);
 IMPLEMT_INFERFUNC(ConditionalAccumulator, ConditionalAccumulatorInfer) {
   DataType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get attr[type] failed"));
     return GRAPH_FAILED;
   }
   Shape output_shape;
-  if (Vector(2, output_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "create output shape failed");
-    return GRAPH_FAILED;
-  }
+  (void)Vector(2, output_shape);
   TensorDesc handle_desc = op.get_output_desc_handle();
   handle_desc.SetShape(output_shape);
   handle_desc.SetDataType(DT_STRING_REF);
   if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update handle desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[handle] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

@@ -98,8 +98,8 @@ IMPLEMT_INFERFUNC(Igamma, IgammaInfer) {
   TensorDesc z_desc = op.GetOutputDesc("z");
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(),"z");
-    OP_LOGE(op.GetName().c_str(), "Failed to update z desc.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[z] desc failed"));
     return GRAPH_FAILED;
   }
 
@@ -113,7 +113,8 @@ IMPLEMT_INFERFUNC(Igammac, IgammacInfer) {
   TensorDesc z_desc = op.GetOutputDesc("z");
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update z desc.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[z] desc failed"));
     return GRAPH_FAILED;
   }
 
@@ -125,15 +126,17 @@ INFER_FUNC_REG(Igammac, IgammacInfer);
 IMPLEMT_INFERFUNC(CompareAndBitpack, CompareAndBitpackInfer) {
   Shape input;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "at least 1D");
-    OP_LOGE(op.GetName().c_str(), "input x must be 1-D.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("call WithRankAtLeast failed, ",
+        GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()),
+            "at least 1D")));
     return GRAPH_FAILED;
   }
 
   Shape unused;
   if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "0D");
-    OP_LOGE(op.GetName().c_str(), "input threshold must be a Scalar.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("call WithRankAtLeast failed, ",
+        GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
+            "scalar")));
     return GRAPH_FAILED;
   }
 
@@ -144,9 +147,8 @@ IMPLEMT_INFERFUNC(CompareAndBitpack, CompareAndBitpackInfer) {
     int64_t last_dim = output.GetDim(len - 1);
     int64_t inferred_dim = 0;
     if (Divide(last_dim, int64_t(8), true, inferred_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      string err_msg = ConcatString("the last dim[", last_dim, "] of 0th input must be the multiple of 8");
-      InferShapeOtherErrReport(op.GetName(), err_msg);
-      OP_LOGE(op.GetName().c_str(), "Dim of input x must be the multiple of 8.");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("call Divide function failed, ",
+          "the last dim[", last_dim, "] of 0th input must be the multiple of 8"));
       return GRAPH_FAILED;
     }
     output.SetDim(len - 1, inferred_dim);
@@ -270,7 +272,7 @@ IMPLEMT_INFERFUNC(Bucketize, BetaincInfer) {
   TensorDesc out_desc = op.GetOutputDesc("y");
   out_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "y");
@@ -399,7 +401,8 @@ IMPLEMT_INFERFUNC(IgammaGradA, IgammaGradAInfer) {
   TensorDesc out_desc = op.GetOutputDesc("z");
   out_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update z failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[z] desc failed"));
     return GRAPH_FAILED;
   }
   auto lambdaFunc = BROADCAST_INFER("a", "x", "z");
@@ -505,15 +508,15 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthInferShape) {
   std::string dtype_attr;
   if (op.GetAttr("dtype", dtype_attr) == GRAPH_SUCCESS) {
     if (dtype_attr != "int32") {
-      OP_LOGE(op.GetName().c_str(),
-              "dtype_attr only "
-              "support int32.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+          ConcatString("invalid value[", dtype_attr, "], only support int32"));
       return GRAPH_FAILED;
     }
   }
   Tensor nbins_tensor;
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("nbins", nbins_tensor)) {
-    OP_LOGE(op.GetName().c_str(), "get constdata failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("get const data from input[nbins] failed"));
     return GRAPH_FAILED;
   }
   DataType dtype = op.GetInputDesc("nbins").GetDataType();
@@ -521,7 +524,8 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthInferShape) {
   GetConstValue(nbins_tensor, dtype, nbins);
   std::vector<int64_t> dim_vector;
   if (nbins.empty()) {
-    OP_LOGE(op.GetName().c_str(), "nbins empty");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("nbins is empty"));
     return GRAPH_FAILED;
   }
   dim_vector.push_back(nbins[0]);
@@ -537,9 +541,9 @@ IMPLEMT_VERIFIER(HistogramFixedWidth, HistogramFixedWidthVerify) {
   DataType x_dtype = op.GetInputDesc(0).GetDataType();
   DataType range_dtype = op.GetInputDesc(1).GetDataType();
   if (x_dtype != range_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "the HistogramFixedWidth op inputs "
-            "should have the same dtype!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        ConcatString("data type of input[x] and input[range] should be same. ",
+            DTypeStr(x_dtype), " and ", DTypeStr(range_dtype)));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -792,7 +796,8 @@ IMPLEMT_INFERFUNC(Conj, ConjInfer) {
   TensorDesc out_desc = op.GetOutputDesc("output");
   out_desc.SetDataType(op.GetInputDesc("input").GetDataType());
   if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        std::string("update output[output] desc failed."));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "input", "output");
