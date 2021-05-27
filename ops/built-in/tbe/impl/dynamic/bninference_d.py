@@ -26,6 +26,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import get_current_build_config
 
 
 # pylint: disable=invalid-name,redefined-outer-name
@@ -251,7 +252,7 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
     for x in input_tensor:
         if x is not None:
             l1_fusion_type = -1
-            if tbe_platform.fusion_manager.get_build_cfg() != "disable":
+            if not get_current_build_config("enable_op_prebuild"):
                 l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
                     if "L1_fusion_type" in x.op.attrs else -1
                 if l1_fusion_type == 1:
@@ -328,9 +329,9 @@ def brodcast_inputs_shape(x, mean, variance, scale, offset):
 
     if format_x in ("ND", "NCHW", "NHWC"):
         shape_mean = [1] * len(shape_x[:index_c]) + list(shape_mean) \
-                     + [1] * len(shape_x[index_c + 1:])
+            + [1] * len(shape_x[index_c + 1:])
         shape_variance = [1] * len(shape_x[:index_c]) + list(shape_variance) \
-                         + [1] * len(shape_x[index_c + 1:])
+            + [1] * len(shape_x[index_c + 1:])
     else:
         shape_mean = [1, c1, 1, 1, c0]
         shape_variance = [1, c1, 1, 1, c0]
@@ -396,7 +397,7 @@ def get_param_scale_shape(shape_x, shape_scale):
 
 def get_l1_paras(x):
     l1_fusion_type = -1
-    if tbe_platform.fusion_manager.get_build_cfg() != "disable":
+    if not get_current_build_config("enable_op_prebuild"):
         l1_fusion_type = x.get('L1_fusion_type', -1)
         if l1_fusion_type == 1:
             error_detail = 'bninference does not support l1 width fusion, l1_fusion_type:', l1_fusion_type

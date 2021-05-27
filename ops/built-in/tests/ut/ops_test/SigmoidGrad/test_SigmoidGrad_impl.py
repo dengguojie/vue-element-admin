@@ -58,16 +58,16 @@ def calc_expect_func(input_x, output_y, output_z):
     res = (res_mid * output_y["value"]).astype(output_z["dtype"])
     return res
 
-ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND",
-                "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
-               {"dtype": "float32", "format": "ND", "ori_format": "ND",
-                "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
-               {"dtype": "float32", "format": "ND", "ori_format": "ND",
-                "ori_shape": (1, ), "shape": (1, ), "param_type": "output"}],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND",
+#                "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
+#               {"dtype": "float32", "format": "ND", "ori_format": "ND",
+#                "ori_shape": (1, ), "shape": (1, ), "param_type": "input"},
+#               {"dtype": "float32", "format": "ND", "ori_format": "ND",
+#                "ori_shape": (1, ), "shape": (1, ), "param_type": "output"}],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
 ut_case.add_precision_case("all", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND",

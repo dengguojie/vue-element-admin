@@ -22,6 +22,8 @@ import tbe.common.register as tbe_register
 from tbe import tik as tbe_tik
 from tbe import tvm as tbe_tvm
 from tbe.common import platform
+from tbe.common import buildcfg
+from tbe.common.buildcfg import get_current_build_config
 from tbe.common.platform import platform_info
 from tbe.common.utils import log as tbe_log
 from te.platform.fusion_manager import fusion_manager as tbe_fusion_manager

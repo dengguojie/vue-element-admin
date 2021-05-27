@@ -26,6 +26,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import get_current_build_config
 
 NONETYPE = type(None)
 
@@ -275,7 +276,7 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
     for x_tensor in input_tensor:
         if x_tensor is not None:
             l1_fusion_type = -1
-            if tbe_platform.fusion_manager.get_build_cfg() != "disable":
+            if not get_current_build_config("enable_op_prebuild"):
                 l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
                     if "L1_fusion_type" in x_tensor.op.attrs else -1
                 if l1_fusion_type == 1:

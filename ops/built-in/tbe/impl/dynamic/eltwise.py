@@ -18,7 +18,6 @@ eltwise
 
 
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -27,6 +26,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import get_current_build_config
 
 
 # pylint: too-many-locals
@@ -52,7 +52,7 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
 
     for i in range(0, x_tensor_num):
         l1_fusion_type = -1
-        if tbe_platform.fusion_manager.get_build_cfg() != "disable":
+        if not get_current_build_config("enable_op_prebuild"):
             l1_fusion_type = x_tensor[i].op.attrs["L1_fusion_type"].value \
                 if "L1_fusion_type" in x_tensor[i].op.attrs else -1
             if l1_fusion_type == 1:
@@ -117,7 +117,7 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     }
     fuse_y = tmp_y if y is None else y
     fusion_params = get_fusion_params(x, fuse_y, tensor_num)
-    case = 0 #depthwise_con2d fusion flag
+    case = 0  # depthwise_con2d fusion flag
 
     if mode == 1:
         if len(coeff) != 0 and len(coeff) != tensor_num:
@@ -196,7 +196,7 @@ def _eltwise_check_para(x, y, mode=1, coeff=[],
         error_manager_vector.raise_err_inputs_dtype_not_equal("eltwise", "dtype_output", "dtype",
                                                               str(dtype_output), str(dtype))
 
-    #mode type must be 0, 1 or 2
+    # mode type must be 0, 1 or 2
     op_list = (0, 1, 2)
     if mode not in op_list:
         error_manager_vector.raise_err_check_params_rules("eltwise", "mode only support 0,1,2", "mode", mode)
@@ -236,7 +236,7 @@ def eltwise(x, y, mode=1, coeff=[], kernel_name="eltwise"):
             is_l1_depth_fusion = False
             for (i, input_i), shape_i in zip(enumerate(_x), shape_normlize):
                 l1_fusion_type = -1
-                if tbe_platform.fusion_manager.get_build_cfg() != "disable":
+                if not get_current_build_config("enable_op_prebuild"):
                     l1_fusion_type = input_i.get("L1_fusion_type", -1)
                     if l1_fusion_type == 1:
                         error_manager_vector.raise_err_specific_reson("eltwise",

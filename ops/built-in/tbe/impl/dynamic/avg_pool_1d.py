@@ -22,6 +22,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import buildcfg
 
 C0 = 16
 
@@ -349,10 +350,12 @@ def avg_pool_1d(x_dict,
         var_list.append(shape_vars + factor_vars + [tensor_a, tensor_div, res])
 
     build_config_item = {"parse_ddr_args": True, "build_fatbin": True}
-    build_config = tbe_platform.cce_build.build_config_update_list(tbe_platform.cce_build.dynamic_build_config,
-                                                                   build_config_item)
+    dynamic_config = buildcfg.default_buildcfg.dynamic_build_config_dict
+    with buildcfg.build_config(**dynamic_config):
+        upper_config = buildcfg.get_current_build_config("all")
+    upper_config.update(build_config_item)
 
-    with build_config:
+    with buildcfg.build_config(**upper_config):
         tvm.build(sch_list, var_list, rules=rules, target="cce", name=kernel_name)
     tbe_context.get_context().add_compile_info("core_num", core_num)
     tbe_context.get_context().add_compile_info("max_w_in_ub", wo_ub_factor_max)

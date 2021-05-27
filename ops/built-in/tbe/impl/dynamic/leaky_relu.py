@@ -21,12 +21,12 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import get_current_build_config
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
@@ -43,7 +43,7 @@ def get_fusion_params(x_tensor, y):
     """
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
     l1_fusion_type = -1
-    if tbe_platform.fusion_manager.get_build_cfg() != "disable":
+    if not get_current_build_config("enable_op_prebuild"):
         l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
             if "L1_fusion_type" in x_tensor.op.attrs else -1
         if l1_fusion_type == 1:
@@ -97,6 +97,7 @@ def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
 
     return res
 
+
 @register_operator("LeakyRelu")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
@@ -132,7 +133,7 @@ def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
     para_check.check_dtype(dtype, check_list, param_name="x")
 
     l1_fusion_type = -1
-    if tbe_platform.fusion_manager.get_build_cfg() != "disable":
+    if not get_current_build_config("enable_op_prebuild"):
         l1_fusion_type = x.get("L1_fusion_type", -1)
         if l1_fusion_type == 1:
             error_manager_vector.raise_err_specific_reson("leaky_relu",

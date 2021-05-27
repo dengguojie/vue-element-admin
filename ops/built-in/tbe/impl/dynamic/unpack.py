@@ -26,6 +26,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import buildcfg
 
 # When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
 MIN_RIGHT_DIM = 8
@@ -512,10 +513,12 @@ class Unpack:
             self.compile_vars[case.get("key").value] = [var.get_name() for var in tvm_vars]
 
         build_config_items = {"parse_ddr_args": True, "build_fatbin": True}
-        build_config = tbe_platform.cce_build.build_config_update_list(tbe_platform.cce_build.dynamic_build_config,
-                                                                       build_config_items)
+        dynamic_config = buildcfg.default_buildcfg.dynamic_build_config_dict
+        with buildcfg.build_config(**dynamic_config):
+            upper_config = buildcfg.get_current_build_config("all")
+        upper_config.update(build_config_items)
 
-        with build_config:
+        with buildcfg.build_config(**upper_config):
             tvm.build(self.sch_list, self.arg_list, rules=self.rules, target="cce", name=self.kernel_name)
 
         # Add compile info

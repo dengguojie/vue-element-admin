@@ -203,14 +203,14 @@ ut_case.add_case("all",
                                        "test_right_fp16_004",
                                        "success"))
 
-ut_case.add_precision_case("all",
-                 gen_in_infer_v2d_precision_case((6, 5, 8, 7, 16), (6, 5, 1, 1, 16),
-                                       (6, 5, 1, 1, 16),
-                                       "NC1HWC0",
-                                       "float32",
-                                       "float32",
-                                       "in_infer_v2d_precision_case_001",
-                                       "success"))
+#ut_case.add_precision_case("all",
+#                 gen_in_infer_v2d_precision_case((6, 5, 8, 7, 16), (6, 5, 1, 1, 16),
+#                                       (6, 5, 1, 1, 16),
+#                                       "NC1HWC0",
+#                                       "float32",
+#                                       "float32",
+#                                       "in_infer_v2d_precision_case_001",
+#                                       "success"))
 
 ut_case.add_precision_case("all",
                  gen_in_infer_v2d_precision_case((6, 5, 8, 7, 16), (6, 5, 1, 1, 16),
@@ -221,22 +221,22 @@ ut_case.add_precision_case("all",
                                        "in_infer_v2d_precision_case_002",
                                        "success"))
 
-ut_case.add_precision_case("all",
-                 gen_in_infer_v2d_precision_case((7, 5, 18, 7, 16), (7, 5, 1, 1, 16),
-                                       (7, 5, 1, 1, 16),
-                                       "NC1HWC0",
-                                       "float16",
-                                       "float32",
-                                       "in_infer_v2d_precision_case_003",
-                                       "success"))
+#ut_case.add_precision_case("all",
+#                 gen_in_infer_v2d_precision_case((7, 5, 18, 7, 16), (7, 5, 1, 1, 16),
+#                                       (7, 5, 1, 1, 16),
+#                                       "NC1HWC0",
+#                                       "float16",
+#                                       "float32",
+#                                       "in_infer_v2d_precision_case_003",
+#                                       "success"))
 
-ut_case.add_precision_case("all",
-                 gen_in_infer_v2d_precision_case((7, 5, 18, 7, 16), (7, 5, 1, 1, 16),
-                                      (7, 5, 1, 1, 16),
-                                      "NC1HWC0",
-                                      "float32", "float32",
-                                      "in_infer_v2d_precision_case_004",
-                                      "success"))
+#ut_case.add_precision_case("all",
+#                 gen_in_infer_v2d_precision_case((7, 5, 18, 7, 16), (7, 5, 1, 1, 16),
+#                                      (7, 5, 1, 1, 16),
+#                                      "NC1HWC0",
+#                                      "float32", "float32",
+#                                      "in_infer_v2d_precision_case_004",
+#                                      "success"))
 
 ut_case.add_precision_case("all",
                  gen_in_infer_v2d_precision_case((7, 5, 18, 7, 16), None,
