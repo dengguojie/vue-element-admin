@@ -58,7 +58,7 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype=dtype)
     has_improve_precision = False
     if dtype in ("float16", "int8"):
-        if tbe_platform.api_check_support("te.lang.cce.vmuls",
+        if tbe_platform.api_check_support("tbe.dsl.vmuls",
                                           "float32"):
             inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype="float32")
             input_y = tbe.cast_to(input_y, "float32")

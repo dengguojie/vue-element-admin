@@ -60,7 +60,7 @@ def sigmoid_cross_entropy_with_logits_grad_compute(
     """
     dtype = predict.dtype
     if dtype == "float16" and tbe_platform.api_check_support(
-            "te.lang.cce.vmul", "float32"):
+            "tbe.dsl.vmul", "float32"):
         predict = tbe.cast_to(predict, "float32")
         target = tbe.cast_to(target, "float32")
         dout = tbe.cast_to(dout, "float32")

@@ -87,7 +87,7 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
     has_improve_precision = False
     cast_type = var.dtype
     if dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vsqrt",
+            tbe_platform.api_check_support("tbe.dsl.vsqrt",
                                            "float32"):
         cast_type = "float32"
         has_improve_precision = True

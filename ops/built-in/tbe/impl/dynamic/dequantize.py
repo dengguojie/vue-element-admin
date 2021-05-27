@@ -356,11 +356,11 @@ def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="deq
     dtype_input_max_range = max_range.get("dtype").lower()
     dtype_output_data = y.get("dtype").lower()
 
-    s322f32_support = tbe_platform.api_check_support("te.lang.cce.cast_to", "s322f32")
+    s322f32_support = tbe_platform.api_check_support("tbe.dsl.cast_to", "s322f32")
     if dtype_x == "int32" and not s322f32_support:
         error_manager_vector.raise_err_input_dtype_not_supported("dequantize", 'x', ("int8", "uint8"), dtype_x)
 
-    vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
+    vmul_support = tbe_platform.api_check_support("tbe.dsl.vmul", "float32")
     if not vmul_support:
         para_check.check_dtype(dtype_output_data, [], param_name="y")
 

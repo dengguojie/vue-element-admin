@@ -92,7 +92,7 @@ def apply_adagrad_d_compute(var,
     """
     input_dtype = var.dtype
 
-    if input_dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+    if input_dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         var = tbe.cast_to(var, "float32")
         accum = tbe.cast_to(accum, "float32")
         lr = tbe.cast_to(lr, "float32")

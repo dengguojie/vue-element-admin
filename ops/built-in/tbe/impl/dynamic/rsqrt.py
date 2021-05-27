@@ -66,7 +66,7 @@ def rsqrt_compute(x, y, kernel_name="rsqrt_cce"):
 
     inp_dtype = x.dtype
 
-    if inp_dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+    if inp_dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
 
     data_res = _compute(x)
