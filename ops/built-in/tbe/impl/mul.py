@@ -15,6 +15,7 @@
 """
 mul
 """
+import functools
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
@@ -100,6 +101,87 @@ def _broadcast_zn_rule(shape0, shape1, format0, format1):
             return False
 
     return True
+
+
+# pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
+# pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
+def op_sub_select_format(x, y, output, kernel_name="mul"):
+    """
+    Dynamic matching format
+
+    Parameters
+    ----------
+    x : dict
+        shape and dtype of input_x
+    y : dict
+        shape and dtype of input_y
+    output : dict
+        shape and dtype of output, should be same shape and type as input
+
+    kernel_name : str
+        kernel name, default value is "pt_muls"
+
+    Returns
+    -------
+    None
+    """
+    shape_x1 = x.get("ori_shape")
+    shape_x2 = y.get("ori_shape")
+
+    shape_x1 = shape_util.scalar2tensor_one(shape_x1)
+    shape_x2 = shape_util.scalar2tensor_one(shape_x2)
+
+    enum_x2 = functools.reduce(lambda x, y: x * y, shape_x2)
+
+    dtype_list = ["float16", "float", "int32", "int16", "uint8", "int8"]
+    vmul_support_s16 = tbe_platform.api_check_support("te.lang.cce.vmul", "int16")
+    vmul_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
+    if not vmul_support_s16:
+        dtype_list.remove("int16")
+    if not vmul_support_fp32:
+        dtype_list.remove("float")
+        # If the platform does not support float32 data type,
+        # neither of uint8 and int8 is supported at the same time
+        dtype_list.remove("uint8")
+        dtype_list.remove("int8")
+
+    if len(shape_x2) == 1 and enum_x2 == 1:
+        format_list = ("ND", "NCHW", "NHWC", "FRACTAL_NZ", "NC1HWC0", "FRACTAL_Z", "C1HWNCoC0")
+        dtype_list_total = functools.reduce(lambda x, y: x + y, [[ele] * len(format_list) for ele in dtype_list])
+        format_list_for_non_one = format_list * len(dtype_list)
+        format_list_for_one = [y.get("format")] * len(format_list) * len(dtype_list)
+        unknownshape_format_list = ["ND"] * len(format_list) * len(dtype_list)
+    else:
+        return None
+
+    if -1 in shape_x1 or -1 in shape_x2:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                               datatype=",".join(dtype_list_total),
+                                               format=",".join(format_list_for_non_one),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        input1 = util_select_op_base.gen_param(classify="input1", name="y",
+                                               datatype=",".join(dtype_list_total),
+                                               format=",".join(format_list_for_one),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        output0 = util_select_op_base.gen_param(classify="output0", name="output",
+                                                datatype=",".join(dtype_list_total),
+                                                format=",".join(format_list_for_non_one),
+                                                unknownshape_format=",".join(unknownshape_format_list))
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                               datatype=",".join(dtype_list_total),
+                                               format=",".join(format_list_for_non_one))
+        input1 = util_select_op_base.gen_param(classify="input1", name="y",
+                                               datatype=",".join(dtype_list_total),
+                                               format=",".join(format_list_for_one))
+        output0 = util_select_op_base.gen_param(classify="output0", name="output",
+                                                datatype=",".join(dtype_list_total),
+                                                format=",".join(format_list_for_non_one))
+
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
@@ -390,6 +472,10 @@ def op_select_format(x, y, output, kernel_name="mul"):
     > x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")
     > y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")
     """
+    param_dynamic_in_json = op_sub_select_format(x, y, output, kernel_name)
+    if param_dynamic_in_json is not None:
+        return param_dynamic_in_json
+
     shape_x = x.get("ori_shape")
     shape_y = y.get("ori_shape")
 
@@ -877,7 +963,7 @@ def _infer_shape(format_pattern, x, y):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("mul")
-def mul_compute(input_x, input_y, output_data, kernel_name="mul"):
+def mul_compute(input_x, input_y, output_data, is_scene_1D=False, kernel_name="mul"):
     """
     calculating element-wise mul
 
@@ -898,23 +984,30 @@ def mul_compute(input_x, input_y, output_data, kernel_name="mul"):
     """
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)
-
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                              shape_y,
-                                                              param_name_input1="x",
-                                                              param_name_input2="y")
-    if shape_x != shape_y and len(shape_x) == 2 and len(shape_y) == 2:
-        res = _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max)
-        if res is not None:
-            return res
-
     x_dtype = input_x.dtype.lower()
-    if x_dtype in ("uint8", "int8"):
-        input_x = tbe.cast_to(input_x, "float32")
-        input_y = tbe.cast_to(input_y, "float32")
 
-    input_x = tbe.broadcast(input_x, shape_max)
-    input_y = tbe.broadcast(input_y, shape_max)
+    if is_scene_1D:
+        if x_dtype in ("uint8", "int8"):
+            input_x = tbe.cast_to(input_x, "float32")
+            input_y = tbe.cast_to(input_y, "float32")
+        input_y = tbe.broadcast(input_y, shape_x)
+    else:
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                                  shape_y,
+                                                                  param_name_input1="x",
+                                                                  param_name_input2="y")
+        if shape_x != shape_y and len(shape_x) == 2 and len(shape_y) == 2:
+            res = _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max)
+            if res is not None:
+                return res
+
+        if x_dtype in ("uint8", "int8"):
+            input_x = tbe.cast_to(input_x, "float32")
+            input_y = tbe.cast_to(input_y, "float32")
+
+        input_x = tbe.broadcast(input_x, shape_max)
+        input_y = tbe.broadcast(input_y, shape_max)
+
     res = tbe.vmul(input_x, input_y)
 
     if x_dtype in ("uint8", "int8"):
@@ -1028,16 +1121,21 @@ def mul(x, y, output, kernel_name="mul"):
         new_check_list.remove("float32")
         para_check.check_dtype(dtype_x, new_check_list, param_name="x")
 
-    shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                              shape_y,
-                                                              param_name_input1="x",
-                                                              param_name_input2="y")
+    if para_check.is_scalar(shape_y):
+        is_scene_1D = True
+        shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
+    else:
+        is_scene_1D = False
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                                  shape_y,
+                                                                  param_name_input1="x",
+                                                                  param_name_input2="y")
+        shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
 
-    shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
     input_x = tvm.placeholder(shape_x, dtype=dtype_x, name="x")
     input_y = tvm.placeholder(shape_y, dtype=dtype_x, name="y")
 
-    res = mul_compute(input_x, input_y, output, kernel_name)
+    res = mul_compute(input_x, input_y, output, is_scene_1D, kernel_name)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)

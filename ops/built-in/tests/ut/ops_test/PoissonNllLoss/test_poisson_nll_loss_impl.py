@@ -11,7 +11,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-PtMuls ut case
+poisson_nll_loss ut case
 """
 from op_test_frame.ut import BroadcastOpUT
 import torch
