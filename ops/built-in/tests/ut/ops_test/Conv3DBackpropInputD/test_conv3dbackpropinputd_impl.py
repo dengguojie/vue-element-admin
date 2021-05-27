@@ -45,6 +45,20 @@ def test_op_check_supported(test_arg):
 
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+
+def _test_op_get_op_support_info(test_arg):
+    from impl.conv3d_backprop_input_d import get_op_support_info
+
+    [filters, out_backprop, y_input, input_sizes, strides,
+     pads, dilations, groups, data_format] = _run_api_end_with_d()
+
+    get_op_support_info(
+        filters, out_backprop, y_input, input_sizes, strides,
+        pads, dilations, groups, data_format)
+
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
+
+
 # test_conv3dbp_succ_d
 case1 = _run_api_end_with_d()
 

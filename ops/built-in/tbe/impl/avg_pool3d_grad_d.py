@@ -16,6 +16,9 @@
 avg_pool3d_grad_d
 """
 from impl.conv3d_backprop_input_d import conv3d_backprop_input_fusion_compute
+from impl.util import util_common
+from impl.util import util_conv3d
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import para_check
@@ -31,27 +34,176 @@ _GRADS_TARGET_FORMAT = "NDHWC"
 _GRADS_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC"]
 _STRIDE_SORCE_FORMAT = "NDHWC"
 _DATA_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC"]
+_L1FUSION_INPUT_CTR = 2
+_L1_FUSION_DISABLE = 0
 
-def _transform_shape_with_format(ori_format, shape):
-    idx_d = ori_format.find('D')
-    idx_h = ori_format.find('H')
-    idx_w = ori_format.find('W')
-    shape_all = [1, 1, 1, 1, 1]
-    if len(shape) == 1:
-        shape_dhw = (shape[0], shape[0], shape[0])
-        shape_all[idx_d] = shape[0]
-        shape_all[idx_h] = shape[0]
-        shape_all[idx_w] = shape[0]
-    elif len(shape) == 3:
-        shape_dhw = [shape[2], shape[0], shape[1]]
-        shape_all[idx_d] = shape[2]
-        shape_all[idx_h] = shape[0]
-        shape_all[idx_w] = shape[1]
-    elif len(shape) == 5:
-        shape_dhw = (shape[idx_d], shape[idx_h], shape[idx_w])
-        shape_all = shape
-    return tuple(shape_all), shape_dhw
 
+def get_op_support_info(grads,
+                        filter,
+                        multiplier,
+                        output,
+                        orig_input_shape,
+                        ksize,
+                        strides,
+                        pads,
+                        ceil_mode=False,
+                        count_include_pad=True,
+                        divisor_override=0,
+                        data_format="NDHWC",
+                        kernel_name="avg_pool3d_grad_d",
+                        op_slice_info=""):
+    """
+    algorithm: get_op_support_info
+
+    Parameters
+    ----------
+    grads : dict, shape and dtype of input_data,
+            only support float16, shape is 5dims, format is NDC1HWC0
+
+    filter : dict, fractal_z_3d layout, float16 dtype
+
+    multiplier : dict, NDC1HWC0 layout, float16 dtype
+
+    output : dict, shape and dtype of output_data, only support float16
+
+    ksize : list or tuple, the window of avg_pool3d,
+            only support avg_pool3d in D or H or W
+
+    strides:list or tuple, the window of avg_pool3d,
+            only support avg_pool3d in D or H or W
+
+    pads : list or tuple, count of padding zero or d, h, w axis
+
+    ceil_mode : when True, will use ceil mode instead of floor
+                in the formula to compute the output shape
+
+    count_include_pad : when True, will include the zero-padding
+                        in the averaging calculation
+
+    divisor_override : if specified, it will be used as divisor,
+                       otherwise size of the pooling region will be used
+
+    data_format : str, default value is "NDHWC"
+
+    kernel_name : cce kernel name, default value is "avg_pool3d_grad_d"
+
+    op_slice_info: Str
+        Default value is ""
+
+    Returns
+    -------
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
+                         and min_tbe_l1_space)
+    """
+    def _cal_min_l1space():
+        block_size = 16
+        w_value = ori_shape_grads[3] * strides_formated[3]
+        if ori_shape_res[3] > block_size:
+            h_value_max = kh + 1
+        elif block_size % ori_shape_res[3] == 0:
+            h_value_max = kh + block_size // ori_shape_res[3] - 1
+        else:
+            h_value_max = kh + block_size // ori_shape_res[3] + 1
+
+        a_l1_size = h_value_max * w_value * ((kd - 2) // strides_formated[1] + 2) * block_size * 2
+        b_l1_size = kh * kw * kd * block_size * block_size * 2
+        return a_l1_size + b_l1_size
+
+    def _get_slice_info():
+        overlap_d = -1 if (kd == 1 and strides_formated[1] == 1) else 0
+        overlap_h = -1 if (kh == 1 and strides_formated[2] == 1) else 0
+        overlap_w = -1 if (kw == 1 and strides_formated[3] == 1) else 0
+
+        # format
+        axis_split_matrix = []
+        axis_reduce_list = None
+        format_grads = grads.get("format")
+        if format_grads == "NDC1HWC0" and not global_mode:
+            if not multiplier:
+                # cut N
+                axis_split_matrix.append([util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                                          util_select_op_base.SplitOutput([0, [0]])])
+                # cut D
+                axis_split_matrix.append([util_select_op_base.SplitInput([0, [1], [overlap_d], [overlap_d]]),
+                                          util_select_op_base.SplitOutput([0, [1]])])
+                # cut H
+                axis_split_matrix.append([util_select_op_base.SplitInput([0, [3], [overlap_h], [overlap_h]]),
+                                          util_select_op_base.SplitOutput([0, [3]])])
+                # cut W
+                axis_split_matrix.append([util_select_op_base.SplitInput([0, [4], [overlap_w], [overlap_w]]),
+                                          util_select_op_base.SplitOutput([0, [4]])])
+            else:
+                # cut N
+                axis_split_matrix.append([util_select_op_base.SplitInput([0, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
+                                          util_select_op_base.SplitOutput([0, [0]])])
+                # cut D
+                axis_split_matrix.append([util_select_op_base.SplitInput([0, [1], [overlap_d], [overlap_d]],
+                                                                         [2, [1], [overlap_d], [overlap_d]]),
+                                          util_select_op_base.SplitOutput([0, [1]])])
+                # cut H
+                axis_split_matrix.append([util_select_op_base.SplitInput([0, [3], [overlap_h], [overlap_h]],
+                                                                         [2, [3], [overlap_h], [overlap_h]]),
+                                          util_select_op_base.SplitOutput([0, [3]])])
+                # cut W
+                axis_split_matrix.append([util_select_op_base.SplitInput([0, [4], [overlap_w], [overlap_w]],
+                                                                         [2, [4], [overlap_w], [overlap_w]]),
+                                          util_select_op_base.SplitOutput([0, [4]])])
+
+        else:
+            axis_split_matrix = None
+
+        return axis_split_matrix, axis_reduce_list
+
+    ori_shape_grads = util_conv3d.transform_shape_with_format(grads.get("ori_format"),
+                                                              _GRADS_TARGET_FORMAT,
+                                                              grads.get("ori_shape"),
+                                                              _GRADS_FORMAT_WHITE_LIST)
+    strides_formated = util_conv3d.transform_shape_with_format(grads.get("ori_format"),
+                                                               _GRADS_TARGET_FORMAT,
+                                                               [1, strides[2], strides[0], strides[1], 1],
+                                                               _GRADS_FORMAT_WHITE_LIST)
+
+    if ori_shape_grads is None or strides_formated is None:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'grads',
+            'expected_format_list': ",".join(_GRADS_FORMAT_WHITE_LIST),
+            'format': grads.get("ori_format")
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    ori_shape_res = util_conv3d.transform_shape_with_format(data_format,
+                                                            _FMAP_TARGET_FORMAT,
+                                                            orig_input_shape,
+                                                            _DATA_FORMAT_WHITE_LIST)
+    if ori_shape_res is None:
+        dict_args = {
+            'errCode': 'E62002',
+            'param_name': 'data_format',
+            'expected_format_list': ",".join(_DATA_FORMAT_WHITE_LIST),
+            'format': data_format
+        }
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+
+    kh, kw, kd = ksize
+    cout = ori_shape_res[-1]
+    ori_shape_filters = [kd, kh, kw, 1, cout]
+    _, grads_d, grads_h, grads_w, _ = ori_shape_grads
+    global_mode = (grads_d == 1 and grads_h == 1 and grads_w == 1)
+    axis_split_info, axis_reduce_info = _get_slice_info()
+    if global_mode:
+        l1_fusion_tag = _L1_FUSION_DISABLE
+        min_tbe_l1_space = 0
+    else:
+        l1_fusion_tag = _L1FUSION_INPUT_CTR
+        min_tbe_l1_space = _cal_min_l1space()
+        
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_info,
+                                                              axis_reduce_info,
+                                                              l1_fusion_tag,
+                                                              min_tbe_l1_space)
+    return op_cal_info_in_json
 
 def _check_window_rule(ksize, strides, pads):
     if len(ksize) != 3:
@@ -109,22 +261,6 @@ def _correct_pads(input_shape, fmap_shape, ksize, strides, pads):
 
     return [pad_before, pad_after, pad_top, pad_bottom, pad_left, pad_right]
 
-
-def _transform_shape_with_format(src_format, to_format, ori_shape, format_white_list):
-    # input format is not expected
-    if ((src_format not in format_white_list) or
-        (to_format not in format_white_list)):
-        return None
-    # need not to transform
-    if src_format == to_format:
-        return ori_shape
-    res_shape = [1 for _ in range(len(to_format))]
-    for i in range(len(to_format)):
-        for j in range(len(src_format)):
-            if to_format[i] == src_format[j]:
-                res_shape[i] = ori_shape[j]
-                break
-    return res_shape
 
 #pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
@@ -202,10 +338,10 @@ def avg_pool3d_grad_d(grads,
 
     _avg_pool3d_grad_check_rule(grads_shape, grads_dtype, ksize, strides, pads, kernel_name)
 
-    strides_formated = _transform_shape_with_format(_STRIDE_SORCE_FORMAT,
-                                                    grads_ori_format,
-                                                    [1, strides[2], strides[0], strides[1], 1],
-                                                    _DATA_FORMAT_WHITE_LIST)
+    strides_formated = util_conv3d.transform_shape_with_format(_STRIDE_SORCE_FORMAT,
+                                                               grads_ori_format,
+                                                               [1, strides[2], strides[0], strides[1], 1],
+                                                               _DATA_FORMAT_WHITE_LIST)
 
     if strides_formated is None:
         dict_args = {
@@ -216,10 +352,10 @@ def avg_pool3d_grad_d(grads,
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    orig_input_shape_formated = _transform_shape_with_format(data_format,
-                                                             _FMAP_TARGET_FORMAT,
-                                                             orig_input_shape,
-                                                             _DATA_FORMAT_WHITE_LIST)
+    orig_input_shape_formated = util_conv3d.transform_shape_with_format(data_format,
+                                                                        _FMAP_TARGET_FORMAT,
+                                                                        orig_input_shape,
+                                                                        _DATA_FORMAT_WHITE_LIST)
     if orig_input_shape_formated is None:
         dict_args = {
             'errCode': 'E62002',
@@ -229,10 +365,10 @@ def avg_pool3d_grad_d(grads,
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    grads_ori_shape_formated = _transform_shape_with_format(grads_ori_format,
-                                                            _GRADS_TARGET_FORMAT,
-                                                            grads_ori_shape,
-                                                            _GRADS_FORMAT_WHITE_LIST)
+    grads_ori_shape_formated = util_conv3d.transform_shape_with_format(grads_ori_format,
+                                                                       _GRADS_TARGET_FORMAT,
+                                                                       grads_ori_shape,
+                                                                       _GRADS_FORMAT_WHITE_LIST)
     if grads_ori_shape_formated is None:
         dict_args = {
             'errCode': 'E62002',

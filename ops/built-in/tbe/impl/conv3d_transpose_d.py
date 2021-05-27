@@ -17,6 +17,7 @@ conv3d_transpose_d
 """
 from impl.conv3d_backprop_input_d import check_conv3dbp_input_params
 from impl.util import util_common
+from impl.util import util_conv3d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_cube
@@ -35,22 +36,6 @@ _FILTER_TARGET_FORMAT = "DHWCN"
 _FILTER_FORMAT_WHITE_LIST = ["DHWCN", "NDHWC", "NCDHW"]
 _RES_TARGET_FORMAT = "NDHWC"
 _RES_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
-
-def _transform_shape_with_format(src_format, to_format, ori_shape, format_white_list):
-    # input format is not expected
-    if ((src_format not in format_white_list) or
-        (to_format not in format_white_list)):
-        return None
-    # need not to transform
-    if src_format == to_format:
-        return ori_shape
-    res_shape = [1 for _ in range(len(to_format))]
-    for i in range(len(to_format)):
-        for j in range(len(src_format)):
-            if to_format[i] == src_format[j]:
-                res_shape[i] = ori_shape[j]
-                break
-    return res_shape
 
 
 def get_op_support_info(out_backprop,
@@ -179,14 +164,14 @@ def get_op_support_info(out_backprop,
 
         return axis_split_matrix, axis_reduce_list
 
-    ori_shape_out_backprop = _transform_shape_with_format(out_backprop.get("ori_format"),
-                                                          _OUT_BACKPROP_TARGET_FORMAT,
-                                                          out_backprop.get("ori_shape"),
-                                                          _OUT_BACKPROP_FORMAT_WHITE_LIST)
-    strides_formated = _transform_shape_with_format(out_backprop.get("ori_format"),
-                                                    _OUT_BACKPROP_TARGET_FORMAT,
-                                                    strides,
-                                                    _OUT_BACKPROP_FORMAT_WHITE_LIST)
+    ori_shape_out_backprop = util_conv3d.transform_shape_with_format(out_backprop.get("ori_format"),
+                                                                     _OUT_BACKPROP_TARGET_FORMAT,
+                                                                     out_backprop.get("ori_shape"),
+                                                                     _OUT_BACKPROP_FORMAT_WHITE_LIST)
+    strides_formated = util_conv3d.transform_shape_with_format(out_backprop.get("ori_format"),
+                                                               _OUT_BACKPROP_TARGET_FORMAT,
+                                                               strides,
+                                                               _OUT_BACKPROP_FORMAT_WHITE_LIST)
 
     if ori_shape_out_backprop is None or strides_formated is None:
         dict_args = {
@@ -198,10 +183,10 @@ def get_op_support_info(out_backprop,
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    ori_shape_filters = _transform_shape_with_format(filters.get("ori_format"),
-                                                     _FILTER_TARGET_FORMAT,
-                                                     filters.get("ori_shape"),
-                                                     _FILTER_FORMAT_WHITE_LIST)
+    ori_shape_filters = util_conv3d.transform_shape_with_format(filters.get("ori_format"),
+                                                                _FILTER_TARGET_FORMAT,
+                                                                filters.get("ori_shape"),
+                                                                _FILTER_FORMAT_WHITE_LIST)
     if ori_shape_filters is None:
         dict_args = {
             'errCode': 'E60008',
@@ -212,10 +197,10 @@ def get_op_support_info(out_backprop,
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
 
-    ori_shape_res = _transform_shape_with_format(y_input.get("ori_format"),
-                                                 _RES_TARGET_FORMAT,
-                                                 y_input.get("ori_shape"),
-                                                 _RES_FORMAT_WHITE_LIST)
+    ori_shape_res = util_conv3d.transform_shape_with_format(y_input.get("ori_format"),
+                                                            _RES_TARGET_FORMAT,
+                                                            y_input.get("ori_shape"),
+                                                            _RES_FORMAT_WHITE_LIST)
     if ori_shape_res is None:
         dict_args = {
             'errCode': 'E60008',
@@ -235,6 +220,16 @@ def get_op_support_info(out_backprop,
 
     return op_cal_info_in_json
 
+def _check_output_padding(output_padding_val, dilation_val, stride_val):
+    if output_padding_val < 0 or (output_padding_val >= dilation_val and output_padding_val >= stride_val):
+        dict_args = {
+            'errCode': 'E62305',
+            'param_name': 'output_padding',
+            'expect_value': '[{}, {})'.format(str(0), str(max(dilation_val, stride_val))),
+            'value': str(output_padding_val)
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
 
 def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R0914
                              bias, offset_w, y_input, input_sizes,
@@ -265,10 +260,10 @@ def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R091
             'output_padding should be 5-dim list/tuple')
 
     # transform filter shape
-    shape_filters = _transform_shape_with_format(ori_format_filters,
-                                                 _FILTER_TARGET_FORMAT,
-                                                 ori_shape_filters,
-                                                 _FILTER_FORMAT_WHITE_LIST)
+    shape_filters = util_conv3d.transform_shape_with_format(ori_format_filters,
+                                                            _FILTER_TARGET_FORMAT,
+                                                            ori_shape_filters,
+                                                            _FILTER_FORMAT_WHITE_LIST)
     if shape_filters is None:
         dict_args = {
             'errCode': 'E60008',
@@ -280,25 +275,25 @@ def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R091
                            error_manager_util.get_error_message(dict_args))
 
     # transform out_backprop, strides, dilations shape
-    shape_out_backprop = _transform_shape_with_format(ori_format_out_backprop,
-                                                      _OUT_BACKPROP_TARGET_FORMAT,
-                                                      ori_shape_out_backprop,
-                                                      _OUT_BACKPROP_FORMAT_WHITE_LIST)
+    shape_out_backprop = util_conv3d.transform_shape_with_format(ori_format_out_backprop,
+                                                                 _OUT_BACKPROP_TARGET_FORMAT,
+                                                                 ori_shape_out_backprop,
+                                                                 _OUT_BACKPROP_FORMAT_WHITE_LIST)
 
-    shape_strides = _transform_shape_with_format(ori_format_out_backprop,
-                                                 _OUT_BACKPROP_TARGET_FORMAT,
-                                                 ori_shape_strides,
-                                                 _OUT_BACKPROP_FORMAT_WHITE_LIST)
+    shape_strides = util_conv3d.transform_shape_with_format(ori_format_out_backprop,
+                                                            _OUT_BACKPROP_TARGET_FORMAT,
+                                                            ori_shape_strides,
+                                                            _OUT_BACKPROP_FORMAT_WHITE_LIST)
 
-    shape_dilations = _transform_shape_with_format(ori_format_out_backprop,
-                                                   _OUT_BACKPROP_TARGET_FORMAT,
-                                                   ori_shape_dialtions,
-                                                   _OUT_BACKPROP_FORMAT_WHITE_LIST)
+    shape_dilations = util_conv3d.transform_shape_with_format(ori_format_out_backprop,
+                                                              _OUT_BACKPROP_TARGET_FORMAT,
+                                                              ori_shape_dialtions,
+                                                              _OUT_BACKPROP_FORMAT_WHITE_LIST)
 
-    shape_output_padding = _transform_shape_with_format(ori_format_out_backprop,
-                                                        _OUT_BACKPROP_TARGET_FORMAT,
-                                                        ori_shape_output_padding,
-                                                        _OUT_BACKPROP_FORMAT_WHITE_LIST)
+    shape_output_padding = util_conv3d.transform_shape_with_format(ori_format_out_backprop,
+                                                                   _OUT_BACKPROP_TARGET_FORMAT,
+                                                                   ori_shape_output_padding,
+                                                                   _OUT_BACKPROP_FORMAT_WHITE_LIST)
 
     if (shape_out_backprop is None or shape_strides is None or shape_dilations is None or
         shape_output_padding is None):
@@ -316,10 +311,10 @@ def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R091
     _, output_padding_d, output_padding_h, output_padding_w, _ = shape_output_padding
 
     # transform res shape
-    shape_res = _transform_shape_with_format(ori_format_res,
-                                             _RES_TARGET_FORMAT,
-                                             ori_shape_res,
-                                             _RES_FORMAT_WHITE_LIST)
+    shape_res = util_conv3d.transform_shape_with_format(ori_format_res,
+                                                        _RES_TARGET_FORMAT,
+                                                        ori_shape_res,
+                                                        _RES_FORMAT_WHITE_LIST)
     if shape_res is None:
         dict_args = {
             'errCode': 'E60008',
@@ -329,49 +324,9 @@ def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R091
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
-
-    if output_padding_d < 0 or (output_padding_d >= dilation_d and output_padding_d >= stride_d):
-        dict_args = {
-            'errCode': 'E62305',
-            'param_name': 'output_padding D',
-            'expect_value': '[{}, {})'.format(str(0), 'max(stride D,dilation D)'),
-            'value': str(output_padding_d)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
-    if output_padding_h < 0 or (output_padding_h >= dilation_h and output_padding_h >= stride_h):
-        dict_args = {
-            'errCode': 'E62305',
-            'param_name': 'output_padding H',
-            'expect_value': '[{}, {})'.format(str(0), 'max(stride H,dilation H)'),
-            'value': str(output_padding_h)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
-    if output_padding_w < 0 or (output_padding_w >= dilation_w and output_padding_w >= stride_w):
-        dict_args = {
-            'errCode': 'E62305',
-            'param_name': 'output_padding W',
-            'expect_value': '[{}, {})'.format(str(0), 'max(stride W,dilation W)'),
-            'value': str(output_padding_w)
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-    if bias:
-        bias_dtype = bias.get("dtype")
-        para_check.check_dtype_rule(bias_dtype, ('float16'), "bias")
-        bias_shape = bias.get("ori_shape")
-        if len(bias_shape) != _BIAS_LENGTH:
-            dict_args = {
-                'errCode': 'E60006',
-                'param_name': 'bias',
-                'expected_length': '1',
-                'length': '{}'.format(len(bias_shape))
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+    _check_output_padding(output_padding_d, dilation_d, stride_d)
+    _check_output_padding(output_padding_h, dilation_h, stride_h)
+    _check_output_padding(output_padding_w, dilation_w, stride_w)
 
     return (shape_filters, shape_out_backprop, shape_res, shape_strides, pads,
             groups, shape_dilations, filters_dtype, out_backprop_dtype, res_dtype, kernel_name)

@@ -17,32 +17,44 @@ def _gen_data_case(case, expect, case_name_val, support_expect=True):
             "format_expect": [],
             "support_expect": support_expect}
 
-
 def _run_api_end_with_d(
-        grads={'ori_shape': (1, 1, 1, 1, 1),
-                 'shape': (1, 1, 1, 1, 1, 16),
-                 'ori_format': 'NDHWC',
-                 'format': 'NDC1HWC0',
-                 'dtype': 'float16'},
-        filter=None,
-        multiplier=None,
-        output={'ori_shape': (1, 3, 3, 3, 1),
-                  'shape': (1, 3, 1, 3, 3, 16),
-                  'ori_format': 'NDHWC',
-                  'format': 'NDC1HWC0',
-                  'dtype': 'float16'},
-        orig_input_shape=(1, 3, 3, 3, 1),
-        ksize=(3, 3, 3),
-        strides=(1, 1, 1),
-        pads=(0, 0, 0, 0, 0, 0),
-        ceil_mode=False,
-        count_include_pad=False,
-        divisor_override=0,
-        data_format="NDHWC"):
+    grads={'ori_shape': (1, 1, 1, 1, 1),
+           'shape': (1, 1, 1, 1, 1, 16),
+           'ori_format': 'NDHWC',
+           'format': 'NDC1HWC0',
+           'dtype': 'float16'},
+    filter=None,
+    multiplier=None,
+    output={'ori_shape': (1, 3, 3, 3, 1),
+            'shape': (1, 3, 1, 3, 3, 16),
+            'ori_format': 'NDHWC',
+            'format': 'NDC1HWC0',
+            'dtype': 'float16'},
+    orig_input_shape=(1, 3, 3, 3, 1),
+    ksize=(3, 3, 3),
+    strides=(1, 1, 1),
+    pads=(0, 0, 0, 0, 0, 0),
+    ceil_mode=False,
+    count_include_pad=False,
+    divisor_override=0,
+    data_format="NDHWC"):
     return [grads, filter, multiplier, output, orig_input_shape,
             ksize, strides, pads, ceil_mode, count_include_pad,
             divisor_override, data_format]
 
+def _test_op_get_op_support_info(test_arg):
+    from impl.avg_pool3d_grad_d import get_op_support_info
+
+    [grads, filter, multiplier, output, orig_input_shape,
+     ksize, strides, pads, ceil_mode, count_include_pad,
+     divisor_override, data_format] = _run_api_end_with_d()
+
+    get_op_support_info(
+        grads, filter, multiplier, output, orig_input_shape,
+        ksize, strides, pads, ceil_mode, count_include_pad,
+        divisor_override, data_format)
+
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
 
 # test_avg_pool3d_grad_d_succ in global mode
 case1 = _run_api_end_with_d()

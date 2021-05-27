@@ -6662,7 +6662,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
   vector<vector<int64_t>> w_data_slice = {{}, {}, {}, {}};
   vector<vector<int64_t>> bias_data_slice = {{}};
 
-  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice) != GRAPH_SUCCESS) {
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
     OP_LOGI(op.GetName().c_str(), "no data slice, need not infer input.");
     return GRAPH_FAILED;
   }
@@ -7437,6 +7437,73 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
   return true;
 }
 
+
+static void InferHWConv3dBackpropInput(int32_t kernel,
+                                       int32_t dilation,
+                                       int32_t stride,
+                                       int32_t input_size,
+                                       const vector<int64_t>& output,
+                                       vector<int64_t>& input,
+                                       vector<int32_t>& pad_list,
+                                       uint32_t pad_idx) {
+  int32_t kernel_size = (kernel - 1) * dilation + 1;
+  int32_t pad_out = kernel_size - pad_list[pad_idx] - 1;
+
+  input[0] = std::min(std::max(static_cast<int64_t>(
+                               std::ceil(
+                                static_cast<float>(output[0] - pad_out) /
+                                static_cast<float>(stride))),
+                               0L),
+                      static_cast<int64_t>(input_size - 1));
+  input[1] = std::min((output[1] + kernel_size - 1 - pad_out) / static_cast<int64_t>(stride),
+                      static_cast<int64_t>(input_size - 1));
+
+  int32_t oh = static_cast<int32_t>(output[1] - output[0] + 1);
+  int32_t ih = static_cast<int32_t>(input[1] - input[0] + 1);
+
+  pad_list[pad_idx] = kernel_size - static_cast<int32_t>(
+                                      input[0] * stride + pad_out - output[0]) - 1;
+  pad_list[pad_idx + 1] = std::max(stride * (ih - 1) + kernel_size -
+                                      oh - pad_list[pad_idx],
+                                   0);
+}
+
+static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<int64_t>>& data_slice) {
+  // check data_slice attr
+  if (data_slice.size() != kConv3dDataSlice) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "y_data_slice's size should be 6.");
+    return GRAPH_FAILED;
+  }
+
+  // no support C0 axis
+  if (data_slice[kConv3dDataSlice - 1].size() != 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "no support to cut C0 axis.");
+    return NOT_SUPPORT_SLICE;
+  }
+
+  // check valid slice num in data slice
+  int32_t valid_cnt = 0;
+  for (uint32_t i = 0; i < data_slice.size(); ++i) {
+    if (data_slice[i].size() == 0) {
+      continue;
+    }
+    if (data_slice[i].size() != 2) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice format input size should be 2.");
+      return GRAPH_FAILED;
+    }
+    valid_cnt ++;
+  }
+  if (valid_cnt == 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice is empty.");
+    return GRAPH_FAILED;
+  }
+  if (valid_cnt != 1) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "valid slice range num is more than 1.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv3DBackpropInput inferfunction!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -7602,6 +7669,141 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInputD, Conv3DBackpropInputDInfer) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv3DBackpropInputDInfereDataSlice.");
+
+  auto x_format = op.get_input_desc_out_backprop().GetFormat();
+  int32_t strd = 0;
+  int32_t strh = 0;
+  int32_t strw = 0;
+  int32_t dild = 0;
+  int32_t dilh = 0;
+  int32_t dilw = 0;
+
+  if (!GetAttrsConv3D(op, x_format, strd, strh, strw, dild, dilh, dilw)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get attrs failed.");
+    return GRAPH_FAILED;
+  }
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_dedy = op_desc->MutableInputDesc("out_backprop");
+  GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("filter");
+
+  vector<vector<int64_t>> y_data_slice;
+  vector<vector<int64_t>> dedy_data_slice(6, vector<int64_t>(0));
+  vector<vector<int64_t>> w_data_slice(4, vector<int64_t>(0));
+
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGW(op.GetName().c_str(), "no data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  graphStatus ret = VerifyDataSlice(op, y_data_slice);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
+  }
+  vector<int32_t> pad_list;
+  op.GetAttr("pads", pad_list);
+
+  auto x_shape = op.get_input_desc_out_backprop().GetShape().GetDims();
+  std::string x_format_str = format2str[x_format];
+  int32_t d_input_position = x_format_str.find("D");
+  CHECK_POSITION(d_input_position);
+  int32_t h_input_position = x_format_str.find("H");
+  CHECK_POSITION(h_input_position);
+  int32_t w_input_position = x_format_str.find("W");
+  CHECK_POSITION(w_input_position);
+  int32_t id = x_shape[d_input_position];
+  int32_t ih = x_shape[h_input_position];
+  int32_t iw = x_shape[w_input_position];
+
+  auto filter_format = op.get_input_desc_filter().GetFormat();
+  auto w_shape = op.get_input_desc_filter().GetShape().GetDims();
+  std::string filter_format_str = format2str[filter_format];
+  int32_t d_filter_position = filter_format_str.find("D");
+  CHECK_POSITION(d_filter_position);
+  int32_t h_filter_position = filter_format_str.find("H");
+  CHECK_POSITION(h_filter_position);
+  int32_t w_filter_position = filter_format_str.find("W");
+  CHECK_POSITION(w_filter_position);
+  int32_t kd = w_shape[d_filter_position];
+  int32_t kh = w_shape[h_filter_position];
+  int32_t kw = w_shape[w_filter_position];
+
+  bool needUpdateX = false;
+  bool needUpdateW = false;
+
+  // cut N
+  if (y_data_slice[0].size() != 0) {
+    dedy_data_slice[0] = y_data_slice[0];
+    needUpdateX = true;
+  }
+
+  // cut D
+  if (y_data_slice[1].size() != 0 && pad_list.size() > 2) {
+    dedy_data_slice[1].clear();
+    dedy_data_slice[1].resize(2);
+    InferHWConv3dBackpropInput(kd, dild, strd, id,
+                               y_data_slice[1], dedy_data_slice[1],
+                               pad_list, 0);
+    needUpdateX = true;
+  }
+
+  // cut H
+  if (y_data_slice[3].size() != 0 && pad_list.size() > 4) {
+    dedy_data_slice[3].clear();
+    dedy_data_slice[3].resize(2);
+    InferHWConv3dBackpropInput(kh, dilh, strh, ih,
+                               y_data_slice[3], dedy_data_slice[3],
+                               pad_list, 2);
+    needUpdateX = true;
+  }
+
+  // cut W
+  if (y_data_slice[4].size() != 0 && pad_list.size() == kConv3dLengthPadsLimit) {
+    dedy_data_slice[4].clear();
+    dedy_data_slice[4].resize(2);
+    InferHWConv3dBackpropInput(kw, dilw, strw, iw,
+                               y_data_slice[4], dedy_data_slice[4],
+                               pad_list, 4);
+    needUpdateX = true;
+  }
+
+  // cut Cout
+  if (y_data_slice[2].size() != 0) {
+    w_data_slice[0].clear();
+    w_data_slice[0].resize(2);
+    w_data_slice[0][0] = y_data_slice[2][0] * static_cast<int64_t>(kh * kw);
+    w_data_slice[0][1] = y_data_slice[2][1] * static_cast<int64_t>(kh * kw);
+    needUpdateW = true;
+  }
+
+  // check update flag
+  if (!needUpdateX && !needUpdateW) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "there's no update in desc.");
+    return GRAPH_FAILED;
+  }
+
+  // update data slice attr
+  if (needUpdateX) {
+    if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set outbackprop data slice attr failed.");
+      return GRAPH_FAILED;
+    }
+  }
+  if (needUpdateW) {
+    if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set w data slice attr failed");
+      return GRAPH_FAILED;
+    }
+  }
+
+  // update pads attr info
+  op.SetAttr("pads", pad_list);
+  return GRAPH_SUCCESS;
+}
+
 IMPLEMT_VERIFIER(Conv3DBackpropInputD, Conv3DBackpropInputDVerify) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv3DBackpropInputD verifyfunction!");
   if (GRAPH_SUCCESS != VerifyConv3dbpInputCommon(op)) {
@@ -7615,6 +7817,7 @@ IMPLEMT_VERIFIER(Conv3DBackpropInputD, Conv3DBackpropInputDVerify) {
   return GRAPH_SUCCESS;
 }
 
+INFER_DATA_SLICE_FUNC_REG(Conv3DBackpropInputD, Conv3DBackpropInputDInfereDataSlice);
 INFER_FUNC_REG(Conv3DBackpropInputD, Conv3DBackpropInputDInfer);
 VERIFY_FUNC_REG(Conv3DBackpropInputD, Conv3DBackpropInputDVerify);
 
@@ -7941,6 +8144,60 @@ IMPLEMT_VERIFIER(Conv3DBackpropFilterD, Conv3DBackpropFilterDVerify) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfereDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv3DBackpropFilterDInfereDataSlice.");
+
+  auto y_tensor = op.GetOutputDesc("y");
+  auto filter_format = y_tensor.GetOriginFormat();
+  std::string filter_format_str = format2str[filter_format];
+  int32_t n_filter_position = filter_format_str.find("N");
+  // get shape for output from filter_size
+  std::vector<int32_t> filter_sizes;
+  if (op.GetAttr("filter_size", filter_sizes) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "get filter_size list failed.");
+    map<std::string, std::string> err_map;
+    err_map["op_name"] = "Conv3DBackpropFilter";
+    err_map["param_name"] = "filter_size";
+    std::string report_error_code = "E50030";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_dedy = op_desc->MutableInputDesc("out_backprop");
+
+  vector<vector<int64_t>> y_data_slice;
+  vector<vector<int64_t>> dedy_data_slice(6, vector<int64_t>(0));
+
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+ for(int i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 1) {
+      int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
+      if (i == 1) {
+        dedy_data_slice[i + 1] = y_data_slice[i];
+        if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
+          return GRAPH_FAILED;
+        }
+        filter_sizes[n_filter_position] = y_extend * 16;
+        op.SetAttr("filter_size", filter_sizes);
+        OP_LOGI(op.GetName().c_str(), "infer input in Cout success");
+        return GRAPH_SUCCESS;
+      } else {
+         OP_LOGI(op.GetName().c_str(), "can not supported split in Cin, H and W");
+         return GRAPH_FAILED;
+      }
+    }
+  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  return GRAPH_FAILED;
+}
+
+INFER_DATA_SLICE_FUNC_REG(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfereDataSlice);
 INFER_FUNC_REG(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfer);
 VERIFY_FUNC_REG(Conv3DBackpropFilterD, Conv3DBackpropFilterDVerify);
 
@@ -8520,35 +8777,6 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
   return GRAPH_SUCCESS;
 }
 
-static void InferHWConv3dTransposeD(int32_t kernel,
-                                    int32_t dilation,
-                                    int32_t stride,
-                                    int32_t input_size,
-                                    const vector<int64_t>& output,
-                                    vector<int64_t>& input,
-                                    vector<int32_t>& pad_list,
-                                    uint32_t pad_idx) {
-  int32_t kernel_size = (kernel - 1) * dilation + 1;
-  int32_t pad_out = kernel_size - pad_list[pad_idx] - 1;
-
-  input[0] = std::max(static_cast<int64_t>(
-                        std::ceil(
-                          static_cast<float>(output[0] - pad_out) /
-                          static_cast<float>(stride))),
-                      0L);
-  input[1] = std::min((output[1] + kernel_size - 1 - pad_out) / static_cast<int64_t>(stride),
-                      static_cast<int64_t>(input_size - 1));
-
-  int32_t oh = static_cast<int32_t>(output[1] - output[0] + 1);
-  int32_t ih = static_cast<int32_t>(input[1] - input[0] + 1);
-
-  pad_list[pad_idx] = kernel_size - static_cast<int32_t>(
-                                      input[0] * stride + pad_out - output[0]) - 1;
-  pad_list[pad_idx + 1] = std::max(stride * (ih - 1) + kernel_size -
-                                      oh - pad_list[pad_idx],
-                                   0);
-}
-
 IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   OP_LOGD(op.GetName().c_str(), "Enter Conv3DTransposeDInfereDataSlice.");
 
@@ -8570,12 +8798,12 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
   GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("filter");
 
-  vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}, {}};
-  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}, {}};
-  vector<vector<int64_t>> w_data_slice = {{}, {}, {}, {}};
-  vector<vector<int64_t>> bias_data_slice = {{}};
+  vector<vector<int64_t>> y_data_slice(6, vector<int64_t>(0));
+  vector<vector<int64_t>> x_data_slice(6, vector<int64_t>(0));
+  vector<vector<int64_t>> w_data_slice(4, vector<int64_t>(0));
+  vector<vector<int64_t>> bias_data_slice(1, vector<int64_t>(0));
 
-  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice) != GRAPH_SUCCESS) {
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
     OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
     return GRAPH_FAILED;
   }
@@ -8650,30 +8878,30 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   }
 
   // cut D
-  if (y_data_slice[1].size() != 0 && !pad_list.empty()) {
+  if (y_data_slice[1].size() != 0 && pad_list.size() > 2) {
     x_data_slice[1].clear();
     x_data_slice[1].resize(2);
-    InferHWConv3dTransposeD(kd, dild, strd, id,
+    InferHWConv3dBackpropInput(kd, dild, strd, id,
                            y_data_slice[1], x_data_slice[1],
                            pad_list, 0);
     needUpdateX = true;
   }
 
   // cut H
-  if (y_data_slice[3].size() != 0 && pad_list.size() > 2) {
+  if (y_data_slice[3].size() != 0 && pad_list.size() > 4) {
     x_data_slice[3].clear();
     x_data_slice[3].resize(2);
-    InferHWConv3dTransposeD(kh, dilh, strh, ih,
+    InferHWConv3dBackpropInput(kh, dilh, strh, ih,
                            y_data_slice[3], x_data_slice[3],
                            pad_list, 2);
     needUpdateX = true;
   }
 
   // cut W
-  if (y_data_slice[4].size() != 0 && pad_list.size() > 4) {
+  if (y_data_slice[4].size() != 0 && pad_list.size() == kConv3dLengthPadsLimit) {
     x_data_slice[4].clear();
     x_data_slice[4].resize(2);
-    InferHWConv3dTransposeD(kw, dilw, strw, iw,
+    InferHWConv3dBackpropInput(kw, dilw, strw, iw,
                            y_data_slice[4], x_data_slice[4],
                            pad_list, 4);
     needUpdateX = true;

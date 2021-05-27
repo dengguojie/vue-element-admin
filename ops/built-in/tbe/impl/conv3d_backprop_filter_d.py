@@ -16,6 +16,8 @@
 conv3d_backprop_filter_d
 """
 from impl.util import util_common
+from impl.util import util_conv3d
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
@@ -79,6 +81,159 @@ _BIT_RATIO_DICT = {
 _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # If pads is string , only support "SAME" or "VALID"
 _PADDING_SUPPORT = ('SAME', 'VALID')
+
+_L1FUSION_INPUT_CTR = 2
+
+_OUT_BACKPROP_TARGET_FORMAT = "NDHWC"
+_OUT_BACKPROP_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
+_FILTER_TARGET_FORMAT = "DHWCN"
+_FILTER_FORMAT_WHITE_LIST = ["DHWCN", "NDHWC", "NCDHW"]
+_X_TARGET_FORMAT = "NDHWC"
+_X_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
+
+
+def get_op_support_info(x_dict,
+                        out_backprop,
+                        y_dict,
+                        filter_size,
+                        strides,
+                        pads,
+                        dilations=(1, 1, 1, 1, 1),
+                        groups=1,
+                        data_format='NDHWC',
+                        kernel_name="conv3d_backprop_filter",
+                        op_slice_info=""):
+    """
+    algorithm: get_op_support_info
+
+    Parameters
+    ----------
+    x_dict: A dict with keys(shape and dtype)
+        Input feature map tensor
+
+    out_backprop: A dict with keys(shape and dtype)
+        Gradients tensor
+
+    y_dict: A dict with keys(shape and dtype)
+        Output tensor, dtype must be assigned
+
+    filter_size: The shape of filter
+        5-D with shape [batch, depth, channels, height, weight]
+
+    strides: A tuple/list of 5 integers
+        Filter move stride
+
+    pads: A tuple/list of 6 integers
+        [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: A tuple/list of 5 integers
+        Filter expand size of dilated conv3d_backprop_filter, default value is (1, 1, 1, 1, 1)
+
+    groups: Int
+        Param for group covolution, default value is 1
+
+    data_format: Str
+        An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC"
+
+    kernel_name: Str
+        Kernel name, default value is "conv3d_backprop_filter"
+
+    op_slice_info: Str
+        Default value is ""
+
+    Returns
+    -------
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
+                         and min_tbe_l1_space)
+    """
+    def _cal_min_l1space():
+        filter_h_dilation = (ori_shape_filters[1] - 1) * dilations_formated[2] + 1
+        _, _, stride_h, stride_w, _ = strides_formated
+        _, _, fmap_h, fmap_w, _ = ori_shape_fmap
+        _, _, _, dedy_w, _ = ori_shape_out_backprop
+        al1_min_byte = _C0 * _C0 * 2
+
+        if dedy_w % _C0 == 0:
+            bl1_min_byte = filter_h_dilation * fmap_w * _C0 * 2
+        else:
+            bl1_min_byte = (filter_h_dilation + stride_h) * fmap_w * _C0 * 2
+
+        return al1_min_byte + bl1_min_byte
+
+    def _get_slice_info():
+        # format
+        axis_split_matrix = []
+        axis_reduce_list = None
+        format_x = x_dict.get("format")
+        if format_x == "NDC1HWC0":
+            # cut Cout
+            axis_split_matrix.append(
+                [util_select_op_base.SplitInput([1, [2], [-1], [-1]]),
+                util_select_op_base.SplitOutput([0, [1]])]
+            )
+        else:
+            axis_split_matrix = None
+        return axis_split_matrix, axis_reduce_list
+
+    ori_shape_out_backprop = util_conv3d.transform_shape_with_format(out_backprop.get("ori_format"),
+                                                                     _OUT_BACKPROP_TARGET_FORMAT,
+                                                                     out_backprop.get("ori_shape"),
+                                                                     _OUT_BACKPROP_FORMAT_WHITE_LIST)
+    strides_formated = util_conv3d.transform_shape_with_format(out_backprop.get("ori_format"),
+                                                               _OUT_BACKPROP_TARGET_FORMAT,
+                                                               strides,
+                                                               _OUT_BACKPROP_FORMAT_WHITE_LIST)
+
+    dilations_formated = util_conv3d.transform_shape_with_format(out_backprop.get("ori_format"),
+                                                                 _OUT_BACKPROP_TARGET_FORMAT,
+                                                                 dilations,
+                                                                 _OUT_BACKPROP_FORMAT_WHITE_LIST)
+
+    if ori_shape_out_backprop is None or strides_formated is None or dilations_formated is None:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'out_backprop',
+            'expected_format_list': ",".join(_OUT_BACKPROP_FORMAT_WHITE_LIST),
+            'format': out_backprop.get("ori_format")
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    ori_shape_filters = util_conv3d.transform_shape_with_format(y_dict.get("ori_format"),
+                                                                _FILTER_TARGET_FORMAT,
+                                                                y_dict.get("ori_shape"),
+                                                                _FILTER_FORMAT_WHITE_LIST)
+    if ori_shape_filters is None:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'y_dict',
+            'expected_format_list': ",".join(_FILTER_FORMAT_WHITE_LIST),
+            'format': y_dict.get("ori_format")
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+    ori_shape_fmap = util_conv3d.transform_shape_with_format(x_dict.get("ori_format"),
+                                                             _X_TARGET_FORMAT,
+                                                             x_dict.get("ori_shape"),
+                                                             _X_FORMAT_WHITE_LIST)
+    if ori_shape_fmap is None:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'x',
+            'expected_format_list': ",".join(_X_FORMAT_WHITE_LIST),
+            'format': x_dict.get("ori_format")
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    axis_split_info, axis_reduce_info = _get_slice_info()
+
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_info,
+                                                              axis_reduce_info,
+                                                              _L1FUSION_INPUT_CTR,
+                                                              _cal_min_l1space())
+    return op_cal_info_in_json
+
 
 
 def check_supported(x_dict,

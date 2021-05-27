@@ -2,6 +2,11 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "nn_calculation_ops.h"
+#include "graph/utils/type_utils.h"
+#include "op_desc.h"
+#include "utils/op_desc_utils.h"
+#include "utils/attr_utils.h"
+#include "graph/debug/ge_attr_define.h"
 
 
 class Conv3DBackpropFilterDProtoTest : public testing::Test {
@@ -83,4 +88,50 @@ TEST_F(Conv3DBackpropFilterDProtoTest, conv3dbp_Dw_Not_Filter_Failed){
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Conv3DBackpropFilterDProtoTest, conv3dbpfilter_infer_data_slice_pass) {
+    ge::op::Conv3DBackpropFilterD op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {1, 3, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, 3, 3, 3, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori(
+      {1, 3, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, 3, 3, 3, 32}, ge::FORMAT_NDHWC));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {32, 1, 1, 1, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {32, 1, 1, 1, 32}, ge::FORMAT_NDHWC));
+    op.SetAttr("filter_size", {32, 1, 1, 1, 32});
+
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {0, 1}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_dedy = op_desc->MutableInputDesc("out_backprop");
+    std::vector<std::vector<int64_t>> dedy_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice);
+    std::vector<std::vector<int64_t>> expect_dedy_data_slice = {{}, {}, {0, 1}, {}, {}, {}};
+    EXPECT_EQ(expect_dedy_data_slice, dedy_data_slice);
+}
+
+TEST_F(Conv3DBackpropFilterDProtoTest, conv3dbpfilter_infer_data_empty_slice_Failed) {
+    ge::op::Conv3DBackpropFilterD op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {1, 3, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, 3, 3, 3, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori(
+      {1, 3, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, 3, 3, 3, 32}, ge::FORMAT_NDHWC));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {32, 1, 1, 1, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {32, 1, 1, 1, 32}, ge::FORMAT_NDHWC));
+    op.SetAttr("filter_size", {32, 1, 1, 1, 32});
+
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
 }

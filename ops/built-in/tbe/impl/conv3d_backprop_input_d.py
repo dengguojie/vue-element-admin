@@ -16,6 +16,8 @@
 conv3d_backprop_input_d
 """
 from impl.util import util_common
+from impl.util import util_conv3d
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
@@ -71,6 +73,184 @@ _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # align with 16 for chips
 _C0_SIZE = tbe_platform.C0_SIZE
 _BLOCK_SIZE = 16
+
+_L1FUSION_INPUT_CTR = 2
+
+_OUT_BACKPROP_TARGET_FORMAT = "NDHWC"
+_OUT_BACKPROP_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
+_FILTER_TARGET_FORMAT = "DHWCN"
+_FILTER_FORMAT_WHITE_LIST = ["DHWCN", "NDHWC", "NCDHW"]
+_RES_TARGET_FORMAT = "NDHWC"
+_RES_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
+
+
+def get_op_support_info(filters, # pylint: disable=R0913,R0914
+                        out_backprop,
+                        y_input,
+                        input_size,
+                        strides,
+                        pads,
+                        dilations=(1, 1, 1, 1, 1),
+                        groups=1,
+                        data_format="NDHWC",
+                        kernel_name="conv3d_backprop_input",
+                        op_slice_info=""):
+    """
+    algorithm: get_op_support_info
+
+    Parameters
+    ----------
+    filters: A dict with keys(shape and dtype)
+        Input weight tensor
+
+    out_backprop: A dict with keys(shape and dtype)
+        The shape of gradients
+
+    y_input: A dict with keys(shape and dtype)
+       conv3d_backprop_input output tensor, dtype must be assigned
+
+    input_sizes: The shape of feature map
+        5-D with shape [batch, depth, height, weight, channels]
+
+    strides: A tuple/list of 5 integers
+        Filter move stride
+
+    pads: A tuple/list of 6 integers
+        [pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: A tuple/list of 5 integers
+        Filter expand size of dilated conv3d_backprop_input, default value is (1, 1, 1, 1, 1)
+
+    groups: Int of blocked connections from input channels to output channels
+        Default value is 1
+
+    data_format: The data format of the input and output data
+        Default format is "NDHWC"
+
+    kernel_name: Str
+        Kernel name, default value is "conv3d_backprop_input"
+
+    op_slice_info: Str
+        Default value is ""
+
+    Returns
+    -------
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
+                         and min_tbe_l1_space)
+    """
+    def _cal_min_l1space():
+        block_size = 16
+        w_value = ori_shape_out_backprop[3] * strides[3]
+        filter_d_dilation = (ori_shape_filters[0] - 1) * dilations_formated[1] + 1
+        filter_h_dilation = (ori_shape_filters[1] - 1) * dilations_formated[2] + 1
+        filter_w_dilation = (ori_shape_filters[2] - 1) * dilations_formated[3] + 1
+        if ori_shape_res[3] > block_size:
+            h_value_max = filter_h_dilation + 1
+        elif block_size % ori_shape_res[3] == 0:
+            h_value_max = filter_h_dilation + block_size // ori_shape_res[3] - 1
+        else:
+            h_value_max = filter_h_dilation + block_size // ori_shape_res[3] + 1
+
+        a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2) // strides[1] + 2) * block_size * 2
+        b_l1_size = ori_shape_filters[0] * ori_shape_filters[1] * ori_shape_filters[2] * block_size * block_size * 2
+        return a_l1_size + b_l1_size
+
+    def _get_slice_info():
+        overlap_d = -1 if (filter_d_dilation == 1 and strides_formated[1] == 1) else 0
+        overlap_h = -1 if (filter_h_dilation == 1 and strides_formated[2] == 1) else 0
+        overlap_w = -1 if (filter_w_dilation == 1 and strides_formated[3] == 1) else 0
+
+        # format
+        axis_split_matrix = []
+        axis_reduce_list = None
+        format_out_backprop = out_backprop.get("format")
+        if format_out_backprop == "NDC1HWC0":
+            # cut N
+            axis_split_matrix.append([util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                                     util_select_op_base.SplitOutput([0, [0]])])
+            # cut D
+            axis_split_matrix.append([util_select_op_base.SplitInput([0, [1], [overlap_d], [overlap_d]]),
+                                     util_select_op_base.SplitOutput([0, [1]])])
+            # cut H
+            axis_split_matrix.append([util_select_op_base.SplitInput([0, [3], [overlap_h], [overlap_h]]),
+                                     util_select_op_base.SplitOutput([0, [3]])])
+            # cut W
+            axis_split_matrix.append([util_select_op_base.SplitInput([0, [4], [overlap_w], [overlap_w]]),
+                                     util_select_op_base.SplitOutput([0, [4]])])
+            # cut Cout
+            axis_split_matrix.append(
+                [util_select_op_base.SplitInput([1, [0], [-1], [-1]]),
+                util_select_op_base.SplitOutput([0, [2]])]
+            )
+        else:
+            axis_split_matrix = None
+
+        return axis_split_matrix, axis_reduce_list
+
+    ori_shape_out_backprop = util_conv3d.transform_shape_with_format(out_backprop.get("ori_format"),
+                                                                     _OUT_BACKPROP_TARGET_FORMAT,
+                                                                     out_backprop.get("ori_shape"),
+                                                                     _OUT_BACKPROP_FORMAT_WHITE_LIST)
+    strides_formated = util_conv3d.transform_shape_with_format(out_backprop.get("ori_format"),
+                                                               _OUT_BACKPROP_TARGET_FORMAT,
+                                                               strides,
+                                                               _OUT_BACKPROP_FORMAT_WHITE_LIST)
+
+    dilations_formated = util_conv3d.transform_shape_with_format(out_backprop.get("ori_format"),
+                                                                 _OUT_BACKPROP_TARGET_FORMAT,
+                                                                 dilations,
+                                                                 _OUT_BACKPROP_FORMAT_WHITE_LIST)
+
+    if ori_shape_out_backprop is None or strides_formated is None or dilations_formated is None:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'y_backprop',
+            'expected_format_list': ",".join(_OUT_BACKPROP_FORMAT_WHITE_LIST),
+            'format': out_backprop.get("ori_format")
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    ori_shape_filters = util_conv3d.transform_shape_with_format(filters.get("ori_format"),
+                                                                _FILTER_TARGET_FORMAT,
+                                                                filters.get("ori_shape"),
+                                                                _FILTER_FORMAT_WHITE_LIST)
+    if ori_shape_filters is None:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'filter',
+            'expected_format_list': ",".join(_FILTER_FORMAT_WHITE_LIST),
+            'format': filters.get("ori_format")
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    ori_shape_res = util_conv3d.transform_shape_with_format(y_input.get("ori_format"),
+                                                            _RES_TARGET_FORMAT,
+                                                            y_input.get("ori_shape"),
+                                                            _RES_FORMAT_WHITE_LIST)
+    if ori_shape_res is None:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': 'y',
+            'expected_format_list': ",".join(_RES_FORMAT_WHITE_LIST),
+            'format': y_input.get("ori_format")
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+
+    filter_d_dilation = (ori_shape_filters[0] - 1) * dilations_formated[1] + 1
+    filter_h_dilation = (ori_shape_filters[1] - 1) * dilations_formated[2] + 1
+    filter_w_dilation = (ori_shape_filters[2] - 1) * dilations_formated[3] + 1
+
+    axis_split_info, axis_reduce_info = _get_slice_info()
+
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_info,
+                                                              axis_reduce_info,
+                                                              _L1FUSION_INPUT_CTR,
+                                                              _cal_min_l1space())
+
+    return op_cal_info_in_json
 
 def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
                      ori_format_out_backprop, ori_shape_out_backprop,

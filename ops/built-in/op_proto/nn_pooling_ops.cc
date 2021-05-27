@@ -43,6 +43,7 @@ namespace {
   constexpr size_t kAvgPool3DGradStridesDim = 3;
   constexpr size_t kAvgPool3DGradPadsDim = 6;
   constexpr size_t kAvgPool3DGradShapeDim = 6;
+  constexpr size_t kAvgPool3DGradDataSlice = 6;
   const int64_t kDynamicRangeLowerBound = 1;
   const int64_t kDynamicRangeUpperBound = 4096;
   const char* const kPreOpInputShapeRange = "_pre_op_in_range";
@@ -2529,6 +2530,122 @@ INFER_DATA_SLICE_FUNC_REG(AvgPool3DD, AvgPool3DDInferDataSlice);
 // ----------------AvgPool3D-------------------
 
 // ----------------AvgPool3DGradD-------------------
+static bool CheckGlobal(const int32_t d_dim,
+                        const int32_t h_dim,
+                        const int32_t w_dim) {
+  if (d_dim == 1 && h_dim == 1 && w_dim == 1) {
+    return true;
+  }
+  return false;
+}
+
+static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<int64_t>>& data_slice) {
+  // check data_slice attr
+  if (data_slice.size() != kAvgPool3DGradDataSlice) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data_slice's size should be 6.");
+    return GRAPH_FAILED;
+  }
+
+  // no support C0 axis
+  if (data_slice[kAvgPool3DGradDataSlice - 1].size() != 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "no support to cut C0 axis.");
+    return NOT_SUPPORT_SLICE;
+  }
+
+  // check valid slice num in data slice
+  int32_t valid_cnt = 0;
+  for (uint32_t i = 0; i < data_slice.size(); ++i) {
+    if (data_slice[i].size() == 0) {
+      continue;
+    }
+    if (data_slice[i].size() != 2) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice format input size should be 2.");
+      return GRAPH_FAILED;
+    }
+    valid_cnt ++;
+  }
+  if (valid_cnt == 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice is empty.");
+    return GRAPH_FAILED;
+  }
+  if (valid_cnt != 1) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "valid slice range num is more than 1.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+static bool GetAttrsAvgPool3DGrad(ge::Operator& op, int32_t& strd,
+                                  int32_t& strh, int32_t& strw) {
+  std::vector<int32_t> stride_list;
+  if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get strides list failed.");
+    return false;
+  }
+  auto s_size = stride_list.size();
+  if (s_size != kAvgPool3DGradStridesDim) {
+    OP_LOGE(op.GetName().c_str(), "strides list should be 3d.");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "stride_list";
+    err_map["op_name"] = "AvgPool3DGrad";
+    err_map["excepted_value"] = "3d";
+    err_map["input_value"] = std::to_string(s_size);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  strd = stride_list[2];
+  strh = stride_list[0];
+  strw = stride_list[1];
+
+  if (strd <= 0 || strh <= 0 || strw <= 0) {
+    OP_LOGE(op.GetName().c_str(), "strides should be positive.");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "strides";
+    err_map["op_name"] = "AvgPool3DGrad";
+    err_map["excepted_value"] = "positive";
+    err_map["input_value"] = std::to_string(strd) + " " + std::to_string(strh) + " " + std::to_string(strw);
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  return true;
+}
+
+static void InferHWAvgPool3DGrad(int64_t kernel_size,
+                                 int64_t stride,
+                                 int64_t input_size,
+                                 const vector<int64_t>& output,
+                                 vector<int64_t>& input,
+                                 vector<int64_t>& multiplier,
+                                 vector<int64_t>& pad_list,
+                                 uint64_t pad_idx) {
+  int64_t pad_out = kernel_size - pad_list[pad_idx] - 1;
+
+  input[0] = std::min(std::max(static_cast<int64_t>(
+                               std::ceil(
+                                  static_cast<float>(output[0] - pad_out) /
+                                  static_cast<float>(stride))),
+                                0L),
+                      static_cast<int64_t>(input_size - 1));
+  input[1] = std::min((output[1] + kernel_size - 1 - pad_out) / static_cast<int64_t>(stride),
+                      static_cast<int64_t>(input_size - 1));
+
+  multiplier[0] = input[0];
+  multiplier[1] = input[1];
+
+  int64_t oh = static_cast<int64_t>(output[1] - output[0] + 1);
+  int64_t ih = static_cast<int64_t>(input[1] - input[0] + 1);
+
+  pad_list[pad_idx] = kernel_size - static_cast<int64_t>(
+                                      input[0] * stride + pad_out - output[0]) - 1;
+  pad_list[pad_idx + 1] = std::max(stride * (ih - 1) + kernel_size -
+                                      oh - pad_list[pad_idx],
+                                   0L);
+}
+
 IMPLEMT_VERIFIER(AvgPool3DGradD, AvgPool3DGradDVerify) {
   std::vector<int64_t> orig_input_shape = GetAttrValue(op, "orig_input_shape");
   if (orig_input_shape.size() != kAvgPool3DGradOriShapeDim) {
@@ -2657,6 +2774,125 @@ IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter AvgPool3DGradDInferDataSlice.");
+
+  int32_t strd = 0;
+  int32_t strh = 0;
+  int32_t strw = 0;
+
+  if (!GetAttrsAvgPool3DGrad(op, strd, strh, strw)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get attrs failed.");
+    return GRAPH_FAILED;
+  }
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("output");
+  GeTensorDescPtr tensor_desc_grads = op_desc->MutableInputDesc("grads");
+  GeTensorDescPtr tensor_desc_multiplier = op_desc->MutableInputDesc("multiplier");
+
+  vector<vector<int64_t>> y_data_slice(6, vector<int64_t>(0));
+  vector<vector<int64_t>> grads_data_slice(6, vector<int64_t>(0));
+  vector<vector<int64_t>> multiplier_data_slice(6, vector<int64_t>(0));
+
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  graphStatus ret = VerifyDataSlice(op, y_data_slice);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
+  }
+
+  vector<int64_t> pad_list;
+  op.GetAttr("pads", pad_list);
+
+  auto x_format = tensor_desc_grads->GetOriginFormat();
+  auto x_shape = op.get_input_desc_grads().GetShape().GetDims();
+  std::string x_format_str = format2str[x_format];
+  int32_t d_input_position = x_format_str.find("D");
+  int32_t h_input_position = x_format_str.find("H");
+  int32_t w_input_position = x_format_str.find("W");
+  int32_t id = x_shape[d_input_position];
+  int32_t ih = x_shape[h_input_position];
+  int32_t iw = x_shape[w_input_position];
+
+  if (CheckGlobal(id, ih, iw)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "global mode not support cut");
+    return NOT_SUPPORT_SLICE;
+  }
+
+  std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
+  int64_t kd = ksize.at(2);
+  int64_t kh = ksize.at(1);
+  int64_t kw = ksize.at(0);
+
+  bool needUpdateX = false;
+  // cut N
+  if (y_data_slice[0].size() != 0) {
+    grads_data_slice[0] = y_data_slice[0];
+    multiplier_data_slice[0] = y_data_slice[0];
+    needUpdateX = true;
+  }
+
+  // cut D
+  if (y_data_slice[1].size() != 0 && pad_list.size() > 2) {
+    grads_data_slice[1].clear();
+    grads_data_slice[1].resize(2);
+    multiplier_data_slice[1].clear();
+    multiplier_data_slice[1].resize(2);
+    InferHWAvgPool3DGrad(kd, strd, id, y_data_slice[1], grads_data_slice[1],
+                         multiplier_data_slice[1], pad_list, 0);
+    needUpdateX = true;
+  }
+
+  // cut H
+  if (y_data_slice[3].size() != 0 && pad_list.size() > 4) {
+    grads_data_slice[3].clear();
+    grads_data_slice[3].resize(2);
+    multiplier_data_slice[3].clear();
+    multiplier_data_slice[3].resize(2);
+    InferHWAvgPool3DGrad(kh, strh, ih, y_data_slice[3], grads_data_slice[3],
+                         multiplier_data_slice[3], pad_list, 2);
+    needUpdateX = true;
+  }
+
+  // cut W
+  if (y_data_slice[4].size() != 0 && pad_list.size() == kAvgPool3DGradPadsDim) {
+    grads_data_slice[4].clear();
+    grads_data_slice[4].resize(2);
+    multiplier_data_slice[4].clear();
+    multiplier_data_slice[4].resize(2);
+    InferHWAvgPool3DGrad(kw, strw, iw, y_data_slice[4], grads_data_slice[4],
+                         multiplier_data_slice[4], pad_list, 4);
+    needUpdateX = true;
+  }
+
+  // check update flag
+  if (!needUpdateX) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "there's no update in desc.");
+    return GRAPH_FAILED;
+  }
+
+  // update data slice attr
+  if (needUpdateX) {
+    if(!AttrUtils::SetListListInt(tensor_desc_grads, ge::ATTR_NAME_DATA_SLICE, grads_data_slice)) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set grads data slice attr failed.");
+      return GRAPH_FAILED;
+    }
+    if(!AttrUtils::SetListListInt(tensor_desc_multiplier, ge::ATTR_NAME_DATA_SLICE, multiplier_data_slice)) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set multiplier data slice attr failed.");
+      return GRAPH_FAILED;
+    }
+  }
+
+  // update pads attr info
+  op.SetAttr("pads", pad_list);
+  return GRAPH_SUCCESS;
+}
+
+INFER_DATA_SLICE_FUNC_REG(AvgPool3DGradD, AvgPool3DGradDInferDataSlice);
 VERIFY_FUNC_REG(AvgPool3DGradD, AvgPool3DGradDVerify);
 INFER_FUNC_REG(AvgPool3DGradD, AvgPool3DGradDInferShape);
 
