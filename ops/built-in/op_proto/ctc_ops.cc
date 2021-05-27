@@ -234,11 +234,11 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
 
   std::vector<int64_t> dims_log_probs = shape_log_probs.GetDims();
   std::vector<int64_t> dims_targets = shape_targets.GetDims();
-  int64_t N, C, T, S;
-  T = dims_log_probs[0];
-  N = dims_log_probs[1];
-  C = dims_log_probs[2];
-  S = dims_targets[1];
+
+  int64_t T = dims_log_probs[0];
+  int64_t N = dims_log_probs[1];
+  int64_t C = dims_log_probs[2];
+  int64_t S = dims_targets[1];
 
   TensorDesc tensordesc_log_alpha = op.GetOutputDesc("log_alpha");
   TensorDesc tensordesc_neg_log_likelihood = op.GetOutputDesc("neg_log_likelihood");
@@ -258,4 +258,51 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
 
 INFER_FUNC_REG(CTCLossV2, CTCLossV2Infer);
 
+IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
+
+  TensorDesc tensordesc_log_probs = op.GetInputDesc("log_probs");
+  Shape shape_log_probs = tensordesc_log_probs.GetShape();
+  std::vector<int64_t> dims_log_probs = shape_log_probs.GetDims();
+  DataType dtype = tensordesc_log_probs.GetDataType();
+
+  TensorDesc tensordesc_grad_out = op.GetInputDesc("grad_out");
+  Shape shape_grad_out = tensordesc_grad_out.GetShape();
+  DataType dtype_grad_out = tensordesc_grad_out.GetDataType();
+  std::vector<int64_t> dims_grad_out = shape_grad_out.GetDims();
+  
+  TensorDesc tensordesc_targets = op.GetInputDesc("targets");
+  Shape shape_targets = tensordesc_targets.GetShape();
+  DataType dtype_targets = tensordesc_targets.GetDataType();
+  std::vector<int64_t> dims_targets = shape_targets.GetDims();
+
+  if (dims_log_probs.size() != 3){
+    OP_LOGE(op.GetName().c_str(), "The shape of log_probs is unexpected");
+    return GRAPH_FAILED;
+  }
+
+  int64_t T = dims_log_probs[0];
+  int64_t N = dims_log_probs[1];
+  int64_t C = dims_log_probs[2];
+
+  if (dtype != DT_FLOAT){
+    OP_LOGE(op.GetName().c_str(), "The dtype of log_probs is unexpected");
+    return GRAPH_FAILED;
+  }
+
+  if (dtype_grad_out != DT_FLOAT){
+    OP_LOGE(op.GetName().c_str(), "The dtype of grad_out is unexpected");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc tensordesc_grad = op.GetOutputDesc("grad");
+  std::vector<int64_t> dims_grad = {N, T, C};
+
+  tensordesc_grad.SetShape(ge::Shape(dims_grad));
+  tensordesc_grad.SetDataType(dtype);
+  (void)op.UpdateOutputDesc("grad", tensordesc_grad);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(CTCLossV2Grad, CTCLossV2GradInfer);
 }  // namespace ge

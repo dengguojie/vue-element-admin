@@ -16,7 +16,6 @@
 ctc_loss_v2
 """
 
-# pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
 from te import tik
 from topi.cce import util
 from te.utils import para_check
@@ -145,7 +144,7 @@ class CTCLossV2():
                                         b_tmp, start, start_loop, end, remain, repeat_times, offset, current_target,
                                         next_target, tmp, min_float, repeats, s_inc, e_inc, targets_ub):
         """alpha_neg_log_likelihood_update"""
-        log_probs_ub = self.tik_instance.Tensor("int32", [self.C_BLOCK], name="input_length_ub", scope=tik.scope_ubuf)
+        log_probs_ub = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="log_probs_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx], 0, 1, self.C_BLOCK // BLOCK, 0,
                                     0)
 
@@ -313,6 +312,7 @@ class CTCLossV2():
             self.tik_instance.data_move(self.neg_log_likelihood[task_idx], neg_log_likelihood_ub[0], 0, 1, 1, 0, 0)
 
 
+# pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL,
