@@ -76,6 +76,12 @@ PATTERN_VALUE_FP32_X2 = 67372036
 # 2 ** 3 + 2 ** 11 + 2 ** 19 + 2 ** 27
 PATTERN_VALUE_FP32_Y2 = 134744072
 
+# next_nonzero_idx shape0 is 16 for 32B aligned, 16 is enough
+SHAPE_NEXT_NONZERO = 16
+
+# mask used for vcmax in update_next_nonzero, 256//2=128, fixed fp16 here but enough for input_dtype
+MASK_VCMAX_FP16 = 128
+
 
 def _ceil_div(value, factor):
     """
@@ -193,18 +199,11 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
     support_v4dtrans = tbe_platform.api_check_support("tik.v4dtrans", "float16")
     # output shape is [N,5]
     input_ceil = _ceil_div(total_input_proposal_num * VALID_COLUMN_NUM, RPN_PROPOSAL_NUM) * RPN_PROPOSAL_NUM
-    ret = tik_instance.Tensor("float16", (_ceil_div(input_ceil, VALID_COLUMN_NUM), VALID_COLUMN_NUM),
-                              name="out_proposals",
+    ret = tik_instance.Tensor("float16", (total_output_proposal_num, VALID_COLUMN_NUM), name="out_proposals",
                               scope=tik.scope_gm)
-
+    out_index = tik_instance.Tensor("int32", (total_output_proposal_num,), name="out_index", scope=tik.scope_gm)
+    out_mask = tik_instance.Tensor("uint8", (total_output_proposal_num,), name="out_mask", scope=tik.scope_gm)
     # address is 32B aligned
-    out_index = tik_instance.Tensor("int32", (_ceil_div(total_output_proposal_num, ELEMENT_NUM) * ELEMENT_NUM,),
-                                    name="out_index",
-                                    scope=tik.scope_gm)
-    out_mask = tik_instance.Tensor("uint8",
-                                   (_ceil_div(total_output_proposal_num, CONFIG_DATA_ALIGN) * CONFIG_DATA_ALIGN,),
-                                   name="out_mask",
-                                   scope=tik.scope_gm)
     output_index_ub = tik_instance.Tensor("int32", (BURST_PROPOSAL_NUM,), name="output_index_ub", scope=tik.scope_ubuf)
     output_mask_ub = tik_instance.Tensor("uint8", (BURST_PROPOSAL_NUM,), name="output_mask_ub", scope=tik.scope_ubuf)
     output_proposals_ub = tik_instance.Tensor("float16", (BURST_PROPOSAL_NUM, VALID_COLUMN_NUM),
@@ -613,24 +612,15 @@ class _NMSHelper(object):
                                                                    init_value=iou_thres),
                                         size=self.ceil_N)
 
-        # [0] stores next nonzero idx, 32 for 32b aligned
-        self.next_nonzero_int8_idx = tik_instance.Tensor('int8', (32,), tik.scope_ubuf,
-                                                         'next_nonzero_int8_idx')
+        # [0] stores next nonzero idx, shape[0]=16 same as idx_fp16_ub.shape in order to conv
+        self.next_nonzero_int32_idx = tik_instance.Tensor('int32', (SHAPE_NEXT_NONZERO,), tik.scope_ubuf,
+                                                          'next_nonzero_int32_idx')
 
-        # for update_valid_mask, valid_mask uses int16, which is for using vand, but 920 doesnot support fp162int16
-        # as using int8, so here 32/1=32
-        self.valid_mask_size_int8 = _ceiling(self.N, 32)
-        self.valid_mask_int8_ub = tik_instance.Tensor('int8', (self.valid_mask_size_int8,), tik.scope_ubuf,
-                                                      'valid_mask_int8_ub')
-        with tik_instance.for_range(0, self.valid_mask_size_int8) as i:
-            # init with all 1, which means all is valid at the beginning
-            self.valid_mask_int8_ub[i] = self.one_int8_scalar
+        # init for valid mask
+        self._init_for_valid_mask()
 
-        # update valid mask, here float16 fixed, ensure 32b aligned. note: size below = valid_mask_size_int8
-        self.tmp_valid_mask_float16 = self.tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_ubuf,
-                                                               'tmp_valid_mask_float16')
-        self.tmp_mask_float16 = self.tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_ubuf,
-                                                         'tmp_mask')
+        # init for vcmax
+        self._init_for_vcmax()
 
         # selected_boxes and idx generate
         self.selected_boxes_ub = self._selected_boxes_gen(all_inp_proposals_ub_1980)
@@ -704,6 +694,74 @@ class _NMSHelper(object):
         self.data_fp16_one = self.tik_instance.Tensor("float16", (128,), name="data_one", scope=tik.scope_ubuf)
         self.tik_instance.vector_dup(128, self.data_fp16_zero, zero_fp16_scalar, 1, 1, 8)
         self.tik_instance.vector_dup(128, self.data_fp16_one, one_fp16_scalar, 1, 1, 8)
+
+    def _init_for_valid_mask(self):
+        """
+        note:
+            for update_valid_mask, valid_mask uses int16, which is for using vand,
+            920 support fp162int16 (use round ...)
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        tik_instance = self.tik_instance
+        # as using int8, so here 32/1=32
+        self.valid_mask_size_int8 = _ceiling(self.N, 32)
+        self.valid_mask_int8_gm = tik_instance.Tensor('int8', (self.valid_mask_size_int8,), tik.scope_gm,
+                                                      'valid_mask_int8_gm', init_value=[1] * self.valid_mask_size_int8)
+        self.valid_mask_int8_ub = tik_instance.Tensor('int8', (self.valid_mask_size_int8,), tik.scope_ubuf,
+                                                      'valid_mask_int8_ub')
+        self.valid_mask_fp16_ub = tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_ubuf,
+                                                      'valid_mask_fp16_ub')
+
+        tik_instance.data_move(self.valid_mask_int8_ub, self.valid_mask_int8_gm, 0, 1,
+                               burst=self.valid_mask_size_int8 * 2 // 32, src_stride=0, dst_stride=0)
+
+        # update valid mask, here float16 fixed, ensure 32b aligned. note: size below = valid_mask_size_int8
+        self.tmp_valid_mask_float16 = self.tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_ubuf,
+                                                               'tmp_valid_mask_float16')
+        self.tmp_mask_float16 = self.tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_ubuf,
+                                                         'tmp_mask')
+
+    def _init_for_vcmax(self):
+        """
+        init for vcmax, which is used in _update_next_nonzero_idx()
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+
+        """
+        tik_instance = self.tik_instance
+        # dscend sorted list in ub, fixed dtype is fp16
+        dsorts_gm = tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_gm, 'dsorts_gm',
+                                        init_value=list(range(self.valid_mask_size_int8, 0, -1)))
+        self.dsorts_ub = tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_ubuf, 'dsorts_ub')
+        tik_instance.data_move(self.dsorts_ub, dsorts_gm, 0, 1, burst=self.valid_mask_size_int8 * 2 // 32,
+                               src_stride=0, dst_stride=0)
+
+        self.mul_ub = tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_ubuf, 'mul_ub')
+        self.vcmax_ub = tik_instance.Tensor('float16', (MASK_VCMAX_FP16,), tik.scope_ubuf, 'vcmax_ub')
+        self.middle_max_val = tik_instance.Tensor('float16', (MASK_VCMAX_FP16,), tik.scope_ubuf, 'middle_max_val')
+        self.dst_max_val_ub = tik_instance.Tensor('float16', (SHAPE_NEXT_NONZERO,), tik.scope_ubuf,
+                                                  'dst_max_val_ub')
+
+        # idx_fp16_ub stores next nonzero idx, dtype needs conv to int8
+        self.idx_fp16_ub = tik_instance.Tensor('float16', (SHAPE_NEXT_NONZERO,), tik.scope_ubuf, 'idx_fp16_ub')
+
+        # practically ceil_N is less than MASK_VCMAX_FP16 * REPEAT_TIMES_MAX
+        self.repeat_vmul_vcmax = self.ceil_N % (MASK_VCMAX_FP16 * REPEAT_TIMES_MAX) // MASK_VCMAX_FP16
+        self.last_num_vmul_vcmax = self.ceil_N % MASK_VCMAX_FP16
+        self.vcmax_mask = self.repeat_vmul_vcmax + (1 if self.last_num_vmul_vcmax > 0 else 0)
 
     def _input_trans(self, all_inp_proposals_ub_1980):
         """
@@ -1229,7 +1287,7 @@ class _NMSHelper(object):
                                    dst_blk_stride=1, src0_blk_stride=1, src1_blk_stride=1,
                                    dst_rep_stride=8, src0_rep_stride=8, src1_rep_stride=8)
 
-    def _tailing_handle_vec_conv(self, dst_ub, src_ub, size, dst_bytes, src_bytes):
+    def _tailing_handle_vec_conv(self, dst_ub, src_ub, size, dst_bytes, src_bytes, mode="none"):
         """
         handle tailing of vec_conv
 
@@ -1247,13 +1305,16 @@ class _NMSHelper(object):
         """
         # max. is 128. src_bytes can be 1
         mask_max = min(256 // src_bytes, 128)
+        if dst_bytes == 4:
+            mask_max = 64
+
         offset = 0
 
         # step2: repeat?
         repeat = size % (mask_max * REPEAT_TIMES_MAX) // mask_max
         if repeat > 0:
             self.tik_instance.vec_conv(mask=mask_max,
-                                       mode="none",
+                                       mode=mode,
                                        dst=dst_ub[offset],
                                        src=src_ub[offset],
                                        repeat_times=repeat,
@@ -1265,7 +1326,7 @@ class _NMSHelper(object):
         if last_num > 0:
             offset += repeat * mask_max
             self.tik_instance.vec_conv(mask=last_num,
-                                       mode="none",
+                                       mode=mode,
                                        dst=dst_ub[offset],
                                        src=src_ub[offset],
                                        repeat_times=1,
@@ -1488,26 +1549,58 @@ class _NMSHelper(object):
 
         tik_instance.vec_conv(handle_dst_size, "none", dst_ub, self.output_mask_f16, 1, 8, 8)
 
-    def _update_next_nonzero_idx(self, mask, begin_idx):
+    def _update_next_nonzero_idx(self, valid_mask_int8_ub):
         """
-        find next nonzero idx
-        note: use scalar instead of tensor(next_nonzero_int8_idx)
+        update next nonzero idx
 
         Parameters
         ----------
-        mask: is [0 0 1 1 ], its size is ceilN
-        begin_idx: from where begin loop
+        valid_mask: is [0 0 1 1 ]
 
         Returns
         -------
-        tensor[0] with only one elem.
+        tensor[0] contains the next nonzero idx
         """
-        self.next_nonzero_int8_idx[0].set_as(self.negone_int8_scalar)
-        # tensor set_as is slow
-        with self.tik_instance.for_range(begin_idx, self.N) as i:
-            with self.tik_instance.if_scope(mask[i] == 1):
-                with self.tik_instance.if_scope(self.next_nonzero_int8_idx[0] == -1):
-                    self.next_nonzero_int8_idx[0] = i
+        # int8 conv to fp16
+        self._tailing_handle_vec_conv(self.valid_mask_fp16_ub, valid_mask_int8_ub, size=self.valid_mask_size_int8,
+                                      dst_bytes=2, src_bytes=1)
+
+        # already compute repeat and last_num in _init_for_vcmax()
+        repeat = self.repeat_vmul_vcmax
+        last_num = self.last_num_vmul_vcmax
+
+        # vmul
+        if repeat > 0:
+            self.tik_instance.vmul(MASK_VCMAX_FP16, self.mul_ub, self.valid_mask_fp16_ub, self.dsorts_ub, repeat, 1, 1,
+                                   1, 8, 8, 8)
+
+        if last_num > 0:
+            vmul_offset = repeat * MASK_VCMAX_FP16
+            self.tik_instance.vmul(last_num, self.mul_ub[vmul_offset], self.valid_mask_fp16_ub[vmul_offset],
+                                   self.dsorts_ub[vmul_offset], 1, 1, 1, 1, 8, 8, 8)
+
+        # vcmax
+        if repeat > 0:
+            self.tik_instance.vcmax(MASK_VCMAX_FP16, self.vcmax_ub, self.mul_ub, repeat, 1, 1, 8)
+
+        if last_num > 0:
+            offset = repeat * MASK_VCMAX_FP16
+            self.tik_instance.vcmax(last_num, self.vcmax_ub[repeat * 2], self.mul_ub[offset], 1, 1, 1, 8)
+
+        # pattern here means 101010..., vreduce once is enough
+        self.tik_instance.vreduce(MASK_VCMAX_FP16, self.middle_max_val, self.vcmax_ub, src1_pattern=1, repeat_times=1,
+                                  src0_blk_stride=1, src0_rep_stride=0, src1_rep_stride=0)
+
+        # below: dst_max_val_ub[0], idx_fp16_ub[0], next_nonzero_int32_idx[0] stores meaningful val
+        self.tik_instance.vcmax(self.vcmax_mask, self.dst_max_val_ub, self.middle_max_val, 1, 0, 1, 0)
+
+        # dst idx, note: idx maybe valid_mask_size
+        self.tik_instance.vsub(SHAPE_NEXT_NONZERO, self.idx_fp16_ub, self.dsorts_ub, self.dst_max_val_ub, 1, 1, 1,
+                               1, 8, 8, 8)
+
+        # conv to int32
+        self._tailing_handle_vec_conv(self.next_nonzero_int32_idx, self.idx_fp16_ub, SHAPE_NEXT_NONZERO, 4, 2,
+                                      mode='round')
 
     def _one_loop(self, cur):
         """
@@ -1626,31 +1719,35 @@ class _NMSHelper(object):
         selected_mask_gm = self.tik_instance.Tensor('int8', (self.ceil_N,), name="selected_mask_gm", scope=tik.scope_gm,
                                                     init_value=selected_mask_gm_list)
         self.tik_instance.data_move(selected_mask_ub, selected_mask_gm, 0, nburst=1,
-                                    burst=_ceiling(self.ceil_N * 1, 32) // 32,
                                     # ceil_n canbe 16, so needs ceiling here
+                                    burst=_ceiling(self.ceil_N * 1, 32) // 32,
                                     src_stride=0, dst_stride=0)
 
         # init state
         selected_mask_ub[self.zero_int8_scalar] = self.one_int8_scalar
         output_mask_int8_ub = self._one_loop(self.zero_int8_scalar)
         self._update_valid_mask(output_mask_int8_ub)
-        self._update_next_nonzero_idx(self.valid_mask_int8_ub,
-                                      begin_idx=self.zero_int8_scalar)
-        start_loop_idx = self.tik_instance.Scalar(dtype='int8', name='dst_idx',
-                                                  init_value=self.next_nonzero_int8_idx[0])
+        self._update_next_nonzero_idx(self.valid_mask_int8_ub)
+        start_loop_idx = self.tik_instance.Scalar(dtype='int32', name='dst_idx',
+                                                  init_value=self.next_nonzero_int32_idx[0])
 
         # plan: consider: avoid scalar op
-        cur = self.tik_instance.Scalar(dtype='int8', name='cur_scalar')
-        # use all loops to ensure
-        with self.tik_instance.for_range(start_loop_idx, self.N):
-            cur.set_as(self.next_nonzero_int8_idx[0])
+        cur = self.tik_instance.Scalar(dtype='int32', name='cur_scalar')
 
-            with self.tik_instance.if_scope(0 <= cur < self.N):
-                # set 1, means valid
-                selected_mask_ub[cur] = self.one_int8_scalar
-                mask_ub = self._one_loop(cur)
-                self._update_valid_mask(mask_ub)
-                self._update_next_nonzero_idx(self.valid_mask_int8_ub, begin_idx=cur)
+        # need to check start_loop_idx firstly. note below use N not ceil_N
+        with self.tik_instance.if_scope(start_loop_idx < self.N):
+            with self.tik_instance.if_scope(start_loop_idx >= 0):
+                # use all loops to ensure
+                with self.tik_instance.for_range(start_loop_idx, self.N):
+                    cur.set_as(self.next_nonzero_int32_idx[0])
+
+                    with self.tik_instance.if_scope(cur < self.N):
+                        with self.tik_instance.if_scope(cur >= 0):
+                            # set 1, means valid
+                            selected_mask_ub[cur] = self.one_int8_scalar
+                            mask_ub = self._one_loop(cur)
+                            self._update_valid_mask(mask_ub)
+                            self._update_next_nonzero_idx(self.valid_mask_int8_ub)
 
         return selected_mask_ub
 
