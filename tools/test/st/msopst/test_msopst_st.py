@@ -1,6 +1,7 @@
 import json
 import sys
 import unittest
+import filecmp
 
 import numpy as np
 import pytest
@@ -88,6 +89,17 @@ ST_GOLDEN_OP_GEN_WITH_VALUE_ACL_PROJECT_OUTPUT = './st/msopst/golden/base_case' 
                                                  '/golden_output/' \
                                                  'gen_optional_acl_prj/Adds/src'
 ST_MS_GOLDEN_INPUT_JSON_WITH_VALUE = './st/msopst/golden/base_case/input/ms_case_with_value.json'
+ST_GOLDEN_OP_FUZZ_CASE_JSON_INPUT = './st/msopst/golden/base_case/input' \
+                                    '/test_add_fuzz.json'
+ST_GOLDEN_OP_FUZZ_CASE_OUTPUT_SRC = './st/msopst/golden/base_case/golden_output' \
+                                   '/fuzz/Add/src/testcase.cpp'
+ST_GOLDEN_OP_FUZZ_CASE_OUTPUT_RUN = './st/msopst/golden/base_case/golden_output' \
+                                   '/fuzz/Add/run/out'\
+                                   '/test_data/config/'
+ST_GOLDEN_MS_FUZZ_CASE_JSON_INPUT = './st/msopst/golden/base_case/input' \
+                                    '/ms_case_fuzz.json'
+ST_GOLDEN_MS_FUZZ_CASE_OUTPUT_SRC = './st/msopst/golden/base_case/golden_output' \
+                                   '/fuzz/Square/src'
 
 
 class NumpyArrar:
@@ -102,6 +114,12 @@ class Args:
         self.model_path = model_path
         self.quiet = False
 
+
+def compare_context(src_name, dst_name):
+    if not filecmp.cmp(src_name, dst_name):
+        print(" %s VS %s return false." % (src_name, dst_name))
+        return False
+    return True
 
 class TestUtilsMethods(unittest.TestCase):
 
@@ -779,6 +797,41 @@ class TestUtilsMethods(unittest.TestCase):
                 error.value.code, utils.OP_TEST_GEN_NONE_ERROR)
         finally:
             test_utils.clear_out_path(ST_OUTPUT)
+
+    def test_gen_fuzz_acl_src_code(self):
+        """
+        test run cmd of paramType is optional
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'run', '-i', ST_GOLDEN_OP_FUZZ_CASE_JSON_INPUT, '-soc',
+                'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                msopst.main()
+        fuzz_add_output_src = os.path.join(ST_OUTPUT, 'Add/src/testcase.cpp')
+        fuzz_add_output_json = os.path.join(ST_OUTPUT,
+                                           'Add/run/out/test_data/config/')
+        self.assertTrue(compare_context(
+            fuzz_add_output_src, ST_GOLDEN_OP_FUZZ_CASE_OUTPUT_SRC))
+        self.assertTrue(test_utils.check_file_context(
+            fuzz_add_output_json, ST_GOLDEN_OP_FUZZ_CASE_OUTPUT_RUN))
+
+    def test_gen_fuzz_ms_src_code(self):
+        """
+        test mindspore gen data with value
+        """
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'run', '-i', ST_GOLDEN_MS_FUZZ_CASE_JSON_INPUT, '-soc',
+                'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                with mock.patch('op_test_frame.st.interface'
+                                '.ms_op_generator.MsOpGenerator'
+                                '._get_mindspore_input_param_type'):
+                    msopst.main()
+        fuzz_square_output_src = os.path.join(ST_OUTPUT, 'Square/src')
+        self.assertTrue(test_utils.check_file_context(
+            fuzz_square_output_src, ST_GOLDEN_MS_FUZZ_CASE_OUTPUT_SRC))
 
 
 if __name__ == '__main__':

@@ -75,17 +75,17 @@ class TestUtilsMethods(unittest.TestCase):
                          utils.OP_TEST_GEN_CONFIG_OP_DEFINE_ERROR)
 
     def test_msopst_check_value_valid(self):
-        utils._check_value_valid("string", "value", "name")
+        utils.check_value_valid("string", "value", "name")
         with pytest.raises(utils.OpTestGenException) as error:
-            utils._check_value_valid("float", "value", "name")
+            utils.check_value_valid("float", "value", "name")
         self.assertEqual(error.value.args[0],
                          utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         with pytest.raises(utils.OpTestGenException) as error:
-            utils._check_value_valid("list_int", "value", "name")
+            utils.check_value_valid("list_int", "value", "name")
         self.assertEqual(error.value.args[0],
                          utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         with pytest.raises(utils.OpTestGenException) as error:
-            utils._check_value_valid("list_int", [], "name")
+            utils.check_value_valid("list_int", [], "name")
         self.assertEqual(error.value.args[0],
                          utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 

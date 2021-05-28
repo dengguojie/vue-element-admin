@@ -1,0 +1,61 @@
+[
+    {
+        "case_name": "Test_Add_001",
+        "op": "Add",
+        "st_mode": "",
+		"fuzz_impl": "fuzz_add.py",
+		"fuzz_case_num": 10,
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": "fuzz",
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x1"
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": "fuzz",
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x2"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": "fuzz",
+                "name": "y"
+            }
+        ]
+    }
+]

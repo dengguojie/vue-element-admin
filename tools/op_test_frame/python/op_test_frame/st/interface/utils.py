@@ -76,6 +76,7 @@ TESTCASE_PY_RELATIVE_PATH = "/src/test_{op_name}.py"
 PYTEST_INI_RELATIVE_PATH = "/src/pytest.ini"
 INPUT_SUFFIX_LIST = ['.ini', '.py']
 BIN_FILE = '.bin'
+PY_FILE = '.py'
 FILE_AUTHORITY = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR
 FOLDER_MASK = 0o700
 TYPE_UNDEFINED = "UNDEFINED"
@@ -409,7 +410,16 @@ def get_content_from_double_quotes(line):
     sys.exit(OP_TEST_GEN_CONFIG_OP_DEFINE_ERROR)
 
 
-def _check_value_valid(fe_type, value, name, prefix=""):
+def check_value_valid(fe_type, value, name, prefix=""):
+    """
+    Function Description:
+        check path valid
+    Parameter:
+        fe_type: the type of attr
+        value: the value of attr
+        name: the name of attr
+        prefix: the type of attr prefix
+    """
     value_type = int
     if fe_type == 'int':
         value_type = int
@@ -433,7 +443,7 @@ def _check_value_valid(fe_type, value, name, prefix=""):
                 % (value, name))
             raise OpTestGenException(OP_TEST_GEN_INVALID_DATA_ERROR)
         for item in value:
-            _check_value_valid('int', item, name, 'list_list_')
+            check_value_valid('int', item, name, 'list_list_')
         return
 
     if not isinstance(value, value_type):
@@ -459,11 +469,10 @@ def check_attr_value_valid(attr):
                 % (attr['value'], attr['name'], attr_type))
             raise OpTestGenException(OP_TEST_GEN_INVALID_DATA_ERROR)
         for value in attr['value']:
-            _check_value_valid(
+            check_value_valid(
                 attr_type[len('list_'):], value, attr['name'], 'list_')
     else:
-        _check_value_valid(attr_type, attr['value'], attr['name'])
-
+        check_value_valid(attr_type, attr['value'], attr['name'])
 
 def load_json_file(json_path):
     """
