@@ -1450,7 +1450,8 @@ REG_OP(DecodeBboxV2)
 *
 *@par Inputs:
 *Inputs include:
-* x: A Tensor. Must be float16 or float32.
+* x: A Tensor. Dtype support: flaot16, flaot, int16, int8,
+                          uint8, int32, int64.
 *
 *@par Attributes:
 * @li axis: optional, int.
@@ -1462,9 +1463,11 @@ REG_OP(DecodeBboxV2)
 *
 */
 REG_OP(Sort)
-    .INPUT(x, TensorType({ DT_FLOAT16 }))
-    .OUTPUT(y1, TensorType({ DT_FLOAT16 }))
-    .OUTPUT(y2, TensorType({ DT_INT32 }))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT16, DT_INT8,
+                          DT_UINT8, DT_INT32, DT_INT64}))
+    .OUTPUT(y1, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT16, DT_INT8,
+                            DT_UINT8, DT_INT32, DT_INT64}))
+    .OUTPUT(y2, TensorType({DT_INT32}))
     .ATTR(axis, Int, -1)
     .ATTR(descending, Bool, false)
     .OP_END_FACTORY_REG(Sort)
