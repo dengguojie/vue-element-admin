@@ -34,13 +34,17 @@ STRIDES_SHAPE_DIM = 2
 # the dim of pads in conv_backprop must be 4
 PADDING_SHAPE_DIM = 4
 
-# fmapH, fmapW must be in [1,4096]
-FMAP_HW_MIN = 1
-FMAP_HW_MAX = 4096
+# fmapW must be in [2,4096]
+FMAP_HW_MIN = 2
+FMAP_W_MAX = 4096
+# fmapH must be in [2,200000]
+FMAP_H_MAX = 200000
 
-# DeDy H,W must be in [1,4096]
-DEDY_HW_MIN = 1
-DEDY_HW_MAX = 4096
+# DeDyW must be in [2,4096]
+DEDY_HW_MIN = 2
+DEDY_W_MAX = 4096
+# DeDyH must be in [2,200000]
+DEDY_H_MAX = 200000
 
 # filterH, filterW must be in [1,255]
 FILTER_HW_MIN = 1
@@ -664,16 +668,18 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                                     DEFAULT_MAX_SHAPE_NUM)
 
     def _change_hw_limitation(dedy_hw_min, fmap_hw_min,
-                              dedy_hw_max, fmap_hw_max):
+                              dedy_w_max, fmap_w_max):
         if _is_load3d_special():
             dedy_hw_min = 2
             fmap_hw_min = 2
 
         # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
         if _is_conv1d_situation():
-            dedy_hw_max = CONV1D_W_MAX
-            fmap_hw_max = CONV1D_W_MAX
-        return dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max
+            dedy_hw_min = 1
+            fmap_hw_min = 1
+            dedy_w_max = CONV1D_W_MAX
+            fmap_w_max = CONV1D_W_MAX
+        return dedy_hw_min, fmap_hw_min, dedy_w_max, fmap_w_max
 
     def _need_change_hw():
         return fmap_w == 1 and filter_w == 1 and dedy_w == 1 and pad_left == 0 and pad_right == 0
@@ -731,7 +737,8 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
 
     # special cases
     dedy_hw_min, fmap_hw_min = DEDY_HW_MIN, FMAP_HW_MIN
-    dedy_hw_max, fmap_hw_max = DEDY_HW_MAX, FMAP_HW_MAX
+    dedy_h_max, fmap_h_max = DEDY_H_MAX, FMAP_H_MAX
+    dedy_w_max, fmap_w_max = DEDY_W_MAX, FMAP_W_MAX
 
     fusion_para = _modify_fusion_para(fusion_para)
     shape_out_backprop = (dedy_batch, dedy_channel, dedy_h, dedy_w)
@@ -753,29 +760,29 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         pad_left, pad_right, pad_up, pad_down = pads
         pads = pad_up, pad_down, pad_left, pad_right
 
-    dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max = \
-        _change_hw_limitation(dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max)
+    dedy_hw_min, fmap_hw_min, dedy_w_max, fmap_w_max = \
+        _change_hw_limitation(dedy_hw_min, fmap_hw_min, dedy_w_max, fmap_w_max)
 
     _check_shape_relation()
 
     # Dedy value limit
     check_attr_range("out_backprop's H after expands", dedy_h * stride_h,
-                        dedy_hw_min, dedy_hw_max)
+                     dedy_hw_min, dedy_h_max)
     if filter_h == 1 and filter_w == 1:
         check_attr_range("out_backprop's W after expands",
-                            dedy_w * stride_w * stride_h,
-                            dedy_hw_min, dedy_hw_max)
+                         dedy_w * stride_w * stride_h,
+                         dedy_hw_min, dedy_w_max)
     else:
         check_attr_range("out_backprop's W after expands", dedy_w * stride_w,
-                            dedy_hw_min, dedy_hw_max)
+                         dedy_hw_min, dedy_w_max)
 
     # filter value limit
     check_attr_range("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
     check_attr_range("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
 
     # Fmap value limit
-    check_attr_range("y's H", fmap_h, fmap_hw_min, fmap_hw_max)
-    check_attr_range("y's W", fmap_w, fmap_hw_min, fmap_hw_max)
+    check_attr_range("y's H", fmap_h, fmap_hw_min, fmap_h_max)
+    check_attr_range("y's W", fmap_w, fmap_hw_min, fmap_w_max)
 
     # stride value limit
     check_attr_range("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)

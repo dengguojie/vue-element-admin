@@ -30,12 +30,16 @@ STRIDES_SHAPE_DIM = 2
 
 # the min x or y dim for cube mul
 C0 = 16
-# fmapH, fmapW must be in [1,4096]
-FMAP_HW_MAX = 4096
+# fmapH, must be in [1,200000]
+FMAP_H_MAX = 200000
+# fmapW, must be in [1,4096]
+FMAP_W_MAX = 4096
 FMAP_HW_MIN = 1
 
-# DeDy H,W must be in [1,4096]
-DEDY_HW_MAX = 4096
+# DeDyH must be in [1,200000]
+DEDY_H_MAX = 200000
+# DeDyW must be in [1,4096]
+DEDY_W_MAX = 4096
 DEDY_HW_MIN = 1
 
 # filterH, filterW must be in [1,255]
@@ -841,7 +845,9 @@ def check_conv2dbp_filter_params(
     fmap_h_padding = fmap_h + pad_up + pad_down
     # special cases
     fmap_hw_min, dedy_hw_min = FMAP_HW_MIN, DEDY_HW_MIN
-    dedy_hw_max, fmap_hw_max = DEDY_HW_MAX, FMAP_HW_MAX
+    dedy_h_max, fmap_h_max = DEDY_H_MAX, FMAP_H_MAX
+    dedy_w_max, fmap_w_max = DEDY_W_MAX, FMAP_W_MAX
+
 
     # exchange h and w will not change date in memory
     if _need_change_hw():
@@ -861,20 +867,20 @@ def check_conv2dbp_filter_params(
 
     # if conv1d situation, make sure w is in [1,2**31-1]
     if _is_conv1d_situation():
-        dedy_hw_max = CONV1D_MAX_W
-        fmap_hw_max = CONV1D_MAX_W
+        dedy_w_max = CONV1D_MAX_W
+        fmap_w_max = CONV1D_MAX_W
 
     # Dedy value limit
-    _check_attr_range_dw("out_backprop's H", dedy_h, dedy_hw_min, dedy_hw_max)
-    _check_attr_range_dw("out_backprop's W", dedy_w, dedy_hw_min, dedy_hw_max)
+    _check_attr_range_dw("out_backprop's H", dedy_h, dedy_hw_min, dedy_h_max)
+    _check_attr_range_dw("out_backprop's W", dedy_w, dedy_hw_min, dedy_w_max)
 
     # filter value limit
     _check_attr_range_dw("y's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
     _check_attr_range_dw("y's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
 
     # Fmap value limit
-    _check_attr_range_dw("x's H", fmap_h, fmap_hw_min, fmap_hw_max)
-    _check_attr_range_dw("x's W", fmap_w, fmap_hw_min, fmap_hw_max)
+    _check_attr_range_dw("x's H", fmap_h, fmap_hw_min, fmap_h_max)
+    _check_attr_range_dw("x's W", fmap_w, fmap_hw_min, fmap_w_max)
     # limitation by chip:
     # if only fmap w after padding equals to filter w after dilation
     # and soc_version is Ascend910

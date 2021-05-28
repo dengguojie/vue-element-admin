@@ -734,11 +734,32 @@ def general_schedule(
         :param filter_shape:
         :return: default tiling
         """
+        def _get_factors(val, val_max):
+                """
+                get the factor of val that smaller than val_max
+                """
+                factor_max = min(val, val_max)
+                for m_fac in range(factor_max, 0, -1):
+                    if val % m_fac == 0:
+                        return m_fac
+
         # check flag
         def _check_tiling(tiling):
             if tiling["AL0_matrix"][2] == 32:
                 return False
             return True
+
+        def _get_block_dim():
+            batch, _, h_fmap = tensor_attr.get("output_shape")[0:3]
+            core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+            batch_dim = _get_factors(batch, core_num)
+            n_dim = 1
+            m_dim = 1
+            if batch_dim < core_num:
+                n_dim = _get_factors(cin1 // n_l0, core_num // batch_dim)
+                if n_dim * batch_dim < core_num:
+                    m_dim = _get_factors(h_fmap, core_num // (batch_dim * n_dim))
+            return batch_dim, n_dim, m_dim
 
         if not _check_tiling(tiling):
             tiling = {}
@@ -749,21 +770,25 @@ def general_schedule(
                 "float16": 16,
                 "int8": 32
             }
+            dtype_size = {
+                "float32": 4,
+                "float16": 2,
+                "int32": 4,
+                "int8": 1
+            }
             if atype in bit_dir.keys():
-                k_al0 = bit_dir[atype]
-                k_al1 = k_w * k_al0
+                k_0 = bit_dir[atype]
+                k_al1 = k_w * k_0
             else:
                 # defaut value 32
                 k_al1 = 32
-                k_al0 = 32
+                k_0 = 32
 
             if btype in bit_dir.keys():
-                k_bl0 = bit_dir[btype]
-                k_bl1 = k_bl0 * k_w
+                k_bl1 = k_0 * k_w
             else:
                 # defaut value 32
                 k_bl1 = 32
-                k_bl0 = 32
 
             if stride_h > 1 or stride_w > 1:
                 tiling["AUB_shape"] = [k_w * bit_dir[atype], 1, 1, 1]
@@ -771,18 +796,23 @@ def general_schedule(
             else:
                 tiling["AUB_shape"] = None
                 tiling["BUB_shape"] = None
-            n_dim = 1
-            group_dim = 1
+            n_l0 = 1
+            group_l0 = 1
             if l0c_multi_group_flag:
-                n_dim = cin1
-                group_dim = 2
+                n_l0 = cin1
+                group_l0 = 2
+            batch_dim, n_dim, m_dim = _get_block_dim()
+            l0b_size = tbe_platform_info.get_soc_spec("L0B_SIZE")
+            k_l0_max = l0b_size // (k_0 * 16 * n_l0 * dtype_size[btype])
+            k_l0 = _get_factors(k_w, k_l0_max)
+
             tiling["AL1_shape"] = [k_al1, 1, 1, 1]
             tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
-            tiling["AL0_matrix"] = [1, 1, 16, k_al0, 1, 1]
-            tiling["BL0_matrix"] = [1, n_dim, 16, k_bl0, 1, 1]
-            tiling["CL0_matrix"] = [n_dim, 1, 16, 16, 1, group_dim]
-            tiling["CUB_matrix"] = [n_dim, 1, 16, 16, 1, group_dim]
-            tiling["block_dim"] = [1, 1, 1, 1]
+            tiling["AL0_matrix"] = [1, 1, 16, k_0, 1, 1]
+            tiling["BL0_matrix"] = [1, n_l0, 16, k_0, 1, 1]
+            tiling["CL0_matrix"] = [n_l0, 1, 16, 16, 1, group_l0]
+            tiling["CUB_matrix"] = [n_l0, 1, 16, 16, 1, group_l0]
+            tiling["block_dim"] = [batch_dim, n_dim, m_dim, 1]
             tiling["n_bef_batch_flag"] = 0
             tiling["n_bef_group_flag"] = 0
             tiling["batch_bef_group_fla"] = 0

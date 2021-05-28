@@ -49,7 +49,8 @@ FILTER_HW_MIN = 1
 FILTER_HW_MAX = 255
 
 INOUT_HW_MIN = 1
-INOUT_HW_MAX = 4096
+INOUT_H_MAX = 200000
+INOUT_W_MAX = 4096
 CONV1D_W_MAX = 2147483647
 
 # position index
@@ -365,18 +366,18 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
     filter_w_dilation = (filter_w - 1) * dilations[3] + 1
     fmap_h_padding = fmap_h + pad_up + pad_down
     fmap_w_padding = fmap_w + pad_left + pad_right
-    inout_w_max =  INOUT_HW_MAX
+    inout_w_max = INOUT_W_MAX
     if fmap_h_padding == 1 and filter_h_dilation == 1 and strides[0] == 1:
         inout_w_max = CONV1D_W_MAX
 
     util_deconv_comm.check_attr_range("out_backprop's H", shape_out_backprop[2],
-                                      INOUT_HW_MIN, INOUT_HW_MAX)
+                                      INOUT_HW_MIN, INOUT_H_MAX)
     util_deconv_comm.check_attr_range("out_backprop's W", shape_out_backprop[3],
                                       INOUT_HW_MIN, inout_w_max)
-    util_deconv_comm.check_attr_range("y's H", shape_res[2], INOUT_HW_MIN, INOUT_HW_MAX)
+    util_deconv_comm.check_attr_range("y's H", shape_res[2], INOUT_HW_MIN, INOUT_H_MAX)
     util_deconv_comm.check_attr_range("y's W", shape_res[3], INOUT_HW_MIN, inout_w_max)
     util_deconv_comm.check_attr_range("out_backprop's H after expands", dedy_h * strides[0],
-                                      INOUT_HW_MIN, INOUT_HW_MAX)
+                                      INOUT_HW_MIN, INOUT_H_MAX)
     if filter_h == 1 and filter_w == 1:
         util_deconv_comm.check_attr_range("out_backprop's W after expands",
                                           dedy_w * strides[0] * strides[1],

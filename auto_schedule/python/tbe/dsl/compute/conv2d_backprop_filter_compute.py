@@ -36,6 +36,9 @@ from tbe.tvm.tensor import Tensor
 BLOCK_SIZE = 16
 # maximum of int64 (2**63 - 1)
 DATA_SIZE_LIMIT_INT64 = 9223372036854775807
+INPUTS_H_MAX = 200000
+INPUTS_W_MAX = 4096
+INPUTS_HW_MIN = 1
 # maximum of w in conv1d is (2**31 - 1)
 CONV1D_MAX_W = 2147483647
 # maximum of stride, limited by load3d
@@ -546,34 +549,29 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                         allow_zero=True)
 
         # individual range check
-        grads_hw_range = [1, 4096]
-        fmap_hw_range = [1, 4096]
+        inputs_h_max = INPUTS_H_MAX
+        inputs_w_max = INPUTS_W_MAX
         _, _, grads_height, grads_width, _ \
             = self.shape_grads_5hd
 
         if self.conv1d_situation:
-            grads_hw_range[1] = CONV1D_MAX_W
-            fmap_hw_range[1] = CONV1D_MAX_W
+            inputs_w_max = CONV1D_MAX_W
 
-        _check_variable_range(grads_height, grads_hw_range[0],
-                                grads_hw_range[1],
-                                "height of out_backprop")
-        _check_variable_range(grads_width, grads_hw_range[0],
-                                grads_hw_range[1],
-                                "width of out_backprop")
-        _check_variable_range(self.shape_x_5hd[2], fmap_hw_range[0],
-                                fmap_hw_range[1],
-                                "height of x")
-        _check_variable_range(self.shape_x_5hd[3], fmap_hw_range[0],
-                                fmap_hw_range[1],
-                                "width of x")
+        _check_variable_range(grads_height, INPUTS_HW_MIN,
+                              inputs_h_max, "height of out_backprop")
+        _check_variable_range(grads_width, INPUTS_HW_MIN,
+                              inputs_w_max, "width of out_backprop")
+        _check_variable_range(self.shape_x_5hd[2], INPUTS_HW_MIN,
+                              inputs_h_max, "height of x")
+        _check_variable_range(self.shape_x_5hd[3], INPUTS_HW_MIN,
+                              inputs_w_max, "width of x")
 
         # limitation by chip:
         # if only fmap w after padding equals to filter w after dilation
         # and soc_version is Ascend910
         # then only support fmap w not larger than STRIDE_HW_MAX now
         if self.flag_load3d_special_case:
-            _check_variable_range(self.shape_x_5hd[3], fmap_hw_range[0],
+            _check_variable_range(self.shape_x_5hd[3], INPUTS_HW_MIN,
                                   STRIDE_HW_MAX,
                                   "width of x")
 

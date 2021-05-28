@@ -354,8 +354,13 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                     real_k)
             else:
                 real_k, k_in = sch[res_cc].split(real_k, CUBE_DIM)
+                hw_single_core_factor = _ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
+                k_al1 = tiling["AL1_shape"][0] if tiling["AL1_shape"] else dw_k * CUBE_DIM
+                k_bl1 = tiling["BL1_shape"][0] if tiling["BL1_shape"] else dw_k * CUBE_DIM
+                k_one_core_max = max(k_al1, k_bl1, dw_k * CUBE_DIM)
+                hw_single_core_factor = _align(hw_single_core_factor, k_one_core_max) // CUBE_DIM
                 k_1_multicore, real_k = sch[res_cc].split(real_k,
-                                                          nparts=block_dim_hw)
+                                                          hw_single_core_factor)
 
                 sch[res_cc].reorder(k_1_multicore, batch_core, batch_in,
                                     real_k, k_in)
@@ -419,6 +424,16 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
             """
 
+            # ka and kb may be different,
+            # the min value corresponds to one MMAD,
+            # the larger one is []
+            if tiling["AL0_matrix"]:  # dw_k equals to ka if L0A needs tiling
+                dw_k = tiling["AL0_matrix"][1]
+            elif tiling["BL0_matrix"]:
+                dw_k = tiling["BL0_matrix"][0]
+            else:  # both fully loaded
+                dw_k = hw_pad_1 // block_dim_hw
+
             if not tiling["AL0_matrix"]:  # if grads no tiling in L0A
                 tiling["AL1_shape"] = []  # then no tiling in L1
 
@@ -440,7 +455,13 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                                              dw_ub_tiling_factor[0]),
                                    _ceil_div(dw_tiling_factor[1],
                                              dw_ub_tiling_factor[1])]
-
+            hw_single_core_factor = _ceil_div(hw_pad_1, block_dim_hw)
+            if not self.var_map:
+                hw_single_core_factor = _ceil_div(hw_pad_1 * CUBE_DIM, block_dim_hw)
+                k_al1 = tiling["AL1_shape"][0] if tiling["AL1_shape"] else dw_k * CUBE_DIM
+                k_bl1 = tiling["BL1_shape"][0] if tiling["BL1_shape"] else dw_k * CUBE_DIM
+                k_one_core_max = max(k_al1, k_bl1, dw_k * CUBE_DIM)
+                hw_single_core_factor = _align(hw_single_core_factor, k_one_core_max) // CUBE_DIM
             # only support loading one batch to L1 at a time for now
             # cout:out->single core(sc)->L1
             if tiling["AL1_shape"]:  # if grads needs tiling in L1
@@ -448,7 +469,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     tiling["AL1_shape"] = \
                         tiling["AL1_shape"] + [1]
                 # nparts K1 in L1, nparts M1 in L1
-                grads_l1_tiling_nparts = [_ceil_div(hw_pad_1, block_dim_hw) //
+
+                grads_l1_tiling_nparts = [hw_single_core_factor //
                                           (tiling["AL1_shape"][0] // CUBE_DIM),
                                           dw_tiling_nparts[1]
                                           // tiling["AL1_shape"][1]]
@@ -460,7 +482,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     tiling["BL1_shape"] = \
                         tiling["BL1_shape"] + [1]  # tiling fkk=1
                 # DDR to L1 [nparts K1, nparts N1]
-                fmap_l1_tiling_nparts = [_ceil_div(hw_pad_1, block_dim_hw) //
+                fmap_l1_tiling_nparts = [hw_single_core_factor //
                                          (tiling["BL1_shape"][0] // CUBE_DIM),
                                          dw_tiling_nparts[0]
                                          // tiling["BL1_shape"][1]]
@@ -471,15 +493,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             l1_2_l0_tiling_nparts = \
                 [dw_tiling_nparts[0] // fmap_l1_tiling_nparts[1],
                  dw_tiling_nparts[1] // grads_l1_tiling_nparts[1]]
-            # ka and kb may be different,
-            # the min value corresponds to one MMAD,
-            # the larger one is []
-            if tiling["AL0_matrix"]:  # dw_k equals to ka if L0A needs tiling
-                dw_k = tiling["AL0_matrix"][1]
-            elif tiling["BL0_matrix"]:
-                dw_k = tiling["BL0_matrix"][0]
-            else:  # both fully loaded
-                dw_k = hw_pad_1 // block_dim_hw
+
 
             if DEBUG_MODE:
                 print("dw_tiling_factor", dw_tiling_factor)

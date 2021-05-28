@@ -51,13 +51,14 @@ DILATION_MAX = 255
 FILTER_HW_MIN = 1
 FILTER_HW_MAX = 255
 
-# dyH, dyW must be in [1,4096]
-DY_FILLING_HW_MIN = 1
-DY_FILLING_HW_MAX = 4096
+DY_FILLING_HW_MIN = 2
+DY_FILLING_H_MAX = 200000
+DY_FILLING_W_MAX = 4096
 
-# fmapH, fmapW must be in [1,4096]
-DX_HW_MIN = 1
-DX_HW_MAX = 4096
+# fmapH, fmapW must be in [2,4096]
+DX_HW_MIN = 2
+DX_H_MAX = 200000
+DX_W_MAX = 4096
 
 # conv1d situation support w not larger than 2^31-1
 CONV1D_W_MAX = 2147483647
@@ -339,7 +340,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     # special cases
     dy_filling_hw_min, dx_hw_min = DY_FILLING_HW_MIN, DX_HW_MIN
-    dy_filling_hw_max, dx_hw_max = DY_FILLING_HW_MAX, DX_HW_MAX
+    dy_filling_w_max, dx_w_max = DY_FILLING_W_MAX, DX_W_MAX
+    dy_filling_h_max, dx_h_max = DY_FILLING_H_MAX, DX_H_MAX
 
     # limitation by chip:
     # load3d instruction not support out_w = 1
@@ -351,8 +353,10 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
     if _is_conv1d_situation():
-        dy_filling_hw_max = CONV1D_W_MAX
-        dx_hw_max = CONV1D_W_MAX
+        dy_filling_hw_min = 1
+        dx_hw_min = 1
+        dy_filling_w_max = CONV1D_W_MAX
+        dx_w_max = CONV1D_W_MAX
 
     if "batch_n" in var_map:
         batch_n_bound = get_te_var("batch_n").get_bound()
@@ -372,20 +376,20 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     def _check_dy():
         _check_equal_rule(dy_c0, dedy_k0, "dy_c0", str(dedy_k0))
         _check_variable_range(
-            dy_h * stride_h, dy_filling_hw_min, dy_filling_hw_max, "dy_h*stride_h"
+            dy_h * stride_h, dy_filling_hw_min, dy_filling_h_max, "dy_h*stride_h"
         )
         if filter_h == 1 and filter_w == 1:
             _check_variable_range(
                 dy_w * stride_w * stride_h,
                 dy_filling_hw_min,
-                dy_filling_hw_max,
+                dy_filling_w_max,
                 "dy_w*stride_w*stride_h"
             )
         else:
             _check_variable_range(
                 dy_w * stride_w,
                 dy_filling_hw_min,
-                dy_filling_hw_max,
+                dy_filling_w_max,
                 "dy_w*stride_w"
             )
 
@@ -430,8 +434,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     # dx
     def _check_dx():
-        _check_variable_range(dx_h, dx_hw_min, dx_hw_max, "dx_h")
-        _check_variable_range(dx_w, dx_hw_min, dx_hw_max, "dx_w")
+        _check_variable_range(dx_h, dx_hw_min, dx_h_max, "dx_h")
+        _check_variable_range(dx_w, dx_hw_min, dx_w_max, "dx_w")
         _check_equal_rule(dx_batch, dy_batch, "dx_batch", "dy_batch")
 
         _check_equal_rule((dx_h_after_pad - filter_h_dilation) // stride_h + 1, dy_h,

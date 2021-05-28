@@ -31,7 +31,8 @@ DEFAULT_MAX_SHAPE_NUM = 1000000
 
 # the shape dim limited
 INOUT_HW_MIN = 1
-INOUT_HW_MAX = 4096
+INOUT_H_MAX = 200000
+INOUT_W_MAX = 4096
 FILTER_HW_MIN = 1
 FILTER_HW_MAX = 255
 STRIDE_HW_MIN = 1
@@ -143,21 +144,22 @@ def _check_param(  # pylint: disable=invalid-name,R0913,R0914,W0613
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     inout_limit_min = INOUT_HW_MIN
-    inout_limit_max = INOUT_HW_MAX
+    inout_h_max = INOUT_H_MAX
+    inout_w_max = INOUT_W_MAX
     if fmap_h_pad == 1 and filter_h_dilation == 1 and strides[0] == 1:
-        inout_limit_max = CONV1D_W_MAX
+        inout_w_max = CONV1D_W_MAX
 
-    _check_attr_range("the h of fmap(output)", fmap_h, inout_limit_min, inout_limit_max)
-    _check_attr_range("the w of fmap(output)", fmap_w, inout_limit_min, inout_limit_max)
+    _check_attr_range("the h of fmap(output)", fmap_h, inout_limit_min, inout_h_max)
+    _check_attr_range("the w of fmap(output)", fmap_w, inout_limit_min, inout_w_max)
 
-    _check_attr_range("the h of dedy(input) after expands", dedy_h * strides[0], inout_limit_min, inout_limit_max)
+    _check_attr_range("the h of dedy(input) after expands", dedy_h * strides[0], inout_limit_min, inout_h_max)
 
     if filter_h == 1 and filter_w == 1:
         _check_attr_range("the w of dedy after expands",
-                          dedy_w * strides[0] * strides[1], inout_limit_min, inout_limit_max)
+                          dedy_w * strides[0] * strides[1], inout_limit_min, inout_w_max)
     else:
         _check_attr_range("the w of dedy after expands",
-                          dedy_w * strides[1], inout_limit_min, inout_limit_max)
+                          dedy_w * strides[1], inout_limit_min, inout_w_max)
 
 
 def check_supported(x,
