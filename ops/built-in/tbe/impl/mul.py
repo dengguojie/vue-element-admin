@@ -155,26 +155,26 @@ def op_sub_select_format(x, y, output, kernel_name="mul"):
         return None
 
     if -1 in shape_x1 or -1 in shape_x2:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                                                datatype=",".join(dtype_list_total),
                                                format=",".join(format_list_for_non_one),
                                                unknownshape_format=",".join(unknownshape_format_list))
-        input1 = util_select_op_base.gen_param(classify="input1", name="y",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
                                                datatype=",".join(dtype_list_total),
                                                format=",".join(format_list_for_one),
                                                unknownshape_format=",".join(unknownshape_format_list))
-        output0 = util_select_op_base.gen_param(classify="output0", name="output",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                 datatype=",".join(dtype_list_total),
                                                 format=",".join(format_list_for_non_one),
                                                 unknownshape_format=",".join(unknownshape_format_list))
     else:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
                                                datatype=",".join(dtype_list_total),
                                                format=",".join(format_list_for_non_one))
-        input1 = util_select_op_base.gen_param(classify="input1", name="y",
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
                                                datatype=",".join(dtype_list_total),
                                                format=",".join(format_list_for_one))
-        output0 = util_select_op_base.gen_param(classify="output0", name="output",
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                 datatype=",".join(dtype_list_total),
                                                 format=",".join(format_list_for_non_one))
 

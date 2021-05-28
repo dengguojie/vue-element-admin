@@ -233,6 +233,12 @@ def test_op_select_format(test_arg):
                       "ori_shape": (1,), "ori_format": "NCHW"},
                      {"shape": (16, 16, 512, 512), "dtype": "float32", "format": "NCHW",
                       "ori_shape": (16, 16, 512, 512), "ori_format": "NCHW"})
+    op_select_format({"shape": (-1, 32, 16), "dtype": "int8", "format": "ND",
+                      "ori_shape": (-1, 32, 16), "ori_format": "ND"},
+                     {"shape": (1,), "dtype": "int8", "format": "ND",
+                      "ori_shape": (1,), "ori_format": "ND"},
+                     {"shape": (-1, 32, 16), "dtype": "int8", "format": "ND",
+                      "ori_shape": (-1, 32, 16), "ori_format": "ND"})
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
