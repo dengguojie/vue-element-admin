@@ -977,7 +977,7 @@ def _check_mask(input_mask, is_shrink=False):
     None.
     """
     if is_shrink:
-        supported_shrink_masks = {0, 2, 4}
+        supported_shrink_masks = {0, 1, 2, 4}
         if input_mask != 0 and input_mask not in supported_shrink_masks:
             error_manager.raise_err_input_value_invalid("strided_slice_grad_d", "shrink_axis_mask",
                                                         str(supported_shrink_masks), str(input_mask))

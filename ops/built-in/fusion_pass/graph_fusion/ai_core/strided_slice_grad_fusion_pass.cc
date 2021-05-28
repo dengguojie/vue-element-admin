@@ -107,7 +107,7 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
     return NOT_CHANGED;
   }
 
-  const std::set<int64_t> supported_shrink_axis_masks = {0, 2, 4};
+  const std::set<int64_t> supported_shrink_axis_masks = {0, 1, 2, 4};
   if (0 != new_axis_mask || supported_shrink_axis_masks.count(shrink_axis_mask) == 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(),
             "if new_axis_mask is not equal 0, or shrink_axis_mask is not in %s, graph not changed.",
