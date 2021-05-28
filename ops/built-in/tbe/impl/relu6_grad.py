@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,32 +42,39 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     Returns
     ------
     compute result of relu6grad
+    result = input_grad * (input_x > 0.0 * input_x < 6.0)
     """
-    # input_x<=6 and input_x>=0
-    # min(input,6)
-    min_positive_6 = tbe.vmins(input_x, 6)
-    # max(input,0)
-    max_zero_min_6 = tbe.vmaxs(min_positive_6, 0)
-
-    # (X-6), X*(X-6)
-    x_sub_6 = tbe.vadds(max_zero_min_6, -6)
-    x_mul_x_6 = tbe.vmul(max_zero_min_6, x_sub_6)
-
     input_dtype = input_x.dtype
-    if input_dtype == "float16":
-        # algrithm : Y = X*(X-6)*1024/(X*(X-6)*1024+ESP_MIN)
-        # for float16, add a small number which value is 1.18e-7, so that the divisor is not equal to 0, and for
-        # accuracy, multiply by a number which value is 1024.
-        x_mul_x_6_big = tbe.vmuls(x_mul_x_6, 1024)
-        y_add_espmin = tbe.vadds(x_mul_x_6_big, 1.18e-7)
-        y_y_esp_min = tbe.vdiv(x_mul_x_6_big, y_add_espmin)
-    if input_dtype == "float32":
-        # algrithm : Y = X*(X-6)/(X*(X-6)+ESP_MIN)
-        # for float32, add a small number which value is 1.18e-38, so that the divisor is not equal to 0.
-        y_add_espmin = tbe.vadds(x_mul_x_6, 1.18e-38)
-        y_y_esp_min = tbe.vdiv(x_mul_x_6, y_add_espmin)
+    # fp32 in else case is slower than if case
+    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in ("Ascend310", "Ascend910") or input_dtype == "float32":
+        # input_x<6 and input_x>0
+        # min(input,6)
+        min_positive_6 = tbe.vmins(input_x, 6)
+        # max(input,0)
+        max_zero_min_6 = tbe.vmaxs(min_positive_6, 0)
 
-    final_res = tbe.vmul(y_y_esp_min, input_grad)
+        # (X-6), X*(X-6)
+        x_sub_6 = tbe.vadds(max_zero_min_6, -6)
+        x_mul_x_6 = tbe.vmul(max_zero_min_6, x_sub_6)
+
+        if input_dtype == "float16":
+            # algrithm : Y = X*(X-6)*1024/(X*(X-6)*1024+ESP_MIN)
+            # for float16, add a small number which value is 1.18e-7, so that the divisor is not equal to 0, and for
+            # accuracy, multiply by a number which value is 1024.
+            x_mul_x_6_big = tbe.vmuls(x_mul_x_6, 1024)
+            y_add_espmin = tbe.vadds(x_mul_x_6_big, 1.18e-7)
+            y_y_esp_min = tbe.vdiv(x_mul_x_6_big, y_add_espmin)
+        if input_dtype == "float32":
+            # algrithm : Y = X*(X-6)/(X*(X-6)+ESP_MIN)
+            # for float32, add a small number which value is 1.18e-38, so that the divisor is not equal to 0.
+            y_add_espmin = tbe.vadds(x_mul_x_6, 1.18e-38)
+            y_y_esp_min = tbe.vdiv(x_mul_x_6, y_add_espmin)
+
+        final_res = tbe.vmul(y_y_esp_min, input_grad)
+    else:
+        is_gt_0 = tbe.vcmpsel(input_x, 0.0, 'gt', 1.0, 0.0)
+        condition = tbe.vcmpsel(input_x, 6.0, 'lt', is_gt_0, 0.0)
+        final_res = tbe.vmul(input_grad, condition)
 
     return final_res
 
