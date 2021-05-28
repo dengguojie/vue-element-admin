@@ -30,6 +30,17 @@ def gen_trans_data_case(src, dst, dtype, case_name_val, expect,
             "format_expect": [],
             "support_expect": True}
 
+def gen_trans_data_case_hwcn(src, dst, dtype, case_name_val, expect,
+                        dst_format="FRACTAL_Z"):
+    return {"params": [{"shape": src, "dtype": dtype, "ori_shape": src,
+                        "ori_format": "HWCN", "format": "HWCN"},
+                       {"shape": dst, "dtype": dtype, "ori_shape": dst,
+                        "ori_format": dst_format, "format": dst_format},
+                       "HWCN", dst_format],
+            "case_name": case_name_val,
+            "expect": expect,
+            "format_expect": [],
+            "support_expect": True}
 
 def calc_expect_func(src, dst, src_format, dst_format):
     input_shape = src.get("shape")
@@ -85,6 +96,9 @@ ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3600, 96, 12, 1, 1), (3, 2, 16, 16),
                                      "float16", "dhwcn_3", "success"))
 
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case_hwcn((6, 12, 3, 2), (72, 1, 16, 32),
+                                     "int8", "dhwcn_4", "success"))
 # h*w / CORE_NUM > 0
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((2, 3, 12, 35, 17), (3, 2, 16, 16),
