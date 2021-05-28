@@ -1722,7 +1722,7 @@ def general_schedule(
             sch_agent.same_attach(a_ub, a_avg)
             if "mean_matrix_rec" in tensor_map:
                 sch_agent.same_attach(mean_matrix_rec, a_avg)
-                    
+
     def _attach_bias():
         split_bias_flag = tiling.get("CUB_channel_wise_flag")
         if c_add_bias is not None:
@@ -2128,10 +2128,18 @@ def general_schedule(
 
     def _handle_dynamic_workspace(stride_w):
         def _get_al1_m_extent(al1_m):
+            al1_h_small = tvm.select(
+                (tvm.floormod(output_shape[3], al1_m) == 0).asnode(),
+                kernel_h,
+                kernel_h + 1)
+            al1_h_large = tvm.select(
+                (tvm.floormod(al1_m, output_shape[3]) == 0).asnode(),
+                kernel_h + (al1_m // output_shape[3]) - 1,
+                kernel_h + (al1_m // output_shape[3]) + 1)
             al1_h = tvm.select(
-                        (tvm.floormod(al1_m, output_shape[3]) == 0).asnode(),
-                        kernel_h + (al1_m // output_shape[3]) - 1,
-                        kernel_h + (al1_m // output_shape[3]) + 1)
+                al1_m < output_shape[3],
+                al1_h_small,
+                al1_h_large)
             al1_w = a_ddr.shape[3] * stride_w
             return al1_h, al1_w
 

@@ -170,7 +170,10 @@ class Conv2dBackpropParaProcess():
         def _get_output(x_in, k_size, pads, stride, dilation):
             if not x_in:
                 return x_in
-            return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+            if DYNAMIC_FLAG in pads:
+                return ceil_div(x_in, stride)
+            else:
+                return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
         correct_range_flag = False
         new_dy_range = copy.deepcopy(dy_range)
@@ -264,6 +267,10 @@ class Conv2dBackpropParaProcess():
                     warnings.warn("The input calculated based on the upper limit of the output w " +
                                   "range is more than 4096, and the upper limit of the input w range is corrected " +
                                   "as {}".format(dx_w_upper))
+        if dx_h_upper and dx_h_lower > dx_h_upper:
+            dx_h_lower = dx_h_upper
+        if dx_w_upper and dx_w_lower > dx_w_upper:
+            dx_w_lower = dx_w_upper
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
         return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
@@ -345,6 +352,10 @@ class Conv2dBackpropParaProcess():
             warnings.warn("The output calculated based on the higher limit of the input w " +
                           "range is more than 4096, and the higher limit of the output w range is corrected " +
                           "as {}".format(out_w_upper))
+        if out_h_upper and out_h_lower > out_h_upper:
+            out_h_lower = out_h_upper
+        if out_w_upper and out_w_lower > out_w_upper:
+            out_w_lower = out_w_upper
         if out_range:
             return [out_range[N_DIM], out_range[C_DIM], (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
         return [in_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),

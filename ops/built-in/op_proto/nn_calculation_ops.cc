@@ -459,6 +459,116 @@ static map<int, std::string> dtype2str = {
     {ge::DT_INT32, "INT32"}, {ge::DT_INT64, "INT64"}, {ge::DT_UINT32, "UINT32"},
     {ge::DT_UINT64, "UINT64"}};
 
+/*!
+  * Simply get value range in grade list.
+  */
+static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
+                          const int64_t& value, int64_t& low, int64_t& high) {
+  size_t min_size = 2;
+  if (grade.size() < min_size) {
+    OP_LOGE(op.GetName().c_str(), "input grade size smaller then %u", min_size);
+    return false;
+  }
+  // grade is in ascending order
+  size_t last = grade.size() - 1;
+  if (value > grade[last]) {
+    OP_LOGE(op.GetName().c_str(), "input value %lld is out the range of %lld", value, grade[last]);
+    return false;
+  }
+  // if it is the right boundary value, use the right closed interval
+  if (value == grade[last]) {
+    low = grade[last - 1];
+    high = grade[last];
+    return true;
+  }
+  for (auto n : grade) {
+    if (value >= n) {
+      low = n;
+    }
+    if (value < n) {
+      high = n;
+      break;
+    }
+  }
+  return true;
+}
+
+/*!
+  * Generate NHW shape range
+  */
+static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
+                                std::vector<std::pair<int64_t, int64_t>>& input_range) {
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  // only support 4D shape
+  auto x_format = x_tensor->GetFormat();
+  size_t idx_n = 0;
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  size_t idx_c = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+    idx_c = 3;
+  } else {
+    idx_c = 1;
+    idx_h = 2;
+    idx_w = 3;
+  }
+  std::vector<int64_t> grade_n = {1, 2, 4, 8, 16, 32, ((1 << 31) - 1)};
+  std::vector<int64_t> grade_w = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
+  std::vector<int64_t> grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
+  // init empty range
+  // shape -1 without set range call "GetShapeRange" will return [1,-1]
+  input_range = {{}, {}, {}, {}};
+  std::vector<std::pair<int64_t, int64_t>> range_set;
+  x_tensor->GetShapeRange(range_set);
+  std::map<size_t, std::vector<int64_t>> grade_map;
+  grade_map[idx_n] = grade_n;
+  grade_map[idx_h] = grade_h;
+  grade_map[idx_w] = grade_w;
+  for (auto item: grade_map) {
+    // allow shape -1 with range
+    if(x_shape[item.first] == -1) {
+      if (range_set.size() > item.first) {
+        input_range[item.first] = range_set[item.first];
+      } else {
+        OP_LOGE(op.GetName().c_str(), "cant't get input index %zu range", item.first);
+        return false;
+      }
+    } else {
+      int64_t low = 1;
+      int64_t high = 1;
+      if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
+        OP_LOGE(op.GetName().c_str(), "failed to get the %zu range", item.first);
+        return false;
+      }
+      input_range[item.first] = std::make_pair(low, high);
+    }
+  }
+  input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
+  return true;
+}
+
+static bool modify_dy_w_max(ge::Operator& op, const std::vector<int64_t>& dy_sizes,
+                            Format& dy_format, int64_t& stride_h, int64_t& stride_w,
+                            std::vector<std::pair<int64_t, int64_t>>& dx_range) {
+  std::string dy_format_str = format2str[dy_format];
+  int32_t w_input_position = dy_format_str.find("W");
+  int64_t w_max = kDynamicRangeUpperBound / (stride_h * stride_w);
+  if (w_max < dy_sizes[w_input_position]) {
+    OP_LOGE(op.GetName().c_str(), "w of dedy is too large for opti scheme, w can't larger than %lld, actual is %lld",
+            w_max, dy_sizes[w_input_position]);
+    return false;
+  }
+  if (w_max < dx_range[w_input_position].second) {
+    OP_LOGW(op.GetName().c_str(),
+            "w_range_max of dedy is too large for opti scheme, w_range_max will be modified to %lld, actual is %lld",
+            w_max, dx_range[w_input_position].second);
+  }
+  dx_range[w_input_position].second = std::min(w_max, dx_range[w_input_position].second);
+  return true;
+}
+
 static bool reset_range(ge::Operator& op, const std::string& tensor_name) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto tensor_desc = op_desc->MutableInputDesc(tensor_name);
@@ -1436,6 +1546,31 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   if (input_sizes.size() == 4) {
     y_desc->SetShape(GeShape(input_sizes));
   }
+
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  // fuzz build allow shape dim -1 with range
+  if ((!unknown_rank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // generate range
+    std::vector<std::pair<int64_t, int64_t>> x_range;
+    if (!GenConv2dShapeRange(op, x_desc, x_range)) {
+        return GRAPH_FAILED;
+    }
+    // when opti, max_range should be modified
+    if ((filter_h == 1) && (filter_w == 1)) {
+        if (!modify_dy_w_max(op, dy_sizes, dy_format, stride_h, stride_w, x_range)) {
+            return GRAPH_FAILED;
+        }
+    }
+    // only need to set input fuzz build range
+    graphStatus ret = x_desc->SetShapeRange(x_range);
+    if (ret != GRAPH_SUCCESS){
+        OP_LOGE(op.GetName().c_str(), "set input range failed");
+        return GRAPH_FAILED;
+    }
+  }
   OP_LOGI(op.GetName().c_str(), "Leaving DepthwiseConv2dBackpropInput inferfunction!");
 
   return GRAPH_SUCCESS;
@@ -2224,96 +2359,6 @@ static graphStatus VerifyConv2dbpPads(ge::Operator& op) {
 }
 
 /*!
-  * Simply get value range in grade list.
-  */
-static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
-                          const int64_t& value, int64_t& low, int64_t& high) {
-  size_t min_size = 2;
-  if (grade.size() < min_size) {
-    OP_LOGE(op.GetName().c_str(), "input grade size smaller then %u", min_size);
-    return false;
-  }
-  // grade is in ascending order
-  size_t last = grade.size() - 1;
-  if (value > grade[last]) {
-    OP_LOGE(op.GetName().c_str(), "input value %lld is out the range of %lld", value, grade[last]);
-    return false;
-  }
-  // if it is the right boundary value, use the right closed interval
-  if (value == grade[last]) {
-    low = grade[last - 1];
-    high = grade[last];
-    return true;
-  }
-  for (auto n : grade) {
-    if (value >= n) {
-      low = n;
-    }
-    if (value < n) {
-      high = n;
-      break;
-    }
-  }
-  return true;
-}
-
-/*!
-  * Generate NHW shape range
-  */
-static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
-                                std::vector<std::pair<int64_t, int64_t>>& input_range) {
-  auto x_shape = x_tensor->MutableShape().GetDims();
-  // only support 4D shape
-  auto x_format = x_tensor->GetFormat();
-  size_t idx_n = 0;
-  size_t idx_h = 0;
-  size_t idx_w = 0;
-  size_t idx_c = 0;
-  if (x_format == FORMAT_NHWC) {
-    idx_h = 1;
-    idx_w = 2;
-    idx_c = 3;
-  } else {
-    idx_c = 1;
-    idx_h = 2;
-    idx_w = 3;
-  }
-  std::vector<int64_t> grade_n = {1, 2, 4, 8, 16, 32, ((1 << 31) - 1)};
-  std::vector<int64_t> grade_w = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
-  std::vector<int64_t> grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
-  // init empty range
-  // shape -1 without set range call "GetShapeRange" will return [1,-1]
-  input_range = {{}, {}, {}, {}};
-  std::vector<std::pair<int64_t, int64_t>> range_set;
-  x_tensor->GetShapeRange(range_set);
-  std::map<size_t, std::vector<int64_t>> grade_map;
-  grade_map[idx_n] = grade_n;
-  grade_map[idx_h] = grade_h;
-  grade_map[idx_w] = grade_w;
-  for (auto item: grade_map) {
-    // allow shape -1 with range
-    if(x_shape[item.first] == -1) {
-      if (range_set.size() > item.first) {
-        input_range[item.first] = range_set[item.first];
-      } else {
-        OP_LOGE(op.GetName().c_str(), "cant't get input index %zu range", item.first);
-        return false;
-      }
-    } else {
-      int64_t low = 1;
-      int64_t high = 1;
-      if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
-        OP_LOGE(op.GetName().c_str(), "failed to get the %zu range", item.first);
-        return false;
-      }
-      input_range[item.first] = std::make_pair(low, high);
-    }
-  }
-  input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
-  return true;
-}
-
-/*!
   * Make sure that output shape is larger than 0
   */
 bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
@@ -2834,6 +2879,13 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     reset_range(op, "out_backprop");
     is_dynamic = true;
   }
+  std::string filterFormatStr;
+  int32_t fc_position;
+  int32_t fh_position;
+  int32_t fw_position;
+  int64_t filter_c;
+  int64_t filter_h;
+  int64_t filter_w;
   if (is_dynamic || (!is_input_size_const && unknown_rank)) {
     // get shape for output from input_size
     std::string pad_str;
@@ -2869,9 +2921,9 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     if (!dx_range.empty() && dx_range.size() == 4 && !unknown_rank) {
       std::string dx_format_str = format2str[input_format];
       int32_t c_input_position = dx_format_str.find("C");
-      std::string filterFormatStr = format2str[filter_format];
-      int32_t fc_position = filterFormatStr.find("C");
-      int64_t filter_c = filter_sizes[fc_position];
+      filterFormatStr = format2str[filter_format];
+      fc_position = filterFormatStr.find("C");
+      filter_c = filter_sizes[fc_position];
       int64_t cin = groups * filter_c;
       dx_range[c_input_position].first = cin;
       dx_range[c_input_position].second = cin;
@@ -2948,6 +3000,19 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     if (!GenConv2dShapeRange(op, x_desc, input_range)){
         return GRAPH_FAILED;
+    }
+    filterFormatStr = format2str[filter_format];
+    fh_position = filterFormatStr.find("H");
+    fw_position = filterFormatStr.find("W");
+    filter_h = filter_sizes[fh_position];
+    filter_w = filter_sizes[fw_position];
+    // when opti, max_range should be modified
+    if ((filter_h == 1) && (filter_w == 1)) {
+        int64_t strideh = static_cast<int64_t>(stride_h);
+        int64_t stridew = static_cast<int64_t>(stride_w);
+        if (!modify_dy_w_max(op, dy_sizes, dy_format, strideh, stridew, input_range)) {
+            return GRAPH_FAILED;
+        }
     }
     // only need to set input fuzz build range
     graphStatus ret = x_desc->SetShapeRange(input_range);
@@ -5790,6 +5855,14 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
     std::vector<std::pair<int64_t, int64_t>> x_range;
     if (!GenConv2dShapeRange(op, xTensor, x_range)){
       return GRAPH_FAILED;
+    }
+    // when opti, max_range should be modified
+    int64_t stride_h = static_cast<int64_t>(strh);
+    int64_t stride_w = static_cast<int64_t>(strw);
+    if ((kh == 1) && (kw == 1)) {
+        if (!modify_dy_w_max(op, xShape, xFormat, stride_h, stride_w, x_range)) {
+            return GRAPH_FAILED;
+        }
     }
     // only need to set input fuzz build range
     xTensor->SetShapeRange(x_range);
@@ -9522,6 +9595,13 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
     reset_range(op, "x");
   }
 
+  std::string filterFormatStr;
+  int32_t fc_position;
+  int32_t fh_position;
+  int32_t fw_position;
+  int64_t filter_c;
+  int64_t filter_h;
+  int64_t filter_w;
   if (isDynamic || (!isInputSizeConst && unknownRank)) {
     // update pads list by padding[SAME,VALID]
     std::string padStr;
@@ -9543,9 +9623,9 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
     if (!dxRange.empty() && dxRange.size() == 4 && dyRange.size() == 4) {
       std::string dx_format_str = format2str[inputFormat];
       int32_t c_input_position = dx_format_str.find("C");
-      std::string filterFormatStr = format2str[filterFormat];
-      int32_t fc_position = filterFormatStr.find("C");
-      int64_t filter_c = filterSizes[fc_position];
+      filterFormatStr = format2str[filterFormat];
+      fc_position = filterFormatStr.find("C");
+      filter_c = filterSizes[fc_position];
       int64_t cin = groups * filter_c;
       dxRange[c_input_position].first = cin;
       dxRange[c_input_position].second = cin;
@@ -9622,6 +9702,19 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     if (!GenConv2dShapeRange(op, xDesc, input_range)) {
         return GRAPH_FAILED;
+    }
+    filterFormatStr = format2str[filterFormat];
+    fh_position = filterFormatStr.find("H");
+    fw_position = filterFormatStr.find("W");
+    filter_h = filterSizes[fh_position];
+    filter_w = filterSizes[fw_position];
+    // when opti, max_range should be modified
+    if ((filter_h == 1) && (filter_w == 1)) {
+        int64_t strideh = static_cast<int64_t>(strideH);
+        int64_t stridew = static_cast<int64_t>(strideW);
+        if (!modify_dy_w_max(op, dySizes, xFormat, strideh, stridew, input_range)) {
+            return GRAPH_FAILED;
+        }
     }
     // only need to set input fuzz build range
     graphStatus ret = xDesc->SetShapeRange(input_range);

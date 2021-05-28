@@ -153,7 +153,8 @@ def _gen_trans_data_case(param):
 for case in dynamic_deconvolution_testcase:
     ut_case.add_case(["Ascend910A"], _gen_trans_data_case(case))
 
-def test_deconvolution_fuzz_build_generalization(test_arg):
+
+def test_deconvolution_fuzz_build_generalization_general(test_arg):
     from impl.dynamic.deconvolution import deconvolution_generalization
     input_list = [
         {
@@ -161,7 +162,9 @@ def test_deconvolution_fuzz_build_generalization(test_arg):
             'ori_shape': (16, 33, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16'
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
         }, {
             'ori_shape': (33, 3, 3, 5),
             'ori_format': 'NCHW',
@@ -174,11 +177,41 @@ def test_deconvolution_fuzz_build_generalization(test_arg):
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
-        'deconvolution_fuzz_build_generalization']
+        'deconvolution_fuzz_build_generalization_general']
     deconvolution_generalization(*input_list)
 
-print("adding conv2d test_deconvolution_fuzz_build_generalization testcase")
-ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_generalization)
+
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_generalization_general)
+
+
+def test_deconvolution_fuzz_build_generalization_range_max_fixed(test_arg):
+    from impl.dynamic.deconvolution import deconvolution_generalization
+    input_list = [
+        {
+            'shape': (50, 1, 26, 2888, 16),
+            'ori_shape': (50, 2, 26, 2888),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
+            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+        }, {
+            'ori_shape': ((1, 2, 10, 10)),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (50, 1, 35, 2896, 16),
+            'ori_shape': (50, 2, 35, 2896),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'deconvolution_fuzz_build_generalization_range_max_fixed']
+    deconvolution_generalization(*input_list)
+
+
+ut_case.add_cust_test_func(test_func=test_deconvolution_fuzz_build_generalization_range_max_fixed)
 
 def test_get_op_support_info_dynamic_deconv(test_arg):
     x = {"ori_shape": (1, 16, -1, -1), "dtype": "float16", "ori_format": "NCHW", "shape": (1, 1, -1, -1, 16), "format":"NC1HWC0",

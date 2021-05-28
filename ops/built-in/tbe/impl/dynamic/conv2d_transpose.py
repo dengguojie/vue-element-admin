@@ -18,7 +18,7 @@ from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
-
+from impl.util.util_cube_dynamic import modify_w_range_max
 
 H_DIM = 2
 W_DIM = 3
@@ -138,7 +138,6 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
         have_range = {"inputs": x, "outputs": y}
         support_format = ["NCHW", "NHWC"]
         for name, tensor in have_range.items():
-            # modify tesnors have range
             if tensor.get("ori_format") not in support_format:
                 err_man.raise_err_specific_user("conv2d_transpose",
                                                 "invalid {} ori_format {}, only support {}".format(
@@ -154,6 +153,35 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
                 err_man.raise_err_specific_user("conv2d_transpose",
                                                 "invalid {} ori_shape {}, only support {}d".format(
                                                     name, str(tensor.get("shape")), str(SHAPE_LEN)))
+        # if over l1 size then modify w range
+        dy_w_range_max, is_single_point = modify_w_range_max(y.get("ori_shape")[y.get("ori_format").find("W")],
+                                                             filter.get("ori_shape")[
+                                                                 filter.get("ori_format").find("W")],
+                                                             filter.get("ori_shape")[
+                                                                 filter.get("ori_format").find("H")],
+                                                             x.get("ori_shape")[x.get("ori_format").find("W")],
+                                                             strides[data_format.find("W")],
+                                                             x.get("dtype").lower(),
+                                                             filter.get("dtype").lower(),
+                                                             "conv2d_transpose")
+        x["range"] = list(x["range"])
+        x["ori_range"] = list(x["ori_range"])
+        if is_single_point:
+            x["range"][x.get("format").find("W") - 1] = (dy_w_range_max, dy_w_range_max)
+            x["ori_range"][x.get("ori_format").find("W")] = (dy_w_range_max, dy_w_range_max)
+        else:
+            x["range"][x.get("format").find("W") - 1] = (
+                x["range"][x.get("format").find("W") - 1][0],
+                min(dy_w_range_max, x["range"][x.get("format").find("W") - 1][1]))
+            x["ori_range"][x.get("ori_format").find("W")] = (
+                x["ori_range"][x.get("ori_format").find("W")][0],
+                min(dy_w_range_max, x["ori_range"][x.get("ori_format").find("W")][1]))
+        if x["ori_shape"][x.get("ori_format").find("W")] > x["ori_range"][x.get("ori_format").find("W")][1]:
+            err_man.raise_err_specific_user("conv2d_transpose",
+                                            "invalid out_backprop ori_shape {}, w should not larger than {}".format(
+                                                str(x.get("shape")), x["ori_range"][x.get("ori_format").find("W")][1]))
+        for name, tensor in have_range.items():
+            # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
             tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
@@ -182,7 +210,6 @@ def _conv2d_transpose_compute(input_size, x, filter, bias, offset_w,
                               dilations=(1, 1, 1, 1),
                               groups=1, data_format='NHWC', output_padding=(0, 0, 0, 0), offset_x=0,
                               kernel_name='conv2d_transpose'):
-
     ori_paras = {
         "input_size": input_size, "x": x, "filters": filter, "bias": bias, "offset_w": offset_w, "y": y,
         "strides": strides, "pads": pads, "dilations": dilations, "groups": groups, "data_format": data_format,
@@ -201,7 +228,7 @@ def _conv2d_transpose_compute(input_size, x, filter, bias, offset_w,
                                      input_sizes=paras.get("input_size"),
                                      para_dict={
                                          "strides":
-                                         (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
+                                             (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
                                          "padding": conv2dbp_para.pads,
                                          "dilations": conv2dbp_para.dilations,
                                          "res_dtype": default_para.get("res_dtype"),

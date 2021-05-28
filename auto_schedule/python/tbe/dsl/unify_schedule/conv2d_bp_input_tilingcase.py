@@ -86,7 +86,7 @@ def parse_fuzz_build_range(info_list):
     list_size = 4
     range_list = []
     op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
-    if op_type == "Conv2DBackpropInput":
+    if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
         target_index = 2
     elif op_type == "Conv2DTranspose":
         target_index = 1
@@ -145,7 +145,7 @@ def gen_support_info(range_x, ori_tensors):
     inputs = []
     item = {}
     op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
-    if op_type == "Conv2DBackpropInput":
+    if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
         item["index"] = 2
     elif op_type == "Conv2DTranspose":
         item["index"] = 1
@@ -153,7 +153,7 @@ def gen_support_info(range_x, ori_tensors):
         item["index"] = 0
     item["tensor"] = []
     tensor_info = {}
-    if op_type == "Conv2DBackpropInput":
+    if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
         ori_tensors_input = ori_tensors.get("out_backprop")
     else:
         ori_tensors_input = ori_tensors.get("x")
@@ -178,6 +178,8 @@ def gen_support_info(range_x, ori_tensors):
                                                        ori_tensors.get("filters").get("ori_format"))
     dx_range_nchw = dx_range
     dy_range_nchw, _, _ = conv2d_backprop.get_output_range(filter_shape_nchw, dx_range_nchw)
+    if op_type == "depthwise_conv2d_backprop_input":
+        dy_range_nchw[1] = [filter_shape_nchw[0] * filter_shape_nchw[1], filter_shape_nchw[0] * filter_shape_nchw[1]]
     range_valid = [[0, 0]] * 4
     range_valid[x_format.find("N")] = list(dy_range_nchw[0])
     range_valid[x_format.find("C")] = list(dy_range_nchw[1])
@@ -228,7 +230,6 @@ def add_covered_shape_range(compile_info):
         # <<< end: keep only one record
         new_compile["kernelId"] = kernel_id
         new_compile["_vars"] = {kernel_id: var_list}
-        # compile_info = gen_compile_info(ori_index)
         range_x = new_compile["repo_range"].get(kernel_id) or new_compile["cost_range"].get(kernel_id)
         new_range = [range_x[:2], range_x[2:4], range_x[4:6]]
         ori_tensors = DynamicConv2dBpInputParams.ori_tensor
@@ -337,7 +338,7 @@ def calc_conv2dbp_input(outs, option=None):
         # generate tgt_area by format
         ori_tensors = DynamicConv2dBpInputParams.ori_tensor
         op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
-        if op_type == "Conv2DBackpropInput":
+        if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
             ori_tensors_input = ori_tensors.get("out_backprop")
         else:
             ori_tensors_input = ori_tensors.get("x")
@@ -1008,17 +1009,21 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 self.k_h * self.k_w == 1:
             return al1_m_data
 
-        # load3d instructions refer to load extra lines with pad/stride/filter
-        if al1_m_data % out_w == 0:
-            # full line could load without extra lines
-            extend_h = 0
-        elif (al1_m_data * 2) % out_w == 0:
-            # every 2 load3d covered only 1 extra line
-            extend_h = 1
+        # tiling load lens less than out_w, nned to load a full line
+        if al1_m_data < out_w:
+            l1_ho = 1 if out_w % al1_m_data == 0 else 2
         else:
-            # other situations need 2 extra lines in case
-            extend_h = 2
-        l1_ho = al1_m_data // out_w + extend_h
+            # load3d instructions refer to load extra lines with pad/stride/filter
+            if al1_m_data % out_w == 0:
+                # full line could load without extra lines
+                extend_h = 0
+            elif (al1_m_data * 2) % out_w == 0:
+                # every 2 load3d covered only 1 extra line
+                extend_h = 1
+            else:
+                # other situations need 2 extra lines in case
+                extend_h = 2
+            l1_ho = al1_m_data // out_w + extend_h
 
         # calculate input lines (hi) from output lines (ho)
         li_hi = self.k_h + (l1_ho - 1)

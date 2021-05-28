@@ -14,10 +14,12 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import error_manager_cube as err_man
 from impl.util.util_cube_dynamic import DeconvolutionParaProcess
 from impl.util.util_cube_dynamic import set_default_para
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import error_manager_cube
+from impl.util.util_cube_dynamic import modify_w_range_max
 
 H_DIM = 2
 W_DIM = 3
@@ -56,14 +58,14 @@ def get_op_support_info(x, filter, bias, offset_w, y, strides,
         # cut H
         if head_overlap_h == -1 or (list(shape_x) != [-2] and shape_x[2] > 0):
             axis_split_matrix += [
-               [util_select_op_base.SplitInput([0, [2], [head_overlap_h], [tail_overlap_h]]),
-                util_select_op_base.SplitOutput([0, [2]])]
+                [util_select_op_base.SplitInput([0, [2], [head_overlap_h], [tail_overlap_h]]),
+                 util_select_op_base.SplitOutput([0, [2]])]
             ]
         # cut W
         if head_overlap_h == -1 or (list(shape_x) != [-2] and shape_x[3] > 0):
             axis_split_matrix += [
-               [util_select_op_base.SplitInput([0, [3], [head_overlap_w], [tail_overlap_w]]),
-                util_select_op_base.SplitOutput([0, [3]])]
+                [util_select_op_base.SplitInput([0, [3], [head_overlap_w], [tail_overlap_w]]),
+                 util_select_op_base.SplitOutput([0, [3]])]
             ]
         # cut Cin
         c_axis = 0 if dtype_x == "float16" else 1
@@ -132,7 +134,6 @@ def deconvolution_generalization(x, filter, bias, offset_w, y, strides, pads, di
         have_range = {"x": x, "y": y}
         support_format = ["NCHW", "NHWC"]
         for name, tensor in have_range.items():
-            # modify tesnors have range
             if tensor.get("ori_format") not in support_format:
                 error_manager_cube.raise_err_specific_user("deconvolution",
                                                            "invalid {} ori_format {}, only support {}".format(
@@ -149,6 +150,35 @@ def deconvolution_generalization(x, filter, bias, offset_w, y, strides, pads, di
                 error_manager_cube.raise_err_specific_user("deconvolution",
                                                            "invalid {} ori_shape {}, only support {}d".format(
                                                                name, str(tensor.get("shape")), str(SHAPE_LEN)))
+        # if over l1 size then modify w range
+        dy_w_range_max, is_single_point = modify_w_range_max(y.get("ori_shape")[y.get("ori_format").find("W")],
+                                                             filter.get("ori_shape")[
+                                                                 filter.get("ori_format").find("W")],
+                                                             filter.get("ori_shape")[
+                                                                 filter.get("ori_format").find("H")],
+                                                             x.get("ori_shape")[x.get("ori_format").find("W")],
+                                                             strides[1],
+                                                             x.get("dtype").lower(),
+                                                             filter.get("dtype").lower(),
+                                                             "deconvolution")
+        x["range"] = list(x["range"])
+        x["ori_range"] = list(x["ori_range"])
+        if is_single_point:
+            x["range"][x.get("format").find("W") - 1] = (dy_w_range_max, dy_w_range_max)
+            x["ori_range"][x.get("ori_format").find("W")] = (dy_w_range_max, dy_w_range_max)
+        else:
+            x["range"][x.get("format").find("W") - 1] = (
+                x["range"][x.get("format").find("W") - 1][0],
+                min(dy_w_range_max, x["range"][x.get("format").find("W") - 1][1]))
+            x["ori_range"][x.get("ori_format").find("W")] = (
+                x["ori_range"][x.get("ori_format").find("W")][0],
+                min(dy_w_range_max, x["ori_range"][x.get("ori_format").find("W")][1]))
+        if x["ori_shape"][x.get("ori_format").find("W")] > x["ori_range"][x.get("ori_format").find("W")][1]:
+            err_man.raise_err_specific_user("deconvolution",
+                                            "invalid out_backprop ori_shape {}, w should not larger than {}".format(
+                                                str(x.get("shape")), x["ori_range"][x.get("ori_format").find("W")][1]))
+        for name, tensor in have_range.items():
+            # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
                 if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
             tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]

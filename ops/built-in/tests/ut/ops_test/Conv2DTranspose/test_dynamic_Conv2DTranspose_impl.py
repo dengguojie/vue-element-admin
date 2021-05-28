@@ -22,7 +22,7 @@ dynamic_conv2d_transpose_testcase = [
     ((7, 6, 64, 10), [-2], (1, 7, 6, 64), (1, 1), (0, 0, 0, 0), "NHWC", 1, [0, 1, 2, 3], 0, "success"),
   
     ((3, 3, 16, 16), (2, 5, 5, 32), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0, RuntimeError),
-    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [1], 0, RuntimeError),   
+    ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [1], 0, RuntimeError),
 ]
 
 
@@ -104,7 +104,10 @@ def _gen_trans_data_case(param):
     data_format = data_format.upper()
     filter_format = 'NCHW' if data_format == 'NCHW' else 'HWCN'
     if out_backprop_ori_shape == [-2]:
-        input_size_op = [-1, input_size[data_format.index("C")], -1, -1] if data_format == 'NCHW' else [-1, -1, -1, input_size[data_format.index("C")]]
+        input_size_op = [-1, input_size[data_format.index("C")], -1, -1] if data_format == 'NCHW' else [-1, -1, -1,
+                                                                                                        input_size[
+                                                                                                            data_format.index(
+                                                                                                                "C")]]
         x = {'shape': [4], 'format': 'NC1HWC0', 'ori_shape': [4], 'ori_format': data_format, 'dtype': 'float16',
              'range': None}
         filter = {'shape': _shape_to_C1HWNCoC0(filter_ori_shape, filter_format, dtype),
@@ -113,7 +116,7 @@ def _gen_trans_data_case(param):
         out_backprop = {'shape': out_backprop_ori_shape, 'format': 'NC1HWC0', 'ori_shape': out_backprop_ori_shape,
                         'ori_format': data_format, 'dtype': 'float16', 'range': None}
         y = {'shape': _shape_to_NC1HWC0(input_size_op, data_format, dtype), 'format': 'NC1HWC0',
-                      'ori_shape': input_size_op, 'ori_format': data_format, 'dtype': 'float16', 'range': None}
+             'ori_shape': input_size_op, 'ori_format': data_format, 'dtype': 'float16', 'range': None}
     else:
         filter_shape = _shape_to_C1HWNCoC0(filter_ori_shape, filter_format, dtype),
         out_backprop_shape = _shape_to_NC1HWC0(out_backprop_ori_shape, data_format, dtype)
@@ -170,10 +173,12 @@ def _gen_trans_data_case(param):
         "support_expect": True
     }
 
+
 for case in dynamic_conv2d_transpose_testcase:
     ut_case.add_case(["Ascend910A"], _gen_trans_data_case(case))
 
-def test_conv2d_transpose_fuzz_build_generalization(test_arg):
+
+def test_conv2d_transpose_fuzz_build_generalization_general(test_arg):
     from impl.dynamic.conv2d_transpose import conv2d_transpose_generalization
     input_list = [
         {
@@ -187,7 +192,9 @@ def test_conv2d_transpose_fuzz_build_generalization(test_arg):
             'ori_shape': (16, 33, 14, 12),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
-            'dtype': 'float16'
+            'dtype': 'float16',
+            'range': [(16, 32), (3, 3), (8, 16), (8, 16), (16, 16)],
+            'ori_range': [(16, 32), (33, 33), (8, 16), (8, 16)]
         }, {
             'ori_shape': (33, 3, 3, 5),
             'ori_format': 'NCHW',
@@ -200,47 +207,87 @@ def test_conv2d_transpose_fuzz_build_generalization(test_arg):
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', (0, 0, 0, 0), 0,
-        'conv2d_transpose_fuzz_build_generalization']
+        'conv2d_transpose_fuzz_build_generalization_general']
     conv2d_transpose_generalization(*input_list)
 
 
-print("adding conv2d test_conv2d_transpose_fuzz_build_generalization testcase")
-ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_generalization)
+ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_generalization_general)
+
+
+def test_conv2d_transpose_fuzz_build_generalization_range_max_fixed(test_arg):
+    from impl.dynamic.conv2d_transpose import conv2d_transpose_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'shape': (50, 1, 26, 2888, 16),
+            'ori_shape': (50, 2, 26, 2888),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(32, 64), (1, 1), (16, 32), (1024, 4096), (16, 16)],
+            'ori_range': [(32, 64), (2, 2), (16, 32), (1024, 4096)]
+        }, {
+            'ori_shape': (1, 2, 10, 10),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (50, 1, 35, 2896, 16),
+            'ori_shape': (50, 2, 35, 2896),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', (0, 0, 0, 0), 0,
+        'conv2d_transpose_fuzz_build_generalization_range_max_fixed']
+    conv2d_transpose_generalization(*input_list)
+
+
+ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_generalization_range_max_fixed)
+
 
 def test_get_op_support_info_dynamic_conv2dtranspose_0(test_arg):
     y = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
          "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
          "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
-        }
-    out_backprop = {"shape":  (-1, 4, -1, -1, 16), 'ori_shape':(-1, -1, -1, 64),
+         }
+    out_backprop = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
                     "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
                     "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
-                   }
-    filter = {"shape":  (36, 4, 16, 16), 'ori_shape':(3, 3, 64, 64),
+                    }
+    filter = {"shape": (36, 4, 16, 16), 'ori_shape': (3, 3, 64, 64),
               "ori_format": "NHWC", "format": "FRATAL_NZ", "dtype": "float16",
               "range": ((36, 36), (4, 4), (16, 16), (16, 16))
-             }
-    input_size =  (-1, -1, -1, 64)
+              }
+    input_size = (-1, -1, -1, 64)
     get_op_support_info(input_size, out_backprop, filter, None, None, y, (1, 1, 1, 1), (0, 0, 0, 0))
+
+
 def test_get_op_support_info_dynamic_conv2dtranspose_1(test_arg):
     y = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
          "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
          "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
-        }
-    out_backprop = {"shape":  (-1, 4, -1, -1, 16), 'ori_shape':(-1, -1, -1, 64),
+         }
+    out_backprop = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
                     "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",
                     "range": ((2, 4), (4, 4), (4, 8), (4, 8), (16, 16))
-                   }
-    filter = {"shape":  (4, 4, 16, 16), 'ori_shape':(1, 1, 64, 64),
+                    }
+    filter = {"shape": (4, 4, 16, 16), 'ori_shape': (1, 1, 64, 64),
               "ori_format": "NHWC", "format": "FRATAL_NZ", "dtype": "float16",
               "range": ((4, 4), (4, 4), (16, 16), (16, 16))
-             }
-    bias = {"shape": (64, ), 'ori_shape': (64, ),
+              }
+    bias = {"shape": (64,), 'ori_shape': (64,),
             "ori_format": "ND", "format": "ND", "dtype": "float32",
-            "range": ((64, 64), )
+            "range": ((64, 64),)
             }
-    input_size =  (-1, -1, -1, 64)
+    input_size = (-1, -1, -1, 64)
     get_op_support_info(input_size, out_backprop, filter, bias, None, y, (1, 1, 1, 1), (0, 0, 0, 0))
+
+
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_conv2dtranspose_0)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_conv2dtranspose_1)
 

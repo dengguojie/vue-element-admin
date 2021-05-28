@@ -28,8 +28,13 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 import impl.util.util_deconv_comm as comm
+from te.platform import get_soc_spec
+from te.platform import cce_params
 
 
+# the bytes length of several dtype
+BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
+                  "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 N_DIM = 0
 C_DIM = 1
 H_DIM = 2
@@ -111,6 +116,40 @@ def set_default_para():
     default_para["res_dtype"] = "float16"
     default_para["input_size"] = {"ori_shape": INPUT_SIZE_DEFAULT_SHAPE}
     return default_para
+
+def modify_w_range_max(fmap_w, filter_w, filter_h, dedy_w, stride_w, out_backprop_dtype, filter_dtype, op_type):
+    """
+    modify w range max value
+    """
+    c0_size = cce_params.C0_SIZE
+    c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
+    h_value_max = filter_h + 1
+
+    b_l1_size = filter_w * filter_h * c0_size * c0_size_k * BIT_RATIO_DICT.get(filter_dtype)
+    l1_size = get_soc_spec("L1_SIZE")
+    a_l1_size = l1_size - b_l1_size
+    w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
+    w_max = w_value // stride_w
+
+    is_single_point = False
+    if w_max < dedy_w:
+        if fmap_w % c0_size == 0:
+            is_single_point = True
+            h_value_max = filter_h
+            w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
+            w_max = w_value // stride_w
+            if w_max >= dedy_w:
+                w_max = dedy_w
+            else:
+                err_man.raise_err_specific_user(op_type,
+                                                "w of dedy is too large, only support not larger than {}, "
+                                                "actually is {}".format(str(w_max), str(dedy_w)))
+        else:
+            err_man.raise_err_specific_user(op_type,
+                                            "w of dedy is too large, only support not larger than {}, "
+                                            "actually is {}".format(str(w_max), str(dedy_w)))
+
+    return w_max, is_single_point
 
 
 class CubeParaProcess:
@@ -354,6 +393,10 @@ class CubeParaProcess:
             warnings.warn("The output calculated based on the higher limit of the input w "+
                 "range is more than 4096, and the higher limit of the output w range is corrected "+
                 "as {}".format(out_w_upper))
+        if out_h_upper and out_h_lower > out_h_upper:
+            out_h_lower = out_h_upper
+        if out_w_upper and out_w_lower > out_w_upper:
+            out_w_lower = out_w_upper
         if out_range:
             return [out_range[N_DIM], out_range[C_DIM], (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
         return [in_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
@@ -809,14 +852,10 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         dy_range_nchw, correct_range_flag, new_dx_range_nchw = self.get_output_range(filter_shape_nchw, dx_range_nchw)
 
         output_range = copy.deepcopy(dy_range_nchw)
-        if output_range[H_DIM][1]:
-            output_range[H_DIM] = (output_range[H_DIM][0], output_range[H_DIM][1] * self.strides[H_DIM])
         if output_range[W_DIM][1]:
             if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
                 output_range[W_DIM] = (output_range[W_DIM][0],
                                        output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
-            else:
-                output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
         self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
         return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, new_dx_range_nchw, group_para, correct_range_flag
@@ -922,7 +961,10 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
         def _get_output(x_in, k_size, pads, stride, dilation):
             if not x_in:
                 return x_in
-            return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+            if DYNAMIC_FLAG in pads:
+                return ceil_div(x_in, stride)
+            else:
+                return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
         correct_range_flag = False
         new_dy_range = copy.deepcopy(dy_range)
@@ -1012,6 +1054,10 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
                     warnings.warn("The input calculated based on the upper limit of the output w "+
                         "range is more than 4096, and the upper limit of the input w range is corrected "+
                         "as {}".format(dx_w_upper))
+        if dx_h_upper and dx_h_lower > dx_h_upper:
+            dx_h_lower = dx_h_upper
+        if dx_w_upper and dx_w_lower > dx_w_upper:
+            dx_w_lower = dx_w_upper
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
         return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
@@ -1061,14 +1107,10 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
                                              fusion_para=None,
                                              group_dict=group_para)
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
-            if output_range[H_DIM][1]:
-                output_range[H_DIM] = (output_range[H_DIM][0], output_range[H_DIM][1] * self.strides[H_DIM])
             if output_range[W_DIM][1]:
                 if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
                     output_range[W_DIM] = (output_range[W_DIM][0],
                                            output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
-                else:
-                    output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
         dx_range_nchw, correct_range_flag, new_dy_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
 
@@ -1143,7 +1185,10 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
         def _get_output(x_in, k_size, pads, stride, dilation):
             if not x_in:
                 return x_in
-            return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+            if DYNAMIC_FLAG in pads:
+                return ceil_div(x_in, stride)
+            else:
+                return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
         correct_range_flag = False
         new_dy_range = copy.deepcopy(dy_range)
@@ -1202,6 +1247,10 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
                 warnings.warn("The input calculated based on the upper limit of the output w "+
                     "range is more than 4096, and the upper limit of the input w range is corrected "+
                     "as {}".format(dx_w_upper))
+        if dx_h_upper and dx_h_lower > dx_h_upper:
+            dx_h_lower = dx_h_upper
+        if dx_w_upper and dx_w_lower > dx_w_upper:
+            dx_w_lower = dx_w_upper
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
         return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
@@ -1252,14 +1301,10 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
                                              fusion_para=None,
                                              group_dict=group_para)
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
-            if output_range[H_DIM][1]:
-                output_range[H_DIM] = (output_range[H_DIM][0], output_range[H_DIM][1] * self.strides[H_DIM])
             if output_range[W_DIM][1]:
                 if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
                     output_range[W_DIM] = (output_range[W_DIM][0],
                                            output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
-                else:
-                    output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
         dx_range_nchw, correct_range_flag, new_dy_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
 
@@ -1360,14 +1405,10 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
             filter_shape_nchw, dx_range_nchw)
 
         output_range = copy.deepcopy(dy_range_nchw)
-        if output_range[H_DIM][1]:
-            output_range[H_DIM] = (output_range[H_DIM][0], output_range[H_DIM][1] * self.strides[H_DIM])
         if output_range[W_DIM][1]:
             if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
                 output_range[W_DIM] = (output_range[W_DIM][0],
                                        output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
-            else:
-                output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
         self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
         return (dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, new_dx_range_nchw,
