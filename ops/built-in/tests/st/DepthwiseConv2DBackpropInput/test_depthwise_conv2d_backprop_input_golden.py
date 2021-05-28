@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def calc_expect_func(weight, out_backprop, input_grad, input_size, strides, pads, dilations, data_format='NCHW'):
+def calc_expect_func(input_size, weight, out_backprop, input_grad, strides, pads, dilations, data_format='NCHW'):
     filter_data = weight.get('value')
     filter_shape = filter_data.shape
     # filter_shape = weight.get('shape')
@@ -17,11 +17,11 @@ def calc_expect_func(weight, out_backprop, input_grad, input_size, strides, pads
     dy_shape = dy_data.shape
     # dy_shape = dy.get('shape')
     dy_dtype = out_backprop.get('dtype')
-    input_size_shape = input_size
+    input_size_shape = input_grad.get('shape')
     y_dtype = input_grad.get('dtype')
     y_format = input_grad.get('format')
-    print('------------params:', filter_shape, dy_shape,
-          input_grad, input_size, strides, pads, data_format)
+    print('------------params:', filter_shape,
+          dy_shape, input_grad, strides, pads, data_format)
 
     h_index = data_format.index('H')
     w_index = data_format.index('W')
@@ -73,6 +73,30 @@ def calc_expect_func(weight, out_backprop, input_grad, input_size, strides, pads
     print('------golden:', out.shape)
     res = out.astype(y_dtype)
     return [res]
+
+
+def _getPads(padding, x_shape, w_shape, dy_shape, strides, dilations):
+    _, H, W, _ = x_shape
+    kh, kw, _, _ = w_shape
+    strideh, stridew = strides
+    dilationh, dilationw = dilations
+    He = (kh - 1) * dilationh + 1
+    We = (kw - 1) * dilationw + 1
+    if padding == 'VALID':
+        pads = [0, 0, 0, 0]
+    elif padding == 'SAME':
+        if dy_shape is None:
+            Ho = (H + strideh - 1) // strideh
+            Wo = (W + stridew - 1) // stridew
+        else:
+            _, Ho, Wo, _ = dy_shape
+        padh = max(0, (Ho - 1) * strideh + He - H)
+        padw = max(0, (Wo - 1) * stridew + We - W)
+        pads = [padh // 2, padh - padh // 2, padw // 2, padw - padw // 2]
+    else:
+        raise RuntimeError('not support this padding yet')
+
+    return pads
 
 
 def _getPadding(pads, x_shape, w_shape, dy_shape, strides, dilations):

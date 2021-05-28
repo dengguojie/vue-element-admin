@@ -1,0 +1,312 @@
+[
+  {
+    "op": "AvgPoolGrad",
+    "case_name" : "test_avg_pool_grad_001",
+    "calc_expect_func_file" : "st/AvgPoolGrad/test_avg_pool_grad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [4],
+        "ori_shape": [4],
+        "type": "int32",
+        "value": [4,16,1,1],
+        "name": "orig_input_shape"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,16,-1,-1],
+        "ori_shape": [-1,16,-1,-1],
+        "typical_shape": [4,16,1,1],
+        "shape_range": [[1,224],[1,127],[1,127]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "input_grad"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,16,-1,-1],
+        "ori_shape": [-1,16,-1,-1],
+        "typical_shape": [4,16,1,1],
+        "shape_range": [[1,224],[1,127],[1,127]],
+        "type": "float16",
+        "name": "out_grad"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,5,5],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "AvgPoolGrad",
+    "case_name" : "test_avg_pool_grad_002",
+    "calc_expect_func_file" : "st/AvgPoolGrad/test_avg_pool_grad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [4],
+        "ori_shape": [4],
+        "type": "int32",
+        "value": [17,101,101,17],
+        "name": "orig_input_shape"
+      },
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [-1,49,-1,17],
+        "ori_shape": [-1,49,-1,17],
+        "typical_shape": [17,49,49,17],
+        "shape_range": [[1,224],[3,-1]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "input_grad"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [-1,101,-1,17],
+        "ori_shape": [-1,101,-1,17],
+        "typical_shape": [17,101,101,17],
+        "shape_range": [[1,224],[3,-1]],
+        "type": "float16",
+        "name": "out_grad"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,5,5,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,2,2,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NHWC",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "AvgPoolGrad",
+    "case_name" : "test_avg_pool_grad_003",
+    "calc_expect_func_file" : "st/AvgPoolGrad/test_avg_pool_grad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [4],
+        "ori_shape": [4],
+        "type": "int32",
+        "value": [4,7,4,2],
+        "name": "orig_input_shape"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,2,2],
+        "ori_shape": [-1,7,2,2],
+        "typical_shape": [4,7,2,2],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "input_grad"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,4,2],
+        "ori_shape": [-1,7,4,2],
+        "typical_shape": [4,7,4,2],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "name": "out_grad"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,5,5],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,2,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "AvgPoolGrad",
+    "case_name" : "test_avg_pool_grad_004",
+    "calc_expect_func_file" : "st/AvgPoolGrad/test_avg_pool_grad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [4],
+        "ori_shape": [4],
+        "type": "int32",
+        "value": [4,7,2,4],
+        "name": "orig_input_shape"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [4,7,-1,-1],
+        "ori_shape": [4,7,-1,-1],
+        "typical_shape": [4,7,2,2],
+        "shape_range": [[1,127],[1,127]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "input_grad"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [4,7,-1,-1],
+        "ori_shape": [4,7,-1,-1],
+        "typical_shape": [4,7,2,4],
+        "shape_range": [[1,127],[1,127]],
+        "type": "float16",
+        "name": "out_grad"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,5,5],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,1,2],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "AvgPoolGrad",
+    "case_name" : "test_avg_pool_grad_005",
+    "calc_expect_func_file" : "st/AvgPoolGrad/test_avg_pool_grad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [4],
+        "ori_shape": [4],
+        "type": "int32",
+        "value": [4,7,6,7],
+        "name": "orig_input_shape"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,-1,-1],
+        "ori_shape": [-1,7,-1,-1],
+        "typical_shape": [4,7,6,4],
+        "shape_range": [[1,-1],[1,127],[1,127]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "input_grad"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,-1,-1],
+        "ori_shape": [-1,7,-1,-1],
+        "typical_shape": [4,7,6,7],
+        "shape_range": [[1,-1],[1,120],[1,120]],
+        "type": "float16",
+        "name": "out_grad"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,1,2],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  }
+]

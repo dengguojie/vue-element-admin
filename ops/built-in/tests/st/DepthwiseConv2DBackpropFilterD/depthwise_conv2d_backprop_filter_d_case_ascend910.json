@@ -1,0 +1,66 @@
+[
+  {
+    "op": "DepthwiseConv2DBackpropFilterD",
+    "case_name" : "test_depthwise_conv2d_backprop_filter_d_001",
+    "calc_expect_func_file" : "st/DepthwiseConv2DBackpropFilterD/test_depthwise_conv2d_backprop_filter_d_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [4,16,1,1],
+        "ori_shape": [4,16,1,1],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [4,16,1,1],
+        "ori_shape": [4,16,1,1],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [1,16,5,5],
+        "ori_shape": [1,16,5,5],
+        "type": "float32",
+        "name": "filter_grad"
+      }
+    ],
+    "attr": [
+      {
+        "name": "filter_size",
+        "value": [1,16,5,5],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [2,2,2,2],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  }
+]
