@@ -179,7 +179,7 @@ static Status ParseOpToGraphInt8Conv(const ge::Operator& op, Graph& graph) {
   std::map<std::string, ge::Format> kvmap = {{"NCHW", ge::FORMAT_NCHW}, {"NHWC", ge::FORMAT_NHWC}};
   auto order_map = kvmap.find(order);
   if (order_map == kvmap.end()){
-    OP_LOGE("Int8Conv", "only support NCHW/NHWC, but got %s", order);
+    OP_LOGE("Int8Conv", "only support NCHW/NHWC, but got %s", order.c_str());
     return FAILED;
   }
 
