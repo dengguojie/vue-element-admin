@@ -1,0 +1,54 @@
+[
+    {
+        "case_name": "Test_SparseToDense_001",
+        "op": "SparseToDense",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1,3],
+                "data_distribute": ["uniform"],
+                "value_range": [1.0, 1.5],
+                "value": [[0,1,1]]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [3],
+                "data_distribute": ["uniform"],
+                "value_range": [1.0, 1.5],
+                "value": [2,2,2]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [1.0, 1.5],
+                "value": [1]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [1],
+                "data_distribute": ["uniform"],
+                "value_range": [3.0, 6.0],
+                "value": [5]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [2,2,2]
+            }
+        ],
+        "attr": [
+            {
+                "name": "validate_indices",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    }
+]
