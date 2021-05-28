@@ -1151,6 +1151,7 @@ bool OneInOneOutDynamicInfer(const Operator& op,
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_info == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")), return false);
   auto input_desc = op_info->MutableInputDesc(input_name);
+  CHECK(input_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid input_desc")), return false);
   vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
   DataType input_dtype = input_desc->GetDataType();
 
@@ -1160,6 +1161,7 @@ bool OneInOneOutDynamicInfer(const Operator& op,
     MakeUpShapeRange(input_shape, input_range);
 
     auto output_desc = op_info->MutableOutputDesc(0);
+    CHECK(output_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid output_desc")), return false);
     for (const string& output_name : output_name_list) {
       output_desc = op_info->MutableOutputDesc(output_name);
       output_desc->SetShape(GeShape(input_shape));
@@ -1169,6 +1171,7 @@ bool OneInOneOutDynamicInfer(const Operator& op,
     }
   } else {
     auto output_desc = op_info->MutableOutputDesc(0);
+    CHECK(output_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid output_desc")), return false);
     for (const string& output_name : output_name_list) {
       output_desc = op_info->MutableOutputDesc(output_name);
       output_desc->SetShape(GeShape(input_shape));
