@@ -73,6 +73,13 @@ void InitRunningParams(ScatterNonAliasingAddTilingParams& params) {
   params.varNum = 0;
 }
 
+static int64_t GetCeilTwoInt(int64_t value1, int64_t value2) {
+  if (value2 == 0) {
+    return value1;
+  }
+  return (int64_t)(value1 + value2 - 1) / value2;
+}
+
 void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indicesNum, int64_t addsNum,
                       int64_t addDataNum, int64_t maxIndice, int64_t ubSize, int64_t coreNum, int64_t varSize,
                       int64_t indicesSize, int64_t varDataEachBlock, string VarDtype) {
@@ -117,16 +124,16 @@ void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indi
   }
   if (addDataNum < varDataEachBlock) {
     runParams.coreNum = 1;
-    runParams.indiceStep = ceil(float(maxIndice));
+    runParams.indiceStep = maxIndice;
     int64_t VarBlockNum = 32 / VarDtypeSize;
-    runParams.indiceStep = ceil(float(runParams.indiceStep) / VarBlockNum) * VarBlockNum;
-    runParams.indiceStep = ceil(float(runParams.indiceStep) / addDataNum) * addDataNum;
+    runParams.indiceStep = GetCeilTwoInt(runParams.indiceStep, VarBlockNum) * VarBlockNum;
+    runParams.indiceStep = GetCeilTwoInt(runParams.indiceStep, addDataNum) * addDataNum;
   } else {
-    runParams.indiceStep = ceil(float(maxIndice) / coreNum);
+    runParams.indiceStep = GetCeilTwoInt(maxIndice, coreNum);
     int64_t VarBlockNum = 32 / VarDtypeSize;
-    runParams.indiceStep = ceil(float(runParams.indiceStep) / VarBlockNum) * VarBlockNum;
-    runParams.indiceStep = ceil(float(runParams.indiceStep) / addDataNum) * addDataNum;
-    runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
+    runParams.indiceStep = GetCeilTwoInt(runParams.indiceStep, VarBlockNum) * VarBlockNum;
+    runParams.indiceStep = GetCeilTwoInt(runParams.indiceStep, addDataNum) * addDataNum;
+    runParams.coreNum = GetCeilTwoInt(maxIndice, runParams.indiceStep);
   }
 }
 

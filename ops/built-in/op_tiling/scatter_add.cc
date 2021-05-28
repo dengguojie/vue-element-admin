@@ -35,6 +35,7 @@ const int64_t OUT_SPECIAL_DIM_0 = 163623;
 const int64_t OUT_SPECIAL_DIM_1 = 1;
 const int64_t OUT_SPECIAL_DIM_2 = 80;
 const int64_t OUT_SPECIAL_DIM_3 = 21340;
+const int64_t OUT_SPECIAL_DIM_4 = 12828;
 // 32b aligned, ub can store all updatesNum, float32 atomic
 const int64_t TILING_MODE_1 = 1;
 // 32b aligned, ub can't store all updatesNum, float32 atomic
@@ -346,14 +347,14 @@ bool GetScatterAddCompileParams(const std::string& opType, const nlohmann::json&
 }
 
 bool CheckScatterAddHighPerfShape(std::vector<int64_t> varShape, std::vector<int64_t> indicesShape) {
-  if (indicesShape.size() != 1 || varShape.size() != 2) {
-    return false;
+  if ((indicesShape.size() == 1 && varShape.size() == 2) &&
+      ((varShape[0] == OUT_SPECIAL_DIM_0 && varShape[1] == OUT_SPECIAL_DIM_1) ||
+       (varShape[0] == OUT_SPECIAL_DIM_0 && varShape[1] == OUT_SPECIAL_DIM_2) ||
+       (varShape[0] == OUT_SPECIAL_DIM_3 && varShape[1] == OUT_SPECIAL_DIM_1) ||
+       (varShape[0] == OUT_SPECIAL_DIM_3 && varShape[1] == OUT_SPECIAL_DIM_2))) {
+    return true;
   }
-
-  if ((varShape[0] == OUT_SPECIAL_DIM_0 && varShape[1] == OUT_SPECIAL_DIM_1) ||
-      (varShape[0] == OUT_SPECIAL_DIM_0 && varShape[1] == OUT_SPECIAL_DIM_2) ||
-      (varShape[0] == OUT_SPECIAL_DIM_3 && varShape[1] == OUT_SPECIAL_DIM_1) ||
-      (varShape[0] == OUT_SPECIAL_DIM_3 && varShape[1] == OUT_SPECIAL_DIM_2)) {
+  if ((indicesShape.size() == 1 && varShape.size() == 1) && (varShape[0] == OUT_SPECIAL_DIM_4)) {
     return true;
   }
   return false;
