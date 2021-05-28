@@ -147,6 +147,10 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
         ut_cover.start()
 
     try:
+        if sys.modules.get(run_arg.op_module_name):
+            print("[INFO]reload module for coverage ,moule name:", sys.modules.get(run_arg.op_module_name))
+            import importlib
+            importlib.reload(sys.modules.get(run_arg.op_module_name))
         case_dir = os.path.dirname(os.path.realpath(run_arg.case_file))
         case_module_name = os.path.basename(os.path.realpath(run_arg.case_file))[:-3]
         sys.path.insert(0, case_dir)
