@@ -148,13 +148,6 @@ Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
 
   bool failStatus = false;
 
-  ProcessDynamicRnnV3Wdate(fusedNode, failStatus, wciIndex, batchSize, hiddenSize);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process wci fail."), return FAILED);
-  ProcessDynamicRnnV3Wdate(fusedNode, failStatus, wcfIndex, batchSize, hiddenSize);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process wcf fail."), return FAILED);
-  ProcessDynamicRnnV3Wdate(fusedNode, failStatus, wcoIndex, batchSize, hiddenSize);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process wco fail."), return FAILED);
-
   AddBroadCastForCt(graph, fusedNode, failStatus, batchSize, hiddenSize, stateSize);
   FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process wco fail."), return FAILED);
 
