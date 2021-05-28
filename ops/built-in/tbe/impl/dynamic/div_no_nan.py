@@ -70,7 +70,7 @@ def div_no_nan_compute(input_x, input_y, ):
         neg_one = tvm.const(-1, "float32")
 
     y_cmp = tbe.vabs(input_y)
-    if tbe_platform.api_check_support("te.lang.cce.vmins", "float32"):
+    if tbe_platform.api_check_support("tbe.dsl.vmins", "float32"):
         y_index_help_1 = tbe.vmins(y_cmp, help_min)
     else:
         cmp_help = tbe.broadcast(help_min, shape_y)

@@ -92,20 +92,31 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
     mul_0 = tbe.vmuls(tanh_parameter, const_0)
     # y
     mul_0_min = tbe.vmins(mul_0, const_3)
-    right_mul = tbe.vexp(mul_0_min)
+    if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and dtype == "float32":
+        mul_0_min_fp16 = tbe.cast_to(mul_0_min, "float16")
+        right_mul = tbe.vexp(mul_0_min_fp16)
+    else:
+        right_mul = tbe.vexp(mul_0_min)
+    right_mul_fp32 = tbe.cast_to(right_mul, dtype)
+
     # abs(y)
     mul_0_abs = tbe.vabs(mul_0)
     # -abs(y)
     mul_0_abs_neg = tbe.vmuls(mul_0_abs, const_2)
 
     # the formula is e^(-abs(y))
-    mul_0_abs_neg_exp = tbe.vexp(mul_0_abs_neg)
+    if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and dtype == "float32":
+        mul_0_abs_neg_fp16 = tbe.cast_to(mul_0_abs_neg, "float16")
+        mul_0_abs_neg_exp = tbe.vexp(mul_0_abs_neg_fp16)
+    else:
+        mul_0_abs_neg_exp = tbe.vexp(mul_0_abs_neg)
+    mul_0_abs_neg_exp_fp32 = tbe.cast_to(mul_0_abs_neg_exp, dtype)
 
     # the formula is e^(-abs(y)) + 1
-    mul_0_abs_neg_exp_add = tbe.vadds(mul_0_abs_neg_exp, const_1)
+    mul_0_abs_neg_exp_add = tbe.vadds(mul_0_abs_neg_exp_fp32, const_1)
     left_mul = tbe.vdiv(input_x, mul_0_abs_neg_exp_add)
 
-    result = tbe.vmul(left_mul, right_mul)
+    result = tbe.vmul(left_mul, right_mul_fp32)
 
     if has_improve_precision:
         result = tbe.cast_to(result, "float16")

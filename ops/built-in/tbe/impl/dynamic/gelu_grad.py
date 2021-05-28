@@ -67,20 +67,26 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
 
     has_improve_precision = False
     if input_dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vexp",
+            tbe_platform.api_check_support("tbe.dsl.vexp",
                                            "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
 
     input_abs = tbe.vabs(input_x)
     power_val = tbe.vmuls(input_abs, tvm.const(-2, "float32"))
-    exp_val = tbe.vexp(power_val)
 
-    up_val_tmp = tbe.vmul(exp_val, input_x)
+    if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and dtype == "float32":
+        power_val_fp16 = tbe.cast_to(power_val, "float16")
+        exp_val = tbe.vexp(power_val_fp16)
+    else:
+        exp_val = tbe.vexp(power_val)
+    exp_val_fp32 = tbe.cast_to(exp_val, input_dtype)
+
+    up_val_tmp = tbe.vmul(exp_val_fp32, input_x)
     up_val = tbe.vsub(input_x, up_val_tmp)
 
     input_x_tmp = tbe.vadds(input_abs, MIN_FP32)
-    down_val_tmp = tbe.vadds(exp_val, tvm.const(1, "float32"))
+    down_val_tmp = tbe.vadds(exp_val_fp32, tvm.const(1, "float32"))
     down_val = tbe.vmul(down_val_tmp, input_x_tmp)
 
     res = tbe.vdiv(up_val, down_val)
@@ -195,7 +201,7 @@ def gelu_grad_compute(input_dy, input_x, input_y,
 
     has_improve_precision = False
     if input_dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vexp",
+            tbe_platform.api_check_support("tbe.dsl.vexp",
                                            "float32"):
         input_dy = tbe.cast_to(input_dy, "float32")
         input_x = tbe.cast_to(input_x, "float32")
