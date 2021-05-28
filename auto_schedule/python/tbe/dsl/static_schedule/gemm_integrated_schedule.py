@@ -1744,8 +1744,7 @@ class GemmSchedule(object):
             ) = b_l0b_shape[-4:]
             self.bl0_tiling_batch = (b_l0b_shape[0] if self.have_batch_b else 0) // tiling.get("block_dim")[0]
             self.bl0_tiling_nb = self.tiling.get("CL0_matrix")[0]
-            if self.is_dynamic:
-                self.bl0_tiling_kb = self.tiling.get("AL0_matrix")[1]
+            self.bl0_tiling_kb = self.tiling.get("AL0_matrix")[1]
         self.bl0_tiling_k0 = self.block_reduce
 
         (
@@ -2145,10 +2144,7 @@ class GemmSchedule(object):
 
     def _l0b_process(self):
         self._print_debug("-------debug info in l0b_process-------")
-        not_need_process = self.tiling.get("BL0_matrix") == [] and (not self.is_dynamic)
-        not_need_process = not_need_process and (not self.have_batch_b)
-        if not_need_process:
-            return
+
         bl0_tiling_kb, bl0_tiling_nb = self.bl0_tiling_kb, self.bl0_tiling_nb
         bl0_tiling_n0, bl0_tiling_k0 = self.bl0_tiling_n0, self.bl0_tiling_k0
         cl0_tiling_mc, cl0_tiling_nc = self.cl0_tiling_mc, self.cl0_tiling_nc
