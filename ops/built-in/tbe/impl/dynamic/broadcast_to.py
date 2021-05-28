@@ -111,8 +111,16 @@ def broadcast_to(x, shape, y, kernel_name="broadcast_to"):
     shape_shape_adapt = []
     shape_range_adapt = []
 
-    shape_shape_adapt = [-1] + input_x_shape
-    shape_range_adapt = [(1, None)] + input_x_range
+    for shape_i, range_i in zip(input_x_shape, input_x_range):
+        if shape_i == 1 or (shape_i == -1 and range_i[0] ==  1):
+            shape_shape_adapt.append(-1)
+            shape_range_adapt.append((1, None))
+        else:
+            shape_shape_adapt.append(shape_i)
+            shape_range_adapt.append(range_i)
+
+    shape_shape_adapt = [-1] + shape_shape_adapt
+    shape_range_adapt = [(1, None)] + shape_range_adapt
 
     shape["shape"] = shape_shape_adapt
     shape["range"] = shape_range_adapt
