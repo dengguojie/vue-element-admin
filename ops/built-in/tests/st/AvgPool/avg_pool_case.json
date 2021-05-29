@@ -2,7 +2,7 @@
   {
     "op": "AvgPool",
     "case_name" : "test_avg_pool_001",
-    "calc_expect_func_file" : "st/AvgPool/test_avg_pool_golden.py:calc_expect_func",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "NCHW",
@@ -60,7 +60,7 @@
   {
     "op": "AvgPool",
     "case_name" : "test_avg_pool_002",
-    "calc_expect_func_file" : "st/AvgPool/test_avg_pool_golden.py:calc_expect_func",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
     "input_desc": [
       {
         "format": "NHWC",
