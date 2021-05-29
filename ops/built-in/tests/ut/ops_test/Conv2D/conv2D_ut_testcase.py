@@ -34,6 +34,9 @@ conv2D_ut_testcase = [
 ["Ascend310", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'int8'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'int8'}, None, None, {'dtype': 'int32'}, (1, 1, 1, 1), (0, 0, 0, 0), (2, 2, 2, 2), RuntimeError],
 # ============ dma load3d time out aicore error case ===============
 ["Ascend310", {'ori_shape': (1, 100001, 19, 1), 'shape': (1, 1, 100001, 19, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (256, 5, 1, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+# ============ dma load3d exceed L1 runtime error case ===============
+["Ascend310", {'ori_shape': (1, 100001, 9, 3), 'shape': (1, 1, 100001, 9, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (255, 9, 3, 9), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+["Ascend310", {'ori_shape': (1, 0, 9, 3), 'shape': (1, 1, 0, 9, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (255, 9, 3, 9), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
  ]
 
 conv2D_op_select_ut_testcase = [

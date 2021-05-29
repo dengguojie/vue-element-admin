@@ -22,6 +22,7 @@ PAD_SHAPE_DIM = 2
 FMAP_HW_MIN = 1
 FMAP_W_MAX = 2**32-1
 FMAP_H_MAX = 100000
+DMA_HW_MAX = 2**32-1
 
 FMAP_W_MIN_SPLIT_W = 1
 FMAP_W_MAX_SPLIT_W = 4294967295
@@ -163,8 +164,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
 
         def _check_h_range():
-            if int(shape_in[2]) < FMAP_HW_MIN:
-                range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
+            if int(shape_in[2]) < FMAP_HW_MIN or int(shape_in[2]) > DMA_HW_MAX:
+                range_value = "".join([str(FMAP_HW_MIN), ", ", str(DMA_HW_MAX)])
                 err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map H", shape_in[2])
 
         def _check_w_range():
@@ -240,11 +241,11 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
         Check width shape.
         """
-        if shape_w[2] < FILTER_HW_MIN:
-            range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
+        if shape_w[2] < FILTER_HW_MIN or shape_w[2] > DMA_HW_MAX:
+            range_value = "".join([str(FILTER_HW_MIN), ", ", str(DMA_HW_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel H", str(shape_w[2]))
-        if shape_w[3] < FILTER_HW_MIN:
-            range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
+        if shape_w[3] < FILTER_HW_MIN or shape_w[3] > DMA_HW_MAX:
+            range_value = "".join([str(FILTER_HW_MIN), ", ", str(DMA_HW_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
         temp = 4*shape_w[2]*shape_w[3]
         if optim_dict.get("use_v200_c04_flg") and is_support_v200() and (temp > HK_WK_C04_V200):

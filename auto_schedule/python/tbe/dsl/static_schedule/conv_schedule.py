@@ -1360,7 +1360,7 @@ class CceConvOp:
                                "uint4": 1.0 / 2, "int4": 1.0 / 2}
                 input_data_type = in_dtype
                 w_out = ConvParam.w_out
-                if self._dynamic_flag:
+                if self._dynamic_flag or ConvParam.l0a_dma_flag:
                     tiling_m = 1
                 else:
                     for m_target in range(32, 0, -1):
@@ -4198,7 +4198,7 @@ class CceConvOp:
                 self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
 
             if self._l0a_dma_flag and "fmap_ub_for_dma_im2col" in tensor_map:
-                sch[fmap_ub_for_dma_im2col].compute_at(sch[fmap_col_before], fmap_col_before.op.axis[2])
+                sch[fmap_ub_for_dma_im2col].compute_at(sch[fmap_col_before], fmap_col_before.op.axis[4])
 
         def parser_tbe_compile_para(compile_para):
             """

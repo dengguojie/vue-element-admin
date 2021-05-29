@@ -36,6 +36,7 @@ FMAP_HW_MIN = 1
 FMAP_W_MAX = 2**32-1
 FMAP_H_MAX = 100000
 DYNAMIC_FMAP_W_MAX = 4096
+DMA_HW_MAX = 2**32-1
 
 FMAP_W_MIN_SPLIT_W = 1
 FMAP_W_MAX_SPLIT_W = 4294967295
@@ -195,8 +196,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         Check fmap range.
         """
 
-        if int(shape_in[2]) < FMAP_HW_MIN:
-            range_value = "".join([str(FMAP_HW_MIN), ", ", str(FMAP_H_MAX)])
+        if int(shape_in[2]) < FMAP_HW_MIN or int(shape_in[2]) > DMA_HW_MAX:
+            range_value = "".join([str(FMAP_HW_MIN), ", ", str(DMA_HW_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "feature map H", shape_in[2])
         if int(shape_in[2]) > FMAP_H_MAX:
             ConvParam.l0a_dma_flag = True
@@ -281,11 +282,11 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             if shape_w[3] > FILTER_HW_MAX:
                 range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
                 err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
-        if shape_w[2] < FILTER_HW_MIN:
-            range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
+        if shape_w[2] < FILTER_HW_MIN or shape_w[2] > DMA_HW_MAX:
+            range_value = "".join([str(FILTER_HW_MIN), ", ", str(DMA_HW_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel H", str(shape_w[2]))
-        if shape_w[3] < FILTER_HW_MIN:
-            range_value = "".join([str(FILTER_HW_MIN), ", ", str(FILTER_HW_MAX)])
+        if shape_w[3] < FILTER_HW_MIN or shape_w[3] > DMA_HW_MAX:
+            range_value = "".join([str(FILTER_HW_MIN), ", ", str(DMA_HW_MAX)])
             err_man.raise_err_attr_range_invalid("conv2d", range_value, "kernel W", str(shape_w[3]))
         if shape_w[2] > FILTER_HW_MAX or shape_w[3] > FILTER_HW_MAX:
             ConvParam.l0a_dma_flag = True
@@ -351,6 +352,23 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
             if not load2d_split_w_flag_set():
                 _l1_buffer_size_check(max_feature_map_l1)
     _check_l1_size()
+
+    def _check_dma_load3d_l1_size():
+        """
+        dma load3d: check kh*kw*c0*m0 not bigger than L1
+        """
+        if ConvParam.l0a_dma_flag:
+            m_bit_ratio = {"float16": 2, "int8": 1} 
+            kernel_h = shape_w[2]
+            kernel_w = shape_w[3]
+            block_size_m = config['mac'][0]
+            block_size_k = config['mac'][1]
+            min_feature_map_l1_size = kernel_h * kernel_w * block_size_m * block_size_k * m_bit_ratio.get(w_dtype)
+            l1_buffer_size = get_soc_spec("L1_SIZE")
+            if int(min_feature_map_l1_size) > l1_buffer_size:
+                err_man.raise_err_specific("conv2d",
+                                           "Filter range is too large, the minimum tiling may exceed L1_Buffer")
+    _check_dma_load3d_l1_size()
 
     return shape_in, shape_w
 
