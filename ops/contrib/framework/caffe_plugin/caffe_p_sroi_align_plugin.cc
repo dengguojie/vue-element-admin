@@ -23,7 +23,7 @@ Status ParseParamsPSROIAlign(const ge::Operator &op_src, ge::Operator &op_dst)
     if (ge::GRAPH_SUCCESS == op_src.GetAttr("output_dim", output_dim)) {
         op_dst.SetAttr("output_dim", output_dim);
     }
-    int group_siz = 0;
+    int group_size = 0;
     if (ge::GRAPH_SUCCESS == op_src.GetAttr("group_size", group_size)) {
         op_dst.SetAttr("group_size", group_size);
     }

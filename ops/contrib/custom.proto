@@ -53,6 +53,7 @@ message LayerParameter {
   optional ImagePadParameter image_pad_param = 2011;
   optional PSROIAlignParameter psroi_align_param = 2012;
   optional ROIAlignParameter  roi_align_param = 2013;
+  optional CorrelationParameter correlation_param = 2014;
 }
 
 // Add the definition of LayerParameter here.
@@ -154,4 +155,8 @@ message ROIAlignParameter {
   optional uint32 pooled_h = 1 [default = 0]; // The pooled output height
   optional uint32 pooled_w = 2 [default = 0]; // The pooled output width
   optional float spatial_scale = 3 [default = 1];
+}
+
+message CorrelationParameter {
+  required int32 groups = 1 [default = 0];
 }
