@@ -3818,10 +3818,13 @@ VERIFY_FUNC_REG(InplaceIndexAdd, InplaceIndexAddVerify);
 // ----------------MaskedFill Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(InferMaskedFillShape) {
   // ge::Operator op;
+  OP_LOGD(op.GetName().c_str(), "InferMaskedFillShape Begin.");
   bool is_dynamic_output = true;
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "mask", "y", is_dynamic_output)){
     return GRAPH_FAILED;
   }
+  OP_LOGD(op.GetName().c_str(), "InferMaskedFillShape End.");
+
   return GRAPH_SUCCESS;
 }
 

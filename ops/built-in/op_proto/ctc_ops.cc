@@ -223,9 +223,9 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
 INFER_FUNC_REG(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer);
 
 IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
-
-  TensorDesc tensordesc_log_probs = op.GetInputDesc("log_probs");
-  TensorDesc tensordesc_targets = op.GetInputDesc("targets");
+  OP_LOGD(op.GetName().c_str(), "CTCLossV2Infer Begin.");
+  TensorDesc tensordesc_log_probs = op.get_input_desc_log_probs();
+  TensorDesc tensordesc_targets = op.get_input_desc_targets();
 
   Shape shape_log_probs = tensordesc_log_probs.GetShape();
   Shape shape_targets = tensordesc_targets.GetShape();
@@ -240,8 +240,8 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
   int64_t C = dims_log_probs[2];
   int64_t S = dims_targets[1];
 
-  TensorDesc tensordesc_log_alpha = op.GetOutputDesc("log_alpha");
-  TensorDesc tensordesc_neg_log_likelihood = op.GetOutputDesc("neg_log_likelihood");
+  TensorDesc tensordesc_log_alpha = op.get_output_desc_log_alpha();
+  TensorDesc tensordesc_neg_log_likelihood = op.get_output_desc_neg_log_likelihood();
   
   std::vector<int64_t> dims_log_alpha = {N, T, 2*S + 1};
   std::vector<int64_t> dims_neg_log_likelihood = {N};
@@ -252,6 +252,7 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
   tensordesc_neg_log_likelihood.SetDataType(dtype);
   (void)op.UpdateOutputDesc("log_alpha", tensordesc_log_alpha);
   (void)op.UpdateOutputDesc("neg_log_likelihood", tensordesc_neg_log_likelihood);
+  OP_LOGD(op.GetName().c_str(), "CTCLossV2Infer End.");
 
   return GRAPH_SUCCESS;
 }
@@ -259,18 +260,18 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
 INFER_FUNC_REG(CTCLossV2, CTCLossV2Infer);
 
 IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
-
-  TensorDesc tensordesc_log_probs = op.GetInputDesc("log_probs");
+  OP_LOGD(op.GetName().c_str(), "CTCLossV2GradInfer Begin.");
+  TensorDesc tensordesc_log_probs = op.get_input_desc_log_probs();
   Shape shape_log_probs = tensordesc_log_probs.GetShape();
   std::vector<int64_t> dims_log_probs = shape_log_probs.GetDims();
   DataType dtype = tensordesc_log_probs.GetDataType();
 
-  TensorDesc tensordesc_grad_out = op.GetInputDesc("grad_out");
+  TensorDesc tensordesc_grad_out = op.get_input_desc_grad_out();
   Shape shape_grad_out = tensordesc_grad_out.GetShape();
   DataType dtype_grad_out = tensordesc_grad_out.GetDataType();
   std::vector<int64_t> dims_grad_out = shape_grad_out.GetDims();
   
-  TensorDesc tensordesc_targets = op.GetInputDesc("targets");
+  TensorDesc tensordesc_targets = op.get_input_desc_targets();
   Shape shape_targets = tensordesc_targets.GetShape();
   DataType dtype_targets = tensordesc_targets.GetDataType();
   std::vector<int64_t> dims_targets = shape_targets.GetDims();
@@ -283,23 +284,20 @@ IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
   int64_t T = dims_log_probs[0];
   int64_t N = dims_log_probs[1];
   int64_t C = dims_log_probs[2];
+  int64_t S = dims_targets[1];
 
-  if (dtype != DT_FLOAT){
-    OP_LOGE(op.GetName().c_str(), "The dtype of log_probs is unexpected");
+  if (dtype != dtype_grad_out){
+    OP_LOGE(op.GetName().c_str(), "The dtype of log_probs and grad_out is unmatch");
     return GRAPH_FAILED;
   }
 
-  if (dtype_grad_out != DT_FLOAT){
-    OP_LOGE(op.GetName().c_str(), "The dtype of grad_out is unexpected");
-    return GRAPH_FAILED;
-  }
-
-  TensorDesc tensordesc_grad = op.GetOutputDesc("grad");
+  TensorDesc tensordesc_grad = op.get_output_desc_grad();
   std::vector<int64_t> dims_grad = {N, T, C};
 
   tensordesc_grad.SetShape(ge::Shape(dims_grad));
   tensordesc_grad.SetDataType(dtype);
   (void)op.UpdateOutputDesc("grad", tensordesc_grad);
+  OP_LOGD(op.GetName().c_str(), "CTCLossV2GradInfer End.");
 
   return GRAPH_SUCCESS;
 }
