@@ -107,6 +107,9 @@ REG_OP(SoftmaxCrossEntropyWithLogits)
 * @li grad_softmax: A Tensor. Has the same shape and type as "softmax".
 * The format is NC1HWC0 or DN . \n
 
+*@par Attributes:
+* axes: An optional list of ints. Defaults to "{-1}" . \n
+
 *@par Outputs:
 *grad_x: A Tensor. Has the same shape and type as "softmax" . \n
 
@@ -117,6 +120,7 @@ REG_OP(SoftmaxGrad)
     .INPUT(softmax, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
     .INPUT(grad_softmax, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
     .OUTPUT(grad_x, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .ATTR(axes, ListInt, {-1})
     .OP_END_FACTORY_REG(SoftmaxGrad)
 
 /**

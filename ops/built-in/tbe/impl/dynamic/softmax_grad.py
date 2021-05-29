@@ -27,7 +27,7 @@ from impl.util.platform_adapter import classify
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=unused-variable
 @register_operator("SoftmaxGrad")
-def softmax_grad_compute(softmax, grad_softmax, grad_x,
+def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
                          kernel_name="softmax_grad"):
     """
     Computes softmax gradients for a softmax operation
@@ -42,6 +42,12 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
         the placeholder of second input data
     grad_x: dict
         the dict of output data
+    axis: int, list or tuple .
+        the first axis to reduce, may be negative to index from the end
+        (e.g., -1 for the last axis).
+        axis may be int or list(e.g. [1,2])
+        if true, retains reduced dimensions with length 1,
+        default value is -1
     kernel_name: str
         cce kernel name, default value is "softmax_grad"
 
@@ -60,7 +66,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
         grad_softmax = tbe.cast_to(grad_softmax, "float32")
         softmax = tbe.cast_to(softmax, "float32")
         has_improve_precision = True
-    data_sum = tbe.reduce_sum(data_vmul, axis=-1, keepdims=True)
+    data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
     data_sum_tmp = tbe.broadcast(data_sum, shape_input2)
     data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
     res = tbe.vmul(softmax, data_sub)
@@ -72,8 +78,9 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
 
 @register_operator("SoftmaxGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
                             para_check.KERNEL_NAME)
-def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
+def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_grad"):
     """
     Computes softmax gradients for a softmax operation
     The calculation formula is as follows :
@@ -87,6 +94,12 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
         shape and dtype of second input, only support float16, float32
     grad_x: dict
         shape and dtype of output data, should be same shape and type as input
+    axis: int, list or tuple .
+        the first axis to reduce, may be negative to index from the end
+        (e.g., -1 for the last axis).
+        axis may be int or list(e.g. [1,2])
+        if true, retains reduced dimensions with length 1,
+        default value is -1
     kernel_name: str
         kernel name, default value is "softmax_grad"
 
@@ -98,11 +111,15 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
     shape = softmax.get("shape")
     grad_shape = grad_softmax.get("shape")
     dtype = softmax.get("dtype").lower()
+    if not isinstance(axis, int):
+        axis = list(axis)
 
-    axis = [-1]
     para_check.check_shape(shape, param_name="softmax")
     para_check.check_shape(grad_shape, param_name="grad_softmax")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="softmax")
+    axis = shape_util.axis_check(len(shape), axis)
+    if isinstance(axis, int):
+        axis = [axis]
     input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
 
     schedules = []
@@ -114,7 +131,7 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
             shape_var_new, grad_shape_var_new, _= shape_util.variable_shape([x, grad, axis], op_mode="norm")
             softmax = tvm.placeholder(shape_var_new, dtype=dtype, name="softmax")
             grad_softmax = tvm.placeholder(grad_shape_var_new, dtype=dtype, name="grad_softmax")
-            output = softmax_grad_compute(softmax, grad_softmax, grad_x, kernel_name)
+            output = softmax_grad_compute(softmax, grad_softmax, grad_x, axis.get("value"), kernel_name)
             tensors.append([softmax, grad_softmax, output])
 
         with tvm.target.cce():
