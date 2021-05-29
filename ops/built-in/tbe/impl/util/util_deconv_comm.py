@@ -34,16 +34,16 @@ STRIDES_SHAPE_DIM = 2
 # the dim of pads in conv_backprop must be 4
 PADDING_SHAPE_DIM = 4
 
-# fmapW must be in [2,4096]
-FMAP_HW_MIN = 2
+# fmapW must be in [1,4096]
+FMAP_HW_MIN = 1
 FMAP_W_MAX = 4096
-# fmapH must be in [2,200000]
+# fmapH must be in [1,200000]
 FMAP_H_MAX = 200000
 
-# DeDyW must be in [2,4096]
-DEDY_HW_MIN = 2
+# DeDyW must be in [1,4096]
+DEDY_HW_MIN = 1
 DEDY_W_MAX = 4096
-# DeDyH must be in [2,200000]
+# DeDyH must be in [1,200000]
 DEDY_H_MAX = 200000
 
 # filterH, filterW must be in [1,255]
@@ -675,8 +675,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
 
         # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
         if _is_conv1d_situation():
-            dedy_hw_min = 1
-            fmap_hw_min = 1
             dedy_w_max = CONV1D_W_MAX
             fmap_w_max = CONV1D_W_MAX
         return dedy_hw_min, fmap_hw_min, dedy_w_max, fmap_w_max

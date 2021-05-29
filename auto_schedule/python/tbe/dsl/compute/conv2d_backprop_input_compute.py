@@ -51,12 +51,12 @@ DILATION_MAX = 255
 FILTER_HW_MIN = 1
 FILTER_HW_MAX = 255
 
-DY_FILLING_HW_MIN = 2
+DY_FILLING_HW_MIN = 1
 DY_FILLING_H_MAX = 200000
 DY_FILLING_W_MAX = 4096
 
-# fmapH, fmapW must be in [2,4096]
-DX_HW_MIN = 2
+# fmapH, fmapW must be in [1,4096]
+DX_HW_MIN = 1
 DX_H_MAX = 200000
 DX_W_MAX = 4096
 
@@ -353,8 +353,6 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     # if conv1d situation, make sure w is in [1,CONV1D_W_MAX]
     if _is_conv1d_situation():
-        dy_filling_hw_min = 1
-        dx_hw_min = 1
         dy_filling_w_max = CONV1D_W_MAX
         dx_w_max = CONV1D_W_MAX
 
