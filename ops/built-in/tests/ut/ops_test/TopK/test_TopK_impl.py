@@ -393,8 +393,10 @@ ut_case.add_case(["Ascend910", "Ascend310", "Ascend920A"], case_k_multi_core_sin
 def test_1981(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.top_k import top_k
+    from impl.top_k_d import top_k_d
     te_set_version("Ascend920A", "VectorCore")
     top_k(*(case_k_lt_16_fp16["params"]))
+    top_k_d(*(case_k_lt_16_fp16["params"]))
 
 ut_case.add_cust_test_func(test_func=test_1981)
 
