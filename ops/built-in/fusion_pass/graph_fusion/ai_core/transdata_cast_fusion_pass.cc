@@ -95,6 +95,12 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   if (SUCCESS != castInt8ToFloat16Desc->DelAttr("groups")) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of groups from castInt8ToFloat16Desc failed.");
   }
+  if (SUCCESS != castInt8ToFloat16Desc->DelAttr("_fe_imply_type")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of _fe_imply_type from castInt8ToFloat16Desc failed.");
+  }
+  if (SUCCESS != castInt8ToFloat16Desc->DelAttr("imply_type")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of imply_type from castInt8ToFloat16Desc failed.");
+  }
 
   FUSION_PASS_CHECK(SUCCESS != castFloat16ToBoolDesc->DelAttr("src_format"),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Delete the attr of src_format from castFloat16ToBoolDesc failed."),
@@ -104,6 +110,19 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return PARAM_INVALID);
   if (SUCCESS != castFloat16ToBoolDesc->DelAttr("groups")) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of groups from castFloat16ToBoolDesc failed.");
+  }
+  if (SUCCESS != castFloat16ToBoolDesc->DelAttr("_fe_imply_type")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of _fe_imply_type from castFloat16ToBoolDesc failed.");
+  }
+  if (SUCCESS != castFloat16ToBoolDesc->DelAttr("imply_type")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of imply_type from castFloat16ToBoolDesc failed.");
+  }
+
+  if (SUCCESS != fusedDesc->DelAttr("_fe_imply_type")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of _fe_imply_type from TransData failed.");
+  }
+  if (SUCCESS != fusedDesc->DelAttr("imply_type")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of imply_type from TransData failed.");
   }
 
   // add dst_type attribute

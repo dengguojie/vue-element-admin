@@ -54,7 +54,6 @@ case4 = {"params": [{"shape": (2,5,3,4,4), "dtype": "float16", "format": "NCHW",
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
 # ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 
 def calc_expect_func(x, y, dst):
