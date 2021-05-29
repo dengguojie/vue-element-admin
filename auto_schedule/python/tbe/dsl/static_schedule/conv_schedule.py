@@ -66,8 +66,8 @@ POOLING_2_2_WINDOW = 2
 # bind_buffer int32 limitation
 BIND_BUFFER_MAX = 2147483647
 
-#pre fusion ub_buffer size limit
-PRE_BUFFER_SIZE_MAX = 245760
+#pre fusion ub_buffer size limit (the amounts of data)
+PRE_BUFFER_SIZE_MAX = 122880
 
 # fixed fusion list pattern
 PATTERN_UNKOWN = 100
@@ -4141,7 +4141,7 @@ class CceConvOp:
                     fmap_width = self._var_range['fmap_w'][1]
                 else:
                     fmap_width = fmap_shape_nc1hwc0[3]
-                need_buffer_size = in_row_num * fmap_width * 32
+                need_buffer_size = in_row_num * fmap_width * 16 # 16 is c0
                 if aub_factor == [1, 1] and int(need_buffer_size) > PRE_BUFFER_SIZE_MAX:
                     if "fmap_h" in self._dyn_var_map:
                         aub_factor[1] = self._var_range['fmap_h'][1]
@@ -4191,8 +4191,8 @@ class CceConvOp:
                         'conv_fm_c0': fmap.shape[4],
                     }
                     sch[al1].emit_insn(al1_k_inner, 'dma_copy', im2col_attr)
-                    sch[fmap].set_storage_bound(min(need_buffer_size, PRE_BUFFER_SIZE_MAX))
-                    sch[tensor_map['fmap_ub']].set_storage_bound(min(need_buffer_size, PRE_BUFFER_SIZE_MAX))
+                    sch[fmap].set_storage_bound(min(int(need_buffer_size), PRE_BUFFER_SIZE_MAX))
+                    sch[tensor_map['fmap_ub']].set_storage_bound(min(int(need_buffer_size), PRE_BUFFER_SIZE_MAX))
                 else:
                     sch[al1].emit_insn(al1_k_inner, 'dma_copy')
                 self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
