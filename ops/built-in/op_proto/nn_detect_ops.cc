@@ -144,8 +144,9 @@ IMPLEMT_VERIFIER(YoloV2DetectionOutput, YoloV2DetectionOutputVerify) {
 IMPLEMT_COMMON_INFERFUNC(YoloV2DetectionOutputInferShape) {
   OP_LOGI(op.GetName().c_str(), "infer shape begin---");
   auto coord_shape = op.GetInputDesc("coord_data").GetShape().GetDims();
-  CHECK(coord_shape.empty(), InferShapeOtherErrReport(op.GetName(), "input shape is NULL!");
-        OP_LOGE(op.GetName().c_str(), "input shape is NULL!"), return GRAPH_FAILED);
+  CHECK(coord_shape.empty(),
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("input shape is NULL!")),
+          return GRAPH_FAILED);
   int64_t batch = coord_shape[0];
   DataType input_dtype = op.GetInputDesc("coord_data").GetDataType();
   std::int64_t maxNum = 0;
@@ -259,8 +260,9 @@ IMPLEMT_VERIFIER(YoloV3DetectionOutputD, YoloV3DetectionOutputDVerify) {
 IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputDInferShape) {
   OP_LOGI(op.GetName().c_str(), "infer shape begin---");
   auto coord_shape = op.GetInputDesc("coord_data_low").GetShape().GetDims();
-  CHECK(coord_shape.empty(), InferShapeOtherErrReport(op.GetName(), "input shape is NULL!");
-        OP_LOGE(op.GetName().c_str(), "input shape is NULL!"), return GRAPH_FAILED);
+  CHECK(coord_shape.empty(),
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("input shape is NULL!")),
+      return GRAPH_FAILED);
   int64_t batch = coord_shape[0];
   DataType input_dtype = op.GetInputDesc("coord_data_low").GetDataType();
   std::int64_t maxNum = 0;
@@ -297,8 +299,7 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputV2InferShape) {
   OP_LOGI(op.GetName().c_str(), "infer shape begin---");
   auto coord_shape = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
   if (coord_shape.empty()) {
-    InferShapeOtherErrReport(op.GetName(), "input shape is NULL!");
-    OP_LOGE(op.GetName().c_str(), "input shape is NULL!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("input shape is NULL!"));
     return GRAPH_FAILED;
   }
   int64_t batch = coord_shape[0];
@@ -407,8 +408,7 @@ IMPLEMT_INFERFUNC(SPP, SPPInferShape) {
   auto xDtype = op.get_input_desc_x().GetDataType();
   int64_t pyramidHeight = 1;
   if (xShapeDims.size() < 2) {
-    OP_LOGE("SPP", "input shape is NULL!");
-    InferShapeOtherErrReport(op.GetName(), "input shape is NULL!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("input shape is NULL!"));
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("pyramid_height", pyramidHeight)) {
@@ -746,14 +746,12 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
   // check shape
   auto score_shape = op.GetInputDesc("score").GetShape().GetDims();
   if (score_shape.empty()) {
-    OP_LOGE(op.GetName().c_str(), "can not get score shape.");
-    InferShapeOtherErrReport(op.GetName(), "Score shape is empty, please check!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Score shape is empty, please check!"));
     return GRAPH_FAILED;
   }
   auto rois_shape = op.GetInputDesc("rois").GetShape().GetDims();
   if (rois_shape.empty()) {
-    InferShapeOtherErrReport(op.GetName(), "rois shape is empty, please check!");
-    OP_LOGE(op.GetName().c_str(), "can not get rois shape.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("rois shape is empty, please check!"));
     return GRAPH_FAILED;
   }
   int64_t score_shape_dimension = score_shape.size();

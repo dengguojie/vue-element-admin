@@ -399,8 +399,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
 
   std::vector<int64_t> size_splits(size_splits_vec);
   if (std::count(size_splits.begin(), size_splits.end(), -1) > 1) {
-    OP_LOGE(op.GetName().c_str(), "the value of size_splits is invalid!");
-    InferShapeOtherErrReport(op.GetName(), "the value of size_splits is invalid!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("the value of size_splits is invalid!"));
     return GRAPH_FAILED;
   }
 

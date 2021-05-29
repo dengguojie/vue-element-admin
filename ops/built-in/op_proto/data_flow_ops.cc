@@ -2309,8 +2309,9 @@ IMPLEMT_COMMON_INFERFUNC(CacheAddInferShape) {
 
   GeShape ids_shape;
   if (WithRank(ids, 1, ids_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(ids->GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "Input ids must be 1-D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(0,
+            DebugString(ids->GetShape().GetDims()), "1D")));
     return GRAPH_FAILED;
   }
 

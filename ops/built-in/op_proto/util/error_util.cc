@@ -120,47 +120,6 @@ std::string OtherErrMsg(const std::string& error_detail) {
   return msg;
 }
 
-void ShapeErrReport(uint32_t index, const std::string& opname, const std::string& wrong_shape,
-                    const std::string& correct_shape) {
-  map<string, string> err_map;
-  err_map["index"] = std::to_string(index);
-  err_map["opname"] = opname;
-  err_map["wrong_shape"] = wrong_shape;
-  err_map["correct_shape"] = correct_shape;
-  std::string report_error_code = GetViewErrorCodeStr(ViewErrorCode::INVALID_INPUT_SHAPE);
-  (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-}
-
-void AttrValueErrReport(const std::string& attrName, const std::string& opname, const std::string& wrong_value,
-                        const std::string& correct_value) {
-  map<string, string> err_map;
-  err_map["attrname"] = attrName;
-  err_map["opname"] = opname;
-  err_map["wrong_value"] = wrong_value;
-  err_map["correct_value"] = correct_value;
-  std::string report_error_code = GetViewErrorCodeStr(ViewErrorCode::INVALID_ATTR_VALUE);
-  (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-}
-
-void AttrSizeErrReport(const std::string& attrName, const std::string& opname, const std::string& wrong_size,
-                       const std::string& correct_size) {
-  map<string, string> err_map;
-  err_map["attrname"] = attrName;
-  err_map["opname"] = opname;
-  err_map["wrong_size"] = wrong_size;
-  err_map["correct_size"] = correct_size;
-  std::string report_error_code = GetViewErrorCodeStr(ViewErrorCode::INVALID_ATTR_SIZE);
-  ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-}
-
-void InferShapeOtherErrReport(const std::string& opname, const std::string& err_msg) {
-  map<string, string> err_map;
-  err_map["opname"] = opname;
-  err_map["err_msg"] = err_msg;
-  string report_error_code = GetViewErrorCodeStr(ViewErrorCode::OTHER_ERROR);
-  (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-}
-
 void OpsMissInputErrReport(const std::string& op_name, const std::string& param_name) {
   map<string, string> err_map;
   err_map["op_name"] = op_name;

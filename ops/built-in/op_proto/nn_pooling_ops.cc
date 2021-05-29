@@ -393,7 +393,7 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
     return GRAPH_FAILED;
   }
   if((input_format == FORMAT_NCHW && data_format != "NCHW") || (input_format == FORMAT_NHWC && data_format != "NHWC")) {
-    InferShapeOtherErrReport(op.GetName(), "Input format and data_format is not same");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Input format and data_format is not same"));
     return GRAPH_FAILED;
   }
   std::vector<int64_t> strides;
@@ -403,8 +403,8 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
     return GRAPH_FAILED;
   }
   if (strides.size() != 4) {
-    AttrSizeErrReport("strides", op.GetName(), ConcatString(strides.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Attr strides(%u) must be 4", strides.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("strides", ConcatString(strides.size()), "4"));
     return GRAPH_FAILED;
   }
 
@@ -415,8 +415,8 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
     return GRAPH_FAILED;
   }
   if (rates.size() != 4) {
-    AttrSizeErrReport("rates", op.GetName(), ConcatString(rates.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Attr rates(%u) must be 4", rates.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("rates", ConcatString(rates.size()), "4"));
     return GRAPH_FAILED;
   }
 
@@ -439,7 +439,8 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
     return GRAPH_FAILED;
   }
   if (pads.size() != 4) {
-    AttrSizeErrReport("pads", op.GetName(), ConcatString(pads.size()), "4");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("pads", ConcatString(pads.size()), "4"));
     OP_LOGE(op.GetName().c_str(), "Attr pads(%u) must be 4", pads.size());
     return GRAPH_FAILED;
   }
@@ -484,8 +485,7 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
   }
   if (padding_mode == "CALCULATED" &&
       (pads[0] >= window_h || pads[1] >= window_h || pads[2] >= window_w || pads[3] >= window_w)) {
-    InferShapeOtherErrReport(op.GetName(), "pads must be less than window size when using CALCULATED mode");
-    OP_LOGE(op.GetName().c_str(), "pads must be less than window size when using CALCULATED mode");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("pads must be less than window size when using CALCULATED mode"));
     return GRAPH_FAILED;
   }
 
@@ -660,7 +660,7 @@ IMPLEMT_VERIFIER(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify) {
 
   if ((input_format == FORMAT_NCHW && out_backprop_format == FORMAT_NCHW && data_format != "NCHW") ||
       (input_format == FORMAT_NHWC && out_backprop_format == FORMAT_NHWC && data_format != "NHWC")) {
-    InferShapeOtherErrReport(op.GetName(), "Input format and out_backprop_format and data_format is not same");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Input format and out_backprop_format and data_format is not same"));
   }
 
   std::vector<int64_t> strides;
@@ -670,8 +670,8 @@ IMPLEMT_VERIFIER(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify) {
     return GRAPH_FAILED;
   }
   if (strides.size() != 4) {
-    AttrSizeErrReport("strides", op.GetName(), ConcatString(strides.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Attr strides(%u) must be 4", strides.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("strides", ConcatString(strides.size()), "4"));
     return GRAPH_FAILED;
   }
 
@@ -683,8 +683,8 @@ IMPLEMT_VERIFIER(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify) {
   }
 
   if (rates.size() != 4) {
-    AttrSizeErrReport("rates", op.GetName(), ConcatString(rates.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Attr rates(%u) must be 4", rates.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("rates", ConcatString(rates.size()), "4"));
     return GRAPH_FAILED;
   }
 
@@ -708,8 +708,8 @@ IMPLEMT_VERIFIER(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify) {
     return GRAPH_FAILED;
   }
   if (pads.size() != 4) {
-    AttrSizeErrReport("pads", op.GetName(), ConcatString(pads.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Attr pads(%u) must be 4", pads.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("pads", ConcatString(pads.size()), "4"));
     return GRAPH_FAILED;
   }
 
@@ -757,8 +757,7 @@ IMPLEMT_VERIFIER(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify) {
 
   if (padding_mode == "CALCULATED" &&
       (pads[0] >= window_h || pads[1] >= window_h || pads[2] >= window_w || pads[3] >= window_w)) {
-    InferShapeOtherErrReport(op.GetName(), "pads must be less than window size when using CALCULATED mode");
-    OP_LOGE(op.GetName().c_str(), "pads must be less than window size when using CALCULATED mode");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("pads must be less than window size when using CALCULATED mode"));
   }
 
   return GRAPH_SUCCESS;
@@ -898,7 +897,7 @@ IMPLEMT_VERIFIER(Dilation2DBackpropInput, Dilation2DBackpropInputVerify) {
 
   if ((input_format == FORMAT_NCHW && out_backprop_format == FORMAT_NCHW && data_format != "NCHW") ||
       (input_format == FORMAT_NHWC && out_backprop_format == FORMAT_NHWC && data_format != "NHWC")) {
-    InferShapeOtherErrReport(op.GetName(), "Input format and out_backprop_format and data_format is not same");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Input format and out_backprop_format and data_format is not same"));
   }
 
   std::vector<int64_t> strides;
@@ -908,8 +907,8 @@ IMPLEMT_VERIFIER(Dilation2DBackpropInput, Dilation2DBackpropInputVerify) {
     return GRAPH_FAILED;
   }
   if (strides.size() != 4) {
-    AttrSizeErrReport("strides", op.GetName(), ConcatString(strides.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Attr strides(%u) must be 4", strides.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("strides", ConcatString(strides.size()), "4"));
     return GRAPH_FAILED;
   }
 
@@ -921,8 +920,8 @@ IMPLEMT_VERIFIER(Dilation2DBackpropInput, Dilation2DBackpropInputVerify) {
   }
 
   if (rates.size() != 4) {
-    AttrSizeErrReport("rates", op.GetName(), ConcatString(rates.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Attr rates(%u) must be 4", rates.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("rates", ConcatString(rates.size()), "4"));
     return GRAPH_FAILED;
   }
 
@@ -946,8 +945,8 @@ IMPLEMT_VERIFIER(Dilation2DBackpropInput, Dilation2DBackpropInputVerify) {
     return GRAPH_FAILED;
   }
   if (pads.size() != 4) {
-    AttrSizeErrReport("pads", op.GetName(), ConcatString(pads.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Attr pads(%u) must be 4", pads.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        GetAttrSizeErrMsg("pads", ConcatString(pads.size()), "4"));
     return GRAPH_FAILED;
   }
 
@@ -995,8 +994,7 @@ IMPLEMT_VERIFIER(Dilation2DBackpropInput, Dilation2DBackpropInputVerify) {
 
   if (padding_mode == "CALCULATED" &&
       (pads[0] >= window_h || pads[1] >= window_h || pads[2] >= window_w || pads[3] >= window_w)) {
-    InferShapeOtherErrReport(op.GetName(), "pads must be less than window size when using CALCULATED mode");
-    OP_LOGE(op.GetName().c_str(), "pads must be less than window size when using CALCULATED mode");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("pads must be less than window size when using CALCULATED mode"));
   }
 
   return GRAPH_SUCCESS;
@@ -6107,7 +6105,6 @@ IMPLEMT_INFERFUNC(NthElement, NthElementInfer) {
   Shape x_shape;
   auto x_tensor = op.get_input_desc_x();
   if (WithRankAtLeast(x_tensor, 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "at least 1D");
     std::string err_msg = ConcatString(
       "failed to call WithRankAtLeast function, ",
       "input[x] rank must be at least 1D, but got rank[",

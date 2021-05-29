@@ -50,8 +50,7 @@ static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const i
     }
   } else {
     string err_msg = ConcatString("paddings data type invalid, ", "should be DT_INT32 or DT_INT64");
-    InferShapeOtherErrReport(op.GetName(), err_msg);
-    OP_LOGE(op.GetName().c_str(), "%s", err_msg.c_str());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   auto dims = op.GetInputDesc(0).GetShape().GetDims();
@@ -62,8 +61,7 @@ static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const i
   for (size_t i = 0; i < data.size(); i += 2) {
     if ((data[i] < 0) || (data[i + 1] < 0)) {
       std::string err_msg = ConcatString("paddings", DebugString(data), " must be non-negative");
-      InferShapeOtherErrReport(op.GetName(), err_msg);
-      OP_LOGE(op.GetName().c_str(), "%s", err_msg.c_str());
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     graphStatus status = Add(output_dims[i / 2], data[i] + data[i + 1], output_dims[i / 2]);
@@ -85,13 +83,16 @@ graphStatus PadShapeFn(Operator& op) {
   int64_t input_dim_num;
   graphStatus status = WithRank(op.GetInputDesc(1), 2, paddings, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(1,
+            DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D")));
     return GRAPH_FAILED;
   }
   status = WithValue(paddings.GetDim(1), 2, input_dim_num, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()),
-                   ConcatString(2, " of dim[1]"));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithValue failed, ", GetShapeErrMsg(1,
+            DebugString(op.GetInputDesc(1).GetShape().GetDims()), ConcatString(2, " of dim[1]"))));
     return GRAPH_FAILED;
   }
   Shape input;
@@ -99,13 +100,17 @@ graphStatus PadShapeFn(Operator& op) {
   if (dim0 != UNKNOWN_DIM) {
     status = WithRank(op.GetInputDesc(0), dim0, input, op.GetName().c_str());
     if (status != GRAPH_SUCCESS) {
-      ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(dim0, "D"));
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(0,
+            DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(dim0, "D"))));
       return GRAPH_FAILED;
     }
   } else if (op.GetInputDesc(0).GetShape().GetDim(0) != 0) {
     status = WithValue(dim0, op.GetInputDesc(0).GetShape().GetDimNum(), input_dim_num, op.GetName().c_str());
     if (status != GRAPH_SUCCESS) {
-      ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(dim0, "D"));
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(0,
+            DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(dim0, "D"))));
       return GRAPH_FAILED;
     }
   }
@@ -189,7 +194,9 @@ graphStatus PadGradShapeFn(Operator& op) {
   Shape paddings;
   graphStatus status = WithRank(op.GetInputDesc(1), 2, paddings, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(1,
+            DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D")));
     return GRAPH_FAILED;
   }
   int64_t input_rank = paddings.GetDim(0);
@@ -203,7 +210,9 @@ graphStatus PadGradShapeFn(Operator& op) {
 
   Shape input_shape;
   if (WithRank(op.GetInputDesc(0), input_rank, input_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(input_rank));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(0,
+            DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(input_rank))));
     return GRAPH_FAILED;
   }
 
@@ -211,8 +220,7 @@ graphStatus PadGradShapeFn(Operator& op) {
   if (Merge(paddings, check_shape, paddings, op.GetName().c_str())) {
     string err_msg = ConcatString("merge 1th input shape", DebugString(paddings.GetDims()), " and shape",
                                   DebugString(check_shape.GetDims()), " failed");
-    InferShapeOtherErrReport(op.GetName(), err_msg);
-    OP_LOGE(op.GetName().c_str(), "Input dimension mismatch, inputRank=%lld.", input_rank);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -228,8 +236,7 @@ graphStatus PadGradShapeFn(Operator& op) {
   auto result = CalcPadGradOutDims(input_shape, paddings_tensor, output_dims, op.GetName().c_str());
   if (result != GRAPH_SUCCESS) {
     string err_msg = ConcatString("calculate out dims failed,", "please check the validity of input and attribute");
-    InferShapeOtherErrReport(op.GetName(), err_msg);
-    OP_LOGE(op.GetName().c_str(), "Calculation PadGrad out dimensions failed.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   output_desc.SetShape(Shape(output_dims));

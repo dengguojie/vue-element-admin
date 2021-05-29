@@ -140,15 +140,17 @@ INFER_FUNC_REG(Unique, UniqueInfer);
 IMPLEMT_INFERFUNC(UniqueExt2, UniqueExt2Infer) {
   Shape x_shape;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "at least 1D");
-    OP_LOGE(op.GetName().c_str(), "input x must be more than 1-D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRankAtLeast failed, ", GetShapeErrMsg(0,
+            DebugString(op.GetInputDesc(0).GetShape().GetDims()), "at least 1D")));
     return GRAPH_FAILED;
   }
 
   Shape axis_shape;
   if (WithRank(op.GetInputDesc(1), 1, axis_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "input axis must be 1-D");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(1,
+            DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D")));
     return GRAPH_FAILED;
   }
 
@@ -184,7 +186,6 @@ INFER_FUNC_REG(UniqueExt2, UniqueExt2Infer);
 IMPLEMT_INFERFUNC(InvertPermutation, InvertPermutationInfer) {
   Shape shape;
   if (WithRank(op.GetInputDesc(0), 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "1D");
     std::string err_msg = ConcatString("failed to call WithRank function, input[x] rank must be 1D, but got rank[",
                                        op.GetInputDesc(0).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
@@ -271,14 +272,12 @@ INFER_FUNC_REG(UnravelIndex, UnravelIndexInfer);
 IMPLEMT_INFERFUNC(UpperBound, UpperBoundInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(op.GetInputDesc(0).GetShape().GetDims()), "2D");
     string err_msg = ConcatString("failed to call WithRank function, input[sorted_x] rank must be 2D, got rank[",
                                   op.GetInputDesc(0).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D");
     string err_msg = ConcatString("failed to call WithRank function, input[values] rank must be 2D, got rank[",
                                   op.GetInputDesc(1).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
@@ -2009,13 +2008,15 @@ IMPLEMT_INFERFUNC(LowerBound, LowerBoundInfer) {
   TensorDesc values_desc = op.GetInputDesc("values");
   Shape unused_shape;
   if (WithRank(sorted_x_desc, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(sorted_x_desc.GetShape().GetDims()), "2D");
-    OP_LOGE(op.GetName().c_str(), "Input [sorted_x] rank must be 2.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(0,
+            DebugString(sorted_x_desc.GetShape().GetDims()), "2D")));
     return GRAPH_FAILED;
   }
   if (WithRank(values_desc, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(values_desc.GetShape().GetDims()), "2D");
-    OP_LOGE(op.GetName().c_str(), "Input [values] rank must be 2.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call WithRank failed, ", GetShapeErrMsg(1,
+            DebugString(values_desc.GetShape().GetDims()), "2D")));
     return GRAPH_FAILED;
   }
 

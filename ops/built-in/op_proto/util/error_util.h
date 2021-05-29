@@ -150,47 +150,6 @@ std::string GetParamOutRangeErrMsg(const std::string& param_name, const std::str
 
 std::string OtherErrMsg(const std::string& error_detail);
 
-/*
- * report input shape error of infer shape
- * param[in] index the index of input
- * param[in] opname op name
- * param[in] wrong_shape wrong input shape
- * param[in] correct_shape correct input shape
- * return void
- */
-void ShapeErrReport(uint32_t index, const std::string& opname, const std::string& wrong_shape,
-                    const std::string& correct_shape);
-
-/*
- * report attr value error of infer shape
- * param[in] attrname the attr name
- * param[in] opname op name
- * param[in] wrong_value wrong attr value
- * param[in] correct_value correct attr value
- * return void
- */
-void AttrValueErrReport(const std::string& attrName, const std::string& opname, const std::string& wrong_value,
-                        const std::string& correct_value);
-
-/*
- * report attr size error of infer shape
- * param[in] attrname the attr name
- * param[in] opname op name
- * param[in] wrong_size wrong attr size
- * param[in] correct_size correct attr size
- * return void
- */
-void AttrSizeErrReport(const std::string& attrName, const std::string& opname, const std::string& wrong_size,
-                       const std::string& correct_size);
-
-/*
- * report common error of infer shape
- * param[in] opname op name
- * param[in] err_msg error message
- * return void
- */
-void InferShapeOtherErrReport(const std::string& opname, const std::string& err_msg);
-
 void OpsMissInputErrReport(const std::string& op_name, const std::string& param_name);
 
 void OpsInputFormatErrReport(const std::string& op_name, const std::string& param_name,
