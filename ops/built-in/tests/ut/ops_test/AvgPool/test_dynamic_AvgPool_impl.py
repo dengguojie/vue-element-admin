@@ -397,6 +397,16 @@ case32 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
                     [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
          "expect": RuntimeError,
          "support_expect": True}
+#stide > 63
+case35 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    None,
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,2,2], [1,1,64,64], "VALID", "NCHW"],
+         "expect": "success",
+         "support_expect": True}
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
@@ -432,6 +442,7 @@ ut_case.add_case(["Ascend910A"], case31)
 ut_case.add_case(["Ascend910A"], case32)
 ut_case.add_case(["Ascend910A"], case33)
 ut_case.add_case(["Ascend910A"], case34)
+ut_case.add_case(["Ascend910A"], case35)
 
 from impl.dynamic.avg_pool import check_supported, get_op_support_info
 
