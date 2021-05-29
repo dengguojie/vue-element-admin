@@ -4125,29 +4125,28 @@ class CceConvOp:
                     w_out = ConvParam.w_out
                 return h_out, w_out
 
-            if self._pre_relu_fused_flag:
-                if aub_factor == [1, 1]:
-                    h_out, w_out = get_max_out_for_dynamic()
-                    if ("ho" in self._dyn_var_map or "wo" in self._dyn_var_map) and tiling["AL1_shape"]:
-                        no2_al1_factor = int_ceil_div(int_ceil_div(h_out * w_out, int(
-                            tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2])), tiling["AL1_shape"][1])
+            if self._pre_relu_fused_flag: 
+                h_out, w_out = get_max_out_for_dynamic()
+                if ("ho" in self._dyn_var_map or "wo" in self._dyn_var_map) and tiling["AL1_shape"]:
+                    no2_al1_factor = int_ceil_div(int_ceil_div(h_out * w_out, int(
+                        tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2])), tiling["AL1_shape"][1])
+                else:
+                    no2_al1_factor = al1_factor[1]
+                out_row_num = int_ceil_div(h_out, no2_al1_factor)
+                shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
+                in_row_num = (out_row_num - 1)*ConvParam.stride_h + shape_w_nc1hwc0[2] + \
+                                                (ConvParam.dilate_h - 1) - ConvParam.pad_h[0]
+                fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
+                if "fmap_w" in self._dyn_var_map:
+                    fmap_width = self._var_range['fmap_w'][1]
+                else:
+                    fmap_width = fmap_shape_nc1hwc0[3]
+                need_buffer_size = in_row_num * fmap_width * 32
+                if aub_factor == [1, 1] and int(need_buffer_size) > PRE_BUFFER_SIZE_MAX:
+                    if "fmap_h" in self._dyn_var_map:
+                        aub_factor[1] = self._var_range['fmap_h'][1]
                     else:
-                        no2_al1_factor = al1_factor[1]
-                    out_row_num = int_ceil_div(h_out, no2_al1_factor)
-                    shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
-                    in_row_num = (out_row_num - 1)*ConvParam.stride_h + shape_w_nc1hwc0[2] + \
-                                                    (ConvParam.dilate_h - 1) - ConvParam.pad_h[0]
-                    fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
-                    if "fmap_w" in self._dyn_var_map:
-                        fmap_width = self._var_range['fmap_w'][1]
-                    else:
-                        fmap_width = fmap_shape_nc1hwc0[3]
-                    need_buffer_size = in_row_num * fmap_width * 32
-                    if int(need_buffer_size) > PRE_BUFFER_SIZE_MAX:
-                        if "fmap_h" in self._dyn_var_map:
-                            aub_factor[1] = self._var_range['fmap_h'][1]
-                        else:
-                            aub_factor[1] = fmap_shape_nc1hwc0[2]
+                        aub_factor[1] = fmap_shape_nc1hwc0[2]
 
                 if self._dynamic_flag:
                     al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[0])
@@ -4192,6 +4191,8 @@ class CceConvOp:
                         'conv_fm_c0': fmap.shape[4],
                     }
                     sch[al1].emit_insn(al1_k_inner, 'dma_copy', im2col_attr)
+                    sch[fmap].set_storage_bound(min(need_buffer_size, PRE_BUFFER_SIZE_MAX))
+                    sch[tensor_map['fmap_ub']].set_storage_bound(min(need_buffer_size, PRE_BUFFER_SIZE_MAX))
                 else:
                     sch[al1].emit_insn(al1_k_inner, 'dma_copy')
                 self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
