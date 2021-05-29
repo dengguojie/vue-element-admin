@@ -34,6 +34,7 @@ from tbe.common.utils import log
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.buildcfg import get_current_build_config
 from te.platform.fusion_manager import fusion_manager
+from tbe.common.context import get_context
 from tbe.common.rl_bank import bank_manager
 from tbe.common import buildcfg
 from tbe.dsl.compute.conv_compute import ConvParam  # pylint: disable=C0412
@@ -397,7 +398,10 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
         try:
             if option is not None and isinstance(option, dict):
                 schedule, tensor_list, real_outs = rl_search_proc(outs, option)
-            if schedule is None:
+            enable_bank_query = True
+            if get_context() and (get_context().get_addition("enable_bank_query") is False):
+                enable_bank_query = False
+            if schedule is None and enable_bank_query:
                 ret, schedule = rl_bank.query_rl_bank(outs, op_info=op_info)
                 if ret and isinstance(schedule, tvm.schedule.Schedule):
                     return schedule
