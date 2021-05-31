@@ -346,8 +346,10 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
 
     fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"].value if "L1_addr_flag" in inputs.op.attrs else "nothing"
     fmap_l1_valid_size = inputs.op.attrs["L1_valid_size"].value if "L1_valid_size" in inputs.op.attrs else -1
+    slice_offset = inputs.op.attrs["slice_offset"] if "slice_offset" in inputs.op.attrs else (0, 0, 0, 0, 0)
     fusion_para = {"fmap_l1_addr_flag": fmap_l1_addr_flag,
-                   "fmap_l1_valid_size": fmap_l1_valid_size}
+                   "fmap_l1_valid_size": fmap_l1_valid_size,
+                   "slice_offset": slice_offset}
 
     para_dict = {"pad_h": padh, "pad_w": padw, "stride_h": strideh,
                  "stride_w": stridew, "dilate_h": dlt_h, "dilate_w": dlt_w,
@@ -629,11 +631,14 @@ def _trans_stride(input_size, kernel, stride, pad, dlt):
 
 def _conv2d_fusion_para(inputs, outputs):
     """
-    get fmap_l1_addr_flag for conv2d
+    get lxfusion params for conv2d
     """
     fmap_l1_addr_flag = inputs.get("L1_addr_flag", "nothing")
     fmap_l1_valid_size = inputs.get("L1_valid_size", -1)
-    fusion_para = {"fmap_l1_addr_flag": fmap_l1_addr_flag, "fmap_l1_valid_size": fmap_l1_valid_size}
+    slice_offset = inputs.get("slice_offset", (0, 0, 0, 0, 0))
+    fusion_para = {"fmap_l1_addr_flag": fmap_l1_addr_flag,
+                   "fmap_l1_valid_size": fmap_l1_valid_size,
+                   "slice_offset": slice_offset}
 
     return fusion_para
 

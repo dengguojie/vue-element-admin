@@ -2077,6 +2077,8 @@ class CceConvOp:
                     """
                     conv_fm_h may change in valid_shape situation
                     """
+                    if self._input_memory_type[0] == 1:
+                        setfmatrix_dict["conv_fm_offset_h"] = ConvParam.fusion_para.get("slice_offset")[2]
                     if self._aipp_fuse_flag:
                         setfmatrix_dict["conv_fm_h"] = al1.shape[2].value
                     else:

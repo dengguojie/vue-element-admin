@@ -414,6 +414,7 @@ class ConvParam:
         cls.dequant_doubleout_flag = False # mark v100 v200 conv_dequant_*_quant doubleout
         cls.fusion_para = {"input_memory_type": [],
                            "output_memory_type": [],
+                           "slice_offset": (0, 0, 0, 0, 0),
                            "l1_fusion_type": -1,
                            "fmap_l1_valid_size": -1,
                            "fmap_l1_addr_flag": "nothing",
@@ -428,6 +429,7 @@ class ConvParam:
     convbn1_flag = False
     fusion_para = {"input_memory_type": [],
                    "output_memory_type": [],
+                   "slice_offset": (0, 0, 0, 0, 0),
                    "l1_fusion_type": -1,
                    "fmap_l1_valid_size": -1,
                    "fmap_l1_addr_flag": "nothing",
@@ -2329,6 +2331,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     ConvParam.fusion_para["fmap_l1_addr_flag"] = para_dict["fusion_para"].get("fmap_l1_addr_flag", "nothing")
     ConvParam.fusion_para["fmap_l1_valid_size"] = para_dict["fusion_para"].get("fmap_l1_valid_size", -1)
     ConvParam.fusion_para["lxfusion_enable_flag"] = lxfusion_enable_flag
+
+    slice_offset = para_dict["fusion_para"]["slice_offset"]
+    ConvParam.fusion_para["slice_offset"] = slice_offset if slice_offset else (0, 0, 0, 0, 0)
     #===========================================================================================
     _v200_width_out_1_flag_set()
     load2d_to_load3d_flag = load2d_to_load3d_flag_set()

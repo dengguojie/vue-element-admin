@@ -479,7 +479,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False}
 
     if fusion_para is None:
-        fusion_para = {"fmap_l1_addr_flag": 0, "fmap_l1_valid_size": -1}
+        fusion_para = {"fmap_l1_addr_flag": 0, "fmap_l1_valid_size": -1, "slice_offset": (0, 0, 0, 0, 0)}
 
     in_dtype = in_dtype.lower()
     w_dtype = w_dtype.lower()
