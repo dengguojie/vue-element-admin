@@ -123,6 +123,7 @@ from .rsqrt import rsqrt
 from .greater_equal import greater_equal
 from .apply_gradient_descent import apply_gradient_descent
 from .layer_norm_beta_gamma_backprop import layer_norm_beta_gamma_backprop
+from .layer_norm_beta_gamma_backprop_v2 import layer_norm_beta_gamma_backprop_v2
 from .less import less
 from .less_equal import less_equal
 from .floor_div import floor_div

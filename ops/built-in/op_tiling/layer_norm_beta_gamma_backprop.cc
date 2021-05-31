@@ -41,4 +41,5 @@ bool LayerNormBetaGammaBackpropTiling(const std::string& op_type, const TeOpPara
   return true;
 }
 REGISTER_OP_TILING_FUNC_BUFFERED(LayerNormBetaGammaBackprop, LayerNormBetaGammaBackpropTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(LayerNormBetaGammaBackpropV2, LayerNormBetaGammaBackpropTiling);
 }  // namespace optiling
