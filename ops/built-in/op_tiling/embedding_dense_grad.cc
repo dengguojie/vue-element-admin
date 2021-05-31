@@ -23,7 +23,7 @@ namespace optiling
         params.core_num = 0;
     }
 
-    bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_compile_info, int32_t &num_weights, 
+    bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_compile_info, int32_t &num_weights,
                         int32_t & padding_idx, int32_t & core_num)
     {
         using namespace nlohmann;
@@ -57,16 +57,16 @@ namespace optiling
     }
 
     void CalRunningInfo(const std::string &op_type, const nlohmann::json &op_compile_info,
-        EmbeddingDenseGradTilingParams &tiling_params, 
-        std::vector<int64_t> indices_shape, std::vector<int64_t> grad_shape)
+        EmbeddingDenseGradTilingParams &tiling_params,
+        const std::vector<int64_t> &indices_shape, const std::vector<int64_t> &grad_shape)
     {
         int32_t numel_indices = 1;
         numel_indices = CalculateTensorNumel(indices_shape);
         tiling_params.numel_indices = numel_indices;
         tiling_params.embedding_dim = grad_shape[grad_shape.size() - 1];
         tiling_params.mode_of_cal = CalTilingMode(grad_shape);
-        int32_t num_weights;
         int32_t padding_idx;
+        int32_t num_weights;
         int32_t core_num;
         (void)GetCompileInfo(op_type, op_compile_info, num_weights, padding_idx, core_num);
         tiling_params.core_num = core_num;
@@ -92,8 +92,8 @@ namespace optiling
                       const nlohmann::json &op_compile_info, OpRunInfo &run_info)
     {
         using namespace ge;
-        int32_t num_weights;
         int32_t padding_idx;
+        int32_t num_weights;
         int32_t core_num;
         bool get_compile_info = GetCompileInfo(op_type, op_compile_info, num_weights, padding_idx, core_num);
         if (!get_compile_info)
@@ -118,4 +118,3 @@ namespace optiling
     }
     REGISTER_OP_TILING_FUNC_BUFFERED(EmbeddingDenseGrad, EmbeddingDenseGradTiling);
 } // namespace optiling.
-

@@ -459,133 +459,51 @@ COMMON_INFER_FUNC_REG(PadV3D, PadV3DInferShape);
 // ----------------PadV3D Op End-------------------
 
 // ----------------PadV3 Op Begin-------------------
-static graphStatus PadV3InferShapeAndType(ge::Operator& op, std::vector<int64_t>& paddings) {
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto input_shape = input_desc->MutableShape().GetDims();
-  auto input_dtype = input_desc->GetDataType();
-  auto output_desc = op_info->MutableOutputDesc("y");
-  auto input_shape_max = input_shape.size();
-  auto paddings_shape = paddings.size();
-  // paddings list index offset
-  auto offset_1 = 1;
-  auto offset_2 = 2;
-  output_desc->SetDataType(input_dtype);
-
-  // expand paddings by 0
-  auto expand_num = input_shape_max * 2 - paddings_shape;
-  for(size_t dim = 0; dim < expand_num; dim++) {
-    paddings.push_back(0);
-  }
-  auto paddings_size_new = paddings.size();
-  if (!IsUnknown(input_shape)) {
-    // not dynamic shape, will output shape and dtype
-    if (input_shape.empty()) {
-      input_shape.push_back(1);
-    }
-    if (input_shape.size() * 2 != paddings.size()) {
-      OP_LOGE("OP[PadV3]", "the num of paddings must be double the input dim size");
-      return GRAPH_FAILED;
-    }
-    // calculate the output shape
-    vector<int64_t> output_shape;
-    for (size_t dim = 0; dim < input_shape.size(); dim++) {
-      output_shape.push_back(input_shape[dim] + paddings[paddings_size_new - dim * 2 - offset_2] \
-                                              + paddings[paddings_size_new - dim * 2 - offset_1]);
-    }
-    output_desc->SetShape(GeShape(output_shape));
-
-    return GRAPH_SUCCESS;
-  }
-  // input shape is -2, output is -2
-  if (IsUnknownRankShape(input_shape)) {
-    output_desc->SetShape(GeShape(input_shape));
-
-    return GRAPH_SUCCESS;
-  }
-  // input shape is -1, will get the shape and range
-  // calculate the output shape
-  vector<int64_t> output_shape;
-  for (size_t dim = 0; dim < input_shape.size(); dim++) {
-    if (input_shape[dim] == -1) {
-      output_shape.push_back(input_shape[dim]);
-    } else {
-      output_shape.push_back(input_shape[dim] + paddings[paddings_size_new - dim * 2 - offset_2] \
-                                              + paddings[paddings_size_new - dim * 2 - offset_1]);
-    }
-  }
-  output_desc->SetShape(GeShape(output_shape));
-  // calculate the output range
-  std::vector<std::pair<int64_t, int64_t>> input_range;
-  input_desc->GetShapeRange(input_range);
-  MakeUpShapeRange(input_shape, input_range);
-  std::vector<std::pair<int64_t, int64_t>> output_range;
-  for (size_t dim = 0; dim < input_shape.size(); dim++) {
-    auto range_min = input_range[dim].first + paddings[paddings_size_new - dim * 2 - offset_2] \
-                                            + paddings[paddings_size_new - dim * 2 - offset_1];
-    auto range_max = input_range[dim].second == -1 ?
-                     -1 : input_range[dim].second + paddings[paddings_size_new - dim * 2 - offset_2] \
-                                                  + paddings[paddings_size_new - dim * 2 - offset_1];
-    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
-  }
-
-  output_desc->SetShapeRange(output_range);
-  return GRAPH_SUCCESS;
-}
-
 IMPLEMT_COMMON_INFERFUNC(PadV3InferShape) {
-  OP_LOGD("OP[PadV3]", "PadV3InferShape Begin.");
-  const vector<string> depend_names = {"paddings"};
-  PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-
-  if (node == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get null node ptr");
-  }
-
-  auto paddings_desc = op_info->MutableInputDesc("paddings");
-
-  GeTensorPtr paddings_tensor = nullptr;
-  if (GRAPH_SUCCESS != NodeUtils::GetInputConstData(node, "paddings", paddings_tensor)) {
-    OP_LOGW("OP[PadV3]", "the node paddings is not const node, will set the output dynamic");
-    auto input_desc = op_info->MutableInputDesc("x");
-    auto input_shape = input_desc->MutableShape().GetDims();
-    DataType input_dtype = input_desc->GetDataType();
-    auto output_desc = op_info->MutableOutputDesc("y");
-
-    // shape_x is UNKNOWN_RANK
-    if (IsUnknownRankShape(input_shape)) {
-      OP_LOGW("OP[PadV3]", "shape_x is UNKNOWN_RANK. Set output UNKNOWN_RANK");
-      output_desc->SetShape(GeShape(input_shape));
-      output_desc->SetDataType(input_dtype);
-      return GRAPH_SUCCESS;
+  Tensor paddings_tensor;
+  if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", paddings_tensor)) {
+    OP_LOGE(op.GetName().c_str(), "Get Const Value [paddings] failed, Setting shape to UNKNOWN_DIM");
+    Shape shape_x = op.GetInputDesc("x").GetShape();
+    vector<int64_t> shape;
+    for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
+      shape.push_back(UNKNOWN_DIM);
     }
-
-    // shape_x is UNKNOWN_DIM
-    if (input_shape.empty()) {
-      input_shape.push_back(-1);
-    }
-    vector<int64_t> out_shape;
-    for (size_t dim = 0; dim < input_shape.size(); dim++) {
-      out_shape.push_back(-1);
-    }
-    std::vector<std::pair<int64_t, int64_t>> output_range;
-    MakeUpShapeRange(out_shape, output_range);
-    output_desc->SetShape(GeShape(out_shape));
-    output_desc->SetDataType(input_dtype);
-    output_desc->SetShapeRange(output_range);
+    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    Shape out_shape(shape);
+    tensordesc_output.SetShape(out_shape);
+    tensordesc_output.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("y", tensordesc_output);
     return GRAPH_SUCCESS;
   }
 
-  // get const paddings data
-  auto const_dtype = paddings_desc->GetDataType();
+  DataType dtype = op.GetInputDesc("paddings").GetDataType();
+
   std::vector<int64_t> paddings;
-  if (!GetConstValue(op, paddings_tensor, const_dtype, paddings)) {
-    OP_LOGE(op.GetName().c_str(), "Get Const paddings value failed, infershape failed");
+  if (!GetConstValue(op, paddings_tensor, dtype, paddings)) {
+    OP_LOGE(op.GetName().c_str(), "Get Const Value [paddings] failed ");
     return GRAPH_FAILED;
   }
-  return PadV3InferShapeAndType(op, paddings);
+
+  bool paddings_contiguous = true;
+  if (op.GetAttr("paddings_contiguous", paddings_contiguous) == GRAPH_FAILED) {
+    OP_LOGI(op.GetName().c_str(), "Get attr [paddings_contiguous] failed");
+  }
+
+  if (!paddings_contiguous) {
+    std::vector<int64_t> pads;
+    int64_t rank = paddings.size() / 2;
+    for (int i = 0; i < rank; i++) {
+      pads.push_back(paddings[i]);
+      pads.push_back(paddings[i + rank]);
+    }
+    paddings = pads;
+    OP_LOGI(op.GetName().c_str(), "Get attr paddings_contiguous = false");
+  } else {
+    OP_LOGI(op.GetName().c_str(), "Get attr paddings_contiguous = true[default]");
+  }
+
+  return PadInferShapeAndType(op, paddings);
 }
 
 COMMON_INFER_FUNC_REG(PadV3, PadV3InferShape);

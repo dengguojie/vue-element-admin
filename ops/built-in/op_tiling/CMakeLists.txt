@@ -68,7 +68,6 @@ set(_optiling_files
   pad_common.cc
   pad_d.cc
   pad.cc
-  pad_v3.cc
   prelu.cc
   reverse.cc
   reduce_tiling.cc
@@ -127,6 +126,7 @@ set(_optiling_files
   flatten.cc
   embedding_dense_grad.cc
   one_hot.cc
+  pad_v3.cc
   maxpoolwithargmaxv1.cc
   maxpoolgradwithargmaxv1.cc
   bounding_box_decode.cc
