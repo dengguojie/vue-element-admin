@@ -39,9 +39,9 @@ PADDING_SHAPE_DIM = 4
 FMAP_HW_MAX = 4096
 FMAP_HW_MIN = 1
 
-# DeDy H,W must be in [2,4096]
+# DeDy H,W must be in [1,4096]
 DEDY_HW_MAX = 4096
-DEDY_W_MIN = 2
+DEDY_W_MIN = 1
 DEDY_H_MIN = 1
 
 # filterH, filterW must be in [1,255]
@@ -342,16 +342,6 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
         if fmap_range_h[1]:
             out_h_upper = _ceil(fmap_range_h[1], stride[0])
         out_w_lower = _ceil(fmap_range_w[0], stride[1])
-        # the lower limit of w_out is 2
-        if out_w_lower < 2:
-            lower_new = stride[1] + 1
-            fmap_range_w_lower = min(lower_new, fmap_range_w[1]) if fmap_range_w[1] else lower_new
-            fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
-            out_w_lower = _ceil(fmap_range_w[0], stride[1])
-            correct_range_flag = True
-            warnings.warn("The output calculated based on the lower limit of the input w " + \
-                "range is less than 2, and the lower limit of the input w range is corrected " + \
-                "as {}".format(fmap_range_w_lower))
         out_w_upper = FMAP_HW_MAX
         if  fmap_range_w[1]:
             out_w_upper = _ceil(fmap_range_w[1], stride[1])
@@ -376,15 +366,15 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
 
         out_w_lower = _get_output(fmap_range_w[0], w_w,
                                  (pads[2], pads[3]), stride[1], dilation[3])
-        if out_w_lower < 2:
-            lower_new = max(w_w - pads[2] - pads[3], 0) + stride[1]
-            fmap_range_w_lower = min(lower_new, fmap_range_w[1]) if fmap_range_w[1] else lower_new
+        if out_w_lower < 1:
+            fmap_range_w_lower = min(max(w_w - pads[2] - pads[3], 1), fmap_range_w[1]) \
+                                 if fmap_range_w[1] else max(w_w - pads[2] - pads[3], 1)
             fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
             out_w_lower = _get_output(fmap_range_w[0], w_w,
                                     (pads[2], pads[3]), stride[1], dilation[3])
             correct_range_flag = True
             warnings.warn("The output calculated based on the lower limit of the input w " + \
-                "range is less than 2, and the lower limit of the input w range is corrected " + \
+                "range is less than 1, and the lower limit of the input w range is corrected " + \
                 "as {}".format(fmap_range_w_lower))
         out_w_upper = FMAP_HW_MAX
         if fmap_range_w[1]:

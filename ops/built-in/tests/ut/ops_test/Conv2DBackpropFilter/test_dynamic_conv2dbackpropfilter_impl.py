@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-from impl.dynamic.conv2d_backprop_filter import get_op_support_info
 from op_test_frame.ut import OpUT
-
+from impl.dynamic.conv2d_backprop_filter import get_op_support_info
 ut_case = OpUT("Conv2DBackpropFilter", "impl.dynamic.conv2d_backprop_filter",
                "conv2d_backprop_filter")
 
@@ -12,6 +11,10 @@ def gen_dynamic_conv2d_backprop_filter_case(shape_filter, shape_dedy, shape_x,
                                             range_filter, range_dedy, range_x,
                                             strides, pads, dilations,
                                             kernel_name_val, expect):
+    import sys
+    import importlib
+    modulename = sys.modules.get('impl.dynamic.conv2d_backprop_filter')
+    importlib.reload(modulename)
     return {"params": [
         # x
         {"ori_shape": shape_x, "ori_format": format_x,
@@ -53,6 +56,19 @@ ut_case.add_case(
                                         [(128, 158), (3, 3), (1, 1), (2, 2)],
                                         (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case2",
+                                        "success"))
+
+#w_one_case dynamic_batch SAME NCHW
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case((64, 3, 3, 3), (-1, 64, 3, 1), (-1, 3, 3, 1),
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(64, 64), (3, 3), (3, 3), (3, 3)],
+                                        [(128, 158), (64, 64), (3, 3), (1, 1)],
+                                        [(128, 158), (3, 3), (3, 3), (1, 1)],
+                                        (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case_w_one_case",
                                         "success"))
 
 # dynamic_rank

@@ -734,7 +734,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         _, _, kernel_height, kernel_width = self.weight_shape
         _, _, _, dilation_w = self.dilation
 
-        if self.flag_load3d_special_case:
+        if not self.var_map and self.flag_load3d_special_case:
             # in this situation, stride_w do no make sense
             # set stride_w be fmap_w_after_pad
             # add kernel_w_after_dilation to pad_right
@@ -744,7 +744,21 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             grads_width = grads_width * 2
             self.shapelist['grads_5hd'][-2] = grads_width
             self.shape_grads_5hd[-2] = grads_width
-
+        if self.var_map:
+            w_one_flag = tvm.var("w_one_flag")
+            self.var_map["w_one_flag"] = w_one_flag
+            stride_w = tvm.select(w_one_flag == 2,
+                                  fmap_width + self.pad[2] + self.pad[3],
+                                  self.stride[1])
+            self.stride[1] = stride_w
+            pad_r = tvm.select(w_one_flag == 2,
+                               self.pad[3] + (kernel_width - 1) * dilation_w + 1,
+                               self.pad[3])
+            self.pad[3] = pad_r
+            grads_width = grads_width * w_one_flag
+            self.shapelist['grads_5hd'][-2] = grads_width
+            self.shape_grads_5hd[-2] = grads_width
+            
         # group dict
         group_dict = self.group_dict
         real_g = group_dict["real_g"]
@@ -906,9 +920,12 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             grads_width_index = (hw_mad_indices % grads_width)
             grads_c0_index = grads_c0_indices
 
-            if self.flag_load3d_special_case:
+            if not self.var_map and self.flag_load3d_special_case:
                 # make sure the index won't exceed real grads_w
                 grads_width_index = (hw_mad_indices % (grads_width // 2))
+            if self.var_map:
+                w_one_flag = self.var_map["w_one_flag"]
+                grads_width_index = (hw_mad_indices % (grads_width // w_one_flag))
 
             return grads(batch_size_index, grads_c1_index,
                          grads_height_index, grads_width_index, grads_c0_index)

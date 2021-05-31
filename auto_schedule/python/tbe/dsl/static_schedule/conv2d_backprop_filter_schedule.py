@@ -538,7 +538,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
         def _reduce_split_mode():
             reduce_split_mode = True
-            if 'fmap_h' in self.var_map or 'fmap_w' in self.var_map:
+            if self.var_map:
                 if tiling["AL1_shape"] and tiling["BL1_shape"]:
                     # grads and fmap need tiling in L1
                     reduce_split_mode = \
@@ -1120,6 +1120,15 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             return flag_all_one_case, flag_conv1d_case, flag_w_one_case
         flag_all_one_case, flag_conv1d_case, flag_w_one_case = _flag_all_one()
         tiling = _get_tiling()
+
+        # for dynamic_mode w_one_case
+        if self.var_map:
+            w_one_flag = tiling.get("w_one_flag")
+            sch.set_var_value(self.var_map["w_one_flag"], w_one_flag)
+            flag_w_one_case = True if w_one_flag == 2 else False
+            if flag_w_one_case:
+                width_grads *= 2
+                grads_shape[3] = width_grads
 
         if DEBUG_MODE:
             print("grads_shape to tiling_query", grads_shape)

@@ -434,6 +434,10 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         self.a_info[3] = self._get_output_w(self.b_info[3])
         self.tiling_info["tiling_type"] = "cost_model_tiling"
 
+        if self.b_info[2] != 1 and self.b_info[3] == 1:
+            self.tiling_info['padr'] += (self.c_info[3] - 1) * self.tiling_info['dilationW'] + 1
+            self.tiling_info['strideW'] = self.a_info[3] + self.cur_pads[2] + self.cur_pads[3]
+
         cost_tiling = get_tiling(self.tiling_info)
         tiling = self._check_and_set_default_tiling(cost_tiling[0])
         return tiling
@@ -500,8 +504,9 @@ class Conv2dBpFilterTiling(CubeTilingOp):
 
         # searching up-ward for w_max
         cur_w_size = w_i
+        wi_max = cur_w_size
         while self._check_tiling_match(tiling, cur_w_size, h_i, cur_n_size) \
-            and cur_w_size <= W_RANGE:
+            and cur_w_size <= W_RANGE and tiling.get("w_one_flag") == 1:
             wi_max = cur_w_size
             cur_w_size = cur_w_size + W_DELTA
 
@@ -573,6 +578,8 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         self._set_padding_list(h_i, w_i)
         h_o = self._get_output_h(h_i)
         w_o = self._get_output_w(w_i)
+        if tiling.get("w_one_flag") == 2:
+            w_o *= 2
         dy_shape = n_i, self.a_info[1], h_o, w_o, utils.CUBE_SIZE
         block_dim_batch = tiling.get("block_dim")[0]
 
@@ -838,6 +845,8 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         self._set_padding_list(h_i, w_i)
         h_o = self._get_output_h(h_i)
         w_o = self._get_output_w(w_i)
+        if tiling.get("w_one_flag") == 2:
+            w_o *= 2
         howo_align = utils.align(h_o * w_o, utils.FP16_K)
 
         dy_shape = n_i, self.a_info[1], h_o, w_o, utils.CUBE_SIZE
@@ -927,7 +936,8 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         self._set_padding_list(h_i, w_i)
         h_o = self._get_output_h(h_i)
         w_o = self._get_output_w(w_i)
-
+        if tiling.get("w_one_flag") == 2:
+            w_o *= 2
         cur_dy_shape = current_n, self.a_info[1], h_o, w_o, utils.CUBE_SIZE
         cur_fmap_shape = current_n, self.b_info[1], h_i, w_i, utils.CUBE_SIZE
 
@@ -1049,7 +1059,9 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         tiling = tiling_extend["tiling"]
         dy_shape = tiling_extend["A_shape"]
         fmap_shape = tiling_extend["B_shape"]
-
+        w_one_flag = 2 if fmap_shape[2] != 1 and fmap_shape[3] == 1 else 1
+        if w_one_flag == 2:
+            dy_shape = (dy_shape[0], dy_shape[1], dy_shape[2], dy_shape[3] * 2, dy_shape[4])
         constraint_flag = self._get_attach_flag_detail(tiling, dy_shape, fmap_shape)
 
         tiling.update({
@@ -1062,7 +1074,8 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             "batch_num_sc": constraint_flag.get('batch_num_sc'),
             "flag_conv1d_case": constraint_flag.get('flag_conv1d_case'),
             "flag_fmap_load2d": constraint_flag.get('flag_fmap_load2d'),
-            "k_atomic_add_len": constraint_flag.get('k_atomic_add_len')})
+            "k_atomic_add_len": constraint_flag.get('k_atomic_add_len'),
+            "w_one_flag": w_one_flag})
 
     def _get_attach_flag_detail(self, tiling, dy_shape, fmap_shape):
         l0a_attach = None
