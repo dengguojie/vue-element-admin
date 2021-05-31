@@ -21,17 +21,26 @@ import ctypes
 import json
 import struct
 import hashlib
+import threading
 from pathlib import Path
 
 from tbe.common.utils.errormgr import get_error_message
 
 
-_MAX_RUN_INFO_SIZE = 16384
+_MAX_RUN_INFO_SIZE = 1024*64
 _ASCEND_OPP_PATH_ENV = "ASCEND_OPP_PATH"
 _ASCEND_OPP_PATH_DEFAULT = "/usr/local/Ascend/opp"
 _BUILTIN_TILING_PATH = "op_impl/built-in/ai_core/tbe/op_tiling/liboptiling.so"
 _CUSTOM_TILING_PATH_DEFAULT = "op_impl/custom/ai_core/tbe/op_tiling/liboptiling.so"
 
+# Tiling is likely running in thread pool or single-threaded process,
+# using thread local buffer reduces memory allocation
+_TILING_DATA = threading.local()
+
+# Initializing thread local data when importing this py module,
+# which is helpful in case of single-threaded profiling test
+_TILING_DATA.buf = ctypes.create_string_buffer(_MAX_RUN_INFO_SIZE)
+_TILING_DATA.buf_size = ctypes.c_size_t(_MAX_RUN_INFO_SIZE)
 
 def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, timer=None):
     """
@@ -61,20 +70,22 @@ def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, 
         compile_info_hash = hashstr.hexdigest()
     compile_info_hash_c = compile_info_hash.encode('utf_8')
 
-    run_info_c = ctypes.create_string_buffer(_MAX_RUN_INFO_SIZE)
-    run_info_size_c = ctypes.c_size_t(_MAX_RUN_INFO_SIZE)
+    if not hasattr(_TILING_DATA, "buf") or not hasattr(_TILING_DATA, "buf_size"):
+        _TILING_DATA.buf = ctypes.create_string_buffer(_MAX_RUN_INFO_SIZE)
+        _TILING_DATA.buf_size = ctypes.c_size_t(_MAX_RUN_INFO_SIZE)
+
     tiling_func = libregister.TbeOpTilingPyInterfaceEx2
     if isinstance(timer, list):
         array_c = ctypes.c_uint64 * 3
         elapse_c = array_c(0, 0, 0)
         res = tiling_func(optype_c, compile_info_c, inputs_c, outputs_c,
-                          run_info_c, run_info_size_c, compile_info_hash_c,
+                          _TILING_DATA.buf, _TILING_DATA.buf_size, compile_info_hash_c,
                           elapse_c)
         for i in range(0, 3):
             timer.append(elapse_c[i])
     else:
         res = tiling_func(optype_c, compile_info_c, inputs_c, outputs_c,
-                          run_info_c, run_info_size_c, compile_info_hash_c,
+                          _TILING_DATA.buf, _TILING_DATA.buf_size, compile_info_hash_c,
                           ctypes.c_void_p())
     if not res:
         dict_args = dict()
@@ -82,7 +93,7 @@ def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, 
         dict_args["detailed_cause"] = "Tiling func failed."
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    run_info = json.loads(run_info_c.value)
+    run_info = json.loads(_TILING_DATA.buf.value)
     run_info['tiling_data'] = bytes.fromhex(run_info['tiling_data'])
     return run_info
 
