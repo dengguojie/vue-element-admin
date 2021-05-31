@@ -2,7 +2,7 @@ import onnx
 from onnx import helper
 
 def make_hardmax_case_1():
-    node = helper.make_node('HardMax',
+    node = helper.make_node('Hardmax',
                             inputs=['X'],
                             outputs=['Y'],
                             axis=1,

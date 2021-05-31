@@ -290,6 +290,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Relu, Relu, ReluV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Mul, Mul, MulV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Tan, Tan, TanV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::ScatterND, TensorScatterUpdate, ScatterNDV12);
 
 //onnx::13
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Acos, Acos, AcosV13);
@@ -340,4 +341,5 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Relu, Relu, ReluV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Mul, Mul, MulV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Tan, Tan, TanV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::ScatterND, TensorScatterUpdate, ScatterNDV13);
 }  // namespace domi

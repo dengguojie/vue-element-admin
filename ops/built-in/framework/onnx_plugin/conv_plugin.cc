@@ -375,7 +375,7 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
 
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::9::Conv", "ai.onnx::10::Conv", "ai.onnx::11::Conv", "ai.onnx::12::Conv",
+    .OriginOpType({"ai.onnx::8::Conv", "ai.onnx::9::Conv", "ai.onnx::10::Conv", "ai.onnx::11::Conv", "ai.onnx::12::Conv",
                    "ai.onnx::13::Conv"})
     .ParseParamsFn(ParseParamsConv)
     .ParseOpToGraphFn(ParseOpToGraphConv)

@@ -40,12 +40,12 @@ Status parse_params_hard_max(const Message *op_src, ge::Operator &op_dest)
 
 REGISTER_CUSTOM_OP("HardMax")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::8::HardMax",
-                   "ai.onnx::9::HardMax",
-                   "ai.onnx::10::HardMax",
-                   "ai.onnx::11::HardMax",
-                   "ai.onnx::12::HardMax",
-                   "ai.onnx::13::HardMax"})
+    .OriginOpType({"ai.onnx::8::Hardmax",
+                   "ai.onnx::9::Hardmax",
+                   "ai.onnx::10::Hardmax",
+                   "ai.onnx::11::Hardmax",
+                   "ai.onnx::12::Hardmax",
+                   "ai.onnx::13::Hardmax"})
     .ParseParamsFn(parse_params_hard_max)
     .ImplyType(ImplyType::TVM);
 }
