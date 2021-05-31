@@ -126,6 +126,13 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                       in_op_desc_ptr->GetName().c_str()),
                       return NOT_CHANGED);
   }
+  /* when argmaxv2 outputdata's dtype is int32 does not need fusion, otherwise, 
+  modify output's tensor dtype int64->int32 */
+  DataType outputdata_type = in_op_desc_ptr->GetOutputDesc(0).GetDataType();
+  FUSION_PASS_CHECK(outputdata_type == ge::DT_INT32,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), " when %s outputdata's dtype is int32 does not need fusion.",
+                    in_op_desc_ptr->GetName().c_str()),
+                    return NOT_CHANGED);
   // set op_argmaxv2's attr
   DataType types1 = ge::DT_INT32;
   op_argmaxv2.SetAttr(DTYPE, types1);
