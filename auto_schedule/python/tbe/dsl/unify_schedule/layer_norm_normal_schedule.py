@@ -131,6 +131,7 @@ class NormalLayerNormSchedule:
         self._do_set_scope()
         self._do_storage_bound()
         self._do_tiling()
+        self._do_storage_align()
         self._do_emit_insn()
         self._add_compile_info()
         return self.schedule
@@ -199,6 +200,36 @@ class NormalLayerNormSchedule:
             if self.forward_compute_graph_map.get(stage_tensor) and stage_tensor in self.graph_info.input_tensor_set:
                 continue
             self.schedule[stage_tensor].set_storage_bound(self.max_ub_size)
+        self.schedule[self.sub_tensor_ub].set_storage_bound(self.max_ub_size)
+        self.schedule[self.sub_gm_tensor_back].set_storage_bound(self.max_ub_size)
+
+    def _do_storage_align(self):
+        tensor_storage_bound_set = set(self.forward_compute_graph_map.keys()) | set(
+            self.output_tensor_stage_list) | set(self.input_tensor_stage_list)
+        reduce_len = len(self.reduce0_tensor.op.reduce_axis)
+        output_dtype = tuple(self.graph_info.endpoint_output_tensor_set)[0].dtype
+        if output_dtype in ("fp16", "float16"):
+            align_num = 16
+        else:
+            align_num = 8
+        if self.is_cast:
+            op_name_0 = self.mid0_output_gm_tensor.op.name
+            op_name_1 = self.mid1_output_gm_tensor.op.name
+            op_name_0_consumer = tuple(self.forward_compute_graph_map[self.mid0_output_gm_tensor])[0].op.name
+            op_name_1_consumer = tuple(self.forward_compute_graph_map[self.mid1_output_gm_tensor])[0].op.name
+
+        if reduce_len < 2:
+            for stage_tensor in tensor_storage_bound_set:
+                if stage_tensor in self.graph_info.input_tensor_set | self.graph_info.output_tensor_set | {self.sub_gm_tensor}:
+                    continue
+                op_name = stage_tensor.op.name
+                if op_name.startswith("reduce") and reduce_len < 2:
+                    continue
+                if self.is_cast and (op_name.startswith(op_name_0) or op_name.startswith(op_name_0_consumer) or op_name.startswith(op_name_1) or op_name.startswith(op_name_1_consumer)):
+                    continue
+                self.schedule[stage_tensor].storage_align(stage_tensor.op.axis[-2], align_num, 0)
+            self.schedule[self.sub_tensor_ub].storage_align(self.sub_tensor_ub.op.axis[-2], align_num, 0)
+            self.schedule[self.sub_gm_tensor_back].storage_align(self.sub_gm_tensor_back.op.axis[-2], align_num, 0)
 
     def _do_tiling(self):
         case = self.tiling_case
