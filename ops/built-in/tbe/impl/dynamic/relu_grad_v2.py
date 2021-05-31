@@ -52,7 +52,7 @@ def relu_grad_v2_compute(gradients, mask, backprops,
     """
     dtype = gradients.dtype
     trans_type = dtype
-    vsel_support = tbe_platform.api_check_support("te.lang.cce.vsel", dtype)
+    vsel_support = tbe_platform.api_check_support("tbe.dsl.vsel", dtype)
 
     # need cast int8 or uint8 to float16
     if dtype in ("int8", "uint8") or not vsel_support:

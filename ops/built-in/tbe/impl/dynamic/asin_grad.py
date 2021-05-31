@@ -67,7 +67,7 @@ def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     """
 
     dtype = y.dtype
-    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
 
@@ -118,8 +118,9 @@ def asin_grad(y, dy, z, kernel_name="asin_grad"):
     para_check.check_dtype(dtype_dy, check_list, param_name="dy")
 
     if dtype_y != dtype_dy:
-        error_manager_vector.raise_err_inputs_dtype_not_equal('asin_grad', 'dtype_y', 'dtype_dy', str(dtype_y), str(dtype_dy))
-    
+        error_manager_vector.raise_err_inputs_dtype_not_equal('asin_grad', 'dtype_y', 'dtype_dy',
+                                                              str(dtype_y), str(dtype_dy))
+
     # get 2 input tensors: data_y, data_dy
     ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []

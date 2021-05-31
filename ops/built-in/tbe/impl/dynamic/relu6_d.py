@@ -17,7 +17,6 @@ relu6_d
 f(x) = min(max(0,x), 6*scale)
 """
 
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -81,7 +80,7 @@ def relu6_d(input_x, output_y, scale=1.0, kernel_name="relu6_d"):
     input_dtype = input_x.get("dtype").lower()
     para_check.check_shape(input_shape, param_name="input_x")
 
-    vmaxs_support = tbe_platform.api_check_support("te.lang.cce.vmaxs", "float32")
+    vmaxs_support = tbe_platform.api_check_support("tbe.dsl.vmaxs", "float32")
     if input_dtype == "float32" and not vmaxs_support:
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'input_x', ("int32", "float16"),
                                                                  input_dtype)
@@ -96,7 +95,6 @@ def relu6_d(input_x, output_y, scale=1.0, kernel_name="relu6_d"):
     for (_input_x,) in ins:
         with tbe.compute():
             input_shape = shape_util.variable_shape([_input_x])
-            input_shape = [reduceIns(lambda x, y: x * y, input_shape[:])]
             input_data = tvm.placeholder(input_shape[0], name="input_data", dtype=input_dtype)
             final_res = relu6_d_compute(input_data, output_y, scale, kernel_name=kernel_name)
 

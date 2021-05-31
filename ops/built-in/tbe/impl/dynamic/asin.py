@@ -118,7 +118,7 @@ def asin_compute(x, y, kernel_name="asin"):
     dtype = x.dtype
 
     # Change dtype to float32
-    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
 
     # Sign mask
@@ -128,20 +128,26 @@ def asin_compute(x, y, kernel_name="asin"):
     x = tbe.vmul(x, sign)
 
     # x belongs to (0, 2^(-0.5))
-    if tbe_platform.api_check_support("te.lang.cce.vmins", x.dtype):
+    if tbe_platform.api_check_support("tbe.dsl.vmins", x.dtype):
         choice_1 = tbe.vmins(x, tvm.const(BOUNDARY_1, x.dtype))
     else:
         boundary_mask1 = tbe.broadcast(tvm.const(BOUNDARY_1, x.dtype), shape)
         choice_1 = tbe.vmin(x, boundary_mask1)
 
-    if tbe_platform.api_check_support("te.lang.cce.vsubs", choice_1.dtype):
+    if tbe_platform.api_check_support("tbe.dsl.vsubs", choice_1.dtype):
         choice_1 = tbe.vsubs(choice_1, tvm.const(BOUNDARY_1, choice_1.dtype))
     else:
         boundary_mask1 = tbe.broadcast(tvm.const(BOUNDARY_1, choice_1.dtype), shape)
         choice_1 = tbe.vsub(choice_1, boundary_mask1)
 
-    choice_1 = tbe.vmuls(tbe.floor(choice_1), NEG_NUM_ONE)
-    choice_1 = tbe.cast_to(choice_1, "float32")
+    choice_dtype = choice_1.dtype
+    if choice_dtype != "float16" and tbe_platform.get_soc_spec(
+        "SOC_VERSION") == "Ascend310":
+        choice_1 = tbe.cast_to(choice_1, "float16")
+    choice_1 = tbe.floor(choice_1)
+    choice_1 = tbe.cast_to(choice_1, choice_dtype)
+    choice_1 = tbe.vmuls(choice_1, NEG_NUM_ONE)
+
     res_1 = _taylor_compute(x)
     res_1 = tbe.vmul(res_1, choice_1)
 
@@ -201,7 +207,7 @@ def asin(x, y, kernel_name="asin"):
     para_check.check_dtype(x_dtype, check_list, param_name="x")
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal('asin', 'x_dtype', 'y_dtype', str(x_dtype), str(y_dtype))
-    
+
     ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 

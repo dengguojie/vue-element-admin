@@ -52,7 +52,7 @@ def reduce_min_compute(x, axes, y, keepdims=None,
     dtype = x.dtype
     if dtype in ("int8", "uint8"):
         x = tbe.cast_to(x, "float16")
-    elif not tbe_platform.api_check_support("te.lang.cce.reduce_min", dtype):
+    elif not tbe_platform.api_check_support("tbe.dsl.reduce_min", dtype):
         x = tbe.cast_to(x, "float32")
     res_min = tbe.reduce_min(x, axis=axes, keepdims=keepdims)
     res = tbe.cast_to(res_min, dtype)

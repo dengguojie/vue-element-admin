@@ -77,7 +77,7 @@ def reduce_mean_compute(x,
         calc_dtype = "float32"
     elif dtype == "float16":
         cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-        if not tbe_platform.api_check_support("te.lang.cce.sum",
+        if not tbe_platform.api_check_support("tbe.dsl.sum",
                                               "float32"):
             calc_dtype = "float16"
         elif cce_product == "Ascend310" and impl_mode == OpImplMode.HIGH_PERFORMANCE:

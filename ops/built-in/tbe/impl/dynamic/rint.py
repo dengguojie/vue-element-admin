@@ -15,7 +15,6 @@
 """
 rint
 """
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -55,7 +54,7 @@ def rint_compute(input_x, output_y, kernel_name="rint"):
         the result of rint compute
     """
     dtype = input_x.dtype
-    if not tbe_platform.api_check_support("te.lang.cce.round", dtype):
+    if not tbe_platform.api_check_support("tbe.dsl.round", dtype):
         input_x = tbe.cast_to(input_x, "float16")
     res = tbe.round(input_x)
     res = tbe.cast_to(res, dtype)
@@ -99,10 +98,7 @@ def rint(input_x, output_y, kernel_name="rint"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_x = tvm.placeholder(fuseshape, dtype=dtype, name="data_x")
+            data_x = tvm.placeholder(x_shape[0], dtype=dtype, name="data_x")
             res = rint_compute(data_x, output_y, kernel_name)
 
             tensors.append([data_x, res])

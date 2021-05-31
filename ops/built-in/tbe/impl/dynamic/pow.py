@@ -106,7 +106,7 @@ def _positive_compute(input_x, input_y):
     """
     dtype = input_x.dtype
     input_x = tbe.vabs(input_x)
-    if not tbe_platform.api_check_support("te.lang.cce.vlog",
+    if not tbe_platform.api_check_support("tbe.dsl.vlog",
                                           dtype):
         input_x = tbe.cast_to(input_x, "float16")
         input_y = tbe.cast_to(input_y, "float16")
@@ -116,7 +116,7 @@ def _positive_compute(input_x, input_y):
     mul_value = tbe.vmul(input_y, log_value)
     res = tbe.vexp(mul_value)
 
-    if not tbe_platform.api_check_support("te.lang.cce.vlog",
+    if not tbe_platform.api_check_support("tbe.dsl.vlog",
                                           dtype):
         res = tbe.cast_to(res, dtype)
 
@@ -134,8 +134,8 @@ def _negative_compute(input_x, input_y):
     shape = input_x.shape
     abs_value = tbe.vabs(input_y)
 
-    vmod_support = tbe_platform.api_check_support("te.lang.cce.vmod", "float32")
-    vlog_support = tbe_platform.api_check_support("te.lang.cce.vlog", input_dtype)
+    vmod_support = tbe_platform.api_check_support("tbe.dsl.vmod", "float32")
+    vlog_support = tbe_platform.api_check_support("tbe.dsl.vlog", input_dtype)
 
     if not vmod_support or not vlog_support:
         dtype = "float16"
@@ -153,7 +153,7 @@ def _negative_compute(input_x, input_y):
 
     mul_value = tbe.vmul(input_y, log_value)
 
-    if tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+    if tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
         add_value = tbe.cast_to(add_value, "float32")
         mul_value = tbe.cast_to(mul_value, "float32")
 
@@ -201,7 +201,7 @@ def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
     data_x_cast = input_x
     data_y_cast = input_y
     cast_dtype = "float16"
-    if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
+    if tbe_platform.api_check_support("tbe.dsl.vdiv", "float32"):
         data_x_cast = tbe.cast_to(input_x, "float32")
         data_y_cast = tbe.cast_to(input_y, "float32")
         has_improve_precision = True

@@ -58,7 +58,7 @@ def reduce_sum_d_compute(x, y, axis=None, keepdims=None, kernel_name="reduce_sum
     """
     dtype = x.dtype
 
-    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.reduce_sum", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.reduce_sum", "float32"):
         x = tbe.cast_to(x, "float32")
     res_sum = tbe.reduce_sum(x, axis=axis, keepdims=keepdims)
     res = tbe.cast_to(res_sum, dtype)

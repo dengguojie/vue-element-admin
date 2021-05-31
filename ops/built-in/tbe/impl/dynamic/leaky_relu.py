@@ -15,8 +15,6 @@
 """
 leaky_relu
 """
-from functools import reduce as reduceIns
-
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
@@ -153,8 +151,6 @@ def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
     for (_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
             input_data_x = tvm.placeholder(x_shape[0], name="input_data_x",
                                            dtype=dtype, attrs=attr_x)
 

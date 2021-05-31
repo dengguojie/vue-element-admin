@@ -15,7 +15,6 @@
 """
 round
 """
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -53,7 +52,7 @@ def round_compute(x, y, kernel_name="round"):
         result = tbe.vadd(x, input_data_one)
         return result
 
-    if not tbe_platform.api_check_support("te.lang.cce.round", dtype):
+    if not tbe_platform.api_check_support("tbe.dsl.round", dtype):
         x = tbe.cast_to(x, "float16")
     result = tbe.round(x)
     result = tbe.cast_to(result, dtype)
@@ -92,10 +91,7 @@ def round(x, y, kernel_name="round"):
     for (_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
-
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_x = tvm.placeholder(fuseshape, dtype=input_dtype, name="data_x")
+            data_x = tvm.placeholder(x_shape[0], dtype=input_dtype, name="data_x")
             res = round_compute(data_x, y, kernel_name)
 
             tensors.append([data_x, res])

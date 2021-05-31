@@ -73,13 +73,13 @@ def relu_v2_compute(x, y, mask, kernel_name="relu_v2"):
     inp_dtype = x.dtype
     shape = x.shape
     compatible_dtype = x.dtype
-    vcmp_support = tbe_platform.api_check_support("te.lang.cce.vcmp", compatible_dtype)
+    vcmp_support = tbe_platform.api_check_support("tbe.dsl.vcmp", compatible_dtype)
 
     if not vcmp_support or inp_dtype == 'int8' and \
-        tbe_platform.api_check_support('te.lang.cce.cast_to', 's82f16'):
+        tbe_platform.api_check_support('tbe.dsl.cast_to', 's82f16'):
         x = tbe.cast_to(x, 'float16')
         compatible_dtype = 'float16'
-    if tbe_platform.api_check_support('te.lang.cce.vrelu', compatible_dtype):
+    if tbe_platform.api_check_support('tbe.dsl.vrelu', compatible_dtype):
         data_res = tbe.vrelu(x)
     else:
         tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO,

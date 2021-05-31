@@ -60,7 +60,7 @@ def apply_adam_with_amsgrad_d_compute(var,
     """
     inp_dtype = var.dtype
     # check the instruction supports or not
-    vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
+    vmul_support = tbe_platform.api_check_support("tbe.dsl.vmul", "float32")
     if inp_dtype == "float32" and not vmul_support:
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'var', [], inp_dtype)
 

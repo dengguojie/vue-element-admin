@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
 @register_operator_compute("truncate_div", op_mode="dynamic", support_fusion=True)
 def truncate_div_compute(input_x, input_y, output_x,
                          kernel_name="truncate_div"):
@@ -64,7 +64,7 @@ def truncate_div_compute(input_x, input_y, output_x,
         data_x_broad = tbe.broadcast(data_x_broad, shape_list[2])
         data_y_broad = tbe.broadcast(data_y_broad, shape_list[2])
         res_div = tbe.vdiv(data_x_broad, data_y_broad)
-        if tbe_platform.api_check_support("tbe.vmins", "float32"):
+        if tbe_platform.api_check_support("tbe.dsl.vmins", "float32"):
             res_min_int = tbe.ceil(tbe.vmins(res_div, 0))
             res_max_int = tbe.floor(tbe.vmaxs(res_div, 0))
         else:
@@ -73,7 +73,7 @@ def truncate_div_compute(input_x, input_y, output_x,
             res_max_int = tbe.floor(tbe.vmax(res_div, data_zero))
         res_trunc = tbe.vadd(res_min_int, res_max_int)
     else:
-        if tbe_platform.api_check_support("tbe.vlog", "float32"):
+        if tbe_platform.api_check_support("tbe.dsl.vlog", "float32"):
             input_x = tbe.cast_to(input_x, 'float32')
             input_y = tbe.cast_to(input_y, 'float32')
         data_x_broad = tbe.broadcast(input_x, shape_list[2])

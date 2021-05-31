@@ -130,11 +130,11 @@ def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
 
     dtype = y.dtype
     if dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
 
-    if tbe_platform.api_check_support('te.lang.cce.vexp', 'float32'):
+    if tbe_platform.api_check_support('tbe.dsl.vexp', 'float32'):
         # use vexp,vdiv api for high efficiency computation
         # cosh(y) = (e^y + e^-y) / 2
         #           (e^2y + 1) / 2e^y
@@ -200,8 +200,9 @@ def asinh_grad(y, dy, z, kernel_name="cce_asinh_grad"):
     para_check.check_dtype(dtype_y, check_list, param_name="y")
     para_check.check_dtype(dtype_dy, check_list, param_name="dy")
     if dtype_y != dtype_dy:
-        error_manager_vector.raise_err_inputs_dtype_not_equal('asinh_grad', 'dtype_y', 'dtype_dy', str(dtype_y), str(dtype_dy))
-    
+        error_manager_vector.raise_err_inputs_dtype_not_equal('asinh_grad', 'dtype_y', 'dtype_dy',
+                                                              str(dtype_y), str(dtype_dy))
+
     ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
