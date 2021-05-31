@@ -6,8 +6,10 @@ ut_case = OpUT("Sin", "impl.dynamic.sin", "sin")
 
 case1 = {
     "params": [
-        {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND", "range":[(1, 100)]},
-        {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND", "range":[(1, 100)]},
+        {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND",
+         "range": [(1, 100)]},
+        {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND",
+         "range": [(1, 100)]},
     ],
     "case_name": "Sin_1",
     "expect": "success",
@@ -15,8 +17,10 @@ case1 = {
 }
 case2 = {
     "params": [
-        {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND", "range":[(1, 100)]},
-        {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND", "range":[(1, 100)]},
+        {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND",
+         "range": [(1, 100)]},
+        {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND",
+         "range": [(1, 100)]},
     ],
     "case_name": "Sin_1",
     "expect": "success",

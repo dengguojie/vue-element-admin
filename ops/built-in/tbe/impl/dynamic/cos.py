@@ -15,7 +15,6 @@
 """
 dynamic cos
 """
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm

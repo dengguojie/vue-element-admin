@@ -15,13 +15,12 @@
 """
 dynamic erf
 """
-import functools
 
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
@@ -66,51 +65,56 @@ def erf_compute(input_x, output_y, kernel_name="erf"):
     """
 
     dtype = input_x.dtype
+    dtype_ = input_x.dtype
+    if dtype == "float16":
+        dtype = "float32"
+        input_x = tbe.cast_to(input_x, "float32")
     shape = shape_util.shape_to_list(input_x.shape)
-    const_one = tvm.const(SCALER_ONE, dtype="float32")
-    const_negative_one = tvm.const(SCALER_NEGATIVE_ONE, dtype="float32")
-    const_p = tvm.const(SCALER_P, dtype="float32")
-    const_a = tvm.const(SCALER_A, dtype="float32")
-    const_b = tvm.const(SCALER_B, dtype="float32")
-    const_c = tvm.const(SCALER_C, dtype="float32")
+    const_one = tvm.const(SCALER_ONE, dtype=dtype)
+    const_negative_one = tvm.const(SCALER_NEGATIVE_ONE, dtype=dtype)
+    const_p = tvm.const(SCALER_P, dtype=dtype)
+    const_a = tvm.const(SCALER_A, dtype=dtype)
+    const_b = tvm.const(SCALER_B, dtype=dtype)
+    const_c = tvm.const(SCALER_C, dtype=dtype)
     fp16_max = tvm.const(SCALER_FP16_MAX, dtype=dtype)
     fp16_min = tvm.const(SCALER_FP16_MIN, dtype=dtype)
-
-    if dtype == "float16":
-        input_x = tbe.cast_to(input_x, "float32")
-
     data_vmuls = tbe.vmuls(input_x, fp16_max)
     data_abs = tbe.vabs(data_vmuls)
     data_vadds = tbe.vadds(data_abs, fp16_min)
     data_div = tbe.vdiv(data_vmuls, data_vadds)
-    data_round = tbe.round(data_div)
-    tensor_sign = tbe.cast_to(data_round, "float32")
-    tensor_one = tbe.broadcast(const_one, shape, "float32")
+    if not tbe_platform.api_check_support("tbe.dsl.round", "float32") and dtype == "float32":
+        data_div_16 = tbe.cast_to(data_div, "float16")
+        data_round_16 = tbe.round(data_div_16)
+        data_round = tbe.cast_to(data_round_16, dtype)
+    else:
+        data_round = tbe.round(data_div)
+    tensor_sign = tbe.cast_to(data_round, dtype)
+    tensor_one = tbe.broadcast(const_one, shape, dtype)
     tensor_abs = tbe.vabs(input_x)
     erf_t_vmuls = tbe.vmuls(tensor_abs, const_p)
     erf_t_vadds = tbe.vadds(erf_t_vmuls, const_one)
     erf_data_t = tbe.vdiv(tensor_one, erf_t_vadds)
-
     erf_abs_square = tbe.vmul(tensor_abs, tensor_abs)
     erf_data_vmuls = tbe.vmuls(erf_abs_square, const_negative_one)
-    erf_data_exp = tbe.vexp(erf_data_vmuls)
-
+    if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and dtype == "float32":
+        data_div_16 = tbe.cast_to(erf_data_vmuls, "float16")
+        erf_data_exp_16 = tbe.vexp(data_div_16)
+        erf_data_exp = tbe.cast_to(erf_data_exp_16, dtype)
+    else:
+        erf_data_exp = tbe.vexp(erf_data_vmuls)
     erf_data_t_square = tbe.vmul(erf_data_t, erf_data_t)
     erf_data_t_cube = tbe.vmul(erf_data_t, erf_data_t_square)
-
     erf_t_vmuls = tbe.vmuls(erf_data_t, const_a)
     erf_t_square_vmuls = tbe.vmuls(erf_data_t_square, const_b)
     erf_t_cube_vmuls = tbe.vmuls(erf_data_t_cube, const_c)
-
     erf_square_vadd = tbe.vadd(erf_t_vmuls, erf_t_square_vmuls)
     erf_cube_vadd_ = tbe.vadd(erf_square_vadd, erf_t_cube_vmuls)
     erf_cube_vmuls = tbe.vmuls(erf_cube_vadd_, const_negative_one)
     erf_exp_vmul = tbe.vmul(erf_cube_vmuls, erf_data_exp)
     erf_exp_vadds = tbe.vadds(erf_exp_vmul, const_one)
     erf_result = tbe.vmul(tensor_sign, erf_exp_vadds)
-
-    if dtype == "float16":
-        erf_result = tbe.cast_to(erf_result, dtype)
+    if dtype != dtype_:
+        erf_result = tbe.cast_to(erf_result, dtype_)
     return erf_result
 
 
@@ -142,13 +146,11 @@ def erf(input_x, output_y, kernel_name="erf"):
 
     schedules, tensors = [], []
     ins = classify([input_x], OpPatternMode.ELEWISE)
-    for (_input_x,) in ins:
+    for (_x,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([_input_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype = dtype_input,
-                                         name = "data_input")
+            x_shape = shape_util.variable_shape([_x])
+            data_input = tvm.placeholder(x_shape[0], dtype=dtype_input,
+                                         name="data_input")
             res = erf_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():

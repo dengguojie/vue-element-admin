@@ -15,7 +15,6 @@
 """
 dynamic cosh
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -57,12 +56,17 @@ def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
         the result of compute
     """
     dtype = input_x.dtype
+    dtype_ = input_x.dtype
     shape = input_x.shape
     has_improve_precision = False
-    if dtype != "float32" and \
-            tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+    if dtype != "float32" and tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         dtype = "float32"
+        has_improve_precision = True
+
+    if dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
+        input_x = tbe.cast_to(input_x, "float16")
+        dtype = "float16"
         has_improve_precision = True
 
     data_mul = tbe.vmuls(input_x, tvm.const(SCALER_NEGATIVE_ONE, dtype))
@@ -78,7 +82,7 @@ def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
     res = tbe.vadd(data_exp_x, data_exp_data)
 
     if has_improve_precision:
-        res = tbe.cast_to(res, "float16")
+        res = tbe.cast_to(res, dtype_)
 
     return res
 
@@ -109,12 +113,10 @@ def cosh(input_x, output_cosh, kernel_name="cosh"):
 
     schedules, tensors = [], []
     ins = classify([input_x], OpPatternMode.ELEWISE)
-    for (_input_x,) in ins:
+    for (_x,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([_input_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+            x_shape = shape_util.variable_shape([_x])
+            data_input = tvm.placeholder(x_shape[0], dtype=input_dtype,
                                          name="data_input")
             res = cosh_compute(data_input, output_cosh, kernel_name)
             tensors.append([data_input, res])

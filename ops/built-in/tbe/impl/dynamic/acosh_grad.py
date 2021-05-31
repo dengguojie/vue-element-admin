@@ -33,7 +33,6 @@ dynamic acosh_grad
     [2] All : shape size limit is 2147483648.
 """
 # pylint: disable=invalid-name,too-many-locals
-import operator
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -168,10 +167,8 @@ def acosh_grad(y, dy, z, kernel_name="acosh_grad"):
     """
 
     # get the shape and dtype for input_1,input_2
-    shape_y = y.get("shape")
-    shape_dy = dy.get("shape")
-    dtype = y.get("dtype")
-    dtype_dy = dy.get("dtype")
+    dtype = y.get("dtype").lower()
+    dtype_dy = dy.get("dtype").lower()
 
     # raise runtimeerror if the input paras are invalid
     check_list = ("float16", "float32")
@@ -179,8 +176,6 @@ def acosh_grad(y, dy, z, kernel_name="acosh_grad"):
     para_check.check_dtype(dtype_dy, check_list, param_name="dy")
     para_check.check_elewise_shape_range([y, dy],
                                          support_broadcast=True)
-    dtype = dtype.lower()
-    dtype_dy = dtype_dy.lower()
 
     if dtype != dtype_dy:
         error_detail = "dtype of y and dy should be same"
@@ -188,10 +183,10 @@ def acosh_grad(y, dy, z, kernel_name="acosh_grad"):
 
     ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for (y, dy) in ins:
+    for (_y, _dy) in ins:
         with tbe.compute():
             # shape
-            shape_x1, shape_x2 = shape_util.variable_shape([y, dy])
+            shape_x1, shape_x2 = shape_util.variable_shape([_y, _dy])
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=dtype, name="data_x1")
             data_x2 = tvm.placeholder(shape_x2, dtype=dtype_dy, name="data_x2")

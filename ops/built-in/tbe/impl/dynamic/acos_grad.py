@@ -66,7 +66,7 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     dtype = y.dtype
     dtype_1 = dtype
     if dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
         dtype = "float32"
@@ -104,17 +104,14 @@ def acos_grad(y, dy, z, kernel_name="acos_grad"):
     """
 
     # get the shape and dtype for input_1,input_2
-    dtype = y.get("dtype")
-    dtype1 = dy.get("dtype")
+    dtype = y.get("dtype").lower()
+    dtype1 = dy.get("dtype").lower()
 
     # raise runtimeerror if the input paras are invalid
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="y")
     para_check.check_dtype(dtype1, check_list, param_name="dy")
-    para_check.check_elewise_shape_range([y, dy],
-                                         support_broadcast=True)
-    dtype = dtype.lower()
-    dtype1 = dtype1.lower()
+    para_check.check_elewise_shape_range([y, dy], support_broadcast=True)
 
     if dtype != dtype1:
         error_detail = "dtype of y and dy should be same"

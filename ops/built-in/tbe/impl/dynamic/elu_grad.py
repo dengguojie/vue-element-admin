@@ -67,15 +67,16 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     -------
     """
 
-    dtype = grads.dtype
+    dtype = grads.dtype.lower()
+    dtype_present = grads.dtype.lower()
     shape = grads.shape
 
-    if dtype.lower() == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
-        grads = tbe.cast_to(grads, "float32")
-        activations = tbe.cast_to(activations, "float32")
+    if dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
+        dtype_present = "float32"
+        grads = tbe.cast_to(grads, dtype_present)
+        activations = tbe.cast_to(activations, dtype_present)
 
-    if tbe_platform.api_check_support("te.lang.cce.vmins", "float32"):
+    if tbe_platform.api_check_support("tbe.dsl.vmins", "float32"):
         min_res = tbe.vmins(activations, NUM_ZERO)
         add_res = tbe.vadds(min_res, NUM_ONE)
         res = tbe.vmul(add_res, grads)
@@ -89,8 +90,8 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
         add_res = tbe.vadd(min_res, tensor_scalar_param_one)
         res = tbe.vmul(add_res, grads)
 
-    if dtype.lower() == "float16":
-        res = tbe.cast_to(res, "float16")
+    if dtype != dtype_present:
+        res = tbe.cast_to(res, dtype)
 
     return res
 

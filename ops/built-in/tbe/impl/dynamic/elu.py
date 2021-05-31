@@ -30,7 +30,7 @@ dynamic elu
     [1] All : shape size limit is 2147483648
 
 """
-import functools
+
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
@@ -40,7 +40,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.platform_adapter import error_manager_vector
 
 # shape limit 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -87,14 +86,20 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     """
 
     data = x
-    dtype = data.dtype
+    dtype = data.dtype.lower()
 
     has_improve_precision = False
-    if tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+    if tbe_platform.api_check_support("tbe.dsl.vrelu", "float32") and dtype == "float16":
         has_improve_precision = True
-    if dtype.lower() == "float16" and has_improve_precision:
         data = tbe.cast_to(data, "float32")
         cvt_dtype = "float32"
+    else:
+        cvt_dtype = dtype
+
+    if not tbe_platform.api_check_support("tbe.dsl.vrelu", "float32") and dtype == "float32":
+        has_improve_precision = True
+        data = tbe.cast_to(data, "float16")
+        cvt_dtype = "float16"
     else:
         cvt_dtype = dtype
 
@@ -108,8 +113,8 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     exp_res = tbe.vadds(exp_res, scalar_one_neg)
     res = tbe.vaxpy(exp_res, _positive_data, tvm.const(alpha, cvt_dtype))
 
-    if dtype.lower() == "float16" and has_improve_precision:
-        res = tbe.cast_to(res, "float16")
+    if dtype == cvt_dtype:
+        res = tbe.cast_to(res, dtype)
 
     return res
 
@@ -139,17 +144,13 @@ def elu(x, y, alpha=1.0, kernel_name="elu"):
     input_dtype = x.get("dtype").lower()
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="x")
-    if not tbe_platform.api_check_support("te.lang.cce.sum", "float32") and input_dtype == "float32":
-        error_manager_vector.raise_err_input_dtype_not_supported("elu", "x", "float16", input_dtype)
+
     schedules, tensors = [], []
     ins = classify([x], OpPatternMode.ELEWISE)
-
     for (_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+            data_input = tvm.placeholder(x_shape[0], dtype=input_dtype,
                                          name="data_input")
             res = elu_compute(data_input, y, alpha, kernel_name)
             tensors.append([data_input, res])

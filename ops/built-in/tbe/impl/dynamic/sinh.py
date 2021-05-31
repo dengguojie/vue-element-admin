@@ -15,7 +15,6 @@
 """
 dynamic sinh
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -58,14 +57,19 @@ def sinh_compute(input_data, output_data, kernel_name="sinh"):
     """
 
     dtype = input_data.dtype
+    dtype_copy = input_data.dtype
     shape = input_data.shape
 
     # in order to get the precise calcuate result
     has_improve_precision = False
-    if dtype.lower() == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+    if dtype.lower() == "float16" and tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
         input_data = tbe.cast_to(input_data, "float32")
         dtype = "float32"
+        has_improve_precision = True
+
+    if dtype.lower() == "float32" and not tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
+        input_data = tbe.cast_to(input_data, "float16")
+        dtype = "float16"
         has_improve_precision = True
 
     data_mul = tbe.vmuls(input_data, tvm.const(SCALER_NEGATIVE_ONE, dtype))
@@ -82,7 +86,7 @@ def sinh_compute(input_data, output_data, kernel_name="sinh"):
 
     # cast the dtype to float16
     if has_improve_precision:
-        res = tbe.cast_to(res, "float16")
+        res = tbe.cast_to(res, dtype_copy)
 
     return res
 
@@ -117,9 +121,7 @@ def sinh(input_data, output_data, kernel_name="sinh"):
     for (_input_data,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_data])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+            data_input = tvm.placeholder(x_shape[0], dtype=input_dtype,
                                          name="data_input")
             res = sinh_compute(data_input, output_data, kernel_name)
             tensors.append([data_input, res])

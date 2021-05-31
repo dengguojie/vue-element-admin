@@ -34,7 +34,6 @@ dynamic data_format_dim_map
     [2] All : `src_format` and `dst_format` must be length of 4.
     [3] All : shape size limit is 2147483648.
 """
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
@@ -167,9 +166,7 @@ def data_format_dim_map(x,
     for (_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=dtype_input,
+            data_input = tvm.placeholder(x_shape[0], dtype=dtype_input,
                                          name="data_input")
             res = _data_format_dim_map_compute(data_input, y, src_format, dst_format, kernel_name)
             tensors.append([data_input, res])

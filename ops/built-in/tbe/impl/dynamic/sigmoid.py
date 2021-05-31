@@ -15,7 +15,6 @@
 """
 dynamic sigmoid
 """
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
@@ -50,8 +49,8 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     """
     data_input = x
     dtype = x.dtype
-    exp_support = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
-    mul_support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
+    exp_support = tbe_platform.api_check_support("tbe.dsl.vexp", "float32")
+    mul_support = tbe_platform.api_check_support("tbe.dsl.vmuls", "float32")
     if dtype == "float32" and not mul_support:
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'x', ("float16",), dtype)
 
@@ -59,10 +58,11 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     const_num_one = tvm.const(1, dtype=dtype)
     tmp_negative = tbe.vmuls(data_input, const_num_neg_one)
     if dtype == "float32" and not exp_support:
-        tmp_negative = tbe.cast_to(tmp_negative, "float16")
-    tmp_exp = tbe.vexp(tmp_negative)
-    if dtype == "float32" and not exp_support:
-        tmp_exp = tbe.cast_to(tmp_exp, "float32")
+        tmp_negative_16 = tbe.cast_to(tmp_negative, "float16")
+        tmp_exp_16 = tbe.vexp(tmp_negative_16)
+        tmp_exp = tbe.cast_to(tmp_exp_16, dtype)
+    else:
+        tmp_exp = tbe.vexp(tmp_negative)
     tmp_sum = tbe.vadds(tmp_exp, const_num_one)
     if dtype == "float32":
         inp_shape = tmp_sum.shape
@@ -102,9 +102,7 @@ def sigmoid(x, y, kernel_name="sigmoid"):
     for (_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=dtype,
+            data_input = tvm.placeholder(x_shape[0], dtype=dtype,
                                          name="dtype")
             res = sigmoid_compute(data_input, y, kernel_name)
             tensors.append([data_input, res])
