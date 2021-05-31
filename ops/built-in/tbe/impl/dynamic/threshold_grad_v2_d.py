@@ -21,8 +21,14 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
+# define a string name of "float16"
+FLOAT_16 = "float16"
+# define a string name of "float32"
+FLOAT_32 = "float32"
 
 
 # pylint: disable=too-many-locals,unused-argument
@@ -58,9 +64,21 @@ def threshold_grad_v2_d_compute(input_gradients, input_features,
                                     param_name_input2="input_y")
     input_gradients = tbe.broadcast(input_gradients, shape_max)
     input_features = tbe.broadcast(input_features, shape_max)
+
     dtype = input_gradients.dtype
+    check_support_flag = False
+    if dtype == FLOAT_32 and not \
+            tbe_platform.api_check_support("tbe.dsl.vcmpsel", "float32"):
+        check_support_flag = True
+        dtype = FLOAT_16
+        input_features = tbe.cast_to(input_features, FLOAT_16)
+        input_gradients = tbe.cast_to(input_gradients, FLOAT_16)
+
     result = tbe.vcmpsel(input_features, threshold, 'gt',
                          input_gradients, tvm.const(0, dtype))
+
+    if check_support_flag:
+        result = tbe.cast_to(result, FLOAT_32)
 
     return result
 

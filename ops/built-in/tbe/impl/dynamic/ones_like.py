@@ -15,7 +15,6 @@
 """
 ones_like
 """
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -91,9 +90,7 @@ def ones_like(x, y, kernel_name="ones_like"):
     for (_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
-            fuse_shape = [1]
-            fuse_shape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuse_shape, name="data_input", dtype=src_dtype)
+            data_input = tvm.placeholder(x_shape[0], name="data_input", dtype=src_dtype)
             res = ones_like_compute(data_input, y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
