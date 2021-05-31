@@ -73,13 +73,18 @@ def _pre_broadcast(x1, x2, y, kernel_name):
     add dims in shape and range
     return x1, x2 after pre broadcast and dtype
     """
-    shape_x = x1.get("shape")
-    shape_y = x2.get("shape")
-    range_x = x1.get("range")
-    range_y = x2.get("range")
+    shape_x = list(x1.get("shape"))
+    shape_y = list(x2.get("shape"))
+    range_x = list(x1.get("range"))
+    range_y = list(x2.get("range"))
     dtype_x = x1.get("dtype").lower()
     dtype_y = x2.get("dtype").lower()
     dtype_z = y.get("dtype").lower()
+
+    x1["shape"] = shape_x
+    x2["shape"] = shape_y
+    x1["range"] = range_x
+    x2["range"] = range_y
 
     check_tuple = ("int16", "uint16", "int32")
     para_check.check_dtype(dtype_x, check_tuple, param_name="x1")
@@ -90,26 +95,23 @@ def _pre_broadcast(x1, x2, y, kernel_name):
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
 
     if len(shape_y) > len(shape_x):
-        pre_shape = tuple([1] * (len(shape_y) - len(shape_x))) + tuple(shape_x)
-        pre_range = [[1, 1]] * (len(shape_y) - len(shape_x)) + range_x
-        x1["shape"] = pre_shape
-        x1["range"] = pre_range
+        x1["range"] = [(1, 1)] * (len(shape_y) - len(shape_x)) + range_x
+        x1["shape"] = [1] * (len(shape_y) - len(shape_x)) + shape_x
     elif len(shape_x) > len(shape_y):
-        pre_shape = tuple([1]* (len(shape_x) - len(shape_y))) + tuple(shape_y)
-        pre_range = [[1, 1]] * (len(shape_x) - len(shape_y)) + range_y
-        x2["shape"] = pre_shape
-        x2["range"] = pre_range
+        x2["range"] = [(1, 1)] * (len(shape_x) - len(shape_y)) + range_y
+        x2["shape"] = [1]* (len(shape_x) - len(shape_y)) + shape_y
     else:
         pass
 
     if dtype_x == "int32":
         dtype_x = "int16"
-        x1["shape"] = tuple(x1["shape"]) + (2,)
-        x1["range"].append([2, 2])
-        x2["shape"] = tuple(x2["shape"]) + (2,)
-        x2["range"].append([2, 2])
         x1["dtype"] = "int16"
         x2["dtype"] = "int16"
+        x1["range"].append((2, 2))
+        x2["range"].append((2, 2))
+        x1["shape"] = x1["shape"] + [2]
+        x2["shape"] = x2["shape"] + [2]
+
 
     return x1, x2, dtype_x
 
@@ -139,7 +141,8 @@ def bitwise_xor(x1, x2, y, kernel_name="bitwise_xor"):
     """
     input_x, input_y, dtype = _pre_broadcast(x1, x2, y, kernel_name)
     schedules, tensors = [], []
-    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
+    extra_params = {"disable_optimization": True}
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
     for (_x, _y) in ins:
         with tbe.compute():
             x_shape, y_shape = shape_util.variable_shape([_x, _y])
