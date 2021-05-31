@@ -66,13 +66,21 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
     trans_dtype = ori_dtype
     shape = shape_util.shape_to_list(x.shape)
     if ori_dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vmul", "float32") and \
-            tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vmul", "float32") and \
+            tbe_platform.api_check_support("tbe.dsl.vlog", "float32"):
         x = tbe.cast_to(x, "float32")
         y = tbe.cast_to(y, "float32")
         if weight is not None:
             weight = tbe.cast_to(weight, "float32")
         trans_dtype = "float32"
+
+    if ori_dtype == "float32" and \
+            not tbe_platform.api_check_support("tbe.dsl.vlog", "float32"):
+        x = tbe.cast_to(x, "float16")
+        y = tbe.cast_to(y, "float16")
+        if weight is not None:
+            weight = tbe.cast_to(weight, "float16")
+        trans_dtype = "float16"
 
     const_one = tvm.const(1, trans_dtype)
     const_neg_one = tvm.const(-1, trans_dtype)
@@ -117,8 +125,7 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
     elif reduction == "none":
         pass
 
-    if ori_dtype == "float16":
-        result = tbe.cast_to(result, "float16")
+    result = tbe.cast_to(result, ori_dtype)
 
     return result
 

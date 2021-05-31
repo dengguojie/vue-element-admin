@@ -75,9 +75,9 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
         weight = tbe.broadcast(weight, shape_max)
     dtype = x.dtype
     support = tbe_platform.api_check_support(
-        "te.lang.cce.vmul", "float32")
+        "tbe.dsl.vmul", "float32")
     if dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vmul", "float32"):
         x = tbe.cast_to(x, "float32")
         y = tbe.cast_to(y, "float32")
         grad_output = tbe.cast_to(grad_output, "float32")

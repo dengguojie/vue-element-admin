@@ -15,8 +15,8 @@
 """
 floor
 """
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -47,15 +47,20 @@ def floor_compute(input_x, output_y, kernel_name="floor"):
     res : TVM tensor
         the result of floor(input_x)
     """
-    res_int32 = tbe.floor(input_x)
-    res = tbe.cast_to(res_int32, input_x.dtype)
+    flag_cast = False
+    dtype = input_x.dtype.lower()
+    if dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.floor", "float32"):
+        input_x = tbe.cast_to(input_x, "float16")
+        flag_cast = True
+    res = tbe.floor(input_x)
+    if flag_cast:
+        res = tbe.cast_to(res, dtype)
 
     return res
 
 
 @register_operator("Floor")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def floor(input_x, output_y, kernel_name="floor"):
     """
     algorithm: floor
@@ -83,20 +88,14 @@ def floor(input_x, output_y, kernel_name="floor"):
     ins = classify([input_x], OpPatternMode.ELEWISE)
     for (input_x,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype, name="data_input")
+            x_shape = shape_util.variable_shape([input_x])[0]
+            data_input = tvm.placeholder(x_shape, dtype=input_dtype, name="data_input")
             res = floor_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    config = {
-        "name": kernel_name,
-        "tensor_list": tensors,
-        "bool_storage_as_1bit": False
-    }
+    config = {"name": kernel_name, "tensor_list": tensors, "bool_storage_as_1bit": False}
 
     tbe.build(schedules, config)

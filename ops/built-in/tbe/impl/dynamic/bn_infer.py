@@ -148,7 +148,7 @@ def bn_infer_compute(x, scale, offset, mean, variance,
     # compute the batch normalization of x
     is_cast = False
     if x.dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vmul", "float32"):
         is_cast = True
         x = tbe.cast_to(x, "float32")
         multiplier_div = tbe.cast_to(multiplier_div, "float32")

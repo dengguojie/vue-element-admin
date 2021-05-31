@@ -80,9 +80,10 @@ def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
 
     shape_input = x.shape
     dtype_input = x.dtype
+    has_cast_to_float16 = False
 
     # chose the type of data in begin
-    if dtype_input == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype_input == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
     abs_data = tbe.vabs(x)
 
@@ -97,8 +98,14 @@ def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     for index in reversed(range(LEN_BEFORE - 2)):
         before_res = tbe.vmul(before_res, square_data)
         before_res = tbe.vadds(before_res, ITR_BEFORE[index])
+    
+    if before_abs_data.dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
+        before_abs_data = tbe.cast_to(before_abs_data, "float16")
+        has_cast_to_float16 = True
 
     exp_data = tbe.vexp(before_abs_data)
+    if has_cast_to_float16:
+        exp_data = tbe.cast_to(exp_data, "float32")
     before_res = tbe.vdiv(before_res, exp_data)
 
     # compute bessel_i0e for data in other domain

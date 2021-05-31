@@ -148,8 +148,10 @@ def bessel_i1e_compute(x, y, kernel_name="bessel_i1e"):
     dtype_input = x.dtype
 
     # chose the type of data in begin
-    if dtype_input == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype_input == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
+    if dtype_input == "float32" and not tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
+        x = tbe.cast_to(x, "float16")
 
     abs_data = tbe.vabs(x)
 
@@ -158,7 +160,7 @@ def bessel_i1e_compute(x, y, kernel_name="bessel_i1e"):
     after_res = _after_res_compute(abs_data, broad_const_limit)
 
     if abs_data.dtype == before_res.dtype and \
-       tbe_platform.api_check_support("te.lang.cce.vcmpsel", abs_data.dtype):
+       tbe_platform.api_check_support("tbe.dsl.vcmpsel", abs_data.dtype):
         res = tbe.vcmpsel(abs_data, broad_const_limit, 'lt', before_res, after_res)
     else:
         select_index = tbe.vcmp(abs_data, broad_const_limit, 'lt')
@@ -167,8 +169,7 @@ def bessel_i1e_compute(x, y, kernel_name="bessel_i1e"):
     data_sign = util_compute.sign(x)
     res = tbe.vmul(res, data_sign)
 
-    if dtype_input == "float16":
-        res = tbe.cast_to(res, "float16")
+    res = tbe.cast_to(res, dtype_input)
 
     return res
 

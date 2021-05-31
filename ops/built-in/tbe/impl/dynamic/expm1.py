@@ -16,7 +16,6 @@
 expm1
 """
 import functools
-from functools import reduce as reduceIns
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -174,8 +173,8 @@ def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """
     dtype = input_x.dtype
     shape = input_x.shape
-    flag_cloud = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
-    flag_mini = tbe_platform.api_check_support("te.lang.cce.vadd", "float32")
+    flag_cloud = tbe_platform.api_check_support("tbe.dsl.vexp", "float32")
+    flag_mini = tbe_platform.api_check_support("tbe.dsl.vadd", "float32")
     if dtype.lower() == "float16" and flag_cloud:
         input_x = tbe.cast_to(input_x, "float32")
 
@@ -221,10 +220,8 @@ def expm1(input_x, output_y, kernel_name="expm1"):
 
     for (input_x,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype, name="data_input")
+            x_shape = shape_util.variable_shape([input_x])[0]
+            data_input = tvm.placeholder(x_shape, dtype=input_dtype, name="data_input")
             res = expm1_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():

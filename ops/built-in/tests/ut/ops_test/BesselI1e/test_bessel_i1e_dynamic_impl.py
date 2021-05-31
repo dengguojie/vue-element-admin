@@ -16,10 +16,10 @@ BesselI1e ut case
 from op_test_frame.ut import OpUT
 ut_case = OpUT("BesselI1e", "impl.dynamic.bessel_i1e", "bessel_i1e")
 
-case1 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
+case1 = {"params": [{"shape": (-1, 8, 375), "dtype": "float32",
                      "format": "ND", "ori_shape": (16, 8, 375),
                      "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]}, #x
-                    {"shape": (-1, 8, 375), "dtype": "float16",
+                    {"shape": (-1, 8, 375), "dtype": "float32",
                      "format": "ND", "ori_shape": (16, 8, 375),
                      "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
                     ],
@@ -27,7 +27,7 @@ case1 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend910A"])
+    ut_case.run(["Ascend910A", "Ascend310"])

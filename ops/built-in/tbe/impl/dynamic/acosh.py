@@ -64,17 +64,18 @@ def acosh_compute(input_data, output_res, kernel_name="acosh"):
     data = input_data
 
     input_dtype = data.dtype.lower()
-    if input_dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+    if input_dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         data = tbe.cast_to(data, "float32")
 
     res = tbe.vmul(data, data)
     res = tbe.vadds(res, tvm.const(CONST_NEG_ONE, data.dtype))
     res = tbe.vsqrt(res, 1)
     res = tbe.vadd(res, data)
+    if res.dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.vlog", "float32"):
+        res = tbe.cast_to(res, "float16")
     res = tbe.vlog(res, 1)
 
-    if input_dtype == "float16":
-        res = tbe.cast_to(res, "float16")
+    res = tbe.cast_to(res, input_dtype)
 
     return res
 
@@ -105,20 +106,13 @@ def acosh(input_data, output_res, kernel_name="acosh"):
     ins = classify([input_data], OpPatternMode.ELEWISE)
     for (_input_data,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([_input_data])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape,
-                                         dtype=input_dtype,
-                                         name="data_input")
+            x_shape = shape_util.variable_shape([_input_data])[0]
+            data_input = tvm.placeholder(x_shape, dtype=input_dtype, name="data_input")
             res = acosh_compute(data_input, output_res, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    config = {"name": kernel_name,
-              "print_ir": False,
-              "tensor_list": tensors,
-              "bool_storage_as_1bit": False}
+    config = {"name": kernel_name, "print_ir": False, "tensor_list": tensors, "bool_storage_as_1bit": False}
     tbe.build(schedules, config)

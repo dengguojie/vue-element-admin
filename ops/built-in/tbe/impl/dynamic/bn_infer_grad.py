@@ -66,7 +66,7 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
 
     is_cast = False
     if grads.dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vdiv", "float32"):
         is_cast = True
         grads = tbe.cast_to(grads, "float32")
 

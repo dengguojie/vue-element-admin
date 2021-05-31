@@ -48,16 +48,16 @@ case2 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
          "case_name": "BinaryCrossEntroy_2",
          "expect": "success",
          "support_expect": True}
-case3 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
+case3 = {"params": [{"shape": (-1, 8, 375), "dtype": "float32",
                      "format": "ND", "ori_shape": (16, 8, 375),
                      "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},#x
-                    {"shape": (-1, 8, 375), "dtype": "float16",
+                    {"shape": (-1, 8, 375), "dtype": "float32",
                      "format": "ND", "ori_shape": (16, 8, 375),
                      "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
-                    {"shape": (-1, 8, 375), "dtype": "float16",
+                    {"shape": (-1, 8, 375), "dtype": "float32",
                      "format": "ND", "ori_shape": (16, 8, 375),
                      "ori_format": "ND", "range": [(15, 16), (8, 8), (375, 375)]},
-                    {"shape": (1,), "dtype": "float16", 
+                    {"shape": (1,), "dtype": "float32", 
                      "format": "ND", "ori_shape": (1,),
                      "ori_format": "ND", "range": [(1, 1)]},
                     "none"
@@ -69,9 +69,9 @@ case3 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
 # TODO fix me, this comment, run failed
 # ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
-ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310"], case3)
 
 
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend910A"])
+    ut_case.run(["Ascend910A", "Ascend310"])
