@@ -97,6 +97,8 @@ cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_D
 cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/DSL/Tensorflow/framework
 # copy cann/ops dependency
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/DSL/Tensorflow/op_proto
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/tbe/impl/util ${DST_DIR}/DSL/Tensorflow/tbe/impl/
+
 # copy op_log.h log.h
 mkdir -p ${DST_DIR}/DSL/Tensorflow/log
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/DSL/Tensorflow/log
