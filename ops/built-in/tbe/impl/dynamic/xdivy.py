@@ -107,7 +107,7 @@ def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
 
     has_improve_precision = False
     if dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vdiv",
+            tbe_platform.api_check_support("tbe.dsl.vdiv",
                                            "float32"):
         broadcast_x = tbe.cast_to(broadcast_x, "float32")
         input_y_revised = tbe.cast_to(input_y_revised, "float32")

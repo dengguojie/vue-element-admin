@@ -88,22 +88,30 @@ def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
 
     shape = shape_list[2]
     dtype = input_x.dtype
-
-    cloud_check = tbe_platform.api_check_support("te.lang.cce.vlog", "float32")
-    mini_check = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
+    dtype_change = input_x.dtype
+    cloud_check = tbe_platform.api_check_support("tbe.dsl.vlog", "float32")
+    mini_check = tbe_platform.api_check_support("tbe.dsl.vmul", "float32")
     data_x_broad = tbe.broadcast(input_x, shape_list[2])
     data_y_broad = tbe.broadcast(input_y, shape_list[2])
     if dtype == "float16" and cloud_check:
-        data_x_broad = tbe.cast_to(data_x_broad, "float32")
-        data_y_broad = tbe.cast_to(data_y_broad, "float32")
+        dtype_change = "float32"
+        data_x_broad = tbe.cast_to(data_x_broad, dtype_change)
+        data_y_broad = tbe.cast_to(data_y_broad, dtype_change)
 
-    data_log = tbe.vlog(data_y_broad)
+    if dtype_change == "float32" and not cloud_check:
+        data_y_broad_16 = tbe.cast_to(data_y_broad, "float16")
+        data_log_16 = tbe.vlog(data_y_broad_16)
+        data_log = tbe.cast_to(data_log_16, dtype_change)
+    else:
+        data_log = tbe.vlog(data_y_broad)
+
     res = tbe.vmul(data_log, data_x_broad)
 
     if (not cloud_check) and mini_check:
-        data_x_broad = tbe.cast_to(data_x_broad, "float32")
-        data_y_broad = tbe.cast_to(data_y_broad, "float32")
-        res = _xlogy_mini_compute(res, data_x_broad, data_y_broad, shape)
+        dtype_change = "float32"
+        data_x_broad = tbe.cast_to(data_x_broad, dtype_change)
+        data_y_broad = tbe.cast_to(data_y_broad, dtype_change)
+        res = _xlogy_mini_compute(res, data_x_broad, data_y_broad, shape, dtype_change)
 
     if dtype == "float16" and (cloud_check or mini_check):
         res = tbe.cast_to(res, "float16")
@@ -111,7 +119,7 @@ def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
     return res
 
 
-def _xlogy_mini_compute(res_mini, input_x, input_y, shape):
+def _xlogy_mini_compute(res_mini, input_x, input_y, shape, dtype_change):
     """
     do element-wise x*log(y) compute in mini scene
     f(z) = e^(z(n)*x(n)^-1)
@@ -130,19 +138,26 @@ def _xlogy_mini_compute(res_mini, input_x, input_y, shape):
     Returns : A Tensor. Has the same type as mini_res.
     -------
     """
-    input_z = tbe.cast_to(res_mini, "float32")
+    input_z = tbe.cast_to(res_mini, dtype_change)
 
     input_x_rec = tbe.vrec(input_x)
     input_z_compare = tbe.vmul(input_z, input_x_rec)
 
     newton_taylor_res = _newton_taylor_xlogy(input_x, input_y, input_z)
-    newton_exp_res = _newton_exp_xlogy(input_x, input_y, input_z)
+    newton_exp_res = _newton_exp_xlogy(input_x, input_y, input_z, dtype_change)
 
     input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, "float32")
     tensor_input_left_border = tbe.broadcast(input_left_border, shape)
 
     input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, "float32")
     tensor_input_right_border = tbe.broadcast(input_right_border, shape)
+
+    if not tbe_platform.api_check_support("tbe.dsl.vcmp", "float32"):
+        input_z_compare = tbe.cast_to(input_z_compare, "float16")
+        newton_taylor_res = tbe.cast_to(newton_taylor_res, "float16")
+        newton_exp_res = tbe.cast_to(newton_exp_res, "float16")
+        tensor_input_left_border = tbe.cast_to(tensor_input_left_border, "float16")
+        tensor_input_right_border = tbe.cast_to(tensor_input_right_border, "float16")
 
     b_gt_left_border = tbe.vcmp(input_z_compare, tensor_input_left_border, 'gt')
     exp_taylor_neg = tbe.vsel(b_gt_left_border, newton_taylor_res, newton_exp_res)
@@ -209,7 +224,7 @@ def _exp_taylor_compute(input_x):
     return res
 
 
-def _newton_exp_iter(input_x, input_y, input_z):
+def _newton_exp_iter(input_x, input_y, input_z, dtype_change):
     """
     do element-wise Newton compute
     z(n+1) = z(n) - (e^(z(n)*x(n)^-1) - y(n))/x(n)^-1*e^(z(n)*x(n)^-1)
@@ -230,7 +245,13 @@ def _newton_exp_iter(input_x, input_y, input_z):
     input_x_rec = tbe.vrec(input_x)
     input_x_res = tbe.vmuls(input_x_rec, tvm.const(SCALAR_NEG_ONE, "float32"))
     input_z_mul = tbe.vmul(input_x_res, input_z)
-    input_z_exp = tbe.vexp(input_z_mul)
+    if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and dtype_change == "float32":
+        input_z_mul_16 = tbe.cast_to(input_z_mul, "float16")
+        input_z_exp_16 = input_z_exp = tbe.vexp(input_z_mul_16)
+        input_z_exp = tbe.cast_to(input_z_exp_16, "float32")
+    else:
+        input_z_exp = tbe.vexp(input_z_mul)
+
     input_z_res = tbe.vmul(input_z_exp, input_xy)
     newton_exp = tbe.vadd(newton_exp, input_z_res)
 
@@ -265,7 +286,7 @@ def _newton_taylor_iter(input_x, input_y, input_z):
     return newton_taylor
 
 
-def _newton_exp_xlogy(input_x, input_y, output_z):
+def _newton_exp_xlogy(input_x, input_y, output_z, dtype_change):
     """
     do element-wise Newton compute
     z(n+1) = z(n) - (e^(z(n)*x(n)^-1) - y(n))/x(n)^-1*e^(z(n)*x(n)^-1)
@@ -280,7 +301,7 @@ def _newton_exp_xlogy(input_x, input_y, output_z):
     -------
     """
     for _ in range(2):
-        output_z = _newton_exp_iter(input_x, input_y, output_z)
+        output_z = _newton_exp_iter(input_x, input_y, output_z, dtype_change)
     return output_z
 
 
