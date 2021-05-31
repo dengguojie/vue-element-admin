@@ -543,6 +543,10 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   int64_t halfRemainParamsElem = halfRemainUbSize / paramsDSize;
   int64_t halfUbParamsElem = halfUbSize / paramsDSize;
 
+  // the data of the formula gained from actual tests
+  // set a gate value for tiling_mode_7 to optimized some data_move processes
+  float mode_7_gate_value = 56.5 - 0.012 * runParams.paramsTotal / 1024;
+
   if (runParams.paramsPre >= coreNum && paramsRowCeil <= halfUbParamsElem &&
       (runParams.paramsRow * paramsDSize < BLOCK_SIZE || runParams.paramsRow * paramsDSize % BLOCK_SIZE == 0)) {
     // block tiling: params_pre tiling
@@ -643,7 +647,7 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
         } else {  // 32B aligned
           if (paramsTotalCeil <= PARAMS_CACHED_UB / paramsDSize && paramsRowCeil <= halfRemainParamsElem) {
             runParams.tilingMode = TILING_MODE_6;
-          } else if (paramsTotalCeil <= l1Size / paramsDSize) {
+          } else if (paramsTotalCeil <= l1Size / paramsDSize &&  runParams.indicesNum > mode_7_gate_value) {
             runParams.tilingMode = TILING_MODE_7;
           } else {
             runParams.tilingMode = TILING_MODE_3;
