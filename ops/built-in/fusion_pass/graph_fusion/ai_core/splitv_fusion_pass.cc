@@ -79,7 +79,7 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   FUSION_PASS_CHECK(fuseDesc1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "OpDesc of node1 is null, fusion failed."),
                     return PARAM_INVALID);
 
-  if (HasUnKnowDimShape(fused_node1)) {
+  if (HasUnKnowShape(fused_node1)) {
     FUSION_PASS_CHECK(CheckOpSupported(fuseDesc1), OP_LOGI(FUSED_NODE, "split_v dynamic shape supported"),
                       return NOT_CHANGED);
     OP_LOGI(FUSED_NODE, "CheckOpSupported fail, split_v dynamic");

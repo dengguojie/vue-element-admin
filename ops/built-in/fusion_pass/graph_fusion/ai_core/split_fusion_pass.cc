@@ -68,14 +68,15 @@ vector<FusionPattern*> SplitFusionPass::DefinePatterns() {
 
 Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   // build attr infos
-  std::string fusionOpType = "SplitD";
   std::vector<PassAttrInfo> splitAttrInfo;
+  std::string fusionOpType = "SplitD";
   PassAttrInfo split_dim = {0, "split_dim", "SetInt"};
   splitAttrInfo.push_back(split_dim);
 
   // get node
   ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fused_node1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
+  FUSION_PASS_CHECK(fused_node1 == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
 
   // get desc
@@ -84,7 +85,7 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   // split dynamic shape check supported
-  if (HasUnKnowDimShape(fused_node1)) {
+  if (HasUnKnowShape(fused_node1)) {
     FUSION_PASS_CHECK(CheckOpSupported(fuse_desc1), OP_LOGI(FUSED_NODE, "split dynamic shape supported"),
                       return NOT_CHANGED);
     OP_LOGI(FUSED_NODE, "CheckOpSupported fail, split dynamic");
