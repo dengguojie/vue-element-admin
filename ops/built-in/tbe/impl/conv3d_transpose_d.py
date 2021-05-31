@@ -527,8 +527,9 @@ def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
                                   name="filter", dtype=filter_dtype)
         tensor_bias = None
         if bias_flag:
-            tensor_bias = tvm.placeholder((util_common.align(filter_channel * groups,
-                                                            tbe_platform.C0_SIZE),),
+            tensor_bias = tvm.placeholder((util_common.ceil(filter_channel * groups,
+                                                            tbe_platform.C0_SIZE),
+                                           tbe_platform.C0_SIZE),
                                            name="bias", dtype=filter_dtype)
         para_dict = {
             "strides": strides,

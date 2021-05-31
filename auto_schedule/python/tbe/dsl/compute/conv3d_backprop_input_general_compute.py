@@ -332,8 +332,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             c_add_vector = tvm.compute(
                 in_tensor0.shape,
                 lambda *indice: in_tensor0(*indice) +
-                                in_tensor1(indice[2] * tbe_platform.CUBE_MKN[in_tensor0.dtype]["mac"][2] +
-                                indice[4]),
+                                in_tensor1(indice[2], indice[4]),
                 name="bias_add_vector")
             return c_add_vector
 
