@@ -272,10 +272,11 @@ class OpPatternRules:
         list([flags, args]).clear()  # Use it once to avoid static checks
         out_len = 2
         in_len = 4
+        in_len_v2 = 2
         input_data_len = 2
 
         flag = False
-        if len(output_tensors) == out_len and len(input_tensors) == in_len:
+        if len(output_tensors) == out_len and (len(input_tensors) == in_len or len(input_tensors) == in_len_v2):
             is_out_all_tuple_reduce = True
             for i in range(0, out_len):
                 if output_tensors[i].op.tag.find("tuple_reduce") == -1:

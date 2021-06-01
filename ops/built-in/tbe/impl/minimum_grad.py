@@ -130,7 +130,7 @@ def _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("minimum_grad")
-def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
+def minimum_grad_compute(data_dz, data_x, data_y, y1, y2, grad_x, grad_y,
                          kernel_name="minimum_grad"):
     """
     algorithm:
@@ -138,12 +138,12 @@ def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
 
     Parameters
     ----------
+    data_dz:TVM tensor.
+        the placeholder of data_dz
     data_x:TVM tensor.
         the placeholder of data_x
     data_y:TVM tensor.
         the placeholder of data_y
-    data_dz:TVM tensor.
-        the placeholder of data_dz
     y1: dict:
         dict with keys(shape and dtype) of y1
     y2: dict:
@@ -182,7 +182,12 @@ def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
         result_dx = tbe.cast_to(result_dx, "float16")
         result_dy = tbe.cast_to(result_dy, "float16")
 
-    res = [result_dx, result_dy]
+    if (grad_x, grad_y) == (True, False):
+        res = [result_dx]
+    if (grad_x, grad_y) == (False, True):
+        res = [result_dy]
+    if (grad_x, grad_y) == (True, True):
+        res = [result_dx, result_dy]
 
     return res
 
@@ -250,18 +255,11 @@ def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
     data_x = tvm.placeholder(shape_x, dtype=dtype_x, name="data_x")
     data_y = tvm.placeholder(shape_y, dtype=dtype_y, name="data_y")
     data_dz = tvm.placeholder(shape_dz, dtype=dtype_dz, name="data_dz")
-    res = minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x,
+    res = minimum_grad_compute(data_dz, data_x, data_y, y1, y2, grad_x,
                                grad_y, kernel_name)
 
     with tvm.target.cce():
-        if (grad_x, grad_y) == (True, False):
-            sch = tbe.auto_schedule(res[0])
-            res = [res[0]]
-        if (grad_x, grad_y) == (False, True):
-            sch = tbe.auto_schedule(res[1])
-            res = [res[1]]
-        if (grad_x, grad_y) == (True, True):
-            sch = tbe.auto_schedule(res)
+        sch = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
               "tensor_list": [data_dz, data_x, data_y] + res}

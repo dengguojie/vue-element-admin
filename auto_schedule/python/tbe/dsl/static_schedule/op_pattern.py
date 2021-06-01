@@ -129,6 +129,12 @@ bn_update_grad_pattern_list = [
 
 # pylint: disable=invalid-name
 layer_norm_grad_pattern_list = [
+    # for layer_norm_beta_gamma_backprop_v2
+    [
+        "tuple_reduce_sum",
+        "elewise_binary_mul",
+        "tuple_reduce_sum"
+    ],
     # for fp32
     [
         "tuple_reduce_sum",

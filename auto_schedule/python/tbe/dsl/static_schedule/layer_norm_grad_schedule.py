@@ -1144,8 +1144,8 @@ def layer_norm_grad_schedule(res, input_tensors):
     if len(res) != 2:
         raise RuntimeError("LayerNorm_grad_beta_gamma output nums should be 2.")
 
-    if len(input_tensors) != 4:
-        raise RuntimeError("LayerNorm_grad_beta_gamma input nums should be 4.")
+    if len(input_tensors) != 4 and len(input_tensors) != 2:
+        raise RuntimeError("layer_norm_grad_beta_gamma input nums should be 4 or 2.")
 
     data_x_tensor = input_tensors[-1]
     shape_x = shape_to_list(data_x_tensor.shape)
