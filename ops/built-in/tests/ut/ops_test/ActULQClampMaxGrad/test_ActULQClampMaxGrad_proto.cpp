@@ -19,30 +19,70 @@ TEST_F(ActULQClampMaxGrad, test_act_ulq_clamp_max_grad_float16)
 {
     ge::op::ActULQClampMaxGrad op;
     op.UpdateInputDesc("y_grad", create_desc({32, 3, 5, 5}, ge::DT_FLOAT16));
-    op.UpdateInputDesc("clamp_max_mask", create_desc({32, 3, 5, 5}, ge::DT_BOOL));
+    op.UpdateInputDesc("clamp_max_mask", create_desc({32, 3, 5, 5}, ge::DT_FLOAT16));
     op.UpdateInputDesc("x_clamped_loss", create_desc({32, 3, 5, 5}, ge::DT_FLOAT16));
 
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output = op.GetOutputDesc("clamp_max_grad");
-    EXPECT_EQ(output.GetDataType(), ge::DT_FLOAT);
-    std::vector<int64_t> expected_output_shape = {};
-    EXPECT_EQ(output.GetShape().GetDims(), expected_output_shape);
+    auto clamp_max_grad = op.GetOutputDescByName("clamp_max_grad");
+    EXPECT_EQ(clamp_max_grad.GetDataType(), ge::DT_FLOAT16);
+    std::vector<int64_t> clamp_max_grad_shape = {};
+    EXPECT_EQ(clamp_max_grad.GetShape().GetDims(), clamp_max_grad_shape);
 }
 
-TEST_F(ActULQClampMaxGrad, test_act_ulq_clamp_max_grad_float32)
+TEST_F(ActULQClampMaxGrad, test_act_ulq_clamp_max_grad_float)
 {
     ge::op::ActULQClampMaxGrad op;
     op.UpdateInputDesc("y_grad", create_desc({32, 3, 5, 5}, ge::DT_FLOAT));
-    op.UpdateInputDesc("clamp_max_mask", create_desc({32, 3, 5, 5}, ge::DT_BOOL));
+    op.UpdateInputDesc("clamp_max_mask", create_desc({32, 3, 5, 5}, ge::DT_FLOAT));
     op.UpdateInputDesc("x_clamped_loss", create_desc({32, 3, 5, 5}, ge::DT_FLOAT));
 
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output = op.GetOutputDesc("clamp_max_grad");
-    EXPECT_EQ(output.GetDataType(), ge::DT_FLOAT);
-    std::vector<int64_t> expected_output_shape = {};
-    EXPECT_EQ(output.GetShape().GetDims(), expected_output_shape);
+    auto clamp_max_grad = op.GetOutputDescByName("clamp_max_grad");
+    EXPECT_EQ(clamp_max_grad.GetDataType(), ge::DT_FLOAT);
+    std::vector<int64_t> clamp_max_grad_shape = {};
+    EXPECT_EQ(clamp_max_grad.GetShape().GetDims(), clamp_max_grad_shape);
+}
+
+TEST_F(ActULQClampMaxGrad, test_act_ulq_clamp_max_grad_error_clamp_max_mask_shape)
+{
+    ge::op::ActULQClampMaxGrad op;
+    op.UpdateInputDesc("y_grad", create_desc({32, 3, 5, 5}, ge::DT_FLOAT));
+    op.UpdateInputDesc("clamp_max_mask", create_desc({32, 5, 5, 5}, ge::DT_FLOAT));
+    op.UpdateInputDesc("x_clamped_loss", create_desc({32, 3, 5, 5}, ge::DT_FLOAT));
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+    auto clamp_max_grad = op.GetOutputDescByName("clamp_max_grad");
+    EXPECT_EQ(clamp_max_grad.GetDataType(), ge::DT_FLOAT);
+    std::vector<int64_t> clamp_max_grad_shape = {};
+    EXPECT_EQ(clamp_max_grad.GetShape().GetDims(), clamp_max_grad_shape);
+}
+
+TEST_F(ActULQClampMaxGrad, test_act_ulq_clamp_max_grad_error_x_clamped_loss_shape)
+{
+    ge::op::ActULQClampMaxGrad op;
+    op.UpdateInputDesc("y_grad", create_desc({32, 3, 5, 5}, ge::DT_FLOAT));
+    op.UpdateInputDesc("clamp_max_mask", create_desc({32, 3, 5, 5}, ge::DT_FLOAT));
+    op.UpdateInputDesc("x_clamped_loss", create_desc({32, 5, 5, 5}, ge::DT_FLOAT));
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+    auto clamp_max_grad = op.GetOutputDescByName("clamp_max_grad");
+    EXPECT_EQ(clamp_max_grad.GetDataType(), ge::DT_FLOAT);
+    std::vector<int64_t> clamp_max_grad_shape = {};
+    EXPECT_EQ(clamp_max_grad.GetShape().GetDims(), clamp_max_grad_shape);
 }

@@ -15,38 +15,47 @@
  */
 
 /*!
- * \file acts_ulq.cpp
+ * \file act_ulq_clamp_max_grad.cpp
  * \brief
  */
+#include <iostream>
 #include <vector>
 #include <string>
 
 #include "math_ops.h"
 #include "op_log.h"
-#include "axis_util.h"
+
 
 namespace ge {
 
-IMPLEMT_VERIFIER(ActULQClampMaxGrad, ActULQClampMaxGradVerify) {
-    DataType y_grad = op.GetInputDesc("y_grad").GetDataType();
-    DataType clamp_max_mask = op.GetInputDesc("clamp_max_mask").GetDataType();
-    DataType x_clamped_loss = op.GetInputDesc("x_clamped_loss").GetDataType();
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(ActULQClampMaxGradInferShape) {
+    Shape y_grad_shape = op.GetInputDesc("y_grad").GetShape();
+    Shape clamp_max_mask_shape = op.GetInputDesc("clamp_max_mask").GetShape();
+    Shape x_clamped_loss_shape = op.GetInputDesc("x_clamped_loss").GetShape();
 
-    if (clamp_max_mask != ge::DT_BOOL && clamp_max_mask != ge::DT_INT8) {
+    if (y_grad_shape.GetDims() != clamp_max_mask_shape.GetDims()) {
+        OP_LOGE(op.GetName().c_str(), "The shape of clamp_max_mask must be the same as y_grad!");
+        return GRAPH_FAILED;
+    }
+
+    if (y_grad_shape.GetDims() != x_clamped_loss_shape.GetDims()) {
+        OP_LOGE(op.GetName().c_str(), "The shape of x_clamped_loss must be the same as y_grad!");
+        return GRAPH_FAILED;
+    }
+
+    TensorDesc clamp_max_grad = op.GetOutputDesc("clamp_max_grad");
+    clamp_max_grad.SetShape({});
+    clamp_max_grad.SetDataType(op.GetInputDesc("y_grad").GetDataType());
+    if (op.UpdateOutputDesc("clamp_max_grad", clamp_max_grad) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update output[clamp_max_grad] failed.");
         return GRAPH_FAILED;
     }
 
     return GRAPH_SUCCESS;
 }
 
-// Obtains the processing function of the output tensor description.
-IMPLEMT_COMMON_INFERFUNC(ActULQClampMaxGradInferShape) {
-    Shape y_grad_shape = op.GetInputDesc("y_grad").GetShape();
-    TensorDesc clamp_max_grad = op.GetOutputDesc("clamp_max_grad");
-    clamp_max_grad.SetShape({});
-    clamp_max_grad.SetDataType(ge::DT_FLOAT);
-    CHECK(op.UpdateOutputDesc("clamp_max_grad", clamp_max_grad) != GRAPH_SUCCESS,
-          GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActULQClampMaxGrad] failed."), return GRAPH_FAILED);
+IMPLEMT_VERIFIER(ActULQClampMaxGrad, ActULQClampMaxGradVerify) {
     return GRAPH_SUCCESS;
 }
 

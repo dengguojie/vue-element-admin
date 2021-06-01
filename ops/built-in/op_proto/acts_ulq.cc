@@ -23,51 +23,75 @@
 
 #include "math_ops.h"
 #include "op_log.h"
-#include "axis_util.h"
+
 
 namespace ge {
 
-IMPLEMT_VERIFIER(ActsULQ, ActsULQVerify) {
-    DataType x = op.GetInputDesc("x").GetDataType();
-    DataType clamp_min = op.GetInputDesc("clamp_min").GetDataType();
-    DataType clamp_max = op.GetInputDesc("clamp_max").GetDataType();
-    if (x != clamp_min) {
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(ActsULQInferShape) {
+    Shape x_shape = op.GetInputDesc("x").GetShape();
+    Shape clamp_min_shape = op.GetInputDesc("clamp_min").GetShape();
+    Shape clamp_max_shape = op.GetInputDesc("clamp_max").GetShape();
+
+    if (clamp_min_shape.GetShapeSize() != 1) {
+        OP_LOGE(op.GetName().c_str(), "The size of clamp_min must be 1!");
         return GRAPH_FAILED;
     }
 
-    if (x != clamp_max) {
+    if (clamp_max_shape.GetShapeSize() != 1) {
+        OP_LOGE(op.GetName().c_str(), "The size of clamp_max must be 1!");
         return GRAPH_FAILED;
     }
 
+    TensorDesc y = op.GetOutputDesc("y");
+    y.SetShape(x_shape);
+    y.SetDataType(op.GetInputDesc("x").GetDataType());
+    if (op.UpdateOutputDesc("y", y) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update output[y] failed!");
+        return GRAPH_FAILED;
+    }
+
+    TensorDesc clamp_min_mask = op.GetOutputDesc("clamp_min_mask");
+    clamp_min_mask.SetShape(x_shape);
+    if (op.UpdateOutputDesc("clamp_min_mask", clamp_min_mask) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update output[clamp_min_mask] failed!");
+        return GRAPH_FAILED;
+    }
+
+    TensorDesc clamp_max_mask = op.GetOutputDesc("clamp_max_mask");
+    clamp_max_mask.SetShape(x_shape);
+    if (op.UpdateOutputDesc("clamp_max_mask", clamp_max_mask) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update output[clamp_max_mask] failed!");
+        return GRAPH_FAILED;
+    }
+
+    TensorDesc x_clamped_loss = op.GetOutputDesc("x_clamped_loss");
+    x_clamped_loss.SetShape(x_shape);
+    x_clamped_loss.SetDataType(op.GetInputDesc("x").GetDataType());
+    if (op.UpdateOutputDesc("x_clamped_loss", x_clamped_loss) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update output[x_clamped_loss] failed!");
+        return GRAPH_FAILED;
+    }
 
     return GRAPH_SUCCESS;
 }
 
-// Obtains the processing function of the output tensor description.
-IMPLEMT_COMMON_INFERFUNC(ActsULQInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  TensorDesc y = op.GetOutputDesc("y");
-  y.SetShape(x_shape);
-  y.SetDataType(op.GetInputDesc("x").GetDataType());
-  CHECK(op.UpdateOutputDesc("y", y) != GRAPH_SUCCESS,
-        GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActsULQInferShape] failed."), return GRAPH_FAILED);
+IMPLEMT_VERIFIER(ActsULQ, ActsULQVerify) {
+    DataType x_type = op.GetInputDesc("x").GetDataType();
+    DataType clamp_min_type = op.GetInputDesc("clamp_min").GetDataType();
+    DataType clamp_max_type = op.GetInputDesc("clamp_max").GetDataType();
 
-  TensorDesc clamp_min_mask = op.GetOutputDesc("clamp_min_mask");
-  clamp_min_mask.SetShape(x_shape);
-  CHECK(op.UpdateOutputDesc("clamp_min_mask", clamp_min_mask) != GRAPH_SUCCESS,
-        GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActsULQInferShape] failed."), return GRAPH_FAILED);
+    if (x_type != clamp_min_type) {
+        OP_LOGE(op.GetName().c_str(), "The type of clamp_min must be the same as x!");
+        return GRAPH_FAILED;
+    }
 
-  TensorDesc clamp_max_mask = op.GetOutputDesc("clamp_max_mask");
-  clamp_max_mask.SetShape(x_shape);
-  CHECK(op.UpdateOutputDesc("clamp_max_mask", clamp_max_mask) != GRAPH_SUCCESS,
-        GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActsULQInferShape] failed."), return GRAPH_FAILED);
+    if (x_type != clamp_max_type) {
+        OP_LOGE(op.GetName().c_str(), "The type of clamp_max must be the same as x!");
+        return GRAPH_FAILED;
+    }
 
-  TensorDesc x_clamped_loss = op.GetOutputDesc("x_clamped_loss");
-  x_clamped_loss.SetShape(x_shape);
-  CHECK(op.UpdateOutputDesc("x_clamped_loss", x_clamped_loss) != GRAPH_SUCCESS,
-        GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActsULQInferShape] failed."), return GRAPH_FAILED);
-
-  return GRAPH_SUCCESS;
+    return GRAPH_SUCCESS;
 }
 
 // Registered inferfunction
@@ -76,4 +100,3 @@ COMMON_INFER_FUNC_REG(ActsULQ, ActsULQInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(ActsULQ, ActsULQVerify);
 }  // namespace ge
-

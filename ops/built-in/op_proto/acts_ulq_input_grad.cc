@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file acts_ulq.cpp
+ * \file acts_ulq_input_grad.cpp
  * \brief
  */
 #include <vector>
@@ -24,16 +24,47 @@
 #include "math_ops.h"
 #include "op_log.h"
 
-namespace ge {
 
-IMPLEMT_VERIFIER(ActsULQInputGrad, ActsULQInputGradVerify) {
-    return GRAPH_SUCCESS;
-}
+namespace ge {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ActsULQInputGradInferShape) {
+    Shape y_grad_shape = op.GetInputDesc("y_grad").GetShape();
+    Shape clamp_min_mask_shape = op.GetInputDesc("clamp_min_mask").GetShape();
+    Shape clamp_max_mask_shape = op.GetInputDesc("clamp_max_mask").GetShape();
 
-  return GRAPH_SUCCESS;
+    if (y_grad_shape.GetDims() != clamp_min_mask_shape.GetDims()) {
+        OP_LOGE(op.GetName().c_str(), "The shape of clamp_min_mask must be the same as y_grad!");
+        return GRAPH_FAILED;
+    }
+
+    if (y_grad_shape.GetDims() != clamp_max_mask_shape.GetDims()) {
+        OP_LOGE(op.GetName().c_str(), "The shape of clamp_max_mask must be the same as y_grad!");
+        return GRAPH_FAILED;
+    }
+
+    TensorDesc x_grad = op.GetOutputDesc("x_grad");
+    x_grad.SetShape(y_grad_shape);
+    x_grad.SetDataType(op.GetInputDesc("y_grad").GetDataType());
+    if (op.UpdateOutputDesc("x_grad", x_grad) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update output[x_grad] failed!");
+        return GRAPH_FAILED;
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(ActsULQInputGrad, ActsULQInputGradVerify) {
+    DataType y_grad_type = op.GetInputDesc("y_grad").GetDataType();
+    DataType clamp_min_mask_type = op.GetInputDesc("clamp_min_mask").GetDataType();
+    DataType clamp_max_mask_type = op.GetInputDesc("clamp_max_mask").GetDataType();
+
+    if (clamp_min_mask_type != clamp_max_mask_type) {
+        OP_LOGE(op.GetName().c_str(), "The type of clamp_min_mask must be the same as clamp_max_mask!");
+        return GRAPH_FAILED;
+    }
+
+    return GRAPH_SUCCESS;
 }
 
 // Registered inferfunction
@@ -42,4 +73,3 @@ COMMON_INFER_FUNC_REG(ActsULQInputGrad, ActsULQInputGradInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(ActsULQInputGrad, ActsULQInputGradVerify);
 }  // namespace ge
-
