@@ -2,6 +2,7 @@
 from sch_test_frame.ut import OpUT
 import warnings
 import tbe
+import copy
 from tbe.common import buildcfg
 from tbe.dsl.base.classifier import classify_elewise
 
@@ -10,7 +11,8 @@ ut_case = OpUT("elewise_classify", "elewise_classify.test_dynamic_elewise_classi
 
 
 def test_elewise_prebuild_classify(_):
-    dynamic_config = buildcfg.default_buildcfg.dynamic_build_config_dict
+    org_dynamic_config = buildcfg.default_buildcfg.dynamic_build_config_dict
+    dynamic_config = copy.deepcopy(org_dynamic_config)
     dynamic_config.update({"enable_op_prebuild": True})
     with buildcfg.build_config(**dynamic_config):
         with tbe.common.context.op_context.OpContext("dynamic"):
