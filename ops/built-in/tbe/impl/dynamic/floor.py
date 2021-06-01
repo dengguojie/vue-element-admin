@@ -47,14 +47,11 @@ def floor_compute(input_x, output_y, kernel_name="floor"):
     res : TVM tensor
         the result of floor(input_x)
     """
-    flag_cast = False
     dtype = input_x.dtype.lower()
     if dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.floor", "float32"):
         input_x = tbe.cast_to(input_x, "float16")
-        flag_cast = True
-    res = tbe.floor(input_x)
-    if flag_cast:
-        res = tbe.cast_to(res, dtype)
+    res_int = tbe.floor(input_x)
+    res = tbe.cast_to(res_int, dtype)
 
     return res
 
