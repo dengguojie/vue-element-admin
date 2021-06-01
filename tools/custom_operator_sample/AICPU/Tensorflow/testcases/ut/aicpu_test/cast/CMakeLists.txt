@@ -1,0 +1,269 @@
+cmake_minimum_required(VERSION 3.14)
+if ("${DEPEND}" STREQUAL "TRUE")
+    project(aicpu_depend)
+    set(CMAKE_CXX_STANDARD 11)
+    include(ExternalProject)
+    include(${CANN_ROOT}/cmake/util/util.cmake)
+
+    include(${CANN_ROOT}/cmake/external/gtest.cmake)
+    include(${CANN_ROOT}/cmake/external/secure_c.cmake)
+    include(${CANN_ROOT}/cmake/external/eigen.cmake)
+    include(${CANN_ROOT}/cmake/external/protobuf.cmake)
+elseif ("${IMPL}" STREQUAL "TRUE")
+    project(cpu_kernels_ut)
+    set(CMAKE_CXX_STANDARD 11)
+
+    set(AICPU_OPP_ENV ${ASCEND_CUSTOM_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel)
+    set(PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../../../)
+    set(OP_PATH ${PROJECT_PATH}/cpukernel/impl/)
+    set(THIRD_PATH ${PROJECT_PATH}/testcases/libs/aicpu_depend/third_party/src)
+    set(PROTO_BINARY_DIR ${PROJECT_PATH}/build/aicpu_ut_impl/cast)
+
+    set(Protobuf_INCLUDE ${THIRD_PATH}/external_protobuf/src)
+    set(EIGEN_INCLUDE ${THIRD_PATH}/eigen)
+    set(C_SEC_INCLUDE ${THIRD_PATH}/secure_c/include)
+    set(GTEST_INCLUDE ${THIRD_PATH}/external_gtest/googletest/include)
+
+    add_library(gtest SHARED IMPORTED)
+    set_target_properties(gtest PROPERTIES IMPORTED_LOCATION ${THIRD_PATH}/external_gtest-build/googlemock/gtest/libgtest.so)
+
+    add_library(gtest_main SHARED IMPORTED)
+    set_target_properties(gtest_main PROPERTIES IMPORTED_LOCATION  ${THIRD_PATH}/external_gtest-build/googlemock/gtest/libgtest_main.so)
+
+    set(Protobuf_PROTOC_EXECUTABLE ${THIRD_PATH}/external_protobuf-build/protoc)
+    add_custom_target(protoc ALL DEPENDS ${Protobuf_PROTOC_EXECUTABLE})
+
+    set(CPU_CONTEXT_DIR ${CANN_ROOT}/ops/built-in/aicpu/context)
+    set(CPU_KERNELS_DIR ${CANN_ROOT}/ops/built-in/aicpu/impl)
+
+    include(${CANN_ROOT}/cmake/util/util.cmake)
+
+    set(FWKACLLIB_INCLUDE ${CANN_ROOT}/third_party/fwkacllib/inc)
+
+    set(_proto_srcs
+      ${CANN_ROOT}/ops/built-in/tests/ut/aicpu_test/proto/cpu_tensor.proto
+      ${CANN_ROOT}/ops/built-in/tests/ut/aicpu_test/proto/cpu_attr.proto
+      ${CANN_ROOT}/ops/built-in/tests/ut/aicpu_test/proto/cpu_tensor_shape.proto
+      ${CANN_ROOT}/ops/built-in/tests/ut/aicpu_test/proto/cpu_node_def.proto
+    )
+
+    # the output path of generated files
+    set(_proto_include "${PROTO_BINARY_DIR}/opp")
+    protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
+
+    set(_cpu_context
+      ${CPU_CONTEXT_DIR}/cpu_proto/node_def.cc
+      ${CPU_CONTEXT_DIR}/cpu_proto/node_def_impl.cc
+      ${CPU_CONTEXT_DIR}/cpu_proto/tensor.cc
+      ${CPU_CONTEXT_DIR}/cpu_proto/tensor_impl.cc
+      ${CPU_CONTEXT_DIR}/cpu_proto/tensor_shape.cc
+      ${CPU_CONTEXT_DIR}/cpu_proto/tensor_shape_impl.cc
+      ${CPU_CONTEXT_DIR}/cpu_proto/attr_value.cc
+      ${CPU_CONTEXT_DIR}/cpu_proto/attr_value_impl.cc
+      ${CPU_CONTEXT_DIR}/common/device.cc
+      ${CPU_CONTEXT_DIR}/common/context.cc
+      ${CPU_CONTEXT_DIR}/common/device_cpu_kernel.cc
+      ${CPU_CONTEXT_DIR}/common/cpu_kernel_register.cc
+      ${CPU_CONTEXT_DIR}/common/cpu_kernel_utils.cc
+      ${CPU_CONTEXT_DIR}/common/host_sharder.cc
+      ${CPU_CONTEXT_DIR}/common/device_sharder.cc
+      ${CPU_CONTEXT_DIR}/common/eigen_threadpool.cc
+      ${CPU_CONTEXT_DIR}/common/cpu_kernel_cache.cc
+      ${CPU_CONTEXT_DIR}/stub/aicpu_sharder.cc
+    )
+
+    if(EXISTS "${OP_PATH}/cast_kernels.cc")
+        set(OP_IMPL_FILE ${OP_PATH}/cast_kernels.cc)
+    elseif(EXISTS "${OP_PATH}/cast_kernel.cc")
+        message("cast_kernels.cc was not found, cast_kernel.cc was found as the impl file")
+        set(OP_IMPL_FILE ${OP_PATH}/cast_kernel.cc)
+    elseif(EXISTS "${OP_PATH}/cast.cc")
+        message("cast_kernels.cc and cast_kernel.cc were not found, "
+                "cast.cc was found as the impl file")
+        set(OP_IMPL_FILE ${OP_PATH}/cast.cc)
+    else()
+        message("cast_kernels.cc, cast.cc and cast_kernel.cc "
+                "were not found, will found the impl file whose name matches cast_**.cc")
+        file(GLOB OP_IMPL_FILE ${OP_PATH}/cast_**.cc)
+    endif()
+
+    set(_cpu_kernels_src
+      ${OP_IMPL_FILE}
+      ${CPU_KERNELS_DIR}/utils/bcast.cc
+      ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
+      ${CPU_KERNELS_DIR}/utils/kernel_util.cc
+      ${CPU_KERNELS_DIR}/utils/sparse_group.cc
+      ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
+    )
+
+    set(cpu_kernels_llt_src
+      ${_cpu_context}
+      ${_cpu_kernels_src}
+      ${_proto_cc}
+      ${_proto_h}
+    )
+
+    add_library(cpu_kernels_llt STATIC
+      ${cpu_kernels_llt_src}
+    )
+
+    link_directories(${ASCEND_CUSTOM_PATH}/atc/lib64/)
+
+    set(cpu_kernels_llt_include
+      ${CPU_KERNELS_DIR}
+      ${CPU_KERNELS_DIR}/utils
+      ${CPU_CONTEXT_DIR}/inc
+      ${CPU_CONTEXT_DIR}/common
+      ${CPU_CONTEXT_DIR}/stub
+      ${CPU_CONTEXT_DIR}/cpu_proto
+      ${AICPU_OPP_ENV}/inc
+      ${_proto_include}
+      ${Protobuf_INCLUDE}
+      ${EIGEN_INCLUDE}
+      ${FWKACLLIB_INCLUDE}
+      ${FWKACLLIB_INCLUDE}/aicpu/common
+      ${OP_PATH}
+      ${C_SEC_INCLUDE}
+    )
+
+    target_include_directories(cpu_kernels_llt PUBLIC
+      ${cpu_kernels_llt_include}
+    )
+
+    target_compile_options(cpu_kernels_llt PUBLIC
+      -D_GLIBCXX_USE_CXX11_ABI=0
+      -O0
+      -Dgoogle=ascend_private
+      -DRUN_TEST
+    )
+
+    target_link_libraries(cpu_kernels_llt
+      PRIVATE
+        $<BUILD_INTERFACE:intf_llt_pub>
+      PUBLIC
+        ascend_protobuf
+        c_sec
+        -ldl
+    )
+
+    file(GLOB TEST_FILE_CPP ${CMAKE_CURRENT_SOURCE_DIR}/**_impl.cpp)
+    file(GLOB TEST_FILE_CC ${CMAKE_CURRENT_SOURCE_DIR}/**_impl.cc)
+    set(_cpu_kernels_ut_files
+      ${CANN_ROOT}/ops/built-in/tests/utils/node_def_builder.cpp
+      ${TEST_FILE_CPP}
+      ${TEST_FILE_CC}
+    )
+
+    add_executable(cpu_kernels_ut
+      ${_cpu_kernels_ut_files}
+    )
+
+    target_include_directories(cpu_kernels_ut PRIVATE
+      ${GTEST_INCLUDE}
+      ${CANN_ROOT}/ops/built-in/tests/utils/
+    )
+
+    target_link_libraries(cpu_kernels_ut PRIVATE
+      -Wl,--whole-archive
+      cpu_kernels_llt
+      -Wl,--no-whole-archive
+    )
+
+    target_compile_definitions(cpu_kernels_ut PUBLIC
+      D_GLIBCXX_USE_CXX11_ABI=0
+      google=ascend_private
+      RUN_TEST
+    )
+    set(AICPU_UTEST "${PROJECT_PATH}/out/bin/aicpu_cast_ut_test")
+    set_target_properties(cpu_kernels_ut PROPERTIES OUTPUT_NAME "aicpu_cast_ut" RUNTIME_OUTPUT_DIRECTORY  ${AICPU_UTEST})
+    add_custom_command(TARGET cpu_kernels_ut
+                       POST_BUILD
+                       COMMAND ${AICPU_UTEST}/aicpu_cast_ut --gtest_filter=${FILTER})
+    # llt
+    add_library(intf_llt_pub INTERFACE)
+
+    target_include_directories(intf_llt_pub INTERFACE
+      ${GTEST_INCLUDE}
+    )
+
+    target_compile_definitions(intf_llt_pub INTERFACE
+      _GLIBCXX_USE_CXX11_ABI=0
+      CFG_BUILD_DEBUG
+    )
+
+    target_compile_options(intf_llt_pub INTERFACE
+      -g
+      --coverage
+      -fprofile-arcs
+      -ftest-coverage
+      -w
+      $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
+      $<$<STREQUAL:${ENABLE_ASAN},true>:-fsanitize=address -fno-omit-frame-pointer -static-libasan -fsanitize=undefined -static-libubsan>
+      -fPIC
+    )
+
+    set_target_properties(intf_llt_pub
+        PROPERTIES
+        INTERFACE_LINK_OPTIONS "-fprofile-arcs -ftest-coverage $<$<STREQUAL:${ENABLE_ASAN},true>:-fsanitize=address -static-libasan -fsanitize=undefined  -static-libubsan>"
+    )
+
+    target_link_libraries(intf_llt_pub INTERFACE
+      gtest
+      gtest_main
+      gcov
+      pthread
+    )
+else()
+    project(cast_proto_test)                       # 此处opname进行替换
+    add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+
+    set(PROJECT_DIR "$ENV{PROJECT_PATH}")
+    set(GTEST_DIR ${PROJECT_DIR}/testcases/libs/gtest)
+    set(ADK_DIR "$ENV{ADK_PATH}")
+    set(ATC_DIR ${ADK_DIR}/atc)
+    set(OP_PROTO_SRC_DIR ${PROJECT_DIR}/op_proto)
+
+    message(STATUS "ATC_DIR=${ATC_DIR}")
+
+    enable_testing()
+
+    add_custom_target(third_proto)
+    include(${PROJECT_DIR}/third_party/secure_c_proto.cmake)
+    add_dependencies(third_proto securec_proto_headers)
+    include_directories(${PROJECT_DIR}/fwkacllib/inc)
+    include_directories(${PROJECT_DIR}/metadef/inc/external)
+    include_directories(${PROJECT_DIR}/third_party/src/secure_c_proto/include)
+    include_directories(${PROJECT_DIR})
+    include_directories(${PROJECT_DIR}/metadef/)
+    include_directories(${PROJECT_DIR}/metadef/inc)
+    include_directories(${OP_PROTO_SRC_DIR}/util)
+    include_directories(${PROJECT_DIR}/log)
+    include_directories(${PROJECT_DIR}/metadef/inc/external/graph)
+
+    include_directories(
+            "${GTEST_DIR}/include"
+            "${ATC_DIR}/include"
+            "${OP_PROTO_SRC_DIR}"
+            )
+
+    aux_source_directory(${OP_PROTO_SRC_DIR} OP_PROTO_SOURCE_SRCS)
+    file(GLOB OP_PROTO_TEST_FILES_CPP **proto.cpp)     # 如果是修改的是aicpu_test/CMakeLists，替换为 file(GLOB OP_PROTO_TEST_FILES_CPP **/**proto.cpp)
+    file(GLOB OP_PROTO_TEST_FILES_CC **proto.cc)       # 如果是修改的是aicpu_test/CMakeLists，替换为 file(GLOB OP_PROTO_TEST_FILES_CC **/**proto.cc)
+    file(GLOB UTIL_CC ${OP_PROTO_SRC_DIR}/util/**.cc)
+
+    link_directories(
+            "${ATC_DIR}/lib64"
+            "${GTEST_DIR}"
+    )
+
+    set(CUSTOM_OBJECT_NAME "cast_proto_test")        # 此处opname进行替换
+    add_executable(${CUSTOM_OBJECT_NAME}
+            ${PROJECT_DIR}/testcases/ut/aicpu_test/test_main.cc
+            ${OP_PROTO_SOURCE_SRCS}
+            ${OP_PROTO_TEST_FILES_CPP}
+            ${OP_PROTO_TEST_FILES_CC}
+            ${UTIL_CC}
+            ${PROJECT_DIR}/log/slog.cpp)
+    add_dependencies(${CUSTOM_OBJECT_NAME} third_proto)
+    target_link_libraries(${CUSTOM_OBJECT_NAME} gtest c_sec alog pthread error_manager graph register)
+endif()
