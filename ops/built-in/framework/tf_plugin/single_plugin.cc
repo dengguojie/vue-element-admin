@@ -963,7 +963,7 @@ REGISTER_CUSTOM_OP("ReduceJoin")
 // register UnsortedSegmentJoin op to GE
 REGISTER_CUSTOM_OP("UnsortedSegmentJoin")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("StaticRegexReplace")
+    .OriginOpType("UnsortedSegmentJoin")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
