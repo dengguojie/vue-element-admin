@@ -16,7 +16,15 @@ if(NOT ENABLE_TEST)
     COMMENT "Parsing aicpu_kernel.ini and aicpu_cust_kernel.ini file"
   )
 
+  add_custom_command(OUTPUT "${AICPU_JSON_OUT_PATH}/host_cpu_kernel.json"
+    COMMAND "${HI_PYTHON}" "${INI_PARSER}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/host_cpu_kernel/host_cpu_kernel.ini"
+    "${AICPU_JSON_OUT_PATH}/host_cpu_kernel.json" 1>/dev/null
+    COMMENT "Parsing host_cpu_kernel.ini file"
+  )
+
   list(APPEND ALL_JSON_FILES "${AICPU_JSON_OUT_PATH}/aicpu_kernel.json")
+  list(APPEND ALL_JSON_FILES "${AICPU_JSON_OUT_PATH}/host_cpu_kernel.json")
   set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in")
 
   add_custom_target(aicpu_ops_json_info ALL
@@ -26,6 +34,7 @@ if(NOT ENABLE_TEST)
     cann_install(
       TARGET      aicpu_ops_json_info
       FILES "${CMAKE_CURRENT_BINARY_DIR}/config/aicpu_kernel/aicpu_kernel.json"
+      FILES "${CMAKE_CURRENT_BINARY_DIR}/config/aicpu_kernel/host_cpu_kernel.json"
       DESTINATION "${TBE_OP_PATH}/aicpu/aicpu_kernel/config"
     )
   else()

@@ -34,6 +34,8 @@ set(local_kernels_src_files
 )
 
 set(local_host_kernels_src_files
+    kernels/host/assign.cc
+    kernels/host/no_op.cc
     kernels/host/transdata.cc
     kernels/host/format_transfer/format_transfer_fractal_nz.cc
     kernels/host/format_transfer/format_transfer_fractal_z.cc

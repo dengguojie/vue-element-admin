@@ -16,7 +16,7 @@
 #include "folding.h"
 
 #include <vector>
-
+#include <set>
 #include "cpu_attr_value.h"
 #include "cpu_context.h"
 #include "cpu_kernel_register.h"
@@ -332,9 +332,13 @@ extern "C" {
 __attribute__((visibility("default"))) int32_t InitCpuConstantFolding(
     ge::HostCpuOp *(*create_fn)()) {
   CPU_LOG_INFO("Init cpu constant folding begin.");
+  std::set<std::string> black_list = {"Assign", "NoOp"};
   std::vector<std::string> ops =
       aicpu::CpuKernelRegister::Instance().GetAllRegisteredOpTypes();
   for (const std::string &op_type : ops) {
+    if (black_list.find(op_type) != black_list.end()) {
+      continue;
+    }
     CPU_LOG_INFO("Register op[%s].", op_type.c_str());
     ::ge::HostCpuOpRegistrar registrar __attribute__((unused)) =
         ::ge::HostCpuOpRegistrar(op_type.c_str(), create_fn);

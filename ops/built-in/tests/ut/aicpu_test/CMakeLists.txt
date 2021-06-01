@@ -66,6 +66,8 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractalz_3d.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_utils.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
+  ${CPU_KERNELS_DIR}/kernels/host/no_op.cc
+  ${CPU_KERNELS_DIR}/kernels/host/assign.cc
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
@@ -175,6 +177,8 @@ set(_cpu_kernels_ut_files
   testcase/less/src/less_utest.cpp
   testcase/logging/src/logging_utest.cpp
   testcase/mul/src/mul_utest.cpp
+  testcase/no_op/src/no_op_utest.cpp
+  testcase/assign/src/assign_utest.cpp
   testcase/not_equal/src/not_equal_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
