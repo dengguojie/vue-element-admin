@@ -624,7 +624,7 @@ REG_OP(MaxPoolV2)
 
 *@par Inputs:
 * One input:
-*x: An 4D Tensor. Supported type: float, double, int32,
+* x: An 4D Tensor. Supported type: float, double, int32,
  * uint8, int16, int8, int64, uint16, half, uint32, uint64.
  * Must set the format, supported format list ["NCHW, NHWC"]. \n
 
@@ -638,8 +638,8 @@ REG_OP(MaxPoolV2)
 *@li padding: A required string. No default value . \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type and format as input "x".
-*argmax: A Tensor. Has the same type and format as input "x".
+*@li y: A Tensor. Has the same type and format as input "x".
+*@li argmax: A Tensor. Has the same type and format as input "x".
 *@attention Constraints:
 *@li "ksize" is a list that has length 4: ksize[0] = 1 or ksize[3] = 1,
  * ksize[1] * ksize[2] <= 255.
