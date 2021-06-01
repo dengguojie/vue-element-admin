@@ -334,7 +334,7 @@ class ConfusionSoftmaxGradSchedule:
                                         attrs=dict(src_shape=src_shape))
                 continue
             if tensor_i.op.tag == "unified_broadcast":
-                sch[tensor_i].emit_insn(tensor_i.op.axis[-1], "unified_broadcast")
+                sch[tensor_i].emit_insn(tensor_i.op.axis[1], "vector_broadcast")
                 continue
             if len(param) > 2:
                 sch[tensor_i].emit_insn(param[0], param[2])
