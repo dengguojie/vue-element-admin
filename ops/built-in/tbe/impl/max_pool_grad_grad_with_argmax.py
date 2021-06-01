@@ -152,6 +152,8 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
     elif max_howokhkw_l0ub < kernel_h * kernel_w:
         l0ub_howo = 1
         l0ub_khkw = max_howokhkw_l0ub
+        while (kernel_h * kernel_w) % l0ub_khkw != 0:
+            l0ub_khkw -= 1
     # enough to put a whole kernel, but not enough for howo
     else:
         l0ub_howo = max_howokhkw_l0ub // (kernel_h * kernel_w)

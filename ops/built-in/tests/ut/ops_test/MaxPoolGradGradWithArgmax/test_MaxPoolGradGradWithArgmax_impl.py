@@ -57,32 +57,6 @@ def _get_windowed_output_size(input_size, kernel_size,
         raise RuntimeError("Unsupported padding type", padding_type)
 
     return output_size, padding_before, padding_after
-inputShape, argmax_shape, outputShape, dtype, ksize, pad, strides, format = case_gen(inputShape=(1, 768, 768, 16), ksize=(1, 3, 3, 1), strides=(1, 1, 1, 1), pad="SAME")
-
-x = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
-grad = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
-argmax = {"shape": argmax_shape, "ori_shape": argmax_shape, "format": format, "dtype": "uint16", "ori_format": format}
-y = {"shape": outputShape, "ori_shape": outputShape, "format": format, "dtype": "float16", "ori_format": format}
-
-case1 = {"params":[x, grad, argmax, y, ksize, strides, pad],
-         "case_name": "max_pool_grad_grad_with_argmax_1",
-         "expect": "success",
-         "format_expect": [],
-         "support_expect": True}
-case2 = {"params":[x, grad, argmax, y, (3,3,3,1), strides, pad],
-         "case_name": "max_pool_grad_grad_with_argmax_2",
-         "expect": RuntimeError,
-         "format_expect": [],
-         "support_expect": True}
-case3 = {"params":[x, grad, argmax, y, ksize, (3,1,1,1), pad],
-         "case_name": "max_pool_grad_grad_with_argmax_3",
-         "expect": RuntimeError,
-         "format_expect": [],
-         "support_expect": True}
-
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 
 def tf_get_windowed_output_size_verbose_V2(input_size, filter_size,
                                            stride, padding_type,
@@ -401,6 +375,45 @@ ut_case.add_precision_case("all", {
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
+
+inputShape, argmax_shape, outputShape, dtype, ksize, pad, strides, format = case_gen(inputShape=(1, 768, 768, 16), ksize=(1, 3, 3, 1), strides=(1, 1, 1, 1), pad="SAME")
+
+x = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
+grad = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
+argmax = {"shape": argmax_shape, "ori_shape": argmax_shape, "format": format, "dtype": "uint16", "ori_format": format}
+y = {"shape": outputShape, "ori_shape": outputShape, "format": format, "dtype": "float16", "ori_format": format}
+
+case1 = {"params":[x, grad, argmax, y, ksize, strides, pad],
+         "case_name": "max_pool_grad_grad_with_argmax_1",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case2 = {"params":[x, grad, argmax, y, (3,3,3,1), strides, pad],
+         "case_name": "max_pool_grad_grad_with_argmax_2",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+case3 = {"params":[x, grad, argmax, y, ksize, (3,1,1,1), pad],
+         "case_name": "max_pool_grad_grad_with_argmax_3",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
+inputShape, argmax_shape, outputShape, dtype, ksize, pad, strides, format = case_gen(inputShape=(8, 71, 339, 16*125), ksize=(1, 21, 186, 1), strides=(1, 15, 43, 1), pad="VALID")
+x = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
+grad = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
+argmax = {"shape": argmax_shape, "ori_shape": argmax_shape, "format": format, "dtype": "uint16", "ori_format": format}
+y = {"shape": outputShape, "ori_shape": outputShape, "format": format, "dtype": "float16", "ori_format": format}
+case4 = {"params":[x, grad, argmax, y, ksize, strides, pad],
+         "case_name": "max_pool_grad_grad_with_argmax_4",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 
 if __name__ == '__main__':
     ut_case.run()
