@@ -4127,7 +4127,7 @@ class CceConvOp:
                     w_out = ConvParam.w_out
                 return h_out, w_out
 
-            if self._pre_relu_fused_flag: 
+            if self._pre_relu_fused_flag:
                 h_out, w_out = get_max_out_for_dynamic()
                 if ("ho" in self._dyn_var_map or "wo" in self._dyn_var_map) and tiling["AL1_shape"]:
                     no2_al1_factor = int_ceil_div(int_ceil_div(h_out * w_out, int(
@@ -4150,13 +4150,14 @@ class CceConvOp:
                     else:
                         aub_factor[1] = fmap_shape_nc1hwc0[2]
 
-                if self._dynamic_flag:
+                if self._dynamic_flag and not l0a_load2d_flag:
                     al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[0])
                 else:
                     al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[1], nparts=aub_factor[0])
                 if self._conv1d_split_w_flag:
-                    if self._dynamic_flag:
+                    if self._dynamic_flag and not l0a_load2d_flag:
                         # al1 is [group, n, c1, h, w, c0] in dynamic
+                        # load 2d has not group
                         al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[4], nparts=aub_factor[1])
                     else:
                         al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
@@ -4164,7 +4165,7 @@ class CceConvOp:
                     sch[fmap].compute_at(sch[al1], al1_w_outer)
                     sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_w_outer)
                 else:
-                    if self._dynamic_flag:
+                    if self._dynamic_flag and not l0a_load2d_flag:
                         al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
                     else:
                         al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[1])
@@ -4192,7 +4193,11 @@ class CceConvOp:
                         'conv_fm_w': fmap.shape[3],
                         'conv_fm_c0': fmap.shape[4],
                     }
-                    sch[al1].emit_insn(al1_k_inner, 'dma_copy', im2col_attr)
+                    if not l0a_load2d_flag:
+                        sch[al1].emit_insn(al1_k_inner, 'dma_copy', im2col_attr)
+                    else:
+                        # load 2d does not set_fmatrix
+                        sch[al1].emit_insn(al1_k_inner, 'dma_copy')
                     sch[fmap].set_storage_bound(min(int(need_buffer_size), PRE_BUFFER_SIZE_MAX))
                     sch[tensor_map['fmap_ub']].set_storage_bound(min(int(need_buffer_size), PRE_BUFFER_SIZE_MAX))
                 else:
@@ -4299,7 +4304,8 @@ class CceConvOp:
                 #  phony_insn tensor no need set_storage_bound for convbn fusion
                 if self._convbn1_flag and "cast_1" in lop["op"]:
                     continue
-                if self._pre_relu_fused_flag and "elewise_single_relu" in lop['op']:
+                # elewise_single_relu is cloud, mini and es
+                if self._pre_relu_fused_flag and ("elewise_single_relu" in lop['op'] or "elewise_single_lrelu" in lop['op']):
                     continue
                 sch[lop["dst_buffer"]].set_storage_bound(ub_storage_bound_size)
 
