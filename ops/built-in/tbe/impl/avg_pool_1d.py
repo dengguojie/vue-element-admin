@@ -41,10 +41,8 @@ def get_op_support_info(input_x,
     """
     format_x = input_x.get("format")
     if format_x == "NC1HWC0":
-        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]),
-                              SplitOutput([0, [0]])],
-                             [SplitInput([0, [2], [-1], [-1]]),
-                              SplitOutput([0, [2]])]]
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                             [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]]
         axis_reduce_list = None
     else:
         axis_split_matrix = None
@@ -136,27 +134,35 @@ def avg_pool_1d_compute(x,
     reduce_tensor_list = []
     re_shape = (x_fused_axis, x_wo, x_c0)
     if kernel > 1:
-        # Add the first and second points of the sliding window
-        tensor_w = tvm.compute(
-            re_shape,
-            lambda fused_axis, w, c0: tvm.sum(tensor_mid_shape_in_ub[fused_axis, w * stride + 0, c0],
-                                              tensor_mid_shape_in_ub[fused_axis, w * stride + 1, c0]),
-            name="tensor_w")
-        reduce_tensor_list.append(tensor_w)
-        # then accumulate the Nth point in sequence.
-        for j in range(2, kernel):
-            tensor_w_tmp = tvm.compute(
+        # 100 is an experience num to avoid stack overflow
+        if kernel <= 100:
+            # Add the first and second points of the sliding window
+            tensor_w = tvm.compute(
                 re_shape,
-                lambda fused_axis, w, c0, it=j: tvm.sum(tensor_mid_shape_in_ub[fused_axis, w * stride + it, c0],
-                                                        tensor_w[fused_axis, w, c0]),
-                name="tensor_w" + str(j))
-            tensor_w = tensor_w_tmp
+                lambda fused_axis, w, c0: tvm.sum(tensor_mid_shape_in_ub[fused_axis, w * stride + 0, c0],
+                                                  tensor_mid_shape_in_ub[fused_axis, w * stride + 1, c0]),
+                name="tensor_w")
+            reduce_tensor_list.append(tensor_w)
+            # then accumulate the Nth point in sequence.
+            for j in range(2, kernel):
+                tensor_w_tmp = tvm.compute(
+                    re_shape,
+                    lambda fused_axis, w, c0, it=j: tvm.sum(tensor_mid_shape_in_ub[fused_axis, w * stride + it, c0],
+                                                            tensor_w[fused_axis, w, c0]),
+                    name="tensor_w" + str(j))
+                tensor_w = tensor_w_tmp
+                reduce_tensor_list.append(tensor_w)
+        else:
+            w_axis = tvm.reduce_axis((0, kernel), "w_sum")
+            tensor_w = tvm.compute(re_shape,
+                                   lambda fused_axis, w, c0: tvm.sum(
+                                       tensor_mid_shape_in_ub[fused_axis, w * stride + w_axis, c0], axis=w_axis),
+                                   name="tensor_w")
             reduce_tensor_list.append(tensor_w)
     elif kernel == 1:
-        tensor_w = tvm.compute(
-                re_shape,
-                lambda fused_axis, w, c0: tensor_mid_shape_in_ub(fused_axis, w * stride, c0) + 0,
-                name="tensor_w")
+        tensor_w = tvm.compute(re_shape,
+                               lambda fused_axis, w, c0: tensor_mid_shape_in_ub(fused_axis, w * stride, c0) + 0,
+                               name="tensor_w")
         reduce_tensor_list.append(tensor_w)
 
     tensor_list = [x, div, tensor_mid_shape_in_ub]
