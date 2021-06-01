@@ -74,7 +74,6 @@ set(_optiling_files
   norm.cc
   resize_nearest_neighbor_v2.cc
   resize_bilinear_v2_grad.cc
-  resize_bilinear_v2.cc
   scale.cc
   scatter_add.cc
   scatter_nd.cc

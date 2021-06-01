@@ -397,10 +397,11 @@ static bool ResizeNearestNeighborV2Tiling(const std::string& op_type, const TeOp
 
   // calcu tiling
   bool get_tiling_result = false;
-  if (op_type == "ResizeNearestNeighborV2")
+  if (op_type == "ResizeNearestNeighborV2" || op_type == "ResizeBilinearV2") {
     get_tiling_result = GetTilingParam(compile_params, tiling_params);
-  else
+  } else {
     get_tiling_result = GetTilingParamResizeNearestNeighborV2Grad(compile_params, tiling_params);
+  }
   if (!get_tiling_result) {
     PrintTilingParams(op_type, tiling_params, compile_params);
     OP_LOGE(op_type, "get tiling data failed.");
@@ -420,7 +421,8 @@ static bool ResizeNearestNeighborV2Tiling(const std::string& op_type, const TeOp
 
 // register tiling interface of the ResizeNearestNeighborV2 op.
 REGISTER_OP_TILING_FUNC_BUFFERED(ResizeNearestNeighborV2, ResizeNearestNeighborV2Tiling);
-
+// register tiling interface of the ResizeBilinearV2 op.
+REGISTER_OP_TILING_FUNC_BUFFERED(ResizeBilinearV2, ResizeNearestNeighborV2Tiling);
 // register tiling interface of the ResizeNearestNeighborV2Grad op.
 REGISTER_OP_TILING_FUNC_BUFFERED(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2Tiling);
 }  // namespace optiling
