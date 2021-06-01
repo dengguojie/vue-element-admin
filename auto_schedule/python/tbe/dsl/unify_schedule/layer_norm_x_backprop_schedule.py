@@ -30,6 +30,8 @@ BLOCK_SIZE_BYTE = 32
 
 # temp space for last axis broadcast use vtranspose
 VTRANSPOSE_TEMP_SPACE = 8192
+FP_32 = 8
+FP_16 = 16
 
 @register_schedule(pattern=Pattern.LAYER_NORM_X_BACKPROP)
 def schedule(outs, tiling_case):
@@ -69,7 +71,6 @@ class LayerNormXBackpropSchedule:
         self._cache_read_buffer_tensor_map = {}
         self._placeholder_tensor_map = {}
 
-        self._cache_write_tensors = set()
         self._cache_write_buffer_tensor_map = {}
         self._cache_write_tensor_map = {}
 
@@ -82,10 +83,10 @@ class LayerNormXBackpropSchedule:
 
         self._compute_at_map = {}
 
-        self._block_bind_axis = None
         self._compute_at_axis = None
         self._compute_at_axis_idx = None
         self._emit_insn_axis = None
+        self.sum_x_block_outer = None
 
         self._ir_axes = []
         self._inner_shape = []
@@ -109,6 +110,7 @@ class LayerNormXBackpropSchedule:
         self._do_cache_write()
 
         self._set_scope()
+        self._do_compute_inline()
 
         self._calc_storage_bound()
         self._do_storage_bound()
@@ -118,8 +120,8 @@ class LayerNormXBackpropSchedule:
 
         self._calc_compute_at()
         self._do_compute_at()
+        self._do_multi_core()
 
-        self._calc_double_buffer()
         self._do_double_buffer()
 
         self._calc_emit_insn()
@@ -127,6 +129,9 @@ class LayerNormXBackpropSchedule:
         self._add_compile_info()
 
         return self._schedule
+
+    def _do_compute_inline(self):
+        pass
 
     def _construct_compute_graph(self):
         def match_scalar_scene(tensor_):
@@ -194,6 +199,10 @@ class LayerNormXBackpropSchedule:
 
             self._dfs_sub_graph(tensor_i, visited_tensors)
 
+    def _set_scope(self):
+        for tensor_i in self._middle_tensors:
+            self._schedule[tensor_i].set_scope(self._scope)
+
     def _calc_cache_read(self):
         self._cache_read_tensors.update(self._input_tensors)
 
@@ -205,18 +214,12 @@ class LayerNormXBackpropSchedule:
             self._placeholder_tensor_map[tensor_i] = buffer_tensor
 
     def _calc_cache_write(self):
-        self._cache_write_tensors.update(self._out_tensors)
+        pass
 
     def _do_cache_write(self):
-        for tensor_i in self._cache_write_tensors:
-            buffer_tensor = self._schedule.cache_write(tensor_i, self._scope)
-            self._cache_write_buffer_tensor_map[buffer_tensor] = tensor_i
-            self._cache_write_tensor_map[tensor_i] = buffer_tensor
-
-    def _set_scope(self):
-        sch = self._schedule
-        for tensor_i in self._middle_tensors:
-            sch[tensor_i].set_scope(self._scope)
+        for tensor_i in self._out_tensors:
+            self.final_out_buffer = self._schedule.cache_write(tensor_i, self._scope)
+            self._cache_write_buffer_tensor_map[self.final_out_buffer] = tensor_i
 
     def _calc_storage_bound(self):
 
@@ -271,50 +274,50 @@ class LayerNormXBackpropSchedule:
             tensor_space = tensor_space // 2
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
-        sch = self._schedule
-        tensors = self._middle_tensors \
-            .union(self._cache_read_buffer_tensor_map.keys()) \
-            .union(self._cache_write_buffer_tensor_map.keys())
+        tensors = list(self._middle_tensors) + \
+            list(self._cache_read_buffer_tensor_map.keys()) + \
+            list(self._cache_write_buffer_tensor_map.keys())
 
         for tensor_i in tensors:
-            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
-            sch[tensor_i].set_storage_bound(storage_bound)
+            self.storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
+            self._schedule[tensor_i].set_storage_bound(self.storage_bound)
 
     def _calc_tiling(self):
-        funcs = {TilingStrategy.NONE_CUT: self._calc_tiling_none_cut,
-                 }
+        funcs = {TilingStrategy.NONE_CUT: self._calc_tiling_none_cut}
         funcs[self._tiling_strategy]()
 
     def _calc_tiling_none_cut(self):
         pass
 
     def _do_tiling(self):
-        funcs = {TilingStrategy.NONE_CUT: self._do_tiling_none_cut,
-                 }
+        funcs = {TilingStrategy.NONE_CUT: self._do_tiling_none_cut}
         funcs[self._tiling_strategy]()
 
     def _do_tiling_none_cut(self):
         res = self._out
-        shape = util.shape_to_list(res.shape)
-        for _i, _x in enumerate(res.op.axis):
-            self._ir_axes.append([_x, _i])
-            self._inner_shape.append([shape[_i], _i])
-        self._emit_insn_axis = res.op.axis[2]
-        self._compute_at_axis = list(self._cache_write_tensors)[0].op.axis[1]
+        core_num = util.get_core_num()
+        block_split_axis_index = 0
 
-    def _calc_multi_core(self):
-        if self._tiling_strategy == TilingStrategy.NONE_CUT:
-            self._block_bind_axis = None
+        block_split_axis = res.op.axis[block_split_axis_index]
+        self.sum_x_block_outer, _ = self._schedule[res].split(
+            block_split_axis, nparts=core_num
+        )
+        self._is_split_ub = True
+        ub_factor = 32 // self._max_dtype_bytes
+        self._ub_split_axis_index = 1
+        if self._is_split_ub:
+            ub_outer, ub_inner = self._schedule[res].split(
+                res.op.axis[self._ub_split_axis_index], factor=ub_factor
+            )
+        self._compute_at_axis = ub_outer
+        self._emit_at_axis = ub_inner
 
     def _do_multi_core(self):
-        if self._block_bind_axis is not None:
+        if self.sum_x_block_outer is not None:
             block = tvm.thread_axis("blockIdx.x")
-            self._schedule[self._out].bind(self._block_bind_axis, block)
+            self._schedule[self._out].bind(self.sum_x_block_outer, block)
 
     def _calc_compute_at(self):
-        for tensor_i in self._input_tensors:
-            self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
-
         for tensor_i in self._middle_tensors:
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
@@ -322,23 +325,18 @@ class LayerNormXBackpropSchedule:
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
         for tensor_i in self._cache_write_buffer_tensor_map:
-            self._compute_at_map[tensor_i] = [self._out, self._out.op.axis[1]]
+            self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
     def _do_compute_at(self):
         sch = self._schedule
         for tensor_i, param in self._compute_at_map.items():
             sch[tensor_i].compute_at(sch[param[0]], param[1])
 
-    def _calc_double_buffer(self):
-        pass
-
     def _do_double_buffer(self):
         if self._open_double_buffer:
             sch = self._schedule
 
-            tensors = self._middle_tensors \
-                .union(self._cache_read_buffer_tensor_map.keys()) \
-                .union(self._cache_write_buffer_tensor_map.keys())
+            tensors = list(self._cache_read_buffer_tensor_map.keys())
 
             for tensor_i in tensors:
                 sch[tensor_i].double_buffer()
@@ -377,7 +375,7 @@ class LayerNormXBackpropSchedule:
                         "tuple_reduce_sum": "vector_reduce_sum",
                         "reduce_sum":  "vector_reduce_sum",
                         "broadcast": "vector_dup",
-                        "unified_broadcast":  "unified_broadcast",
+                        "unified_broadcast":  "vector_broadcast",
                         "broadcast_for_tensor": "unified_broadcast"}
             if tensor_.op.tag.find("|") != -1:
                 str_list = tensor_.op.tag.split("|")
@@ -393,14 +391,18 @@ class LayerNormXBackpropSchedule:
             self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], _get_emit_insn_map(tensor_i)]
 
         for source, target in self._cache_write_buffer_tensor_map.items():
-            self._emit_insn_map[source] = [source.op.axis[2], _get_emit_insn_map(target)]
+            self._emit_insn_map[source] = [source.op.axis[0], _get_emit_insn_map(target)]
 
         for tensor_i in self._out_tensors:
-            self._emit_insn_map[tensor_i] = [self._emit_insn_axis, "dma_copy"]
+            self._emit_insn_map[tensor_i] = [tensor_i.op.axis[2], "dma_copy"]
 
     def _do_emit_insn(self):
         sch = self._schedule
         for tensor_i, param in self._emit_insn_map.items():
+            if tensor_i.op.name in ["broadcast_tensor_0", "broadcast_tensor_1", "broadcast_tensor_2", 
+                                    "broadcast_tensor_3", "broadcast_tensor_4"]:
+                sch[tensor_i].emit_insn(tensor_i.op.axis[1], param[1])
+                continue
             sch[tensor_i].emit_insn(param[0], param[1])
 
     def _add_compile_info(self):

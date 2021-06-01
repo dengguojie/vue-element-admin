@@ -50,8 +50,7 @@ def layer_norm_bata_gamma_backprop_generalization(input_dy, input_x, input_varia
     input_variance["shape"] = [-1, -1, 1]
     input_mean["shape"] = [-1, -1, 1]
     input_gamma["shape"] = [last_dim]
-    result.append([input_dy, input_x, input_variance,
-                   input_mean, input_gamma, output_pd_x])
+    result.append([input_dy, input_x, input_variance, input_mean, input_gamma, output_pd_x])
     return result
 
 
@@ -119,13 +118,11 @@ def _check_shape_mean(shape_x, shape_mean):
     """
     if len(shape_x) != len(shape_mean):
         error_detail = "length of shape_x and shape_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop", \
-                                                               "input_x", "input_mean", error_detail)
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop", "input_x", "input_mean", error_detail)
 
     if shape_mean[-1] != 1:
         error_detail = "value of shape_mean's last dim must be 1"
-        error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop", \
-                                                           "input_mean", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop", "input_mean", error_detail)
 
     flag = -1
     for i, (xtem, mean) in enumerate(zip(shape_x, shape_mean)):
@@ -139,8 +136,7 @@ def _check_shape_mean(shape_x, shape_mean):
                 continue
             if mean != 1:
                 error_detail = "value of shape_mean must be 1"
-                error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop", \
-                                                                   "input_mean", error_detail)
+                error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop", "input_mean", error_detail)
 
 
 def _check_shape_gamma(shape_x, shape_gamma):
@@ -160,14 +156,13 @@ def _check_shape_gamma(shape_x, shape_gamma):
     """
     if len(shape_gamma) > len(shape_x):
         error_detail = "length of shape_gamma can not be longer than shape_x"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop", \
-                                                               "input_gamma", "input_x", error_detail)
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_x_backprop",  "input_gamma", "input_x",
+                                                               error_detail)
 
     for xtem, gamma in zip(reversed(shape_x), reversed(shape_gamma)):
         if xtem != gamma:
             error_detail = "value of shape_gamma is wrong"
-            error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop", \
-                                                               "input_gamma", error_detail)
+            error_manager_vector.raise_err_input_shape_invalid("layer_norm_x_backprop", "input_gamma", error_detail)
 
 
 def _update_gamma_shape(shape_x, shape_gamma):
@@ -219,16 +214,11 @@ def _get_data_gm(shapes, dtype):
     data_gm: tuple
         (data_dy, data_x, data_variance, data_mean, data_gamma)
     """
-    data_dy = tvm.placeholder(shapes.get("shape_dy"),
-                              name="data_dy", dtype=dtype)
-    data_x = tvm.placeholder(shapes.get("shape_x"),
-                             name="data_x", dtype=dtype)
-    data_variance = tvm.placeholder(shapes.get("shape_var"),
-                                    name="data_variance", dtype=dtype)
-    data_mean = tvm.placeholder(shapes.get("shape_mean"),
-                                name="data_mean", dtype=dtype)
-    data_gamma = tvm.placeholder(shapes.get("shape_gamma"),
-                                 name="data_gamma", dtype=dtype)
+    data_dy = tvm.placeholder(shapes.get("shape_dy"), name="data_dy", dtype=dtype)
+    data_x = tvm.placeholder(shapes.get("shape_x"), name="data_x", dtype=dtype)
+    data_variance = tvm.placeholder(shapes.get("shape_var"), name="data_variance", dtype=dtype)
+    data_mean = tvm.placeholder(shapes.get("shape_mean"), name="data_mean", dtype=dtype)
+    data_gamma = tvm.placeholder(shapes.get("shape_gamma"), name="data_gamma", dtype=dtype)
 
     data_gm = (data_dy, data_x, data_variance, data_mean, data_gamma)
 
@@ -273,8 +263,7 @@ def _get_params(shape_x, shape_mean, shape_gamma):
     for i in reduce_axis:
         mean_num *= shape_x[i]
 
-    params = {"param_axis": param_axis, "reduce_axis": reduce_axis,
-              "mean_num": mean_num}
+    params = {"param_axis": param_axis, "reduce_axis": reduce_axis,"mean_num": mean_num}
 
     return params
 
@@ -317,11 +306,9 @@ def _get_pd_var_front(data, cast_dtype):
     var_elta_2: tvm.tensor
         np.power((data_variance + EPSLON), (-0.5))
     """
-    var_elta = tbe.vadds(data.get("data_variance"),
-                                 tvm.const(EPSLON, dtype=cast_dtype))
+    var_elta = tbe.vadds(data.get("data_variance"), tvm.const(EPSLON, dtype=cast_dtype))
     var_elta_log = tbe.vlog(var_elta)
-    var_elta_mul = tbe.vmuls(var_elta_log,
-                                     tvm.const(-0.5, dtype=cast_dtype))
+    var_elta_mul = tbe.vmuls(var_elta_log, tvm.const(-0.5, dtype=cast_dtype))
     var_elta_2 = tbe.vexp(var_elta_mul)
     pdvar1_mul = tbe.vmul(var_elta_2, var_elta_2)
     pd_var_1 = tbe.vmul(pdvar1_mul, var_elta_2)
@@ -362,8 +349,7 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype):
     sub_x_mean = tbe.vsub(data.get("data_x"), data_mean_cast)
 
     pdvar_mul1 = tbe.vmul(pd_xl, sub_x_mean)
-    pdvar_sum = tbe.reduce_sum(pdvar_mul1, params.get("reduce_axis"),
-                                keepdims=True)
+    pdvar_sum = tbe.reduce_sum(pdvar_mul1, params.get("reduce_axis"), keepdims=True)
     pdvar_mul3 = tbe.vmul(pdvar_sum, pd_var_1)
     pd_var = tbe.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
 
@@ -400,24 +386,10 @@ def _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
         + pd_var*(1.0/m)*np.sum(((-2.0)*(data_x - data_mean)),
         reduce_axis, keepdims=True)
     """
-    pdmean1_sum = tbe.reduce_sum(pd_xl, params.get("reduce_axis"),
-                                  keepdims=True)
+    pdmean1_sum = tbe.reduce_sum(pd_xl, params.get("reduce_axis"), keepdims=True)
     pdmean1_mul = tbe.vmul(pdmean1_sum, var_elta_2)
-    pd_mean_1 = tbe.vmuls(pdmean1_mul,
-                                  tvm.const(-1.0, dtype=cast_dtype))
-
-    pdmean2_mul1 = tbe.vmuls(sub_x_mean,
-                                     tvm.const(-2.0, dtype=cast_dtype))
-    pdmean2_sum = tbe.reduce_sum(pdmean2_mul1, params.get("reduce_axis"),
-                                  keepdims=True)
-    pdmean2_mul3 = tbe.vmuls(pdmean2_sum,
-                                     tvm.const((params.get("mean_num")**(-1)),
-                                               dtype=cast_dtype))
-    pd_mean_2 = tbe.vmul(pd_var, pdmean2_mul3)
-
-    pd_mean = tbe.vadd(pd_mean_2, pd_mean_1)
-
-    return pd_mean
+    pd_mean_1 = tbe.vmuls(pdmean1_mul, tvm.const(-1.0, dtype=cast_dtype))
+    return pd_mean_1
 
 
 def _get_pd_x_front(data, params, shape_x, cast_dtype):
@@ -449,22 +421,16 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
     """
     pd_xl = _get_pd_xl(data, shape_x)
 
-    pd_var, var_elta_2, sub_x_mean = _get_pd_var(data, params, shape_x, pd_xl,
-                                                 cast_dtype)
+    pd_var, var_elta_2, sub_x_mean = _get_pd_var(data, params, shape_x, pd_xl, cast_dtype)
 
-    pd_mean = _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean,
-                           cast_dtype)
+    pd_mean = _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype)
 
     var_elta_2_cast = tbe.broadcast(var_elta_2, shape_x)
     pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
     pdx2_broad = tbe.broadcast(pd_var, shape_x)
     pdx2_mul = tbe.vmul(pdx2_broad, sub_x_mean)
-    pd_x_2 = tbe.vmuls(pdx2_mul,
-                               tvm.const((2*(params.get("mean_num")**(-1))),
-                                         dtype=cast_dtype))
-    pd_x_3 = tbe.vmuls(pd_mean,
-                               tvm.const((params.get("mean_num")**(-1)),
-                                         dtype=cast_dtype))
+    pd_x_2 = tbe.vmuls(pdx2_mul, tvm.const((2*(params.get("mean_num")**(-1))), dtype=cast_dtype))
+    pd_x_3 = tbe.vmuls(pd_mean, tvm.const((params.get("mean_num")**(-1)), dtype=cast_dtype))
 
     return pd_x_1, pd_x_2, pd_x_3
 
@@ -573,8 +539,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
 
     has_improve_precision = False
     cast_dtype = dtype
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
         has_improve_precision = True
         cast_dtype = "float32"
 
@@ -627,17 +592,12 @@ def layer_norm_x_backprop_compute(input_dy, input_x,
     res_tuple: tuple
         (pd_x, pd_gamma, pd_beta)
     """
-    pd_x = _get_pds(input_dy, input_x, input_variance, input_mean,
-                    input_gamma, input_gamma.shape)
+    pd_x = _get_pds(input_dy, input_x, input_variance, input_mean, input_gamma, input_gamma.shape)
     res_list = [pd_x]
 
     return res_list
 
 
-#@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-#                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-#                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-#                            para_check.KERNEL_NAME)
 @register_operator("LayerNormXBackprop",pattern = "Layer_norm_x_backprop")
 def layer_norm_x_backprop(input_dy, input_x, input_variance, input_mean,
                           input_gamma, output_pd_x,

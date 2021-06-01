@@ -99,7 +99,7 @@ TEST_F(LayerNormXBackpropTiling, LayerNormXBackprop_tiling_test_1)
 
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(runInfo.block_dim, 1);
+    EXPECT_EQ(runInfo.block_dim, 32);
     EXPECT_EQ(runInfo.tiling_key, 10000);
     EXPECT_EQ(to_string(runInfo.tiling_data), "13 32 ");
 }
