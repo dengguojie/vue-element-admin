@@ -485,14 +485,14 @@ class YoloBoxesEncode(object):
             self.tik_inst.vsub(VEC_MASK[FP32], center_info_ub[idx], src_0_ub[idx], src_1_ub[idx], repeat_times,
                                REP_STRIDE[FP32], REP_STRIDE[FP32], REP_STRIDE[FP32], 64, 64, 64)
             if self.support_div is True:
-                self.tik_inst.vdiv(VEC_MASK[FP32], center_info_ub[idx], center_info_ub[idx], stride_ub,
+                self.tik_inst.vdiv(VEC_MASK[FP32], center_info_ub[idx], center_info_ub[idx], stride_ub[idx],
                                    repeat_times, REP_STRIDE[FP32], REP_STRIDE[FP32], REP_STRIDE[FP32], 64, 64, 64)
             else:
                 stride_fp32_ub = self.tik_inst.Tensor(FP32, (self.ub_max_size,),
                                                       name="stride_fp32_ub", scope=tik.scope_ubuf)
                 self.tik_inst.vrec(VEC_MASK[FP32], stride_fp32_ub, stride_ub, repeat_times, REP_STRIDE[FP32],
                                    REP_STRIDE[FP32], 64, 64)
-                self.tik_inst.vmul(VEC_MASK[FP32], center_info_ub[idx], center_info_ub[idx], stride_fp32_ub,
+                self.tik_inst.vmul(VEC_MASK[FP32], center_info_ub[idx], center_info_ub[idx], stride_fp32_ub[idx],
                                    repeat_times, REP_STRIDE[FP32], REP_STRIDE[FP32], REP_STRIDE[FP32], 64, 64, 64)
 
             self.tik_inst.vadds(VEC_MASK[FP32], center_info_ub[idx], center_info_ub[idx], 0.5, repeat_times,
@@ -532,6 +532,14 @@ class YoloBoxesEncode(object):
                 col_id = num_id // align_num
                 dst_ub_ptr[row_id * align_num + col_id] = src_ub_ptr[num_id]
 
+    def _get_transpose_small_data_fp16_ub(self, src_ub, dst_ub):
+        with self.tik_inst.new_stmt_scope():
+            src_fp32_ub = self.tik_inst.Tensor(FP32, (self.ub_max_size,),
+                                               name="src_fp32_ub", scope=tik.scope_ubuf)
+            self.tik_inst.vconv(VEC_MASK[FP32], 'none', src_fp32_ub, src_ub, self.ub_max_size // VEC_MASK[FP32],
+                                1, 1, 8, 4)
+            self._get_transpose_small_data_fp32_ub(src_fp32_ub, dst_ub)
+
     def _generate_stride_fp32_ub(self, stride_ub, box_stride_dst_ub, repeat_times):
         with self.tik_inst.new_stmt_scope():
             stride_fp32_ub = self.tik_inst.Tensor(FP32, (self.ub_max_size,),
@@ -550,6 +558,9 @@ class YoloBoxesEncode(object):
                                 1, 1, REP_STRIDE[FP32], REP_STRIDE[FP16])
             with self.tik_inst.for_range(0, self.each_core_calc_num // 4) as iter_i:
                 stride_fp32_ub[4 * iter_i] = box_stride_fp32_ub[iter_i]
+                stride_fp32_ub[4 * iter_i + 1] = box_stride_fp32_ub[iter_i]
+                stride_fp32_ub[4 * iter_i + 2] = box_stride_fp32_ub[iter_i]
+                stride_fp32_ub[4 * iter_i + 3] = box_stride_fp32_ub[iter_i]
 
             self._get_transpose_small_data_fp32_ub(stride_fp32_ub, box_stride_dst_ub)
 
@@ -575,9 +586,13 @@ class YoloBoxesEncode(object):
                                                  name="box_stride_dst_ub", scope=tik.scope_ubuf)
         encode_out_ub = self.tik_inst.Tensor(FP32, (self.ub_max_size,), name="encode_out_ub", scope=tik.scope_ubuf)
 
-        if self.anchor_box_dtype == FP32 and self.mode == "high_precision":
-            self._get_transpose_small_data_fp32_ub(ground_truth_box_src_ub, ground_truth_box_dst_ub)
-            self._get_transpose_small_data_fp32_ub(anchor_box_src_ub, anchor_box_dst_ub)
+        if self.mode == "high_precision":
+            if self.anchor_box_dtype == FP32:
+                self._get_transpose_small_data_fp32_ub(ground_truth_box_src_ub, ground_truth_box_dst_ub)
+                self._get_transpose_small_data_fp32_ub(anchor_box_src_ub, anchor_box_dst_ub)
+            else:
+                self._get_transpose_small_data_fp16_ub(ground_truth_box_src_ub, ground_truth_box_dst_ub)
+                self._get_transpose_small_data_fp16_ub(anchor_box_src_ub, anchor_box_dst_ub)
         else:
             self._get_transpose_ub(ground_truth_box_src_ub, ground_truth_box_dst_ub, repeat_times,
                                    self.ground_truth_dtype)
@@ -612,7 +627,7 @@ class YoloBoxesEncode(object):
         # transverse output data back
         delta_out_ub = self.tik_inst.Tensor(FP32, (self.ub_max_size,), name="delta_out_ub",
                                             scope=tik.scope_ubuf)
-        if self.anchor_box_dtype == FP32 and self.mode == "high_precision":
+        if self.mode == "high_precision":
             self._get_transpose_small_data_fp32_ub(encode_out_ub, delta_out_ub)
         else:
             self._get_transpose_ub(encode_out_ub, delta_out_ub, repeat_times, FP32)
