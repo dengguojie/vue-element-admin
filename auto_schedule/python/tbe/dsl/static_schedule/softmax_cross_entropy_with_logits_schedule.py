@@ -746,6 +746,9 @@ def logits_2d_schedule_large_axis(res, input_tensors):
     else:
         # Remainder present
         block_split_factor = math.ceil(total_block_split_num / block_split_nparts)
+
+    ub_factor, large_batch_flag = get_ub_tiling_large_2d(output_backprop.shape, output_loss.dtype, not_aligned,
+                                                         block_split_factor, block_split_nparts)
     # ////////////////////////////////
     # //      UB split(Tiling)      //
     # ////////////////////////////////
@@ -774,7 +777,11 @@ def logits_2d_schedule_large_axis(res, input_tensors):
         block_outer, block_inner = sch[fake_output_node].split(
             sch[fake_output_node].op.axis[block_split_axis_index], nparts=1)
     else:
-        if not_aligned:
+        if large_batch_flag:
+            block_outer, block_inner = sch[fake_output_node].split(
+                sch[fake_output_node].op.axis[block_split_axis_index],
+                factor=ub_factor)
+        elif not_aligned:
             block_outer, block_inner = sch[fake_output_node].split(
                 sch[fake_output_node].op.axis[block_split_axis_index],
                 factor=block_split_factor)
@@ -934,6 +941,34 @@ def get_ub_tiling_2d(shape, npart_factor, block_tiling_inner_loop,
             break
 
     return split_size, npart_factor
+
+
+def get_ub_tiling_large_2d(shape, dtype, not_aligned, block_split_factor, block_split_nparts):
+    '''
+    softmax_cross_entropy_with_logits tiling for large reduce ND
+    '''
+    total_size = get_soc_spec("UB_SIZE") // 2
+    dtype_size = DTYPE_WIDTH_MAP.get(dtype)
+    total_num = total_size // dtype_size
+    align_factor = 128
+    max_coexisting_common_num = 3  # the num of coexisting cmmon tensor is 3
+    max_coexisting_reduce_num = 2  # the num of coexisting reduce tensor is 2
+    n, c = int(shape[0]), int(shape[1])
+    large_batch_flag = 0
+    ub_factor = n
+    # coexisting tensor has three common tensors and two reduce tensors,
+    # a reduce tensor occupies one shares of space, and a common tensor occupies c shares of space
+    if not_aligned and \
+        c * max_coexisting_common_num + max_coexisting_reduce_num + block_split_factor > total_num:
+        large_batch_flag = 1
+    if not not_aligned and \
+        c * max_coexisting_common_num + max_coexisting_reduce_num + \
+            ((n + block_split_nparts - 1) // block_split_nparts) > total_num:
+        large_batch_flag = 1
+    if large_batch_flag:
+        ub_factor = \
+            (total_num - max_coexisting_reduce_num - c * max_coexisting_common_num) // align_factor * align_factor
+    return ub_factor, large_batch_flag
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, unused-argument
