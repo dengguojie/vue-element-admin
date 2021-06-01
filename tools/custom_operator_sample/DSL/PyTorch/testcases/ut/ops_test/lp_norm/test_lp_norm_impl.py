@@ -105,6 +105,7 @@ def calc_expect_func_infer(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12):
     elif axes is None or len(axes) == 0:
         axes =[idx for idx in range(len(x_value.shape))]
     # p == 1
+    tf.compat.v1.disable_eager_execution()
     inputs = tf.compat.v1.placeholder(x_value.dtype, x_value.shape)
     if p == "inf":
         out_val = tf.reduce_max(inputs, axis=axes)

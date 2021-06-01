@@ -110,6 +110,7 @@ cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_fil
 # prepare thirdparty path
 mkdir -p ${DST_DIR}/DSL/Tensorflow/third_party
 cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/secure_c_proto.cmake ${DST_DIR}/DSL/Tensorflow/third_party
+
 #2.2 PyTorch
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/PyTorch/
 cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/DSL/PyTorch/tbe/
@@ -126,9 +127,18 @@ mkdir -p ${DST_DIR}/DSL/PyTorch/log
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/DSL/PyTorch/log
 #copy CMakeList.txt modified for dependency.
 cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/PyTorch/op_proto/CMakeLists.txt ${DST_DIR}/DSL/PyTorch/op_proto
+
 #2.3 MindSpore
 #NA
 
+#2.4 Onnx
+cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/Onnx/
+cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/DSL/Onnx/tbe/
+#copy op_log.h
+mkdir -p ${DST_DIR}/DSL/Onnx/log
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/DSL/Onnx/log
+#copy CMakeList.txt modified for dependency.
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/Onnx/op_proto/CMakeLists.txt ${DST_DIR}/DSL/Onnx/op_proto
 
 ##############3. copy TIK ###################
 #3.1 Tensorflow
