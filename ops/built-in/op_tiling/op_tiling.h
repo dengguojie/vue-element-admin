@@ -98,5 +98,64 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
 }                                                                                                                     \
 REGISTER_OP_TILING(optype, g_##optype##_TilingEntry)
 
+
+// New optiling interfaces
+namespace utils {
+
+#define REGISTER_OP_TILING_FUNC_BUFFERED_V2(optype, opfunc)                                                              \
+bool g_##optype##_TilingEntry_V2(const ge::Operator& para, const optiling::utils::OpCompileInfo& cinfo, optiling::utils::OpRunInfo& rinfo) {                  \
+    std::chrono::time_point<std::chrono::steady_clock> start_tiling, before_tiling, after_tiling;                     \
+    if (optiling::prof_switch) {                                                                                                \
+        start_tiling = std::chrono::steady_clock::now();                                                              \
+    }                                                                                                                 \
+    static std::map<std::string, std::shared_ptr<optiling::ParsedOpCompileInfo>> parsed_compile_info_storage;                   \
+    static RWLock rwlock;                                                                                             \
+    const std::string& hash_key = cinfo.GetKey();                                                                          \
+    rwlock.rdlock();                                                                                                  \
+    auto found_iterator = parsed_compile_info_storage.find(hash_key);                                                 \
+    std::shared_ptr<optiling::ParsedOpCompileInfo> parsed_compile_info = found_iterator != parsed_compile_info_storage.end() ?  \
+    found_iterator->second : std::shared_ptr<optiling::ParsedOpCompileInfo>(nullptr);                                           \
+    rwlock.unlock();                                                                                                  \
+    if (!hash_key.empty() && parsed_compile_info != nullptr) {                                                        \
+        std::shared_ptr<void> parsed_object_ptr = parsed_compile_info->parsed_object;                                 \
+        nlohmann::json* parsed_object = static_cast<nlohmann::json*>(parsed_object_ptr.get());                        \
+        if (optiling::prof_switch) {                                                                                            \
+            before_tiling = std::chrono::steady_clock::now();                                                         \
+        }                                                                                                             \
+        bool result = opfunc(para.GetOpType(), para, *parsed_object, rinfo);                                              \
+        if (optiling::prof_switch) {                                                                                            \
+            after_tiling = std::chrono::steady_clock::now();                                                          \
+            uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count(); \
+            uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();\
+            GEEVENT("[OPTILING_PROF] Found! op_name: %s, total_us: %d, tiling_us: %d", para.GetOpType().c_str(), t0, t1); \
+        }                                                                                                             \
+        return result;                                                                                                \
+    }                                                                                                                 \
+    const std::string& cinfo_str = cinfo.GetValue();                                                                         \
+    std::shared_ptr<nlohmann::json> parsed_object(new nlohmann::json(nlohmann::json::parse(cinfo_str)));              \
+    if (!hash_key.empty()) {                                                                                          \
+        std::shared_ptr<optiling::ParsedOpCompileInfo> parsed_compile_info(new optiling::ParsedOpCompileInfo());                          \
+        parsed_compile_info->value = cinfo_str;                                                                       \
+        parsed_compile_info->parsed_object = std::static_pointer_cast<void>(parsed_object);                           \
+        rwlock.wrlock();                                                                                              \
+        parsed_compile_info_storage.emplace(hash_key, parsed_compile_info);                                           \
+        rwlock.unlock();                                                                                              \
+    }                                                                                                                 \
+    if (optiling::prof_switch) {                                                                                                \
+        before_tiling = std::chrono::steady_clock::now();                                                             \
+    }                                                                                                                 \
+    bool result = opfunc(para.GetOpType(), para, *parsed_object, rinfo);                                                  \
+    if (optiling::prof_switch) {                                                                                                \
+        after_tiling = std::chrono::steady_clock::now();                                                              \
+        uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count();     \
+        uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();    \
+        GEEVENT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.GetOpType(), t0, t1);            \
+    }                                                                                                                 \
+    return result;                                                                                                    \
+}                                                                                                                     \
+REGISTER_OP_TILING_V2(optype, g_##optype##_TilingEntry_V2)
+
+}
+
 }  // namespace optiling
 #endif // CANN_OPS_COMMON_OP_TILING_H_
