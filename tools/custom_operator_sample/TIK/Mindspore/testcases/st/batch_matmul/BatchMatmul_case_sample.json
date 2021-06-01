@@ -1,0 +1,64 @@
+[
+    {
+        "attr": [],
+        "calc_expect_func_file": "",
+        "case_name": "Test_BatchMatmul_001",
+        "input_desc": [
+            {
+                "format": "NCHW",
+                "type": [
+                    "float32"
+                ],
+                "shape": [
+                    1,
+                    64,
+                    64
+                ],
+                "value_range": [
+                    [
+                        1,
+                        1
+                    ]
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "format": "NCHW",
+                "type": [
+                    "float32"
+                ],
+                "shape": [
+                    1,
+                    64,
+                    64
+                ],
+                "value_range": [
+                    [
+                        1,
+                        1
+                    ]
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            }
+        ],
+        "op": "BatchMatmul",
+        "output_desc": [
+            {
+                "format": "NCHW",
+                "type": [
+                    "float32"
+                ],
+                "shape": [
+                    1,
+                    64,
+                    64
+                ]
+            }
+        ],
+        "st_mode": "ms_python_train"
+    }
+]

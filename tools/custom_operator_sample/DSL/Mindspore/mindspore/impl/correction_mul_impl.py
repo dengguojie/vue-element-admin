@@ -62,7 +62,7 @@ def correction_mul_compute(x, batch_std, running_std, kernel_name="correction_mu
     return res
 
 
-@util.check_input_type(dict, dict, int, str)
+@util.check_input_type(dict, dict, dict, dict, int, str)
 def correction_mul(x, batch_std, running_std, y, channel, kernel_name="correction_mul"):
     """CorrectionMul op"""
     shape = x.get("shape")

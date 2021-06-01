@@ -167,8 +167,9 @@ def process_input_shape_1152(input_shape, tik_instance, dtype, input1, input2, r
                                   res, res_index)
 
 
+# pylint: disable=unused-argument
 @op_info_register(batch_matmul_op_info)
-def batch_matmul(input_x1, input_x2, transpose_a=False, transpose_b=True, kernel_name="batch_matmul"):
+def batch_matmul(input_x1, input_x2, output, transpose_a=False, transpose_b=True, kernel_name="batch_matmul"):
     """Custom BatchMatmul"""
     if util.get_product_version() == util.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))

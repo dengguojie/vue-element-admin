@@ -26,7 +26,7 @@ matrix_combine_op_info = TBERegOp("MatrixCombine") \
     .async_flag(False) \
     .binfile_name("matrixcombine.so") \
     .compute_cost(10) \
-    .kernel_name("MatrixCombine") \
+    .kernel_name("matrix_combine") \
     .partial_flag(True) \
     .input(0, "x1", False, "required", "all") \
     .output(0, "y", False, "required", "all") \

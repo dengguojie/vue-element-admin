@@ -1,0 +1,84 @@
+[{
+    "case_name": "Test_CorrectionMul_001",
+    "st_mode": "ms_python_train",
+    "op": "CorrectionMul",
+    "calc_expect_func_file": "",
+    "input_desc": [{
+            "format": "NCHW",
+            "type": [
+                "float32",
+                "float16"
+            ],
+            "shape": [
+                64,
+                64,
+                32,
+                32
+            ],
+            "value_range": [
+                [-1,
+                    1
+                ]
+            ],
+            "data_distribute": [
+                "uniform"
+            ]
+        },
+        {
+            "format": "NCHW",
+            "type": [
+                "float32",
+                "float16"
+            ],
+            "shape": [
+                64
+            ],
+            "value_range": [
+                [
+                    1,
+                    2
+                ]
+            ],
+            "data_distribute": [
+                "uniform"
+            ]
+        },
+        {
+            "format": "NCHW",
+            "type": [
+                "float32",
+                "float16"
+            ],
+            "shape": [
+                64
+            ],
+            "value_range": [
+                [
+                    1,
+                    2
+                ]
+            ],
+            "data_distribute": [
+                "uniform"
+            ]
+        }
+    ],
+    "output_desc": [{
+        "format": "NCHW",
+        "type": [
+            "float32",
+            "float16"
+        ],
+        "shape": [
+            64,
+            64,
+            32,
+            32
+        ]
+    }],
+    "attr": [{
+        "name": "channel_axis",
+        "value": 1,
+        "type": "int"
+    }]
+}]

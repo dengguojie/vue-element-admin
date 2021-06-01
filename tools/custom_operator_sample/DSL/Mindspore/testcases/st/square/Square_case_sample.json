@@ -1,0 +1,36 @@
+[{
+    "case_name": "Test_Square_001",
+    "st_mode": "ms_python_train",
+    "op": "Square",
+    "calc_expect_func_file": "",
+    "input_desc": [{
+        "format": "NCHW",
+        "type": [
+            "float32",
+            "float16"
+        ],
+        "shape": [
+            3
+        ],
+        "value_range": [
+            [
+                1,
+                2
+            ]
+        ],
+        "data_distribute": [
+            "uniform"
+        ]
+    }],
+    "output_desc": [{
+        "format": "NCHW",
+        "type": [
+            "float32",
+            "float16"
+        ],
+        "shape": [
+            3
+        ]
+    }],
+    "attr": []
+}]

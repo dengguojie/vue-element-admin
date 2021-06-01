@@ -1,0 +1,38 @@
+[{
+    "case_name": "Test_MatrixCombine_001",
+    "st_mode": "ms_python_train",
+    "op": "MatrixCombine",
+    "calc_expect_func_file": "",
+    "input_desc": [{
+        "format": "NCHW",
+        "type": [
+            "float32"
+        ],
+        "shape": [
+            1,
+            64,
+            64
+        ],
+        "value_range": [
+            [
+                1,
+                1
+            ]
+        ],
+        "data_distribute": [
+            "uniform"
+        ]
+    }],
+    "output_desc": [{
+        "format": "NCHW",
+        "type": [
+            "float32"
+        ],
+        "shape": [
+            1,
+            64,
+            64
+        ]
+    }],
+    "attr": []
+}]
