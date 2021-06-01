@@ -456,6 +456,34 @@ REG_OP(TensorScatterUpdate)
     .OP_END_FACTORY_REG(TensorScatterUpdate)
 
 /**
+*@brief Uses "updates" to update tensor "data" by "indices". \n
+
+*@par Inputs:
+* Three inputs, including:
+*@li data: An ND Tensor . \n
+*Must be one of the following types: float16, float32, int32, int8, uint8
+*@li indices: An ND Tensor of type int32 or int64
+*@li updates: An Tensor. Same shape as indices. format:NCHW, NHWC . \n
+*Must be one of the following types: float16, float32, int32, int8, uint8
+
+*@par Attributes:
+*@li axis: An optional attribute. Defaults to 0.
+
+*@par Outputs:
+*y: A Tensor. Has the same type and format as input "data" . \n
+
+*@par Third-party framework compatibility
+* Compatible with the ONNX operator ScatterElements.
+*/
+REG_OP(ScatterElements)
+    .INPUT(data, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .INPUT(indices, TensorType::IndexNumberType())
+    .INPUT(updates, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .ATTR(axis, Int, 0)
+    .OP_END_FACTORY_REG(ScatterElements)
+
+/**
 *@brief Adds sparse "updates" to a variable reference . \n
 
 *@par Inputs:

@@ -2104,6 +2104,28 @@ INFER_FUNC_REG(TensorScatterUpdate, TensorScatterUpdateInferShape);
 VERIFY_FUNC_REG(TensorScatterUpdate, TensorScatterUpdateVerify);
 // -------------------TensorScatterUpdate END----------------
 
+// -------------------ScatterElements------------------------
+IMPLEMT_VERIFIER(ScatterElements, ScatterElementsVerify) {
+  if (!CheckTwoInputDtypeSame(op, "data", "updates")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(ScatterElements, ScatterElementsInferShape) {
+  Shape data_shape = op.GetInputDesc("data").GetShape();
+  DataType input_dtype = op.GetInputDesc("data").GetDataType();
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(ge::Shape(data_shape));
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(ScatterElements, ScatterElementsInferShape);
+VERIFY_FUNC_REG(ScatterElements, ScatterElementsVerify);
+// -------------------ScatterElements END--------------------
+
 // ------------------ScatterAdd---------------------
 IMPLEMT_VERIFIER(ScatterAdd, ScatterAddVerify) {
   if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
