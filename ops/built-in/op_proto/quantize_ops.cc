@@ -178,22 +178,4 @@ IMPLEMT_COMMON_INFERFUNC(AscendRequantS16InferShape) {
   return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(AscendRequantS16, AscendRequantS16InferShape);
-
-IMPLEMT_INFERFUNC(AscendWeightQuant, AscendWeightQuantInferShape) {
-  TensorDesc x_desc = op.get_input_desc_x();
-  TensorDesc y_desc = op.get_output_desc_y();
-  Shape input_shape = x_desc.GetShape();
-
-  auto dst_type = op.get_attr_dst_type();
-  if (dst_type != DT_INT8 && dst_type != DT_INT4) {
-    OP_LOGE(op.GetName().c_str(), "dst_type can only support DT_INT8 or DT_INT4.");
-    return GRAPH_FAILED;
-  }
-  y_desc.SetDataType((ge::DataType)dst_type);
-
-  y_desc.SetShape(input_shape);
-  (void)op.UpdateOutputDesc("y",y_desc);
-  return GRAPH_SUCCESS;
-}
-INFER_FUNC_REG(AscendWeightQuant, AscendWeightQuantInferShape);
 }  // namespace ge
