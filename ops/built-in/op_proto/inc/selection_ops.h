@@ -299,8 +299,6 @@ REG_OP(GatherElements)
 *@par Outputs:
 *y: A Tensor. Has the same type as "x" . \n
 
-*@attention Constraints:
-
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator StridedSlice.
 */
@@ -350,8 +348,6 @@ REG_OP(StridedSlice)
 
 *@par Outputs:
 *y: A Tensor. Has the same type as "x" . \n
-
-*@attention Constraints:
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator StridedSlice.
@@ -409,8 +405,6 @@ REG_OP(StridedSliceD)
 *@par Outputs:
 *output: A Tensor. Has the same type as "dy" . \n
 
-*@attention Constraints:
-
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator StridedSliceGradD.
 
@@ -467,8 +461,6 @@ REG_OP(StridedSliceGradD)
 
 *@par Outputs:
 *output: A Tensor has the same type as "dy" . \n
-
-*@attention Constraints:
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator StridedSliceGrad.

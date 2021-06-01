@@ -893,7 +893,7 @@ REG_OP(Scale)
 
 *@par Inputs:
 *One input, including:
-*@li x: A Tensor. Must be 4-D shape, and only support the following types: float16, float32 . \n
+*x: A Tensor. Must be 4-D shape, and only support the following types: float16, float32 . \n
 
 *@par Attributes:
 *@li depth_radius: An optional int32, specifying the half-width of the normalization window. Defaults to "5".
