@@ -36,11 +36,14 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "SoftmaxV2";
 static const std::string PATTERN_FUSEDNODE = "Softmax";
-static const vector<vector<int>> SHAPE = {{8732, 21}};
+static const vector<vector<int>> SHAPE = {{8732, 21}, {8732, 81}};
 
-bool CheckISUsePattern(int inputW, int inputC) {
+bool CheckISUsePattern(int inputH, int inputW, int inputC) {
   for (int i = 0; i < (int)SHAPE.size(); i++) {
     if (SHAPE[i][0] == inputW && SHAPE[i][1] == inputC) {
+      if (i == 1 && inputH < 2) {
+        return false;
+      }
       return true;
     }
   }
@@ -106,7 +109,9 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   vector<int64_t> axes;
   ge::AttrUtils::GetListInt(softmaxOpDesc, "axes", axes);
   FUSION_PASS_CHECK(axes.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "axes is null, please check!"), return FAILED);
-
+  if (axes[0] < 0) {
+    axes[0] = axes[0] + dimInfo.size();
+  }
   int64_t inputC = 0;
   int64_t inputH = 0;
   int64_t inputW = 0;
@@ -118,7 +123,7 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     return NOT_CHANGED;
   }
   bool isUsePattern = false;
-  isUsePattern = CheckISUsePattern(inputW, inputC);
+  isUsePattern = CheckISUsePattern(inputH, inputW, inputC);
   if (axes[0] == 2 && isUsePattern) {
     vector<int64_t> inputDimInfo = {inputH, inputC, inputW};
     ge::GeShape assitShape(inputDimInfo);
