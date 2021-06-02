@@ -98,6 +98,8 @@ ut_case.add_broadcast_case("all", ["float16", (32, 64, 1, 64), "NCHW"],
 
 ut_case.add_broadcast_case("all", ["float16", (32, 64, 4, 4, 16, 16), "FRACTAL_NZ", (32, 64, 64, 64), "ND"],
                            ["float16", (32, 64, 1, 64), "NCHW"])
+ut_case.add_broadcast_case("Ascend910A", ["float16", (512,), "HWCN", (32, 130,16,16), "FRACTAL_NZ"],
+                           ["float16", (32, 130,16,16), "FRACTAL_NZ"])
 
 # pylint: disable=unused-argument
 # ut_case.add_test_cfg_cov_case("all")
@@ -187,4 +189,11 @@ def test_op_select_format(test_arg):
                      {"shape": (1, 1, 16, 1), "dtype": "int8", "format": "NHWC", "ori_shape": (1, 1, 16, 1),
                       "ori_format": "NHWC"},
                      "test_add_op_select_format_13")
+    op_select_format({"shape": (4,64,200,320), "dtype": "float16", "format": "NCHW", "ori_shape": (4,64,200,320),
+                      "ori_format": "NCHW"},
+                     {"shape": (1,64,1,1), "dtype": "float16", "format": "NCHW", "ori_shape": (1,64,1,1),
+                      "ori_format": "NCHW"},
+                     {"shape": (4,64,200,320), "dtype": "float16", "format": "NCHW", "ori_shape": (4,64,200,320),
+                      "ori_format": "NCHW"},
+                     "test_add_op_select_format_14")
 ut_case.add_cust_test_func(test_func=test_op_select_format)

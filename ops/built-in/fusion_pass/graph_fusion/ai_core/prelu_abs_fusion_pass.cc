@@ -168,15 +168,15 @@ Status PReluAbsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     return PARAM_INVALID);
 
   ge::GeTensorDesc reluInputDesc = reluNode->GetOpDesc()->GetInputDesc(0);
-  FUSION_PASS_CHECK(preluOpdesc->AddInputDesc(0, reluInputDesc) != SUCCESS,
+  FUSION_PASS_CHECK(preluOpdesc->AddInputDesc("x", reluInputDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add reluNode input desc failed."), return FAILED);
 
   ge::GeTensorDesc mulInputDesc = mulNode->GetOpDesc()->GetInputDesc(0);
-  FUSION_PASS_CHECK(preluOpdesc->AddInputDesc(1, mulInputDesc) != SUCCESS,
+  FUSION_PASS_CHECK(preluOpdesc->AddInputDesc("weight", mulInputDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulNode input desc failed."), return FAILED);
 
   ge::GeTensorDesc addOutputDesc = addNode->GetOpDesc()->GetOutputDesc(0);
-  FUSION_PASS_CHECK(preluOpdesc->AddOutputDesc(addOutputDesc) != SUCCESS,
+  FUSION_PASS_CHECK(preluOpdesc->AddOutputDesc("y", addOutputDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add addNode output desc failed."), return FAILED);
 
   ge::NodePtr preluNode = graph.AddNode(preluOpdesc);

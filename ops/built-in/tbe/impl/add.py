@@ -422,6 +422,8 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             if format_x == format_y == "NCHW" or format_x == format_y == "HWCN" or format_x == format_y == "NHWC":
                 if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                     if (x_cdim // 16 == 1 or y_cdim // 16 == 1) or (x_cdim == y_cdim):
+                        if ((x_ndim == 1 and x_hdim == 1 and x_wdim ==1) or (y_ndim == 1 and y_hdim == 1 and y_wdim == 1)) and (x_cdim == y_cdim):
+                            format_list += format_5hd
                         if x_ndim == y_ndim:
                             if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
                                 format_list += format_5hd
@@ -525,10 +527,12 @@ def _add_check_format(x, y):
     shape2 = shape_util.scalar2tensor_one(shape2)
     check_list = [["FRACTAL_NZ", "ND"], ["ND", "FRACTAL_NZ"],
                   ["FRACTAL_NZ", "NHWC"], ["NHWC", "FRACTAL_NZ"],
-                  ["FRACTAL_NZ", "NCHW"], ["NCHW", "FRACTAL_NZ"]]
+                  ["FRACTAL_NZ", "NCHW"], ["NCHW", "FRACTAL_NZ"], ["HWCN", "FRACTAL_NZ"]]
     if list_format == check_list[0] and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
         format_pattern = 1
     elif list_format == check_list[1] and (len(shape1) != 1 or (len(shape1) == 1 and shape1[0] != 1)):
+        format_pattern = 2
+    elif list_format == check_list[6] and (len(shape1) != 1 or (len(shape1) == 1 and shape1[0] != 1)):
         format_pattern = 2
     elif list_format == check_list[2] and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
         format_pattern = 1

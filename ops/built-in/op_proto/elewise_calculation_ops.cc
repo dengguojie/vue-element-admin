@@ -2268,10 +2268,10 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinDInferShape) {
   // get all input desc
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
+  auto inputx_desc = op_info->MutableInputDesc("x");
   auto y_desc = op_info->MutableOutputDesc("y");
   // get x shape
-  auto x_shape = input_desc->MutableShape().GetDims();
+  auto x_shape = inputx_desc->MutableShape().GetDims();
 
   // set output dtype
   y_desc->SetDataType(DT_INT32);
@@ -2306,7 +2306,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinDInferShape) {
   // when output is dynamic will update range
   if (IsUnknown(output_shape)) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
-    input_desc->GetShapeRange(input_range);
+    inputx_desc->GetShapeRange(input_range);
     MakeUpShapeRange(x_shape, input_range);
     input_range.erase(input_range.begin() + dimension);
     y_desc->SetShapeRange(input_range);
@@ -2408,10 +2408,10 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxDInferShape) {
   // get all input desc
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto inputx_desc = op_info->MutableInputDesc("x");
+  auto input_desc = op_info->MutableInputDesc("x");
   auto y_desc = op_info->MutableOutputDesc("y");
   // get x shape
-  auto x_shape = inputx_desc->MutableShape().GetDims();
+  auto x_shape = input_desc->MutableShape().GetDims();
 
   // set output dtype
   y_desc->SetDataType(DT_INT32);
@@ -2446,7 +2446,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxDInferShape) {
   // when output is dynamic will update range
   if (IsUnknown(output_shape)) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
-    inputx_desc->GetShapeRange(input_range);
+    input_desc->GetShapeRange(input_range);
     MakeUpShapeRange(x_shape, input_range);
     input_range.erase(input_range.begin() + dimension);
     y_desc->SetShapeRange(input_range);
@@ -3180,10 +3180,10 @@ COMMON_INFER_FUNC_REG(ClipByNormNoDivSum, ClipByNormNoDivSumInferShape);
 // ------------SquareSumV1 Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(SquareSumV1InferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  std::vector<int64_t> shapeVector = input_desc->MutableShape().GetDims();
+  auto inputx_desc = op_info->MutableInputDesc("x");
+  std::vector<int64_t> shapeVector = inputx_desc->MutableShape().GetDims();
   int64_t dimNum = shapeVector.size();
-  DataType input_dtype = input_desc->GetDataType();
+  DataType input_dtype = inputx_desc->GetDataType();
   auto tensordesc_output = op_info->MutableOutputDesc("y");
   
 
@@ -3218,7 +3218,7 @@ IMPLEMT_COMMON_INFERFUNC(SquareSumV1InferShape) {
   std::vector<int64_t>::iterator tmp;
   if (IsUnknown(shapeVector)) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
-    input_desc->GetShapeRange(input_range);
+    inputx_desc->GetShapeRange(input_range);
     for (int64_t item = 0; item < dimNum; ++item) {
       tmp = std::find(axis.begin(), axis.end(), item);
       if (tmp != axis.end()) {
