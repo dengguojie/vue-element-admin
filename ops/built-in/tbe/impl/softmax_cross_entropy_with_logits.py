@@ -202,6 +202,9 @@ def softmax_cross_entropy_with_logits_compute(
     else:
         shape_broadcast = shape_features
 
+    if shape_features[-1] == shape_labels[-1] and shape_features[-1] == 1:
+        return softmax_cross_entropy_with_logits_compute_no_reduce(input_features, input_labels)
+
     # Last axis is too large, use L1 workspace compute
     # and special designed schedule
     current_csize_maximum_fp32 = 15360
@@ -237,6 +240,20 @@ def softmax_cross_entropy_with_logits_compute(
     if has_improve_precision:
         loss = tbe.cast_to(loss, "float16")
         backprop = tbe.cast_to(backprop, "float16")
+
+    res = [loss, backprop]
+
+    return res
+
+
+def softmax_cross_entropy_with_logits_compute_no_reduce(input_features, input_labels):
+    """
+    special reduce axis for softmax_cross_entropy_with_logits
+    the computation can be replaced as follows
+    """
+    loss = tbe.vmuls(input_features, 0)
+    neg_features = tbe.vmuls(input_labels, -1)
+    backprop = tbe.vadds(neg_features, 1)
 
     res = [loss, backprop]
 
