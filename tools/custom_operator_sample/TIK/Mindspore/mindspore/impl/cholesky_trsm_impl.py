@@ -18,14 +18,8 @@ from te import tik
 from topi.cce import util
 
 cholesky_trsm_op_info = AiCPURegOp("CholeskyTrsm") \
-    .fusion_type("OPAQUE") \
-    .async_flag(False) \
-    .binfile_name("choleskytrsm.so") \
-    .compute_cost(10) \
-    .kernel_name("cholesky_trsm") \
-    .partial_flag(True) \
-    .input(0, "x1", False, "required", "all") \
-    .output(0, "y", False, "required", "all") \
+    .input(0, "x1", "required") \
+    .output(0, "y", "required") \
     .dtype_format(DataType.F32_Default, DataType.F32_Default) \
     .get_op_info()
 
