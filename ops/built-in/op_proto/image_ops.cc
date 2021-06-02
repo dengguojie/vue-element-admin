@@ -3037,4 +3037,71 @@ IMPLEMT_INFERFUNC(IMGWarpOffsets, IMGWarpOffsetsInferShape) {
 INFER_FUNC_REG(IMGWarpOffsets, IMGWarpOffsetsInferShape);
 // ----------------IMGWarpOffsets END---------------------
 
+// ---------------GridSampler3D Op start-------------------
+IMPLEMT_INFERFUNC(GridSampler3D, GridSampler3DInferShape) {
+  TensorDesc x_desc = op.GetInputDescByName("x");
+  TensorDesc grid_desc = op.GetInputDescByName("grid");
+  vector<int64_t> grid_shape = grid_desc.GetShape().GetDims();  // NDHW3
+  vector<int64_t> x_shape = x_desc.GetShape().GetDims();        // NCDHW
+  DataType x_dtype = x_desc.GetDataType();
+  Format x_format = x_desc.GetFormat();
+
+  if (x_shape.size() != 5) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of x should be 5. x dim is %d.", x_shape.size());
+    return GRAPH_FAILED;
+  }
+
+  if (grid_shape.size() != 5) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of grid should be 5. grid dim is %d.", grid_shape.size());
+    return GRAPH_FAILED;
+  }
+
+  if (grid_shape[4] != 3) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of last axis of grid should be 3. real value is %d.", grid_shape[4]);
+    return GRAPH_FAILED;
+  }
+
+  x_shape[2] = grid_shape[1];
+  x_shape[3] = grid_shape[2];
+  x_shape[4] = grid_shape[3];
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(ge::Shape(x_shape));
+  output_desc.SetDataType(x_dtype);
+  output_desc.SetFormat(x_format);
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(GridSampler3D, GridSampler3DInferShape);
+// ----------------GridSampler3D END---------------------
+
+// ---------------GridSampler3DGrid Op start-------------------
+IMPLEMT_INFERFUNC(GridSampler3DGrad, GridSampler3DGradInferShape) {
+  vector<int64_t> grad_shape = op.GetInputDescByName("grad").GetShape().GetDims();  // NCDHW
+  TensorDesc x_desc = op.GetInputDescByName("x");
+  TensorDesc grid_desc = op.GetInputDescByName("grid");
+  vector<int64_t> grid_shape = grid_desc.GetShape().GetDims();
+  vector<int64_t> x_shape = x_desc.GetShape().GetDims();
+
+  if (x_shape.size() != 5) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of x should be 5. real value is %d.", x_shape.size());
+    return GRAPH_FAILED;
+  }
+
+  if (grid_shape.size() != 5) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of grid should be 5. real value is %d.", grid_shape.size());
+    return GRAPH_FAILED;
+  }
+
+  if (grad_shape.size() != 5) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of grad should be 5. real value is %d.", grad_shape.size());
+    return GRAPH_FAILED;
+  }
+
+  (void)op.UpdateOutputDesc("dx", x_desc);
+  (void)op.UpdateOutputDesc("dgrid", grid_desc);
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(GridSampler3DGrad, GridSampler3DGradInferShape);
+// ----------------GridSampler3DGrid END---------------------
+
 }  // namespace ge
