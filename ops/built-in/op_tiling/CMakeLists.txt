@@ -140,7 +140,6 @@ set(_optiling_files
   nll_loss_grad.cc
   confusion_softmax_grad.cc
   sort.cc
-  as_strided.cc
 )
 
 set(_op_tiling_include

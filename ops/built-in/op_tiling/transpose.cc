@@ -718,8 +718,6 @@ void ReduceAxis(const string & opType,
     if(IsIdentical(shapeInfo)) {
         shapeInfo.identical = 1;
         shapeInfo.scenario = SCENARIO_0;
-    } else if(compilerInfo.coreNum == 96) {
-        shapeInfo.scenario = SCENARIO_8;
     } else if (IsSmallShape(shapeInfo)) {
         shapeInfo.scenario = SCENARIO_6;
         Reshape(shapeInfo);
@@ -2321,12 +2319,6 @@ static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
 
 }
 
-static bool TilingDataScenario8(const CompilerInfo & compilerInfo,
-                                         const ShapeInfo & shapeInfo,
-                                         RuntimeInfo & runtimeInfo) {
-    return true;
-}
-
 static bool ScenarioGuaranteed(const CompilerInfo &compilerInfo, ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
     Reshape(shapeInfo);
     shapeInfo.scenario = SCENARIO_2;
@@ -2376,10 +2368,6 @@ bool TransposeCalcTilingData(const string &opType,
             } else {
                 OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
             }
-            break;
-        case SCENARIO_8:
-            res = TilingDataScenario8(compilerInfo, shapeInfo, runtimeInfo);
-            break;
         default:
             break;
     }
@@ -2827,28 +2815,6 @@ static void SerializeScenario7(OpRunInfo &runInfo,
     runInfo.workspaces = workspace;
 }
 
-static void SerializeScenario8(OpRunInfo &runInfo,
-                               const CompilerInfo &compilerInfo,
-                               const ShapeInfo &shapeInfo,
-                               const RuntimeInfo &runtimeInfo) {
-    vector<int64_t> headVec;
-
-    // part1: head
-    WRITE_DATA_H(shapeInfo.scenario);              //0 : scenario
-    WRITE_DATA_H(0);                               //1 : fixed_len
-    WRITE_DATA_H(0);                               //2 : percore_len
-    WRITE_DATA_H(0);                               //3 : subSceanrio
-
-    for (size_t i = 0; i < headVec.size(); i++) {
-        ByteBufferPut(runInfo.tiling_data, headVec[i]);
-    }
-
-    runInfo.block_dim = compilerInfo.coreNum;
-    std::vector<int64_t> workspace;
-    workspace.push_back(1024);
-    runInfo.workspaces = workspace;
-}
-
 void SerializeTilingData(OpRunInfo &runInfo,
                          const CompilerInfo & compilerInfo,
                          const ShapeInfo & shapeInfo,
@@ -2872,9 +2838,6 @@ void SerializeTilingData(OpRunInfo &runInfo,
             break;
         case SCENARIO_7:
             SerializeScenario7(runInfo, compilerInfo, shapeInfo, runtimeInfo);
-            break;
-        case SCENARIO_8:
-            SerializeScenario8(runInfo, compilerInfo, shapeInfo, runtimeInfo);
             break;
         default:
             break;
