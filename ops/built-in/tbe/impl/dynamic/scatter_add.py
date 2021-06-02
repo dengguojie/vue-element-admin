@@ -1225,13 +1225,7 @@ class ScatterAdd():
         compile info
         """
         self.scatter_add_compute_tiling()
-        opt_config = {"out_of_bound_sync_check": True}
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.var_gm, self.indices_gm, self.updates_gm),
-                                   outputs=(self.out_gm),
-                                   flowtable=[self.tiling_gm],
-                                   config=opt_config)
-
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         tbe_context.get_context().add_compile_info(
             "vars", {
                 "ub_size": self.ub_size_bytes,
@@ -1240,6 +1234,12 @@ class ScatterAdd():
                 "indices_size": self.indices_dtype_bytes_size,
                 "support_atomic": self.support_atomic
             })
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.var_gm, self.indices_gm, self.updates_gm),
+                                   outputs=(self.out_gm),
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
 
 
 # pylint: disable=unused-argument

@@ -20,6 +20,11 @@ ut_case.add_case("all",
                                        ((1, None),), ((1, 1),),
                                        "float32", "dynamic_scatter_div_case", "success"))
 
+ut_case.add_case("all",
+                 gen_dynamic_scatter_div_case((-1,), (1,),
+                                       ((1, 1),), ((1, None),),
+                                       "float32", "dynamic_scatter_div_case_1", "success"))
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
