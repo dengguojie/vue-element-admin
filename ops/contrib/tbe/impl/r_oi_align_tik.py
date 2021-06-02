@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-from version import get_version
+from . import get_version
 import numpy as np
 
 tik, TBE_VERSION = get_version.get_tbe_version()
@@ -24,10 +24,8 @@ class ROIAlignTIK(object):
 
         self.pooled_h, self.pooled_w = ground_size, ground_size
 
-        """
-        when roi num equals to 304, pooled_h equals to pooled_w equals to 8,
-        will use 242.22KB ubuf space and 988KB L1 space
-        """
+        # when roi num equals to 304, pooled_h equals to pooled_w equals to 8,
+        # will use 242.22KB ubuf space and 988KB L1 space
         if self.n_roi * self.pooled_h * self.pooled_w >= 304 * 8 * 8:
             raise RuntimeError("the size of roi data is too large, since avaiable ub and L1 buffer size is limited")
 
@@ -38,12 +36,10 @@ class ROIAlignTIK(object):
         # refer to 4080 // 16 = 255, repeat times lesser than 255
         if self.shape_align >= 4080:
             raise RuntimeError("ground_size too larger ,must small than 63!")
-        '''
-        memory size should be limited.
-        on platform 310 :
-        avaiable ub buffer size is 253852 Bytes(248KB),
-        avaiable L1 buffer size is 1048576 Bytes(1024KB == 1MB)
-        '''
+
+        # memory size should be limited on platform 310
+        # avaiable ub buffer size is 253852 Bytes(248KB),
+        # avaiable L1 buffer size is 1048576 Bytes(1024KB == 1MB)
         self.roi_gm = self.tik_instance.Tensor("float16", (self.n_roi, self.c1_roi, self.h_roi, self.w_roi, 16),
                                                name="roi_gm", scope=tik.scope_gm)
         self.feature_map_gm = self.tik_instance.Tensor("float16", (self.n_feature_map, self.c1_feature_map,
@@ -107,9 +103,8 @@ class ROIAlignTIK(object):
             self.rois_start_h[i].set_as(self.roi_ub[i, 2])
             self.rois_end_w[i].set_as(self.roi_ub[i, 3])
             self.rois_end_h[i].set_as(self.roi_ub[i, 4])
-        '''
-        compare roi with 0, pick larger num up
-        '''
+
+        # compare roi with 0, pick larger num up
         with self.tik_instance.new_stmt_scope():
             zero_tensor = self.tik_instance.Tensor("float16", (16,), name="zero_tensor", scope=tik.scope_ubuf)
             self.tik_instance.vector_dup(16, zero_tensor, 0, 1, 1, 1)
@@ -129,16 +124,19 @@ class ROIAlignTIK(object):
                                    1, 1, 1, 1, 1, 1, 1)
             self.tik_instance.vsub(16, self.rois_width[i * 16], self.rois_end_w[i * 16], self.rois_start_w[i * 16],
                                    1, 1, 1, 1, 1, 1, 1)
+
             # self.rois_height + 1
             # self.rois_width + 1
             self.tik_instance.vadds(16, self.rois_height[i * 16], self.rois_height[i * 16], 1.0, 1, 1, 1, 1, 1)
             self.tik_instance.vadds(16, self.rois_width[i * 16], self.rois_width[i * 16], 1.0, 1, 1, 1, 1, 1)
+
             # calc maximum (roi_height, 1)
             # calc maximum (roi_width, 1)
             self.tik_instance.vmax(16, self.rois_height[i * 16], self.rois_height[i * 16], one_tensor,
                                    1, 1, 1, 1, 1, 1, 1)
             self.tik_instance.vmax(16, self.rois_width[i * 16], self.rois_width[i * 16], one_tensor,
                                    1, 1, 1, 1, 1, 1, 1)
+
             # self.bin_size_h equals to self.rois_height * pooled_h_reciprocal
             # self.bin_size_w equals to self.rois_width * pooled_w_reciprocal
             self.tik_instance.vmuls(16, self.bin_size_w[i * 16], self.rois_width[i * 16], self.pooled_w_reciprocal,
@@ -244,10 +242,8 @@ class ROIAlignTIK(object):
 
             self._calc_h_w_cbuf_center(hcenter_cbuf, wcenter_cbuf)
 
-            '''
-            hcenter equals to min(max(hcenter + roi_start_h, 0), (h_feature_map - 1))
-            wcenter equals to min(max(wcenter + roi_start_w, 0), (w_feature_map - 1))
-            '''
+            # hcenter equals to min(max(hcenter + roi_start_h, 0), (h_feature_map - 1))
+            # wcenter equals to min(max(wcenter + roi_start_w, 0), (w_feature_map - 1))
             with self.tik_instance.new_stmt_scope():
                 self._calc_h_w_center(hcenter_cbuf, wcenter_cbuf)
 
@@ -266,9 +262,8 @@ class ROIAlignTIK(object):
                 self.floor_f32toi32(hstart[i, 0], hcenter_fp32[i, 0], self.shape_align)
             self.tik_instance.data_move(self.hstart_cbuf, hstart, 0, 1, self.align_roi * self.shape_align // 8,
                                         1, 1)
-        '''
-        wstart equals to wcenter & wstart = int(wstart)
-        '''
+
+        # wstart equals to wcenter & wstart = int(wstart)
         with self.tik_instance.new_stmt_scope():
             wstart = self.tik_instance.Tensor("int32", [self.align_roi, self.shape_align],
                                               scope=tik.scope_ubuf, name="wstart")
@@ -385,7 +380,6 @@ class ROIAlignTIK(object):
                                             name="fx_b")
 
             # turn self.wend_int to wend_float
-
             with self.tik_instance.for_range(0, self.align_roi) as i:
                 self.tik_instance.data_move(wend, self.wend_cbuf[i, 0], 0, 1, self.shape_align // 8, 1, 1)
                 self.tik_instance.vconv(16, 'none', wend_fp16, wend, self.shape_align // 16, 1, 1, 1, 2,
@@ -414,7 +408,6 @@ class ROIAlignTIK(object):
                                             name="fy_a")
 
             # turn self.hstart_int to hstart_float
-
             with self.tik_instance.for_range(0, self.align_roi) as i:
                 self.tik_instance.data_move(hstart, self.hstart_cbuf[i, 0], 0, 1, self.shape_align // 8, 1, 1)
                 self.tik_instance.vconv(16, 'none', hstart_fp16, hstart, self.shape_align // 16, 1,
@@ -762,10 +755,12 @@ class ROIAlignTIK(object):
                                                          scope=tik.scope_ubuf)
 
     def roi_align(self):
+        """
+        main process
+        :return: None
+        """
         self.roi_ub = self.tik_instance.Tensor("float16", (self.n_roi, 16), name="roi_ub", scope=tik.scope_ubuf)
-        '''
-        rois[][] * self.spatial_scale
-        '''
+        # rois[][] * self.spatial_scale
         with self.tik_instance.new_stmt_scope():
             spatial_scale_scalar = self.tik_instance.Scalar("float16", "spatial_scale_scalar")
             spatial_scale_scalar.set_as(self.spatial_scale)
@@ -773,18 +768,15 @@ class ROIAlignTIK(object):
             # repeat time should be less than 255, maybe there is a better way, but algorithm will be complicated
             with self.tik_instance.for_range(0, self.n_roi) as i:
                 self.tik_instance.vmuls(16, self.roi_ub[i, 0], self.roi_ub[i, 0], spatial_scale_scalar, 1, 1, 1, 1, 1)
-        '''
-        calculate rois_height & rois_width & hcenter & wcenter
-        '''
+
+        # calculate rois_height & rois_width & hcenter & wcenter
         self._prepare_calc_roi_width_height_buf()
         self._calc_roi_width_height()
 
-        '''
-        calculate hcenter & wcenter
-        hcenter equals to (y + 0.5) * self.bin_size_h
-        wcenter equals to (x + 0.5) * self.bin_size_w
-        [self.align_roi, ]  * [64, ] --> [self.align_roi, 64]
-        '''
+        # calculate hcenter & wcenter
+        # hcenter equals to (y + 0.5) * self.bin_size_h
+        # wcenter equals to (x + 0.5) * self.bin_size_w
+        # [self.align_roi, ]  * [64, ] --> [self.align_roi, 64]
         self._prepare_calc_h_w_center_buf()
         with self.tik_instance.new_stmt_scope():
             self.hcenter_fp32_cbuf = self.tik_instance.Tensor("float32", [self.align_roi, self.shape_align],
@@ -792,12 +784,11 @@ class ROIAlignTIK(object):
             self.wcenter_fp32_cbuf = self.tik_instance.Tensor("float32", [self.align_roi, self.shape_align],
                                                               scope=tik.scope_cbuf, name="wcenter_fp32_cbuf")
             self._h_w_center_processor()
-            '''
-            hstart equals to min(max(hcenter, 0), (h_feature_map - 1)), not necessary
-            wstart equals to min(max(wcenter, 0), (w_feature_map - 1)), not necessary
-            hstart equals to int(hstart)
-            wstart equals to int(wstart)
-            '''
+
+            # hstart equals to min(max(hcenter, 0), (h_feature_map - 1)), not necessary
+            # wstart equals to min(max(wcenter, 0), (w_feature_map - 1)), not necessary
+            # hstart equals to int(hstart)
+            # wstart equals to int(wstart)
             self._calc_h_w_start_end()
 
             with self.tik_instance.new_stmt_scope():
@@ -818,12 +809,11 @@ class ROIAlignTIK(object):
         self._calc_factor_b()
         self._calc_factor_c()
         self._calc_factor_d()
-        """
-        output[i][j][y][x] equals to feature_map[0][j][hstart][wstart] mutilpy fFactorA \
-                         adds to feature_map[0][j][hstart][wend] mutilpy fFactorB \
-                         adds to feature_map[0][j][hend][wstart] mutilpy fFactorC \
-                         adds to feature_map[0][j][hend][wend] mutilpy fFactorD
-        """
+
+        # output[i][j][y][x] equals to feature_map[0][j][hstart][wstart] mutilpy fFactorA
+        #                  adds to feature_map[0][j][hstart][wend] mutilpy fFactorB
+        #                  adds to feature_map[0][j][hend][wstart] mutilpy fFactorC
+        #                  adds to feature_map[0][j][hend][wend] mutilpy fFactorD
         self._prepare_roi_align_processor_buf()
         self._roi_align_processor()
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.feature_map_gm, self.roi_gm],
@@ -848,9 +838,19 @@ class ROIAlignTIK(object):
         feed_dict = {"feature_map_gm": feature_map_data, "roi_gm": roi_data}
         self.tik_instance.StartProfiling(feed_dict=feed_dict, simulatorlog_path='./', generate_html=True)
 
-
+# pylint: disable=unused-argument
 def r_oi_align_tik(feature_map_dict, rois_dict, roi_align_dict, pooled_h, pooled_w, spatial_scale,
                    kernel_name='roi_align'):
+    """
+    :param feature_map_dict 5HD
+    :param rois_dict  NX5, ND
+    :param roi_align_dict output dict,5HD
+    :param pooled_h: pooled height
+    :param pooled_w: pooled width
+    :param spatial_scale:
+    :param kernel_name: roi_align
+    :return: tik_instance
+    """
     roi_shape = rois_dict.get("shape")
     feature_map_shape = feature_map_dict.get("shape")
     pooled_w_reciprocal = 1.0 / float(pooled_w)
