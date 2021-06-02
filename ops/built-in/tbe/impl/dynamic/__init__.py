@@ -253,6 +253,7 @@ from .power import power
 from .pow import pow
 from .truncate_div import truncate_div
 from .truncate_mod import truncate_mod
+from .dynamic_lstm_grad_cell import dynamic_lstm_grad_cell
 from .xdivy import xdivy
 from .xlogy import xlogy
 from .atan import atan

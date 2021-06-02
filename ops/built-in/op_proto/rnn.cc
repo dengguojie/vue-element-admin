@@ -220,6 +220,48 @@ IMPLEMT_INFERFUNC(DynamicRNNV2, DynamicRNNV2InferShape) {
 INFER_FUNC_REG(DynamicRNNV2, DynamicRNNV2InferShape);
 VERIFY_FUNC_REG(DynamicRNNV2, DynamicRNNV2Verify);
 
+IMPLEMT_VERIFIER(DynamicLSTMGradCell, DynamicLSTMGradCellVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape) {
+  ge::TensorDesc inputDYTensorDesc = op.GetInputDesc("dy");
+  ge::Shape shapeDY = inputDYTensorDesc.GetShape();
+  DataType dtype = inputDYTensorDesc.GetDataType();
+
+  int64_t dim_num = shapeDY.GetDimNum();
+  int64_t batch_size = 0;
+  int64_t output_dim_size = 0;
+  if (dim_num == 5) {
+    batch_size = shapeDY.GetDims().at(2);
+    output_dim_size = shapeDY.GetDims().at(1);
+  } else {
+    OpsOneInputShapeErrReport(op.GetName(), "The input shape of dy", "not right");
+    OP_LOGE(op.GetName().c_str(), "The input shape of dy is not right, please check!");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc outputDgateTensorDesc = op.GetOutputDesc("dgate");
+  TensorDesc outputDct1TensorDesc = op.GetOutputDesc("dct_1");
+
+  vector<int64_t> outputDgateDims = {1, 4 * output_dim_size, batch_size, 16, 16};
+  outputDgateTensorDesc.SetShape(ge::Shape(outputDgateDims));
+  outputDgateTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDct1HDims = {1, output_dim_size, batch_size, 16, 16};
+  outputDct1TensorDesc.SetShape(ge::Shape(outputDct1HDims));
+  outputDct1TensorDesc.SetDataType(dtype);
+
+  CHECK(op.UpdateOutputDesc("dgate", outputDgateTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc dgate failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("dct_1", outputDct1TensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc dct_1 failed."), return GRAPH_FAILED);
+
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape);
+VERIFY_FUNC_REG(DynamicLSTMGradCell, DynamicLSTMGradCellVerify);
+
 IMPLEMT_VERIFIER(DynamicRNNV3, DynamicRNNV3Verify) {
   return GRAPH_SUCCESS;
 }
