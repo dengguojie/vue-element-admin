@@ -24,6 +24,7 @@
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "common/lxfusion_json_util.h"
+#include "common/op_slice_info.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
 
@@ -194,20 +195,23 @@ void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std
       continue;
     }
     if (doubleout_flag) {
-      OutputSplitInfo double_output_split_info = output_split_infos[0];
+      OutputSplitInfo double_output_split_info;
+      double_output_split_info.Initialize();
       double_output_split_info.SetIndex(1);
       (*it).AddOutputSplitInfo(double_output_split_info);
     }
     if (output_split_infos[0].GetAxis()[0] == 1) {
       if (cut_cout_flag) {
-        InputSplitInfo input_split_info_deq = input_split_infos[0];
+        InputSplitInfo input_split_info_deq;
+        input_split_info_deq.Initialize();
         input_split_info_deq.SetIndex(deq_inpre);
         input_split_info_deq.SetAxis(cout_dim);
         input_split_info_deq.SetHeadOverLap(split_flag);
         input_split_info_deq.SetTailOverLap(split_flag);
         (*it).AddInputSplitInfo(input_split_info_deq);
         if (elemwise_nodes[0]->GetType() == "PRelu") {
-          InputSplitInfo input_split_info_elem = input_split_infos[0];
+          InputSplitInfo input_split_info_elem;
+          input_split_info_elem.Initialize();
           input_split_info_elem.SetIndex(elem_inpre);
           input_split_info_elem.SetAxis(cout_dim);
           input_split_info_elem.SetHeadOverLap(split_flag);

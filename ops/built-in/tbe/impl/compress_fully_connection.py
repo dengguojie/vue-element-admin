@@ -382,7 +382,7 @@ def get_op_support_info(x, w, compress_index, b, offset_w, y, num_output, transp
         else:
             axis_reduce_list = [
                 [util_select_op_base.ReduceInput([0, [1]], [1, [0]]),
-                 util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+                 util_select_op_base.ReduceOutput([0, 1, False])]
             ]
         axis_split_matrix = [
             [util_select_op_base.SplitInput(b_split_list),
@@ -402,7 +402,7 @@ def get_op_support_info(x, w, compress_index, b, offset_w, y, num_output, transp
             else:
                 axis_reduce_list = [
                     [util_select_op_base.ReduceInput([0, [1]], [1, [0]]),
-                     util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+                     util_select_op_base.ReduceOutput([0, 1, False])]
                 ]
             axis_split_matrix = [
                 [util_select_op_base.SplitInput(m_split_list),
@@ -419,7 +419,7 @@ def get_op_support_info(x, w, compress_index, b, offset_w, y, num_output, transp
             else:
                 axis_reduce_list = [
                     [util_select_op_base.ReduceInput([0, [0]], [1, [0]]),
-                     util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+                     util_select_op_base.ReduceOutput([0, 1, False])]
                 ]
             axis_split_matrix = [
                 [util_select_op_base.SplitInput(m_split_list),

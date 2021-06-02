@@ -48,10 +48,11 @@ def _cal_min_l1space(dtype_b):
 def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
                         input_y,
                         bias=None,
-                        offset_w={},
-                        output_z={},
+                        offset_w=None,
+                        output_z=None,
                         trans_a=False,
                         trans_b=False,
+                        offset_x=0,
                         kernel_name="matmul"):
     """
     get the batch_matmul_v2 split, which only split batch, m and n, cannot cut k with bias
@@ -97,7 +98,7 @@ def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
     else:
         # cut k_dim which is reduce dim
         axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
-                            util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]]
+                            util_select_op_base.ReduceOutput([0, 1, False])]]
 
     axis_split_matrix_batch = []
     for i in range(batch_len_a):

@@ -24,6 +24,7 @@
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "common/lxfusion_json_util.h"
+#include "common/op_slice_info.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
 
@@ -107,7 +108,8 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
         continue;
       }
       if (output_split_infos[0].GetAxis()[0] == 1) {
-        InputSplitInfo input_split_info = input_split_infos[0];
+        InputSplitInfo input_split_info;
+        input_split_info.Initialize();
         input_split_info.SetIndex(inpre);
         input_split_info.SetAxis(cout_dim);
         input_split_info.SetHeadOverLap(split_flag);

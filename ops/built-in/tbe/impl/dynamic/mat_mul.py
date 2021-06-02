@@ -80,7 +80,7 @@ def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
     else:
         # cut k_dim which is reduce dim
         axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
-                            util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]]
+                            util_select_op_base.ReduceOutput([0, 1, False])]]
 
     # cut m
     axis_split_matrix_a = [

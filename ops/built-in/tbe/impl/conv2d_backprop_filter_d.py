@@ -261,7 +261,7 @@ def get_op_support_info(
         ]
         axis_reduce_list = [
             [util_select_op_base.ReduceInput([0, [0]], [1, [0]]),
-             util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]
+             util_select_op_base.ReduceOutput([0, 1, False])]
         ]
 
     ori_format_x = x.get("ori_format")

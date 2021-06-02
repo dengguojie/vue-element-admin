@@ -26,6 +26,7 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 #include "common/lxfusion_json_util.h"
+#include "common/op_slice_info.h"
 #include "graph/utils/attr_utils.h"
 
 
@@ -33,8 +34,9 @@ namespace fe {
 
 void DelSplitInfoByOutputAxis(std::vector<AxisSplitMap>& split_maps, int axis);
 void DelSplitInfoByInputAxis(std::vector<AxisSplitMap>& split_maps, int axis);
-Status GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node, const string& fused_op_type);
-void SetSplitMap(std::vector<AxisSplitMap>& split_maps, std::vector<ge::NodePtr>& fusionNodes, const string& fused_op_type);
+bool GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node, const string& fused_op_type);
+void SetSplitMap(std::vector<AxisSplitMap>& split_maps,
+                 std::vector<ge::NodePtr>& fusionNodes, const string& fused_op_type);
 void AddElemwiseSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& elemWiseNode, int& index);
 }  // namespace fe
 #endif  // BUILTIN_FUSIONPASS_LX_FUISON_FUNC_H

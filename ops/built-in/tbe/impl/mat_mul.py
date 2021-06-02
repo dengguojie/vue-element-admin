@@ -286,7 +286,7 @@ def get_op_support_info(input_x1, # pylint: R0913,R0914,W0613
     else:
         # cut k_dim which is reduce dim
         axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
-                            util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]]
+                            util_select_op_base.ReduceOutput([0, 1, False])]]
 
     if format_a == "FRACTAL_NZ":
         axis_split_matrix_a = [

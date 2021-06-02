@@ -59,7 +59,7 @@ void DelSplitInfoByInputAxis(std::vector<AxisSplitMap>& split_maps, int axis) {
   split_maps = temp_maps;
 }
 
-Status GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node, const string& fused_op_type) {
+bool GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node, const string& fused_op_type) {
   string op_slice_info_str = "";
   ge::AttrUtils::GetStr(cube_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
   OP_LOGD(fused_op_type.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
@@ -69,13 +69,14 @@ Status GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node
   split_maps = op_calc_info.GetAxisSplitMapVec();
   if (split_maps.empty()) {
     OP_LOGD(fused_op_type.c_str(), "axis split map vector is empty");
-    return FAILED;
+    return false;
   }
-  return SUCCESS;
+  return true;
 }
 
 void SetSplitMap(std::vector<AxisSplitMap>& split_maps, std::vector<ge::NodePtr>& fusionNodes, const string& fused_op_type) {
   OpCalcInfo op_calc_info;
+  op_calc_info.Initialize();
   string op_slice_info_str = "";
   op_calc_info.SetAxisSplitMaps(split_maps);
   SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
@@ -96,7 +97,8 @@ void AddElemwiseSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& ele
         continue;
       }
       vector<int64_t> out_axis_dim = output_split_infos[0].GetAxis();
-      InputSplitInfo input_split_info = input_split_infos[0];
+      InputSplitInfo input_split_info;
+      input_split_info.Initialize();
       input_split_info.SetIndex(index);
       input_split_info.SetAxis(out_axis_dim);
       input_split_info.SetHeadOverLap(split_flag);

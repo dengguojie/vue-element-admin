@@ -119,8 +119,9 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   if (elemWiseNodes.empty()) {
     elemWiseNodes = reluNodes;
   }
-
-  AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
+  if (!elemWiseNodes.empty()){
+    AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
+  }
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
 }
 
