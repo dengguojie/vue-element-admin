@@ -19,25 +19,16 @@
  * \brief
  */
 #include "register/register.h"
-#include "op_log.h"
 
 namespace domi {
 Status AutoMappingFnEinSum(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("x", "N");
   AutoMappingFnDynamic(op_src, op, value);
-
-  int num = 1;
-  if (op.GetAttr("N", num) != ge::GRAPH_SUCCESS) {
-    OP_LOGE("EinSum", "op[EinSum] GetAttr N failed.");
-    return FAILED;
-  }
-  op.SetAttr("tensor_size", num);
-  OP_LOGI("EinSum", "op[EinSum] tensorflow plugin parser[AutoMappingFnDynamic] success.");
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("EinSum")
+REGISTER_CUSTOM_OP("Einsum")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("Einsum")
     .ParseParamsFn(AutoMappingFnEinSum)
