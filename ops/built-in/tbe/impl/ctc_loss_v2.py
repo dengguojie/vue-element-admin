@@ -292,9 +292,10 @@ class CTCLossV2():
 
     def move_out(self):
         """move_out"""
-        neg_log_likelihood_ub = self.tik_instance.Tensor("int32", [BLOCK], name="input_length_ub", scope=tik.scope_ubuf)
-        log_alpha_ub = self.tik_instance.Tensor("int32", [BLOCK], name="input_length_ub", scope=tik.scope_ubuf)
-        tmp_ub = self.tik_instance.Tensor("int32", [BLOCK], name="input_length_ub", scope=tik.scope_ubuf)
+        neg_log_likelihood_ub = self.tik_instance.Tensor("float32", [BLOCK], name="input_length_ub",
+                                                         scope=tik.scope_ubuf)
+        log_alpha_ub = self.tik_instance.Tensor("float32", [BLOCK], name="input_length_ub", scope=tik.scope_ubuf)
+        tmp_ub = self.tik_instance.Tensor("float32", [BLOCK], name="input_length_ub", scope=tik.scope_ubuf)
 
         mask = self.tik_instance.Scalar("int32", init_value=self.output_size % BLOCK)
         with self.tik_instance.for_range(0, self.N) as task_idx:

@@ -41,7 +41,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_1) {
   ge::Graph graph("einsum_fusion_test_1");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 30};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -60,14 +60,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_1) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abc,cde->abde");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -81,7 +81,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_2) {
   ge::Graph graph("einsum_fusion_test_2");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 30, 40};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -100,14 +100,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_2) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("BTNH,BFNH->BNFT");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -124,7 +124,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_3) {
   ge::Graph graph("einsum_fusion_test_3");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 30, 50, 20};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -143,14 +143,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_3) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("BNFT,BTNH->BFNH");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -167,7 +167,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_4) {
   ge::Graph graph("einsum_fusion_test_4");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 30, 40};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -186,14 +186,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_4) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abcd,cde->abe");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -207,7 +207,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_5) {
   ge::Graph graph("einsum_fusion_test_5");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 30};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -226,14 +226,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_5) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abc,cd->abd");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -247,7 +247,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_6) {
   ge::Graph graph("einsum_fusion_test_6");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 40};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -266,14 +266,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_6) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abd,cd->abc");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -287,7 +287,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_7) {
   ge::Graph graph("einsum_fusion_test_7");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 40};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -306,14 +306,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_7) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abd,abc->cd");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -330,7 +330,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_8) {
   ge::Graph graph("einsum_fusion_test_8");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 50};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -349,14 +349,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_8) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abe,cde->abcd");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -373,7 +373,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_9) {
   ge::Graph graph("einsum_fusion_test_9");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 50};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -392,14 +392,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_9) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abe,abcd->cde");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -416,7 +416,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_10) {
   ge::Graph graph("einsum_fusion_test_10");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 30, 40};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -435,14 +435,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_10) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("BFNH,BTNH->BNFT");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -459,7 +459,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_11) {
   ge::Graph graph("einsum_fusion_test_11");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 30, 40};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -478,14 +478,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_11) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("BFNH,BNFT->BTNH");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -502,7 +502,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_12) {
   ge::Graph graph("einsum_fusion_test_12");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 40, 50};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -521,14 +521,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_12) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abde,cde->abc");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -545,7 +545,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_13) {
   ge::Graph graph("einsum_fusion_test_13");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 40, 50};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -564,14 +564,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_13) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("abde,abc->cde");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
@@ -588,7 +588,7 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_14) {
   ge::Graph graph("einsum_fusion_test_14");
   auto input_x1 = op::Data().set_attr_index(0);
   auto input_x2 = op::Data().set_attr_index(0);
-  auto einsum = op::EinSum("einsum");
+  auto einsum = op::Einsum("einsum");
 
   std::vector<int64_t> input_x1_vec{10, 20, 30, 40};
   ge::Shape input_x1_shape(input_x1_vec);
@@ -607,14 +607,14 @@ TEST_F(einsum_fusion_test, einsum_fusion_test_14) {
   einsum.update_dynamic_input_desc_x(1, input_x2_desc);
   einsum.update_output_desc_y(output_desc);
   einsum.set_attr_equation("BNFT,BFNH->BTNH");
-  einsum.set_attr_tensor_size(2);
+  einsum.set_attr_N(2);
 
   std::vector<Operator> inputs{input_x1, input_x2};
   std::vector<Operator> outputs{einsum};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::RunGraphFusionPass("EinSumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {

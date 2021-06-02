@@ -3057,7 +3057,7 @@ IMPLEMT_VERIFIER(Tril, TrilVerify) { return GRAPH_SUCCESS; }
 INFER_FUNC_REG(Tril, TrilInferShape);
 VERIFY_FUNC_REG(Tril, TrilVerify);
 // ----------------Tril END----------------
-// ----------------EinSum-------------------
+// ----------------Einsum-------------------
 // check if there is an ellipsis
 bool is_ellispis(std::string ori_str, std::string target) {
     std::string::size_type idx;
@@ -3260,7 +3260,7 @@ void einsum_infer_shape(std::string eqn, vector<vector<int64_t>> tensor_list,vec
     }
 }
 
-IMPLEMT_COMMON_INFERFUNC(EinSumInferShape) {
+IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
     auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
     // get attr equation
     std::string equation;
@@ -3270,7 +3270,7 @@ IMPLEMT_COMMON_INFERFUNC(EinSumInferShape) {
     }
     // set tensor_size attr
     int64_t tensor_size = op.GetInputsSize();
-    op.SetAttr("tensor_size", tensor_size);
+    op.SetAttr("N", tensor_size);
     vector<vector<int64_t>> tensor_list;
     for (size_t i = 0; i < op.GetInputsSize(); i++) {
         auto xi_dims = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
@@ -3287,12 +3287,12 @@ IMPLEMT_COMMON_INFERFUNC(EinSumInferShape) {
          return GRAPH_FAILED);
     return GRAPH_SUCCESS;
 }
-IMPLEMT_VERIFIER(EinSum, EinSumVerify) {
+IMPLEMT_VERIFIER(Einsum, EinsumVerify) {
     return GRAPH_SUCCESS;
 }
-COMMON_INFER_FUNC_REG(EinSum, EinSumInferShape);
-VERIFY_FUNC_REG(EinSum, EinSumVerify);
-// ----------------EinSum-------------------
+COMMON_INFER_FUNC_REG(Einsum, EinsumInferShape);
+VERIFY_FUNC_REG(Einsum, EinsumVerify);
+// ----------------Einsum-------------------
 
 // ---------------Eye----------------------------
 static bool CheckRows(const Operator &op, const string &attr_num_rows)

@@ -1168,24 +1168,24 @@ REG_OP(Tril)
 
 *@par Attributes:
 *equation: The subscripts for the Einstein summation. \n
-*tensor_size: tensor size of input \n
+*N: tensor size of input \n
 
 *@par Outputs:
 *@li y: Sums the product of the elements of the input operands along dimensions specified
  using a notation based on the Einstein summation convention. \n
 
 *@attention Constraints:
-*Input tensor_size must be Int. \n
+*Input N must be Int. \n
 
 *@par Third-party framework compatibility
 *Compatible with Pytorch einsum operator.
 */
-REG_OP(EinSum)
+REG_OP(Einsum)
     .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
     .REQUIRED_ATTR(equation, String)
-    .REQUIRED_ATTR(tensor_size, Int)
-    .OP_END_FACTORY_REG(EinSum)
+    .REQUIRED_ATTR(N, Int)
+    .OP_END_FACTORY_REG(Einsum)
 
 /**
 *@brief Returns a 2-D tensor with ones on the diagonal and zeros elsewhere. \n

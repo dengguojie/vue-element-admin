@@ -35,8 +35,8 @@
 
 using namespace ge;
 namespace fe {
-static const string PATTERN_FUSED_NODE = "EinSum";
-static const string EINSUM = "EinSum";
+static const string PATTERN_FUSED_NODE = "Einsum";
+static const string EINSUM = "Einsum";
 static const string RESHAPE = "Reshape";
 static const string TRANSPOSE = "TransposeD";
 static const string MATMUL = "MatMulV2";
@@ -53,9 +53,9 @@ static void AssistIntHelp(const vector<int64_t>& const_vec, int32_t* output) {
   }
 }
 
-vector<FusionPattern*> EinSumPass::DefinePatterns() {
+vector<FusionPattern*> EinsumPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (nothrow) FusionPattern("EinSumPass");
+  FusionPattern* pattern = new (nothrow) FusionPattern("EinsumPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSED_NODE, {EINSUM}).SetOutput(PATTERN_FUSED_NODE);
@@ -65,8 +65,8 @@ vector<FusionPattern*> EinSumPass::DefinePatterns() {
 
 // vector<NodePtr> &fusion_nodes: Store fusion nodes,
 //       including newly added nodes and fused but not deleted nodes
-Status EinSumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& fusion_nodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "EinSumPass fusion in!");
+Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& fusion_nodes) {
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "EinsumPass fusion in!");
   // get node
   NodePtr node = GetNodeFromMapping(PATTERN_FUSED_NODE, mapping);
   FUSION_PASS_CHECK(node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "einsum node is null, fusion failed."),
@@ -92,7 +92,7 @@ Status EinSumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
 
   // check dynamic shape
   FUSION_PASS_CHECK(IsUnknownShape(x0_dims) || IsUnknownShape(x1_dims),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "EinSum is dynamic."), return NOT_CHANGED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Einsum is dynamic."), return NOT_CHANGED);
 
   // get attr equation
   std::string equation;
@@ -1771,8 +1771,8 @@ Status EinSumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     return NOT_CHANGED;
   }
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "EinSumPass fusion success!");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "EinsumPass fusion success!");
   return SUCCESS;
 }
-REGISTER_PASS("EinSumPass", BUILT_IN_GRAPH_PASS, EinSumPass);
+REGISTER_PASS("EinsumPass", BUILT_IN_GRAPH_PASS, EinsumPass);
 }  // namespace fe
