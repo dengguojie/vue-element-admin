@@ -154,7 +154,7 @@ INFER_FUNC_REG(StaticRegexFullMatch, StaticRegexFullMatchInfer);
 IMPLEMT_INFERFUNC(UnsortedSegmentJoin, UnsortedSegmentJoinInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter UnsortedSegmentJoin proto inferfunction!");
   Shape x_shape = op.GetInputDesc("input").GetShape();
-  Shape segment_ids_shape = op.GetInputDesc("segments_ids").GetShape();
+  Shape segment_ids_shape = op.GetInputDesc("segment_ids").GetShape();
   Shape num_segment_shape;
   if (WithRank(op.GetInputDesc("num_segments"), 0, num_segment_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
@@ -187,7 +187,7 @@ IMPLEMT_INFERFUNC(UnsortedSegmentJoin, UnsortedSegmentJoinInfer) {
       return GRAPH_SUCCESS;
     }
     int64_t num_segments_dim = 0;
-    const int64_t* num_segments_data = reinterpret_cast<const int64_t *>(num_segments_tensor.GetData());
+    const int32_t *num_segments_data = reinterpret_cast<const int32_t *>(num_segments_tensor.GetData());
     if (num_segments_data == nullptr) {
       num_segments_dim = -1;
     } else {
