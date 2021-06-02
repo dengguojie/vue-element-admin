@@ -357,6 +357,9 @@ IMPLEMT_INFERFUNC(StackPop, StackPopInfer) {
   if (operator_context->GetMarks().size() != 0) {
     bool is_set_unknown = false;
     std::string stack_name = operator_context->GetMarks()[0];
+    // clear marks, ge make sure pop infoshape executed once.
+    std::vector<std::string> marks;
+    operator_context->SetMarks(marks);
     std::vector<std::vector<int64_t>> shape_vec;
     for (auto elem : shape_and_type_map[stack_name]) {
       auto shape = elem.GetShape().GetDims();
