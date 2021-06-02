@@ -140,8 +140,23 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   cast2InputDesc.SetDataType(ge::DT_FLOAT16);
   castInt8ToFloat16Desc->UpdateOutputDesc(0, cast1OutputDesc);
   castFloat16ToBoolDesc->UpdateInputDesc(0, cast2InputDesc);
-  fusedDesc->UpdateInputDesc(0, cast1OutputDesc);
-  fusedDesc->UpdateOutputDesc(0, cast2InputDesc);
+  // for dynamic case
+  std::map <string, uint32_t> cast_in_name_idx_1 = {{"x", 0}};
+  std::map <string, uint32_t> cast_out_name_idx_1 = {{"y", 0}};
+  FUSION_PASS_CHECK(false == castInt8ToFloat16Desc->UpdateInputName(cast_in_name_idx_1),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "UpdateInputName castInt8ToFloat16Desc failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(false == castInt8ToFloat16Desc->UpdateOutputName(cast_out_name_idx_1),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "UpdateOutputName castInt8ToFloat16Desc failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(false == castFloat16ToBoolDesc->UpdateInputName(cast_in_name_idx_1),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "UpdateInputName castFloat16ToBoolDesc failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(false == castFloat16ToBoolDesc->UpdateOutputName(cast_out_name_idx_1),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "UpdateOutputName castFloat16ToBoolDesc failed."),
+                    return FAILED);
+  fusedDesc->UpdateInputDesc("src", cast1OutputDesc);
+  fusedDesc->UpdateOutputDesc("dst", cast2InputDesc);
 
   ge::NodePtr castInt8ToFloat16Node = graph.AddNode(castInt8ToFloat16Desc);
   ge::NodePtr castFloat16ToBoolNode = graph.AddNode(castFloat16ToBoolDesc);
