@@ -463,6 +463,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
             True or False or None
     """
     data_size = tbe_platform.get_bit_len(dtype.lower()) // 8  # 8bits = 1bytes
+    block_size_align = 16 if dtype == "float16" else 32
     max_l1_valid_num = max_l1_valid_size // data_size
     max_next_valid_num = max_next_valid_size // data_size
 
@@ -498,7 +499,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
 
     # see if we can do double buffer in l1
     l1_double_buffer = False
-    min_com_multi = output_w * BLOCK_SIZE // math.gcd(output_w, BLOCK_SIZE)
+    min_com_multi = output_w * block_size_align // math.gcd(output_w, block_size_align)
     if max_ho_l1 >= min_com_multi // output_w * DOUBLE_BUFFER and \
             max_do_l1 >= min_com_multi // output_w * DOUBLE_BUFFER:
         max_ho_l1 = max_ho_l1 // DOUBLE_BUFFER
@@ -513,8 +514,8 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
         l1_hi = fmap_h
 
     else:  # not enough to put the whole feature map
-        wo_gcd_c0 = math.gcd(output_w, BLOCK_SIZE)
-        ho_gcd_c0 = BLOCK_SIZE // wo_gcd_c0
+        wo_gcd_c0 = math.gcd(output_w, block_size_align)
+        ho_gcd_c0 = block_size_align // wo_gcd_c0
         if max_ho_l1 < ho_gcd_c0:
             return False, None, None, None, None
         max_ho_l1 = max_ho_l1 // ho_gcd_c0 * ho_gcd_c0
@@ -524,8 +525,8 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
     if max_do_l1 < 1:
         max_do_l1 = 1
 
-    howo_pad = _ceil_to(output_h * output_w, BLOCK_SIZE)
-    howo_block = howo_pad // BLOCK_SIZE
+    howo_pad = _ceil_to(output_h * output_w, block_size_align)
+    howo_block = howo_pad // block_size_align
     l0ub_n = 1
     l0ub_do = output_d
     l0ub_c1 = 1
@@ -575,7 +576,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
             l0ub_do = 1
     l0ub_howo *= fmap_c0  # multiplied by c0
     # get min howo in l1 and l0/ub
-    l0ub_howo = min(l0ub_howo, max(max_ho_l1 * output_w, 16))
+    l0ub_howo = min(l0ub_howo, max(max_ho_l1 * output_w, block_size_align))
     l0ub_do = min(l0ub_do, max_do_l1)
 
     howo_split = 1
@@ -591,7 +592,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
     tile_l1_di = fmap_d
     tile_l1_c0 = l0ub_c0
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
-        l0ub_howo = 16
+        l0ub_howo = block_size_align
         tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
 
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
@@ -614,7 +615,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
         l0ub_do = 1
         tile_l1_di = min(l0ub_kd, fmap_d)
         if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
-            l0ub_howo = 16
+            l0ub_howo = block_size_align
             tile_l1_hi = get_tile_l1_hi(dtype, l0ub_howo, output_w, stride_h, kernel_h, fmap_h)
 
     if tile_l1_wi * tile_l1_hi * tile_l1_di * tile_l1_c0 * DOUBLE_BUFFER > max_l1_valid_num:
