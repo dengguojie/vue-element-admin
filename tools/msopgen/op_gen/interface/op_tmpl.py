@@ -278,14 +278,14 @@ message CustomTestParameter {
 """
 # =================================================
 # ==================4.impl file==================
-PY_HEAD = """import te.lang.cce as tbe
-from te import tvm
-from te.platform.fusion_manager import fusion_manager
+PY_HEAD = """import tbe.dsl as tbe
+from tbe import tvm
+from tbe.common.register import register_op_compute
 from topi import generic
 
 """
 PY_COMPUTE_WITHOUT_ATTR = """
-@fusion_manager.register("{name}")
+@register_op_compute("{name}")
 def {name}_compute({input_name}, {output}, kernel_name="{name}"):
     \"""
     To do: Implement the operator by referring to the
@@ -293,7 +293,7 @@ def {name}_compute({input_name}, {output}, kernel_name="{name}"):
     \"""
 """
 PY_COMPUTE_WITH_ATTR = """
-@fusion_manager.register("{name}")
+@register_op_compute("{name}")
 def {name}_compute({input_name}, {output}, {attr}, kernel_name="{name}"):
     \"""
     To do: Implement the operator by referring to the

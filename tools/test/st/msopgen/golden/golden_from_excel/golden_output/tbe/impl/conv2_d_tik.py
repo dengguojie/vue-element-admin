@@ -1,10 +1,10 @@
-import te.lang.cce as tbe
-from te import tvm
-from te.platform.fusion_manager import fusion_manager
+import tbe.dsl as tbe
+from tbe import tvm
+from tbe.common.register import register_op_compute
 from topi import generic
 
 
-@fusion_manager.register("conv2_d_tik")
+@register_op_compute("conv2_d_tik")
 def conv2_d_tik_compute(x1, x2, y, strides, pads, dilations, kernel_name="conv2_d_tik"):
     """
     To do: Implement the operator by referring to the
