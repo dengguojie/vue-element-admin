@@ -57,12 +57,11 @@ case5 = {"params": [{"shape": (459999,), "dtype": "float32", "format": "NCHW", "
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910"], case1)
-ut_case.add_case(["Ascend910"], case2)
-ut_case.add_case(["Ascend910"], case3)
-ut_case.add_case(["Ascend910"], case4)
-ut_case.add_case(["Ascend910"], case5)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910"])
-    exit(0)
+    ut_case.run(["Ascend910A"])

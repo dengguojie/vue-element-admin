@@ -72,52 +72,52 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
             # fp16
             input0 = gen_param(
                 classify="input0", name="x",
-                datatype="float16,int8,int16,int32,int64,uint8,uint16,uint32,uint64,"
-                         "float16,int8,int16,int32,int64,uint8,uint16,uint32,uint64",
-                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,"
-                       "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+                datatype="float16,int8,int16,int32,uint8,uint16,uint32,"
+                         "float16,int8,int16,int32,uint8,uint16,uint32",
+                format="ND,ND,ND,ND,ND,ND,ND,"
+                       "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
             output0 = gen_param(
                 classify="output0", name="y",
-                datatype="float16,int8,int16,int32,int64,uint8,uint16,uint32,uint64,"
-                         "float16,int8,int16,int32,int64,uint8,uint16,uint32,uint64",
-                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,"
-                       "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+                datatype="float16,int8,int16,int32,uint8,uint16,uint32,"
+                         "float16,int8,int16,int32,uint8,uint16,uint32",
+                format="ND,ND,ND,ND,ND,ND,ND,"
+                       "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
         else:
             # fp16/fp32
             input0 = gen_param(
                 classify="input0", name="x",
-                datatype="float16,float32,int8,int16,int32,int64,uint8,uint16,uint32,uint64,"
-                         "float16,float32,int8,int16,int32,int64,uint8,uint16,uint32,uint64",
-                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND,NC1HWC0,"
-                       "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+                datatype="float16,float32,int8,int16,int32,uint8,uint16,uint32,"
+                         "float16,float32,int8,int16,int32,uint8,uint16,uint32",
+                format="ND,ND,ND,ND,ND,ND,ND,ND,NC1HWC0,"
+                       "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
             output0 = gen_param(
                 classify="output0", name="y",
-                datatype="float16,float32,int8,int16,int32,int64,uint8,uint16,uint32,uint64,"
-                         "float16,float32,int8,int16,int32,int64,uint8,uint16,uint32,uint64",
-                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND,NC1HWC0,"
-                       "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+                datatype="float16,float32,int8,int16,int32,uint8,uint16,uint32,"
+                         "float16,float32,int8,int16,int32,uint8,uint16,uint32",
+                format="ND,ND,ND,ND,ND,ND,ND,ND,NC1HWC0,"
+                       "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
     else:
         # ND
         if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # fp16
             input0 = gen_param(
                 classify="input0", name="x",
-                datatype="float16,int8,int16,int32,int64,uint8,uint16,uint32,uint64",
-                format="ND,ND,ND,ND,ND,ND,ND,ND,ND")
+                datatype="float16,int8,int16,int32,uint8,uint16,uint32",
+                format="ND,ND,ND,ND,ND,ND,ND")
             output0 = gen_param(
                 classify="output0", name="y",
-                datatype="float16,int8,int16,int32,int64,uint8,uint16,uint32,uint64",
-                format="ND,ND,ND,ND,ND,ND,ND,ND,ND")
+                datatype="float16,int8,int16,int32,uint8,uint16,uint32",
+                format="ND,ND,ND,ND,ND,ND,ND")
         else:
             # fp16/fp32
             input0 = gen_param(
                 classify="input0", name="x",
-                datatype="float16,float32,int8,int16,int32,int64,uint8,uint16,uint32,uint64",
-                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+                datatype="float16,float32,int8,int16,int32,uint8,uint16,uint32",
+                format="ND,ND,ND,ND,ND,ND,ND,ND")
             output0 = gen_param(
                 classify="output0", name="y",
-                datatype="float16,float32,int8,int16,int32,int64,uint8,uint16,uint32,uint64",
-                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+                datatype="float16,float32,int8,int16,int32,uint8,uint16,uint32",
+                format="ND,ND,ND,ND,ND,ND,ND,ND")
 
     param_list = [input0, output0]
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
@@ -239,8 +239,8 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_y, param_name="input_y")
 
-    check_list = ["int8", "int16", "int32", "int64", "uint8", "uint16",
-                  "uint32", "uint64", "float16", "float32"]
+    check_list = ["int8", "int16", "int32", "uint8", "uint16",
+                  "uint32", "float16", "float32"]
 
     para_check.check_dtype(dtype_x, check_list, param_name="input_x")
     para_check.check_dtype(dtype_y, check_list, param_name="input_x")
