@@ -824,6 +824,30 @@ REG_OP(AffineGrid)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .ATTR(align_corners, Bool, false)
     .OP_END_FACTORY_REG(AffineGrid)
+
+/**
+*@brief  Make memory of a view be contiguous. \n
+
+*@par Inputs:
+*Four inputs, including:
+*@li x: The input tensor.
+*@li size: The shape of output tensor. 
+*@li stride: The stride of output tensor.
+*@li storage_offset: The offset in the underlying storage of the output tensor. \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type as "x" . \n
+
+*@par Third-party framework compatibility
+*Compatible with the pytorch operator as_strided.
+*/
+REG_OP(AsStrided)
+    .INPUT(x, TensorType::BasicType())
+    .INPUT(size, TensorType::IndexNumberType())
+    .INPUT(stride, TensorType::IndexNumberType())
+    .INPUT(storage_offset, TensorType::IndexNumberType())
+    .OUTPUT(y, TensorType::BasicType())
+    .OP_END_FACTORY_REG(AsStrided)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_TRANSFORMATION_OPS_H_

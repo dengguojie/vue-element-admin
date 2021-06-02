@@ -1083,7 +1083,7 @@ TEST_F(TransposeTilingTest, para_test_64) {
     std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
     OpCompileInfo op_compile_info;
     op_compile_info.str = compileInfo;
-    op_compile_info.key = "123456a";
+    op_compile_info.key = "123456b";
 
     opParas.op_type = "Transpose";
 
@@ -1091,3 +1091,58 @@ TEST_F(TransposeTilingTest, para_test_64) {
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 
 }
+
+
+TEST_F(TransposeTilingTest, 920A_vcopy) {
+    using namespace optiling;
+    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("Transpose");
+    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+    TeOpParas opParas;
+    vector<int64_t> inShape;
+    vector<int64_t> outShape;
+    inShape.push_back(100);
+    inShape.push_back(200);
+    inShape.push_back(16);
+    outShape.push_back(200);
+    outShape.push_back(100);
+    outShape.push_back(16);
+
+    TeOpTensorArg tensorInputs;
+    TeOpTensor tensorInput;
+    tensorInput.shape = inShape ;
+    tensorInput.dtype = "float16";
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+
+    TeOpTensorArg tensorOutputsArg;
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = outShape;
+    tensorOutput.dtype = "float16";
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+
+    std::vector<int64_t> perm_shape;
+    perm_shape.push_back(3);
+    ge::Shape ge_shape(perm_shape);
+    ge::Tensor const_tensor(ge::TensorDesc(ge_shape, ge::Format::FORMAT_ND, ge::DataType::DT_INT64));
+    int64_t buf[3];
+    buf[0] = 1;
+    buf[1] = 0;
+    buf[2] = 2;
+    opParas.const_inputs["perm"] = std::make_tuple((const unsigned char *)buf, sizeof(buf), const_tensor);
+
+    std::string compileInfo = "{\"vars\": {\"core_num\":96, \"ub_size\":6144, \"dtype\":\"float16\"}}";
+    OpCompileInfo op_compile_info;
+    op_compile_info.str = compileInfo;
+    op_compile_info.key = "123456c";
+
+    opParas.op_type = "Transpose";
+
+    OpRunInfo runInfo;
+    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+
+}
+

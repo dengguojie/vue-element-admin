@@ -75,6 +75,7 @@ enum TransposeScenario {
     SCENARIO_3 = 3,     //huge  last axis and not transpose
     SCENARIO_6 = 6,     //small shape
     SCENARIO_7 = 7,     //last axis transpose
+    SCENARIO_8 = 8,     //920A verifaction
 };
 
 enum SubScenarioLastAxisTrans {
