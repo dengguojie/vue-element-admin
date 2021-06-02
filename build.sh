@@ -39,7 +39,7 @@ usage() {
   echo "    -a|--aicpu only compile aicpu task"
   echo "    -m|--minirc aicpu only compile aicpu task"
   echo "    --cpu_kernels_ut Build aicpu ut"
-  echo "    --pass_ut BUild pass ut"
+  echo "    --pass_ut Build pass ut"
   echo "    --tiling_ut Build tiling ut"
   echo "    --proto_ut Build proto ut"
   echo "    --tf_plugin_ut Build tf plugin ut"
@@ -119,27 +119,27 @@ parse_changed_files() {
   logging "related ut "$related_ut
 
   if [[ $related_ut =~ "CPU_UT" ]];then
-    logging "CPU_UT is tirggered!"
+    logging "CPU_UT is triggered!"
     CPU_UT=TRUE
   fi
   if [[ $related_ut =~ "PASS_UT" ]];then
-    logging "PASS_UT is tirggered!"
+    logging "PASS_UT is triggered!"
     PASS_UT=TRUE
   fi
   if [[ $related_ut =~ "TILING_UT" ]];then
-    logging "TILING_UT is tirggered!"
+    logging "TILING_UT is triggered!"
     TILING_UT=TRUE
   fi
   if [[ $related_ut =~ "PROTO_UT" ]];then
-    logging "PROTO_UT is tirggered!"
+    logging "PROTO_UT is triggered!"
     PROTO_UT=TRUE
   fi
   if [[ $related_ut =~ "PLUGIN_UT" ]];then
-    logging "PLUGIN_UT is tirggered!"
+    logging "PLUGIN_UT is triggered!"
     PLUGIN_UT=TRUE
   fi
   if [[ $related_ut =~ "ONNX_PLUGIN_UT" ]];then
-    logging "ONNX_PLUGIN_UT is tirggered!"
+    logging "ONNX_PLUGIN_UT is triggered!"
     ONNX_PLUGIN_UT=TRUE
   fi
   reg='^\{.*?\}$'
@@ -187,7 +187,10 @@ build_cann() {
     cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
     make ${VERBOSE} -j${THREAD_NUM}
   fi
-  if [[ "$UT_TEST_ALL" == "FALSE" ]]; then
+  if [ "$UT_TEST_ALL" == "FALSE" -a "$CPU_UT" == "FALSE" \
+        -a "$PASS_UT" == "FALSE" -a "$TILING_UT" == "FALSE" \
+        -a "$PROTO_UT" == "FALSE" -a "$PLUGIN_UT" == "FALSE" \
+        -a "$ONNX_PLUGIN_UT" == "FALSE" ]; then
     CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device"
 
     logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
