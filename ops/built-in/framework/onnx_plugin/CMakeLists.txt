@@ -111,6 +111,7 @@ set(_onnx_plugins
   quant/int8conv_plugin.cc
   quant/int8_give_tensorfill_plugin.cc
   quant/int8_giveint_tensorfill_plugin.cc
+  quant/int8_fc_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
