@@ -1,0 +1,176 @@
+[
+	{
+		"case_name": "Test_Conv3DTransposetD_VALID",
+		"op": "Conv3DTransposeD",
+		"input_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, 8, 60, 88, 64],
+				"ori_shape": [1, 8, 60, 88, 64],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "x"
+			},
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN", 
+				"type": "float16",
+				"shape": [2, 2, 2, 32, 64],
+				"ori_shape": [2, 2, 2, 32, 64],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "filter"
+			},
+			{
+				"format": "ND",
+				"ori_format": "ND", 
+				"type": "float16",
+				"shape": [5],
+				"ori_shape": [5],
+				"value": [1, 16, 120, 176, 32],
+				"name": "bias"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, 16, 120, 176, 32],
+				"ori_shape": [1, 16, 120, 176, 32],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "input_size",
+				"type": "list_int",
+				"value": [1, 16, 120, 176, 32]
+			},
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 2, 2, 2, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [0, 0, 0, 0, 0, 0]
+			},
+			{
+				"name": "dilations",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "groups",
+				"type": "int",
+				"value": 1
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NDHWC"
+			},
+			{
+				"name": "output_padding",
+				"type": "list_int",
+				"value": [0, 0, 0, 0, 0]
+			},
+			{
+				"name": "offset_x",
+				"type": "int",
+				"value": 0
+			}
+		]
+	},
+	{
+		"case_name": "Test_Conv3DTransposeD_SAME",
+		"op": "Conv3DTransposeD",
+		"input_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, 16, 120, 176, 64],
+				"ori_shape": [1, 16, 120, 176, 64],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "x"
+			},
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN", 
+				"type": "float16",
+				"shape": [3, 3, 3, 32, 64],
+				"ori_shape": [3, 3, 3, 32, 64],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "filter"
+			},
+			{
+				"format": "ND",
+				"ori_format": "ND", 
+				"type": "float16",
+				"shape": [5],
+				"ori_shape": [5],
+				"value": [1, 16, 120, 176, 32],
+				"name": "bias"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, 16, 120, 176, 32],
+				"ori_shape": [1, 16, 120, 176, 32],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "input_size",
+				"type": "list_int",
+				"value": [1, 16, 120, 176, 32]
+			},
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1, 1]
+			},
+			{
+				"name": "dilations",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "groups",
+				"type": "int",
+				"value": 1
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NDHWC"
+			},
+			{
+				"name": "output_padding",
+				"type": "list_int",
+				"value": [0, 0, 0, 0, 0]
+			},
+			{
+				"name": "offset_x",
+				"type": "int",
+				"value": 0
+			}
+		]
+	}
+]

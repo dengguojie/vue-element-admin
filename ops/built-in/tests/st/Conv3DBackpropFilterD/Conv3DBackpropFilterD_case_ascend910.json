@@ -1,0 +1,138 @@
+[
+	{
+		"case_name": "Test_Conv3DBackpropFilterD_VALID",
+		"op": "Conv3DBackpropFilterD",
+		"input_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [2, 128, 128, 128, 32],
+				"ori_shape": [2, 128, 128, 128, 32],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "x"
+			},
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [2, 63, 63, 63, 4],
+				"ori_shape": [2, 63, 63, 63, 4],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "out_backprop"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN", 
+				"type": "float32",
+				"shape": [3, 3, 3, 32, 4],
+				"ori_shape": [3, 3, 3, 32, 4],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "filter_size",
+				"type": "list_int",
+				"value": [3, 3, 3, 32, 4]
+			},
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 2, 2, 2, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [0, 0, 0, 0, 0, 0]
+			},
+			{
+				"name": "dilations",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "groups",
+				"type": "int",
+				"value": 1
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NDHWC"
+			}
+		]
+	},
+	{
+		"case_name": "Test_Conv3DBackpropFilterD_SAME",
+		"op": "Conv3DBackpropFilterD",
+		"input_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [2, 128, 128, 128, 32],
+				"ori_shape": [2, 128, 128, 128, 32],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "x"
+			},
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [2, 128, 128, 128, 4],
+				"ori_shape": [2, 128, 128, 128, 4],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "out_backprop"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN", 
+				"type": "float32",
+				"shape": [3, 3, 3, 32, 4],
+				"ori_shape": [3, 3, 3, 32, 4],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "filter_size",
+				"type": "list_int",
+				"value": [3, 3, 3, 32, 4]
+			},
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1, 1]
+			},
+			{
+				"name": "dilations",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "groups",
+				"type": "int",
+				"value": 1
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NDHWC"
+			}
+		]
+	}
+]

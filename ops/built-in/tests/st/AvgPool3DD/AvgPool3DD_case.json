@@ -1,0 +1,148 @@
+[
+	{
+		"case_name": "Test_AvgPool3DD_VALID",
+		"op": "AvgPool3DD",
+		"input_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, 3, 3, 3, 1],
+				"ori_shape": [1, 3, 3, 3, 1],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "grads"
+			},
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN", 
+				"type": "float16",
+				"shape": [3, 3, 3, 1, 1],
+				"ori_shape": [3, 3, 3, 1, 1],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "filter"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, 1, 1, 1, 1],
+				"ori_shape": [1, 1, 1, 1, 1],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "ksize",
+				"type": "list_int",
+				"value": [1, 3, 3, 3, 1]
+			},
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [0, 0, 0, 0, 0, 0]
+			},
+			{
+				"name": "ceil_mode",
+				"type": "bool",
+				"value": true
+			},
+			{
+				"name": "count_include_pad",
+				"type": "bool",
+				"value": true
+			},
+			{
+				"name": "divisor_override",
+				"type": "int",
+				"value": 0
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NDHWC"
+			}
+		]
+	},
+	{
+		"case_name": "Test_AvgPool3DD_SAME",
+		"op": "AvgPool3DD",
+		"input_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, 5, 6, 7, 1],
+				"ori_shape": [1, 5, 6, 7, 1],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "grads"
+			},
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN", 
+				"type": "float16",
+				"shape": [2, 2, 2, 1, 1],
+				"ori_shape": [2, 2, 2, 1, 1],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "filter"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [1, 5, 6, 7, 1],
+				"ori_shape": [1, 5, 6, 7, 1],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "ksize",
+				"type": "list_int",
+				"value": [1, 2, 2, 2, 1]
+			},
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [0, 1, 0, 1, 0, 1]
+			},
+			{
+				"name": "ceil_mode",
+				"type": "bool",
+				"value": true
+			},
+			{
+				"name": "count_include_pad",
+				"type": "bool",
+				"value": false
+			},
+			{
+				"name": "divisor_override",
+				"type": "int",
+				"value": 0
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NDHWC"
+			}
+		]
+	}
+]
