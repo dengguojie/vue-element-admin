@@ -69,7 +69,7 @@ namespace {
   const char* const kForceInfershapeWhenRunning = "_force_infershape_when_running";
   const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
   const std::vector<int64_t> BATCH_GEAR = {0, 1, 3, 7, 15, 31, MAX_RANGE};
-  const std::vector<int64_t> SHAPE_GEAR = {0, 3, 7, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4095, MAX_RANGE};
+  const std::vector<int64_t> SHAPE_GEAR = {0, 3, 7, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4095, 4096};
   const std::vector<int64_t> DYNAMIC_DIM_ALL = {-2};
 }
 
