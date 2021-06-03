@@ -1012,7 +1012,7 @@ def fused_dbn_dw(x, grads, dbn_x, diff_scale, diff_offset, scale,
     para_check.check_dtype(input_dbn_x_dtype, ("float16"), param_name="dbn_x")
     para_check.check_dtype(batch_mean_dtype, ("float32",), param_name="batch_mean")
 
-    tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
+    tik_instance = tik.Tik()
 
     fmap_x = tik_instance.Tensor(input_fmap_x_dtype, shape_fmap_x, name="fmap_x", scope=tik.scope_gm)
     grads_input = tik_instance.Tensor(input_grads_dtype, shape_grads, name="grads_input", scope=tik.scope_gm)
