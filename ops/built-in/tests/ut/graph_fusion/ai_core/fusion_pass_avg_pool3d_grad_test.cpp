@@ -50,8 +50,8 @@ TEST_F(avg_pool3d_grad_test, avg_pool3d_grad_test_1)
     auto avp_pool3d_grad_op = op::AvgPool3DGrad("AvgPool3DGrad")
                                .set_input_orig_input_shape(crops)
                                .set_input_grads(data0)
-                               .set_attr_ksize({2, 2, 1})
-                               .set_attr_strides({9, 2, 1})
+                               .set_attr_ksize({1,1,2,2,1})
+                               .set_attr_strides({1,1,9,2,1})
                                .set_attr_pads({0, 0, 0, 0, 0, 0})
                                .set_attr_ceil_mode(false)
                                .set_attr_count_include_pad(true)
@@ -114,17 +114,17 @@ TEST_F(avg_pool3d_grad_test, avg_pool3d_grad_test_2)
     auto avp_pool3d_grad_op = op::AvgPool3DGrad("AvgPool3DGrad")
                                .set_input_orig_input_shape(crops)
                                .set_input_grads(data0)
-                               .set_attr_ksize({2, 2, 1})
-                               .set_attr_strides({9, 2, 1})
+                               .set_attr_ksize({1,1,2,2,1})
+                               .set_attr_strides({1,1,9,2,1})
                                .set_attr_pads({0, 0, 0, 0, 0, 0})
-                               .set_attr_ceil_mode(false)
-                               .set_attr_count_include_pad(true)
+                               .set_attr_ceil_mode(true)
+                               .set_attr_count_include_pad(false)
                                .set_attr_divisor_override(0)
                                .set_attr_data_format("NDHWC");
-    avp_pool3d_grad_op.SetAttr("padding", "SAME");
+
     crops.update_output_desc_y(crops_desc);
 
-    std::vector<int64_t> data0_vec{9, 6, 4, 14, 48};
+    std::vector<int64_t> data0_vec{-1, 6, 4, 14, 48};
     ge::Shape data0_shape(data0_vec);
     ge::TensorDesc data0_desc(data0_shape, FORMAT_NDHWC,  DT_FLOAT16);
     data0.update_input_desc_x(data0_desc);

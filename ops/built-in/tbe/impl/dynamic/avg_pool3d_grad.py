@@ -31,8 +31,8 @@ from impl.util.platform_adapter import tvm
 _BLOCK_SIZE = 16
 _C0_SIZE = tbe_platform.C0_SIZE
 _UB_FUSED_OP_NUM = 3
-_STRIDES_DIM_SIZE = 3
-_KSIZE_DIM_SIZE = 3
+_STRIDES_DIM_SIZE = 5
+_KSIZE_DIM_SIZE = 5
 _PADS_DIM_SIZE = 6
 _ORI_SHAPE_DIM_SIZE = 5
 _SHAPE_DIM_SIZE = 6
@@ -43,8 +43,8 @@ _STRIDE_SORCE_FORMAT = "NDHWC"
 _DATA_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC"]
 _FILTER_TARGET_FORMAT = "DHWCN"
 _FILTER_FORMAT_WHITE_LIST = ["DHWCN"]
-_KSIZE_FORMAT = "HWD"
-_STRIDES_FORMAT = "HWD"
+_KSIZE_FORMAT = "NDHWC"
+_STRIDES_FORMAT = "NDHWC"
 # lower range
 _LOWER_RANGE = 1
 # upper range
@@ -222,38 +222,39 @@ def _transform_shape_with_format(src_format, to_format, ori_shape):
 def _get_output(fmap, ksize, padf, padb, stride):
     return (fmap + padf + padb - ksize) // stride + 1
 
-def _range_correction(fmap_range, kernel, pads, stride, out_shape, fmap_ori_format):
+def _range_correction(fmap_range, kernel, pads, strides, out_shape, fmap_ori_format):
     w_d, w_h, w_w, w_c, w_n = kernel
+    _, strd, strh, strw, _ = strides
     fmap_range_n, fmap_range_d, fmap_range_c1, fmap_range_h, fmap_range_w, fmap_range_c0 = fmap_range
     if not all(i == 0 for i in pads):
         out_d_upper, out_h_upper, out_w_upper = None, None, None
-        out_d_lower = util_common.ceil(fmap_range_d[0], stride[2])
-        out_d_upper = util_common.ceil(fmap_range_d[1], stride[2])
-        out_h_lower = util_common.ceil(fmap_range_h[0], stride[0])
-        out_h_upper = util_common.ceil(fmap_range_h[1], stride[0])
-        out_w_lower = util_common.ceil(fmap_range_w[0], stride[1])
-        out_w_upper = util_common.ceil(fmap_range_w[1], stride[1])
+        out_d_lower = util_common.ceil(fmap_range_d[0], strd)
+        out_d_upper = util_common.ceil(fmap_range_d[1], strd)
+        out_h_lower = util_common.ceil(fmap_range_h[0], strh)
+        out_h_upper = util_common.ceil(fmap_range_h[1], strh)
+        out_w_lower = util_common.ceil(fmap_range_w[0], strw)
+        out_w_upper = util_common.ceil(fmap_range_w[1], strw)
     else:
-        out_d_lower = _get_output(fmap_range_d[0], w_d, pads[0], pads[1], stride[2])
+        out_d_lower = _get_output(fmap_range_d[0], w_d, pads[0], pads[1], strd)
         if out_d_lower < 1:
             fmap_range_d_lower = min(w_d, fmap_range_d[1]) if fmap_range_d[1] else w_d
             fmap_range_d = (fmap_range_d_lower, fmap_range_d[1])
-            out_d_lower = _get_output(fmap_range_d[0], w_d, pads[0], pads[1], stride[2])
-        out_d_upper = _get_output(fmap_range_d[1], w_d, pads[0], pads[1], stride[2])
+            out_d_lower = _get_output(fmap_range_d[0], w_d, pads[0], pads[1], strd)
+        out_d_upper = _get_output(fmap_range_d[1], w_d, pads[0], pads[1], strd)
 
-        out_h_lower = _get_output(fmap_range_h[0], w_h, pads[2], pads[3], stride[0])
+        out_h_lower = _get_output(fmap_range_h[0], w_h, pads[2], pads[3], strh)
         if out_h_lower < 1:
             fmap_range_h_lower = min(w_h, fmap_range_h[1]) if fmap_range_h[1] else w_h
             fmap_range_h = (fmap_range_h_lower, fmap_range_h[1])
-            out_h_lower = _get_output(fmap_range_h[0], w_h, pads[2], pads[3], stride[0])
-        out_h_upper = _get_output(fmap_range_h[1], w_h, pads[2], pads[3], stride[0])
+            out_h_lower = _get_output(fmap_range_h[0], w_h, pads[2], pads[3], strh)
+        out_h_upper = _get_output(fmap_range_h[1], w_h, pads[2], pads[3], strh)
 
-        out_w_lower = _get_output(fmap_range_w[0], w_w, pads[4], pads[5], stride[1])
+        out_w_lower = _get_output(fmap_range_w[0], w_w, pads[4], pads[5], strw)
         if out_w_lower < 1:
             fmap_range_w_lower = min(w_w, fmap_range_w[1]) if fmap_range_w[1] else w_w
             fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
-            out_w_lower = _get_output(fmap_range_w[0], w_w, pads[4], pads[5], stride[1])
-        out_w_upper = _get_output(fmap_range_w[1], w_w, pads[4], pads[5], stride[1])
+            out_w_lower = _get_output(fmap_range_w[0], w_w, pads[4], pads[5], strw)
+        out_w_upper = _get_output(fmap_range_w[1], w_w, pads[4], pads[5], strw)
 
     range_dedy = [(fmap_range_n[0], fmap_range_n[1]), (out_d_lower, out_d_upper),
                   (util_common.ceil(out_shape[4], _C0_SIZE), util_common.ceil(out_shape[4], _C0_SIZE)),
@@ -311,7 +312,7 @@ def _init_dynamic_shape_var(shape_out_backprop, input_sizes, range_dedy, range_i
 def _update_dync_pads(dync_input_size, filter_shape, strides, pads):
     fmap_n, fmap_d, fmap_h, fmap_w, fmap_c = dync_input_size
     filter_d, filter_h, filter_w, _, _ = filter_shape
-    stride_h, stride_w, stride_d = strides
+    _, stride_d, stride_h, stride_w, _ = strides
 
     if all(i == -1 for i in pads):
         pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h - fmap_h
@@ -417,16 +418,12 @@ def avg_pool3d_grad(orig_input_shape,
     filter_dtype = filter.get("dtype").lower()
     fmap_range = output.get("range")
     input_shape = list(fmap_ori_shape)
-    kh, kw, kd = ksize
 
     if len(fmap_range) == _ORI_SHAPE_DIM_SIZE:
         fmap_range = _trans_range_to_6d(fmap_range, data_format)
 
     _check_inputs(grads, filter, output, fmap_range, ksize, strides, pads, ceil_mode,
                   count_include_pad, divisor_override, data_format)
-
-
-    strides_formated = [1, strides[2], strides[0], strides[1], 1]
 
     fmap_ori_shape_formated = _transform_shape_with_format(data_format,
                                                            _FMAP_TARGET_FORMAT,
@@ -440,17 +437,25 @@ def avg_pool3d_grad(orig_input_shape,
                                                              _FILTER_TARGET_FORMAT,
                                                              filter_ori_shape)
 
+    ksize_formated = _transform_shape_with_format(data_format,
+                                                  _KSIZE_FORMAT,
+                                                  ksize)
+
+    strides_formated = _transform_shape_with_format(data_format,
+                                                    _STRIDES_FORMAT,
+                                                    strides)
+
     padding = "VALID" if all(i == 0 for i in pads) else "SAME"
     # correct -1 in dedy shape by dedx shape
     grads_ori_shape_formated = _shape_correction(grads_ori_shape_formated,
                                                  fmap_ori_shape_formated,
                                                  padding,
-                                                 ksize,
-                                                 strides,
+                                                 ksize_formated,
+                                                 strides_formated,
                                                  _GRADS_TARGET_FORMAT)
     # correct dedy range by fmap range
     range_dedy, range_input = _range_correction(fmap_range, filter_ori_shape_formated,
-                                                pads, strides, fmap_ori_shape_formated,
+                                                pads, strides_formated, fmap_ori_shape_formated,
                                                 data_format)
     # init dynamic shape tbe var
     dync_grads_ori_shape, dync_ori_input_size = _init_dynamic_shape_var(grads_ori_shape_formated,
@@ -464,7 +469,7 @@ def avg_pool3d_grad(orig_input_shape,
     dync_input_size = (dync_ori_input_size[0], dync_ori_input_size[1],
                        util_common.ceil(dync_ori_input_size[4], _C0_SIZE),
                        dync_ori_input_size[2], dync_ori_input_size[3], _C0_SIZE)
-    dync_pads = _update_dync_pads(dync_ori_input_size, filter_ori_shape_formated, strides, pads)
+    dync_pads = _update_dync_pads(dync_ori_input_size, filter_ori_shape_formated, strides_formated, pads)
 
     ori_input_shape_plh = tvm.placeholder([5], name="ori_input_shape", dtype="int32")
     grads = tvm.placeholder(dync_grads_shape, name="dedy", dtype=grads_dtype,
@@ -478,6 +483,8 @@ def avg_pool3d_grad(orig_input_shape,
                                     "data_type": "float16"}
                             )
 
+    _, kd, kh, kw, _ = ksize_formated
+    _, strd, strh, strw, _ = strides_formated
     w_ori_shape = (kd, kh, kw, 1, dync_ori_input_size[4])
     filter_frac_z = (dync_grads_shape[2] * kd * kh * kw, 1, _C0_SIZE, _C0_SIZE)
     filter = tvm.placeholder(filter_frac_z,
@@ -489,9 +496,9 @@ def avg_pool3d_grad(orig_input_shape,
                             )
 
     mean_matrix = tvm.compute(dync_grads_shape, lambda n, d, c1, h, w, c0:
-                    ((tvm.min(d * strides[2] + ksize[2], dync_pads[0] + dync_ori_input_size[1]) - tvm.max(dync_pads[0], d * strides[2])) *
-                    (tvm.min(h * strides[0] + ksize[0], dync_pads[2] + dync_ori_input_size[2]) - tvm.max(dync_pads[2], h * strides[0])) *
-                    (tvm.min(w * strides[1] + ksize[1], dync_pads[4] + dync_ori_input_size[3]) - tvm.max(dync_pads[4], w * strides[1]))).astype("int"),
+                    ((tvm.min(d * strd + kd, dync_pads[0] + dync_ori_input_size[1]) - tvm.max(dync_pads[0], d * strd)) *
+                    (tvm.min(h * strh + kh, dync_pads[2] + dync_ori_input_size[2]) - tvm.max(dync_pads[2], h * strh)) *
+                    (tvm.min(w * strw + kw, dync_pads[4] + dync_ori_input_size[3]) - tvm.max(dync_pads[4], w * strw))).astype("int"),
                     name="mean_matrix_init"
                     )
     mean_matrix_fp16 = tvm.compute(dync_grads_shape, lambda *index:

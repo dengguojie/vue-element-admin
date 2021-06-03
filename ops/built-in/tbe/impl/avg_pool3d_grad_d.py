@@ -20,6 +20,7 @@ from impl.util import util_common
 from impl.util import util_conv3d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
@@ -29,10 +30,12 @@ from impl.util.platform_adapter import tvm
 _BLOCK_SIZE = 16
 _C0_SIZE = tbe_platform.C0_SIZE
 _UB_FUSED_OP_NUM = 2
+_KSIZE_DIM = 5
+_STRIDES_DIM = 5
+_PADS_DIM = 6
 _FMAP_TARGET_FORMAT = "NDHWC"
 _GRADS_TARGET_FORMAT = "NDHWC"
 _GRADS_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC"]
-_STRIDE_SORCE_FORMAT = "NDHWC"
 _DATA_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC"]
 _L1FUSION_INPUT_CTR = 2
 _L1_FUSION_DISABLE = 0
@@ -158,11 +161,15 @@ def get_op_support_info(grads,
                                                               _GRADS_TARGET_FORMAT,
                                                               grads.get("ori_shape"),
                                                               _GRADS_FORMAT_WHITE_LIST)
-    strides_formated = util_conv3d.transform_shape_with_format(grads.get("ori_format"),
+    strides_formated = util_conv3d.transform_shape_with_format(data_format,
                                                                _GRADS_TARGET_FORMAT,
-                                                               [1, strides[2], strides[0], strides[1], 1],
+                                                               strides,
                                                                _GRADS_FORMAT_WHITE_LIST)
 
+    ksize_formated = util_conv3d.transform_shape_with_format(data_format,
+                                                             _GRADS_TARGET_FORMAT,
+                                                             ksize,
+                                                             _GRADS_FORMAT_WHITE_LIST)
     if ori_shape_grads is None or strides_formated is None:
         dict_args = {
             'errCode': 'E60008',
@@ -186,7 +193,7 @@ def get_op_support_info(grads,
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-    kh, kw, kd = ksize
+    _, kd, kh, kw, _ = ksize_formated
     cout = ori_shape_res[-1]
     ori_shape_filters = [kd, kh, kw, 1, cout]
     _, grads_d, grads_h, grads_w, _ = ori_shape_grads
@@ -206,27 +213,28 @@ def get_op_support_info(grads,
     return op_cal_info_in_json
 
 def _check_window_rule(ksize, strides, pads):
-    if len(ksize) != 3:
+    if len(ksize) != _KSIZE_DIM:
         error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d_grad_d',
                                                                  'ksize',
-                                                                 3,
-                                                                 3,
+                                                                 _KSIZE_DIM,
+                                                                 _KSIZE_DIM,
                                                                  len(ksize))
-    if len(strides) != 3:
+    if len(strides) != _STRIDES_DIM:
         error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d_grad_d',
                                                                  'strides',
-                                                                 3,
-                                                                 3,
+                                                                 _STRIDES_DIM,
+                                                                 _STRIDES_DIM,
                                                                  len(strides))
-    if len(pads) != 6:
+    if len(pads) != _PADS_DIM:
         error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d_grad_d',
                                                                  'pads',
-                                                                 6,
-                                                                 6,
+                                                                 _PADS_DIM,
+                                                                 _PADS_DIM,
                                                                  len(pads))
 
+
 def _check_ub_limitation(input_shape, strides):
-    w_value = input_shape[3] * strides[1]
+    w_value = input_shape[3] * strides[3]
 
     aub_size_min = input_shape[3] * _BLOCK_SIZE * 2
     aub_filling_size_min = w_value * _BLOCK_SIZE * 2
@@ -240,6 +248,17 @@ def _check_ub_limitation(input_shape, strides):
         raise RuntimeError(dict_args,
                             error_manager_util.get_error_message(dict_args))
 
+
+def _check_ksize_stride_val(ksize, strides):
+    kn, kc = ksize[0], ksize[-1]
+    strn, strc = strides[0], strides[-1]
+    if kn != 1 or kc != 1:
+        error_manager_cube.raise_err_specific('avg_pool3d_grad_d',
+                                              "ksize's N dim and C dim only support val equal 1.")
+    if strn != 1 or strc != 1:
+        error_manager_cube.raise_err_specific('avg_pool3d_grad_d',
+                                              "strides's N dim and C dim only support val equal 1.")
+
 #pylint: disable=too-many-arguments,unused-argument,invalid-name
 def _avg_pool3d_grad_check_rule(input_shape, input_dtype, ksize, strides, pads, kernel_name):
     para_check.check_shape(input_shape)
@@ -251,8 +270,8 @@ def _avg_pool3d_grad_check_rule(input_shape, input_dtype, ksize, strides, pads, 
 def _correct_pads(input_shape, fmap_shape, ksize, strides, pads):
     _, input_d, input_h, input_w, _ = input_shape
     _, fmap_d, fmap_h, fmap_w, _ = fmap_shape
-    ksize_h, ksize_w, ksize_d = ksize
-    stride_h, stride_w, stride_d = strides
+    _, ksize_d, ksize_h, ksize_w, _ = ksize
+    _, stride_d, stride_h, stride_w, _ = strides
     pad_before, pad_after, pad_top, pad_bottom, pad_left, pad_right = pads
 
     pad_after = (input_d - 1) * stride_d + ksize_d - fmap_d - pad_before
@@ -338,53 +357,38 @@ def avg_pool3d_grad_d(grads,
 
     _avg_pool3d_grad_check_rule(grads_shape, grads_dtype, ksize, strides, pads, kernel_name)
 
-    strides_formated = util_conv3d.transform_shape_with_format(_STRIDE_SORCE_FORMAT,
-                                                               grads_ori_format,
-                                                               [1, strides[2], strides[0], strides[1], 1],
-                                                               _DATA_FORMAT_WHITE_LIST)
+    strides_formated = util_conv3d.transform_shape_with_exception(data_format,
+                                                                  _GRADS_TARGET_FORMAT,
+                                                                  strides,
+                                                                  _DATA_FORMAT_WHITE_LIST,
+                                                                  "strides")
 
-    if strides_formated is None:
-        dict_args = {
-            'errCode': 'E62002',
-            'param_name': 'data_format',
-            'expected_format_list': ",".join(_DATA_FORMAT_WHITE_LIST),
-            'format': data_format
-        }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+    orig_input_shape_formated = util_conv3d.transform_shape_with_exception(data_format,
+                                                                           _FMAP_TARGET_FORMAT,
+                                                                           orig_input_shape,
+                                                                           _DATA_FORMAT_WHITE_LIST,
+                                                                           "ori_input_shape")
 
-    orig_input_shape_formated = util_conv3d.transform_shape_with_format(data_format,
-                                                                        _FMAP_TARGET_FORMAT,
-                                                                        orig_input_shape,
-                                                                        _DATA_FORMAT_WHITE_LIST)
-    if orig_input_shape_formated is None:
-        dict_args = {
-            'errCode': 'E62002',
-            'param_name': 'data_format',
-            'expected_format_list': ",".join(_DATA_FORMAT_WHITE_LIST),
-            'format': data_format
-        }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+    ksize_formated = util_conv3d.transform_shape_with_exception(data_format,
+                                                                _GRADS_TARGET_FORMAT,
+                                                                ksize,
+                                                                _DATA_FORMAT_WHITE_LIST,
+                                                                "ksize")
 
-    grads_ori_shape_formated = util_conv3d.transform_shape_with_format(grads_ori_format,
-                                                                       _GRADS_TARGET_FORMAT,
-                                                                       grads_ori_shape,
-                                                                       _GRADS_FORMAT_WHITE_LIST)
-    if grads_ori_shape_formated is None:
-        dict_args = {
-            'errCode': 'E62002',
-            'param_name': 'grads',
-            'expected_format_list': ",".join(_GRADS_FORMAT_WHITE_LIST),
-            'format': grads_ori_format
-        }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+    grads_ori_shape_formated = util_conv3d.transform_shape_with_exception(grads_ori_format,
+                                                                          _GRADS_TARGET_FORMAT,
+                                                                          grads_ori_shape,
+                                                                          _GRADS_FORMAT_WHITE_LIST,
+                                                                          "grads")
+    _check_ksize_stride_val(ksize_formated, strides_formated)
 
-    _check_ub_limitation(grads_ori_shape_formated, strides)
+    _check_ub_limitation(grads_ori_shape_formated, strides_formated)
 
     if ceil_mode:
         pads = _correct_pads(grads_ori_shape_formated, orig_input_shape_formated,
-                             ksize, strides, pads)
+                             ksize_formated, strides_formated, pads)
 
-    kh, kw, kd = ksize
+    _, kd, kh, kw, _ = ksize_formated
     on, od, oh, ow, oc = orig_input_shape_formated
 
     grads = tvm.placeholder(grads_shape,
@@ -465,7 +469,7 @@ def avg_pool3d_grad_d(grads,
                                                    mul_res,
                                                    output,
                                                    orig_input_shape,
-                                                   strides_formated,
+                                                   strides,
                                                    pads,
                                                    dilations,
                                                    groups=fmap_c,
@@ -477,7 +481,7 @@ def avg_pool3d_grad_d(grads,
                                                    grads,
                                                    output,
                                                    orig_input_shape,
-                                                   strides_formated,
+                                                   strides,
                                                    pads,
                                                    dilations,
                                                    groups=fmap_c,

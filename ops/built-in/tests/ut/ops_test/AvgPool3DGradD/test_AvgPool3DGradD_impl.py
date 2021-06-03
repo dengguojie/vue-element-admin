@@ -31,8 +31,8 @@ def _run_api_end_with_d(
             'format': 'NDC1HWC0',
             'dtype': 'float16'},
     orig_input_shape=(1, 3, 3, 3, 1),
-    ksize=(3, 3, 3),
-    strides=(1, 1, 1),
+    ksize=(1, 3, 3, 3, 1),
+    strides=(1, 1, 1, 1, 1),
     pads=(0, 0, 0, 0, 0, 0),
     ceil_mode=False,
     count_include_pad=False,
@@ -89,8 +89,8 @@ output={'ori_shape': (9, 6, 28, 28, 48),
         }
 
 orig_input_shape=(9, 6, 28, 28, 48)
-ksize=(2, 2, 1)
-strides=(9, 2, 1)
+ksize=(1, 1, 2, 2, 1)
+strides=(1, 1, 9, 2, 1)
 pads=(0, 0, 0, 1, 0, 0)
 
 case2 = _run_api_end_with_d(grads=grads,

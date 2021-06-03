@@ -45,13 +45,13 @@ namespace {
   static const string kOpType = "AvgPool3DGrad";
   static const string kConstantOp = "Constant";
   static const string kTargetOriFormat = "NDHWC";
-  static const string kKsizeFormat = "HWD";
-  static const string kStridesFormat = "HWD";
+  static const string kKsizeFormat = "NDHWC";
+  static const string kStridesFormat = "NDHWC";
   static const string kPadsFormat = "DHW";
   constexpr int64_t kC0{16};
 
-  constexpr int64_t kKsizeDim{3};
-  constexpr int64_t kStridesDim{3};
+  constexpr int64_t kKsizeDim{5};
+  constexpr int64_t kStridesDim{5};
   constexpr int64_t kOriShapeDim{5};
   constexpr int64_t kShapeDim{6};
   constexpr int64_t kPadsDim{6};
@@ -64,9 +64,9 @@ bool IsVectorImpl(const vector<int64_t> &fmap_shape,
   int64_t fd = fmap_shape[1];
   int64_t fh = fmap_shape[2];
   int64_t fw = fmap_shape[3];
-  int64_t kh = ksize[0];
-  int64_t kw = ksize[1];
-  int64_t kd = ksize[2];
+  int64_t kd = ksize[1];
+  int64_t kh = ksize[2];
+  int64_t kw = ksize[3];
 
   if ((kd >= fd + pads[0] + pads[1]) && (kh >= fh + pads[2] + pads[3]) && (kw >= fw + pads[4] + pads[5])) {
     return true;
@@ -131,7 +131,7 @@ void GenFilter(int64_t filter_size, float val, uint16_t *data)
 }
 
 void GenMultiplies(const vector<int64_t> &input_shape, const vector<int64_t> &grads_shape,
-                   const vector<int64_t> &ksize, const vector<int64_t> &strides,\
+                   const vector<int64_t> &ksize, const vector<int64_t> &strides,
                    const vector<int64_t> &pads, bool ceil_mode, bool count_include_pad,
                    int64_t size, uint16_t *data)
 {
@@ -140,21 +140,21 @@ void GenMultiplies(const vector<int64_t> &input_shape, const vector<int64_t> &gr
   int64_t input_len_w = input_shape[3] + pads[4] + pads[5];
   fp16_t tmp16;
   for (int64_t nn = 0, cnt = 0; nn < grads_shape[0]; ++nn) {
-    for (int64_t dd = 0, d_st = 0; dd < grads_shape[1]; ++dd, d_st += strides[2]) {
+    for (int64_t dd = 0, d_st = 0; dd < grads_shape[1]; ++dd, d_st += strides[1]) {
       for (int64_t c1 = 0; c1 < grads_shape[2]; ++c1) {
-        for (int64_t hh = 0, h_st = 0; hh < grads_shape[3]; ++hh, h_st += strides[0]) {
-          for (int64_t ww = 0, w_st = 0; ww < grads_shape[4]; ++ww, w_st += strides[1]) {
+        for (int64_t hh = 0, h_st = 0; hh < grads_shape[3]; ++hh, h_st += strides[2]) {
+          for (int64_t ww = 0, w_st = 0; ww < grads_shape[4]; ++ww, w_st += strides[3]) {
             int64_t valid_d = 0;
             int64_t valid_h = 0;
             int64_t valid_w = 0;
             if (count_include_pad) {
-              valid_d = d_st + ksize[2] <= input_len_d ? ksize[2]: input_len_d - d_st;
-              valid_h = h_st + ksize[0] <= input_len_h ? ksize[0]: input_len_h - h_st;
-              valid_w = w_st + ksize[1] <= input_len_w ? ksize[1]: input_len_w - w_st;
+              valid_d = d_st + ksize[1] <= input_len_d ? ksize[1]: input_len_d - d_st;
+              valid_h = h_st + ksize[2] <= input_len_h ? ksize[2]: input_len_h - h_st;
+              valid_w = w_st + ksize[3] <= input_len_w ? ksize[3]: input_len_w - w_st;
             } else {
-              valid_d = min(d_st + ksize[2], pads[0] + input_shape[1]) - max(pads[0], d_st);
-              valid_h = min(h_st + ksize[0], pads[2] + input_shape[2]) - max(pads[2], h_st);
-              valid_w = min(w_st + ksize[1], pads[4] + input_shape[3]) - max(pads[4], w_st);
+              valid_d = min(d_st + ksize[1], pads[0] + input_shape[1]) - max(pads[0], d_st);
+              valid_h = min(h_st + ksize[2], pads[2] + input_shape[2]) - max(pads[2], h_st);
+              valid_w = min(w_st + ksize[3], pads[4] + input_shape[3]) - max(pads[4], w_st);
             }
 
             float tmp = 1.0 / (valid_d * valid_h * valid_w);
@@ -223,7 +223,7 @@ GeTensorPtr CreateFilterNode(const vector<int64_t> &filter_ori_shape_vec, float 
 }
 
 Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& fusion_nodes) {
-  GE_DUMP(make_shared<ComputeGraph>(graph), "avg_pool3d_grad_fusion_pass_begin.");
+  GE_DUMP(make_shared<ComputeGraph>(graph), "avg_pool3d_grad_fusion_pass_begin");
   ge::NodePtr node_ptr = GetNodeFromMapping("AvgPool3DGrad", mapping);
   Operator op = OpDescUtils::CreateOperatorFromNode(node_ptr);
   FUSION_PASS_CHECK(node_ptr == nullptr,
@@ -283,7 +283,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
                     CUBE_INNER_ERR_REPORT(kOpType.c_str(),
                                             "format should be NDHWC or NCDHW."), return PARAM_INVALID);
   FUSION_PASS_CHECK(ksize.size() != kKsizeDim,
-                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "ksize len should be 3."),
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "ksize len should be 5."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(strides.size() != kStridesDim,
                     CUBE_INNER_ERR_REPORT(kOpType.c_str(), "strides len should be 5."),
@@ -293,8 +293,13 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
                     return PARAM_INVALID);
 
   // format to NDHWC
-  vector<int64_t> orig_input_shape_formated(orig_input_shape.size());
+  vector<int64_t> orig_input_shape_formated(kOriShapeDim);
+  vector<int64_t> ksize_formated(kKsizeDim);
+  vector<int64_t> strides_formated(kStridesDim);
   TransformFormat(orig_input_shape, format_str, orig_input_shape_formated, kTargetOriFormat);
+  TransformFormat(ksize, format_str, ksize_formated, kKsizeFormat);
+  TransformFormat(strides, format_str, strides_formated, kStridesFormat);
+
   GeTensorDesc grads_tensor_desc = op_desc->GetInputDesc("grads");
   string grads_ori_format_str = grads_tensor_desc.GetOriginFormat() == FORMAT_NCDHW? "NCDHW": "NDHWC";
   vector<int64_t> grads_ori_shape_vec = grads_tensor_desc.GetShape().GetDims();
@@ -306,8 +311,8 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
         grads_ori_shape_vec_formated[i] = orig_input_shape_formated[i];
       } else {
         size_t pads_idx = kPadsFormat.find(kTargetOriFormat[i]);
-        size_t ksize_idx = kKsizeFormat.find(kTargetOriFormat[i]);
-        size_t strides_idx = kStridesFormat.find(kTargetOriFormat[i]);
+        size_t ksize_idx = format_str.find(kTargetOriFormat[i]);
+        size_t strides_idx = format_str.find(kTargetOriFormat[i]);
         grads_ori_shape_vec_formated[i] = (orig_input_shape_formated[i] + pads[pads_idx * 2 + 1] +
                                           pads[pads_idx * 2] - ksize[ksize_idx]) / strides[strides_idx] + 1;
       }
@@ -317,7 +322,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   }
 
   // determin whether to enter the vector impl.
-  if (!is_dynamic && IsVectorImpl(orig_input_shape_formated, ksize, pads)) {
+  if (!is_dynamic && IsVectorImpl(orig_input_shape_formated, ksize_formated, pads)) {
     FUSION_PASS_CHECK(grads_ori_shape_vec_formated[1] != 1 ||
                         grads_ori_shape_vec_formated[2] != 1 ||
                         grads_ori_shape_vec_formated[3] != 1,
@@ -332,9 +337,10 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   if (divisor_override != 0 && !is_dynamic) {
     val = 1.0 / divisor_override;
   } else if (IsPadsZero(pads) && !ceil_mode && !is_dynamic) {
-    val = 1.0f / (ksize[0] * ksize[1] * ksize[2]);
+    val = 1.0f / (ksize_formated[1] * ksize_formated[2] * ksize_formated[3]);
   }
-  vector<int64_t> filter_ori_shape_vec = {ksize[2], ksize[0], ksize[1], 1, grads_ori_shape_vec_formated[4]};
+  vector<int64_t> filter_ori_shape_vec = {ksize_formated[1], ksize_formated[2], ksize_formated[3],
+                                          1, grads_ori_shape_vec_formated[4]};
   GeTensorPtr filter_ptr = CreateFilterNode(filter_ori_shape_vec, val);
   FUSION_PASS_CHECK(filter_ptr == nullptr,
                     CUBE_INNER_ERR_REPORT(kOpType.c_str(), "create filter tensor ptr failed."),
@@ -366,8 +372,8 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
     FUSION_PASS_CHECK(multiplies_mem.get() == nullptr,
                       CUBE_INNER_ERR_REPORT(kOpType.c_str(), "multiplies is NULL."),
                       return PARAM_INVALID);
-    GenMultiplies(orig_input_shape_formated, grads_shape_vec, ksize, strides, pads, ceil_mode, count_include_pad,
-                  grads_size, multiplies_mem.get());
+    GenMultiplies(orig_input_shape_formated, grads_shape_vec, ksize_formated, strides_formated, pads,
+                  ceil_mode, count_include_pad, grads_size, multiplies_mem.get());
     GeShape mul_shape(grads_shape_vec);
     GeTensorDesc mul_tensor_desc(mul_shape, FORMAT_NDC1HWC0, DT_FLOAT16);
     mul_tensor_desc.SetOriginShape(GeShape(grads_ori_shape_vec_formated));

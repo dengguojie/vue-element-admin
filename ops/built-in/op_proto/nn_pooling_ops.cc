@@ -39,8 +39,8 @@ namespace ge {
 
 namespace {
   constexpr size_t kAvgPool3DGradOriShapeDim = 5;
-  constexpr size_t kAvgPool3DGradKsizeDim = 3;
-  constexpr size_t kAvgPool3DGradStridesDim = 3;
+  constexpr size_t kAvgPool3DGradKsizeDim = 5;
+  constexpr size_t kAvgPool3DGradStridesDim = 5;
   constexpr size_t kAvgPool3DGradPadsDim = 6;
   constexpr size_t kAvgPool3DGradShapeDim = 6;
   constexpr size_t kAvgPool3DGradDataSlice = 6;
@@ -2573,8 +2573,8 @@ static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<i
   return GRAPH_SUCCESS;
 }
 
-static bool GetAttrsAvgPool3DGrad(ge::Operator& op, int32_t& strd,
-                                  int32_t& strh, int32_t& strw) {
+static bool GetAttrsAvgPool3DGrad(ge::Operator& op, const string& data_format,
+                                  int32_t& strd, int32_t& strh, int32_t& strw) {
   std::vector<int32_t> stride_list;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list)) {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get strides list failed.");
@@ -2593,9 +2593,9 @@ static bool GetAttrsAvgPool3DGrad(ge::Operator& op, int32_t& strd,
     return false;
   }
 
-  strd = stride_list[2];
-  strh = stride_list[0];
-  strw = stride_list[1];
+  strd = stride_list[data_format.find("D")];
+  strh = stride_list[data_format.find("H")];
+  strw = stride_list[data_format.find("W")];
 
   if (strd <= 0 || strh <= 0 || strw <= 0) {
     OP_LOGE(op.GetName().c_str(), "strides should be positive.");
@@ -2747,7 +2747,10 @@ IMPLEMT_INFERFUNC(AvgPool3DGradD, AvgPool3DGradDInferShape) {
   if (c_position == std::string::npos) {
     return GRAPH_FAILED;
   }
-  vector<int64_t> kernel_shape = {ksize.at(2), ksize.at(0), ksize.at(1), 1,
+  int64_t kd = ksize.at(data_format.find("D"));
+  int64_t kh = ksize.at(data_format.find("H"));
+  int64_t kw = ksize.at(data_format.find("W"));
+  vector<int64_t> kernel_shape = {kd, kh, kw, 1,
                                   orig_input_shape.at(c_position)};
 
   TensorDesc filter_desc = op.GetInputDesc("filter");
@@ -2779,7 +2782,17 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
   int32_t strh = 0;
   int32_t strw = 0;
 
-  if (!GetAttrsAvgPool3DGrad(op, strd, strh, strw)) {
+  string data_format;
+  CHECK(op.GetAttr("data_format", data_format) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "get attr data_format failed."),
+        return GRAPH_FAILED);
+  CHECK(data_format != "NDHWC" && data_format != "NCDHW",
+        OP_LOGE(op.GetName().c_str(),
+                "Attr data_format(%s) only support NDHWC or NCDHW.",
+                data_format.c_str()),
+        return GRAPH_FAILED);
+
+  if (!GetAttrsAvgPool3DGrad(op, data_format, strd, strh, strw)) {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get attrs failed.");
     return GRAPH_FAILED;
   }
@@ -2822,9 +2835,9 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
   }
 
   std::vector<int64_t> ksize = GetAttrValue(op, "ksize");
-  int64_t kd = ksize.at(2);
-  int64_t kh = ksize.at(1);
-  int64_t kw = ksize.at(0);
+  int64_t kd = ksize.at(data_format.find("D"));
+  int64_t kh = ksize.at(data_format.find("H"));
+  int64_t kw = ksize.at(data_format.find("W"));
 
   bool needUpdateX = false;
   // cut N
@@ -2965,22 +2978,26 @@ IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
 
 void AvgPool3DGradCalcPads(const vector<int64_t> &fmap_shape,
                            const string &fmap_format,
-                           const vector<int64_t> &ksize_hwd,
-                           const vector<int64_t> &strides_hwd,
-                           vector<int64_t> &pads) {
+                           const vector<int64_t> &ksize,
+                           const vector<int64_t> &strides,
+                           vector<int64_t> &pads,
+                           const string &data_format) {
   int64_t pads_d = 0;
   int64_t pads_h = 0;
   int64_t pads_w = 0;
+  int64_t stride_d = strides[data_format.find("D")];
+  int64_t stride_h = strides[data_format.find("H")];
+  int64_t stride_w = strides[data_format.find("W")];
 
-  pads_d = std::max((fmap_shape[fmap_format.find("D")] + strides_hwd[2] - 1) /
-                     strides_hwd[2] * strides_hwd[2] + ksize_hwd[2] - strides_hwd[2] -
-                     fmap_shape[fmap_format.find("D")], 0L);
-  pads_h = std::max((fmap_shape[fmap_format.find("H")] + strides_hwd[0] - 1) /
-                     strides_hwd[0] * strides_hwd[0] + ksize_hwd[0] - strides_hwd[0] -
-                     fmap_shape[fmap_format.find("H")], 0L);
-  pads_w = std::max((fmap_shape[fmap_format.find("W")] + strides_hwd[1] - 1) /
-                     strides_hwd[1] * strides_hwd[1] + ksize_hwd[1] - strides_hwd[1] -
-                     fmap_shape[fmap_format.find("W")], 0L);
+  pads_d = std::max((fmap_shape[fmap_format.find("D")] + stride_d - 1) /
+                     stride_d * stride_d + ksize[data_format.find("D")] -
+                     stride_d - fmap_shape[fmap_format.find("D")], 0L);
+  pads_h = std::max((fmap_shape[fmap_format.find("H")] + stride_h - 1) /
+                     stride_h * stride_h + ksize[data_format.find("H")] -
+                     stride_h - fmap_shape[fmap_format.find("H")], 0L);
+  pads_w = std::max((fmap_shape[fmap_format.find("W")] + stride_w - 1) /
+                     stride_w * stride_w +ksize[data_format.find("W")] -
+                     stride_w - fmap_shape[fmap_format.find("W")], 0L);
 
   pads[0] = pads_d / 2;
   pads[1] = pads_d - pads[0];
@@ -3059,12 +3076,15 @@ bool SetAvgPool3DGradOutputRange(ge::OpDescPtr &op_desc,
     // use dedy's shape and range calculate dedx's shape and range
     fmap_range[output_format.find("N")] = grads_range[grads_format.find("N")];
     fmap_range[output_format.find("C")] = grads_range[grads_format.find("C")];
-    AvgPool3DGradCalDedxRange(ksize[0], strides[0], padding, grads_range[grads_format.find("H")],
-                              fmap_range[output_format.find("H")]);
-    AvgPool3DGradCalDedxRange(ksize[1], strides[1], padding, grads_range[grads_format.find("W")],
-                              fmap_range[output_format.find("W")]);
-    AvgPool3DGradCalDedxRange(ksize[2], strides[2], padding, grads_range[grads_format.find("D")],
+    AvgPool3DGradCalDedxRange(ksize[output_format.find("D")], strides[output_format.find("D")],
+                              padding, grads_range[grads_format.find("D")],
                               fmap_range[output_format.find("D")]);
+    AvgPool3DGradCalDedxRange(ksize[output_format.find("H")], strides[output_format.find("H")],
+                              padding, grads_range[grads_format.find("H")],
+                              fmap_range[output_format.find("H")]);
+    AvgPool3DGradCalDedxRange(ksize[output_format.find("W")], strides[output_format.find("W")],
+                              padding, grads_range[grads_format.find("W")],
+                              fmap_range[output_format.find("W")]);
   }
   // set output range
   output_desc->SetShapeRange(fmap_range);
@@ -3185,7 +3205,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
                         fmap_shape[orig_shape_format_str.find("H")] != -1 &&
                         fmap_shape[orig_shape_format_str.find("w")] != -1)){
       OP_LOGD(op.GetName().c_str(), "Fix padding attr.");
-      AvgPool3DGradCalcPads(fmap_shape, orig_shape_format_str, ksize, strides, pads);
+      AvgPool3DGradCalcPads(fmap_shape, orig_shape_format_str, ksize, strides, pads, data_format);
     } else {
       pads.assign(kAvgPool3DGradPadsDim, -1);
     }

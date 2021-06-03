@@ -15,6 +15,23 @@
 """
 util_conv3d
 """
+
+def transform_shape_with_exception(src_format, to_format, ori_shape,
+                                   format_white_list, attr_name):
+
+    res = transform_shape_with_format(src_format, to_format, ori_shape,
+                                      format_white_list)
+    if res is None:
+        dict_args = {
+            'errCode': 'E60008',
+            'param_name': attr_name,
+            'expected_format_list': ",".join(format_white_list),
+            'format': src_format if src_format not in format_white_list else to_format
+        }
+        raise RuntimeError(dict_args,
+                           error_manager_util.get_error_message(dict_args))
+    return res
+
 def transform_shape_with_format(src_format, to_format, ori_shape, format_white_list):
     # input format is not expected
     if ((src_format not in format_white_list) or

@@ -44,8 +44,8 @@ TEST_F(AvgPool3DGradProtoTest, BaseCase){
 
     op.UpdateInputDesc("orig_input_shape", tensor_desc_input_size);
 
-    op.SetAttr("ksize", {5, 1, 1});
-    op.SetAttr("strides", {4, 2, 10});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
 
     auto status = op.VerifyAllAttr(true);
@@ -69,8 +69,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicBaseCase1){
       {5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {5}, ge::FORMAT_NDHWC, {{5, 5}}));
 
-    op.SetAttr("ksize", {5, 1, 1});
-    op.SetAttr("strides", {4, 2, 10});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1});
     op.SetAttr("padding", "SAME");
 
     auto status = op.VerifyAllAttr(true);
@@ -91,8 +91,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicBaseCase2){
       {5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {5}, ge::FORMAT_NDHWC, {{5, 5}}));
 
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {4, 4, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 4, 4, 1});
     op.SetAttr("padding", "VALID");
 
     auto status = op.VerifyAllAttr(true);
@@ -113,8 +113,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicBaseCase3){
       {5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {5}, ge::FORMAT_NDHWC, {{5, 5}}));
 
-    op.SetAttr("ksize", {5, 1, 1});
-    op.SetAttr("strides", {4, 2, 10});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1});
     op.SetAttr("padding", "SAME");
 
     auto status = op.VerifyAllAttr(true);
@@ -136,8 +136,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicBaseCase4){
       {16, 12, 12, 12, 1}, ge::FORMAT_NDHWC,
       {{16, 16}, {12, 12}, {12, 12}, {12, 12}, {1,1}}));
 
-    op.SetAttr("ksize", {5, 1, 1});
-    op.SetAttr("strides", {4, 2, 10});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1});
     op.SetAttr("padding", "SAME");
 
     auto status = op.VerifyAllAttr(true);
@@ -158,8 +158,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicKsizeInvalid){
       {5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {5}, ge::FORMAT_NDHWC, {{5, 5}}));
 
-    op.SetAttr("ksize", {5, 1, 1, 1, 1});
-    op.SetAttr("strides", {4, 2, 10});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1});
     op.SetAttr("padding", "SAME");
 
     auto status = op.VerifyAllAttr(true);
@@ -180,8 +180,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicStridesInvalid){
       {5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {5}, ge::FORMAT_NDHWC, {{5, 5}}));
 
-    op.SetAttr("ksize", {5, 1, 1});
-    op.SetAttr("strides", {4, 2, 10, 1, 1});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1, 1});
     op.SetAttr("padding", "SAME");
 
     auto status = op.VerifyAllAttr(true);
@@ -202,8 +202,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicDataFormatInvalid){
       {5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {5}, ge::FORMAT_NDHWC, {{5, 5}}));
 
-    op.SetAttr("ksize", {5, 1, 1});
-    op.SetAttr("strides", {4, 2, 10, 1, 1});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1});
     op.SetAttr("data_format", "NNNNN");
     op.SetAttr("padding", "SAME");
 
@@ -225,8 +225,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicDedyInvalid){
       {5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {5}, ge::FORMAT_NDHWC, {{5, 5}}));
 
-    op.SetAttr("ksize", {5, 1, 1});
-    op.SetAttr("strides", {4, 2, 10});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1});
     op.SetAttr("padding", "SAME");
 
     auto status = op.VerifyAllAttr(true);
@@ -247,8 +247,8 @@ TEST_F(AvgPool3DGradProtoTest, DynamicPaddingInvalid){
       {5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
       {5}, ge::FORMAT_NDHWC, {{5, 5}}));
 
-    op.SetAttr("ksize", {5, 1, 1});
-    op.SetAttr("strides", {4, 2, 10});
+    op.SetAttr("ksize", {1, 1, 5, 1, 1});
+    op.SetAttr("strides", {1, 10 ,4, 2, 1});
     op.SetAttr("padding", "NONE");
 
     auto status = op.VerifyAllAttr(true);

@@ -809,9 +809,9 @@ class Conv3dBpInputTiling(CubeTilingOp):
         # defaut value 16
         k0_size = tbe_platform.CUBE_MKN[self.a_type]["mac"][1]
         k_al1 = self.k_h * self.k_w * k0_size
-        dsl_flag = DynamicConv3dBpInputParams.tiling_info_dict["fused_coefficient"][2]
+        aub_fusion_flag = DynamicConv3dBpInputParams.tiling_info_dict["fused_coefficient"][0]
 
-        if self.stride_h > 1 or self.stride_w > 1 or dsl_flag:
+        if self.stride_h > 1 or self.stride_w > 1 or aub_fusion_flag:
             tiling["AUB_shape"] = [k_al1, 1, 1, 1]
             tiling["BUB_shape"] = None
         else:

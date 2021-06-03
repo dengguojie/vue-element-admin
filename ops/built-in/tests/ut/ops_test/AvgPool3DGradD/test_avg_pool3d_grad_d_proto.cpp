@@ -43,8 +43,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_base1)
       {9, 6, 28, 28, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {9, 2, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);
@@ -79,8 +79,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_base2)
       {9, 6, 28, 28, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {9, 2, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);
@@ -116,8 +116,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_empty_slice_Failed)
       {9, 6, 28, 28, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {9, 2, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);
@@ -154,8 +154,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_data_slice_query_more_than_one)
       {9, 6, 28, 28, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {9, 2, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);
@@ -192,8 +192,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_data_slice_cut_n_infer)
       {9, 6, 28, 28, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {9, 2, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);
@@ -235,8 +235,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_data_slice_cut_d_infer)
       {9, 6, 28, 28, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {9, 2, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);
@@ -278,8 +278,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_data_slice_cut_h_infer)
       {9, 6, 28, 28, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {9, 2, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);
@@ -321,8 +321,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_data_slice_cut_w_infer)
       {9, 6, 28, 28, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {9, 2, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);
@@ -363,8 +363,8 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_data_slice_cut_global)
       {9, 1, 2, 2, 48}, ge::FORMAT_NDHWC));
 
     op.SetAttr("orig_input_shape", {9, 1, 2, 2, 48});
-    op.SetAttr("ksize", {2, 2, 1});
-    op.SetAttr("strides", {1, 1, 1});
+    op.SetAttr("ksize", {1, 1, 2, 2, 1});
+    op.SetAttr("strides", {1, 1, 9, 2, 1});
     op.SetAttr("pads", {0, 0, 0, 2, 0, 0});
     op.SetAttr("ceil_mode", false);
     op.SetAttr("count_include_pad", false);

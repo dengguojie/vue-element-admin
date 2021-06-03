@@ -79,14 +79,6 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
         CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Ksize has an incorrected length."),
         return FAILED);
 
-  vector<int64_t> ksize_hwd;
-  if (data_format == ge::FORMAT_NCDHW) {
-    ksize_hwd = {ksize[3], ksize[4], ksize[2]};
-  } else if (data_format == ge::FORMAT_NDHWC) {
-    ksize_hwd = {ksize[2], ksize[3], ksize[1]};
-  }
-  op.SetAttr("ksize", ksize_hwd);
-
   vector<int64_t> strides;
   CHECK(op.GetAttr("strides", strides) != ge::GRAPH_SUCCESS,
         CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Get strides attr failed."),
@@ -94,13 +86,6 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
   CHECK(strides.size() != kStridesLength,
         CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Strides has an incorrected length."),
         return FAILED);
-  vector<int64_t> strides_hwd(kStridesLength);
-  if (data_format == ge::FORMAT_NCDHW) {
-    strides_hwd = {strides[3], strides[4], strides[2]};
-  } else if (data_format == ge::FORMAT_NDHWC) {
-    strides_hwd = {strides[2], strides[3], strides[1]};
-  }
-  op.SetAttr("strides", strides_hwd);
 
   std::string padding = "";
   CHECK(op.GetAttr("padding", padding) != ge::GRAPH_SUCCESS,

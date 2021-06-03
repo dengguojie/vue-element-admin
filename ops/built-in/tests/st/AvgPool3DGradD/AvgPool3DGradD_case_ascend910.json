@@ -53,12 +53,12 @@
 			{
 				"name": "ksize",
 				"type": "list_int",
-				"value": [1, 1, 1]
+				"value": [1, 1, 1, 1, 1]
 			},
 			{
 				"name": "strides",
 				"type": "list_int",
-				"value": [9, 2, 1]
+				"value": [1, 9, 2, 1, 1]
 			},
 			{
 				"name": "pads",
@@ -141,12 +141,12 @@
 			{
 				"name": "ksize",
 				"type": "list_int",
-				"value": [2, 2, 1]
+				"value": [1, 1, 2, 2, 1]
 			},
 			{
 				"name": "strides",
 				"type": "list_int",
-				"value": [9, 2, 1]
+				"value": [1, 1, 9, 2, 1]
 			},
 			{
 				"name": "pads",

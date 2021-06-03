@@ -231,8 +231,8 @@ REG_OP(AvgPool3DD)
 * @li grads: An NDHWC tensor of type float16, float32, or double.
 
 * @par Attributes:
-* @li ksize: List of ints that has length 3 (HWD). The size of the window for each dimension of the input tensor.
-* @li strides:List of ints that has length 3 (HWD). The stride of the sliding window for each dimension of the input tensor.
+* @li ksize: List of ints that has length 5. The size of the window for each dimension of the input tensor.
+* @li strides:List of ints that has length 5. The stride of the sliding window for each dimension of the input tensor.
 * @li pads: List of ints, implicit zero paddings on both sides of the input.
 * @li ceil_mode: When true, will use ceil instead of floor in the formula to compute the output shape.
 * @li count_include_pad: When true, will include the zero-padding in the averaging calculation.
@@ -272,8 +272,8 @@ REG_OP(AvgPool3DGrad)
 
 * @par Attributes:
 * @li orig_input_shape: List of ints that has length 5. The size of the window for each dimension of the input tensor.
-* @li ksize: List of ints that has length 3 (HWD). The size of the window for each dimension of the input tensor.
-* @li strides:List of ints that has length 3 (HWD). The stride of the sliding window for each dimension of the input tensor.
+* @li ksize: List of ints that has length 5. The size of the window for each dimension of the input tensor.
+* @li strides:List of ints that has length 5. The stride of the sliding window for each dimension of the input tensor.
 * @li pads: List of ints, implicit zero paddings on both sides of the input.
 * @li ceil_mode: When true, will use ceil instead of floor in the formula to compute the output shape.
 * @li count_include_pad: When true, will include the zero-padding in the averaging calculation.
