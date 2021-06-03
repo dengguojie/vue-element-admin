@@ -42,7 +42,7 @@ def get_op_support_info(input_matrix, input_diagonal, input_help, output_matrix,
     format_matrix = input_matrix.get("format").upper()
     format_diagonal = input_diagonal.get("format").upper()
     shape_input_matrix = input_matrix.get("shape")
-    if format_matrix == "ND" and format_diagonal == "ND":
+    if format_matrix in ("ND", "NHWC", "NCHW") and format_diagonal in ("ND", "NHWC", "NCHW"):
         if len(shape_input_matrix) > 2:
             axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]), \
                                 SplitOutput([0, [0]])]]

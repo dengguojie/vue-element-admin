@@ -43,7 +43,7 @@ def get_op_support_info(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     shape_x_len = len(input_x.get("shape"))
     axis = _param_check(shape_x, dtype_x, axis, kernel_name)
     axis = omit_axis_point_to_dim_1(shape_x, axis)
-    if format_x in ("ND", "NC1HWC0"):
+    if format_x in ("ND", "NHWC", "NCHW", "NC1HWC0"):
         axis_split_matrix = []
         for i in range(0, shape_x_len):
             if i not in axis:

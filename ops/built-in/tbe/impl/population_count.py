@@ -49,7 +49,7 @@ THREAD_NUM = 2
 def get_op_support_info(x, y, kernel_name="population_count"):
     format_x = x.get("format").upper()
     shape_x_len = len(x.get("shape"))
-    if format_x == "ND":
+    if format_x in ("ND", "NHWC", "NCHW"):
         axis_split_matrix=[]
         for i in range(0, shape_x_len):
             split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
