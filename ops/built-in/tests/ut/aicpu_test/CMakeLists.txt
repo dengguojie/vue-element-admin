@@ -82,6 +82,8 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/image_warp_offsets.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/masked_select.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/masked_select_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/mul.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/not_equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
@@ -94,6 +96,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
+  ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
   ${CPU_KERNELS_DIR}/utils/eigen_tensor.cc
   ${CPU_KERNELS_DIR}/utils/kernel_util.cc
   ${CPU_KERNELS_DIR}/utils/sparse_group.cc
@@ -176,6 +179,8 @@ set(_cpu_kernels_ut_files
   testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
   testcase/less/src/less_utest.cpp
   testcase/logging/src/logging_utest.cpp
+  testcase/masked_select/src/masked_select_utest.cpp
+  testcase/masked_select_grad/src/masked_select_grad_utest.cpp
   testcase/mul/src/mul_utest.cpp
   testcase/no_op/src/no_op_utest.cpp
   testcase/assign/src/assign_utest.cpp

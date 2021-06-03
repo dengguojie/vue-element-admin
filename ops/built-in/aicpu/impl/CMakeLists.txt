@@ -15,6 +15,8 @@ set(local_kernels_src_files
     kernels/normalized/image_warp_offsets.cc
     kernels/normalized/less.cc
     kernels/normalized/logging.cc
+    kernels/normalized/masked_select.cc
+    kernels/normalized/masked_select_grad.cc
     kernels/normalized/mul.cc
     kernels/normalized/not_equal.cc
     kernels/normalized/random_uniform.cc
@@ -27,6 +29,7 @@ set(local_kernels_src_files
     kernels/normalized/strided_slice_v2.cc
     kernels/normalized/top_k.cc
     utils/bcast.cc
+    utils/broadcast_iterator.cc
     utils/eigen_tensor.cc
     utils/kernel_util.cc
     utils/sparse_group.cc

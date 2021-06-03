@@ -8,6 +8,8 @@ local_normalized_kernels := kernels/normalized/cast_kernels.cc \
                             kernels/normalized/identity.cc \
                             kernels/normalized/less.cc \
                             kernels/normalized/logging.cc \
+                            kernels/normalized/masked_select.cc \
+                            kernels/normalized/masked_select_grad.cc \
                             kernels/normalized/reshape.cc \
                             kernels/normalized/realdiv.cc \
                             kernels/normalized/round.cc \
@@ -15,6 +17,7 @@ local_normalized_kernels := kernels/normalized/cast_kernels.cc \
                             kernels/normalized/strided_slice.cc \
                             kernels/normalized/top_k.cc \
                             utils/bcast.cc \
+                            utils/broadcast_iterator.cc \
                             utils/eigen_tensor.cc \
                             utils/kernel_util.cc \
                             utils/sparse_group.cc \
