@@ -1,9 +1,10 @@
-zyw-ReduceSum-onnx:‘
-H
-datareduced"	ReduceSum*
+zyw-ReduceSum-onnx:¦
+N
+data
+axesreduced"	ReduceSum*
 keepdims *
 noop_with_empty_axes 
-test-modelZ
+test-model*:BaxesZ
 data
 
 

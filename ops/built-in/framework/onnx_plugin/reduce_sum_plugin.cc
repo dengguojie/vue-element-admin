@@ -145,33 +145,22 @@ static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
     OP_LOGE("Reducesum", "get input_num from op failed");
     return FAILED;
   }
-  if (input_num == 1) {
-    int empty_axes = 0;
-    if (op.GetAttr("noop_with_empty_axes", empty_axes) != SUCCESS) {
-      OP_LOGE("ReduceSum", "get attribute noop_with_empty_axes failed");
-      return FAILED;
-    }
+  int empty_axes = 0;
+  if (op.GetAttr("noop_with_empty_axes", empty_axes) != SUCCESS) {
+    OP_LOGE("ReduceSum", "get attribute noop_with_empty_axes failed");
+    return FAILED;
+  }
+  if (input_num == 1 && empty_axes == 0) {
+    std::vector<int64_t> v_axes={};
     std::vector<Operator> inputs{data0};
     std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
-    if (empty_axes == 0) {
-      ge::GeTensorDesc input_x_desc = op_desc->GetInputDesc(0);
-      int64_t input_x_dims = input_x_desc.GetShape().GetDims().size();
-      std::vector<int64_t> v_axes;
-      for (int i = 0; i < input_x_dims; i++) {
-        v_axes.push_back(i);
-      }
-      auto reducesum = op::ReduceSumD()
+    auto reducesum = op::ReduceSumD()
                       .set_input_x(data0)
                       .set_attr_axes(v_axes)
                       .set_attr_keep_dims(flag);
-      output_indexs.emplace_back(reducesum, vector<std::size_t>{0});
-      graph.SetInputs(inputs).SetOutputs(output_indexs);
-    } else {
-      auto reducesum = op::Identity().set_input_x(data0);
-      output_indexs.emplace_back(reducesum, vector<std::size_t>{0});
-      graph.SetInputs(inputs).SetOutputs(output_indexs);
-    }
-  } else if (input_num == 2) {
+    output_indexs.emplace_back(reducesum, vector<std::size_t>{0});
+    graph.SetInputs(inputs).SetOutputs(output_indexs);
+  } else if (input_num == 2 && empty_axes != 0) {
     auto data1 = op::Data("data1").set_attr_index(1);
     auto reducesum13 = op::ReduceSum()
                         .set_input_x(data0)
@@ -182,7 +171,7 @@ static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
     output_indexs.emplace_back(reducesum13, vector<std::size_t>{0});
     graph.SetInputs(inputs).SetOutputs(output_indexs);
   } else {
-    OP_LOGE("ReduceSum", "Input num is error");
+    OP_LOGE("ReduceSum", "Input num or set attr is error");
     return FAILED;
   }
   return SUCCESS;

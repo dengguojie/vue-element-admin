@@ -125,10 +125,11 @@ def negative_axes_keepdims(version_t):
     onnx.checker.check_model(model_def)
     onnx.save(model_def, "./onnx/test_ReduceSum_onnx_case4.onnx")
 
-def reducesum13():
+def reducesum_e_axes1():
     keepdims = 1
+    noop_with_empty_axes = 1
     # Create one input (ValueInfoProto)
-    data = helper.make_tensor_value_info('data', TensorProto.FLOAT, [3, 2, 2])
+    data = helper.make_tensor_value_info('data', TensorProto.FLOAT, [3, 2, 1])
     axes = helper.make_tensor('axes', TensorProto.INT64, [1], [1])
 
     # Create one output (ValueInfoProto)
@@ -136,37 +137,7 @@ def reducesum13():
 
     node = onnx.helper.make_node(
         'ReduceSum',
-        inputs=['data','axes'],
-        outputs=['reduced'],
-        keepdims=keepdims)
-
-    graph_def = helper.make_graph(
-        [node],
-        'test-model',
-        [data],
-        [reduced],
-        [axes],
-    )
-
-    # Create the model (ModelProto)
-    model_def = helper.make_model(graph_def, producer_name='zl-ReduceSum-onnx')
-    model_def.opset_import[0].version = 13
-
-    onnx.checker.check_model(model_def)
-    onnx.save(model_def, "./test_ReduceSum_onnx_v13.onnx")
-
-def reducesum_e_axes1():
-    keepdims = 1
-    noop_with_empty_axes = 1
-    # Create one input (ValueInfoProto)
-    data = helper.make_tensor_value_info('data', TensorProto.FLOAT, [3, 2, 1])
-
-    # Create one output (ValueInfoProto)
-    reduced = helper.make_tensor_value_info('reduced', TensorProto.FLOAT, [1, 1, 1])
-
-    node = onnx.helper.make_node(
-        'ReduceSum',
-        inputs=['data'],
+        inputs=['data', 'axes'],
         outputs=['reduced'],
         keepdims=keepdims,
         noop_with_empty_axes=noop_with_empty_axes)
@@ -176,6 +147,7 @@ def reducesum_e_axes1():
         'test-model',
         [data],
         [reduced],
+        [axes],
     )
 
     # Create the model (ModelProto)
@@ -217,7 +189,6 @@ def reducesum_e_axes0():
 
 
 if __name__ == "__main__":
-    reducesum13()
     reducesum_e_axes0()
     reducesum_e_axes1()
     version_t = 11
