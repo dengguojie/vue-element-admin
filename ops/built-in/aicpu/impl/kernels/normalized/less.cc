@@ -58,7 +58,7 @@ uint32_t LessCpuKernel::Compute(CpuKernelContext &ctx) {
     LESS_COMPUTE_CASE(DT_FLOAT, float, ctx, calc_info)
     LESS_COMPUTE_CASE(DT_DOUBLE, double, ctx, calc_info)
     default:
-      KERNEL_LOG_ERROR("Less kernel data type [%s] not support.", DTypeStr(data_type));
+      KERNEL_LOG_ERROR("Less kernel data type [%s] not support.", DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -86,7 +86,7 @@ uint32_t LessCpuKernel::LessCheckAndBroadCast(CpuKernelContext &ctx,
   DataType input1_type = calc_info.input_1->GetDataType();
   KERNEL_CHECK_FALSE((input0_type == input1_type), KERNEL_STATUS_PARAM_INVALID,
                      "The data type of input0 [%s] need be same with "
-                     "input1 [%s].", DTypeStr(input0_type), DTypeStr(input1_type))
+                     "input1 [%s].", DTypeStr(input0_type).c_str(), DTypeStr(input1_type).c_str())
   KERNEL_LOG_DEBUG(
       "LessCpuKernel[%s], input0: size[%llu];"
       "input1: size[%llu], output: size[%llu].",
