@@ -1558,6 +1558,15 @@ softmax_dfs_tag_list = [  # pylint: disable=invalid-name
         "reduce_sum",
         "elewise_single_rec",
     ],
+    # confusion_softmax_grad fp32
+    [
+        "elewise_binary_sub",
+        "placeholder",
+        "broadcast_for_tensor",
+        "reduce_sum",
+        "elewise_binary_mul",   
+        "placeholder",
+    ],
 
 ]
 
