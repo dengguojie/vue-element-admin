@@ -52,7 +52,7 @@ class BroadcastIterator {
   std::vector<int64_t> input_strides_b_;
   std::vector<int64_t> input_back_strides_a_;
   std::vector<int64_t> input_back_strides_b_;
-  std::array<int64_t, 2> input_pos_{0};
+  std::array<int64_t, 2> input_pos_ = {0, 0};
   int output_dimension_{0};
 };
 
