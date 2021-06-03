@@ -32,5 +32,7 @@ __attribute__((visibility("default"))) int32_t InitCpuConstantFolding(
 __attribute__((visibility("default"))) int32_t CpuConstantFoldingCompute(
     ge::Operator &op, const std::map<std::string, const ge::Tensor> &inputs,
     std::map<std::string, ge::Tensor> outputs);
+
+__attribute__((visibility("default"))) uint32_t RunHostCpuKernel(void *param);
 }
 #endif  // AICPU_FOLDING_FOLDING_

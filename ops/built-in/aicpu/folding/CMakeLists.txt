@@ -10,12 +10,14 @@ set(local_folding_inc_path
     ${METADEF_INCLUDE}/external/graph
     ${GRAPHENGINE_INCLUDE}
     ${CMAKE_CURRENT_SOURCE_DIR}/../context/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../context/common
     ${AICPU_OPP_ENV}/inc
     ${FWKACLLIB_INCLUDE}
 )
 else()
 set(local_folding_inc_path
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../context/common
     ${METADEF_INCLUDE}
     ${METADEF_INCLUDE}/external
     ${METADEF_INCLUDE}/external/graph

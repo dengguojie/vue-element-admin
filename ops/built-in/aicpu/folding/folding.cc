@@ -21,6 +21,7 @@
 #include "cpu_context.h"
 #include "cpu_kernel_register.h"
 #include "cpu_kernel_utils.h"
+#include "device_cpu_kernel.h"
 #include "cpu_node_def.h"
 #include "log.h"
 
@@ -427,5 +428,9 @@ __attribute__((visibility("default"))) int32_t CpuConstantFoldingCompute(
 
   CPU_LOG_INFO("Finish cpu op[%s].", op_type.c_str());
   return 0;
+}
+
+__attribute__((visibility("default"))) uint32_t RunHostCpuKernel(void *param) {
+  return RunCpuKernel(param);
 }
 }
