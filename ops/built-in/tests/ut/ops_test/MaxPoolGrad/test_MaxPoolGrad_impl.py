@@ -1186,6 +1186,14 @@ strides = [1, 60, 39, 1]
 paddings = "VALID"
 data_format = "NHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_123")
+
+ori_shape0 = [96, 54, 15, 154]
+ori_shape1 = [96, 54, 1, 3]
+ksize = [1, 1, 1, 10]
+strides = [1, 1, 49, 63]
+paddings = "SAME"
+data_format = "NCHW"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_124")
 # if __name__ == '__main__':
 #     ut_case.run("Ascend910")
 #     exit(0)

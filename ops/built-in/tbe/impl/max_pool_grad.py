@@ -719,11 +719,13 @@ def max_pool_grad(ori_input,
         forward_ou_shape = list(ori_output.get("shape"))
         grad_shape = list(grad.get("shape"))
         if ori_format == "NCHW":
-            ksize = (ksize[0], ksize[2], 1, ksize[3], ksize[1])
-            strides = (strides[0], strides[2], 1, strides[3], strides[1])
+            ksize = (ksize[0], 1, ksize[2], ksize[3], ksize[1])
+            strides = (strides[0], 1, strides[2], strides[3], strides[1])
         else:
             ksize = (ksize[0], 1, ksize[1], ksize[2], ksize[3])
             strides = (strides[0], 1, strides[1], strides[2], strides[3])
+        _check_param(ori_input, ori_output, grad, [ksize[0], ksize[2], ksize[3], ksize[4]], [
+                     strides[0], strides[2], strides[3], strides[4]], padding, kernel_name)
         forward_in_shape.insert(1, 1)
         forward_ou_shape.insert(1, 1)
         grad_shape.insert(1, 1)
@@ -3853,6 +3855,9 @@ class MaxpoolGradAtomic:
                                       stride_config[0], stride_config[1],
                                       stride_config[2], 0, 0, 0)
                 else:
+                    if self.strides >=16:
+                        error_manager_vector.raise_err_specific_reson(
+                            "maxpoolgrad", "dst_rep_stride exceed limit")
                     tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset],
                                       src2[src2_offset],
                                       remain_max_loop,
