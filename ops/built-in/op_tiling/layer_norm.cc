@@ -232,13 +232,17 @@ std::vector<int32_t> GetUbTilingData(int32_t block_inner, size_t i,
           !IsInVector(reduce_axis, j)) {
         ub_tiling_axis = j + 1;
         ub_factor = input_x[ub_tiling_axis];
+        ub_mul_num = ub_mul_num / axis_num;
       }
       if (IsInVector(reduce_axis, ub_tiling_axis)) {
         is_workspacecase = true;
       } else {
         // check input_x[j]%uf memery overflow
-        for (int32_t uf = ub_factor; uf >= block; uf--) {
-          if (!(input_x[ub_tiling_axis] % uf)) {
+        int32_t min_uf = (block + ub_mul_num - 1) / ub_mul_num;
+        for (int32_t uf = ub_factor; uf >= min_uf; uf--) {
+          int32_t tail_region = input_x[ub_tiling_axis] % uf;
+          if (!(input_x[ub_tiling_axis] % uf) ||
+              (tail_region * ub_mul_num >= block)) {
             ub_factor = uf;
             is_open_multi_core = true;
             break;
@@ -255,17 +259,22 @@ std::vector<int32_t> GetUbTilingData(int32_t block_inner, size_t i,
   }
   x_size *= block_inner;
   if (x_size > max_ub_size) {
+    int32_t split_num = block_inner;
     ub_factor = max_ub_size / (x_size / block_inner);
     if ((ub_factor * ub_mul_num < block) && !IsInVector(reduce_axis, i)) {
       ub_tiling_axis = i + 1;
       ub_factor = input_x[ub_tiling_axis];
+      split_num = input_x[ub_tiling_axis];
+      ub_mul_num = ub_mul_num / axis_num;
     }
     if (IsInVector(reduce_axis, ub_tiling_axis)) {
       is_workspacecase = true;
     } else {
       // check input_x[j]%uf memery overflow
-      for (int32_t uf = ub_factor; uf >= block; uf--) {
-        if (!(block_inner % uf)) {
+      int32_t min_uf = (block + ub_mul_num - 1) / ub_mul_num;
+      for (int32_t uf = ub_factor; uf >= min_uf; uf--) {
+        int32_t tail_region = split_num % uf;
+        if (!(split_num % uf) || (tail_region * ub_mul_num >= block)) {
           ub_factor = uf;
           is_open_multi_core = true;
           break;
