@@ -34,8 +34,7 @@ IMPLEMT_INFERFUNC(SparseSoftmax, SparseSoftmaxInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[indices] rank must be 2, got "
-        "rank[",
-        op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+        "rank[", op.GetInputDesc(0).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -43,8 +42,7 @@ IMPLEMT_INFERFUNC(SparseSoftmax, SparseSoftmaxInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[values] rank must be 1, got "
-        "rank[",
-        op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+        "rank[", op.GetInputDesc(1).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -52,8 +50,7 @@ IMPLEMT_INFERFUNC(SparseSoftmax, SparseSoftmaxInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[shape] rank must be 1, got "
-        "rank[",
-        op.GetInputDesc(2).GetShape().GetDimNum(), "]");
+        "rank[", op.GetInputDesc(2).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -124,8 +121,7 @@ IMPLEMT_INFERFUNC(SparseSliceGrad, SparseSliceGradInfer) {
       GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
         "failed to call WithRank function, input[indices] rank must be 2, got "
-        "rank[",
-        op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+        "rank[", op.GetInputDesc(1).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
@@ -237,16 +233,14 @@ IMPLEMT_INFERFUNC(SparseConcat, SparseConcatInfer) {
     if (WithRank(ind, 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
       err_msg = ConcatString(
           "failed to call WithRank function, input[indices] rank must be 2-D, "
-          "got rank[",
-          ind.GetShape().GetDimNum(), "]");
+          "got rank[", ind.GetShape().GetDimNum(), "]");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     if (WithRank(val, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
       err_msg = ConcatString(
           "failed to call WithRank function, input[values] rank must be 1-D, "
-          "got rank[",
-          val.GetShape().GetDimNum(), "]");
+          "got rank[", val.GetShape().GetDimNum(), "]");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
@@ -254,8 +248,7 @@ IMPLEMT_INFERFUNC(SparseConcat, SparseConcatInfer) {
         GRAPH_SUCCESS) {
       err_msg = ConcatString(
           "failed to call WithRank function, input[shapes] rank must be 1-D, "
-          "got rank[",
-          shape.GetShape().GetDimNum(), "]");
+          "got rank[", shape.GetShape().GetDimNum(), "]");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
@@ -697,8 +690,7 @@ IMPLEMT_INFERFUNC(SparseSparseMaximum, SparseSparseMaximumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x1_indices] rank must be 2-D, "
-        "got rank[",
-        op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(0).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -706,8 +698,7 @@ IMPLEMT_INFERFUNC(SparseSparseMaximum, SparseSparseMaximumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x1_values] rank must be 1-D, "
-        "got rank[",
-        op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(1).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -715,8 +706,7 @@ IMPLEMT_INFERFUNC(SparseSparseMaximum, SparseSparseMaximumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x1_shape] rank must be 1-D, "
-        "got rank[",
-        op.GetInputDesc(2).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(2).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -724,8 +714,7 @@ IMPLEMT_INFERFUNC(SparseSparseMaximum, SparseSparseMaximumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x2_indices] rank must be 2-D, "
-        "got rank[",
-        op.GetInputDesc(3).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(3).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -733,8 +722,7 @@ IMPLEMT_INFERFUNC(SparseSparseMaximum, SparseSparseMaximumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x2_values] rank must be 1-D, "
-        "got rank[",
-        op.GetInputDesc(4).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(4).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -742,8 +730,7 @@ IMPLEMT_INFERFUNC(SparseSparseMaximum, SparseSparseMaximumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x2_shape] rank must be 1-D, "
-        "got rank[",
-        op.GetInputDesc(5).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(5).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -786,8 +773,7 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x1_indices] rank must be 2-D, "
-        "got rank[",
-        op.GetInputDesc(0).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(0).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -795,8 +781,7 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x1_values] rank must be 1-D, "
-        "got rank[",
-        op.GetInputDesc(1).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(1).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -804,8 +789,7 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x1_shape] rank must be 1-D, "
-        "got rank[",
-        op.GetInputDesc(2).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(2).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -813,8 +797,7 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x2_indices] rank must be 2-D, "
-        "got rank[",
-        op.GetInputDesc(3).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(3).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -822,8 +805,7 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x2_values] rank must be 1-D, "
-        "got rank[",
-        op.GetInputDesc(4).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(4).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -831,8 +813,7 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[x2_shape] rank must be 1-D, "
-        "got rank[",
-        op.GetInputDesc(5).GetShape().GetDimNum(), "]");
+        "got rank[", op.GetInputDesc(5).GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -1012,7 +993,8 @@ IMPLEMT_INFERFUNC(SparseSplit, SparseSplitInfer) {
     y_tensor.SetShape(output_indices);
     y_tensor.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("y_indices", i, y_tensor) != GRAPH_SUCCESS) {
-      std::string err_msg = ConcatString("update description for output y_indices[", i, "] failed");
+      std::string err_msg = ConcatString(
+          "update description for output y_indices[", i, "] failed");
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
@@ -1091,8 +1073,7 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseAdd, SparseDenseCwiseAddInfer) {
       GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
         "failed to call WithRank function, input[x1_indices] rank must be 2-D, "
-        "got rank[",
-        x1_indices_tensor.GetShape().GetDimNum(), "]");
+        "got rank[", x1_indices_tensor.GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
@@ -1101,7 +1082,8 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseAdd, SparseDenseCwiseAddInfer) {
   auto vector_shape = Shape({x_dim});
   TensorDesc y_desc = op.GetOutputDesc("y");
   y_desc.SetShape(vector_shape);
-  y_desc.SetDataType(x1_indices_tensor.GetDataType());
+  auto x1_values_tensor = op.get_input_desc_x1_values();
+  y_desc.SetDataType(x1_values_tensor.GetDataType());
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
                                        string("update output[y] desc failed"));
@@ -1119,8 +1101,7 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseDiv, SparseDenseCwiseDivInfer) {
       GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
         "failed to call WithRank function, input[x1_indices] rank must be 2-D, "
-        "got rank[",
-        x1_indices_tensor.GetShape().GetDimNum(), "]");
+        "got rank[", x1_indices_tensor.GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
@@ -1129,7 +1110,8 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseDiv, SparseDenseCwiseDivInfer) {
   auto vector_shape = Shape({x_dim});
   TensorDesc y_desc = op.GetOutputDesc("y");
   y_desc.SetShape(vector_shape);
-  y_desc.SetDataType(x1_indices_tensor.GetDataType());
+  auto x1_values_tensor = op.get_input_desc_x1_values();
+  y_desc.SetDataType(x1_values_tensor.GetDataType());
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
                                        string("update output[y] desc failed"));
@@ -1147,8 +1129,7 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseMul, SparseDenseCwiseMulInfer) {
       GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
         "failed to call WithRank function, input[x1_indices] rank must be 2-D, "
-        "got rank[",
-        x1_indices_tensor.GetShape().GetDimNum(), "]");
+        "got rank[", x1_indices_tensor.GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
@@ -1157,7 +1138,8 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseMul, SparseDenseCwiseMulInfer) {
   auto vector_shape = Shape({x_dim});
   TensorDesc y_desc = op.GetOutputDesc("y");
   y_desc.SetShape(vector_shape);
-  y_desc.SetDataType(x1_indices_tensor.GetDataType());
+  auto x1_values_tensor = op.get_input_desc_x1_values();
+  y_desc.SetDataType(x1_values_tensor.GetDataType());
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
                                        string("update output[y] desc failed"));

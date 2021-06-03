@@ -404,14 +404,15 @@ REGISTER_CUSTOM_OP("ParseSingleSequenceExample")
     .ParseParamsFn(MappingFnParseSingleSequenceExample)
     .ImplyType(ImplyType::AI_CPU);
 
-Status MappingFnCTCBeamSearchDecoder(const google::protobuf::Message* op_src, ge::Operator& op) {
-  map<string, pair<string, string>> value;
-  value["out"] = pair<string, string>("decoded_indices", "top_paths");
-  AutoMappingFnDynamic(op_src, op, value);
-  value["out"] = pair<string, string>("decoded_values", "top_paths");
-  AutoMappingFnDynamic(op_src, op, value);
-  value["out"] = pair<string, string>("decoded_shape", "top_paths");
-  AutoMappingFnDynamic(op_src, op, value);
+Status MappingFnCTCBeamSearchDecoder(const ge::Operator& op_src, ge::Operator& op) {
+  std::vector<DynamicInputOutputInfo> value;
+  DynamicInputOutputInfo output(kOutput, "decoded_indices", 15, "top_paths", 9);
+  value.push_back(output);
+  DynamicInputOutputInfo output1(kOutput, "decoded_values", 14, "top_paths", 9);
+  value.push_back(output1);
+  DynamicInputOutputInfo output2(kOutput, "decoded_shape", 13, "top_paths", 9);
+  value.push_back(output2);
+  AutoMappingByOpFnDynamic(op_src, op, value);
   return SUCCESS;
 }
 
@@ -419,7 +420,7 @@ Status MappingFnCTCBeamSearchDecoder(const google::protobuf::Message* op_src, ge
 REGISTER_CUSTOM_OP("CTCBeamSearchDecoder")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("CTCBeamSearchDecoder")
-    .ParseParamsFn(MappingFnCTCBeamSearchDecoder)
+    .ParseParamsByOperatorFn(MappingFnCTCBeamSearchDecoder)
     .ImplyType(ImplyType::AI_CPU);
 
 }  // namespace domi
