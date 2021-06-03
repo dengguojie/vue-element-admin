@@ -528,7 +528,7 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
         overlap_l1_shape = (kernel_h - stride_h, (fmap_w + pad_left + pad_right)*C0)
         each_process_wi = max(kernel_w, stride_w)
         ori_l1_shape = (kernel_h, each_process_wi, C0)
-        if _cal_shape_ele(overlap_l1_shape) * fp32_data_size + _cal_shape_ele(ori_input_shape) * fp16_data_size > SIZE_L1:
+        if _cal_shape_ele(overlap_l1_shape) * fp32_data_size + _cal_shape_ele(ori_l1_shape) * fp16_data_size > SIZE_L1:
             atomic_flag = True
             return atomic_flag
 
