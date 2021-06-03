@@ -423,7 +423,10 @@ class NormNormalSchedule:
                     if hasattr(axis_dom.min, "value") and hasattr(axis_dom.extent, "value"):
                         if axis_dom.min.value == 0 and axis_dom.extent.value == 1:
                             emit_insn_axis = single_tensor.op.reduce_axis[0]
-            self._emit_insn_map[single_tensor] = [emit_insn_axis, _get_insn(single_tensor)]
+                self._emit_insn_map[single_tensor] = [emit_insn_axis, _get_insn(single_tensor),
+                                                      {"storage_bound": self._graph_info.available_ub_size}]
+            else:
+                self._emit_insn_map[single_tensor] = [emit_insn_axis, _get_insn(single_tensor)]
 
         for source, target in self._cache_write_buffer_and_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], _get_insn(target)]
@@ -1045,7 +1048,8 @@ class NormWorkspaceSchedule:
                     self._emit_insn_map[workspace_tensor].append({"no_overlap": 0})
 
                 self._emit_insn_map[workspace_ub_tensor] =\
-                    [self._ub_split_result[workspace_ub_tensor]["inner_itervar"], _get_insn(workspace_tensor)]
+                    [self._ub_split_result[workspace_ub_tensor]["inner_itervar"], _get_insn(workspace_tensor),
+                     {"storage_bound": self._graph_info.workspace_available_min_ub_size}]
 
             for reread_workspace_ub_tensor in reread_workspace_ub_tensor_map.keys():
                 self._emit_insn_map[reread_workspace_ub_tensor] =\
