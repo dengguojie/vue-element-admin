@@ -61,7 +61,7 @@ def _test_get_op_support_info(test_arg):
         get_op_support_info(*params)
 
 print("adding Conv2D op testcases")
-for test_case  in tc.conv2D_ut_testcase:
+for test_case in tc.conv2D_ut_testcase:
     ut_case.add_case(test_case[0], gen_trans_data_case(*test_case[1:]))
 
 print("adding Connv2D op support info of slice testcase")

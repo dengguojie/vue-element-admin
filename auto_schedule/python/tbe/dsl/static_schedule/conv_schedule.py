@@ -6150,12 +6150,15 @@ class AutoScheduleOp:
                 return write_select_flag
             return False
 
-        if ConvParam.fusion_para["lxfusion_enable_flag"]:
+        if ConvParam.fusion_para["lxfusion_enable_flag"] and get_buffer_manager().get_tensor_list():
             buffer_manager = get_buffer_manager()
             tensor_list = buffer_manager.get_tensor_list()
 
             if ConvParam.dequant_doubleout_flag:
-                tensor_list.insert(-1, ConvParam.tensor_map["res_out_fp16"])
+                if tensor_list[-2] == ConvParam.tensor_map["res_out_fp16"].op.input_tensors[0]:
+                    tensor_list[-2] = ConvParam.tensor_map["res_out_fp16"]
+                else:
+                    tensor_list.insert(-1, ConvParam.tensor_map["res_out_fp16"])
                 buffer_manager.set_tensor_list(tensor_list)
 
                 res_fp16_scope = _fetch_tensor_scope(ConvParam.tensor_map["res_out_fp16"], buffer_manager)

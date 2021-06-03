@@ -491,15 +491,7 @@ def test_conv2d_v200_lxfusion(test_arg):
                 rb_list[out_s8_index] = rb_out_s8
 
             buffer_manager.set_remapped_buffers(rb_list)
-
-            if dataflow_v200 == 2:
-                if bias_flag:
-                    set_tensor_list = [fm, filter_w, bias_tensor, vdeq, fm2, out_quant]
-                else:
-                    set_tensor_list = [fm, filter_w, vdeq, fm2, out_quant]
-                buffer_manager.set_tensor_list(set_tensor_list)
-            else:
-                buffer_manager.set_tensor_list(tensor_list)
+            buffer_manager.set_tensor_list(tensor_list)
 
             sch = generic.auto_schedule(out)
 
