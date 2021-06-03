@@ -3764,55 +3764,30 @@ VERIFY_FUNC_REG(CumulativeLogsumexpD, CumulativeLogsumexpDVerify);
 // ----------------CumulativeLogsumexpD END-------------------
 
 // ----------------InplaceIndexAdd Begin-------------------
-bool InferShapeAndTypeInplaceIndexAdd(Operator& op, const string& input_name1,
-                                      const string& output_name) {
-  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+IMPLEMT_INFERFUNC(InplaceIndexAdd, InplaceIndexAddInferShape) {
+  auto tensor_var = op.GetInputDesc("var");
+  auto var_type = tensor_var.GetDataType();
+  auto tensor_indices = op.GetInputDesc("indices");
+  auto indices_type = tensor_indices.GetDataType();
+  auto tensor_updates = op.GetInputDesc("updates");
+  auto updates_type = tensor_updates.GetDataType();
 
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
-
-  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
-  std::vector<int64_t> dims_x = shape_x.GetDims();
-
-  ge::Shape output_shape = ge::Shape(dims_x);
-
-  v_output_desc.SetShape(output_shape);
-  v_output_desc.SetDataType(input_dtype);
-  v_output_desc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, v_output_desc);
-
-  return true;
-}
-
-IMPLEMT_VERIFIER(InplaceIndexAdd, InplaceIndexAddVerify) {
-  DataType var_dtype = op.GetInputDesc("var").GetDataType();
-  DataType indices_dtype = op.GetInputDesc("indices").GetDataType();
-  DataType updates_dtype = op.GetInputDesc("updates").GetDataType();
-  DataType var_out_dtype = op.GetInputDesc("var").GetDataType();
-  if (var_dtype != var_out_dtype || var_dtype != updates_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "var dtype is not equal to updates dtype, please check!");
+  if (var_type != updates_type) {
+    OP_LOGE(op.GetName().c_str(), "var'dtype is not same as updates'dtype.");
     return GRAPH_FAILED;
   }
-  if (indices_dtype != DT_INT32) {
+  if (indices_type != DT_INT32) {
     OP_LOGE(op.GetName().c_str(), "indices dtype is not int32, please check!");
     return GRAPH_FAILED;
   }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(InplaceIndexAddInferShape) {
-  if (InferShapeAndTypeInplaceIndexAdd(op, "var", "var")) {
+  if (OneInOneOutDynamicInfer(op, "var", {"var"})) {
     return GRAPH_SUCCESS;
   }
-  OP_LOGE(op.GetName().c_str(), "infer shape failed!");
+
+  OP_LOGE(op.GetName().c_str(), "shape of var_out is not same as shape of var.");
   return GRAPH_FAILED;
 }
-
-// Registered inferfunction
-COMMON_INFER_FUNC_REG(InplaceIndexAdd, InplaceIndexAddInferShape);
-// Registered verify function
-VERIFY_FUNC_REG(InplaceIndexAdd, InplaceIndexAddVerify);
+INFER_FUNC_REG(InplaceIndexAdd, InplaceIndexAddInferShape);
 // ----------------InplaceIndexAdd END---------------------
 
 // ----------------MaskedFill Begin-------------------

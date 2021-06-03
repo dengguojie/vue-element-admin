@@ -330,3 +330,4 @@ from .acts_ulq_input_grad import acts_ulq_input_grad
 from .act_ulq_clamp_max_grad import act_ulq_clamp_max_grad
 from .act_ulq_clamp_min_grad import act_ulq_clamp_min_grad
 from .wts_arq import wts_arq
+from .inplace_index_add import inplace_index_add
