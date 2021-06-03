@@ -153,7 +153,7 @@ void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Dequant node not matched");
     return;
   } else {
-    auto deq_scale = deconv_nodes[0]->GetOpDesc()->MutableInputDesc("deq_scale");
+    auto deq_scale = dequant_nodes[0]->GetOpDesc()->MutableInputDesc("deq_scale");
     vector<int64_t> scalar = {1};
     cut_cout_flag = deq_scale != nullptr && deq_scale->GetOriginShape().GetDims() != scalar;
   }
@@ -195,9 +195,11 @@ void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std
       continue;
     }
     if (doubleout_flag) {
+      vector<int64_t> out_dim = output_split_infos[0].GetAxis();
       OutputSplitInfo double_output_split_info;
       double_output_split_info.Initialize();
       double_output_split_info.SetIndex(1);
+      double_output_split_info.SetAxis(out_dim);
       (*it).AddOutputSplitInfo(double_output_split_info);
     }
     if (output_split_infos[0].GetAxis()[0] == 1) {

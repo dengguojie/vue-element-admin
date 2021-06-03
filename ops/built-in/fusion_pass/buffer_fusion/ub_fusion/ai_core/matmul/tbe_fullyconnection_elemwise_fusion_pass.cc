@@ -105,7 +105,8 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   }
 
   bool tensor_mode = false;
-  if (dequantNodes.size() > 0) {
+  if (!dequantNodes.empty()) {
+    pre += 1;
     auto deq_scale = dequantNodes[0]->GetOpDesc()->MutableInputDesc("deq_scale");
     vector<int64_t> scalar = {1};
     tensor_mode = deq_scale != nullptr && deq_scale->GetOriginShape().GetDims() != scalar;
@@ -114,7 +115,6 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   if (!tensor_mode) {
     DelSplitInfoByOutputAxis(split_maps, n_axis);
   }
-  pre += 1;
 
   if (elemWiseNodes.empty()) {
     elemWiseNodes = reluNodes;
