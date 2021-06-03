@@ -517,10 +517,9 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 aub_h = (aub_tiling_m + self.stride_h - 1) // self.stride_h
                 aub_db = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
                 aub_bit = BIT_RATIO_DICT.get(self.a_type)
-                aub_size = aub_co1 * aub_h * tiling_mess["A_shape"][3] * utils.FP16_K * aub_db * aub_bit
                 aub_filling_size = aub_co1 * aub_tiling_m * aub_w * utils.FP16_K * aub_db * aub_bit
                 cub_size *= (1 + fused_double_operand_num)
-                if (cub_size + aub_size + aub_filling_size + bias_size) > ub_size_limit:
+                if (cub_size + aub_filling_size + bias_size) > ub_size_limit:
                     return False
             elif self.k_h == 1 and self.k_w == 1:
                 dedy_h, dedy_w = tiling_mess.get("A_shape")[2:4]

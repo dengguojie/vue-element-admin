@@ -58,7 +58,7 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_filter_case2",
                                         "success"))
 
-#w_one_case dynamic_batch SAME NCHW
+# w_one_case dynamic_batch SAME NCHW
 ut_case.add_case(
     "all",
     gen_dynamic_conv2d_backprop_filter_case((64, 3, 3, 3), (-1, 64, 3, 1), (-1, 3, 3, 1),
@@ -69,6 +69,19 @@ ut_case.add_case(
                                         [(128, 158), (3, 3), (3, 3), (1, 1)],
                                         (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case_w_one_case",
+                                        "success"))
+
+# w_one_case range None
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case((64, 3, 3, 3), (-1, 64, 3, 1), (-1, 3, 3, 1),
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(64, 64), (3, 3), (3, 3), (3, 3)],
+                                        [(128, None), (64, 64), (3, 3), (1, 1)],
+                                        [(128, None), (3, 3), (3, 3), (1, 1)],
+                                        (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case_w_one_case_range_none",
                                         "success"))
 
 # dynamic_rank

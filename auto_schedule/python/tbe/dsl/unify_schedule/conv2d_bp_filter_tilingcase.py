@@ -686,6 +686,7 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             'dynamic_al1_attach': 'dw_cc',
             'dynamic_bl1_attach': 'dw_cc',
             'bl1_hw_allin_flag': 'dw_cc',
+            'w_one_flag': 1,
         }
 
     def _get_calc_info(self):
