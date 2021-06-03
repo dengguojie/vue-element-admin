@@ -31,12 +31,12 @@ def gen_softmaxv2_case(dynamic_input_shapes, ori_input_shapes, dtype, axis,
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
                  gen_softmaxv2_case((-1, -1, -1),
                                     (16, 16, 16),
                                     "float16", -1, "dynamic_softmax_v2_1", "success"))
 
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
                  gen_softmaxv2_case((-1, -1, -1),
                                     (16, 16, 16),
                                     "float32", -1, "dynamic_softmax_v2_3", "success"))
