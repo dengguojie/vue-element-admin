@@ -56,15 +56,6 @@ case4 = {"params": [{"shape": (1, 512, 1024), "dtype": "float32", "format": "ND"
          "expect": RuntimeError,
          "support_expect": True}
 
-case5 = {"params": [{"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},  # x
-                    {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND",
-                     "ori_shape": (1, 512, 1024), "ori_format": "ND"},
-                    (), (0, 0, 0), (1, 1, 1024), (1, 1, 1), 0, 0, 0, 0, 0,
-                    ],
-         "case_name": "StridedSliceGradD_5",
-         "expect": RuntimeError,
-         "support_expect": True}
-
 case6 = {"params": [{"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},  # x
                     {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND",
                      "ori_shape": (1, 512, 1024), "ori_format": "ND"},
@@ -116,16 +107,47 @@ case10 = {"params": [{"shape": (12, 512, 512, 1), "dtype": "float32", "format": 
           "support_expect": True}
 
 
+def test_check_supported(test_arg):
+    from impl.strided_slice_grad_d import check_supported
+    result = check_supported({"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND", "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                             {"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND",
+                              "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                             (12, 512, 512, 3), [], [], [],
+                             0, 0, 0, 0, 0)
+    assert result[0]
+
+    result = check_supported({"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND", "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                             {"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND",
+                              "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                             (12, 512, 512, 3), [], [], [],
+                             0, 0, 0, 2, 4)
+    assert result[0]
+
+    result = check_supported({"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND", "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                             {"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND",
+                              "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                             (12, 512, 512, 3), [], [], [],
+                             0, 0, 0, 0, 3)
+    assert not result[0]
+
+    result = check_supported({"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND", "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                             {"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND",
+                              "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                             (), [], [], [],
+                             0, 0, 0, 0, 0)
+    assert not result[0]
+
+
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case2)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case3)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case4)
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case5)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case6)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case7)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case8)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case9)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case10)
+ut_case.add_cust_test_func(test_func=test_check_supported)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])

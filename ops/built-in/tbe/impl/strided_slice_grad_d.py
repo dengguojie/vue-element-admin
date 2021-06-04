@@ -37,6 +37,36 @@ VNCHW_ELEMENT_FP16 = VNCHW_BLOCK_SIZE // 2
 TRANS_MIN_BLKS = 16
 
 
+# pylint: disable=unused-argument
+# pylint: disable=consider-using-in,unnecessary-pass
+def check_supported(dy, output, shape, begin, end, strides, begin_mask=0,
+                    end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
+                    kernel_name="strided_slice_grad_d"):
+    """
+    verify the types of cast supported by tbe
+    """
+    check_result = True, ""
+
+    supported_new_axis_mask = {0, 2, 4}
+    supported_shrink_axis_mask = {0, 1, 2, 4}
+
+    if new_axis_mask not in supported_new_axis_mask:
+        reason = "the new_axis_mask is not supported, new_axis_mask:%s, supported_new_axis_mask:%s" \
+                 % (new_axis_mask, supported_new_axis_mask)
+        check_result = False, reason
+
+    if shrink_axis_mask not in supported_shrink_axis_mask:
+        reason = "the shrink_axis_mask is not supported, shrink_axis_mask:%s, supported_shrink_axis_mask:%s" \
+                 % (shrink_axis_mask, supported_shrink_axis_mask)
+        check_result = False, reason
+
+    if len(shape) == 0:
+        reason = "should not be empty shape, shape:%s" % str(shape)
+        check_result = False, reason
+
+    return check_result
+
+
 # pylint: disable=invalid-name, too-many-instance-attributes
 # pylint: disable=too-many-arguments, useless-object-inheritance
 # pylint: disable=too-many-locals, too-many-statements
@@ -963,29 +993,6 @@ def _check_shape_parameter(shape_x, shape_dy, begin, end, strides):
                                                         "1", str(strides_i))
 
 
-def _check_mask(input_mask, is_shrink=False):
-    """
-    Check whether the value of the input mask is 0.
-
-    Parameters
-    ----------
-    input_mask: int.
-        value of the input mask.
-
-    Returns
-    -------
-    None.
-    """
-    if is_shrink:
-        supported_shrink_masks = {0, 1, 2, 4}
-        if input_mask != 0 and input_mask not in supported_shrink_masks:
-            error_manager.raise_err_input_value_invalid("strided_slice_grad_d", "shrink_axis_mask",
-                                                        str(supported_shrink_masks), str(input_mask))
-    elif input_mask != 0:
-        error_manager.raise_err_specific_reson("strided_slice_grad_d",
-                                               "new_axis_mask only support 0 currently")
-
-
 def _check_is_not_aligned_shape(shape, begin, ellipsis_mask, shrink_axis_mask):
     """
     Check whether the shape of begin and shape is not equal,
@@ -1074,12 +1081,6 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
     para_check.check_shape(shape, param_name="shape")
     para_check.check_shape(shape_dy, param_name="dy")
 
-    _check_mask(new_axis_mask)
-    _check_mask(shrink_axis_mask, True)
-
-    if len(shape) == 0:
-        error_manager.raise_err_check_params_rules("strided_slice_grad_d", "should not be empty", "shape", shape)
-
     is_not_aligned, ori_begin = _check_is_not_aligned_shape(shape, begin,
                                                             ellipsis_mask,
                                                             shrink_axis_mask)
@@ -1088,10 +1089,10 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
     begin = list(begin)
     end = list(end)
     strides = list(strides)
-    _, begin_shape, end_shape, stride_shape = strided_slice_d._init_parameter(shape, begin, end,
-                                                                              strides, begin_mask, end_mask,
-                                                                              ellipsis_mask, new_axis_mask,
-                                                                              shrink_axis_mask)
+    shape, begin_shape, end_shape, stride_shape = strided_slice_d._init_parameter(shape, begin, end,
+                                                                                  strides, begin_mask, end_mask,
+                                                                                  ellipsis_mask, new_axis_mask,
+                                                                                  shrink_axis_mask)
     shape_dy = list(map(lambda x, y, z: math.ceil((x - y) / (1 if z == 0 else z)),
                         end_shape, begin_shape, stride_shape))
     _check_shape_parameter(shape, shape_dy, begin_shape, end_shape, stride_shape)
