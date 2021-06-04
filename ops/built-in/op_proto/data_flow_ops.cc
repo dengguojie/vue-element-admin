@@ -461,7 +461,7 @@ IMPLEMT_INFERFUNC(MapIncompleteSize, MapIncompleteSizeInfer) {
 INFER_FUNC_REG(MapIncompleteSize, MapIncompleteSizeInfer);
 
 IMPLEMT_INFERFUNC(Unstage, UnstageInfer) {
-  Shape unknown_shape(UNKNOWN_SHAPE);
+  Shape unknown_shape(UNKNOWN_RANK);
 
   std::vector<DataType> dtypes;
   if (op.GetAttr("dtypes", dtypes) == GRAPH_FAILED) {
