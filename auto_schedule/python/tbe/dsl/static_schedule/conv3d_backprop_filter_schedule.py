@@ -681,6 +681,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 mid = tvm.floordiv(batch_insn_o_size1, 2)
                 mid2 = tvm.floordiv(mid, 2)
                 mid3 = mid + mid2
+                mid4 = tvm.floordiv(mid, 3)
                 ddr_condition_left = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
                     batch_dim_npart) * batch_dim_factor + batch_insn_o_size1 - 1
@@ -693,6 +694,9 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 ddr_condition_mid3 = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
                     batch_dim_npart) * batch_dim_factor + mid3
+                ddr_condition_mid4 = (
+                    (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
+                    batch_dim_npart) * batch_dim_factor + mid4
                 ddr_condition_right = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
                     batch_dim_npart) * batch_dim_factor
@@ -707,6 +711,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                     (ddr_condition_mid2 % depth_grads) * stride_depth +
                                     dk_c1_axis // c1_fmap_info >= pad_front,
                                     (ddr_condition_mid3 % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info >= pad_front,
+                                    (ddr_condition_mid4 % depth_grads) * stride_depth +
                                     dk_c1_axis // c1_fmap_info >= pad_front),
                             tvm.any((ddr_condition_right % depth_grads) * stride_depth +
                                     dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
@@ -717,6 +723,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                     (ddr_condition_mid2 % depth_grads) * stride_depth +
                                     dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
                                     (ddr_condition_mid3 % depth_grads) * stride_depth +
+                                    dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
+                                    (ddr_condition_mid4 % depth_grads) * stride_depth +
                                     dk_c1_axis // c1_fmap_info < pad_front + depth_fmap))
                 )
 

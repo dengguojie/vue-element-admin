@@ -165,6 +165,20 @@ strides=(1,1,1,1,1)
 case21 = _run_api_end_with_d(x_dict=x_dict, out_backprop=out_backprop,
                              y_input=y_input, filter_size=filter_size, pads=pads, strides=strides)
 
+x_dict={'ori_shape': (4,5,49,14,964), 'shape': (4,5,49,14,964),
+              'ori_format': 'NDHWC', 'format': 'NDHWC',
+              'dtype': 'float16'}
+out_backprop={'ori_shape': (4,2,9,2,185), 'shape': (4,2,9,2,185),
+            'ori_format': 'NDHWC', 'format': 'NDHWC',
+            'dtype': 'float16'}
+y_input = {'ori_shape': (2, 2, 6, 964, 185), 'shape': (2, 2, 6, 964, 185),
+            'ori_format': 'DHWCN', 'format': 'DHWCN',
+            'dtype': 'float32'}
+filter_size = (2, 2, 6, 964, 185)
+pads=(0, 0, 8, 9, 5, 5)
+strides=(1,1,17,3,1)
+case22 = _run_api_end_with_d(x_dict=x_dict, out_backprop=out_backprop,
+                             y_input=y_input, filter_size=filter_size, pads=pads, strides=strides)
 # Add test Cases
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case1, "success", "case1", True))
@@ -228,6 +242,8 @@ ut_case.add_case(["Ascend910", "Ascend310"],
 
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case21, "success", "case20", True))
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case22, "success", "case20", True))
 if __name__ == '__main__':
     ut_case.run()
     exit(0)
