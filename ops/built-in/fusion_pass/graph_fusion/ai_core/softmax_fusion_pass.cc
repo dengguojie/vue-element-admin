@@ -41,7 +41,7 @@ static const vector<vector<int>> SHAPE = {{8732, 21}, {8732, 81}};
 bool CheckISUsePattern(int inputH, int inputW, int inputC) {
   for (int i = 0; i < (int)SHAPE.size(); i++) {
     if (SHAPE[i][0] == inputW && SHAPE[i][1] == inputC) {
-      if (i == 1 && inputH < 2) {
+      if (i == 1 && inputH < 8) {
         return false;
       }
       return true;
