@@ -485,7 +485,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(runInfo.tiling_key, 671000);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "20 304 512 989855744 2 16 20 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "20 304 512 989855744 2 16 19 0 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
@@ -558,7 +558,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 784);
   EXPECT_EQ(runInfo.tiling_key, 671000);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "49 304 512 989855744 49 16 20 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "49 304 512 989855744 49 16 19 0 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
@@ -705,4 +705,77 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
   EXPECT_EQ(runInfo.block_dim, 1);
   EXPECT_EQ(runInfo.tiling_key, 270000);
   EXPECT_EQ(to_string(runInfo.tiling_data), "352 4 512 989855744 352 1 5 0 ");
+}
+
+TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
+  using namespace optiling;
+  std::string op_name = "LayerNorm";
+  auto iter =
+      optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter !=
+              optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  std::string compileInfo = R"({
+                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "_custom_vars": {
+                        "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "_pattern": "LayerNorm", 
+                        "_vars": {
+                        "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "common_info": [32, 1, 16, 0],
+                        "core_num": 32,
+                        "max_ub_size_normal_fp16": 10240,
+                        "max_ub_size_normal_fp32": 10240,
+                        "pattern_info": [27],
+                        "reduce_axis": [2],
+                        "reduce_mean_cof_dtype":"float32",
+                        "ub_info":[16384]})";
+
+  std::vector<std::vector<int64_t>> inputs{{32, 121, 768}, {768}, {768}};
+
+  std::vector<std::vector<int64_t>> outputs{
+      {32, 121, 768}, {32, 121, 1}, {32, 121, 768}};
+
+  std::vector<std::string> input_types{"float16", "float16", "float16"};
+  std::vector<std::string> output_types{"float16", "float16", "float16"};
+  std::string data_format = "NCHWC";
+
+  TeOpParas opParas;
+  for (size_t i = 0; i < inputs.size(); i++) {
+    TeOpTensor tensor_input;
+    TeOpTensorArg tensor_arg;
+    tensor_input.shape = inputs[i];
+    tensor_input.dtype = input_types[i];
+    tensor_input.format = data_format;
+    tensor_arg.tensor.push_back(tensor_input);
+    tensor_arg.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensor_arg);
+  }
+  for (size_t i = 0; i < outputs.size(); i++) {
+    TeOpTensor tensor_output;
+    TeOpTensorArg tensor_arg;
+    tensor_output.shape = outputs[i];
+    tensor_output.dtype = output_types[i];
+    tensor_output.format = data_format;
+    tensor_arg.tensor.push_back(tensor_output);
+    tensor_arg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensor_arg);
+  }
+  opParas.op_type = op_name;
+
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "LayerNorm_tiling_test_10";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.block_dim, 32);
+  EXPECT_EQ(runInfo.tiling_key, 1940000);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "32 121 768 984263339 1 1 768 1 ");
 }

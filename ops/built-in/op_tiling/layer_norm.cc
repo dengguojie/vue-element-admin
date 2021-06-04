@@ -226,13 +226,15 @@ std::vector<int32_t> GetUbTilingData(int32_t block_inner, size_t i,
     }
     if (x_size > max_ub_size) {
       ub_tiling_axis = j;
+      ub_mul_num = ub_mul_num / axis_num;
 
       ub_factor = max_ub_size / (x_size / input_x[j]);
-      if ((ub_factor * ub_mul_num / axis_num < block) &&
-          !IsInVector(reduce_axis, j)) {
+      if ((ub_factor * ub_mul_num < block) && !IsInVector(reduce_axis, j)) {
         ub_tiling_axis = j + 1;
         ub_factor = input_x[ub_tiling_axis];
-        ub_mul_num = ub_mul_num / axis_num;
+        if (!IsInVector(reduce_axis, ub_tiling_axis)) {
+          ub_mul_num = ub_mul_num / ub_factor;
+        }
       }
       if (IsInVector(reduce_axis, ub_tiling_axis)) {
         is_workspacecase = true;
