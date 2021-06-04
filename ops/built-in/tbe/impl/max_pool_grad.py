@@ -398,12 +398,12 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
         strides = (strides[0], strides[2], strides[3], strides[1])
     if len(ori_input_shape) == 5:
         _, _, fmap_h, fmap_w, _ = ori_input_shape
-        ori_input_shape = ori_input_shape[0], (ori_input_shape[3] + 15) // 16, fmap_h, fmap_w, 16
     elif data_format == "NHWC":
         _, fmap_h, fmap_w, _ = ori_input_shape
-        ori_input_shape = ori_input_shape[0], (ori_input_shape[1] + 15) // 16, fmap_h, fmap_w, 16
+        ori_input_shape = ori_input_shape[0], (ori_input_shape[3] + 15) // 16, fmap_h, fmap_w, 16
     else:
         _, _, fmap_h, fmap_w = ori_input_shape
+        ori_input_shape = ori_input_shape[0], (ori_input_shape[1] + 15) // 16, fmap_h, fmap_w, 16
     _, kernel_h, kernel_w, _ = ksize
     _, stride_h, stride_w, _ = strides
     if padding == 'VALID':
@@ -3855,7 +3855,7 @@ class MaxpoolGradAtomic:
                                       stride_config[0], stride_config[1],
                                       stride_config[2], 0, 0, 0)
                 else:
-                    if self.strides >=16:
+                    if self.sw >= 16:
                         error_manager_vector.raise_err_specific_reson(
                             "maxpoolgrad", "dst_rep_stride exceed limit")
                     tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset],

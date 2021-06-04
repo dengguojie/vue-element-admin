@@ -31,8 +31,17 @@ def test_op_select_format(test_arg):
     padding="VALID"
     data_format="NHWC"
     x1_dy={"shape":(1,-1,-1,16),"format":"NHWC","dtype":"float16","ori_shape":(1,10,10,16),"ori_format":"NHWC"}
+    x1_1={"shape":(1,16,10,10),"format":"NCHW","dtype":"float16","ori_shape":(1,16,10,10),"ori_format":"NCHW"}
+    x2_1={"shape":(1,16,10,10),"format":"NCHW","dtype":"float16","ori_shape":(1,16,10,10),"ori_format":"NCHW"}
+    grad_1={"shape":(1,16,10,10),"format":"NCHW","dtype":"float16","ori_shape":(1,16,10,10),"ori_format":"NCHW"}
+    y_1={"shape":(1,16,10,10),"format":"NCHW","dtype":"float16","ori_shape":(1,16,10,10),"ori_format":"NCHW"}
+    ksize_1=[1,1,2,2]
+    strides_1=[1,1,1,1]
+    data_format_1="NCHW"
     op_select_format(x1, x2, grad, y, ksize, strides,padding, data_format)
     op_select_format(x1_dy, x2, grad, y, ksize, strides,padding, data_format)
+    op_select_format(x1_1, x2_1, grad_1, y_1, ksize_1, strides_1,padding, data_format_1)
+
 
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
