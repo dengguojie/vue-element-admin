@@ -75,6 +75,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
@@ -90,6 +91,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/realdiv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reshape.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/split_v.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice.cc
@@ -172,6 +174,7 @@ set(_cpu_kernels_ut_files
   testcase/common/src/sharder_utest.cpp
   testcase/common/src/tensor_utest.cpp
   testcase/concatv2/src/concatv2_utest.cpp
+  testcase/dynamic_stitch/src/dynamic_stitch_kernel_utest.cpp
   testcase/equal/src/equal_utest.cpp
   testcase/fill/src/fill_utest.cpp
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
@@ -189,6 +192,7 @@ set(_cpu_kernels_ut_files
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
   testcase/round/src/round_utest.cpp
+  testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
   testcase/split_v/src/split_v_utest.cpp
   testcase/strided_slice/src/strided_slice_utest.cpp

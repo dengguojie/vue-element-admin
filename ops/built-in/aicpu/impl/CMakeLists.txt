@@ -7,6 +7,7 @@ set(local_kernels_src_files
     kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
     kernels/normalized/concatv2.cc
+    kernels/normalized/dynamic_stitch.cc
     kernels/normalized/equal.cc
     kernels/normalized/expanddims.cc
     kernels/normalized/fill.cc
@@ -23,6 +24,7 @@ set(local_kernels_src_files
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
     kernels/normalized/round.cc
+    kernels/normalized/search_sorted.cc
     kernels/normalized/sparse_to_dense.cc
     kernels/normalized/split_v.cc
     kernels/normalized/strided_slice.cc
