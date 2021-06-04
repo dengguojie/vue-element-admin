@@ -392,12 +392,21 @@ def reget_tensor_list(outs):
                                   lambda i, j, k, l: mask(i, j, k, l),
                                   name="res_mask_u8",
                                   tag="res_mask_u8")
-        virtual_res = tvm.compute(res_reluv2_fp16.shape,
-                                  lambda i, j, k, l:
-                                  res_reluv2_fp16(i, j, k, l) +
-                                  res_mask_u8(i, j, k, l//8),
-                                  name="conv_virtual_res",
-                                  tag="conv_virtual_res")
+        # reluv2 mask calculated with bits for dynamic mode
+        if ConvParam.dynamic_flag:
+            virtual_res = tvm.compute(res_reluv2_fp16.shape,
+                                      lambda i, j, k, l:
+                                      res_reluv2_fp16(i, j, k, l) +
+                                      res_mask_u8(i, j, k, l),
+                                      name="conv_virtual_res",
+                                      tag="conv_virtual_res")
+        else:
+            virtual_res = tvm.compute(res_reluv2_fp16.shape,
+                                      lambda i, j, k, l:
+                                      res_reluv2_fp16(i, j, k, l) +
+                                      res_mask_u8(i, j, k, l//8),
+                                      name="conv_virtual_res",
+                                      tag="conv_virtual_res")
         ConvParam.tensor_map["res_reluv2_fp16"] = res_reluv2_fp16
         ConvParam.tensor_map["res_mask_u8"] = res_mask_u8
         ConvParam.tensor_map["reluv2_virtual_res"] = virtual_res
@@ -3334,9 +3343,15 @@ class CceConvOp:
                         else:
                             self._schedule[lop["dst_buffer"]].compute_inline()
                     else:
-                        self._schedule[lop["dst_buffer"]].compute_at(
-                            self._schedule[self._compute_at_buffer[1]],
-                            self._compute_at_axis[1])
+                        # dynamic reluv2 mask tensor compute at c_outer_inner_inner
+                        if ("res_mask_u8" in lop["op"] or "elewise_binary_vcmpv_gt" in lop["op"]) and self._dynamic_flag:
+                            self._schedule[lop["dst_buffer"]].compute_at(
+                                self._schedule[self._compute_at_buffer[1]],
+                                self._compute_at_axis[2])
+                        else:
+                            self._schedule[lop["dst_buffer"]].compute_at(
+                                self._schedule[self._compute_at_buffer[1]],
+                                self._compute_at_axis[1])
 
                 if al1_nparts_flag(lop):
                     al1_nparts = int_ceil_div(pooling_out[0], al1_facter_pooling)
@@ -4314,7 +4329,11 @@ class CceConvOp:
                 # elewise_single_relu is cloud, mini and es
                 if self._pre_relu_fused_flag and ("elewise_single_relu" in lop['op'] or "elewise_single_lrelu" in lop['op']):
                     continue
-                sch[lop["dst_buffer"]].set_storage_bound(ub_storage_bound_size)
+                # bit tensor set_storage_bound for reluv2 fusion
+                if ConvParam.conv_reluv2_flag and "vcmpv_gt" in lop["op"]:
+                    sch[lop["dst_buffer"]].set_storage_bound(int(ub_storage_bound_size//8))
+                    continue
+                sch[lop["dst_buffer"]].set_storage_bound(int(ub_storage_bound_size))
 
             # mem_unique
             sch[al1].mem_unique()
@@ -5205,6 +5224,8 @@ class CceConvOp:
         self._compute_at_axis.append(c_slice_axis)
         self._compute_at_buffer.append(res_c)
         self._compute_at_axis.append(m_outer_inner_outer)
+        self._compute_at_axis.append(c_outer_inner_inner)
+        self._compute_at_axis.append(m_outer_inner_inner)
         # select the real k value to participate in the calculation.(fix random result on dc)
         if ConvParam.para_dict["group_opt"] > 1 and is_support_v200() and not l0a_load2d_flag:
             reduce_k1 = weight.shape[0] // ConvParam.para_dict["group_opt"]
@@ -5732,7 +5753,12 @@ class CceConvOp:
                     round_mode_emit_insn = 'vector_conv'
                 self._schedule[cache_buffer].emit_insn(tensorize_axis, round_mode_emit_insn)
             elif lop["op"] == "conv_virtual_res":
-                self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'phony_insn')
+                # dynamic reluv2 virtual node
+                if ConvParam.conv_reluv2_flag and self._dynamic_flag:
+                    # self._compute_at_axis[3] indicate m_outer_inner_inner
+                    self._schedule[cache_buffer].emit_insn(self._compute_at_axis[3], 'phony_insn')
+                else:
+                    self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'phony_insn')
             elif lop["op"] == "input_ub":
                 if self._lhisi_dequant_quant_para["quant_padding"] or \
                         ConvParam.tensor_map["quant_input"].op.attrs["c_out"].value % 2 == 1:
