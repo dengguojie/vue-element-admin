@@ -512,7 +512,8 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
     res : the result of ascend_dequant
     """
     conv_flag = 0
-    if len(x.op.input_tensors) and x.op.input_tensors[0].name in ('mad1', 'convolution_c_col_bias'):
+    if len(x.op.input_tensors) and ('mad1' in x.op.input_tensors[0].name or \
+            'convolution_c_col_bias' in x.op.input_tensors[0].name):
         conv_flag = 1
 
     def shape_to_list(shape):

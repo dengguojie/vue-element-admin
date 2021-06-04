@@ -372,3 +372,9 @@ def test_conv2d_v200(test_arg):
 
 print("adding Conv2D v200 cce ut testcases")
 ut_case.add_cust_test_func(test_func=test_conv2d_v200)
+
+if __name__ == '__main__':
+    # ut_case.add_cust_test_func(test_func=test_leakyrelu_depthwise_fusion_testcase)
+    ut_case.run("Ascend310")
+    ut_case.run("Ascend910A")
+    exit(0)

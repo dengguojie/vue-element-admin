@@ -291,8 +291,24 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     for i in weights.op.attrs['ori_shape']:
         shape_w.append(i.value)
     shape_fm = []
-    for i in inputs.shape:
-        shape_fm.append(i.value)
+    multi_conv2d_fusion_flag = False
+    if len(inputs.shape) == 5:
+        for i in inputs.shape:
+            shape_fm.append(i.value)
+    elif len(inputs.shape) == 4:
+        if inputs.op.attrs['current_shape']:
+            cur_shape = inputs.op.attrs['current_shape']
+            if cur_shape[2].value * cur_shape[3].value != inputs.shape[2].value:
+                err_man.raise_err_specific_input_shape("conv2d",
+                                                       "the h*w of current_shape is not equal inputs.shape[3].value")
+            multi_conv2d_fusion_flag = True
+            for i in inputs.op.attrs['current_shape']:
+                shape_fm.append(i.value)
+        else:
+            err_man.raise_err_specific("conv2d", "current_shape not in op.attrs on 4 dimensions tensor")
+    else:
+        err_man.raise_err_input_params_not_expected("conv2d", "fmap", "4 dimensions or 5 dimensions",
+                                                    str(len(inputs.shape)) + " dimensions")
 
     input_h = shape_fm[2]
     input_w = shape_fm[3]
@@ -363,9 +379,10 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
                  "c1_opt": c1_opt,
                  "cout1_opt": cout1_opt,
                  "group_opt": group_opt,
-                 "a_shape": _shape_to_list(inputs.shape),
+                 "a_shape": shape_fm,
                  "weight_fracz_shape": _shape_to_list(weights.shape),
-                 "weight_ori_shape_nchw": [cout_all, shape_c, weight_h, weight_w]}
+                 "weight_ori_shape_nchw": [cout_all, shape_c, weight_h, weight_w],
+                 "multi_conv2d_fusion_flag": multi_conv2d_fusion_flag}
     c0_optim_flg = False
     use_v200_c04_flg = False
     if shape_c <= 4 and ("format" in weights.op.attrs and
@@ -467,8 +484,8 @@ def calc_para_from_dict(inputs, weights, strides, pads,
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, int), (list, int),
-                       int, int, str, str, str, str,
-                       bool, str, int, int, dict, int)
+                             int, int, str, str, str, str,
+                             bool, str, int, int, dict, int)
 def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
                               in_dtype, w_dtype, res_dtype, offset_w_dtype,
                               bias, kernel_name, dilateh=1, dilatew=1,

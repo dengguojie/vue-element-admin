@@ -22,6 +22,7 @@ from enum import Enum
 from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.dsl.compute.conv_compute import is_support_v200
 from tbe.dsl.compute.conv_compute import is_support_v220
+from tbe.dsl.compute.conv_compute import remove_suffix_num_for_name
 from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.common.tiling.get_tiling import get_tiling
@@ -91,7 +92,6 @@ RESERVED_FUSION_TYPE_BIT = 12
 WEIGHT_UNZIP_FUSION_TYPE_BIT = 8
 AIPP_FUSION_TYPE_BIT = 8
 AIPP_FUSION_TYPE_FLAG = 3
-
 
 def get_srctensor(tensor):
     """
@@ -296,8 +296,8 @@ def check_doubleout_reluv2(outs):
     """
     if isinstance(outs, (list, tuple)) and len(outs) == 2:
         reluv2, mask = outs
-        src_input_constraint = reluv2.op.input_tensors[0].op.name == "C" or \
-            "bias_add_vector" in reluv2.op.input_tensors[0].op.name
+        src_input_constraint = remove_suffix_num_for_name(reluv2.op.input_tensors[0].op.name) == "C" or \
+            "bias_add_vector" in remove_suffix_num_for_name(reluv2.op.input_tensors[0].op.name)
         dtype_constraint = reluv2.dtype == "float16" and (mask.dtype == "uint8" or \
             mask.dtype == "uint1")
         tag_constraint = reluv2.op.tag == "elewise_single_relu" \
@@ -565,7 +565,7 @@ def check_dyn_quantfuse_doubleout(tensor_list, outs):
         tensor_list = tensor_list[: -3]
         tensor_list.extend(outs)
     for tensor in tensor_list:
-        if "conv_virtual_res" in tensor.op.name:
+        if "conv_virtual_res" in remove_suffix_num_for_name(tensor.op.name):
             tensor_list.remove(tensor)
 
     return tensor_list
@@ -596,7 +596,7 @@ def check_quantfuse_doubleout(tensor_list, sch):
         tensor_list = tensor_list[: -2]
         tensor_list.extend(sch.cce_special["real_out_tensor"][1:])
     for tensor in tensor_list:
-        if "conv_virtual_res" in tensor.op.name:
+        if "conv_virtual_res" in remove_suffix_num_for_name(tensor.op.name):
             tensor_list.remove(tensor)
 
     return tensor_list
@@ -2001,7 +2001,7 @@ class CceConvOp:
                 if has_vector_flag and not ConvParam.swrite_flag and not ConvParam.invalid_data_rm_flag:
                     if double_buffer_flag["UBG_pbuffer"] == 2:
                         if self._fused_flag:
-                            if res.op.name != "conv_virtual_res":
+                            if remove_suffix_num_for_name(res.op.name) != "conv_virtual_res":
                                 sch[res_ub].double_buffer()
                             else:
                                 sch[self._res_tensor.op.input_tensors[0].op.input_tensors[0]].double_buffer()
@@ -2714,7 +2714,7 @@ class CceConvOp:
             if has_vector_flag and self._fused_flag or \
                     self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION \
                     and res_c.op.tag != "quant":
-                if res_c.op.name != 'conv_virtual_res':
+                if remove_suffix_num_for_name(res_c.op.name) != 'conv_virtual_res':
                     sch[res_c].emit_insn(c_pragma_axis, 'dma_copy')
 
             if swrite_onlyconv_flag:
@@ -2813,11 +2813,11 @@ class CceConvOp:
                 check_dataflow(temp_tensor)
                 if len(temp_tensor.op.input_tensors) == 2 and "elewise" in temp_tensor.op.tag:
                     double_num = double_num + 1
-                    if temp_tensor.op.input_tensors[0].op.name == "output_ub_4d" or \
-                            temp_tensor.op.input_tensors[1].op.name == "output_ub_4d":
+                    if remove_suffix_num_for_name(temp_tensor.op.input_tensors[0].op.name) == "output_ub_4d" or \
+                            remove_suffix_num_for_name(temp_tensor.op.input_tensors[1].op.name) == "output_ub_4d":
                         self._vector_read_select = True
                         double_num += 1
-                        if temp_tensor.op.input_tensors[0].op.name == "output_ub_4d":
+                        if remove_suffix_num_for_name(temp_tensor.op.input_tensors[0].op.name) == "output_ub_4d":
                             read_select_tensor = temp_tensor.op.input_tensors[0]
                             tensor_map = get_read_select_srctensor(
                                 read_select_tensor, tensor_map)
@@ -2868,7 +2868,8 @@ class CceConvOp:
                     elif lop["op"] == "dequant_remove_pad":
                         self._schedule[lop["dst_buffer"]].compute_inline()
                     else:
-                        if lop["dst_buffer"].op.tag != "strided_read" and lop["dst_buffer"].op.name != "fmap_l1":
+                        if lop["dst_buffer"].op.tag != "strided_read" and remove_suffix_num_for_name(
+                                lop["dst_buffer"].op.name) != "fmap_l1":
                             if ConvParam.invalid_data_rm_flag:
                                 self._schedule[lop["dst_buffer"]].buffer_align((1, 1), (1, 1), (1, 16), (1, 1))
                             self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
@@ -2958,10 +2959,10 @@ class CceConvOp:
                     continue
                 v100_quant_continue_flag = \
                     "convolution" in lop["op"] or \
-                    "convolution_bias_ub_brc" in tmp_read_map[0].op.name or \
-                    "fmap_l1" in tmp_read_map[0].op.name or \
+                    "convolution_bias_ub_brc" in remove_suffix_num_for_name(tmp_read_map[0].op.name) or \
+                    "fmap_l1" in remove_suffix_num_for_name(tmp_read_map[0].op.name) or \
                     "aipp_res_convolution" in tmp_read_map[0].op.tag or \
-                    "weight_unzip" in tmp_read_map[0].op.name or\
+                    "weight_unzip" in remove_suffix_num_for_name(tmp_read_map[0].op.name) or\
                     "strided_read" in tmp_read_map[0].op.tag or \
                     lop["dst_buffer"].name == 'compress_index' or \
                     lop["dst_buffer"].name == "Filter" or \
@@ -2985,7 +2986,7 @@ class CceConvOp:
             if multi_out and self._convbn1_flag:
                 for out_op in multi_out:
                     for lop in self._op_graph.body_ops:
-                        if lop["dst_buffer"].name.split('.')[0] == out_op.op.name:
+                        if lop["dst_buffer"].name.split('.')[0] == remove_suffix_num_for_name(out_op.op.name):
                             tmp_read_map = []
                             for nop in lop["next_op"]:
                                 if nop["dst_buffer"] not in tmp_read_map:
@@ -3184,13 +3185,15 @@ class CceConvOp:
                 # Fmap.local.UB should not exist when strided read
                 # weight_unzip input handle
                 if strided_read_flag and lop["dst_buffer"] == tensor_map["fmap"] or \
-                        (tmp_read_map != [] and "weight_unzip" in tmp_read_map[0].op.name):
+                        (tmp_read_map != [] and "weight_unzip" in remove_suffix_num_for_name(
+                                tmp_read_map[0].op.name)):
                     continue
 
                 tmp_cache_buffer = self._schedule.cache_read(lop["dst_buffer"], cce.scope_ubuf, list(set(tmp_read_map)))
                 lop["cache_buffer"] = tmp_cache_buffer
 
-                if self._pre_relu_fused_flag and ("relu" in lop["next_op"][0]["dst_buffer"].op.name):
+                if self._pre_relu_fused_flag and ("relu" in remove_suffix_num_for_name(
+                        lop["next_op"][0]["dst_buffer"].op.name)):
                     tensor_map["fmap_ub"] = tmp_cache_buffer
 
                 if fm2_flag:
@@ -3208,7 +3211,8 @@ class CceConvOp:
                 """
                 res ub tensor compute at flag
                 """
-                flag = has_vector_flag and self._fused_flag and res.op.name != "conv_virtual_res" and \
+                flag = has_vector_flag and self._fused_flag and remove_suffix_num_for_name(
+                    res.op.name) != "conv_virtual_res" and \
                 not ConvParam.swrite_flag and not ConvParam.invalid_data_rm_flag
                 return flag
 
@@ -3254,7 +3258,8 @@ class CceConvOp:
                     False means go to the next branch to do compute at.
                     """
                     compute_at_flag = \
-                        lop["dst_buffer"].op.name not in ("fmap_ub_for_dma_l0a", "fmap_l1", "conv_virtual_res") and \
+                        remove_suffix_num_for_name(lop["dst_buffer"].op.name) not in (
+                            "fmap_ub_for_dma_l0a", "fmap_l1", "conv_virtual_res") and \
                         lop["dst_buffer"].op.tag not in ("strided_read", "strided_write", "aipp_res", "conv2d_data_rm")
                     return compute_at_flag
 
@@ -3381,8 +3386,8 @@ class CceConvOp:
             if multi_out and self._convbn1_flag:
                 for out_op in multi_out:
                     for lop in self._op_graph.body_ops:
-                        if lop["dst_buffer"].name.split('.')[0] == out_op.op.name:
-                            out_tensor = multiout_ub2[out_op.op.name]
+                        if lop["dst_buffer"].name.split('.')[0] == remove_suffix_num_for_name(out_op.op.name):
+                            out_tensor = multiout_ub2[remove_suffix_num_for_name(out_op.op.name)]
                             self._schedule[out_tensor].compute_at(
                                 self._schedule[self._compute_at_buffer[1]],
                                 self._compute_at_axis[1])
@@ -3398,7 +3403,8 @@ class CceConvOp:
                 """
                 if self._lhisi_data_flow_type or self._v200_data_flow_type or self._l0a_dma_flag:
                     return True
-                if self._pre_relu_fused_flag and ("relu" in lop["next_op"][0]["dst_buffer"].op.name):
+                if self._pre_relu_fused_flag and ("relu" in remove_suffix_num_for_name(
+                        lop["next_op"][0]["dst_buffer"].op.name)):
                     return True
                 if "convolution" in lop["op"]:
                     return True
@@ -3909,7 +3915,7 @@ class CceConvOp:
             self._l0a_dma_flag = ConvParam.l0a_dma_flag
             self._dynamic_flag = ConvParam.dynamic_flag
             if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
-            ("virtual_res" in res.op.name or res.dtype == "int8"):
+            ("virtual_res" in remove_suffix_num_for_name(res.op.name) or res.dtype == "int8"):
                 self._quant_fusion_muti_groups_in_cl0 = True
 
         def _process_lxfusion_allocate_root():
@@ -4198,8 +4204,8 @@ class CceConvOp:
                     else:
                         # load 2d does not set_fmatrix
                         sch[al1].emit_insn(al1_k_inner, 'dma_copy')
-                    sch[fmap].set_storage_bound(int_ceil_div(need_buffer_size , aub_factor[0] * aub_factor[1]))
-                    sch[tensor_map['fmap_ub']].set_storage_bound(int_ceil_div(need_buffer_size ,
+                    sch[fmap].set_storage_bound(int_ceil_div(need_buffer_size, aub_factor[0] * aub_factor[1]))
+                    sch[tensor_map['fmap_ub']].set_storage_bound(int_ceil_div(need_buffer_size,
                                                                               aub_factor[0] * aub_factor[1]))
                 else:
                     sch[al1].emit_insn(al1_k_inner, 'dma_copy')
@@ -4562,9 +4568,9 @@ class CceConvOp:
         if self._convbn1_flag:
             has_vector_flag = 0
 
-        if (has_vector_flag and self._fused_flag and res.op.name != "conv_virtual_res") or \
+        if (has_vector_flag and self._fused_flag and remove_suffix_num_for_name(res.op.name) != "conv_virtual_res") or \
                 (self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and
-                 res.op.name != "conv_virtual_res" and res.op.tag != "quant"):
+                 remove_suffix_num_for_name(res.op.name) != "conv_virtual_res" and res.op.tag != "quant"):
             if not ConvParam.swrite_flag and not ConvParam.invalid_data_rm_flag:
                 res_ub = sch.cache_write(res, cce.scope_ubuf)
                 self._op_graph.output_ops[0]["tensorize_axis"] = self._schedule[res_ub].op.axis[0]
@@ -4960,7 +4966,7 @@ class CceConvOp:
             noi_true = batch_inner_outer
             res_c = sum_x_ub_rf
         else:
-            if (res_c.dtype == "int8" or "virtual_res" in res_c.op.name) and \
+            if (res_c.dtype == "int8" or "virtual_res" in remove_suffix_num_for_name(res_c.op.name)) and \
                     not ConvParam.conv_reluv2_flag:
                 if tiling["CL0_matrix"][5] > 1:
                     cout1_group, cout1_ori = sch[res_c].split(
@@ -4972,7 +4978,7 @@ class CceConvOp:
                 cout1_group, cout1_ori = sch[res_c].split(
                     res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
 
-            if (res_c.dtype == "int8" or "virtual_res" in res_c.op.name) and \
+            if (res_c.dtype == "int8" or "virtual_res" in remove_suffix_num_for_name(res_c.op.name)) and \
                     not ConvParam.conv_reluv2_flag:
                 if tiling["CL0_matrix"][5] > 1:
                     c_outer_outer, c_outer_inner = sch[res_c].split(
@@ -5139,7 +5145,7 @@ class CceConvOp:
                     if lop["op"] in compute_at_list:
                         self._schedule[lop["dst_buffer"]].compute_at(
                             self._schedule[res_c], m_outer_inner_outer)
-                    if lop["dst_buffer"].op.name in ("output_ub_4d", "output_ub_5d"):
+                    if remove_suffix_num_for_name(lop["dst_buffer"].op.name) in ("output_ub_4d", "output_ub_5d"):
                         v200_fm2_cache_buffer.append(lop["dst_buffer"])
 
                 for buffer_fm2 in v200_fm2_cache_buffer:
@@ -5969,7 +5975,7 @@ class AutoScheduleOp:
         operator = tensor.op
         if hasattr(operator, "tag"):
             if operator.tag == "":
-                tmp_op["op"] = operator.name
+                tmp_op["op"] = remove_suffix_num_for_name(operator.name)
             else:
                 tmp_op["op"] = operator.tag
         if tmp_op["op"].find("|") != -1:

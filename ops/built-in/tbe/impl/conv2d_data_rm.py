@@ -55,7 +55,7 @@ def conv2d_data_rm_compute(input_tensor, res_tensor=None):
 
     while tensor_queue:
         src_tensor = tensor_queue.popleft()
-        if src_tensor.op.name == "mad1":
+        if "mad1" in src_tensor.op.name:
             output_hw = int(src_tensor.op.attrs["remove_pad_M"])
             if output_hw > hw_mad:
                 err_man_cube.raise_err_specific("conv2d_data_rm",

@@ -48,7 +48,8 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
     x_shape_list = shape_util.shape_to_list(x_shape)
 
     conv_flag = 0
-    if len(x.op.input_tensors) and x.op.input_tensors[0].name in ('mad1', 'convolution_c_col_bias'):
+    if len(x.op.input_tensors) and ('mad1' in x.op.input_tensors[0].name or \
+            'convolution_c_col_bias' in x.op.input_tensors[0].name):
         conv_flag = 1
 
     if conv_flag:
