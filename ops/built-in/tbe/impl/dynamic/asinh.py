@@ -102,7 +102,7 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     shape = input_x.shape
     has_improve_precision = False
     if inp_dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vrec", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vrec", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
 
@@ -118,7 +118,7 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     result = _log_taylor(data_res, shape)
     res_neg = tbe.vmuls(result, tvm.const(CONST_NEG_ONE, inp_dtype))
 
-    if input_x.dtype == result.dtype and tbe_platform.api_check_support("te.lang.cce.vcmpsel", input_x.dtype):
+    if input_x.dtype == result.dtype and tbe_platform.api_check_support("tbe.dsl.vcmpsel", input_x.dtype):
         res = tbe.vcmpsel(
             input_x,
             tvm.const(CONST_ZERO, input_x.dtype),
@@ -158,11 +158,18 @@ def asinh_compute_cloud(input_x, output_y, kernel_name="asinh"):
 
     inp_dtype = input_x.dtype.lower()
     has_improve_precision = False
+    check_support_flag = False
     if inp_dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+            tbe_platform.api_check_support("tbe.dsl.vlog", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
         inp_dtype = "float32"
+        
+    if inp_dtype == "float32" and \
+            not (tbe_platform.api_check_support("tbe.dsl.vlog", "float32")):
+        input_x = tbe.cast_to(input_x, "float16")
+        check_support_flag = True
+        inp_dtype = "float16"
 
     data_abs = tbe.vabs(input_x)
     data_x_square = tbe.vmul(data_abs, data_abs)
@@ -174,6 +181,8 @@ def asinh_compute_cloud(input_x, output_y, kernel_name="asinh"):
 
     if has_improve_precision:
         res = tbe.cast_to(res, "float16")
+    if check_support_flag == True:
+        res = tbe.cast_to(res, "float32")
 
     return res
 
@@ -369,7 +378,7 @@ def _log_compute(data_x, res, shape):
 
     """
     # if data > 2, use vlog
-    if data_x.dtype == res.dtype and tbe_platform.api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
+    if data_x.dtype == res.dtype and tbe_platform.api_check_support("tbe.dsl.vcmpsel", data_x.dtype):
         res = tbe.vcmpsel(
             data_x,
             tvm.const(CONST_TWO, data_x.dtype),
@@ -385,7 +394,7 @@ def _log_compute(data_x, res, shape):
     overflow_value = tbe.vmuls(data_x, CONST_FIVE_TWO)
     res_overflow = tbe.vadds(
         tbe.vlog(overflow_value), LOG_FIVE_TWO)
-    if data_x.dtype == res.dtype and tbe_platform.api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
+    if data_x.dtype == res.dtype and tbe_platform.api_check_support("tbe.dsl.vcmpsel", data_x.dtype):
         res = tbe.vcmpsel(
             data_x,
             tvm.const(FLOAT_16_MAX, data_x.dtype),

@@ -20,7 +20,7 @@ import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
-
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
@@ -56,6 +56,13 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpIm
     dtype = input_x.dtype.lower()
     attr_opp = 0 - attr
     attr_half = attr / 2
+    check_support_flag = False
+    if not (tbe_platform.api_check_support("tbe.dsl.vexp", "float32")) and \
+            dtype == "float32":
+        check_support_flag = True
+        dtype = "float16"
+        input_x = tbe.cast_to(input_x, dtype)
+
     const_0 = tvm.const(attr_opp, dtype)
     const_1 = tvm.const(CONST_1, dtype)
     abs_x = tbe.vabs(input_x)
@@ -71,6 +78,8 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpIm
 
     div_down_rec = tbe.vrec(div_down, impl_mode)
     result = tbe.vmul(div_up, div_down_rec)
+    if check_support_flag == True:
+        result = tbe.cast_to(result, "float32")
 
     return result
 

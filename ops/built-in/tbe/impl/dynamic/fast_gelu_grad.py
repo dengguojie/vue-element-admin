@@ -19,7 +19,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator_compute
@@ -60,6 +60,13 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_g
     attr = 1.702
     dtype = input_x.dtype
     attr_opp = 0 - attr
+    check_support_flag = False
+    if not (tbe_platform.api_check_support("tbe.dsl.vexp", "float32")) and \
+            dtype == "float32":
+        check_support_flag = True
+        dtype = "float16"
+        input_x = tbe.cast_to(input_x, dtype)
+        input_dy = tbe.cast_to(input_dy, dtype)
     const_1 = tvm.const(attr_opp, dtype)
     const_2 = tvm.const(attr, dtype)
     const_3 = tvm.const(CONST_1, dtype)
@@ -90,6 +97,9 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_g
     result_temp = tbe.vmul(div_up, div_down_rec)
 
     result = tbe.vmul(input_dy, result_temp)
+    if check_support_flag == True:
+        result = tbe.cast_to(result, "float32")
+
     return result
 
 

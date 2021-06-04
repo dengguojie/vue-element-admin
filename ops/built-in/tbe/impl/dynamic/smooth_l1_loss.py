@@ -19,7 +19,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator_compute
@@ -63,7 +63,14 @@ def smooth_l1_loss_compute(input_predict, input_label, output_loss, sigma, kerne
     predict_label_sub_abs = tbe.vabs(input_sub_res)
     method_two_res = tbe.vsub(predict_label_sub_abs, tbe.vmuls(half_const_tensor, sigma_scalar))
 
-    is_method_one_res = tbe.vcmpsel(predict_label_sub_abs, sigma_scalar, 'lt', 1.0, 0.0)
+    if not (tbe_platform.api_check_support("tbe.dsl.vcmpsel", "float32")) and \
+            input_dtype == "float32":
+        predict_label_sub_abs = tbe.cast_to(predict_label_sub_abs, "float16")
+        sigma_scalar = tvm.const(sigma, "float16")
+        is_method_one_res = tbe.vcmpsel(predict_label_sub_abs, sigma_scalar, 'lt', 1.0, 0.0)
+        is_method_one_res = tbe.cast_to(is_method_one_res, "float32")
+    else:
+        is_method_one_res = tbe.vcmpsel(predict_label_sub_abs, sigma_scalar, 'lt', 1.0, 0.0)
     is_method_two_res = tbe.vsub(one_const_tensor, is_method_one_res)
     method_one_get_res = tbe.vmul(method_one_res, is_method_one_res)
     method_two_get_res = tbe.vmul(method_two_res, is_method_two_res)

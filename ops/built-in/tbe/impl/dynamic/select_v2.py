@@ -58,7 +58,7 @@ def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
         the result of compute
     """
     num_dtype = x1.dtype
-    if tbe_platform.api_check_support("te.lang.cce.vcmpsel", "float32"):
+    if tbe_platform.api_check_support("tbe.dsl.vcmpsel", "float32"):
         if num_dtype != "float32":
             x1 = tbe.cast_to(x1, "float32")
             x2 = tbe.cast_to(x2, "float32")
