@@ -31,7 +31,14 @@ template <>
 bool CompareResult(float output[], float expect_output[], uint64_t num) {
   bool result = true;
   for (uint64_t i = 0; i < num; ++i) {
-    if (std::fabs(output[i] - expect_output[i]) > 1e-6) {
+    double absolute_error = std::fabs(output[i] - expect_output[i]);
+    double relative_error = 0;
+    if (expect_output[i] == 0) {
+      relative_error = 2e-6;
+    } else {
+      relative_error = absolute_error / std::fabs(expect_output[i]);
+    }
+    if ((absolute_error > 1e-6) && (relative_error > 1e-6)) {
       std::cout << "output[" << i << "] = ";
       std::cout << output[i];
       std::cout << ", expect_output[" << i << "] = ";
@@ -46,7 +53,14 @@ template <>
 bool CompareResult(double output[], double expect_output[], uint64_t num) {
   bool result = true;
   for (uint64_t i = 0; i < num; ++i) {
-    if (std::fabs(output[i] - expect_output[i]) > 1e-10) {
+    double absolute_error = std::fabs(output[i] - expect_output[i]);
+    double relative_error = 0;
+    if (expect_output[i] == 0) {
+      relative_error = 2e-10;
+    } else {
+      relative_error = absolute_error / std::fabs(expect_output[i]);
+    }
+    if ((absolute_error > 1e-12) && (relative_error > 1e-10)) {
       std::cout << "output[" << i << "] = ";
       std::cout << output[i];
       std::cout << ", expect_output[" << i << "] = ";
@@ -61,8 +75,19 @@ bool CompareResult(Eigen::half output[], Eigen::half expect_output[],
     uint64_t num) {
   bool result = true;
   for (uint64_t i = 0; i < num; ++i) {
-    if ((output[i] - expect_output[i] > Eigen::half(1e-3)) ||
-        (output[i] - expect_output[i] < Eigen::half(-1e-3))) {
+    Eigen::half absolute_error = (output[i] - expect_output[i]);
+    absolute_error =
+        absolute_error >= Eigen::half(0) ? absolute_error : -absolute_error;
+    Eigen::half relative_error(0);
+    if (expect_output[i] == Eigen::half(0)) {
+      relative_error = Eigen::half(2e-3);
+    } else {
+      relative_error = absolute_error / expect_output[i];
+      relative_error =
+          relative_error >= Eigen::half(0) ? relative_error : -relative_error;
+    }
+    if ((absolute_error > Eigen::half(1e-3)) &&
+        (relative_error > Eigen::half(1e-3))) {
       std::cout << "output[" << i << "] = ";
       std::cout << output[i];
       std::cout << ", expect_output[" << i << "] = ";

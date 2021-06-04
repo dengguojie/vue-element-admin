@@ -60,7 +60,7 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
         onnx_plugin_changed_files = []
         other_changed_files = []
 
-       
+
         base_path = os.path.join("ops", "built-in")
         ut_path = os.path.join("ops", "built-in", "tests", "ut")
         for line in lines:
@@ -68,7 +68,8 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
             if line.endswith(".py"):
                 continue
             if line.startswith(os.path.join(base_path, "aicpu")) or line.startswith(
-                    os.path.join(ut_path, "aicpu_test")):
+                    os.path.join(ut_path, "aicpu_test")) or line.startswith(
+                    os.path.join(base_path, "tests", "utils")):
                 aicpu_changed_files.append(line)
             elif line.startswith(os.path.join(base_path, "fusion_pass")) or line.startswith(
                     os.path.join(ut_path, "graph_fusion")):

@@ -84,7 +84,19 @@ def gen_random_data(nptype, shape, rand_type, low, high):
     write_file_txt("asin/data/asin_data_output_" + nptype.__name__ + ".txt", data, fmt="%s")
     data.tofile("asin/data/asin_data_output_" + nptype.__name__ + ".bin")
 
+def gen_random_data_numpy(nptype, shape, rand_type, low, high):
+    np.random.seed(23457)
+    x_batch = gen_data(shape, nptype, rand_type, low, high)
+    write_file_txt("asin/data/asin_data_input_" + nptype.__name__ + ".txt", x_batch, fmt="%s")
+    x_batch.tofile("asin/data/asin_data_input_" + nptype.__name__ + ".bin")
+    write_file_txt("asin/data/asin_data_" + nptype.__name__ + "_dim.txt", np.array([len(shape)]), fmt="%s")
+    write_file_txt("asin/data/asin_data_" + nptype.__name__ + "_shape.txt", np.array(shape), fmt="%s")
+
+    data = np.arcsin(x_batch, dtype=nptype)
+    write_file_txt("asin/data/asin_data_output_" + nptype.__name__ + ".txt", data, fmt="%s")
+    data.tofile("asin/data/asin_data_output_" + nptype.__name__ + ".bin")
+
 def run():
-    gen_random_data(np.float16, [12, 130], "uniform", -1, 1)
+    gen_random_data_numpy(np.float16, [12, 130], "uniform", -1, 1)
     gen_random_data(np.float32, [15, 12, 30], "uniform", -1, 1)
     gen_random_data(np.float64, [7, 12, 30], "uniform", -1, 1)
