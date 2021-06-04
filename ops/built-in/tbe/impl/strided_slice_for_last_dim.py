@@ -363,6 +363,9 @@ def strided_slice_last_dim_with_vnchw_conv(input_shape, dtype, begin, end, strid
             thread_num = min(repeat_times, thread_num)
             with tik_instance.for_range(0, repeat_times, thread_num=thread_num) as repeat_idx:
                 rows_idx = tik_instance.Scalar(dtype="int64", name="rows_idx", init_value=repeat_idx * rows_each_repeat)
+                if repeat_tail_count != 0:
+                    with tik_instance.if_scope(repeat_idx == repeat_times - 1):
+                         curr_rows.set_as(repeat_tail_count)
                 if repeat_tail_count * output_inner_dims % element_each_block != 0 and repeat_times != 1:
                     with tik_instance.if_scope(repeat_idx == repeat_times - 1):
                         rows_idx.set_as(rows_idx - roll_back_rows)

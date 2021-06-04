@@ -188,6 +188,15 @@ case20 = {"params": [{"shape": (1, 3, 1344, 2028), "dtype": "float16", "format":
           "expect": "success",
           "support_expect": True}
 
+case21 = {"params": [{"shape": (32, 3, 16, 16), "dtype": "int32", "format": "ND",
+                      "ori_shape": (32, 3, 16, 16), "ori_format": "ND"},
+                     {"shape": (32, 3, 16, 15), "dtype": "int32", "format": "ND",
+                      "ori_shape": (32, 3, 16, 15), "ori_format": "ND"},
+                     [0, 0, 0, 0], [32, 3, 16, 15], [1, 1, 1, 1], 0, 0, 0, 0, 0],
+          "case_name": "StridedSliceD_21",
+          "expect": "success",
+          "support_expect": True}
+
 
 def test_op_select_format(test_arg):
     from impl.strided_slice_d import op_select_format
@@ -213,19 +222,19 @@ def test_op_select_format(test_arg):
                      {"shape": (1, 80), "dtype": "float32", "format": "ND", "ori_shape": (1, 80), "ori_format": "ND"},
                      [0, 40], [1, 120], [1, 1], 0, 0, 0, 0, 0)
 
-# TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case9)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case10)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case11)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case12)
+
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case7)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case8)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case9)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case10)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case11)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case12)
 ut_case.add_case(["all"], case13)
 ut_case.add_case(["all"], case14)
 ut_case.add_case(["all"], case15)
@@ -234,6 +243,7 @@ ut_case.add_case(["all"], case17)
 ut_case.add_case(["all"], case18)
 ut_case.add_case(["all"], case19)
 ut_case.add_case(["all"], case20)
+ut_case.add_case(["all"], case21)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def calc_expect_func(x, y, begin, end, strides):
