@@ -130,6 +130,16 @@ bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
   return true;
 }
 
+int GetMaxApproximate(int x, int y){
+  int z = y;
+  while(x % y != 0){
+    z = x % y;
+    x = y;
+    y = z;
+  }
+  return z;
+}
+
 bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompileInfoJson, int32_t& coreNum,
                       int32_t& ubSize, int32_t& l1Size, int32_t& paramsDSize, int32_t& indicesDSize) {
   using namespace nlohmann;
@@ -377,13 +387,28 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
 
     int32_t indicesNumPerLoop = halfUbIndicesNum;
     int32_t paramsElemPerUb = halfUbParamsElem;
+    int32_t proCoreNum = GetMaxApproximate(indicesShape[0], coreNum);
 
     if (runParams.paramsRow < blockNum) {
       if (runParams.indicesNumEachCore * runParams.paramsRow <= blockNum) {
-        runParams.needCoreNum = 1;
-        runParams.tailProcessCore = 0;
-        runParams.indicesNumEachCore = indicesPrefix;
-        runParams.indicesNumRemaining = 0;
+        if (indicesShape[0] <= coreNum && indicesPrefix / indicesShape[0] * runParams.paramsRow >= blockNum) {
+          runParams.needCoreNum = indicesShape[0];
+          runParams.tailProcessCore = 0;
+          runParams.indicesNumEachCore = indicesPrefix / runParams.needCoreNum;
+          runParams.indicesNumRemaining = 0;
+        } else{
+          if (indicesShape[0] > coreNum && indicesPrefix / proCoreNum * runParams.paramsRow >= blockNum){
+            runParams.needCoreNum = proCoreNum;
+            runParams.tailProcessCore = 0;
+            runParams.indicesNumEachCore = indicesPrefix / runParams.needCoreNum;
+            runParams.indicesNumRemaining = 0;
+          } else{
+            runParams.needCoreNum = 1;
+            runParams.tailProcessCore = 0;
+            runParams.indicesNumEachCore = indicesPrefix;
+            runParams.indicesNumRemaining = 0;
+          }
+        }
       }
 
       if (paramsTotalCeil <= PARAMS_CACHED_UB / paramsDSize) {

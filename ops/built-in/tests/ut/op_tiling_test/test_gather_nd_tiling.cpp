@@ -79,7 +79,7 @@ TEST_F(GatherNdTiling, gather_nd_tiling_0) {
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 0 174 0 0 32000 174 64000 32000 0 174 0 1 1 87552 0 0 19 1 0 0 0 0 0 0 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 2 0 87 0 0 32000 87 64000 32000 0 87 0 1 1 87552 0 0 19 1 0 0 0 0 0 0 0 ");
 }
 
 TEST_F(GatherNdTiling, gather_nd_tiling_1) {
