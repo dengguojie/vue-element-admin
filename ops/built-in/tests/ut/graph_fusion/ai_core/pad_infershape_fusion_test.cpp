@@ -126,6 +126,7 @@ TEST_F(pad_infershapepad_infershape_pass_test, pad_infershapepad_infershape_pass
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("PadFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findOp = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {

@@ -35,6 +35,7 @@
 #include "securec.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 using namespace ge;
 namespace fe {
@@ -138,7 +139,7 @@ Status PadFusionPass::PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& p
 Status PadFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get pad node and node-desc
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PAD, mapping);
-
+  NOT_CHANGED_WITH_DYNAMIC_NODE({pad_node});
   ge::InDataAnchorPtr DataAnchorPtr0 = pad_node->GetInDataAnchor(0);
   ge::OutDataAnchorPtr constAnchorPtr0 = DataAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr constNode0 = constAnchorPtr0->GetOwnerNode();

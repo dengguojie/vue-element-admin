@@ -26,6 +26,16 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/node_utils.h"
 
+#define NOT_CHANGED_WITH_DYNAMIC_NODE(fused_nodes)                                                           \
+  for (auto fused_node : fused_nodes) {                                                                      \
+    bool unknown_shape = false;                                                                              \
+    if (ge::NodeUtils::GetNodeUnknownShapeStatus(*(fused_node.get()), unknown_shape) == ge::GRAPH_SUCCESS && \
+        unknown_shape) {                                                                                     \
+      OP_LOGI(fused_node->GetOpDesc()->GetType().c_str(), "this node is unkonwshape, will not be changed."); \
+      return NOT_CHANGED;                                                                                    \
+    }                                                                                                        \
+  }
+
 bool HasUnKnowDimShape(const ge::NodePtr &node_ptr);
 bool HasUnKnowShape(const ge::NodePtr &node_ptr);
 void ClearOpInferDepends(const ge::NodePtr& node_ptr);
