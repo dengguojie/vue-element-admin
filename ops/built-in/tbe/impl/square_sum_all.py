@@ -39,12 +39,13 @@ def get_op_support_info(input_x, input_y, output_x, output_y, kernel_name="squar
     format_x = input_x.get("format")
     shape_x = input_x.get("shape")
     support_format = ["FRACTAL_Z", "C1HWNCoC0", "NC1HWC0", "ND", "NCHW", "NHWC"]
+    REDUCE_ADD = 1  # enumerated value
     if format_x in support_format:
         axis_reduce_list = []
         for idx, _ in enumerate(shape_x):
             reduce_info = [
                 ReduceInput([0, [idx]], [1, [idx]]),
-                ReduceOutput([0, "REDUCE_ADD", True], [1, "REDUCE_ADD", True])
+                ReduceOutput([0, REDUCE_ADD, True], [1, REDUCE_ADD, True])
             ]
         axis_reduce_list.append(reduce_info)
         axis_split_matrix = None

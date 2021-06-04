@@ -236,12 +236,21 @@ case_cut_high_dim_single_not_aligned_fp32 = {
     "expect": "success"
 }
 
+def test_get_op_support_info(test_arg):
+    from impl.square_sum_all import get_op_support_info
+    get_op_support_info(
+        {"shape": (32, 1913), "format": "ND", "dtype": "float32", "ori_shape": (32, 1913), "ori_format": "ND"},
+        {"shape": (32, 1913), "format": "ND", "dtype": "float32", "ori_shape": (32, 1913), "ori_format": "ND"},
+        {"shape": (32, 1913), "format": "ND", "dtype": "float32", "ori_shape": (32, 1913), "ori_format": "ND"},
+        {"shape": (32, 1913), "format": "ND", "dtype": "float32", "ori_shape": (32, 1913), "ori_format": "ND"})
+
 ut_case.add_case(["Ascend910"], case_small_shape_scalar_fp32)
 ut_case.add_case(["Ascend910"], case_scalar_not_aligned_gt_block_size_fp32)
 ut_case.add_case(["Ascend910"], case_aligned_multi_dim_fp32)
 ut_case.add_case(["Ascend910"], case_scalar_big_prime_fp32)
 ut_case.add_case(["Ascend910"], case_big_shape_not_aligned_fp32)
 ut_case.add_case(["Ascend910"], case_cut_high_dim_single_not_aligned_fp32)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 
 # ut_case.add_case(["Ascend310"], case1)

@@ -42,7 +42,7 @@ def get_op_support_info(input_x,
     format_x = input_x.get("format")
     shape_x = input_x.get("shape")
     support_format = ["FRACTAL_Z", "C1HWNCoC0", "NC1HWC0", "ND", "NCHW", "NHWC"]
-
+    REDUCE_ADD = 1  # enumerated value
     if format_x in support_format:
         axis_reduce_list = []
         axis_split_list = []
@@ -50,7 +50,7 @@ def get_op_support_info(input_x,
             split_info = [SplitInput([0, [idx], [-1], [-1]], [1, [idx], [-1], [-1]]),
                           SplitOutput([0, [idx]])]
             reduce_info = [ReduceInput([0, [idx]]),
-                           ReduceOutput([1, "REDUCE_ADD", True])]
+                           ReduceOutput([1, REDUCE_ADD, True])]
             axis_split_list.append(split_info)
             axis_reduce_list.append(reduce_info)
     else:
