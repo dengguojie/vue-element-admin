@@ -130,21 +130,20 @@ REG_OP(Transpose)
     .OP_END_FACTORY_REG(Transpose)
 
 /**
-*@brief Doing format_transfer for various data format only
-support "NHWC/NCHW" to "NC1HWC0" and "NC1HWC0" to "NHWC/NCHW"
-"NCHW" to "FRACTAL_Zn" or "FRACTAL_Zn" to "NCHW".
-"HWCN" to "FRACTAL_Zn" or "FRACTAL_Zn" to "HWCN" . \n
+*@brief Do format transfer for various data format.
+* In general, the framework will insert it atomatically . \n
 
 *@par Inputs:
-*src: A Tensor dtype of all types . \n
+*src: A Tensor. For all branches can be types: float16, float32, int32, int8, bool.
+* For branches without padding also can be types: int16, int64, uint8, uint16, uint32, uint64 . \n
 
 *@par Attributes:
-*@li src_format: A string source data format, can be "NHWC", "NCHW", "FRACTAL_Zn" etc.
-*@li dst_format: A string target data format, can be "NC1HWC0", "NCHW", "FRACTAL_Zn" etc.
+*@li src_format: A string source data format, can be "NHWC", "NCHW", "FRACTAL_Z" etc.
+*@li dst_format: A string target data format, can be "NC1HWC0", "NCHW", "FRACTAL_Z" etc.
 *@li group: A optional int32, default value is 1. \n
 
 *@par Outputs:
-*dst: A Tensor dtype of all types.
+*dst: A Tensor. Has the same type as "src".
 */
 REG_OP(TransData)
     .INPUT(src, TensorType::BasicType())
