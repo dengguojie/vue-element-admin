@@ -2309,7 +2309,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                data[n_idx, ci1_idx, hi_idx * ori_wi + wi_idx, ci0_idx],
                                name=get_name_with_suffix_num('fmap_5hd_data'),
                                attrs=data.op.attrs,
-                               tag="conv_l1fusion_reshape")
+                               tag="conv_l1fuse_reshape")
         ConvParam.multi_conv2d_fusion_flag = True
         data = data_5hd
     bias_tensor = para_dict.get("bias_tensor")
