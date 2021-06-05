@@ -87,6 +87,37 @@ ut_case.add_case("all",
                      {"shape": (190000, 1), "dtype": "int32", "ori_shape": (190000, 1),
                       "format": "ND", "ori_format": "ND"},
                      "gather_nd_06", "success"))
+
+ut_case.add_case("all",
+                 gen_gather_nd_case(
+                     {"shape": (20000,), "dtype": "float16", "ori_shape": (20000,),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (32, 28, 8, 5, 124, 7, 1), "dtype": "int32", "ori_shape": (32, 28, 8, 5, 124, 7, 1),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (32, 28, 8, 5, 124, 7, 20000), "dtype": "float16", "ori_shape": (32, 28, 8, 5, 124, 7, 20000),
+                      "format": "ND", "ori_format": "ND"},
+                     "gather_nd_07", "success"))
+
+ut_case.add_case("all",
+                 gen_gather_nd_case(
+                     {"shape": (2, 34000), "dtype": "float16", "ori_shape": (2, 34000),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (15000, 1), "dtype": "int32", "ori_shape": (15000, 1),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (15000, 34000), "dtype": "float16", "ori_shape": (15000, 34000),
+                      "format": "ND", "ori_format": "ND"},
+                     "gather_nd_08", "success"))
+
+ut_case.add_case("all",
+                 gen_gather_nd_case(
+                     {"shape": (1, 7, 4564, 9973), "dtype": "float16", "ori_shape": (1, 7, 4564, 9973),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (1, ), "dtype": "int32", "ori_shape": (1, ),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (1, 7, 4564, 9973), "dtype": "float16", "ori_shape": (1, 7, 4564, 9973),
+                      "format": "ND", "ori_format": "ND"},
+                     "gather_nd_09", "success"))
+
 def calc_expect_func(dict_data, dict_indices, dict_out):
     shape_indices = dict_indices["value"].shape
     shape_indices_ele = list(shape_indices[:-1]) + list(dict_data["value"].shape[shape_indices[-1]:])
