@@ -61,12 +61,52 @@ case5 = {"params": [[{"shape": (4,4,32), "dtype": "float16", "format": "ND", "or
          "expect": RuntimeError,
          "support_expect": True}
 
+case6 = {"params": [[{"shape": [], "dtype": "uint16", "format": "ND", "ori_shape": [],"ori_format": "ND"}, #x
+                     {"shape": [], "dtype": "uint16", "format": "ND", "ori_shape": [],"ori_format": "ND"}],
+                    {"shape": [2], "dtype": "uint16", "format": "ND", "ori_shape": [2],"ori_format": "ND"},
+                    0
+                    ],
+         "case_name": "Pack_6",
+         "expect": "success",
+         "support_expect": True}
+
+case7 = {"params": [[{"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"}, #x
+                     {"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"}],
+                    {"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"},
+                    3
+                    ],
+         "case_name": "Pack_7",
+         "expect": "success",
+         "support_expect": True}
+
+case8 = {"params": [[{"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"}, #x
+                     {"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"}],
+                    {"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"},
+                    0
+                    ],
+         "case_name": "Pack_8",
+         "expect": "success",
+         "support_expect": True}
+
+case9 = {"params": [[{"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"}, #x
+                     {"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"}],
+                    {"shape": (4,4,32), "dtype": "uint16", "format": "ND", "ori_shape": (4,4,32),"ori_format": "ND"},
+                    -4
+                    ],
+         "case_name": "Pack_9",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case7)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case8)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case9)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910A"])

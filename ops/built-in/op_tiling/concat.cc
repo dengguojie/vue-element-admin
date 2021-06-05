@@ -199,6 +199,26 @@ static bool GetCompileInfo(const nlohmann::json& op_info, const std::string& nam
   return true;
 }
 
+static void Pack2ConcatParams(const std::string& opType, vector<vector<int64_t>>& input_shapes, int32_t& concat_dim) {
+  if (opType != "Pack") {
+    return;
+  }
+
+  if (concat_dim < -1) {
+    concat_dim += 1;
+    return;
+  }
+
+  if (!input_shapes.empty()) {
+    int32_t shape_length = static_cast<int32_t>(input_shapes[0].size());
+    if (concat_dim == -1 || concat_dim == shape_length) {
+      for (auto& shape : input_shapes) {
+        shape.push_back(1);
+      }
+    }
+  }
+}
+
 /*
  * @brief: tiling function of op
  * @param [in] opType: opType of the op
@@ -238,6 +258,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
     OP_LOGD(opType.c_str(), "%s=%d.", name.c_str(), param.second);
   }
 
+  Pack2ConcatParams(opType, input_shapes, concat_dim);
   OP_LOGD(opType.c_str(), "to check params.");
   if (!CheckParams(opType, input_shapes, concat_dim)) {
     return false;

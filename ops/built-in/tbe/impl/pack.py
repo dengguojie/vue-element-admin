@@ -27,16 +27,6 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-def check_supported(x, y, axis, kernel_name="pack"):
-    """
-    support aicpu route
-    """
-    if axis == -1 or axis == len((x[0].get("shape"))):
-        reason = "the axis is not supported, axis:%s" % str(axis)
-        return False, reason
-    return True, ""
-
-
 # pylint: disable = unused-argument
 def get_op_support_info(x, y, axis, kernel_name="pack"):
     """
@@ -65,6 +55,22 @@ def get_op_support_info(x, y, axis, kernel_name="pack"):
     axis_reduce_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
     return op_cal_info_in_json
+
+
+def _pad2concat_params(x, y, axis):
+    if axis < -1:
+        return x, y, axis + 1
+
+    ori_shape = x[0].get("ori_shape")
+    shape = x[0].get("shape")
+    if len(shape) == len(ori_shape) and axis in (-1, len(shape)):
+        for item in x:
+            item["shape"] = list(item["shape"])
+            item["ori_shape"] = list(item["ori_shape"])
+            item["shape"].append(1)
+            item["ori_shape"].append(1)
+
+    return x, y, axis
 
 
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
@@ -97,12 +103,10 @@ def pack(x, y, axis, kernel_name="pack"):
     left_value = -len((x[0].get("shape")))-1
     right_value = len((x[0].get("shape")))
     if axis < left_value or axis > right_value:
-        expected_value = "All axes must be equal except merge axis,check your shape!"
-        real_value = "All axes must be equal except merge axis."
+        expect_value = "[%s, %s]".format(str(left_value), str(right_value))
         error_manager_vector.raise_err_input_value_invalid("pack",
-                                                           "value of shape",
-                                                           expected_value, real_value)
+                                                           "axis",
+                                                           expect_value, str(axis))
 
-    if axis < -1:
-        axis = axis + 1
+    x, y, axis = _pad2concat_params(x, y, axis)
     concat_v2_d(x, y, axis, kernel_name)

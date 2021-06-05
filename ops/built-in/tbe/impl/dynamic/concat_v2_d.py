@@ -1252,35 +1252,6 @@ def _check_params(input_values, axis):
     """
     check params
     """
-    _check_shape(input_values, "shape")
-    _check_shape(input_values, "ori_shape")
-
-    dim_num = len(input_values[0].get("ori_shape"))
-
-    if axis >= dim_num or axis < -dim_num:
-        error_manager_vector.raise_err_input_param_not_in_range("concat_v2_d", "axis", -dim_num, dim_num - 1, axis)
-    shape_value = []
-    for _, tensor_dict in enumerate(input_values):
-        shape_value.append(tensor_dict.get("ori_shape"))
-    first_input_shape = input_values[0].get("ori_shape")
-
-    # dims must equal except merge axis
-    axis_new = axis % dim_num
-    for j, _ in enumerate(first_input_shape):
-        if j == axis_new:
-            continue
-
-        dim_values = set()
-        for _, element_shape in enumerate(shape_value):
-            dim_values.add(element_shape[j])
-
-        if -1 in dim_values:
-            dim_values.remove(-1)
-
-        if len(dim_values) > 1:
-            error_detail = "concat Dims must be equal except merge concat axis[%s]" % axis, "input_values", shape_value 
-            error_manager_vector.raise_err_specific_reson("concat_v2_d", error_detail)
- 
     dtype_lists = []
     for input_value in input_values:
         dtype_lists.append(input_value.get("dtype"))

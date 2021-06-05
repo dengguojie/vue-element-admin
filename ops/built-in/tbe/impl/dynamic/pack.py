@@ -33,13 +33,10 @@ def pack(x, y, axis, kernel_name="pack"):
     ----------
     x : A list of `dict`.dict include keys shape and dtype
     y: dict of output_data, dict include keys shape and dtype
-    axis : int, in the range [-rank(values), rank(values))
+    axis : int, in the range [-rank(values)-1, rank(values)]
     kernel_name : cce kernel name, default value is "pack"
     Returns
     -------
     None
     """
-    if axis < -1:
-        axis = axis + 1
-
     return concat_v2_d(x, y, axis, kernel_name)
