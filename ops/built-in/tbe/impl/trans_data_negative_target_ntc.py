@@ -1148,7 +1148,8 @@ def _func_transform_200(tensor_args, tp_args):
                     cr_pln_size.set_as(dst_cr_lp_unit)
                 is_cr_back.set_as(0)
             with tik_inst.else_scope():
-                with tik_inst.if_scope(tik.all(used_core_cnt > 1, cr_left > 0, cr_left < ele_per_block)):
+                with tik_inst.if_scope(tik.all(tik.any(used_core_cnt > 1, cr_lp_cnt > 1),
+                                               cr_left > 0, cr_left < ele_per_block)):
                     cr_pln_size.set_as(cr_left + ele_per_block)
                     is_cr_back.set_as(1)
                 with tik_inst.else_scope():
