@@ -46,8 +46,8 @@ std::map<Format, std::map<Format, std::vector<int64_t>>> perm_args{
       {FORMAT_HWCN, std::vector<int64_t>({kChwnH, kChwnW, kChwnC, kChwnN})}}},
 };
 
-bool IsShapeArgValid(const std::vector<int64_t> &src_shape,
-                     const std::vector<int64_t> &perm_arg) {
+bool ShapeArgValid(const std::vector<int64_t> &src_shape,
+                   const std::vector<int64_t> &perm_arg) {
   if (src_shape.empty()) {
     KERNEL_LOG_ERROR("Failed to transpose, src shape is empty");
     return false;
@@ -56,7 +56,7 @@ bool IsShapeArgValid(const std::vector<int64_t> &src_shape,
     if (dim < 0) {
       KERNEL_LOG_ERROR(
           "Failed to transpose, negative dim [%d] in src shape [%s]", dim,
-          FmtToStr(VectorToString(src_shape)));
+          FmtToStr(VectorToString(src_shape)).c_str());
       return false;
     }
   }
@@ -64,7 +64,7 @@ bool IsShapeArgValid(const std::vector<int64_t> &src_shape,
     KERNEL_LOG_ERROR(
         "Failed to transpose, the size of src shape [%s] and perm arg [%s] are "
         "different",
-        FmtToStr(src_shape.size()), FmtToStr(perm_arg.size()));
+        FmtToStr(src_shape.size()).c_str(), FmtToStr(perm_arg.size()).c_str());
     return false;
   }
 
@@ -73,7 +73,8 @@ bool IsShapeArgValid(const std::vector<int64_t> &src_shape,
     if (perm < 0 || static_cast<size_t>(perm) >= perm_arg.size() ||
         ++exists[perm] > 1) {
       KERNEL_LOG_ERROR("Failed to transpose, invalid perm [%s], perm arg [%s]",
-                       FmtToStr(perm), FmtToStr(VectorToString(perm_arg)));
+                       FmtToStr(perm).c_str(),
+                       FmtToStr(VectorToString(perm_arg)).c_str());
       return false;
     }
   }
@@ -93,7 +94,7 @@ bool IsTransposeArgValid(const uint8_t *src,
                      DTypeStr(src_data_type).c_str());
     return false;
   }
-  return IsShapeArgValid(src_shape, perm_arg);
+  return ShapeArgValid(src_shape, perm_arg);
 }
 
 void GenHeads(const std::vector<int64_t> &shape, std::vector<int64_t> &heads) {
@@ -275,7 +276,7 @@ uint32_t FormatTransferTranspose::TransShape(
   if (GetPermByForamt(src_format, dst_format, perm_arg) != KERNEL_STATUS_OK) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  if (!IsShapeArgValid(src_shape, perm_arg)) {
+  if (!ShapeArgValid(src_shape, perm_arg)) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
   TransShapeByPerm(src_shape, perm_arg, dst_shape);
