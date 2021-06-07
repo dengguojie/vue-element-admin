@@ -1590,6 +1590,8 @@ class CceConvOp:
                         special_mode_dict["use_c04_mode"] = ConvC04Mode.V100_MODE.value
                     elif c04_v200_flag:
                         special_mode_dict["use_c04_mode"] = ConvC04Mode.V200_MODE.value
+                    elif ConvParam.l0a_dma_flag:
+                        special_mode_dict["l0a_dma_flag"] = True
                     if res.op.tag == "conv_virtual_res" and w_dtype == "float16":
                         special_mode_dict["convfp16_double_out"] = True
                     else:
@@ -1985,7 +1987,7 @@ class CceConvOp:
                         sch[bias_l0c].double_buffer()
                         sch[c_col_bias].double_buffer()
                         sch[bias_l0c].preload()
-                        if is_support_v200():
+                        if is_support_v200() and not ConvParam.l0a_dma_flag:
                             sch[fmap_col_before].double_buffer()
                             sch[fmap_col_before].preload()
                         if bias_optimize_flag:
@@ -3162,7 +3164,7 @@ class CceConvOp:
                         output_ub_5d.shape[3].value*output_ub_5d.shape[4].value,
                         0)
 
-                if self._lhisi_data_flow_type or self._l0a_dma_flag:
+                if self._lhisi_data_flow_type:
                     return True
                 if "convolution" in lop["op"]:
                     return True
@@ -6041,7 +6043,8 @@ class AutoScheduleOp:
                 i.tag = "convolution_A"
             if tmp_op["op"] == "convolution_al1_load2d":
                 i.tag = "convolution_A"
-            if "fmap_l1" in tmp_op["op"] or "aipp_res" in tmp_op["op"]:
+            if "fmap_l1" in tmp_op["op"] or "aipp_res" in tmp_op["op"] or \
+                "fmap_ub_for_dma_im2col" in tmp_op["op"]:
                 i.tag = "convolution_A"
             if "aipp_res" in tmp_op["op"]:
                 ConvParam.tensor_map["aipp_input_format"] = tmp_op["dst_buffer"].op.attrs["input_format"]
