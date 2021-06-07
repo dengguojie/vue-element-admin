@@ -23,29 +23,6 @@ ut_case = OpUT("GatherV2", "impl.dynamic.gather_v2", "gather_v2")
 
 def test_op_check_supported(test_arg):
     from impl.dynamic.gather_v2 import check_supported
-    check_supported({"shape": [20, 28], "dtype": "int8", "format": "ND", "ori_shape": [20, 28], "ori_format": "ND"},
-                     {"shape": [200], "dtype": "int32", "format": "ND", "ori_shape": [200], "ori_format": "ND"},
-                     {"shape": [1], "dtype": "int32", "format": "NCHW", "ori_shape": [1], "ori_format": "NCHW"},
-                     {"shape": [200, 28], "dtype": "int8", "format": "NCHW", "ori_shape": [200, 28],"ori_format": "ND"})
-    check_supported({"shape": [20], "dtype": "float16", "format": "ND", "ori_shape": [-2], "ori_format": "ND"},
-                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [10], "ori_format": "ND"},
-                     {"shape": [1], "dtype": "int32", "format": "NCHW", "ori_shape": [1], "ori_format": "NCHW"},
-                     {"shape": [10], "dtype": "float16", "format": "NCHW", "ori_shape": [10], "ori_format": "ND"})
-    check_supported({"shape": [30, 5, 61], "dtype": "int32", "format": "ND", "ori_shape": [30, 5, 61],
-                     "ori_format": "ND"},
-                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [-2], "ori_format": "ND"},
-                     {"shape": [1], "dtype": "int32", "format": "NCHW", "ori_shape": [1], "ori_format": "NCHW"},
-                     {"shape": [10, 5, 61], "dtype": "int32", "format": "NCHW", "ori_shape": [10, 5, 61],
-                      "ori_format": "ND"})
-    check_supported({"shape": [10, 1, 28, 16], "dtype": "int64", "format": "ND", "ori_shape": [10, 1, 28, 16],
-                     "ori_format": "ND"},
-                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [10], "ori_format": "ND"},
-                     {"shape": [1], "dtype": "int32", "format": "NCHW", "ori_shape": [-2], "ori_format": "NCHW"},
-                     {"shape": [10, 1, 28, 16], "dtype": "int64", "format": "NCHW", "ori_shape": [10, 1, 28, 16],
-                      "ori_format": "ND"})
-
-def test_op_check_supported(test_arg):
-    from impl.dynamic.gather_v2 import check_supported
     check_supported({"shape": [-2], "dtype": "int8", "format": "ND", "ori_shape": [20, 28], "ori_format": "ND"},
                      {"shape": [200], "dtype": "int32", "format": "ND", "ori_shape": [200], "ori_format": "ND"},
                      {"shape": [1], "dtype": "int32", "format": "NCHW", "ori_shape": [1], "ori_format": "NCHW"},
@@ -149,7 +126,6 @@ ut_case.add_case("all",
                      "dynamic_gather_v2_06", RuntimeError))
 
 
-ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

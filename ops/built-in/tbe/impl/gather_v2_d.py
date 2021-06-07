@@ -64,6 +64,25 @@ def get_op_support_info(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     return op_cal_info_in_json
 
 
+def check_supported(x, indices, y, axis=0, kernel_name="gather_v2_d"):
+    """
+    Parameters
+    ----------
+    x_dict: input params shape, dtype and range, if shape contains -x2, the process doesn't support
+    """
+    shape_x = x.get("ori_shape")
+    shape_indices = indices.get("ori_shape")
+
+    if -2 in shape_x:
+        reason = "shape_x contains -2."
+        return False, reason
+    if -2 in shape_indices:
+        reason = "shape_indices contains -2."
+        return False, reason
+
+    return True, ""
+
+
 def _new_alloc(tvm_ib, dtype, shape, name, scope):
     """ decl new buffer
 
