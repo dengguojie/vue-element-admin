@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-CANN_ROOT=$(cd $(dirname $0); pwd)
+export CANN_ROOT=$(cd $(dirname $0); pwd)
 
 STATUS_SUCCESS=0
 STATUS_FAILED=1
@@ -40,6 +40,30 @@ set_st_env() {
   export DDK_PATH=$install_path
   export NPU_HOST_LIB=$install_path/acllib/lib64/stub
   export LD_LIBRARY_PATH=$install_path/acllib/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
+}
+
+modify_for_cov() {
+  manager_files=`find /usr/local/ -name fusion_manager.py|grep te_fusion`
+  for manager_file in $manager_files
+  do
+    if [[ `grep "st_cover.start()" $manager_file|wc -l` -eq 0 ]]; then
+      echo "fusion_manager has changed for st_cover"
+      cp -f $manager_file $manager_file".bak"
+      sed -i 's#compile_info = call_op()#import coverage,sys,time;cov_file = os.path.join(os.getenv("CANN_ROOT") or "", "cov_result", ".coverage.%s.%s" % (op_func_name, time.time()));st_cover = coverage.Coverage(source=[op_module, "impl"], data_file=cov_file);st_cover.start();sys.modules.get(op_module) and importlib.reload(sys.modules.get(op_module));dyn_op_module=op_module.replace("impl.", "impl.dynamic.");sys.modules.get(dyn_op_module) and importlib.reload(sys.modules.get(dyn_op_module));compile_info = call_op();st_cover.stop;st_cover.save();#g' $manager_file
+      sed -i 's#return opfunc(\*inputs, \*outputs, \*attrs)#import coverage,sys,time;cov_file = os.path.join(os.getenv("CANN_ROOT") or "", "cov_result", ".coverage.%s.%s" % (op_func_name, time.time()));st_cover = coverage.Coverage(source=[op_module, "impl"], data_file=cov_file);st_cover.start();sys.modules.get(op_module) and importlib.reload(sys.modules.get(op_module));dyn_op_module=op_module.replace("impl.", "impl.dynamic.");sys.modules.get(dyn_op_module) and importlib.reload(sys.modules.get(dyn_op_module));res = opfunc(*inputs, *outputs, *attrs);st_cover.stop;st_cover.save();return res;#g' $manager_file 
+    fi
+  done
+}
+
+clear_tmp() {
+  unset CANN_ROOT
+  manager_files=`find /usr/local/ -name fusion_manager.py|grep te_fusion`
+  for manager_file in $manager_files
+  do
+    if [[ `grep "st_cover.start()" $manager_file|wc -l` -gt 0 ]]; then
+      mv -f $manager_file".bak" $manager_file
+    fi
+  done
 }
 
 run_st() {
@@ -114,6 +138,11 @@ get_results() {
     xargs grep -v "Test Result" |
     awk '{print $2" : "$3}' > "${RESULT}" 2>/dev/null
   echo "[INFO] get results for all:" && cat "${RESULT}"
+  if [[ `ls cov_result/.coverage*|wc -l` -gt 0 ]]; then
+    echo "[INFO] find coverage files,tar them."
+    cd cov_result && coverage combine && cd -
+    tar -cvzf cov_result.tar.gz cov_result/.coverage*
+  fi
 }
 
 main() {
@@ -128,11 +157,13 @@ main() {
   if [[ -z "${soc_version}" ]]; then
      soc_version="Ascend310"
   fi
+  modify_for_cov
   delete_unmatch_cases $soc_version
   gen_all_cases
   set_st_env "${base_path}"
   run_st "${op_type}" "${soc_version}"
   get_results
+  clear_tmp
 }
 
 if [[ $# -lt 1 ]]; then
