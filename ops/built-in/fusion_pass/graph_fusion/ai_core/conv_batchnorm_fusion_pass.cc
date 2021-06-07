@@ -208,6 +208,7 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       (biasHostOpdesc =
            std::make_shared<ge::OpDesc>(convNode->GetName() + destNode->GetName() + "_bias_host", BIAS_HOST_TYPE)),
       return NOT_CHANGED);
+
   vector<ge::GeTensorDesc> conv2dInputs;
   vector<ge::InDataAnchorPtr> conv2dInputAncors;
   vector<ge::GeTensorDesc> conv2dConstOutputs;
@@ -273,6 +274,25 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get const of destNode[%s] not success, fusion failed.",
                             destNode->GetName().c_str()),
                     return FAILED);
+  // remove control edge between conv and const node
+  for (ge::OutDataAnchorPtr destConstOutputAncor : destConstOutputAncors) {
+    ge::NodePtr destConstNodePtr = destConstOutputAncor->GetOwnerNode();
+    if (destConstNodePtr == nullptr) {
+      continue;
+    }
+    ge::InControlAnchorPtr constInCtrlAnchor = destConstNodePtr->GetInControlAnchor();
+    if (constInCtrlAnchor == nullptr) {
+      continue;
+    }
+    for (ge::OutControlAnchorPtr constPeerOutCtrlAnchor : constInCtrlAnchor->GetPeerOutControlAnchors()) {
+      if (constPeerOutCtrlAnchor->GetOwnerNode() == nullptr) {
+        continue;
+      }
+      if (constPeerOutCtrlAnchor->GetOwnerNode()->GetName() == convNode->GetName()) {
+        (void)ge::GraphUtils::RemoveEdge(constPeerOutCtrlAnchor, constInCtrlAnchor);
+      }
+    }
+  }
   for (size_t i = 0; i < destConstInputs.size(); i++) {
     FUSION_PASS_CHECK(filterHostOpdesc->AddInputDesc(descInputsName[i], destConstInputs[i]) != SUCCESS,
                       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add const input of dest failed."), return FAILED);
