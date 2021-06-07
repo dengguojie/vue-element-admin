@@ -248,7 +248,90 @@ ut_case.add_precision_case(["Hi3796CV300ES","Hi3796CV300CS"],
                                "precision_standard": precision_info.PrecisionStandard(0, 0)
                            })
 
+ut_case.add_precision_case(["Ascend920A"],
+                           {
+                               "params":
+                                   [
+                                       {
+                                           "shape": (4, 255, 3, 8),
+                                           "dtype": "int32",
+                                           "format": "ND",
+                                           "ori_shape": (-1, 255, 3, 8),
+                                           "range": ((4, 4), (255, 255), (3, 3), (8, 8),),
+                                           "run_shape": (4, 255,3, 8),
+                                           "ori_format": "ND",
+                                           "param_type": "input",
+                                           #"value": np.arange(0, 256*8*4*20*16*16, dtype="int32").reshape(256, 8, 4, 20, 16, 16)
+                                       },
+                                       {
+                                           "shape": (4,),
+                                           "run_shape": (4,),
+                                           "dtype": "int32",
+                                           "ori_shape": (4),
+                                           "ori_format" : "ND",
+                                           "format": "ND",
+                                           "value": np.array([2, 1, 0, 3]),
+                                           "value_need_in_tiling": True,
+                                           "param_type": "input"
+                                       },
+                                       {
+                                           "shape": (3, 255, 4, 8),
+                                           "dtype": "int32",
+                                           "format": "ND",
+                                           "ori_shape": (3, 255, 4, 8),
+                                           "range": ((3, 3), (255, 255), (4, 4), (8, 8), ),
+                                           "run_shape": (3, 255, 4, 8),
+                                           "ori_format": "ND",
+                                           "param_type": "output"
+                                       },
+                                   ],
+                               "calc_expect_func": calc_expect_func,
+                               "precision_standard": precision_info.PrecisionStandard(0, 0)
+                           })
+
+def test_transpose_920a(test_arg):
+    from impl.dynamic.transpose import transpose 
+    from te import platform as cce_conf
+    cce_conf.cce_conf.te_set_version("Ascend920A", core_type="VectorCore")
+    transpose(
+                {
+                    "shape": (4, 255, 3, 8),
+                    "dtype": "int32",
+                    "format": "ND",
+                    "ori_shape": (-1, 255, 3, 8),
+                    "range": ((4, 4), (255, 255), (3, 3), (8, 8),),
+                    "run_shape": (4, 255,3, 8),
+                    "ori_format": "ND",
+                    "param_type": "input",
+                    #"value": np.arange(0, 256*8*4*20*16*16, dtype="int32").reshape(256, 8, 4, 20, 16, 16)
+                },
+                {
+                    "shape": (4,),
+                    "run_shape": (4,),
+                    "dtype": "int32",
+                    "ori_shape": (4),
+                    "ori_format" : "ND",
+                    "format": "ND",
+                    "value": np.array([2, 1, 0, 3]),
+                    "value_need_in_tiling": True,
+                    "param_type": "input"
+                },
+                {
+                    "shape": (3, 255, 4, 8),
+                    "dtype": "int32",
+                    "format": "ND",
+                    "ori_shape": (3, 255, 4, 8),
+                    "range": ((3, 3), (255, 255), (4, 4), (8, 8), ),
+                    "run_shape": (3, 255, 4, 8),
+                    "ori_format": "ND",
+                    "param_type": "output"
+                },
+              )
+    cce_conf.cce_conf.te_set_version(test_arg)
+
+ut_case.add_cust_test_func(test_func=test_transpose_920a)
+
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
-    ut_case.run(["Ascend910A", "Hi3796CV300ES", "Hi3796CV300CS"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910A", "Ascend920A", "Hi3796CV300ES", "Hi3796CV300CS"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
 

@@ -20,6 +20,7 @@ from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from tbe.common.platform.platform_info import api_check_support
 
 UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
@@ -603,7 +604,7 @@ class Transpose(object):
         if UB_SIZE == 256 * 1024:
             return 3968 - 16  # 910 & 310
         if UB_SIZE == 192 * 1024:
-            return 2854  # cs
+            return 2848  # cs
         if UB_SIZE == 128 * 1024:
             return 1861  # es
         return 3968 - 16
@@ -2004,6 +2005,27 @@ class Transpose(object):
                 self._copy_out_tail_row_t2f(tp, ub_input, ub_offset, ln, tp.loop_on_mr)
             self._update_tuple(tp.n_axis_num, tp.rt_n_tuple, tp.n_jump_factor)
 
+    # -------------------------------------------------------------------------------------------------
+    #                                    scenario_8
+    # -------------------------------------------------------------------------------------------------
+    def _move_data_s8(self, ub_input_64):
+        # 4 255 3 8 -> 3 255 4 8
+        if api_check_support("tik.vcopy", "int16"):
+            ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
+            tik_inst = self.tik_inst
+            tik_inst.data_move(ub_input, self.data_in, 0, 1, 4 * 255 * 3, 0, 0)
+            with tik_inst.for_range(0, 3) as i:
+                tik_inst.vcopy(4 * 8,
+                               ub_input[32 * 1024 + i * 255 * 4 * 8],
+                               ub_input[0 + i * 8],
+                               255,
+                               1,
+                               255 * 3,
+                               4,
+                               3,
+                               "counter")
+            tik_inst.data_move(self.data_out, ub_input[32 * 1024], 0, 1, 4 * 255 * 3, 0, 0)
+
     def _do_tiling_s0(self, block_idx, tiling_reg_list, ub_input_64_t, ub_input_64, fixed_len, per_core_len):
         self.tik_inst.data_move(ub_input_64[0],
                                 self.data_tiling[TILING_HEAD_LEN + fixed_len + block_idx * per_core_len],
@@ -2082,10 +2104,12 @@ class Transpose(object):
                             tp = self._do_tiling_s3(block_idx, self.tiling_reg_list, self.ub_input_64_t,
                                                     self.ub_input_64, fixed_len, per_core_len)
                             self._move_data_s3(tp, self.ub_input_64)
-                        with self.tik_inst.else_scope():  # scenario == 0
+                        with self.tik_inst.if_scope(scenario == 0):  # scenario == 0
                             tp = self._do_tiling_s0(block_idx, self.tiling_reg_list, self.ub_input_64_t,
                                                     self.ub_input_64, fixed_len, per_core_len)
                             self._move_data_s0(tp, self.ub_input_64)
+                        with self.tik_inst.if_scope(scenario == 8):
+                            self._move_data_s8(self.ub_input_64)
 
     def compute(self, input_list):
         """
