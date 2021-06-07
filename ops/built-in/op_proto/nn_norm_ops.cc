@@ -1729,5 +1729,23 @@ IMPLEMT_INFERFUNC(MultilabelMarginLoss, MultilabelMarginLossInferShape) {
 INFER_FUNC_REG(MultilabelMarginLoss, MultilabelMarginLossInferShape);
 VERIFY_FUNC_REG(MultilabelMarginLoss, MultilabelMarginLossVerify);
 // ----------------MultiLabelMarginLoss end----------------------------------
+// ----------------------NormalizeBatch----------------------
+IMPLEMT_COMMON_INFERFUNC(NormalizeBatchInferShape) {
+  TensorDesc tensordesc_output = op.GetOutputDesc("output_y");
+  TensorDesc tensordesc_input = op.GetInputDesc("input_x");
+  auto input_shape = tensordesc_input.GetShape();
+  auto input_dtype = tensordesc_input.GetDataType();
+  auto input_dims = input_shape.GetDims();
+  if (input_dims.size() != 3) {
+    OP_LOGE(op.GetName().c_str(), "input shape doesn't support");
+    return GRAPH_FAILED;
+  }
+  tensordesc_output.SetShape(input_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("output_y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
 
+COMMON_INFER_FUNC_REG(NormalizeBatch, NormalizeBatchInferShape);
+//-----------------------NormalizeBatch END---------------------
 }  // namespace ge

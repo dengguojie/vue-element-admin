@@ -1571,6 +1571,27 @@ REG_OP(MultilabelMarginLoss)
     .ATTR(reduction, String, "mean")
     .OP_END_FACTORY_REG(MultilabelMarginLoss)
 
+/**
+*@brief Performs batch normalization . \n
+*@par Inputs:
+* Two inputs
+*@li input_x: A Tensor. Support float32. shape (n, c, d).
+*@li seq_len: A Tensor. Each batch normalize data num. Support Int32. Shape (n, ). \n
+*@par Attributes:
+*@li normalize_type: Str. Support "per_feature" or "all_feature".
+*@li epsilon: An optional float32, specifying the small value added to
+variance to avoid dividing by zero. Defaults to "0.00001" . \n
+*@par Outputs:
+* One outputs
+*@li output_y: A Tensor for the normalized "x".Support float32. shape (n, c, d).\n
+*/
+REG_OP(NormalizeBatch)
+    .INPUT(input_x, TensorType({ DT_FLOAT }))
+    .INPUT(seq_len, TensorType({ DT_INT32 }))
+    .OUTPUT(output_y, TensorType({ DT_FLOAT }))
+    .REQUIRED_ATTR(normalize_type, String)
+    .ATTR(epsilon, Float, 0.00001)
+    .OP_END_FACTORY_REG(NormalizeBatch)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_NORM_OPS_H_
