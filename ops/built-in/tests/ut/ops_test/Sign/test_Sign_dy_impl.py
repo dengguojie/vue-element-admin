@@ -18,7 +18,7 @@ def gen_dynamic_sign_case(shape_x, range_x, dtype_val, format,
             "format_expect": [],
             "support_expect": True}
 
-ut_case.add_case("Ascend910A",
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_sign_case((-1,),
                                        [(1,None)],
                                        "float32", "ND",
@@ -27,4 +27,4 @@ ut_case.add_case("Ascend910A",
                                        "success"))
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+    ut_case.run(["Ascend910A", "Ascend310"])

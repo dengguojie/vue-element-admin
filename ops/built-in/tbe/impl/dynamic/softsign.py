@@ -15,7 +15,6 @@
 """
 dynamic softsign
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -97,12 +96,10 @@ def softsign(x, y, kernel_name="softsign"):
 
     ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for (_x,) in ins:
+    for (input_x,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            input_data = tvm.placeholder(fuseshape, name="input_data", dtype=x_dtype)
+            x_shape = shape_util.variable_shape([input_x])
+            input_data = tvm.placeholder(x_shape[0], name="input_data", dtype=x_dtype)
             res = softsign_compute(input_data, y, kernel_name)
             tensors.append([input_data, res])
         with tvm.target.cce():
