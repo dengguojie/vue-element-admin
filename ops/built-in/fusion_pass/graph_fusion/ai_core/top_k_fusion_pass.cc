@@ -96,6 +96,12 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
                     return PARAM_INVALID);
   // may find TopKV2, use TopK instead
   topk_desc->SetType("TopK");
+  auto input_desc_k = topk_desc->GetInputDesc(1);
+  if (input_desc_k.GetDataType() == ge::DT_INT64) {
+    input_desc_k.SetDataType(ge::DT_INT32);
+    input_desc_k.SetOriginDataType(ge::DT_INT32);
+    topk_desc->UpdateInputDesc(1, input_desc_k);
+  }
 
   // The value of sorted cannot be false in aicore
   bool sorted = true;
