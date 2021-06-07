@@ -13,11 +13,13 @@ warnings.filterwarnings("ignore")
 def dsl_reduce_5hdc_sum(x, _, axis, keep_dim, kernel_name='dsl_reduce_5hdc_sum'):
     input_shape = x.get("shape")
     input_dtype = x.get("dtype")
+    input_format = x.get("format")
     data1 = tvm.placeholder(input_shape, name='data1', dtype=input_dtype)
     res = tbe.sum(data1, axis, keep_dim)
 
-    res.ori_shape = x["ori_shape"]
-    res.ori_format = x["ori_format"]
+    if input_format == "NC1HWC0":
+        res.ori_shape = x["ori_shape"]
+        res.ori_format = x["ori_format"]
 
     tensor_list = [data1, res]
     with tvm.target.cce():
@@ -53,9 +55,19 @@ case2 = {
     "expect": "success",
     "support_expect": True
 }
+case3 = {
+    "params": [{"shape": (64, 16, 64, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 1024, 256), "ori_format": "ND"},
+               {"shape": (16, 1024, 1), "dtype": "float16", "format": "ND", "ori_shape": (16, 1024, 1), "ori_format": "ND"},
+               [1, 4],
+               True
+               ],
+    "case_name": "test_reduce_5hdc_sum_3",
+    "expect": "success",
+    "support_expect": True
+}
 
 compile_case_list = [
-    case1,case2,
+    case1,case2,case3
 ]
 
 for item in compile_case_list:

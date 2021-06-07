@@ -163,14 +163,14 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         self.out_shape = list(map(int, self._out_tensor.shape))
         temp_ori_shape = getattr(self._out_tensor, "ori_shape", None)
         if temp_ori_shape is None:
-            log.error("[Reduce5HDCSchedule] " +
+            log.warn("[Reduce5HDCSchedule] " +
                       "Failed to get 5HDC Mode original shape")
             temp_ori_shape = [self.in_shape[0], self.in_shape[2], self.in_shape[3],
                               self.in_shape[1] * self.in_shape[4]]
         self.ori_shape = temp_ori_shape
         self.ori_format = getattr(self._out_tensor, "ori_format", None)
         if self.ori_format is None:
-            log.error("[Reduce5HDCSchedule] " +
+            log.warn("[Reduce5HDCSchedule] " +
                       "Failed to get 5HDC Mode original format")
             self.ori_format = "NHWC"
         n_idx = self.ori_format.index("N")
