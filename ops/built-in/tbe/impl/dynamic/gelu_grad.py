@@ -75,7 +75,7 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
     input_abs = tbe.vabs(input_x)
     power_val = tbe.vmuls(input_abs, tvm.const(-2, "float32"))
 
-    if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and dtype == "float32":
+    if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and input_dtype == "float32":
         power_val_fp16 = tbe.cast_to(power_val, "float16")
         exp_val = tbe.vexp(power_val_fp16)
     else:

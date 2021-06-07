@@ -71,7 +71,8 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
             tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
         has_improve_precision = True
         input_x = tbe.cast_to(input_x, "float32")
-
+        dtype = input_x.dtype
+        
     # formula; gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
     # formula; tanh(y) = 2/(1+exp(-2y)) - 1
 
