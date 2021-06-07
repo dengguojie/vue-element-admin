@@ -24,13 +24,13 @@ Status ParseParamsResize(const Message *op_src, ge::Operator &op_dst) {
     OP_LOGE("Resize", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
+
   std::string coordinate_transformation_mode_value;
   float cubic_coeff;
   int exclude_outside_value;
   float extrapolations_value;
   std::string mode_value;
   std::string nearest_mode_value;
-
   for (auto attr : node->attribute()) {
     if (attr.name() == "coordinate_transformation_mode" &&
         attr.type() == ge::onnx::AttributeProto::STRING) {
@@ -76,6 +76,7 @@ Status ParseParamsResize(const Message *op_src, ge::Operator &op_dst) {
       return FAILED;
     }
   }
+  // the output format should be NCHW
   for (size_t i = 0; i < op_desc->GetOutputsSize(); i++){
     ge::GeTensorDesc tensor = op_desc->GetOutputDesc(i);
     tensor.SetOriginFormat(ge::FORMAT_NCHW);
@@ -93,7 +94,8 @@ REGISTER_CUSTOM_OP("Resize")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::10::Resize",
                  "ai.onnx::11::Resize",
-                 "ai.onnx::12::Resize"})
+                 "ai.onnx::12::Resize",
+                 "ai.onnx::13::Resize"})
   .ParseParamsFn(ParseParamsResize)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

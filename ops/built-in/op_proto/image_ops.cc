@@ -2574,7 +2574,8 @@ static bool GetConstValueFloat(const Operator& op, const Tensor& const_tensor,
               (float_t)(*(const_data_ptr + i)));
     }
   } else {
-    OP_LOGE(op.GetName().c_str(), "not support this type");
+    std::string err_msg = OtherErrMsg("Not support this type");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), err_msg);
     return false;
   }
   return true;
@@ -2595,13 +2596,15 @@ static bool CalculateSizeOut(const Operator& op,
       scale_out.erase(scale_out.begin() + 1);  // 1 is index
       scale_out.erase(scale_out.begin() + 0);  // 0 is index
     } else {
-      OP_LOGE(op.GetName().c_str(), "Not supported this format%d",
-              input_format);
+      std::string err_msg = GetInputFormatNotSupportErrMsg("input_format",
+                                                           ConcatString("FORMAT_NHWC, FORMAT_NCHW"),
+                                                           std::to_string(input_format));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     }
   }
   if (scale_out.size() != DIM_SIZE2) {
-    OP_LOGE(op.GetName().c_str(),
-            "length of scale_out after erase must be equal to 2");
+    std::string err_msg = GetAttrSizeErrMsg("scale_out", std::to_string(scale_out.size()), std::to_string(DIM_SIZE2));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return false;
   }
   if (input_format == FORMAT_NHWC && image_shape.size() > 2) {
@@ -2611,10 +2614,10 @@ static bool CalculateSizeOut(const Operator& op,
     size_out_h = image_shape[2] * scale_out[0];  // 0 and 2 is index
     size_out_w = image_shape[3] * scale_out[1];  // 3 and 1 is index
   } else {
-    OP_LOGE(op.GetName().c_str(),
-            "Not supported this format%d, output tensor will be wrong",
-            input_format);
-    return false;
+    std::string err_msg = OtherErrMsg(ConcatString("Not supported this format ",
+                                                   input_format,
+                                                   ", output tensor will be wrong"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), err_msg);
   }
   size_out.push_back(size_out_h);
   size_out.push_back(size_out_w);
@@ -2632,13 +2635,15 @@ static graphStatus HadleSizeOut(const Operator& op,
       size_out.erase(size_out.begin() + 1);  // 1 is index
       size_out.erase(size_out.begin() + 0);  // 0 is index
     } else {
-      OP_LOGE(op.GetName().c_str(), "Not supported this format%d",
-              input_format);
+      std::string err_msg = GetInputFormatNotSupportErrMsg("input_format",
+                                                           ConcatString("FORMAT_NHWC, FORMAT_NCHW"),
+                                                           std::to_string(input_format));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     }
   }
   if (size_out.size() != DIM_SIZE2) {
-    OP_LOGE(op.GetName().c_str(),
-            "length of size_out after erase must be equal to 2");
+    std::string err_msg = GetAttrSizeErrMsg("size_out", std::to_string(size_out.size()), std::to_string(DIM_SIZE2));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2656,26 +2661,39 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
   Tensor sizes_tensor;
   vector<int64_t> size_out;
   vector<float_t> scale_out;
+  bool const_input = false;
 
   if (op.GetInputConstData("scales", scales_tensor) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Get constValue failed of [scales]");
+    op.SetAttr("const_input", const_input);
+    vector<int64_t> temp_scale = op.GetInputDesc("scales").GetShape().GetDims();
+    for (int64_t i = 0; i < temp_scale.size(); i++) {
+      scale_out.push_back((float)temp_scale[i]);
+    }
+  } else {
+    const_input = true;
+    op.SetAttr("const_input", const_input);
+    GetConstValueFloat(op, scales_tensor, inputs_dtype_scales, scale_out);
+  }
+  if (inputs_size == 4) {
+    if (op.GetInputConstData("sizes", sizes_tensor) != GRAPH_SUCCESS) {
+      op.SetAttr("const_input", const_input);
+      size_out = op.GetInputDesc("sizes").GetShape().GetDims();
+    } else {
+      const_input = true;
+      op.SetAttr("const_input", const_input);
+      DataType input_dtype_sizes = op.GetInputDesc("sizes").GetDataType();
+      GetConstValue(op, sizes_tensor, input_dtype_sizes, size_out);
+    }
   }
 
-  if (inputs_size == 4) {  // 4 is number of inputs
-    if (op.GetInputConstData("sizes", sizes_tensor) != GRAPH_SUCCESS) {
-      OP_LOGW(op.GetName().c_str(), "Get constValue failed of [sizes]");
-    }
-    DataType input_dtype_sizes = op.GetInputDesc("sizes").GetDataType();
-    GetConstValue(op, sizes_tensor, input_dtype_sizes, size_out);
-  }
   if (size_out.size() == 0) {
-    GetConstValueFloat(op, scales_tensor, inputs_dtype_scales, scale_out);
-    if (!CalculateSizeOut(op, images_shape, scale_out, input_format,
-                          size_out)) {
-      OP_LOGE(op.GetName().c_str(), "calculate size out failed.");
+    if (!CalculateSizeOut(op, images_shape, scale_out, input_format, size_out)) {
+      std::string  err_msg = OtherErrMsg("calculate size out failed.");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), err_msg);
       return GRAPH_FAILED;
     }
   }
+
   HadleSizeOut(op, input_format, size_out);
 
   vector<int64_t> y_shape;
@@ -2690,7 +2708,11 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
     y_shape.push_back(size_out[0]);      // 0 is index
     y_shape.push_back(size_out[1]);      // 1 is index
   } else {
-    OP_LOGE(op.GetName().c_str(), "Not supported this format%d", input_format);
+    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format",
+                                                           ConcatString("FORMAT_NHWC, FORMAT_NCHW"),
+                                                           std::to_string(input_format));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return false;
   }
   td.SetShape(ge::Shape(y_shape));
   td.SetDataType(input_dtype);

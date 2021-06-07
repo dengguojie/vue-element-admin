@@ -68,6 +68,7 @@ static bool MatchModeName(const ge::Operator &op, std::string &mode_name) {
   std::string *ptr;
   if (op.GetAttr("mode", mode_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get attr mode failed.");
+    return false;
   }
   int8_t names_size = sizeof(mode_names) / sizeof(std::string);
   ptr = find(mode_names, mode_names + names_size, mode_name.c_str());
@@ -78,7 +79,7 @@ static bool MatchModeName(const ge::Operator &op, std::string &mode_name) {
   return true;
 }
 
-ge::NodePtr CopyNewNode(ge::ComputeGraph &graph, ge::OpDescPtr &desc,
+ge::NodePtr CopyStaticNode(ge::ComputeGraph &graph, ge::OpDescPtr &desc,
                         const std::string &mode_name) {
   std::string fusion_op_type;
   ge::OpDescPtr resize_fused_desc = AttrUtils::CloneOpDesc(desc);
@@ -86,6 +87,22 @@ ge::NodePtr CopyNewNode(ge::ComputeGraph &graph, ge::OpDescPtr &desc,
     fusion_op_type = "ResizeNearestNeighborV2D";
   } else if (mode_name == "linear") {
     fusion_op_type = "ResizeBilinearV2D";
+  } else {
+    OP_LOGE("Reszie", "Unsupported interpolation mode");
+  }
+  desc->SetType(fusion_op_type);
+  ge::NodePtr fused_node = graph.AddNode(resize_fused_desc);
+  return fused_node;
+}
+
+ge::NodePtr CopyDynamicNode(ge::ComputeGraph &graph, ge::OpDescPtr &desc,
+                        const std::string &mode_name) {
+  std::string fusion_op_type;
+  ge::OpDescPtr resize_fused_desc = AttrUtils::CloneOpDesc(desc);
+  if (mode_name == "nearest") {
+    fusion_op_type = "ResizeNearestNeighborV2";
+  } else if (mode_name == "linear") {
+    fusion_op_type = "ResizeBilinearV2";
   } else {
     OP_LOGE("Reszie", "Unsupported interpolation mode");
   }
@@ -106,7 +123,6 @@ vector<FusionPattern *> ResizeFusionPass::DefinePatterns() {
       .SetOutput(PATTERN_FUSEDNODE);
 
   patterns.push_back(pattern);
-
   return patterns;
 }
 
@@ -154,17 +170,17 @@ Status ResizeFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
             input_format);
   }
 
-  // delete input_roi,input_scales,input_sizes
-  for (int i = 0; i < 3; i++) {  // 3 is lenth of input
-    DeleteInput(graph, fuse_node, fuse_desc, 1);
-  }
-
   // set attr_align_corners,attr_half_pixel_centers,attr_size
   std::string coordinate_transformation_mode_value;
   if (op.GetAttr("coordinate_transformation_mode",
                  coordinate_transformation_mode_value) != GRAPH_SUCCESS) {
     OP_LOGI(op.GetName().c_str(),
             "Get attr coordinate transformation mode failed, set to default.");
+  }
+  bool const_input = false;
+  if (op.GetAttr("const_input", const_input) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get const_input failed");
+    return PARAM_INVALID;
   }
   bool half_pixel_centers = false;
   bool align_corners = false;
@@ -173,19 +189,31 @@ Status ResizeFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   } else if (coordinate_transformation_mode_value == "align_corners"){
     align_corners = true;
   }
+  ge::NodePtr resize_fuse_node;
   ge::AttrUtils::SetBool(fuse_desc, "half_pixel_centers", half_pixel_centers);
   ge::AttrUtils::SetBool(fuse_desc, "align_corners", align_corners);
-  ge::AttrUtils::SetListInt(fuse_desc, "size", output_size);
+  if (const_input == true) {
+    ge::AttrUtils::SetListInt(fuse_desc, "size", output_size);
+    resize_fuse_node = CopyStaticNode(graph, fuse_desc, mode_name);
+    // delete input_roi,input_scales,input_sizes
+    for (int i = 0; i < 3; i++) {  // 3 is lenth of input
+      DeleteInput(graph, fuse_node, fuse_desc, 1);
+    }
+  } else if (const_input == false) {
+    resize_fuse_node = CopyDynamicNode(graph, fuse_desc, mode_name);
+    // delete input_roi,input_scales
+    for (int i = 0; i < 2; i++) { // 2 is lenth of input,sizes need to as input for ResizeNearestNeighborV2/ResizeBilinearV2
+      DeleteInput(graph, fuse_node, fuse_desc, 1);
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(), "set const_input is error");
+    return PARAM_INVALID;
+  }
 
   // delete attr_coordinate_transformation_mode,attr_cubic_coeff_a,
   // attr_exclude_outside,attr_extrapolation_value,attr_mode,attr_nearest_mode
   DeleteAttr(fuse_desc);
-
-  // copy to new node
-  ge::NodePtr resize_fuse_node = CopyNewNode(graph, fuse_desc, mode_name);
-
   fusionNodes.push_back(resize_fuse_node);
-
   return SUCCESS;
 }
 
