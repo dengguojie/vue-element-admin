@@ -174,7 +174,7 @@ static Status ParseOpToGraphInt8Conv(const ge::Operator& op, Graph& graph) {
 
   ge::Format filter_format = ge::FORMAT_NCHW;
   if (order == "NHWC") {
-    filter_format = ge::FORMAT_HWCN;
+    filter_format = ge::FORMAT_NHWC;
   }
   std::map<std::string, ge::Format> kvmap = {{"NCHW", ge::FORMAT_NCHW}, {"NHWC", ge::FORMAT_NHWC}};
   auto order_map = kvmap.find(order);
