@@ -190,6 +190,9 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       param.tail_size = param.axis_size % segment;
       if (dtype == "float32") {
         param.tiling_mode = 4;  // compute_argxxx_last_axis_fp32
+        if (param.loop_times == 0) {
+          param.tiling_mode = 12;  // compute_argxxx_last_axis_fp32 for zero loop
+        }
       } else {
         param.tiling_mode = 3;  // compute_argxxx_last_axis_fp16
       }
