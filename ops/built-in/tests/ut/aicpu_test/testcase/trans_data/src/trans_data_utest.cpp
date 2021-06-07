@@ -326,3 +326,25 @@ TEST_F(TRANSDATA_UT, INT8_FORMAT_FRACTAL_NZ_TO_FORMAT_ND_FAILED) {
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
   std::cout << "Test TransData end" << std::endl;
 }
+
+TEST_F(TRANSDATA_UT, FORMAT_NCHWToFORMAT_NHWC) {
+  std::cout << "Test TransData begin" << std::endl;
+  int8_t input_data[16] = {59, 62, 22, 40, 97, 68, 52, 50,
+                             22, 7,  5, 63, 75, 82, 37, 10};
+  auto node_def = CpuKernelUtils::CreateNodeDef();
+  int64_t groups = 1;
+  int8_t output_data[32];
+
+  NodeDefBuilder(node_def.get(), "TransData", "TransData")
+      .Input({"src",
+              DT_INT8,
+              {2, 2, 2, 2},
+              (void*)input_data,
+              FORMAT_NCHW})
+      .Attr("src_format", DT_STRING)
+      .Attr("dst_format", DT_STRING)
+      .Output({"src", DT_INT8, {2, 2, 2, 2}, (void*)output_data, FORMAT_NHWC})
+      .Attr("groups", groups);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  std::cout << "Test TransData end" << std::endl;
+}
