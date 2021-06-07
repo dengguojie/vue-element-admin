@@ -48,7 +48,7 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     dtype = input_data.dtype
     has_improve_precision = False
     if dtype == "float16" and tbe_platform.api_check_support(
-            "te.lang.cce.vsqrt", "float32"):
+            "tbe.dsl.vsqrt", "float32"):
         input_data = tbe.cast_to(input_data, "float32")
         has_improve_precision = True
     result = tbe.vsqrt(input_data)
