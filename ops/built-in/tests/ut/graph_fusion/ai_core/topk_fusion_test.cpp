@@ -69,7 +69,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_2) {
     topk_input_data.update_input_desc_x(tensorDesc);
     topk_input_data.update_output_desc_y(tensorDesc);
 
-    int32_t *k_data = new int64_t[1];
+    int64_t *k_data = new int64_t[1];
     k_data[0]=1;
     TensorDesc k_desc(ge::Shape({1}),FORMAT_ND, DT_INT64);
     Tensor k_tensor(k_desc, (uint8_t *)k_data,sizeof(int64_t));
