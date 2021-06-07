@@ -1093,9 +1093,10 @@ graphStatus GetMatMulOutputShape(Operator &op,
   bool fuzzy_flag = false;
   bool is_static_shape = !IsUnKnownShape(shape_a) && !IsUnKnownShape(shape_b) && !IsUnknownShape(shape_bias);
   if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzzy_flag) && fuzzy_flag && is_static_shape) {
-    int shape_length = shape_a.size();
-    std::vector<std::pair<int64_t, int64_t>> single_point_range_a(shape_length);
-    std::vector<std::pair<int64_t, int64_t>> single_point_range_b(shape_length);
+    int shape_a_length = shape_a.size();
+    int shape_b_length = shape_b.size();
+    std::vector<std::pair<int64_t, int64_t>> single_point_range_a(shape_a_length);
+    std::vector<std::pair<int64_t, int64_t>> single_point_range_b(shape_b_length);
     int32_t calc_range_a = CalculateMatmulShapeRange(shape_a, single_point_range_a);
     if (calc_range_a < 0) {
       OP_LOGE(op.GetName().c_str(), "shape of input_x1 is too large");
@@ -1112,7 +1113,11 @@ graphStatus GetMatMulOutputShape(Operator &op,
     desc_b.SetShapeRange(shape_range_b);
     (void) op.UpdateInputDesc("x1", desc_a);
     (void) op.UpdateInputDesc("x2", desc_b);
-    OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "transpose").c_str());
+    std::string transpose_name = "transpose";
+    if (shape_a_length > 2 || shape_b_length > 2) {
+      transpose_name = "adj";
+    }
+    OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, transpose_name).c_str());
   }
   auto obj = InferShapeMatMul(op.GetName(), shape_a, shape_b, shape_bias, shape_range_a, shape_range_b,
                               shape_range_bias, trans_a, trans_b, shape_out, shape_range_out, has_batch);

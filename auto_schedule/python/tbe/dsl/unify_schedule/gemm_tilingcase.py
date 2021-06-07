@@ -163,6 +163,14 @@ def change_full_load_to_value(tiling_list):
     return transed_tiling_list
 
 
+def _is_fuzzily_build():
+    """
+    check fuzzily build flag
+    
+    """
+    context = op_context.get_context()
+    return (context.get_build_type() == "fuzzily_build")
+
 def _get_kernel_compile_info(tiling_key, compile_info_ori, change_keys, tiling_case):
     """
     get compile info for kernel list
@@ -223,15 +231,19 @@ def _get_kernel_support_info(tiling_case, mode):
     input1_range = []
     output_range = []
     if mode == "dynamic_mknb":
+        batch_range_x1 = op_context.get_context().get_addition("batch_range_x1")
+        batch_range_x2 = op_context.get_context().get_addition("batch_range_x2")
         batch_range = [
             order_dict["batch"][0],
             min(INT_32_MAX, order_dict["batch"][1])
         ]
-        input0_shape.append(UNKNOWN_DIM)
-        input1_shape.append(UNKNOWN_DIM)
+        for item in batch_range_x1:
+            input0_shape.append(UNKNOWN_DIM)
+            input0_range.append(item)
+        for item in batch_range_x2:
+            input1_shape.append(UNKNOWN_DIM)
+            input1_range.append(item)
         output_shape.append(UNKNOWN_DIM)
-        input0_range.append(batch_range)
-        input1_range.append(batch_range)
         output_range.append(batch_range)
     if trans_a:
         input0_range.append(k_range)
@@ -241,9 +253,9 @@ def _get_kernel_support_info(tiling_case, mode):
         input0_range.append(k_range)
     if trans_b:
         input1_range.append(n_range)
-        input1_range.append(k_range)
+        input1_range.append([1, INT_32_MAX])
     else:
-        input1_range.append(k_range)
+        input1_range.append([1, INT_32_MAX])
         input1_range.append(n_range)
     output_range.append(m_range)
     output_range.append(n_range)
@@ -345,7 +357,7 @@ def _calc_tiling_case(mode, target_area, cnt):
     return tiling_cases
 
 
-def _calc_intersection(range_a, range_b):
+def _calc_intersection(range_a, range_b, op_name="MatMul", param_name="k_range"):
     """
     calculate intersection of range_a and range_b
 
@@ -361,8 +373,42 @@ def _calc_intersection(range_a, range_b):
 
     intersection = [max(range_a[0], range_b[0]), min(range_a[1], range_b[1])]
     if intersection[0] > intersection[1]:
-        return []
+        error_manager_cube.raise_err_one_para(
+            "E62306",
+            op_name,
+            "{} in input1 has no intersection with {} in input2".format(param_name, param_name)
+        )
     return intersection
+
+
+def _calc_batch_range(range_x1, range_x2):
+    """
+    get range of batch
+    """
+    batch_range = [1, 1]
+    range_x = []
+    if range_x2:
+        if len(range_x1) != len(range_x2):
+            error_manager_cube.raise_err_one_para(
+                "E62306",
+                "BatchMatMul",
+                "the batch length of x1 should be equal to x2"
+            )
+        for range_mem1, range_mem2 in zip(range_x1, range_x2):
+            range_ins = _calc_intersection(range_mem1, range_mem2, "BatchMatMul", "batch_range")
+            range_x.append(range_ins)
+    else:
+        range_x = range_x1
+
+    for range_mem in range_x:
+        if range_mem[1] is None:
+            batch_range = [1, None]
+            break
+        else:
+            batch_range[0] = min(batch_range[0] * range_mem[0], INT_32_MAX)
+            batch_range[1] = min(batch_range[1] * range_mem[1], INT_32_MAX)
+
+    return batch_range
 
 
 def _calc_tiling_case_with_support_info(missing_support_info_list, mode, tiling_key_cnt, context):
@@ -408,38 +454,21 @@ def _calc_tiling_case_with_support_info(missing_support_info_list, mode, tiling_
         trans_a = GEMMComputeParam.tiling_info_dict["trans_a"]
         trans_b = GEMMComputeParam.tiling_info_dict["trans_b"]
 
-        offset = 0
-        if mode == "dynamic_mknb":
-            offset = 1
-        m_index = 1 + offset if trans_a else 0 + offset
-        k_m_index = 0 + offset if trans_a else 1 + offset
-        k_n_index = 1 + offset if trans_b else 0 + offset
-        n_index = 0 + offset if trans_b else 1 + offset
+        m_index, k_m_index = (-1, -2) if trans_a else (-2, -1)
+        k_n_index, n_index = (-1, -2) if trans_b else (-2, -1)
 
         m_range = _list_comprehensive(input_a["tensor"][0]["range"][m_index], factor)
         k_m_range = _list_comprehensive(input_a["tensor"][0]["range"][k_m_index], factor)
         k_n_range = _list_comprehensive(input_b["tensor"][0]["range"][k_n_index], factor)
         n_range = _list_comprehensive(input_b["tensor"][0]["range"][n_index], factor)
 
-        k_range = _calc_intersection(k_m_range, k_n_range)
-        if not k_range:
-            error_manager_cube.raise_err_one_para(
-                "E62306",
-                op_name,
-                "k_range in input1 has no intersection with k_range in input2"
-            )
+        k_range = _calc_intersection(k_m_range, k_n_range, op_name, "k_range")
         area = [m_range, k_range, n_range]
 
         if mode == "dynamic_mknb":
-            batch_range_a = input_a["tensor"][0]["range"][0]
-            batch_range_b = input_b["tensor"][0]["range"][0]
-            batch_range = _calc_intersection(batch_range_a, batch_range_b)
-            if not batch_range:
-                error_manager_cube.raise_err_one_para(
-                    "E62306",
-                    op_name,
-                    "batch_range in input1 has no intersection with batch_range in input2"
-                )
+            batch_range_a = input_a["tensor"][0]["range"][:-2]
+            batch_range_b = input_b["tensor"][0]["range"][:-2]
+            batch_range = _calc_batch_range(batch_range_a, batch_range_b)
             area.append(batch_range)
 
         tiling_case_part = _calc_tiling_case(mode, area, tiling_key_cnt + len(tiling_case))
@@ -467,8 +496,10 @@ def calc_matmul(outs, option=None):
     target_area = [get_te_var(v).get_bound() for v in var_names[mode]]
 
     context = op_context.get_context()
-    fuzzy_build = (context.get_build_type() == "fuzzily_build")
-    if fuzzy_build:
+    if _is_fuzzily_build():
+        # for batchmatmul, supported scenes are list as below:
+        # (1). input1 has one or more batch dims and input2 has no batch
+        # (2). input1 and input2 has same batch dims and no need to broadcast
         missing_support_info_list = context.get_addition("missing_support_info")
         if not missing_support_info_list:
             tiling_case = _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)
@@ -772,7 +803,7 @@ class MatmulTiling(CubeTilingOp):
         return compile_time
 
 
-    def _get_gear_element(self, range_value, gear):
+    def _get_gear_element(self, range_value, gear, is_batch=False):
         """
         Parameters
         ----------
@@ -790,7 +821,7 @@ class MatmulTiling(CubeTilingOp):
         for index, value in enumerate(gear):
             if value <= range_value[0]:
                 left = index
-            if index < (len(gear) -1) and gear[index] <= range_value[1] < gear[index + 1]:
+            if index < (len(gear) - 1) and gear[index] <= range_value[1] < gear[index + 1]:
                 right = index + 1
         if left == (len(gear) - 1):
             element_list = [gear[-1]]
@@ -798,6 +829,8 @@ class MatmulTiling(CubeTilingOp):
             element_list = gear[left:]
         else:
             element_list = gear[left:right]
+        if is_batch and _is_fuzzily_build():
+            element_list = [element_list[0]]
         return element_list
 
 
@@ -819,7 +852,7 @@ class MatmulTiling(CubeTilingOp):
         gear_k_list = self._get_gear_element(target_area[1], cls.GEAR_M_N)
         gear_n_list = self._get_gear_element(target_area[2], cls.GEAR_M_N)
         if len(target_area) == 4:
-            gear_batch_list = self._get_gear_element(target_area[3], cls.GEAR_BATCH)
+            gear_batch_list = self._get_gear_element(target_area[3], cls.GEAR_BATCH, True)
         else:
             gear_batch_list = [1]
         return list(itertools.product(gear_m_list, gear_k_list, gear_n_list, gear_batch_list))
@@ -841,9 +874,9 @@ class MatmulTiling(CubeTilingOp):
         """
         cls = self.__class__
 
-        def _calc_range(value, gear):
+        def _calc_range(value, gear, is_fuzzily_batch=0):
             value_index = gear.index(value)
-            if value_index == (len(gear) - 1):
+            if value_index == (len(gear) - 1) or is_fuzzily_batch == 1:
                 return [value, MAX_RANGE]
             return [value, (gear[value_index + 1] - 1)]
 
@@ -851,7 +884,10 @@ class MatmulTiling(CubeTilingOp):
         if seed_shape in gear_repo_shapes:
             for index, item in enumerate(seed_shape):
                 if index == (len(seed_shape) - 1):
-                    gear_tiling_range += _calc_range(item, cls.GEAR_BATCH)
+                    is_fuzzily_batch = 0
+                    if _is_fuzzily_build():
+                        is_fuzzily_batch = 1
+                    gear_tiling_range += _calc_range(item, cls.GEAR_BATCH, is_fuzzily_batch)
                 else:
                     gear_tiling_range += _calc_range(item, cls.GEAR_M_N)
         else:

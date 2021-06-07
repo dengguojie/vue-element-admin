@@ -172,6 +172,7 @@ def _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b):
     """
     if range_x1 and len(range_x1) >= BATCH_NZ_LENGTH:
         batch_range_x1 = range_x1[:-4]
+        operation.get_op_context().add_addition("batch_range_x1", batch_range_x1)
         if trans_a:
             m_range = list(range_x1[-4])
             k_range_x1 = list(range_x1[-3])
@@ -186,6 +187,7 @@ def _get_input_range(range_x1, range_x2, range_bias, trans_a, trans_b):
     if range_x2 and len(range_x2) >= BATCH_NZ_LENGTH - 1:
         # the batch_range_x2 may be []
         batch_range_x2 = range_x2[:-4]
+        operation.get_op_context().add_addition("batch_range_x2", batch_range_x2)
         if trans_b:
             k_range_x2 = list(range_x2[-4])
             n_range = list(range_x2[-3])
@@ -466,7 +468,7 @@ def _generalize_input_keep_rank(input_dict) :
 @tbe_register.register_param_generalization("BatchMatMul")
 def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z={},
                                 trans_a=False, trans_b=False, kernel_name="batchmatmul",
-                                generalize_config = {"mode": "keep_rank"}):
+                                generalize_config={"mode": "keep_rank"}):
     result = []
     if generalize_config["mode"] == "keep_rank": # fuzzy compile
         _generalize_input_keep_rank(input_x1)
@@ -482,36 +484,7 @@ def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z={},
             "Invalid generalize mode, currently only support keep_rank"
         )
 
-    match_dict = {}
-    shape_a_len = len(input_x1["ori_shape"])
-    shape_b_len = len(input_x2["ori_shape"])
-    k_m_index = shape_a_len - 2 if trans_a else shape_a_len - 1
-    k_n_index = shape_b_len - 1 if trans_b else shape_b_len - 2
-    batch_index = 0
-
-    match_dict["match_dim"] = [
-        [
-            {
-                "input_index": 0,
-                "dim_index": k_m_index
-            },
-            {
-                "input_index": 1,
-                "dim_index": k_n_index
-            }
-        ],
-        [
-            {
-                "input_index": 0,
-                "dim_index": batch_index
-            },
-            {
-                "input_index": 1,
-                "dim_index": batch_index
-            }
-        ],
-    ]
-    return result, match_dict
+    return result
 
 
 @register_operator("BatchMatMul")

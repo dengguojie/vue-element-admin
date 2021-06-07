@@ -444,23 +444,7 @@ def  matmul_generalization(input_x1, input_x2, bias, offset_w={}, output_y={},
             "Invalid generalize mode, currently only support keep_rank"
         )
 
-    match_dict = {}
-    k_m_index = 0 if trans_a else 1
-    k_n_index = 1 if trans_b else 0
-
-    match_dict["match_dim"] = [
-        [
-            {
-                "input_index": 0,
-                "dim_index": k_m_index
-            },
-            {
-                "input_index": 1,
-                "dim_index": k_n_index
-            }
-        ]
-    ]
-    return result, match_dict
+    return result
 
 
 @register_operator("MatMul")

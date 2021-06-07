@@ -3,10 +3,9 @@
 import json
 from op_test_frame.ut import OpUT
 from tbe.common.context import op_context
-from impl.dynamic.mat_mul import matmul_generalization
 
 CUBE_BLOCK = 16
-ut_case = OpUT("MatMul", "impl.dynamic.mat_mul", "mat_mul")
+ut_case = OpUT("BatchMatMul", "impl.dynamic.batch_matmul", "batch_matmul")
 
 
 #shape_a, shape_b, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, case_name
@@ -55,13 +54,13 @@ def gen_matmul_fuzzy_case(shape_a, shape_b, m_range, k_range, n_range, src_dtype
         bias = None
 
     return {
-        "params": [x1, x2, bias, None, y, trans_a, trans_b],
+        "params": [x1, x2, bias, y, trans_a, trans_b],
         "case_name": case_name,
         "expect": "success" 
     }
 
 
-def _generate_missing_support_info(range_m, range_k, range_n):
+def _generate_missing_support_info(range_m, range_k, range_n, batch_range):
     missing_support_info = [
         {
             "inputs": [
@@ -69,8 +68,8 @@ def _generate_missing_support_info(range_m, range_k, range_n):
                     "index": 0, 
                     "tensor": [
                         {
-                            "shape": [-1, -1],
-                            "range": [range_m, range_k]
+                            "shape": [-1, -1, -1, -1],
+                            "range": [batch_range[0], batch_range[1], range_m, range_k]
                         }
                     ]
                 },
@@ -100,26 +99,16 @@ def _generate_missing_support_info(range_m, range_k, range_n):
     return missing_support_info
 
 
-def test_matmul_generalization(test_arg):
-    params = gen_matmul_fuzzy_case(*generalize_case[0])["params"]
-    args_dict = {
-        "offset_x": 0,
-        "kernel_name": "matmul",
-        "generalize_config": {"mode": "keep_rank"}
-    }
-    matmul_generalization(*params, **args_dict)
-
 
 for case in matmul_case_succ:
     ut_case.add_case("Ascend910A", gen_matmul_fuzzy_case(*case))
-
-ut_case.add_cust_test_func(test_func=test_matmul_generalization)
 
 
 if __name__ == "__main__":
     with op_context.OpContext("dynamic"):
         context = op_context.get_context()
         context.set_build_type("fuzzily_build")
-        missing_support_info = _generate_missing_support_info([1, 3], [4, 15], [4, 15])
+        batch_range = [[2, 3], [4, 7]]
+        missing_support_info = _generate_missing_support_info([1, 3], [4, 15], [4, 15], batch_range)
         context.add_addition("missing_support_info", json.dumps(missing_support_info))
         ut_case.run(soc="Ascend910A")
