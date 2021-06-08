@@ -200,6 +200,8 @@ set(_tf_plugins
   hash_table_plugin.cc
   hcom_all_gather_plugin.cc
   hcom_all_reduce_plugin.cc
+  hcom_all_to_all_v_plugin.cc
+  hcom_gather_all_to_all_v_plugin.cc
   hcom_reduce_plugin.cc
   hcom_broadcast_plugin.cc
   hcom_receive_plugin.cc
