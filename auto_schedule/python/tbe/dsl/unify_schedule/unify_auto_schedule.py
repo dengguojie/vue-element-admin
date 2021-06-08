@@ -69,8 +69,9 @@ def schedule_cce(outs, option=None):
             fusion_pattern = pattern
 
         operation.get_op_context().add_build_res("pattern", fusion_pattern)
-
-        return None
+        # if CUBE_VECTOR_SPLIT is not empty, the prebuild process goes to the pass side
+        if not get_soc_spec("CUBE_VECTOR_SPLIT"):
+            return None
 
     tiling_case_func = operation.get_tiling_case(pattern)
     tiling_case_ret = tiling_case_func(original_outs, option)
@@ -104,6 +105,7 @@ def build(schedules_list, config_map=None):
     :return:
     """
     from tbe.common.buildcfg import get_current_build_config
+    # if CUBE_VECTOR_SPLIT is not empty, the prebuild process goes to the pass side
     if get_current_build_config("enable_op_prebuild") and \
             not get_soc_spec("CUBE_VECTOR_SPLIT"):
         # prebuild

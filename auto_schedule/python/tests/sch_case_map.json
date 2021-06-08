@@ -246,5 +246,8 @@
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/norm_schedule.py":[
         "norm"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/unify_auto_schedule.py":[
+        "unify_auto_schedule"
     ]
 }
