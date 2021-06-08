@@ -2,6 +2,7 @@
 import os
 import subprocess
 from absl import flags, app
+import shutil
 
 FLAGS = flags.FLAGS
 
@@ -55,8 +56,20 @@ def main(argv):
     root_path = os.path.dirname(os.path.dirname(cur_dir))
     python_path = os.getenv('PYTHONPATH')
 
+    sch_cov_path = os.path.join(root_path, 'build/test/ut/cov_report/sch/python_utest')
+    sch_report_path = os.path.join(root_path, 'build/test/ut/cov_report/sch/report')
+
     if sch_tag:
         print("[INFO]Run schedule ut case!!!")
+
+        params_dict["--cov_path="] = sch_cov_path
+        params_dict["--report_path="] = sch_report_path
+        sch_params = []
+        for input_key in params_dict.keys():
+            sch_params.append(input_key + str(params_dict[input_key]))
+
+
+
         frame_path = os.path.join(root_path, 'auto_schedule', 'python',
                                   'tests')
         case_path = os.path.join(root_path, 'auto_schedule', 'python', 'tests',
@@ -83,6 +96,13 @@ def main(argv):
         res_msg = os.system(" ".join(cmd))
         if res_msg != 0:
             exit(res_msg)
+    
+    sch_cov_file = os.path.join(sch_cov_path, ".coverage")
+    if os.path.exists(sch_cov_file):
+        if not os.path.exists(FLAGS.cov_path):
+            os.makedirs(FLAGS.cov_path)
+        dst_path = os.path.join(FLAGS.cov_path, '.coverage.sch')
+        shutil.move(sch_cov_file, dst_path)
 
     exit(0)
 

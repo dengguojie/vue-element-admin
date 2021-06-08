@@ -50,7 +50,9 @@ run_ut() {
     exit $STATUS_FAILED
   fi
 
-  python3.7 "${CANN_ROOT}/scripts/run_ut.py"                     \
+  [ -d ${OPS_UT_COV_REPORT} ] && rm -fr ${OPS_UT_COV_REPORT}
+
+  python3.7 -u "${CANN_ROOT}/scripts/run_ut.py"                     \
                 --soc_version="${supported_soc}"                            \
                 --simulator_lib_path="${BASE_HOME}/toolkit/tools/simulator" \
                 --pr_changed_file="${pr_file}"                              \
@@ -65,10 +67,10 @@ run_ut() {
     echo "run all ut case successfully."
   else
     echo "run inc ut case successfully, start generate inc report."
-    coverage_file=$(find $OPS_UT_COV_REPORT -name ".coverage" | head -n1)
+    coverage_file=$(find $OPS_UT_COV_REPORT -name ".coverage*" | head -n1)
     if [[ -f "$coverage_file" ]]; then
       coverage_dir="$(dirname $coverage_file)"
-      cd $coverage_dir && coverage xml -o ${OPS_UT_COV_REPORT}/coverage.xml >/dev/null 2>&1
+      cd $coverage_dir; coverage combine -a; coverage xml -o ${OPS_UT_COV_REPORT}/coverage.xml >/dev/null 2>&1
       diff-cover --compare-branch=origin/master ${OPS_UT_COV_REPORT}/coverage.xml --html-report ${OPS_UT_COV_REPORT}/report.html
       echo "diff-cover generated."
     else
