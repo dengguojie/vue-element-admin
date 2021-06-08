@@ -15,10 +15,9 @@
 """
 dynamic square
 """
-import functools
-
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
@@ -27,7 +26,7 @@ from impl.util.platform_adapter import OpPatternMode
 
 
 # pylint: disable=unused-argument,redefined-argument-from-local
-def square_compute(input_x, output_y, kernel_name="square"):
+def square_compute(input_x, output_y, input_dtype, kernel_name="square"):
     """
     algorithm: square
     calculating data's square,y= x*x
@@ -46,7 +45,15 @@ def square_compute(input_x, output_y, kernel_name="square"):
     res : tvm.tensor
         the result of square
     """
-    res = tbe.vmul(input_x, input_x)
+    api_check = tbe_platform.api_check_support("tbe.dsl.vmul",
+                                               "float32")
+    if not(api_check) and input_dtype == "float32":
+        input_x = tbe.cast_to(input_x, "float16")
+        res = tbe.vmul(input_x, input_x)
+        res = tbe.cast_to(res, "float32")
+    else:
+        res = tbe.vmul(input_x, input_x)
+
     return res
 
 
@@ -82,11 +89,9 @@ def square(input_x, output, kernel_name="square"):
         with tbe.compute():
             # shape
             x_shape = shape_util.variable_shape([input_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
             # square_compute
-            data_x = tvm.placeholder(fuseshape, x_dtype, name="data_x")
-            res = square_compute(data_x, output, kernel_name)
+            data_x = tvm.placeholder(x_shape[0], x_dtype, name="data_x")
+            res = square_compute(data_x, output, x_dtype, kernel_name)
 
             tensors.append((data_x, res))
         with tvm.target.cce():

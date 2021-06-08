@@ -1,75 +1,31 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import numpy as np
-from op_test_frame.ut import ElementwiseOpUT
-from op_test_frame.common import precision_info
+import tbe
+from op_test_frame.ut import OpUT
 
-ut_case = ElementwiseOpUT("Exp", "impl.dynamic.exp", "exp")
+ut_case = OpUT("Exp", "impl.dynamic.exp", "exp")
 
+case1 = {"params": [{"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (-1,),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (-1,), "dtype": "float16", "format": "ND", "ori_shape": (-1,),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    ],
+         "case_name": "case1",
+         "expect": "success",
+         "support_expect": True}
 
-def calc_expect_func(x, y):
-    x_value = x.get("value")
-    output_data = np.exp(x_value)
-    return (output_data,)
+case2 = {"params": [{"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (-1,),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (-1,),
+                     "ori_format": "ND", "range": [(1, 100)]},
+                    ],
+         "case_name": "case2",
+         "expect": "success",
+         "support_expect": True}
 
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310"], case2)
 
-# ut_case.add_precision_case("Ascend910A",
-#                            {
-#                                "params":
-#                                    [
-#                                        {
-#                                            "shape": (2, -1),
-#                                            "dtype": "float32",
-#                                            "format": "ND",
-#                                            "ori_shape": (2, -1),
-#                                            "range": ((2, 2), (2, 10),),
-#                                            "run_shape": (2, 10),
-#                                            "ori_format": "ND",
-#                                            "param_type": "input"
-#                                        },
-#                                        {
-#                                            "shape": (2, -1),
-#                                            "dtype": "float32",
-#                                            "format": "ND",
-#                                            "ori_shape": (2, -1),
-#                                            "range": ((2, 2), (2, 10),),
-#                                            "run_shape": (2, 10),
-#                                            "ori_format": "ND",
-#                                            "param_type": "output"
-#                                        },
-#                                    ],
-#                                "calc_expect_func": calc_expect_func,
-#                                "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001)
-#                            })
-#
-# ut_case.add_precision_case("Ascend310",
-#                            {
-#                                "params":
-#                                    [
-#                                        {
-#                                            "shape": (2, -1),
-#                                            "dtype": "float32",
-#                                            "format": "ND",
-#                                            "ori_shape": (2, -1),
-#                                            "range": ((2, 2), (2, 10),),
-#                                            "run_shape": (2, 10),
-#                                            "ori_format": "ND",
-#                                            "param_type": "input"
-#                                        },
-#                                        {
-#                                            "shape": (2, -1),
-#                                            "dtype": "float32",
-#                                            "format": "ND",
-#                                            "ori_shape": (2, -1),
-#                                            "range": ((2, 2), (2, 10),),
-#                                            "run_shape": (2, 10),
-#                                            "ori_format": "ND",
-#                                            "param_type": "output"
-#                                        },
-#                                    ],
-#                                "calc_expect_func": calc_expect_func,
-#                                "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-#                            })
 if __name__ == '__main__':
-    simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
-    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run(["Ascend910A", "Ascend310"])

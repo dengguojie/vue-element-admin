@@ -16,7 +16,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 exp
 """
 import math
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -61,7 +60,7 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0,
     res : the result of compute
     """
     input_x_dtype = input_x.dtype
-    api_check = tbe_platform.api_check_support("te.lang.cce.vexp",
+    api_check = tbe_platform.api_check_support("tbe.dsl.vexp",
                                                "float32")
     if (not api_check) and (input_x.dtype == "float32"):
         input_x = tbe.cast_to(input_x, "float16")
@@ -124,9 +123,7 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     for (input_x,) in ins:
         with tbe.compute():
             shape_x = shape_util.variable_shape([input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, shape_x[0])
-            data_input = tvm.placeholder(fuseshape, name="data_input",
+            data_input = tvm.placeholder(shape_x[0], name="data_input",
                                          dtype=input_dtype)
             res = exp_compute(data_input, output_y, base, scale, shift,
                               kernel_name)
