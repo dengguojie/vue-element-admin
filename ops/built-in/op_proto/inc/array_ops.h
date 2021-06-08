@@ -626,7 +626,7 @@ REG_OP(StopGradient)
 *x: A tensor. \n
 
 *@par Outputs:
-*y: A tensor. \n
+*y: A tensor with the same shape and contents as input. \n
 
 *@par Third-party framework compatibility
 *Compatible with the TensorFlow operator Identity.
