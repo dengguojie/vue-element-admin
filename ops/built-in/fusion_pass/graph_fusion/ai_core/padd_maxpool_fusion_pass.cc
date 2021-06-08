@@ -37,7 +37,7 @@
 
 using namespace ge;
 namespace fe {
-static const char* PADD = "PadD";
+static const char* PADD = "Pad";
 static const char* MAXPOOL = "MaxPool";
 static const std::string PATTERN_PADD = "FusedNodePadD";
 static const std::string PATTERN_MAXPOOL = "FusedNodeMaxPool";
@@ -61,6 +61,7 @@ vector<FusionPattern*> PaddMaxPoolFusionPass::DefinePatterns() {
 Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get all nodes
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PADD, mapping);
+  NOT_CHANGED_WITH_DYNAMIC_NODE({pad_node});
   ge::NodePtr maxpool_node = GetNodeFromMapping(PATTERN_MAXPOOL, mapping);
   FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_node is null, fusion failed."),
                     return PARAM_INVALID);
@@ -87,19 +88,24 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   ge::GeTensorDesc output_desc = maxpool_desc->GetOutputDesc(0);
   ge::GeShape input_shape = input_desc.GetShape();
   ge::Format input_format = input_desc.GetFormat();
-  FUSION_PASS_CHECK(IsUnknownShape(input_shape.GetDims()), OP_LOGI(FUSED_OP_TYPE.c_str(), "Padd is dynamic."),
-                    return NOT_CHANGED);
 
   // get op
   Operator op_pad = ge::OpDescUtils::CreateOperatorFromNode(pad_node);
   Operator op_maxpool = ge::OpDescUtils::CreateOperatorFromNode(maxpool_node);
 
-  // attr:paddings
+  // get const paddings
+  std::vector<int64_t> pad_value;
+  FUSION_PASS_CHECK(!GetIntConstValue(pad_node, "paddings", pad_value),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Get const value of paddings failed"),
+                    return NOT_CHANGED);
   std::vector<std::vector<int64_t>> paddings;
-  if (ge::GRAPH_SUCCESS != op_pad.GetAttr("paddings", paddings)) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr padddings failed.");
-    return NOT_CHANGED;
+  for (size_t i = 1; i < pad_value.size(); i += 2) {
+    vector<int64_t> one_value;
+    one_value.push_back(pad_value[i - 1]);
+    one_value.push_back(pad_value[i]);
+    paddings.push_back(one_value);
   }
+
   // attr:ksize
   std::vector<int32_t> ksize;
   if (GRAPH_SUCCESS != op_maxpool.GetAttr("ksize", ksize)) {
@@ -261,6 +267,21 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   // set node type
   pool_node->GetOpDesc()->SetType("Pooling");
 
+  // try to delete Edge between paddings const node and pad node
+  ge::NodePtr paddings_node = pad_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
+  FUSION_PASS_CHECK(paddings_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "get paddings const node failed."),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(paddings_node->GetOutDataAnchor(0),
+                                               pad_node->GetInDataAnchor(1)) != SUCCESS,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Remove edge between const node and pad failed."),
+                    return NOT_CHANGED);
+  // try to delete paddings const node if const node have no Edge
+  if (paddings_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() == 0) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "the paddings const node have no output edge, will be deleted!");
+    FUSION_PASS_CHECK(graph.RemoveNode(paddings_node) != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(),
+                      "Remove paddings_node failed."), return NOT_CHANGED);
+  }
+
   // delete fused nodes
   FUSION_PASS_CHECK(graph.RemoveNode(pad_node) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove pad_node failed."),
                     return FAILED);
@@ -270,5 +291,5 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "PaddMaxPoolFusionPass graph fusion success!");
   return SUCCESS;
 }
-REGISTER_PASS("PaddMaxPoolFusionPass", BUILT_IN_GRAPH_PASS, PaddMaxPoolFusionPass);
+REGISTER_PASS("PadMaxPoolFusionPass", BUILT_IN_GRAPH_PASS, PaddMaxPoolFusionPass);
 }  // namespace fe

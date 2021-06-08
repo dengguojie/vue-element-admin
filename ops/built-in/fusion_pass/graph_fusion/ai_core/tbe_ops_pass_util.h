@@ -31,7 +31,7 @@
     bool unknown_shape = false;                                                                              \
     if (ge::NodeUtils::GetNodeUnknownShapeStatus(*(fused_node.get()), unknown_shape) == ge::GRAPH_SUCCESS && \
         unknown_shape) {                                                                                     \
-      OP_LOGI(fused_node->GetOpDesc()->GetType().c_str(), "this node is unkonwshape, will not be changed."); \
+      OP_LOGI(fused_node->GetOpDesc()->GetType().c_str(), "this node is dynamic node, will not be changed.");\
       return NOT_CHANGED;                                                                                    \
     }                                                                                                        \
   }
@@ -42,4 +42,14 @@ void ClearOpInferDepends(const ge::NodePtr& node_ptr);
 bool IsUnknownShape(const std::vector<int64_t>& shape);
 void RemoveInputDesc(ge::OpDescPtr op_desc, uint32_t index);
 
-#endif //TBE_OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_OPS_PASS_UTIL_H_
+/**
+* Get int type const value from one node
+* @param [in] fused_node the node with const input
+* @param [in] name name of the const input in fused_node
+* @param [out] const_value const int values in const input
+* @return true:success, false:failed.
+*/
+bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name,
+                      std::vector<int64_t>&  const_value);
+
+#endif  // TBE_OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_TBE_OPS_PASS_UTIL_H_

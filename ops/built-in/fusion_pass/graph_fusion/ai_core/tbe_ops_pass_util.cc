@@ -126,3 +126,49 @@ void RemoveInputDesc(ge::OpDescPtr op_desc, uint32_t index) {
   ge::OpDescUtils::ClearInputDesc(op_desc, index);
 }
 
+bool GetIntConstValueFromTensor(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+                                std::vector<int64_t>& const_data) {
+  size_t size = 0;
+  if (dtype == ge::DT_INT32) {
+    int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
+    if (const_data_ptr == nullptr) {
+      OP_LOGW(op.GetName().c_str(), "const_data_ptr is null");
+      return false;
+    }
+    size = const_tensor.GetSize() / sizeof(int32_t);
+    for (size_t i = 0; i < size; ++i) {
+      const_data.push_back((int32_t)((*(const_data_ptr + i))));
+      OP_LOGD(op.GetName().c_str(), "const type is int32 idx:value = %d:%d", i, (int32_t)(*(const_data_ptr + i)));
+    }
+  } else if (dtype == ge::DT_INT64) {
+    int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
+    size = const_tensor.GetSize() / sizeof(int64_t);
+    for (size_t i = 0; i < size; ++i) {
+      const_data.push_back(((int64_t)(*(const_data_ptr + i))));
+      OP_LOGD(op.GetName().c_str(), "const type is int64 idx:value = %d:%d", i, (int32_t)(*(const_data_ptr + i)));
+    }
+  } else {
+    OP_LOGW(op.GetName().c_str(), "do not support get int value for this type %d", dtype);
+    return false;
+  }
+  return true;
+}
+
+bool GetIntConstValue(const ge::NodePtr& fused_node, const string& const_name,
+                      std::vector<int64_t>&  const_value) {
+  Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
+  OP_LOGD(op.GetName().c_str(), "begin to get const value for input name(%s)", const_name.c_str());
+  Tensor const_tensor;
+  if (ge::GRAPH_SUCCESS != op.GetInputConstData(const_name, const_tensor)) {
+    OP_LOGW(op.GetName().c_str(), "get const tensor of name(%s) from op failed", const_name.c_str());
+    return false;
+  }
+  DataType dtype = op.GetInputDesc(const_name).GetDataType();
+
+  if (!GetIntConstValueFromTensor(op, const_tensor, dtype, const_value)) {
+    OP_LOGW(op.GetName().c_str(), "get const Value of name(%s) from tensor failed", const_name.c_str());
+    return false;
+  }
+  OP_LOGD(op.GetName().c_str(), "end to get const value for input name(%s)", const_name.c_str());
+  return true;
+}

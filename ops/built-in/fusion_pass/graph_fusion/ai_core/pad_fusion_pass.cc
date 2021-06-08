@@ -42,33 +42,6 @@ namespace fe {
 static const std::string PATTERN_PAD = "Pad";
 static const char* PAD = "Pad";
 
-bool PadFusionPass::GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
-                                  std::vector<int64_t>& const_data) {
-  size_t size = 0;
-  if (dtype == ge::DT_INT32) {
-    int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
-    if (const_data_ptr == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "const_data_ptr is null");
-    }
-    size = const_tensor.GetSize() / sizeof(int32_t);
-    for (size_t i = 0; i < size; ++i) {
-      const_data.push_back((int32_t)((*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int32 fusion pass ====== %d", (int32_t)(*(const_data_ptr + i)));
-    }
-  } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
-    size = const_tensor.GetSize() / sizeof(int64_t);
-    for (size_t i = 0; i < size; ++i) {
-      const_data.push_back(((int64_t)(*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %d", (int64_t)(*(const_data_ptr + i)));
-    }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "not support this type");
-    return false;
-  }
-  return true;
-}
-
 vector<FusionPattern*> PadFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
@@ -90,17 +63,10 @@ Status PadFusionPass::PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& p
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   vector<string> dummyVec;
   op_desc->SetOpInferDepends(dummyVec);
-  Tensor const_tensor;
-  if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", const_tensor)) {
-    return GRAPH_FAILED;
-  }
-  DataType dtype = op.GetInputDesc("paddings").GetDataType();
-
   std::vector<int64_t> pad_value;
-  if (!GetConstValue(op, const_tensor, dtype, pad_value)) {
-    return GRAPH_FAILED;
-    OP_LOGE(op.GetName().c_str(), "Get Const Value failed ");
-  };
+  FUSION_PASS_CHECK(!GetIntConstValue(pad_node, "paddings", pad_value),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Get const value of paddings failed"),
+                    return FAILED);
 
   vector<vector<int64_t>> paddings;
   for (size_t i = 1; i < pad_value.size(); i += 2) {
