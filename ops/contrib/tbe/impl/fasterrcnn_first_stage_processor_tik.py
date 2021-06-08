@@ -28,7 +28,7 @@ elif TBE_VERSION == "C7x":
     from .decode_for_firststage import decode
     from .padorclipbox import pad_or_clip_box
     from .softmax_tik_first import softmax
-    from image_detection.image_detection import ImageDetection, Param
+    from .image_detection import ImageDetection, Param
 
 BLOCKLENGTH = 1920
 

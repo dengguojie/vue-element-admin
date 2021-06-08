@@ -26,7 +26,7 @@ elif TBE_VERSION == "C7x":
     from . import decode_for_second as dc
     from . import softmax as sm
     from . import cliptowindow as clipwin
-    from image_detection.image_detection import ImageDetection, Param
+    from .image_detection import ImageDetection, Param
 
 
 def _ceil_div_offline(value, factor):
