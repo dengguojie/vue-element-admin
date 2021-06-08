@@ -38,6 +38,9 @@ namespace optiling
 
   const int32_t COL_PER_PART = 3600;
 
+  const int64_t WORKSPACE_DIM = 3;
+  const int64_t WORKSPACE_SIZE = 1073741824;
+
   struct SortTilingParams
   {
     int32_t tiling_mode_scalar;
@@ -200,8 +203,8 @@ namespace optiling
     // cout tiling params
     PrintTilingParams(op_type, params);
     run_info.block_dim = need_core;
-    // workspace, null for tik op
-    std::vector<int64_t> workspace;
+    // workspace for tik op
+    std::vector<int64_t> workspace(WORKSPACE_DIM,WORKSPACE_SIZE);
     run_info.workspaces = workspace;
     OP_LOGI("Sort Tiling end.");
     return true;
