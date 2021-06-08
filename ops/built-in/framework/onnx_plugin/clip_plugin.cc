@@ -163,8 +163,8 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
     min_op = op::Const("min").set_attr_value(min_tensor);
   } else {
     min_op = op::Data("min").set_attr_index(index);
-    index++;
   }
+  index++;
 
   Operator max_op;
   if (no_max) {
@@ -176,9 +176,9 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
     max_op = op::Const("max").set_attr_value(max_tensor);
   } else {
     max_op = op::Data("max").set_attr_index(index);
-    index++;
   }
-  
+  index++;
+
   Operator input_op1 = data0;
   Operator input_op2 = min_op;
   Operator input_op3 = max_op;
@@ -192,8 +192,8 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
 
     if (!no_min) {
       input_op2 = op::Cast("cast2").set_input_x(min_op).set_attr_dst_type(DT_FLOAT);
-    } 
-  } 
+    }
+  }
   clip_by_value.set_input_x(input_op1).set_input_clip_value_min(input_op2).set_input_clip_value_max(input_op3);
   std::vector<Operator> inputs{data0, min_op, max_op};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
@@ -205,9 +205,7 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
 // register Clip op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::8::Clip",
-                   "ai.onnx::9::Clip",
-                   "ai.onnx::10::Clip"})
+    .OriginOpType({"ai.onnx::8::Clip", "ai.onnx::9::Clip", "ai.onnx::10::Clip"})
     .ParseParamsFn(ParseParamsClipV9)
     .ParseOpToGraphFn(ParseOpToGraphClipV9)
     .ImplyType(ImplyType::TVM);
