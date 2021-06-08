@@ -95,5 +95,13 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertEqual(error.value.args[0],
                          utils.MS_OP_GEN_INVALID_PATH_ERROR)
 
+    def test_fix_name_lower_with_under(self):
+        before_convert_list = ["Abc", "AbcDef", "ABCDef", "Abc2DEf", "Abc2DEF","ABC2dEF"]
+        after_convert_list = ["abc", "abc_def", "abc_def", "abc2d_ef", "abc2def", "abc2d_ef"]
+        result = []
+        for i in before_convert_list:
+            result.append(utils.fix_name_lower_with_under(i))
+        self.assertEqual(result, after_convert_list)
+
 if __name__ == '__main__':
     unittest.main()

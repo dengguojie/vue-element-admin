@@ -5,7 +5,7 @@ import te.lang.cce
 from topi.cce import util
 from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
-def conv2_d_compute(x, filter, y):
+def conv2d_compute(x, filter, y):
     """
     The compute function of the Conv2D implementation.
     """
@@ -14,13 +14,13 @@ def conv2_d_compute(x, filter, y):
 
 
 # Define the kernel info of Conv2D.
-conv2_d_op_info = TBERegOp("Conv2D") \
+conv2d_op_info = TBERegOp("Conv2D") \
     .fusion_type("OPAQUE") \
     .partial_flag(True) \
     .async_flag(False) \
-    .binfile_name("conv2_d.so") \
+    .binfile_name("conv2d.so") \
     .compute_cost(10) \
-    .kernel_name("conv2_d_impl") \
+    .kernel_name("conv2d_impl") \
     .attr("strides", "required", "listInt", "all")\
     .attr("pads", "required", "listInt", "all")\
     .attr("dilations", "optional", "listInt", "all")\
@@ -33,8 +33,8 @@ conv2_d_op_info = TBERegOp("Conv2D") \
 
 
 # Binding kernel info with the kernel implementation.
-@op_info_register(conv2_d_op_info)
-def conv2_d_impl(x, filter, y, kernel_name="conv2_d_impl"):
+@op_info_register(conv2d_op_info)
+def conv2d_impl(x, filter, y, kernel_name="conv2d_impl"):
     """
     The entry function of the Conv2D implementation.
     """
@@ -46,7 +46,7 @@ def conv2_d_impl(x, filter, y, kernel_name="conv2_d_impl"):
     data2 = tvm.placeholder(shape, name="data2", dtype=dtype.lower())
 
     with tvm.target.cce():
-        res = conv2_d_compute(data1, data2, y)
+        res = conv2d_compute(data1, data2, y)
         sch = generic.auto_schedule(res)
 
     config = {"print_ir": False,

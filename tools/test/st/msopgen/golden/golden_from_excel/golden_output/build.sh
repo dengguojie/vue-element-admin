@@ -34,9 +34,8 @@ export AICPU_KERNEL_TARGET=cust_aicpu_kernels
 # Uncomment and modify it when you need to specify os and architecture.
 # export SYSTEM_INFO=centos_x86_64
 
-
 # The version of soc.
-# export SOC_VERSION=Ascend910
+# export AICPU_SOC_VERSION=Ascend910
 
 ###### The following logic can be used without modification ######
 
@@ -100,10 +99,12 @@ if [ "x$clean" == "xy" ] 2>/dev/null; then
   exit 0
 fi
 
-# if specified cross compile toolchain directory is not exist, log error and exit
-if [[ ! -z "$TOOLCHAIN_DIR" ]] && [[ ! -d "$TOOLCHAIN_DIR" ]];then
-    log "[ERROR] Specified cross compile toolchain directory is not exist"
-    exit 1
+if [ ! "x$AICPU_SOC_VERSION" = "xLHISI" ];then
+  # if specified cross compile toolchain directory is not exist, log error and exit
+  if [[ ! -z "$TOOLCHAIN_DIR" ]] && [[ ! -d "$TOOLCHAIN_DIR" ]];then
+      log "[ERROR] Specified cross compile toolchain directory is not exist"
+      exit 1
+  fi
 fi
 
 # set aicpu kernel implement compiler target, default to be custom_cpu_kernels
@@ -147,7 +148,18 @@ fi  # endif compile caffe proto
 cd $project_path/build_out
 rm -rf *.run
 log "[INFO] Cmake begin."
-cmake ..
+
+if [ "x$AICPU_SOC_VERSION" = "xLHISI" ];then
+     CMAKE_ARGS="-DLHISI=TRUE"
+     cmake $CMAKE_ARGS ..
+else
+  if [ "x$AICPU_SOC_VERSION" = "xAscend310RC" ];then
+    CMAKE_ARGS="-DMINRC=TRUE"
+    cmake $CMAKE_ARGS ..
+  else 
+    cmake ..
+  fi
+fi
 if [ $? -ne 0 ]; then
   log "[ERROR] Please check cmake result."
   exit 1

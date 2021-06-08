@@ -281,7 +281,6 @@ message CustomTestParameter {
 PY_HEAD = """import tbe.dsl as tbe
 from tbe import tvm
 from tbe.common.register import register_op_compute
-from topi import generic
 
 """
 PY_COMPUTE_WITHOUT_ATTR = """

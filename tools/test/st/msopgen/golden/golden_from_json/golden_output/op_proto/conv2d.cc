@@ -1,4 +1,4 @@
-#include "conv2_d.h"
+#include "conv2d.h"
 namespace ge {
 
 IMPLEMT_COMMON_INFERFUNC(Conv2DInferShape)

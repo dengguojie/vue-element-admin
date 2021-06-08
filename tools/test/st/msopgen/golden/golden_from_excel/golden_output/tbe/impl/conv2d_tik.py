@@ -1,11 +1,10 @@
 import tbe.dsl as tbe
 from tbe import tvm
 from tbe.common.register import register_op_compute
-from topi import generic
 
 
-@register_op_compute("conv2_d_tik")
-def conv2_d_tik_compute(x1, x2, y, strides, pads, dilations, kernel_name="conv2_d_tik"):
+@register_op_compute("conv2d_tik")
+def conv2d_tik_compute(x1, x2, y, strides, pads, dilations, kernel_name="conv2d_tik"):
     """
     To do: Implement the operator by referring to the
            TBE Operator Development Guide.
@@ -14,7 +13,7 @@ def conv2_d_tik_compute(x1, x2, y, strides, pads, dilations, kernel_name="conv2_
     res = tbe.XXX(x1, x2)
     return res
 
-def conv2_d_tik(x1, x2, y, strides, pads, dilations, kernel_name="conv2_d_tik"):
+def conv2d_tik(x1, x2, y, strides, pads, dilations, kernel_name="conv2d_tik"):
     """
     To do: Implement the operator by referring to the
            TBE Operator Development Guide.
@@ -22,7 +21,7 @@ def conv2_d_tik(x1, x2, y, strides, pads, dilations, kernel_name="conv2_d_tik"):
     data_x1 = tvm.placeholder(x1.get("shape"), dtype=x1.get("dtype"), name="data_x1")
     data_x2 = tvm.placeholder(x2.get("shape"), dtype=x2.get("dtype"), name="data_x2")
 
-    res = conv2_d_tik_compute(data_x1, data_x2, y, strides, pads, dilations, kernel_name)
+    res = conv2d_tik_compute(data_x1, data_x2, y, strides, pads, dilations, kernel_name)
 
     # auto schedule
     with tvm.target.cce():

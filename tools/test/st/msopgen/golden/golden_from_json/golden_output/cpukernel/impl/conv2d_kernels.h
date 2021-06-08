@@ -4,8 +4,8 @@
  * Description: api of Conv2D
  */
 
-#ifndef _CONV2_D_KERNELS_H_
-#define _CONV2_D_KERNELS_H_
+#ifndef _CONV2D_KERNELS_H_
+#define _CONV2D_KERNELS_H_
 
 #include "cpu_kernel.h"
 

@@ -536,17 +536,28 @@ def write_json_file(json_path, content):
 def fix_name_lower_with_under(name):
     """
     change name to lower_with_under style,
-    eg: "ConcatOffset" -> concat_offset
+    eg: "Abc" -> abc
+    eg: "AbcDef" -> abc_def
+    eg: "ABCDef" -> abc_def
+    eg: "Abc2DEf" -> abc2d_ef
+    eg: "Abc2DEF" -> abc2def
+    eg: "ABC2dEF" -> abc2d_ef
     :param name: op type/input/out_put/attribute name to be fix
     :return: name has been fixed
     """
     fix_name = ""
     for index, name_str in enumerate(name):
-        if name_str.isupper():
-            if index == 0:
-                fix_name += name_str.lower()
-            else:
+        if index == 0:
+            fix_name += name_str.lower()
+        elif name_str.isupper() and index != len(name) - 1:
+            if name[index + 1].islower() or (
+                    index != 0 and name[index - 1].islower()):
+                # If a capital letter is surrounded by lowercase letters, convert to "_" + lowercase letter
+                # In addition, all are converted to lowercase letters
+                # eg: "Abc2DEf"  ->   "abc2d_ef"
                 fix_name += "_" + name_str.lower()
+            else:
+                fix_name += name_str.lower()
         else:
-            fix_name += name_str
+            fix_name += name_str.lower()
     return fix_name

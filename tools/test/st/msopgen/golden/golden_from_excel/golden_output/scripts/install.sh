@@ -33,8 +33,6 @@ if [ ! -d $targetdir ];then
     exit 1
 fi
 
-chmod -R +w $targetdir>/dev/null 2>&1
-
 upgrade()
 {
     if [ ! -d ${sourcedir}/$1 ]; then
@@ -59,7 +57,6 @@ upgrade()
                 has_same_file=0
             fi
         done
-
         if [ 0 -eq $has_same_file ]; then
             if test $QUIET = "n"; then
                 echo "has old version in ${targetdir}/$1"\
@@ -82,6 +79,9 @@ upgrade()
     fi
 
     log "copy new ops $1 files ......"
+    if [ -d ${targetdir}/$1/custom/ ]; then
+        chmod -R +w "$targetdir/$1/custom/" >/dev/null 2>&1
+    fi
     cp -rf ${sourcedir}/$1/* $targetdir/$1/
     if [ $? -ne 0 ];then
         log "[ERROR] copy new $1 files failed"
@@ -125,6 +125,7 @@ upgrade_proto()
         fi
         log "[INFO] replace old caffe.proto files ......"
     fi
+    chmod -R +w "$targetdir/framework/custom/caffe/" >/dev/null 2>&1
     cp -rf ${sourcedir}/custom.proto ${targetdir}/framework/custom/caffe/
     if [ $? -ne 0 ];then
         log "[ERROR] copy new custom.proto failed"
@@ -163,19 +164,25 @@ fi
 changemode()
 {
     if [ -d ${targetdir} ];then
-        chmod -R 550 ${targetdir}>/dev/null 2>&1
+        subdirs=$(ls "${targetdir}" 2> /dev/null)
+        for dir in ${subdirs}; do
+            if [[ ${dir} != "Ascend310" ]] && [[ ${dir} != "Ascend310RC" ]]&& [[ ${dir} != "Ascend910" ]] && [[ ${dir} != "Ascend710" ]] && [[ ${dir} != "Ascend310" ]] && [[ ${dir} != "aicpu" ]]; then
+                chmod -R 550 "${targetdir}/${dir}" >/dev/null 2>&1
+            fi
+        done
     fi
 
     return 0
 }
 echo "[ops_custom]changemode..."
-changemode
+#changemode
 if [ $? -ne 0 ];then
     exit 1
 fi
 
-chmod -R -w ${targetdir}>/dev/null 2>&1
-
+if [ -d ${targetdir}/op_impl/custom/cpu/aicpu_kernel/custom_impl/ ]; then
+    chmod -R 440 ${targetdir}/op_impl/custom/cpu/aicpu_kernel/custom_impl/* >/dev/null 2>&1
+fi
 if [ -f ${targetdir}/ascend_install.info ]; then
     chmod -R 440 ${targetdir}/ascend_install.info
 fi

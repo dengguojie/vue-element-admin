@@ -77,6 +77,35 @@ set(INI_2_JSON_PY "${CMAKE_SOURCE_DIR}/cmake/util/parse_ini_to_json.py")
 set(AICPU_INI_2_JSON_PY "${CMAKE_SOURCE_DIR}/cmake/util/aicpu_parser_ini.py")
 
 set(AICPU_KERNEL_TARGET $ENV{AICPU_KERNEL_TARGET})
+
+set(CMAKE_SKIP_RPATH TRUE)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-protector-all")
+
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,relro,-z,now")
+set(CMAKE_EXECUTABLE_LINKER_FLAGS "${CMAKE_EXECUTABLE_LINKER_FLAGS} -Wl,-z,relro,-z,now")
+
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,noexecstack")
+set(CMAKE_EXECUTABLE_LINKER_FLAGS "${CMAKE_EXECUTABLE_LINKER_FLAGS} -Wl,-z,noexecstack")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpic")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpie")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pie")
+set(CMAKE_EXECUTABLE_LINKER_FLAGS "${CMAKE_EXECUTABLE_LINKER_FLAGS} -pie")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_FORTIFY_SOURCE=2 -O2")
+
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fvisibility=hidden")
+set(CMAKE_EXECUTABLE_LINKER_FLAGS "${CMAKE_EXECUTABLE_LINKER_FLAGS} -fvisibility=hidden")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fvisibility-inlines-hidden")
+set(CMAKE_EXECUTABLE_LINKER_FLAGS "${CMAKE_EXECUTABLE_LINKER_FLAGS} -fvisibility-inlines-hidden")
+
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -ftrapv")
+
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -fstack-check")
+
+set(CMAKE_C_FLAGS_DEBUG "-fPIC -pthread -Wfloat-equal -Wshadow -Wformat=2 -Wno-deprecated -fstack-protector-strong -Wall -Wextra")
 if("x${AICPU_KERNEL_TARGET}" STREQUAL "x")
     set(AICPU_KERNEL_TARGET "cust_aicpu_kernels")
 endif()

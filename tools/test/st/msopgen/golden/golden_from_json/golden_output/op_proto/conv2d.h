@@ -16,8 +16,8 @@
  *
  */
 
-#ifndef GE_OP_CONV2_D_H
-#define GE_OP_CONV2_D_H
+#ifndef GE_OP_CONV2D_H
+#define GE_OP_CONV2D_H
 #include "graph/operator_reg.h"
 namespace ge {
 
@@ -30,4 +30,4 @@ REG_OP(Conv2D)
     .REQUIRED_ATTR(dilations, ListInt)
     .OP_END_FACTORY_REG(Conv2D)
 }
-#endif //GE_OP_CONV2_D_H
+#endif //GE_OP_CONV2D_H

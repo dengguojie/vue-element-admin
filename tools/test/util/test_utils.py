@@ -16,7 +16,7 @@ def compare_with_golden(result_path, golden_path):
     result_path = os.path.relpath(result_path)
     golden_path = os.path.join(os.path.relpath(golden_path))
     names = os.listdir(golden_path)
-    shield_list = ['scripts', 'build.sh', 'CMakeLists','toolchain.cmake' ]
+    shield_list = ['scripts', 'build.sh', 'CMakeLists', 'toolchain.cmake', 'cmake']
     for name in names:
         if any(shield in name for shield in shield_list):
             continue

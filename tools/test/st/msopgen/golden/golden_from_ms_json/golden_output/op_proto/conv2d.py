@@ -10,7 +10,7 @@ class Conv2D(PrimitiveWithInfer):
         self.init_prim_io_names(inputs=['x, filter'], outputs=['y'])
         # Import the entry function of the kernel implementation from relative
         #  path or PYTHONPATH.
-        from conv2_d_impl import conv2_d_impl
+        from conv2d_impl import conv2d_impl
 
     def infer_shape(self, data1_shape, data2_shape):
         return data1_shape
