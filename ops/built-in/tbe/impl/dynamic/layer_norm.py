@@ -378,8 +378,6 @@ def layer_norm_compute(input_x,
 
     # DSL description of the normalize calculation process
     if impl_mode == "high_performance":
-        # mean_normalize_broadcast = tbe.broadcast(mean, shape_x)
-        # normalize_sub = tbe.vsub(input_x1, mean_normalize_broadcast)
         epsilon = tvm.const(epsilon, dtype=cast_dtype)
         variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
         normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
@@ -389,8 +387,6 @@ def layer_norm_compute(input_x,
         normalize_mul = tbe.vmul(normalize_sub, normalize_exp)
     else:
         tesor_one = tbe.broadcast(tvm.const(1, cast_dtype_precision), shape_x)
-        # mean_normalize_broadcast = tbe.broadcast(mean, shape_x)
-        # normalize_sub = tbe.vsub(input_x1, mean_normalize_broadcast)
         variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
         epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
         normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
@@ -526,18 +522,11 @@ def layer_norm(input_x,
     }
     axis_tensor_r = {"shape": [len(reduce_axis)], "value": (reduce_axis), "rel_pos_to_reduce": "axis"}
 
-    # if broadcast_axis and reduce_axis:
-    #     ins = tbe.classify([input_x, input_gamma, input_beta, axis_tensor_rb], tbe.Mode.REDUCE_WITH_BROADCAST,
-    #                             {"keepdims": True})
-    #     is_support_broadcast = True
-    # else:
-    #     ins = tbe.classify([input_x, input_gamma, input_beta, axis_tensor_r], tbe.Mode.REDUCE, {"keepdims": True})
     ins = _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis)
     schedules, tensors = [], []
     var_list = []
     for i in range(len(shape_x)):
         dim_axis = operation.var("dim_" + str(i), range_x[i])
-        # dim_axis = tvm.var("dim_"+str(i), dtype="int32")
         var_list.append(dim_axis)
 
     for (dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis) in ins[:1]:
@@ -570,7 +559,6 @@ def layer_norm(input_x,
 
 def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis):
     input_x, input_gamma, input_beta = generate_reduce_input((input_x, input_gamma, input_beta))
-    # x_shape = input_x.shape
     x_range = input_x.get("range")
     gamma_shape = input_gamma.get("shape")
     dynamic_index = []
@@ -581,8 +569,6 @@ def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis):
     beta_shape = input_beta.get("shape")
     beta_range = input_beta.get("range")
     input_x_list = _generate_all_ins(input_x)
-    # input_gamma_list = _generate_all_ins(input_gamma)
-    # input_beta_list = _generate_all_ins(input_beta)
     outs = []
     for ix in input_x_list:
         new_gamma_shape = deepcopy(gamma_shape)
@@ -590,16 +576,15 @@ def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis):
         for id in dynamic_index:
             new_gamma_shape[id] = ix[id]
             new_beta_shape[id] = ix[id]
+        if -1 not in ix and -2 not in ix:
+            mode = para_check.CONST
+        else:
+            mode = para_check.ORIGINAL
 
-        ixd = {'shape': ix, 'range': x_range, 'mode': 'special', 'rel_pos_to_reduce': 'before'}
-        igd = {'shape': new_gamma_shape, 'range': gamma_range, 'mode': 'special', 'rel_pos_to_reduce': 'before'}
-        ibd = {'shape': new_beta_shape, 'range': beta_range, 'mode': 'special', 'rel_pos_to_reduce': 'before'}
+        ixd = {'shape': ix, 'range': x_range, 'mode': mode, 'rel_pos_to_reduce': 'before'}
+        igd = {'shape': new_gamma_shape, 'range': gamma_range, 'mode': mode, 'rel_pos_to_reduce': 'before'}
+        ibd = {'shape': new_beta_shape, 'range': beta_range, 'mode': mode, 'rel_pos_to_reduce': 'before'}
         outs.append([ixd, igd, ibd])
-        # for ig in input_gamma_list:
-        #     igd = {'shape':new_gamma_shape, 'range':gamma_range, 'mode':'special', 'rel_pos_to_reduce':'before'}
-        #     for ib in input_beta_list:
-        #         ibd = {'shape':new_beta_shape, 'range':beta_range, 'mode':'special', 'rel_pos_to_reduce':'before'}
-        #         outs.append([ixd, igd, ibd])
 
     res_fuse_axis, fused_reduce_axis, fused_reduce_axis_label = _fuse_axis_operation(
         input_x, reduce_axis, broadcast_axis)
@@ -771,7 +756,6 @@ def _reduce_variable_shape(inputs, var_list):
     for i in range(len(shape_local)):
         single_shape_before_reduce = []
         for index in range(len(shape_local[i])):
-            _var = None
             if shape_local[i][index] == -1:
                 _var = var_list[index]
                 single_shape_before_reduce.append(_var)

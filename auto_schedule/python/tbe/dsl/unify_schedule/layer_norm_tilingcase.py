@@ -34,6 +34,7 @@ from ..base.operation import get_compile_info
 from ..base.operation import get_context
 from ..base.operation import register_build_pointcut
 from ..base.operation import register_tiling_case
+from tbe.common.utils import op_tiling
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
@@ -51,6 +52,8 @@ from ...common.utils.errormgr import get_error_message
 
 num_tw = 2
 num_thr = 3
+CONST = "const"
+STATIC = "static"
 
 
 class ComputeGraphInfo:
@@ -210,7 +213,7 @@ def _get_block_size(dtype):
     return block_size
 
 
-def apply_compile_info(reduce_info, graph_info, tiling_list):
+def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None):
     # Common_Info
     atomic = 0
     for item in tiling_list:
@@ -233,7 +236,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list):
     pre_compile_info = get_compile_info()
     if pre_compile_info:
         info_map = {"common_info": common_info, "pattern_info": pattern_info,
-                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": util.get_core_num(), "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 512}
+                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": util.get_core_num(), "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 10 * 1024, "mode": mode}
         for key in info_map.keys():
             if key not in pre_compile_info.keys():
                 add_compile_info(key, info_map.get(key))
@@ -265,8 +268,7 @@ def _calc_tiling_key(reduce_info, tiling):
     tiling.tiling_key = tiling_key
 
 
-def _get_tiling_key(atomic, db, shape_type, block_split_axis, block_split_axis_1, ub_split_axis_index_reduce, ub_split_axis, shape,
-                    reduce_idx_list, is_normal, is_fuse_axis):
+def _get_tiling_key(atomic, db, shape_type, block_split_axis, block_split_axis_1, ub_split_axis_index_reduce, ub_split_axis, shape, reduce_idx_list, is_normal, is_fuse_axis):
     """
     :param atomic: "True": atomic_reduce, "False": normal_reduce.
     :param db: int number in [0,1]. "0": enable db, "1": close db.
@@ -305,9 +307,15 @@ def calc_tiling_case(outs, options=None):
         raise RuntimeError("Couldn't find reduce node for ReduceSchedule")
 
     tiling_case_list = []
+    # get mode
+    mode = operation.get_context().get_current_compute().get("mode")
+    apply_compile_info(layer_norm_info, compute_graph_info, tiling_case_list, mode)
     # Normal reduce tiling cases
-    tiling_case_list += _gen_tiling_case(layer_norm_info)
-    apply_compile_info(layer_norm_info, compute_graph_info, tiling_case_list)
+    if mode == CONST:
+        tiling_case_list += _gen_tiling_case_const(layer_norm_info, compute_graph_info)
+    else:
+        tiling_case_list += _gen_tiling_case(layer_norm_info)
+    # apply_compile_info(layer_norm_info, compute_graph_info, tiling_case_list)
     # calc_tiling_key
     for tiling_case in tiling_case_list:
         _calc_tiling_key(layer_norm_info, tiling_case)
@@ -500,6 +508,52 @@ def _gen_tiling_case(info: LayerNormInfo):
                     fuse_normal_tiling_case = deepcopy(normal_tiling_case)
                     fuse_normal_tiling_case.block_split_axis_index_1 = ii
                     tiling_case_list.append(fuse_normal_tiling_case)
+    return tiling_case_list
+
+
+def _gen_tiling_case_const(info: LayerNormInfo, compute_graph_info):
+    res_tensor = tuple(compute_graph_info.endpoint_output_tensor_set)[0]
+    res_shape = util.shape_to_list(res_tensor.shape)
+    tiling_case_list = []
+    inputs = []
+    tiling_format = {}
+    for _input in compute_graph_info.input_tensor_set:
+        input_shape = util.shape_to_list(_input.shape)
+        input_name = _input.name
+        if input_name == "x":
+            inputs.insert(0, {"shape": input_shape, "dtype": _input.dtype})
+            for i in range(len(input_shape)):
+                tiling_format["dim_" + str(i)] = "int"
+        else:
+            inputs.append({"shape": input_shape, "dtype": _input.dtype})
+    outputs = [{"shape": res_shape, "dtype": res_tensor.dtype}]
+    run_info = op_tiling.do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
+    tiling_format_other = {
+        "block_split_axis_index": "int",
+        "block_split_axis_index_1": "int",
+        "ub_split_axis_index": "int",
+        "ub_split_axis_index_reduce": "int",
+        "block_factor": "int",
+        "block_factor_1": "int",
+        "ub_factor": "int",
+        "ub_fuse_factor": "int",
+        "is_normal": "int"
+    }
+    tiling_format.update(tiling_format_other)
+    tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
+    tiling_case = LayerNormTilingCase()
+    tiling_case.multi_core = True
+    tiling_case.block_split_axis_index = tiling_data["block_split_axis_index"]
+    tiling_case.block_split_axis_index_1 = tiling_data["block_split_axis_index_1"]
+    tiling_case.ub_split_axis_index = tiling_data["ub_split_axis_index"]
+    tiling_case.ub_split_axis_index_reduce = tiling_data["ub_split_axis_index_reduce"]
+    tiling_case.block_factor = tiling_data["block_factor"]
+    tiling_case.block_factor_1 = tiling_data["block_factor_1"]
+    tiling_case.ub_factor = tiling_data["ub_factor"]
+    tiling_case.ub_fuse_factor = tiling_data["ub_fuse_factor"]
+    tiling_case.is_normal = True if tiling_data["is_normal"] else False
+    tiling_case.is_split_ub = True if tiling_data["block_split_axis_index"] != tiling_data["ub_split_axis_index"] else False
+    tiling_case_list.append(tiling_case)
     return tiling_case_list
 
 

@@ -21,6 +21,8 @@ const int32_t REDUCE_MEAN_COF_FP32 = 1;
 const int32_t REDUCE_MEAN_COF_FP16 = 2;
 const int32_t NUM_TW = 2;
 const int32_t NUM_THR = 3;
+const string TSCONST = "const";
+const string TSSTATIC = "static";
 
 struct TilingParams {
   /* data */
@@ -621,6 +623,7 @@ bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
   std::vector<int32_t> reduce_axis =
       op_info["reduce_axis"].get<std::vector<int32_t>>();
   int32_t core_num = op_info["core_num"].get<int32_t>();
+  string mode = op_info["mode"].get<string>();
 
   int32_t max_ub_size;
   if (input_dtype == "float32" || input_dtype == "fp32") {
@@ -656,10 +659,29 @@ bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
   run_info.block_dim = tilingparams.block_dim;
   run_info.tiling_key = tiling_key;
 
-  ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
-  ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
-  ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
-  ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
+  if (mode == TSCONST) {
+    ByteBufferPut(run_info.tiling_data,
+                  (int32_t)tilingparams.block_tiling_axis);
+    ByteBufferPut(run_info.tiling_data,
+                  (int32_t)tilingparams.block_tiling_axis_1);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_tiling_axis);
+    ByteBufferPut(run_info.tiling_data,
+                  (int32_t)tilingparams.ub_tiling_axis_reduce);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
+    if (compileinfo.is_normal) {
+      ByteBufferPut(run_info.tiling_data, (int32_t)1);
+    } else {
+      ByteBufferPut(run_info.tiling_data, (int32_t)0);
+    }
+  } else {
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
+  }
 
   OP_LOGI(op_type.c_str(), "LayerNormTiling end.");
   return true;
