@@ -1289,9 +1289,11 @@ class ScatterNd():
                 self.tik_instance.data_move(self.out_gm[self.var_read_index], self.zero_ub, 0, 1, 1, 0, 0)
                 self.tik_instance.set_atomic_add(0)
             if mode == 17:
-                self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_read_index], 0, 1, 10, 0, 0)
+                self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_read_index], 0, 1,
+                                            self.update_data_num // self.updates_data_each_block, 0, 0)
                 self.tik_instance.set_atomic_add(1)
-                self.tik_instance.data_move(self.out_gm[self.var_read_index], self.updates_ub, 0, 1, 10, 0, 0)
+                self.tik_instance.data_move(self.out_gm[self.var_read_index], self.updates_ub, 0, 1,
+                                            self.update_data_num // self.updates_data_each_block, 0, 0)
                 self.tik_instance.set_atomic_add(0)
 
     def scatter_nd_compute_tiling(self):

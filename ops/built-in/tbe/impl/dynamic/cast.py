@@ -122,8 +122,8 @@ def _float16_process(data, dst_type):
         return tbe.cast_to(data, "int32")
 
     if dst_type == "uint8":
-        if not tbe_platform.api_check_support("te.lang.cce.cast_to", "s322f16") and \
-                tbe_platform.api_check_support("te.lang.cce.vmod", "float16"):
+        if not tbe_platform.api_check_support("tbe.dsl.cast_to", "s322f16") and \
+                tbe_platform.api_check_support("tbe.dsl.vmod", "float16"):
             return tbe.cast_to(data, "uint8", True)
         data_int32 = tbe.cast_to(data, "int32")
         data_fp16 = tbe.cast_to(data_int32, "float16")
@@ -285,11 +285,9 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
     ins = classify([input_x], OpPatternMode.ELEWISE)
     for (_input_x,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([_input_x])
+            x_shape = shape_util.variable_shape([_input_x])[0]
             dst_type = _cast_dsttype_conversion(dst_type)
-            fuseshape = [1]
-            fuseshape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])
-            data = tvm.placeholder(fuseshape, name="data", dtype=src_type)
+            data = tvm.placeholder(x_shape, name="data", dtype=src_type)
             res = cast_compute(data, output_y, dst_type, kernel_name)
             tensors.append([data, res])
 
