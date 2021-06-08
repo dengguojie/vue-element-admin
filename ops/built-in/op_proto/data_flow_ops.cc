@@ -30,6 +30,7 @@
 
 namespace ge {
 static std::map<std::string, std::vector<ShapeAndType>> shape_and_type_map;
+static const int kRangeMaxNum = 2;
 namespace {
 graphStatus SetAttrsToShapesAndTypes(Operator& op,
                                      const std::string& dtypes,
@@ -2135,8 +2136,8 @@ IMPLEMT_INFERFUNC(DynamicGetNext, DynamicGetNextInfer) {
 
   std::vector<std::vector<std::pair<int64_t, int64_t>>> shape_ranges;
   if (dynamic_graph_execute_mode == "dynamic_execute") {
-    std::string regex_format = std::string("(\\[(((\\d+|(\\d+~\\d+)),{1})*)(\\d+|(\\d+~\\d+))\\],{1})*") +
-                               std::string("\\[(((\\d+|(\\d+~\\d+)),{1})*)(\\d+|(\\d+~\\d+))\\]");
+    std::string regex_format = std::string("(\\[(((\\d+|(\\d+~\\d+)|-1),{1})*)(\\d+|(\\d+~\\d+)|-1)\\],{1})*") +
+                               std::string("\\[(((\\d+|(\\d+~\\d+)|-1),{1})*)(\\d+|(\\d+~\\d+)|-1)\\]");
     std::regex r(regex_format, std::regex_constants::ECMAScript);
     if (!regex_match(getnext_inputs_shape_range, r)) {
       OP_LOGE(op.GetName().c_str(),
@@ -2172,21 +2173,28 @@ IMPLEMT_INFERFUNC(DynamicGetNext, DynamicGetNextInfer) {
         return GRAPH_FAILED;
       }
       for (auto single_shape_range : single_shape_ranges) {
-        std::vector<std::string> tmp;
-        res = Split(single_shape_range, tmp, "~");
+        std::vector<std::string> range;
+        res = Split(single_shape_range, range, "~");
         if (res != 0) {
           OP_LOGE(op.GetName().c_str(),
                   "Split _getnext_inputs_shape_range failed");
           return GRAPH_FAILED;
         }
-        if (tmp.size() > 2 || tmp.size() <= 0) {
+        if (range.size() > kRangeMaxNum || range.size() <= 0) {
           OP_LOGE(op.GetName().c_str(),
                   "The format of _getnext_inputs_shape_range is incorrect, and the parsing failed");
           return GRAPH_FAILED;
         }
-        pair_shape_ranges.push_back(tmp.size() == 1 ? \
-                      std::pair<int64_t, int64_t>{ atoi(tmp[0].c_str()), atoi(tmp[0].c_str()) } : \
-                      std::pair<int64_t, int64_t>{ atoi(tmp[0].c_str()), atoi(tmp[1].c_str()) });
+        if (range.size() == kRangeMaxNum) {
+          pair_shape_ranges.push_back(
+                      std::pair<int64_t, int64_t>{ atoi(range[0].c_str()), atoi(range[1].c_str()) });
+        } else if (atoi(range[0].c_str()) == UNKNOWN_DIM) {
+          pair_shape_ranges.push_back(
+                      std::pair<int64_t, int64_t>{1, -1});
+        } else {
+          pair_shape_ranges.push_back(
+                      std::pair<int64_t, int64_t>{ atoi(range[0].c_str()), atoi(range[0].c_str()) });
+        }
       }
       shape_ranges.push_back(pair_shape_ranges);
     }
