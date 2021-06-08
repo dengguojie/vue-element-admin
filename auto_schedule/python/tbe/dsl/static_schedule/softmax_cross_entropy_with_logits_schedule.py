@@ -333,17 +333,28 @@ def dma_copy_softmax_cewl(tensor_op):
 
     out_var1 = []
     len_var1 = []
+    add_expression = []
+    block_var = []
 
-    def _post_order_add(stmt_in):
+    def _post_order_all(stmt_in):
         if isinstance(stmt_in, tvm.expr.Add):
-            var = stmt_in.b
-            if isinstance(var, tvm.expr.Var) and var.name == "i0.inner":
-                out_var1.append(var)
-    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_add, ["Add"])
+            add_expression.append(stmt_in)
+        if isinstance(stmt_in, tvm.expr.Var):
+            if stmt_in.name == "blockIdx.x":
+                block_var.append(stmt_in)
+            if stmt_in.name == "i0.inner":
+                out_var1.append(stmt_in)
+    _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_all, [])
 
     dtype = src_buffer.dtype
 
-    if not out_var1:
+    # for processing tail block only
+    # scenes1:
+    # reduce[8] = reduce.UB[0]
+    # ---------------------------
+    # scenes2:
+    # reduce[i0.inner + 16] = reduce.UB[0]
+    if not out_var1 or (add_expression and not block_var):
         ib_expr.emit(
             tvm.call_extern(
                 dtype, intrin_name,
@@ -361,12 +372,15 @@ def dma_copy_softmax_cewl(tensor_op):
                 len_var1.append(var.value)
     _ = tvm.ir_pass.IRTransform(tensor_op, None, _post_order_mul, ["Mul"])
 
-    tmp_buf_len = len_var1[0]
-
     if dtype == "float16":
         dma_copy_size_one_block = 16
     else:
         dma_copy_size_one_block = 8
+
+    if len_var1:
+        tmp_buf_len = len_var1[0]
+    else:
+        tmp_buf_len = dma_copy_size_one_block
 
     if tmp_buf_len < dma_copy_size_one_block:
         raise RuntimeError("buf_len must be greater than %d" % dma_copy_size_one_block)
