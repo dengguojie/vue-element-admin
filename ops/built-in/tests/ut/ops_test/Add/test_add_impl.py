@@ -98,8 +98,8 @@ ut_case.add_broadcast_case("all", ["float16", (32, 64, 1, 64), "NCHW"],
 
 ut_case.add_broadcast_case("all", ["float16", (32, 64, 4, 4, 16, 16), "FRACTAL_NZ", (32, 64, 64, 64), "ND"],
                            ["float16", (32, 64, 1, 64), "NCHW"])
-ut_case.add_broadcast_case("Ascend910A", ["float16", (512,), "HWCN", (32, 130,16,16), "FRACTAL_NZ"],
-                           ["float16", (32, 130,16,16), "FRACTAL_NZ"])
+ut_case.add_broadcast_case("Ascend910A", ["float16", (512,), "HWCN", (32, 130,16,512), "FRACTAL_NZ"],
+                           ["float16", (32, 130,16,512), "FRACTAL_NZ"])
 
 # pylint: disable=unused-argument
 # ut_case.add_test_cfg_cov_case("all")

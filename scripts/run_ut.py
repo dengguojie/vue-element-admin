@@ -82,7 +82,7 @@ def main(argv):
         print("[INFO]cmd is ", str(cmd))
         res_msg = os.system(" ".join(cmd))
         if res_msg != 0:
-            exit(res_msg)
+            exit(-1)
 
     if ops_tag:
         print("[INFO]Run ops ut case!!!")
@@ -95,7 +95,7 @@ def main(argv):
         print("[INFO]cmd is ", str(cmd))
         res_msg = os.system(" ".join(cmd))
         if res_msg != 0:
-            exit(res_msg)
+            exit(-1)
     
     sch_cov_file = os.path.join(sch_cov_path, ".coverage")
     if os.path.exists(sch_cov_file):
