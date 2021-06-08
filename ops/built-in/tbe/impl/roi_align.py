@@ -2438,32 +2438,19 @@ def _prepare_vbi_xn(tik_instance, c1_block_num):
     :param c1_block_num, the num of c1 block
     :return:Rearranged address(Xn)
     """
-    vbi_addr = tik_instance.Tensor("int32", [8 * 4 * c1_block_num, ],
+    vbi_addr = tik_instance.Tensor("int32", [c1_block_num, 32],
                                    name="vbi_addr",
                                    scope=tbe_platform.scope_ubuf)
-    for current_c1 in range(c1_block_num):
-        c1_offset = tik_instance.Scalar(dtype="float16", init_value=1024 * current_c1)
-        c1_offset_tensor = tik_instance.Tensor( \
-            "int32", [1], name="c1_offset_tensor", scope=tbe_platform.scope_ubuf)
-        c1_offset_tensor[0].set_as(c1_offset)
-        for horizontal_repeat_time in range(4):
-            offset_num = tik_instance.Scalar(dtype="float16", init_value=32 * horizontal_repeat_time)
-            start_offset = tik_instance.Tensor( \
-                "int32", [1], name="start_offset", scope=tbe_platform.scope_ubuf)
-            start_offset[0].set_as(offset_num)
-            tik_instance.vec_add(1, start_offset, start_offset, \
-                                 c1_offset_tensor, 1, 8, 8, 8)
+    for one_block_element_num in range(16):
+        one_block_offset = tik_instance.Scalar(dtype="int32", init_value=32 * one_block_element_num)
+        vbi_addr[0, one_block_element_num].set_as(one_block_offset)
+    one_block_offset_num = tik_instance.Scalar(dtype="int32", init_value=512)
+    tik_instance.vec_adds(16, vbi_addr[0, 16], vbi_addr, one_block_offset_num, 1, 8, 8)
 
-            for c1_time in range(8):
-                all_c1_time = tik_instance.Scalar(dtype="float16", \
-                                                  init_value=128 * c1_time)
-                c1_time_tensor = tik_instance.Tensor( \
-                    "int32", [1], name="c1_time_tensor", scope=tbe_platform.scope_ubuf)
-                c1_time_tensor[0].set_as(all_c1_time)
+    for current_c1 in range(1, c1_block_num):
+        c1_offset = tik_instance.Scalar(dtype="int32", init_value=1024 * current_c1)
+        tik_instance.vec_adds(32, vbi_addr[current_c1, 0], vbi_addr, c1_offset, 1, 8, 8)
 
-                tik_instance.vec_add(1, \
-                                     vbi_addr[current_c1 * 32 + horizontal_repeat_time * 8 + c1_time, ], \
-                                     c1_time_tensor, start_offset, 1, 8, 8, 8)
     return vbi_addr
 
 # pylint: disable=too-many-branches
@@ -2489,22 +2476,28 @@ def _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num):
         "float16", [1], name="lx_tensor", scope=tbe_platform.scope_ubuf)
     lx_tensor[0].set_as(l_x)
 
-    vbi_weights = tik_instance.Tensor("float16", [4 * c1_block_num, ], \
+    vbi_weights = tik_instance.Tensor("float16", [c1_block_num, 16], \
                                       name="vbi_weights",
                                       scope=tbe_platform.scope_ubuf)
+    w1_tensor = tik_instance.Tensor( \
+        "float16", [1], name="w1_tensor", scope=tbe_platform.scope_ubuf)
+    w2_tensor = tik_instance.Tensor( \
+        "float16", [1], name="w2_tensor", scope=tbe_platform.scope_ubuf)
+    w3_tensor = tik_instance.Tensor( \
+        "float16", [1], name="w3_tensor", scope=tbe_platform.scope_ubuf)
+    w4_tensor = tik_instance.Tensor( \
+        "float16", [1], name="w4_tensor", scope=tbe_platform.scope_ubuf)
+
+    tik_instance.vec_mul(1, w1_tensor, hy_tensor, hx_tensor, 1, 8, 8, 8)
+    tik_instance.vec_mul(1, w2_tensor, hy_tensor, lx_tensor, 1, 8, 8, 8)
+    tik_instance.vec_mul(1, w3_tensor, hx_tensor, ly_tensor, 1, 8, 8, 8)
+    tik_instance.vec_mul(1, w4_tensor, ly_tensor, lx_tensor, 1, 8, 8, 8)
+
     for current_c1 in range(c1_block_num):
-        tik_instance.vec_mul(1, vbi_weights[4 * current_c1 + 0], \
-                             hy_tensor, hx_tensor, 1, 8, 8, \
-                             8)
-        tik_instance.vec_mul(1, vbi_weights[4 * current_c1 + 1], \
-                             hy_tensor, lx_tensor, 1, 8, 8, \
-                             8)
-        tik_instance.vec_mul(1, vbi_weights[4 * current_c1 + 2], \
-                             hx_tensor, ly_tensor, 1, 8, 8, \
-                             8)
-        tik_instance.vec_mul(1, vbi_weights[4 * current_c1 + 3], \
-                             ly_tensor, lx_tensor, 1, 8, 8, \
-                             8)
+        vbi_weights[current_c1 * 16 + 0].set_as(w1_tensor[0])
+        vbi_weights[current_c1 * 16 + 1].set_as(w2_tensor[0])
+        vbi_weights[current_c1 * 16 + 2].set_as(w3_tensor[0])
+        vbi_weights[current_c1 * 16 + 3].set_as(w4_tensor[0])
 
     return vbi_weights
 
@@ -2679,10 +2672,11 @@ def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
                         c1_block_num = (fm_c1 + 7) // 8
                         vbi_weights = _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num)
                         vbi_addr = _prepare_vbi_xn(tik_instance, c1_block_num)
-                        tik_instance.vbi(128, w1_lt, \
-                                         fm_grid[0:, 0:, 0:, 0:], \
-                                         vbi_weights[0:, ], vbi_addr[0:, ], 1, \
-                                         c1_block_num, 4, 0, 128)
+                        for current_c1 in range(c1_block_num):
+                            tik_instance.vbi(128, w1_lt, \
+                                             fm_grid[0:, current_c1:, 0:, 0:], \
+                                             vbi_weights[current_c1:, 0:], vbi_addr[current_c1:, 0:], 1, \
+                                             1, 4, 0, 128)
                     _compute_w1234(tik_instance, h_y, l_y, h_x, l_x, w1_lt,
                                    w2_rt, w3_lb, w4_rb, fm_grid, fm_c1, n_bust)
 
