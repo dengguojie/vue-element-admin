@@ -289,9 +289,8 @@ class CaseGenerator:
 
                     if dtype_count != current_dtype_count:
                         utils.print_error_log(
-                            'The number(%d) of "%s.dtype" is not equal to the '
-                            'number(%d) of the first "dtype". Please modify it.'
-                            % (dtype_count, op_info_key, current_dtype_count))
+                            'The number of "dtype" of the inputs must be consistent with the number "dtype" '
+                            'of the outputs in %s. Please modify.' % self.input_file_path)
                         raise utils.OpTestGenException(
                             utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
                 else:
@@ -633,7 +632,7 @@ class CaseGenerator:
                           'shape': [],
                           'data_distribute': ['uniform'],
                           'value_range': [[0.1, 1.0]]}
-            input_desc.update({'name': input_name})
+        input_desc.update({'name': input_name})
         base_case['input_desc'].append(input_desc)
 
     def _generate_aicore_base_case(self):
@@ -665,7 +664,7 @@ class CaseGenerator:
                     output_desc = {'format': output_format,
                                    'type': output_dtype,
                                    'shape': []}
-                    output_desc.update({'name': output_name})
+                output_desc.update({'name': output_name})
                 base_case['output_desc'].append(output_desc)
             elif key.startswith("attr_"):
                 if 'attr' not in base_case:

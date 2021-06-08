@@ -17,7 +17,8 @@
                         0.1,
                         1.0
                     ]
-                ]
+                ],
+                "name": "x"
             }
         ],
         "output_desc": [
@@ -25,7 +26,8 @@
                 "type": [
                     "float32"
                 ],
-                "shape": []
+                "shape": [],
+                "name": "y"
             }
         ]
     }
