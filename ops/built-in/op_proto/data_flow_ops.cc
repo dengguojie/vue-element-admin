@@ -2056,7 +2056,7 @@ IMPLEMT_INFERFUNC(ResourceAccumulatorTakeGradient,
     return GRAPH_FAILED;
   }
   auto average_desc = op.GetOutputDesc("average");
-  average_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
+  average_desc.SetShape(Shape(ge::UNKNOWN_RANK));
   average_desc.SetDataType(dtype);
   if (op.UpdateOutputDesc("average", average_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
