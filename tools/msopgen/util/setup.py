@@ -18,6 +18,8 @@ This file mainly set up for op_gen whl package.
 """
 
 from setuptools import setup
+import os
+os.environ['SOURCE_DATE_EPOCH'] = str(int(os.path.getctime(os.path.realpath(__file__))))
 
 __version__ = "0.1"
 

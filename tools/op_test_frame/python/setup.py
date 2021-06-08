@@ -16,6 +16,8 @@
 from setuptools import setup
 from setuptools import find_packages
 from setuptools.dist import Distribution
+import os
+os.environ['SOURCE_DATE_EPOCH'] = str(int(os.path.getctime(os.path.realpath(__file__))))
 
 __version__ = "0.1"
 
