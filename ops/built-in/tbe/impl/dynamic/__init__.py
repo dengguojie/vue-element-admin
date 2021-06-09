@@ -332,3 +332,8 @@ from .act_ulq_clamp_max_grad import act_ulq_clamp_max_grad
 from .act_ulq_clamp_min_grad import act_ulq_clamp_min_grad
 from .wts_arq import wts_arq
 from .inplace_index_add import inplace_index_add
+
+from .ascend_dequant import ascend_dequant
+from .ascend_dequant_s16 import ascend_dequant_s16
+from .ascend_requant import ascend_requant
+from .ascend_requant_s16 import ascend_requant_s16

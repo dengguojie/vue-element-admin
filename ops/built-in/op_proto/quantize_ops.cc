@@ -110,15 +110,16 @@ IMPLEMT_COMMON_INFERFUNC(AscendQuantInferShape) {
 COMMON_INFER_FUNC_REG(AscendQuant, AscendQuantInferShape);
 
 IMPLEMT_COMMON_INFERFUNC(AscendDequantInferShape) {
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  int type;
-  if (op.GetAttr("dtype", type) == GRAPH_SUCCESS) {
-    y_desc.SetDataType((ge::DataType)type);
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    int type;
+    if (op.GetAttr("dtype", type) == GRAPH_SUCCESS) {
+      auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+      auto output_desc = op_info->MutableOutputDesc(0);
+      output_desc->SetDataType((ge::DataType)type);
+    }
+    return GRAPH_SUCCESS;
   }
-  Shape shape = op.GetInputDesc("x").GetShape();
-  y_desc.SetShape(shape);
-  (void)op.UpdateOutputDesc("y", y_desc);
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(AscendDequant, AscendDequantInferShape);
@@ -138,44 +139,50 @@ IMPLEMT_COMMON_INFERFUNC(AscendAntiQuantInferShape) {
 COMMON_INFER_FUNC_REG(AscendAntiQuant, AscendAntiQuantInferShape);
 
 IMPLEMT_COMMON_INFERFUNC(AscendDequantS16InferShape) {
-  TensorDesc x_desc = op.GetInputDesc("x0");
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetDataType(DT_INT16);
-  Shape shape = x_desc.GetShape();
-  y_desc.SetShape(shape);
-  (void)op.UpdateOutputDesc("y", y_desc);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x0", {"y"})) {
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    auto output_desc = op_info->MutableOutputDesc(0);
+    output_desc->SetDataType(DT_INT16);
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 COMMON_INFER_FUNC_REG(AscendDequantS16, AscendDequantS16InferShape);
 
 IMPLEMT_COMMON_INFERFUNC(AscendRequantInferShape) {
-  TensorDesc x_desc = op.GetInputDesc("x");
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetDataType(DT_INT8);
-  Shape shape = x_desc.GetShape();
-  y_desc.SetShape(shape);
-  (void)op.UpdateOutputDesc("y", y_desc);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    auto output_desc = op_info->MutableOutputDesc(0);
+    output_desc->SetDataType(DT_INT8);
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 COMMON_INFER_FUNC_REG(AscendRequant, AscendRequantInferShape);
 
 IMPLEMT_COMMON_INFERFUNC(AscendRequantS16InferShape) {
-  TensorDesc x_desc = op.GetInputDesc("x0");
-  TensorDesc y_desc = op.GetOutputDesc("y0");
-  y_desc.SetDataType(DT_INT8);
-  Shape shape = x_desc.GetShape();
-  y_desc.SetShape(shape);
-  (void)op.UpdateOutputDesc("y0", y_desc);
   bool dual_output = false;
-  if (op.GetAttr("dual_output", dual_output) == GRAPH_SUCCESS) {
-    if (dual_output == true) {
-      TensorDesc y1_desc = op.GetOutputDesc("y1");
-      y1_desc.SetDataType(DT_INT16);
-      y1_desc.SetShape(shape);
-      (void)op.UpdateOutputDesc("y1", y1_desc);
+  if (op.GetAttr("dual_output", dual_output) == GRAPH_SUCCESS && dual_output) {
+    if (OneInOneOutDynamicInfer(op, "x0", {"y0", "y1"})) {
+      auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+
+      auto output_desc_y0 = op_info->MutableOutputDesc(0);
+      output_desc_y0->SetDataType(DT_INT8);
+
+      auto output_desc_y1 = op_info->MutableOutputDesc(1);
+      output_desc_y1->SetDataType(DT_INT16);
+
+      return GRAPH_SUCCESS;
+    }
+  } else {
+    if (OneInOneOutDynamicInfer(op, "x0", {"y0"})) {
+      auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+      auto output_desc_y0 = op_info->MutableOutputDesc(0);
+      output_desc_y0->SetDataType(DT_INT8);
+      return GRAPH_SUCCESS;
     }
   }
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 COMMON_INFER_FUNC_REG(AscendRequantS16, AscendRequantS16InferShape);
 }  // namespace ge
