@@ -1,0 +1,179 @@
+[
+  {
+    "op": "MatMulV2",
+    "case_name": "test_MatMulV2_001",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          96
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          96,
+          64
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          64
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "bias"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          32,
+          64
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "MatMulV2",
+    "case_name": "test_MatMulV2_002",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1,
+          96
+        ],
+        "type": "float16",
+        "typical_shape": [
+          32,
+          96
+        ],
+        "shape_range": [
+          30,
+          34
+        ],
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          96,
+          -1
+        ],
+        "type": "float16",
+        "typical_shape": [
+          96,
+          64
+        ],
+        "shape_range": [
+          62,
+          66
+        ],
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          -1,
+          -1
+        ],
+        "typical_shape": [
+          32,
+          64
+        ],
+        "shape_range": [
+          [
+            30,
+            34
+          ],
+          [
+            62,
+            66
+          ]
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  }
+]

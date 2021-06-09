@@ -1,0 +1,852 @@
+[
+  {
+    "op": "Deconvolution",
+    "case_name": "test_Deconvolution_opti_001",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          5,
+          5
+        ],
+        "ori_shape": [
+          1,
+          16,
+          5,
+          5
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          5,
+          5
+        ],
+        "ori_shape": [
+          1,
+          16,
+          5,
+          5
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Deconvolution",
+    "case_name": "test_Deconvolution_general_stride_002",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          14,
+          14
+        ],
+        "ori_shape": [
+          1,
+          16,
+          14,
+          14
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          3,
+          3
+        ],
+        "ori_shape": [
+          16,
+          16,
+          3,
+          3
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          28,
+          28
+        ],
+        "ori_shape": [
+          1,
+          16,
+          28,
+          28
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "value": [
+          2,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Deconvolution",
+    "case_name": "test_Deconvolution_opti_stride_003",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          14,
+          14
+        ],
+        "ori_shape": [
+          1,
+          16,
+          14,
+          14
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          28,
+          28
+        ],
+        "ori_shape": [
+          1,
+          16,
+          28,
+          28
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "value": [
+          2,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Deconvolution",
+    "case_name": "test_Deconvolution_opti_conv1d_stride_004",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          35000
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          35000
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          70000
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          70000
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "value": [
+          1,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Deconvolution",
+    "case_name": "test_Deconvolution_general_conv1d_stride_2_005",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          35000
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          35000
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          3
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          3
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          70000
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          70000
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "value": [
+          1,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Deconvolution",
+    "case_name": "test_Deconvolution_bias_005",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          10,
+          350
+        ],
+        "ori_shape": [
+          1,
+          16,
+          10,
+          350
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [
+          16
+        ],
+        "ori_shape": [
+          16
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "bias"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          10,
+          350
+        ],
+        "ori_shape": [
+          1,
+          16,
+          10,
+          350
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Deconvolution",
+    "case_name": "test_Deconvolution_bias_006",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          10,
+          350
+        ],
+        "ori_shape": [
+          1,
+          16,
+          10,
+          350
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          3,
+          3
+        ],
+        "ori_shape": [
+          16,
+          16,
+          3,
+          3
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "filter"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [
+          16
+        ],
+        "ori_shape": [
+          16
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "bias"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          10,
+          350
+        ],
+        "ori_shape": [
+          1,
+          16,
+          10,
+          350
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  }
+]

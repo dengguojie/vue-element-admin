@@ -1,0 +1,216 @@
+[
+  {
+    "op": "GEMM",
+    "case_name": "test_gemm_001",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          16,
+          5
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "a"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          5,
+          32
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "b"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          16,
+          32
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "c"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "alpha"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          16,
+          32
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_a",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_b",
+        "value": false,
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "op": "GEMM",
+    "case_name": "test_gemm_002",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          5,
+          16
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "a"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          5,
+          32
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "b"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          16,
+          32
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "c"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "alpha"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          16,
+          32
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_a",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_b",
+        "value": false,
+        "type": "bool"
+      }
+    ]
+  }
+]

@@ -1,0 +1,228 @@
+[
+  {
+    "op": "MatMul",
+    "case_name": "test_MatMul_001",
+    "input_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          1,
+          1,
+          16,
+          16
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          1,
+          1,
+          16,
+          16
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          1,
+          1,
+          16,
+          16
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "MatMul",
+    "case_name": "test_MatMul_002",
+    "input_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          5,
+          5,
+          16,
+          16
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "a"
+      },
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          5,
+          5,
+          16,
+          16
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "b"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          5,
+          5,
+          16,
+          16
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "MatMul",
+    "case_name": "test_MatMul_003",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          5,
+          -1
+        ],
+        "type": "float16",
+        "typical_shape": [
+          5,
+          5
+        ],
+        "shape_range": [
+          2,
+          10
+        ],
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          -1,
+          5
+        ],
+        "type": "float16",
+        "typical_shape": [
+          5,
+          5
+        ],
+        "shape_range": [
+          2,
+          10
+        ],
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          5,
+          5
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "transpose_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "transpose_x2",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  }
+]

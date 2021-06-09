@@ -1,0 +1,898 @@
+[
+  {
+    "op": "Conv2DBackpropFilterD",
+    "case_name": "test_conv2d_backprop_filter_d_001",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          224,
+          224
+        ],
+        "ori_shape": [
+          1,
+          16,
+          224,
+          224
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "input"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          112,
+          112
+        ],
+        "ori_shape": [
+          1,
+          16,
+          112,
+          112
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          7,
+          7
+        ],
+        "ori_shape": [
+          16,
+          16,
+          7,
+          7
+        ],
+        "type": "float32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "filter_size",
+        "value": [
+          16,
+          16,
+          7,
+          7
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          2,
+          3,
+          2,
+          3
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Conv2DBackpropFilterD",
+    "case_name": "test_conv2d_backprop_filter_d_002",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          28,
+          28
+        ],
+        "ori_shape": [
+          1,
+          16,
+          28,
+          28
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "input"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          14,
+          14
+        ],
+        "ori_shape": [
+          1,
+          16,
+          14,
+          14
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          3,
+          3
+        ],
+        "ori_shape": [
+          16,
+          16,
+          3,
+          3
+        ],
+        "type": "float32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "filter_size",
+        "value": [
+          16,
+          16,
+          3,
+          3
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Conv2DBackpropFilterD",
+    "case_name": "test_conv2d_backprop_filter_d_003",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          28,
+          28
+        ],
+        "ori_shape": [
+          1,
+          16,
+          28,
+          28
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "input"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          14,
+          14
+        ],
+        "ori_shape": [
+          1,
+          16,
+          14,
+          14
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "float32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "filter_size",
+        "value": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Conv2DBackpropFilterD",
+    "case_name": "test_conv2d_backprop_filter_d_004",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          70000
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          70000
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "input"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          35000
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          35000
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "float32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "filter_size",
+        "value": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Conv2DBackpropFilterD",
+    "case_name": "test_conv2d_backprop_filter_d_005",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          70000
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          70000
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "input"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          35000
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          35000
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          3
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          3
+        ],
+        "type": "float32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "filter_size",
+        "value": [
+          16,
+          16,
+          1,
+          3
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Conv2DBackpropFilterD",
+    "case_name": "test_conv2d_backprop_filter_d_006",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          700,
+          1
+        ],
+        "ori_shape": [
+          1,
+          16,
+          700,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "input"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          700,
+          1
+        ],
+        "ori_shape": [
+          1,
+          16,
+          700,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "float32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "filter_size",
+        "value": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "op": "Conv2DBackpropFilterD",
+    "case_name": "test_conv2d_backprop_filter_d_007",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "input"
+      },
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          1,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          1,
+          16,
+          1,
+          1
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "out_backprop"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "ori_shape": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "float32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "filter_size",
+        "value": [
+          16,
+          16,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "dilations",
+        "value": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "type": "list_int"
+      },
+      {
+        "name": "groups",
+        "value": 1,
+        "type": "int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      }
+    ]
+  }
+]
