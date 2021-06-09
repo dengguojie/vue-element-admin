@@ -17,12 +17,10 @@
 """
 avg_pool
 """
-import te.platform as tbe_platform
-from te import tik
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
-from te.utils.error_manager import error_manager_cube as err_man_cube
-from te.utils.error_manager import error_manager_vector
 from impl.dynamic.conv2d import conv2d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_cube
@@ -44,6 +42,7 @@ C_ZERO = 16
 REPEAT_LIMIT = 255
 MASK = 128
 MIN_FP16 = 0
+INPUT_DIM = 4
 
 class AvgPool:
     def __init__(self, dtype, ksize, strides, padding, kernel_name):
@@ -56,7 +55,7 @@ class AvgPool:
         self.kernel_name = kernel_name
         self.tik_instance = tik.Tik()
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // EIGHT_BIT
+        self.dtype_size = tbe_platform.get_bit_len(self.dtype) // EIGHT_BIT
         self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE) // self.dtype_size
         self.one_fourth_ub_ele = self.ub_ele // 4
         self.init_gm_tensor()
@@ -1011,7 +1010,9 @@ def _avg_pool_check_rule(input_shape, input_dtype, output_dtype,
     :param kernel_name: cce kernel name
     :return: None
     """
-
+    if len(input_shape) != INPUT_DIM:
+        error_manager_cube.raise_err_specific_user("avg_pool",
+                                                   "ori_input_shape dim should be 4.")
     para_check.check_shape(input_shape)
     para_check.check_dtype(input_dtype, ["float16", "int8"])
     para_check.check_dtype(output_dtype, ["float16", "int8", "int32"])
