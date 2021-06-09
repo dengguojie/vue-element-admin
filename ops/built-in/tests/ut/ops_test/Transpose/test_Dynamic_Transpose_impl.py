@@ -81,11 +81,39 @@ def test_op_check_supported_not_in_white_list_but_fuzzily_build(test_arg):
         if check_supported(input_x, perm, output_y) == False:
             raise Exception("fuzzily build, should return True")
 
+def test_op_check_supported_in_white_list_fuzzy_match_return_true_1(test_arg):
+    from impl.dynamic.transpose import check_supported
+    input_x = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    if check_supported(input_x, perm, output_y) == False:
+        raise Exception("128, 12, 197, 64,fp16 in fuzzy white list, should return True")
+
+def test_op_check_supported_in_white_list_fuzzy_match_return_true_2(test_arg):
+    from impl.dynamic.transpose import check_supported
+    input_x = {'ori_shape': (768, 12, 197), 'shape': (768, 12, 197), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+    perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (197, 12, 768), 'shape': (197, 12, 768), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+    if check_supported(input_x, perm, output_y) == False:
+        raise Exception("768, 12, 197,fp16 in fuzzy white list, should return True")
+
+def test_op_check_supported_in_white_list_fuzzy_match_return_false_3(test_arg):
+    from impl.dynamic.transpose import check_supported
+    input_x = {'ori_shape': (768, 12, 997), 'shape': (768, 12, 997), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+    perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (997, 12, 768), 'shape': (997, 12, 768), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+    if check_supported(input_x, perm, output_y) == True:
+        raise Exception("768, 12, 997,fp16 not in fuzzy white list, should return False")
+
+
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_return_false)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_return_true)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_dtype_not_in_white_list_return_true)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_but_fuzzily_build)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_true_1)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_true_2)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_false_3)
 
 
 ut_case.add_precision_case("Ascend910A",
@@ -289,47 +317,47 @@ ut_case.add_precision_case(["Ascend920A"],
                                "precision_standard": precision_info.PrecisionStandard(0, 0)
                            })
 
-def test_transpose_920a(test_arg):
-    from impl.dynamic.transpose import transpose 
-    from te import platform as cce_conf
-    cce_conf.cce_conf.te_set_version("Ascend920A", core_type="VectorCore")
-    transpose(
-                {
-                    "shape": (4, 255, 3, 8),
-                    "dtype": "int32",
-                    "format": "ND",
-                    "ori_shape": (-1, 255, 3, 8),
-                    "range": ((4, 4), (255, 255), (3, 3), (8, 8),),
-                    "run_shape": (4, 255,3, 8),
-                    "ori_format": "ND",
-                    "param_type": "input",
-                    #"value": np.arange(0, 256*8*4*20*16*16, dtype="int32").reshape(256, 8, 4, 20, 16, 16)
-                },
-                {
-                    "shape": (4,),
-                    "run_shape": (4,),
-                    "dtype": "int32",
-                    "ori_shape": (4),
-                    "ori_format" : "ND",
-                    "format": "ND",
-                    "value": np.array([2, 1, 0, 3]),
-                    "value_need_in_tiling": True,
-                    "param_type": "input"
-                },
-                {
-                    "shape": (3, 255, 4, 8),
-                    "dtype": "int32",
-                    "format": "ND",
-                    "ori_shape": (3, 255, 4, 8),
-                    "range": ((3, 3), (255, 255), (4, 4), (8, 8), ),
-                    "run_shape": (3, 255, 4, 8),
-                    "ori_format": "ND",
-                    "param_type": "output"
-                },
-              )
-    cce_conf.cce_conf.te_set_version(test_arg)
+#def test_transpose_920a(test_arg):
+#    from impl.dynamic.transpose import transpose 
+#    from te import platform as cce_conf
+#    cce_conf.cce_conf.te_set_version("Ascend920A", core_type="VectorCore")
+#    transpose(
+#                {
+#                    "shape": (4, 255, 3, 8),
+#                    "dtype": "int32",
+#                    "format": "ND",
+#                    "ori_shape": (-1, 255, 3, 8),
+#                    "range": ((4, 4), (255, 255), (3, 3), (8, 8),),
+#                    "run_shape": (4, 255,3, 8),
+#                    "ori_format": "ND",
+#                    "param_type": "input",
+#                    #"value": np.arange(0, 256*8*4*20*16*16, dtype="int32").reshape(256, 8, 4, 20, 16, 16)
+#                },
+#                {
+#                    "shape": (4,),
+#                    "run_shape": (4,),
+#                    "dtype": "int32",
+#                    "ori_shape": (4),
+#                    "ori_format" : "ND",
+#                    "format": "ND",
+#                    "value": np.array([2, 1, 0, 3]),
+#                    "value_need_in_tiling": True,
+#                    "param_type": "input"
+#                },
+#                {
+#                    "shape": (3, 255, 4, 8),
+#                    "dtype": "int32",
+#                    "format": "ND",
+#                    "ori_shape": (3, 255, 4, 8),
+#                    "range": ((3, 3), (255, 255), (4, 4), (8, 8), ),
+#                    "run_shape": (3, 255, 4, 8),
+#                    "ori_format": "ND",
+#                    "param_type": "output"
+#                },
+#              )
+#    cce_conf.cce_conf.te_set_version(test_arg)
 
-ut_case.add_cust_test_func(test_func=test_transpose_920a)
+#ut_case.add_cust_test_func(test_func=test_transpose_920a)
 
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"

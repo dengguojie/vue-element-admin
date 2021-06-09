@@ -55,6 +55,25 @@ TILING_HEAD_LEN = 4
 TILING_FIXED_MAX_LEN = 1024
 
 
+def fuzzy_match(shape_t):
+    white_list_shape_fuzzy =  [
+                               [-1, 12, 197, 64], [-1, 197, 12, 64], [-1, 197, 768], [-1, 768, 196],
+                               [-1, 768, 197], [768, -1, 197], [128, 197, 12, -1], [128, 12, 197, -1]
+                              ]
+    for shape_w in white_list_shape_fuzzy:
+        if len(shape_t) != len(shape_w):
+            continue
+        count = 0
+        for i in range(len(shape_t)):
+            if shape_w[i] == -1 or shape_t[i] == shape_w[i]:
+                count = count + 1
+                continue
+            else:
+                break
+        if count == len(shape_t):
+            return True
+    return False
+
 def _by_dynamic_static_union_version(shape, core_num):
     """
     temporary function, for dynamic & static union version not fully verified
@@ -78,11 +97,20 @@ def _by_dynamic_static_union_version(shape, core_num):
                          [1, 100, 28, 28, 91], [4, 100, 28, 28, 91], [8, 100, 28, 28, 91], [16, 100, 28, 28, 91],
                          [80, 8, 1, 240], [80, 240, 8], [80, 240, 1, 8], [8, 80, 240], [240, 8, 64], [80, 8, 84],
                          [8, 80, 64], [1, 4, 1080, 1920, 3], [2, 100, 28, 28, 91], [2560, 26, 512],
-                         [16, 40, 3, 14, 14], [16, 80, 3, 7, 7], [16, 20, 3, 28, 28]
+                         [16, 40, 3, 14, 14], [16, 80, 3, 7, 7], [16, 20, 3, 28, 28],
+                         [32, 3, 76, 76, 85], [32, 3, 38, 38, 85], [32, 3, 19, 19, 85],[32, 3, 85, 76, 76],
+                         [32, 3, 85, 38, 38], [32, 3, 85, 19, 19], [512, 512, 9],
+                         [3, 256, 1024], [48, 56, 64], [3, 16, 256, 64], [3, 1024, 256], [3, 3, 16, 16, 16,16],
+                         [3, 256, 16, 64], [48, 256, 64], [48, 256, 256], [768, 768], [3072, 768], [768, 197, 197],
+                         [768, 3072]
                        ]
     shape_t = list(shape)
     if shape_t in white_list_shape:
         return True
+
+    if fuzzy_match(shape_t):
+        return True
+
     return False
 
 
