@@ -37,7 +37,9 @@ conv2D_ut_testcase = [
 # ============ dma load3d exceed L1 runtime error case ===============
 ["Ascend310", {'ori_shape': (1, 100001, 9, 3), 'shape': (1, 1, 100001, 9, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (255, 9, 3, 9), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 ["Ascend310", {'ori_shape': (1, 0, 9, 3), 'shape': (1, 1, 0, 9, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (255, 9, 3, 9), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
- ]
+# ============ when data h == 1, use conv1d(load3d) ===============
+["Ascend310", {'ori_shape': (1, 3, 1, 50000), 'shape': (1, 1, 1, 50000, 16), 'ori_format': 'NCHW', 'dtype': 'float16'}, {'ori_shape': (1, 1, 3, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+]
 
 conv2D_op_select_ut_testcase = [
 # ============ success =====================

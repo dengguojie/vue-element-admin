@@ -794,7 +794,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             if ConvParam.para_dict.get("group_opt") > 1 and is_support_v200() and \
                 (ConvParam.para_dict.get("group_opt")*ConvParam.para_dict.get("c1_opt")*cin0 != cin_ori):
                 l0a_load2d_flag = False
-
+            # when data h size is 1, use conv1d(load3d)
+            if ConvParam.h_in == 1:
+                l0a_load2d_flag = False
             return l0a_load2d_flag
 
         def _cal_im2col_res(height_out, width_out):
@@ -2022,6 +2024,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         _, _, _, cin0 = shape_to_list(weight.shape)
         if para_dict.get("group_opt") > 1 and is_support_v200() and \
             (para_dict.get("group_opt")*para_dict.get("c1_opt")*cin0 != cin_ori):
+            load2d_to_load3d_flag = False
+        # when data h size is 1, use conv1d(load3d)
+        h_dynamic_flag = ConvParam.dynamic_flag and get_te_var("fmap_h")
+        if not h_dynamic_flag and data.shape[2].value == 1:
             load2d_to_load3d_flag = False
         return load2d_to_load3d_flag
 
