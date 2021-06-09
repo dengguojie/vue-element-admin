@@ -32,6 +32,7 @@ from impl import strided_slice_two_turn_one
 from impl import strided_slice_fast_last_dim
 from impl import strided_slice_last_dim_one
 from impl import strided_slice_for_last_dim_mte
+from impl import strided_slice_last_dim_with_vreducev2
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -789,6 +790,29 @@ def _check_tik_branch(sch_input_shape, output_shape, begin, end, strides):
     return result
 
 
+def _check_last_dim_with_vreducev2(input_shape, output_shape, begin, end, strides, dtype):
+    """
+    check last dim with vreducev2
+    """
+    check_vreducev2_supported = tbe_platform.api_check_support("tik.vreducev2")
+    if not check_vreducev2_supported:
+        return False
+    for i in strides:
+        if i != 1:
+            return False
+    if len(output_shape) != len(input_shape):
+        return False
+    if dtype not in ["float16", "float32"]:
+        return False
+    for i in range(0, len(output_shape) - 1):
+        if begin[i] != 0:
+            return False
+        if end[i] != output_shape[i]:
+            return False
+    if 0 <= begin[-1] < end[-1] <= input_shape[-1]:
+        return True
+
+
 def _ceil_div(value, block):
     """
     integrate the input value by block
@@ -1217,6 +1241,19 @@ def strided_slice_d(input_x,
         with tbe_platform.build_config:
             tvm.build(sch, [input_tensor, out_tensor], "cce", name=kernel_name)
         return
+
+    if _check_last_dim_with_vreducev2(input_shape, output_shape, begin, end, strides, input_dtype):
+        begin_shape = copy.deepcopy(begin)
+        end_shape = copy.deepcopy(end)
+        strides_shape = copy.deepcopy(strides)
+        res = strided_slice_last_dim_with_vreducev2.strided_slice_last_dim_with_vreducev2(input_shape, 
+                                                                                          input_dtype, 
+                                                                                          begin_shape, 
+                                                                                          end_shape, 
+                                                                                          strides_shape, 
+                                                                                          kernel_name)
+        if res:
+            return
 
     if _check_tik_branch(input_shape, output_shape, begin, end, strides):
         begin_shape = copy.deepcopy(begin)
