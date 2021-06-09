@@ -623,7 +623,13 @@ bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
   std::vector<int32_t> reduce_axis =
       op_info["reduce_axis"].get<std::vector<int32_t>>();
   int32_t core_num = op_info["core_num"].get<int32_t>();
-  string mode = op_info["mode"].get<string>();
+  string mode;
+  auto iter_num = op_info.find("mode");
+  if (iter_num != op_info.end()) {
+    mode = op_info["mode"].get<string>();
+  } else {
+    mode = TSSTATIC;
+  }
 
   int32_t max_ub_size;
   if (input_dtype == "float32" || input_dtype == "fp32") {
