@@ -217,20 +217,42 @@ def _cal_multi_core_factor_3_axis(m, n, l):
     """
     Return the proper cut factors for 3 multicore axis.
     """
-    def ceil(x, y):
+    def _ceil(x, y):
         return (x + y - 1) // y
 
-    core_m, core_n, core_l = m, n, l
-    min_cycle_num = ceil(m * n * l, DEVICE_CORE_NUM)
-    min_core = m * n * l
+    # for pruning
+    if m * n * l > 65535:
+        max_gcd_m = math.gcd(m, DEVICE_CORE_NUM)
+        max_gcd_n = math.gcd(n, DEVICE_CORE_NUM)
+        max_gcd_l = math.gcd(l, DEVICE_CORE_NUM)
+        if max_gcd_m >= DEVICE_CORE_NUM:
+            return DEVICE_CORE_NUM, 1, 1
+        elif max_gcd_m * max_gcd_n >= DEVICE_CORE_NUM:
+            return max_gcd_m, DEVICE_CORE_NUM // max_gcd_m, 1
+        elif max_gcd_m * max_gcd_n * max_gcd_l >= DEVICE_CORE_NUM:
+            return max_gcd_m, max_gcd_m, DEVICE_CORE_NUM // (max_gcd_m * max_gcd_n)
+
+    def _init_core(m, n, l):
+        for i in range(m, 0, -1):
+            for j in range(n, 0, -1):
+                for k in range(l, 0, -1):
+                    if i * j * k < 65536:
+                        return i, j, k
+
+    core_m, core_n, core_l = _init_core(m, n, l)
+    min_cycle_num = _ceil(m, core_m) * _ceil(n, core_n) * _ceil(l, core_l) * \
+                    _ceil(core_m * core_n * core_l, DEVICE_CORE_NUM)
+    min_core = core_m * core_n * core_l
+
     for i in range(m, 0, -1):
         for j in range(n, 0, -1):
             for k in range(l, 0, -1):
-                if ceil(m, i) * ceil(n, j) * ceil(l, k) * ceil(i * j * k, DEVICE_CORE_NUM) > min_cycle_num:
+                if _ceil(m, i) * _ceil(n, j) * _ceil(l, k) * _ceil(i * j * k, DEVICE_CORE_NUM) > min_cycle_num:
                     continue
                 if i * j * k < min_core:
                     min_core = i * j * k
                     core_m, core_n, core_l = i, j, k
+
     return core_m, core_n, core_l
 
 
