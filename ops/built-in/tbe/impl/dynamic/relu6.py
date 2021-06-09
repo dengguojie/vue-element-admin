@@ -73,7 +73,7 @@ def relu6(input_x, output_y, kernel_name="relu6"):
     None
     """
     dtype_input = input_x.get("dtype").lower()
-    vmaxs_support = tbe_platform.api_check_support("te.lang.cce.vmaxs", "float32")
+    vmaxs_support = tbe_platform.api_check_support("tbe.dsl.vmaxs", "float32")
     if not vmaxs_support:
         para_check.check_dtype(dtype_input, ("int32", "float16"), param_name="input_x")
 
@@ -85,10 +85,7 @@ def relu6(input_x, output_y, kernel_name="relu6"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-
-            fuse_shape = [1]
-            fuse_shape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuse_shape, name="data_input",
+            data_input = tvm.placeholder(x_shape[0], name="data_input",
                                          dtype=dtype_input)
             res = relu6_compute(data_input, output_y, kernel_name)
 

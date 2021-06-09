@@ -19,6 +19,15 @@ def gen_dynamic_relu_case(shape_x, range_x, dtype_val, kernel_name_val,
 ut_case.add_case("all", gen_dynamic_relu_case((-1,), ((1, None),), "float16",
                                               "dynamic_relu_fp16_ND",
                                               "success"))
+ut_case.add_case("all", gen_dynamic_relu_case((-1,), ((1, None),), "float32",
+                                              "dynamic_relu_fp32_ND",
+                                              "success"))
+ut_case.add_case("all", gen_dynamic_relu_case((-1,), ((1, None),), "int32",
+                                              "dynamic_relu_int32_ND",
+                                              "success"))
+ut_case.add_case("all", gen_dynamic_relu_case((-1,), ((1, None),), "int8",
+                                              "dynamic_relu_int8_ND",
+                                              "success"))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

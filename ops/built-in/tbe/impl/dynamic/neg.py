@@ -16,7 +16,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 neg
 """
 from __future__ import absolute_import
-from functools import reduce as reduceIns
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -96,10 +95,7 @@ def neg(input_x, output_y, kernel_name="neg"):
     for (input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([input_x])
-
-            fuse_shape = [1]
-            fuse_shape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuse_shape, name="data_input",
+            data_input = tvm.placeholder(x_shape[0], name="data_input",
                                          dtype=dtype_input)
             res = neg_compute(data_input, output_y, kernel_name)
 

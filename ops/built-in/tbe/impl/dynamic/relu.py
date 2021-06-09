@@ -55,10 +55,10 @@ def relu_compute(x, y, kernel_name="relu"):
     compatible_dtype = x.dtype
 
     if inp_dtype == 'int8' and tbe_platform.api_check_support(
-            'te.lang.cce.cast_to', 's82f16'):
+            'tbe.dsl.cast_to', 's82f16'):
         x = tbe.cast_to(x, 'float16')
         compatible_dtype = 'float16'
-    if tbe_platform.api_check_support('te.lang.cce.vrelu',
+    if tbe_platform.api_check_support('tbe.dsl.vrelu',
                                       compatible_dtype):
         data_res = tbe.vrelu(x)
     else:
@@ -104,11 +104,7 @@ def relu(x, y, kernel_name="relu"):
     for (x,) in ins:
         with tbe.compute():
             shape_x = shape_util.variable_shape([x])
-
-            fuse_shape = [1]
-            fuse_shape[0] = reduceIns(lambda x, y: x * y, shape_x[0])
-
-            input_data = tvm.placeholder(fuse_shape, name="input_data",
+            input_data = tvm.placeholder(shape_x[0], name="input_data",
                                          dtype=dtype_x)
             res = relu_compute(input_data, y, kernel_name)
 
