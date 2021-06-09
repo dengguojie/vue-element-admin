@@ -233,8 +233,7 @@ def _tiling_param(shape, ksize, strides, core_num):
 
     total_ub_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     factor_c1 = 1
-    if tbe_platform.intrinsic_check_support("Intrinsic_vadd", "float32"):
-        total_ub_bytes = total_ub_bytes / 2
+    # 5 for five tensors in ub, 4 for a fp32 data four bytes
     if hw * 5 * c0 * 4 > total_ub_bytes:
         # split reduce hw axis
         factor_dout = 1
@@ -245,9 +244,9 @@ def _tiling_param(shape, ksize, strides, core_num):
         factor_dout = 1
         factor_rd = total_ub_bytes // (hw * 5 * c0 * 4)
         factor_rhw = hw
-    elif d_out * ksize_d * hw * c0 * 5 * 4 > total_ub_bytes:
+    elif d_out * (stride_d + ksize_d) * hw * c0 * 5 * 4 > total_ub_bytes:
         # split d_out axis
-        factor_dout = total_ub_bytes // (ksize_d * hw * c0 * 5 * 4)
+        factor_dout = max(1, total_ub_bytes // ((stride_d + ksize_d) * hw * c0 * 5 * 4))
         factor_rd = ksize_d
         factor_rhw = hw
     else:
