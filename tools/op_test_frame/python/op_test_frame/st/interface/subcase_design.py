@@ -25,7 +25,7 @@ SUPPORT_TYPE_LIST = list(utils.ATTR_TYPE_MAP.values())
 WHITE_LISTS = GC.instance().white_lists
 
 
-class SubCaseDesign:
+class SubCaseDesign(object):
     """
     the class for design test subcase.
     """

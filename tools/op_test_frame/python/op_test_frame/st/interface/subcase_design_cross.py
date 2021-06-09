@@ -72,7 +72,7 @@ class SubCaseDesignCross(SD.SubCaseDesign):
 
     def __init__(self, current_json_path, json_obj, case_index,
                  total_case_list, report, multi):
-        super().__init__(current_json_path, json_obj, case_index,
+        super(SubCaseDesignCross, self).__init__(current_json_path, json_obj, case_index,
                          total_case_list, report)
         self.multi = multi
 
@@ -159,9 +159,9 @@ class SubCaseDesignCross(SD.SubCaseDesign):
         for item in desc_list:
             if count != len(item[key]):
                 utils.print_error_log(
-                    'The amount of "%s" in "input_desc" and "output_desc" '
-                    'must be the same. Please modify it in file %s.'
-                    % (key, self.current_json_path))
+                    'The number of "%s" of the inputs must be consistent with '
+                    'the number of "%s" of the outputs in %s. Please modify.'
+                    % (key, key, self.current_json_path))
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
