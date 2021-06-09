@@ -1987,7 +1987,7 @@ class CceConvOp:
                         sch[bias_l0c].double_buffer()
                         sch[c_col_bias].double_buffer()
                         sch[bias_l0c].preload()
-                        if is_support_v200() and not ConvParam.l0a_dma_flag:
+                        if is_support_v200() and not ConvParam.l0a_dma_flag and not self._dynamic_flag:
                             sch[fmap_col_before].double_buffer()
                             sch[fmap_col_before].preload()
                         if bias_optimize_flag:

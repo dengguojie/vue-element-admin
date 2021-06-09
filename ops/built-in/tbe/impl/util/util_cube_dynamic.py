@@ -545,9 +545,6 @@ class Conv2dParaProcess(CubeParaProcess):
             err_man.raise_err_specific_user(
                 self.op_type, "dynamic c dimension is not supported yet.")
         soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
-        if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
-            err_man.raise_err_specific_user(
-                self.op_type, "Hi3796CV300ES and Hi3796CV300CS don't support dynamic shape")
         if self.paras.get("offset_w"):
             err_man.raise_err_specific_user(
                 self.op_type, "offset_w is not supported in dynamic shape yet.")
