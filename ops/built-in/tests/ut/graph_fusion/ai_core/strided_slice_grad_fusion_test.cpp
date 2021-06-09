@@ -128,7 +128,7 @@ TEST_F(strided_slice_grad_fusion_test, strided_slice_grad_fusion_test_1) {
             findOp = true;
         }
     }
-  EXPECT_EQ(findOp, true);
+  EXPECT_EQ(findOp, false);
 }
 
 TEST_F(strided_slice_grad_fusion_test, strided_slice_grad_fusion_test_2) {
@@ -238,7 +238,7 @@ TEST_F(strided_slice_grad_fusion_test, strided_slice_grad_fusion_test_2) {
       findOp = true;
     }
   }
-  EXPECT_EQ(findOp, true);
+  EXPECT_EQ(findOp, false);
 }
 
 TEST_F(strided_slice_grad_fusion_test, strided_slice_grad_fusion_test_3) {

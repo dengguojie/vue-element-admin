@@ -21,6 +21,37 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
 
+# pylint: disable=unused-argument
+def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
+                    end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
+                    kernel_name="strided_slice_grad_d"):
+    """
+    the value of new_axis_mask should in {0, 2, 4, 6}
+    the value of shrink_axis_mas should in {0, 1, 2, 4}
+    the length of shape should not equal to 0.
+    """
+    check_result = True, ""
+
+    supported_new_axis_mask = {0, 2, 4, 6}
+    supported_shrink_axis_mask = {0, 1, 2, 4}
+
+    if new_axis_mask not in supported_new_axis_mask:
+        reason = "the new_axis_mask is not supported, new_axis_mask:%s, supported_new_axis_mask:%s" \
+                 % (new_axis_mask, supported_new_axis_mask)
+        check_result = False, reason
+
+    if shrink_axis_mask not in supported_shrink_axis_mask:
+        reason = "the shrink_axis_mask is not supported, shrink_axis_mask:%s, supported_shrink_axis_mask:%s" \
+                 % (shrink_axis_mask, supported_shrink_axis_mask)
+        check_result = False, reason
+
+    if len(shape) == 0:
+        reason = "should not be empty shape, shape:%s" % str(shape)
+        check_result = False, reason
+
+    return check_result
+
+
 def _check_mask(input_mask, is_shrink=False):
     """ Check whether the value of the input mask is 0.
 
