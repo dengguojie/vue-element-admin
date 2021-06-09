@@ -52,21 +52,31 @@ bool DepthwiseConv2DTiling(const std::string& opType, const TeOpParas& opParas, 
   int32_t hDim = 2;
   int32_t wDim = 3;
 
+  int32_t batch = opParas.inputs[0].tensor[0].shape[nDim];
+  int32_t hi = opParas.inputs[0].tensor[0].shape[hDim];
+  int32_t wi = opParas.inputs[0].tensor[0].shape[wDim];
+  int32_t ho = opParas.outputs[0].tensor[0].shape[hDim];
+  int32_t wo = opParas.outputs[0].tensor[0].shape[wDim];
+
   std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
   std::vector<int64_t> var_value;
-  if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[nDim]);
-  }
-  if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[hDim]);
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[hDim]);
-  }
-  if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[wDim]);
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[wDim]);
+  for (auto var:varMap) {
+    if (var == "batch_n") {
+      var_value.insert(var_value.end(), batch);
+    } else if (var == "fmap_h") {
+      var_value.insert(var_value.end(), hi);
+    } else if (var == "fmap_w") {
+      var_value.insert(var_value.end(), wi);
+    } else if (var == "ho") {
+      var_value.insert(var_value.end(), ho);
+    } else if (var == "wo") {
+      var_value.insert(var_value.end(), wo);
+    }
   }
 
-  return cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opCompileInfo, runInfo);
+  bool res = cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opCompileInfo, runInfo);
+  GELOGD("depthwiseconv2d tiling_data is %d, %d, %d, %d, %d, %d", runInfo.tiling_key, batch, hi, ho, wi, wo);
+  return res;
 }
 
 // register tiling interface of the conv2d

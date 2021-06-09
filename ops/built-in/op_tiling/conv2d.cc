@@ -28,6 +28,38 @@
 using namespace std;
 namespace optiling {
 /*
+ * @brief: set val value
+ * @param [in] varMap: varMap of conv2d
+ * @param [in] op_paras: inputs/outputs/atts of the conv2d
+ * @param [out] valValue: val value
+ */
+std::vector<int64_t> setValValue(std::vector<std::string> varMap, const TeOpParas& opParas) {
+  int32_t nDim = 0;
+  int32_t hDim = 2;
+  int32_t wDim = 3;
+
+  int32_t batch = opParas.inputs[0].tensor[0].shape[nDim];
+  int32_t hi = opParas.inputs[0].tensor[0].shape[hDim];
+  int32_t wi = opParas.inputs[0].tensor[0].shape[wDim];
+  int32_t ho = opParas.outputs[0].tensor[0].shape[hDim];
+  int32_t wo = opParas.outputs[0].tensor[0].shape[wDim];
+  std::vector<int64_t> varValue;
+  for (auto var:varMap) {
+    if (var == "batch_n") {
+      varValue.insert(varValue.end(), batch);
+    } else if (var == "fmap_h") {
+      varValue.insert(varValue.end(), hi);
+    } else if (var == "fmap_w") {
+      varValue.insert(varValue.end(), wi);
+    } else if (var == "ho") {
+      varValue.insert(varValue.end(), ho);
+    } else if (var == "wo") {
+      varValue.insert(varValue.end(), wo);
+    }
+  }
+  return varValue;
+}
+/*
  * @brief: tiling function of conv2d
  * @param [in] op_type: op_type of the conv2d
  * @param [in] op_paras: inputs/outputs/atts of the conv2d
@@ -38,9 +70,6 @@ namespace optiling {
 
 bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
                   OpRunInfo& runInfo) {
-  int32_t nDim = 0;
-  int32_t hDim = 2;
-  int32_t wDim = 3;
 
   if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[0].tensor.empty() ||
       opParas.outputs[0].tensor.empty() || opParas.inputs[0].tensor[0].shape.empty() ||
@@ -58,11 +87,7 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     return false;
   }
 
-  int32_t batch = opParas.inputs[0].tensor[0].shape[nDim];
-  int32_t hi = opParas.inputs[0].tensor[0].shape[hDim];
-  int32_t wi = opParas.inputs[0].tensor[0].shape[wDim];
-  int32_t ho = opParas.outputs[0].tensor[0].shape[hDim];
-  int32_t wo = opParas.outputs[0].tensor[0].shape[wDim];
+
   // accurate build has only one item
   // fuzzy build has multiple items
   std::vector<std::string> varMap;
@@ -97,20 +122,18 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     opInfo = opCompileInfo;
   }
 
-  std::vector<int64_t> var_value;
-  if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    var_value.insert(var_value.end(), batch);
-  }
-  if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
-    var_value.insert(var_value.end(), hi);
-    var_value.insert(var_value.end(), ho);
-  }
-  if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
-    var_value.insert(var_value.end(), wi);
-    var_value.insert(var_value.end(), wo);
-  }
+  std::vector<int64_t> varValue = setValValue(varMap, opParas);
 
-  bool res = cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opInfo, runInfo);
+  bool res = cube_tiling(opType, opParas.inputs[0].tensor[0].shape, varValue, opInfo, runInfo);
+  // for log
+  int32_t nDim = 0;
+  int32_t hDim = 2;
+  int32_t wDim = 3;
+  int32_t batch = opParas.inputs[0].tensor[0].shape[nDim];
+  int32_t hi = opParas.inputs[0].tensor[0].shape[hDim];
+  int32_t wi = opParas.inputs[0].tensor[0].shape[wDim];
+  int32_t ho = opParas.outputs[0].tensor[0].shape[hDim];
+  int32_t wo = opParas.outputs[0].tensor[0].shape[wDim];
   GELOGD("conv2d tiling_data is %d, %d, %d, %d, %d, %d", runInfo.tiling_key, batch, hi, ho, wi, wo);
 
   return res;
