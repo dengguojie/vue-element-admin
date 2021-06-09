@@ -565,7 +565,7 @@ class Conv3dTiling(CubeTilingOp):
 
         self.pad_mode = "FIX"
         # currently, in dynamic_dhw, when padding is SAME, pad_mode is "VAR"
-        if isinstance(self.tiling_info["pad"][0], Expr):
+        if any(isinstance(i, Expr) for i in self.tiling_info["pad"]):
             self.pad_mode = "VAR"
             self.tiling_info["pad"] = [-1, -1, -1, -1, -1, -1]
         self.padf, self.padb, self.padu, self.padd, self.padl, self.padr =\
@@ -730,7 +730,16 @@ class Conv3dTiling(CubeTilingOp):
                 utils.FP16_K * self.k_h * self.k_w * \
                 tiling['manual_pingpong_buffer']['BL1_pbuffer']
 
-        return int(fmap_l1_size) + int(filter_l1_size) <= utils.L1BUFFER
+        # check exceed L1 buffer
+        if int(fmap_l1_size) + int(filter_l1_size) > utils.L1BUFFER:
+            return False
+
+        # get m axis length in cub
+        fused_num = self.var_map.get("fused_num", 0)
+        tensor_num = fused_num + 2 if fused_num > 0 else 1
+        cub_bound = (tiling['CL0_matrix'][0] * tiling['CL0_matrix'][1] * utils.FP16_M * utils.FP16_SIZE)
+
+        return cub_bound * tensor_num <= tbe_platform_info.get_soc_spec("UB_SIZE")
 
     def _check_tiling_match_d(self, tiling, current_size):
         """

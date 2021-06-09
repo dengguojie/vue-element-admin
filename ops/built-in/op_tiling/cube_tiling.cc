@@ -38,6 +38,7 @@ namespace {
     {"Conv3DBackpropFilter", kConv3DVarNames},
     {"Conv3DBackpropInput", kConv3DBpInputVarNames},
     {"Conv3DTranspose", kConv3DTransposeVarNames},
+    {"AvgPool3D", kConv3DVarNames},
     {"AvgPool3DGrad", kAvgPool3DGradVarNames}
   };
 

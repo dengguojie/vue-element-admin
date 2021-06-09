@@ -991,6 +991,9 @@ def conv3d(x, filter, filter_size, para_dict):
     Conv3DParam.var_map = Conv3DParam.dynamic_para.get("var_map")
     Conv3DParam.para_dict = para_dict
 
+    if ("fused_num" in para_dict and para_dict["fused_num"] > 0 and Conv3DParam.var_map):
+        Conv3DParam.var_map["fused_num"] = para_dict["fused_num"]
+
     bias_tensor = para_dict["bias_tensor"]
     bias_flag = (bias_tensor is not None)
 

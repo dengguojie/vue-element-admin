@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "fp16_t.hpp"
+#include "graph/compute_graph.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -212,6 +213,7 @@ vector<FusionPattern*> AvgPool3DFusionPass::DefinePatterns() {
 }
 
 Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& fusion_nodes) {
+  OP_LOGD(kFusedOpType.c_str(), "get into AvgPool3d fusion pass.");
   NodePtr op_node = GetNodeFromMapping("AvgPool3D", mapping);
   Operator op = OpDescUtils::CreateOperatorFromNode(op_node);
   OpDescPtr op_node_desc = op_node->GetOpDesc();
@@ -266,10 +268,13 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     fmap_c = dims_in[3];
     fmap_n = dims_in[4];
   }
-  FUSION_PASS_CHECK((PatternFusionUtil::IsUnknownShape(dout) || PatternFusionUtil::IsUnknownShape(ho) ||
-                     PatternFusionUtil::IsUnknownShape(wo) || PatternFusionUtil::IsUnknownShape(fmap_d) ||
-                     PatternFusionUtil::IsUnknownShape(fmap_h) || PatternFusionUtil::IsUnknownShape(fmap_w) ||
-                     PatternFusionUtil::IsUnknownShape(fmap_n) || PatternFusionUtil::IsUnknownShape(fmap_c)),
+  bool is_dynamic = false;
+  // when static op or dynamic op phase_running, is_dynamic = false
+  if(std::find(dims_in.begin(), dims_in.end(), -1) != dims_in.end()) {
+    is_dynamic = true;
+    OP_LOGD(kFusedOpType.c_str(), "avg_pool3d fusion pass in dynamic mode.");
+  }
+  FUSION_PASS_CHECK((PatternFusionUtil::IsUnknownShape(fmap_c)),
                     OP_LOGE(kFusedOpType.c_str(), "AvgPool3DFusionPass cannot be applied for unknown shape."),
                     return FAILED);
   int64_t fmap_c1 = (fmap_c + kC0 - 1) / kC0;
@@ -294,7 +299,8 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   int divisor_override{0};
   op.GetAttr("divisor_override", divisor_override);
 
-  if (IsVectorImpl(fmap_h, fmap_w, kh, kw, pads)) {
+  if (!is_dynamic && IsVectorImpl(fmap_h, fmap_w, kh, kw, pads)) {
+    OP_LOGD("get into vector impl.");
     op_node_desc->SetType("AvgPool3DD");
     return SUCCESS;
   }
@@ -306,9 +312,9 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
 
   float val = 1.0 / (kd * kh * kw);
 
-  if (divisor_override) {
+  if (!is_dynamic && divisor_override) {
     val = 1.0 / divisor_override;
-  } else if (!IsZeroPads(pads)) {
+  } else if (is_dynamic || !IsZeroPads(pads)) {
     // need multiplier and filter is all one in diagnoal
     val = 1.0;
   }
@@ -333,7 +339,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
 
   vector<GeTensorPtr> weights = {filter_ptr};
 
-  if (!IsZeroPads(pads) && !divisor_override) {
+  if (!is_dynamic && !IsZeroPads(pads) && !divisor_override) {
     GeTensorPtr multiplier_ptr{nullptr};
     int64_t multiplier_size = fmap_n * fmap_c1 * kC0 * dout * ho * wo;
     unique_ptr<uint16_t> multiplier_mem(new (nothrow) uint16_t[multiplier_size]());
@@ -367,8 +373,11 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     NodePtr const_input = const_input_nodes[i];
     const_input->GetOpDesc()->SetType(kConstantOp);
   }
-  op_node_desc->SetType("AvgPool3DD");
+  if (!is_dynamic) {
+    op_node_desc->SetType("AvgPool3DD");
+  }
 
+  GE_DUMP(make_shared<ComputeGraph>(graph), "avg_pool3d_fusion_pass_finish");
   return SUCCESS;
 }
 REGISTER_PASS("AvgPool3DFusionPass", BUILT_IN_GRAPH_PASS, AvgPool3DFusionPass);

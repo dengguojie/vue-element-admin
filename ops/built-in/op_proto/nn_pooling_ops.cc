@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include "axis_util.h"
 #include "graph/operator.h"
 #include "op_log.h"
 #include "common/util/error_manager/error_manager.h"
@@ -43,6 +44,9 @@ namespace {
   constexpr size_t kAvgPool3DGradStridesDim = 5;
   constexpr size_t kAvgPool3DGradPadsDim = 6;
   constexpr size_t kAvgPool3DGradShapeDim = 6;
+  constexpr size_t kAvgPool3DOriShapeDim = 5;
+  constexpr size_t kAvgPool3DShapeDim = 6;
+  constexpr size_t kAvgPool3DPadsDim = 6;
   constexpr size_t kAvgPool3DGradDataSlice = 6;
   const int64_t kDynamicRangeLowerBound = 1;
   const int64_t kDynamicRangeUpperBound = 4096;
@@ -2083,6 +2087,15 @@ VERIFY_FUNC_REG(AvgPoolV2, AvgPoolV2Verify);
 // ----------------AvgPoolV2 End-------------------
 
 // ----------------AvgPool3D-------------------
+bool IsAllVal(const vector<int64_t>& vec, int64_t val) {
+  for (auto i : vec) {
+    if (i != val) {
+      return false;
+    }
+  }
+  return true;
+}
+
 IMPLEMT_VERIFIER(AvgPool3D, AvgPool3DVerify) {
   auto ksize = op.get_attr_ksize();
   auto strides = op.get_attr_strides();
@@ -2100,6 +2113,68 @@ IMPLEMT_VERIFIER(AvgPool3D, AvgPool3DVerify) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
+}
+
+void AvgPool3DCalOutputRange(int32_t ksize, int32_t stride, const string& padding,
+                             std::pair<int64_t, int64_t>& fmap_range,
+                             std::pair<int64_t, int64_t> &output_range) {
+  fmap_range.first = fmap_range.first == -1 ? kDynamicRangeUpperBound : fmap_range.first;
+  fmap_range.second = fmap_range.second == -1 ? kDynamicRangeUpperBound : fmap_range.second;
+  if (padding == "SAME") {
+    output_range.first = std::max((fmap_range.first + stride - 1) / stride, kDynamicRangeLowerBound);
+    output_range.second = std::min((fmap_range.second + stride - 1) / stride, kDynamicRangeUpperBound);
+  } else {
+    output_range.first = std::max((fmap_range.first - ksize) / stride + 1, kDynamicRangeLowerBound);
+    output_range.second = std::min((fmap_range.second - ksize) / stride + 1, kDynamicRangeUpperBound);
+  }
+}
+
+bool GetAvgPool3DOutputRange(ge::OpDescPtr &op_desc, const vector<int64_t> &ksize_dhw,
+                             const vector<int64_t> &strides_dhw, const string& padding, const string& data_format,
+                             vector<int64_t>& output_shape, vector<pair<int64_t, int64_t>>& output_range) {
+  auto fmap_desc = op_desc->MutableInputDesc("x");
+  Format fmap_format = fmap_desc->GetFormat();
+  CHECK(fmap_format != FORMAT_NDHWC && fmap_format != FORMAT_NCDHW,
+        OP_LOGE("AvgPool3D", "unsupport fmap desc format."),
+        return false);
+  string fmap_format_str = format2str[fmap_desc->GetFormat()];
+  vector<pair<int64_t, int64_t>> fmap_range;
+  fmap_desc->GetShapeRange(fmap_range);
+  CHECK(fmap_range.size() != kAvgPool3DOriShapeDim,
+        OP_LOGE("AvgPool3D", "input x range dim is invalid, expect:%u, real:%u.",
+                kAvgPool3DOriShapeDim, fmap_range.size()),
+        return false);
+  output_range[data_format.find("N")] = fmap_range[fmap_format_str.find("N")];
+  output_range[data_format.find("C")] = fmap_range[fmap_format_str.find("C")];
+  AvgPool3DCalOutputRange(ksize_dhw[0], strides_dhw[0], padding, fmap_range[fmap_format_str.find("D")],
+                          output_range[data_format.find("D")]);
+  AvgPool3DCalOutputRange(ksize_dhw[1], strides_dhw[1], padding, fmap_range[fmap_format_str.find("H")],
+                          output_range[data_format.find("H")]);
+  AvgPool3DCalOutputRange(ksize_dhw[2], strides_dhw[2], padding, fmap_range[fmap_format_str.find("W")],
+                          output_range[data_format.find("W")]);
+  for (size_t i = 0; i < fmap_range.size(); ++i) {
+    output_shape[i] = output_range[i].first == output_range[i].second ? output_range[i].first : -1;
+  }
+  return true;
+}
+
+void UpdateAvgPool3DPads(int32_t id, int32_t ih, int32_t iw, int32_t kd,
+                         int32_t kh, int32_t kw, int32_t strd, int32_t strh,
+                         int32_t strw, vector<int64_t>& pads) {
+  int32_t pads_d = 0;
+  int32_t pads_h = 0;
+  int32_t pads_w = 0;
+
+  pads_d = std::max((id + strd - 1) / strd * strd + kd - strd - id, 0);
+  pads_h = std::max((ih + strh - 1) / strh * strh + kh - strh - ih, 0);
+  pads_w = std::max((iw + strw - 1) / strw * strw + kw - strw - iw, 0);
+
+  pads[0] = pads_d / 2;
+  pads[1] = pads_d - pads[0];
+  pads[2] = pads_h / 2;
+  pads[3] = pads_h - pads[2];
+  pads[4] = pads_w / 2;
+  pads[5] = pads_w - pads[4];
 }
 
 IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
@@ -2156,6 +2231,50 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
   if (strd == 0 || strh == 0 || strw == 0 || kd == 0 || kh == 0 || kw == 0) {
     OP_LOGE(op.GetName().c_str(), "Strides or ksize invalid.");
     return GRAPH_FAILED;
+  }
+
+  bool is_dynamic = IsUnknown(dims_input);
+  if (is_dynamic) {
+    string padding;
+    vector<int64_t> pads(kAvgPool3DPadsDim, 0);
+    if (op.GetAttr("padding", padding) == GRAPH_SUCCESS) {
+      CHECK(padding != "SAME" && padding != "VALID",
+            OP_LOGE(op.GetName().c_str(),
+                    "Padding is invalid, expect SAME or VALID, but real: %s.",
+                    padding.c_str()),
+            return GRAPH_FAILED);
+    } else if (op.GetAttr("pads", pads) == GRAPH_SUCCESS) {
+      padding = IsAllVal(pads, 0) ? "VALID" : "SAME";
+    } else {
+      OP_LOGE(op.GetName().c_str(),
+              "Can't get padding or pads attribute.");
+      return GRAPH_FAILED;
+    }
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    std::vector<int64_t> output_shape(kAvgPool3DOriShapeDim, 0);
+    std::vector<std::pair<int64_t, int64_t>> output_range(kAvgPool3DOriShapeDim);
+    std::vector<int64_t> ksize_dhw = {kd, kh, kw};
+    std::vector<int64_t> strides_dhw = {strd, strh, strw};
+    CHECK(!GetAvgPool3DOutputRange(op_desc, ksize_dhw, strides_dhw, padding, format2str[input_format],
+                            output_shape, output_range),
+          OP_LOGE(op.GetName().c_str(), "Set dynamic output shape and range failed."),
+          return GRAPH_FAILED);
+
+    pads.assign(kAvgPool3DPadsDim, 0);
+    if (padding == "SAME") {
+      if (id != -1 && ih != -1 && iw != -1) {
+        UpdateAvgPool3DPads(id, ih, iw, kd, kh, kw, strd, strh, strw, pads);
+      } else {
+        pads.assign(kAvgPool3DPadsDim, -1);
+      }
+    }
+    op.SetAttr("pads", pads);
+    auto output_desc = op_desc->MutableOutputDesc("y");
+    DataType input_dtype = op_desc->MutableInputDesc("x")->GetDataType();
+    output_desc->SetShape(GeShape(output_shape));
+    output_desc->SetShapeRange(output_range);
+    output_desc->SetDataType(input_dtype);
+    return GRAPH_SUCCESS;
   }
 
   std::vector<int32_t> pad_vec;
@@ -3098,15 +3217,6 @@ bool SetAvgPool3DGradOutputRange(ge::OpDescPtr &op_desc,
   // if there is no -1 in shape, it will run static impl ops.
   if (is_all_const) {
     fmap_shape[output_format.find("N")] = -1;
-  }
-  return true;
-}
-
-bool IsAllVal(const vector<int64_t> &vec, int64_t val) {
-  for (auto i : vec) {
-    if (i != val) {
-      return false;
-    }
   }
   return true;
 }

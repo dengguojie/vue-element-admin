@@ -52,3 +52,82 @@ TEST_F(AvgPool3DProtoTest, apply_avg_pool3d_verify_test) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(AvgPool3DProtoTest, avg_pool3d_static_shape_base_case1) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_ori(
+      {1, 5, 5, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, 5, 1, 5, 5, 16}, ge::FORMAT_NDHWC));
+  op.SetAttr("ksize", {1,2,2,2,1});
+  op.SetAttr("strides",{1,1,1,1,1});
+  op.SetAttr("pads",{0,0,0,0,0,0});
+  op.SetAttr("ceil_mode",false);
+  op.SetAttr("count_include_pad",true);
+  op.SetAttr("divisor_override",0);
+  op.SetAttr("data_format","NDHWC");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(AvgPool3DProtoTest, avg_pool3d_static_shape_base_case2) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_ori(
+      {1, 16, 5, 5, 5}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {1, 5, 1, 5, 5, 16}, ge::FORMAT_NCDHW));
+  op.SetAttr("ksize", {1,2,2,2,1});
+  op.SetAttr("strides",{1,1,1,1,1});
+  op.SetAttr("pads",{0,0,0,0,0,0});
+  op.SetAttr("ceil_mode",false);
+  op.SetAttr("count_include_pad",true);
+  op.SetAttr("divisor_override",0);
+  op.SetAttr("data_format","NDHWC");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(AvgPool3DProtoTest, avg_pool3d_dynamic_shape_base_case1) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_shape_range(
+      {-1, 16, 5, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {-1, 5, 1, 5, 5, 16}, ge::FORMAT_NCDHW,
+      {{1,10},{1,10},{5,5},{5,5},{16,16}}));
+  op.SetAttr("ksize", {1,2,2,2,1});
+  op.SetAttr("strides",{1,1,1,1,1});
+  op.SetAttr("pads",{-1,-1,-1,-1,-1,-1});
+  op.SetAttr("ceil_mode",false);
+  op.SetAttr("count_include_pad",true);
+  op.SetAttr("divisor_override",0);
+  op.SetAttr("data_format","NDHWC");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(AvgPool3DProtoTest, avg_pool3d_dynamic_shape_base_case2) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_shape_range(
+      {1, -1, 5, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {1, -1, 1, 5, 5, 16}, ge::FORMAT_NDHWC,
+      {{1,1},{1,10},{5,5},{5,5},{16,16}}));
+  op.SetAttr("ksize", {1,2,2,2,1});
+  op.SetAttr("strides",{1,1,1,1,1});
+  op.SetAttr("padding", "SAME");
+  op.SetAttr("pads",{0,0,0,0,0,0});
+  op.SetAttr("ceil_mode",false);
+  op.SetAttr("count_include_pad",true);
+  op.SetAttr("divisor_override",0);
+  op.SetAttr("data_format","NDHWC");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

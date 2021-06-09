@@ -39,7 +39,7 @@ def transform_shape_with_format(src_format, to_format, ori_shape, format_white_l
         return None
     # need not to transform
     if src_format == to_format:
-        return ori_shape
+        return list(ori_shape)
     res_shape = [1 for _ in range(len(to_format))]
     for i in range(len(to_format)):
         for j in range(len(src_format)):

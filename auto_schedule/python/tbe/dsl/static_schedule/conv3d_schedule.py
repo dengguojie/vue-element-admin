@@ -1852,6 +1852,15 @@ class CceConv3dOp:
         elif lop["op"] == 'broadcast_for_tensor':
             self._schedule[cache_buffer].emit_insn(tensorize_axis,
                                                    "vector_auto")
+        elif lop["op"] == 'mean_matrix_init':
+            self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[-1],
+                                                   "vector_dup")
+        elif lop["op"] == 'mean_matrix_fp16':
+            self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[0],
+                                                   "vector_auto")
+        elif lop["op"] == 'mean_matrix_mul':
+            self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[-1],
+                                                   "vector_auto")
         else:
             pass
 
@@ -1966,13 +1975,14 @@ class AutoScheduleOp:
         return None
 
     def __analyse_input_output(self):
+        spec_body_ops = {"mean_matrix_init"}
         input_ops = []
         output_ops = []
         body_ops = []
         input_tensor_name = []
         body_tensor_name = []
         for lop in self._op:
-            if not lop["prev_op"]:
+            if not lop["prev_op"] and lop["op"] not in spec_body_ops:
                 lop["color"] = -1
                 if lop["dst_buffer"].name not in input_tensor_name:
                     input_ops.append(lop)
