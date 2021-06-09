@@ -44,6 +44,7 @@ set(_tf_plugins
   adjust_contrast_plugin.cc
   adjust_hue_plugin.cc
   adjust_saturation_plugin.cc
+  adp_get_next.cc
   aicpu_parser.cc
   apply_adadelta_plugin.cc
   apply_adagrad_da_plugin.cc
