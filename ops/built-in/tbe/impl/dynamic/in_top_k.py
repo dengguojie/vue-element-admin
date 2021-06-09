@@ -213,25 +213,28 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     })
 
     real_core_num = obj_tiling.get_core_num()
-    with tik_instance.if_scope(tik.any(k <= 0, k > column)):
+    if k <= 0:
         _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets)
-    with tik_instance.else_scope():
-        with tik_instance.for_range(0, mini_cloud_core_nums, block_num=mini_cloud_core_nums) as core_loop:
-            with tik_instance.if_scope(core_loop < real_core_num):
-                shape_info = {
-                    "core_loop": core_loop,
-                    "mini_cloud_core_nums": mini_cloud_core_nums
-                }
-                with tik_instance.if_scope(core_row_capicity > 0):
-                    with tik_instance.if_scope(row <= BLOCK_SIZE):
-                        _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
-                    with tik_instance.else_scope():
-                        with tik_instance.if_scope(core_row_capicity < BLOCK_SIZE):
-                            _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
+    else:
+        with tik_instance.if_scope(k > column):
+            _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets)
+        with tik_instance.else_scope():
+            with tik_instance.for_range(0, mini_cloud_core_nums, block_num=mini_cloud_core_nums) as core_loop:
+                with tik_instance.if_scope(core_loop < real_core_num):
+                    shape_info = {
+                        "core_loop": core_loop,
+                        "mini_cloud_core_nums": mini_cloud_core_nums
+                    }
+                    with tik_instance.if_scope(core_row_capicity > 0):
+                        with tik_instance.if_scope(row <= BLOCK_SIZE):
+                            _in_top_k_single_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
                         with tik_instance.else_scope():
-                            _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
-                with tik_instance.else_scope():
-                    _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
+                            with tik_instance.if_scope(core_row_capicity < BLOCK_SIZE):
+                                _in_top_k_mul_core_v2(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
+                            with tik_instance.else_scope():
+                                _in_top_k_mul_core(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
+                    with tik_instance.else_scope():
+                        _in_top_k_tiling_column(tik_instance, shape_info, obj_tiling, obj_gm, k, targets)
 
     tik_instance.BuildCCE(kernel_name=kernel_name, inputs=[obj_gm.get_predictions_gm(), obj_gm.get_targets_gm()],
                           outputs=[obj_gm.get_tensor_output_gm()], flowtable=(obj_gm.tiling_gm, ))
@@ -298,7 +301,7 @@ def _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets):
         tik_instance.vconv(BLOCK_SIZE, '', output_ub, tensor_ub, 1, 1, 1, 8, 8)
     copy_repeat_times = (row + BLOCK_SIZE - 1) // BLOCK_SIZE
     with tik_instance.for_range(0, copy_repeat_times) as i:
-        with tik_instance.if_scope(k >= column):
+        with tik_instance.if_scope(k > column):
             tik_instance.data_move(target_ub, obj_gm.get_targets_gm()[i * BLOCK_SIZE], 0, 1, 4, 0, 0)
             invalid_mask = calc_invalid_mask(tik_instance, target_ub, BLOCK_SIZE, column, tensor_zeros,
                                              dst_ub, dst_ub1, 0)
