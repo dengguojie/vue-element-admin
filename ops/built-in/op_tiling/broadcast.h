@@ -39,6 +39,7 @@ struct CompileInfo {
   bool is_support_absorbable_broadcast{false};
   bool use_special_pattern{false};
   bool is_unknown_rank{false};
+  bool has_all_unknown{false};
 };
 
 enum Pattern {
@@ -49,7 +50,8 @@ enum Pattern {
   BROADCAST = 200,
   BROADCAST_COMMON = 210,
   BROADCAST_SCALAR = 230,
-  SCALAR_BROADCAST = 320
+  SCALAR_BROADCAST = 320,
+  UNKNWON_UNKNOWN = 999
 };
 
 class Broadcast {
@@ -66,8 +68,8 @@ public:
   static const int64_t BROADCAST_BASE_KEY = 2;
   static const int64_t ELEWISE_REPEATE_NUMS = 128;
   static const int64_t ELEWISE_UINT1_REPEATE_NUMS = 256;
-  static const int64_t MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS = 3;
-  static constexpr float LAST_AND_N_LAST_BASE = 1.5;
+  static const int64_t NONE_BRC_AXIS_OPTIMIZE_BLOCK_NUMS = 3;
+  static constexpr float MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS = 1.5;
 
 public:
   explicit Broadcast(const std::string& _op_type, const TeOpParas& _op_paras,
@@ -84,10 +86,15 @@ public:
 private:
   bool Init();
   bool GenerateOutputShape();
+  bool TryMatchAllUnknown();
   bool TrySwitchToPerfPattern();
   void FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::vector<int64_t>& fused_shape_y);
   bool MulTrySwitchToPerfPattern();
   void MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusion_shapes, size_t& fusion_length);
+  void GenerateAllUnknown(const std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
+                          const int64_t split_axis, const int64_t split_factor);
+  bool CalcSplitFactor(std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
+                       const int64_t ele_in_block, int64_t& split_axis, int64_t& split_factor);
   bool RefineShapesForBroadcast();
   bool CalcTiling();
   bool DoBlockTiling();
@@ -109,6 +116,7 @@ private:
   size_t dim_len{0};
   std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes;
   std::vector<std::vector<size_t>> fusion_index{};
+  std::vector<std::vector<int64_t>> fusion_shapes{};
   std::vector<int64_t> output_shape{};
   std::array<bool, B_MAX_DIM_LEN> broadcast_axis{};
   size_t input_num{0};

@@ -62,7 +62,7 @@ TEST_F(ScaleTiling, Scale_tiling_test_1) {
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "Scale";
-  std::string compileInfo = R"({"_boardcast_scale_shape": [-1, 1, -1], "_fusion_index": [[0, 1, 2]], "push_status": 0, "_pattern": "ElemWise", "_flag_info": [false, false, true, true, true, false], "_base_info": {"100": [2, 2, 42320, 21152], "230": [2, 2, 39584, 19792]}, "_elewise_vars": {"210000000": [20000, 30000], "210010000": [20000, 30000], "223000000": [10000, 20000, 30000]}, "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"], "223000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}})";
+  std::string compileInfo = R"({"_boardcast_scale_shape": [-1, 1, -1], "_fusion_index": [[0, 1, 2]], "push_status": 0, "_pattern": "ElemWise", "_flag_info": [false, false, true, true, true, false, false], "_base_info": {"100": [2, 2, 42320, 21152], "230": [2, 2, 39584, 19792]}, "_elewise_vars": {"210000000": [20000, 30000], "210010000": [20000, 30000], "223000000": [10000, 20000, 30000]}, "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"], "223000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Scale_tiling_test_1";

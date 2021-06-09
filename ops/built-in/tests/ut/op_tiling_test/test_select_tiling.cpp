@@ -63,7 +63,7 @@ TEST_F(SelectTiling, Select_tiling1) {
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "Select";
   // std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"boardcast_condition_fill\": [1, 1, 1]}}";
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Select_tiling1";
@@ -108,7 +108,7 @@ TEST_F(SelectTiling, Select_tiling2) {
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "Select";
   // std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"boardcast_condition_fill\": [1, 1, 1]}}";
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] }, "boardcast_condition_fill": []})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Select_tiling2";

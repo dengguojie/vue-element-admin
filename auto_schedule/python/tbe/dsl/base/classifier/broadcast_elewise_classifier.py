@@ -29,6 +29,7 @@ from . import util
 
 COMMON = "common"
 BROADCAST = "broadcast"
+UNKNOWN = "UNKNOWN"
 SCALAR = "scalar"
 SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
@@ -508,17 +509,30 @@ class BroadcastElewiseClassifier:
                 right_no_one -= 1
             return left_no_one, right_no_one
 
+        def has_unknown_broadcast():
+            for n_shapes in self.normalize_shapes:
+                if ShapeValueType.UNKNOWN in n_shapes:
+                    return True
+            return False
+
         known_broadcast_pattern, known_broadcast_index, known_const_index = \
             get_known_broadcast_and_const(self.normalize_shapes)
         left_no_one, right_no_one = get_no_one_index()
         ret = []
+        input_length = len(self.completed_shapes)
+        dim_length = len(self.f_shapes)
         if len(known_broadcast_pattern) <= 1 and not self.disable_optimization:
-            input_length = len(self.completed_shapes)
-            dim_length = len(self.f_shapes)
             ret.extend(add_special())
             ret.extend(add_special_scalar())
         ret.extend(add_original())
         ret.extend(add_empty())
+        if not self.disable_optimization and dim_length > 2 and has_unknown_broadcast():
+            unknown_len = dim_length - 1
+            shapes = [[-1] * unknown_len] * input_length
+            ranges = [[(1, None)] * unknown_len] * input_length
+            pattern = SpecialMode.All_UNKNOWN
+            ret.append(SpecialMode.gen_ins(shapes, ranges, pattern))
+            operation.get_context().add("_has_all_unknown", True)
         return ret
 
 
@@ -596,12 +610,7 @@ class SpecialMode:
     BROADCAST_COMMON = 'BA'
     BROADCAST = 'B'
 
-    PATTERS = {
-        COMMON: [1, 1, 1],
-        COMMON_BROADCAST: [0, 1, 1],
-        COMMON_BROADCAST_COMMON: [0, 1, 0],
-        BROADCAST_COMMON: [1, 1, 0],
-    }
+    All_UNKNOWN = ('U', 'U', 'U')
 
     LEFT = 'left'
     RIGHT = 'right'
@@ -624,6 +633,8 @@ class SpecialMode:
                         pattern_list.append(COMMON)
                     elif p == 'B':
                         pattern_list.append(BROADCAST)
+                    elif p == 'U':
+                        pattern_list.append(UNKNOWN)
                 return pattern_list
 
             return {"shape": s,

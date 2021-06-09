@@ -149,7 +149,7 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_3) {
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "SmoothL1LossV2";
-  std::string compileInfo = R"({"reduction": "none","reduce_mean_cof_dtype": "float32","_pattern": "ElemWise","_outs_uint1": false,"_flag_info": [false, false, false, true, false, false],"_base_info": {"100": [261760, 4, 4, 32]},"_elewise_vars": {"210000000": [10000, 20000, 30000], "210010000": [10000, 20000, 30000]},"_vars": {"210000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "210010000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]},"_normal_vars": {"210000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "210010000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]},"_attr_vars": {"210000000": [], "210010000": []},"_custom_vars": {"210000000": [], "210010000": []}})";
+  std::string compileInfo = R"({"reduction": "none","reduce_mean_cof_dtype": "float32","_pattern": "ElemWise","_outs_uint1": false,"_flag_info": [false, false, false, true, false, false, false],"_base_info": {"100": [261760, 4, 4, 32]},"_elewise_vars": {"210000000": [10000, 20000, 30000], "210010000": [10000, 20000, 30000]},"_vars": {"210000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "210010000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]},"_normal_vars": {"210000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"], "210010000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]},"_attr_vars": {"210000000": [], "210010000": []},"_custom_vars": {"210000000": [], "210010000": []}})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456c";

@@ -47,6 +47,7 @@ ONE_DIM_ALIGN = 128
 
 # temp space for last axis broadcast use vtranspose
 VTRANSPOSE_TEMP_SPACE = 8192
+MAX_EXTEND_NODE_NUM = 2
 
 CONST = "const"
 BROADCAST = "broadcast"
@@ -627,15 +628,22 @@ class BroadcastSchedule(Schedule):
             # '   if i * 2 + 1 < cond_limit:
             # '     do()
             cond_limit = 2
+        u_idx = self._ub_split_axis
         for tensor_i in self._broadcast_store_predicate:
-            sch[self._get_ub_tensor(tensor_i)].set_store_predicate(self._compute_at_axis.compute_at_axis < cond_limit)
+            if util.is_broadcast(tensor_i):
+                ub_split_src = tensor_i.op.input_tensors[0].shape[u_idx]
+            else:
+                ub_split_src = tensor_i.shape[u_idx]
+            cond = tvm.any(self._compute_at_axis.compute_at_axis < cond_limit, ub_split_src != 1)
+            sch[self._get_ub_tensor(tensor_i)].set_store_predicate(cond)
             sch[self._get_ub_tensor(tensor_i)].mem_unique()
         for tensor_i in self._all_pre_node_broadcast:
+            ub_split_src = tensor_i.shape[u_idx]
+            cond = tvm.any(self._compute_at_axis.compute_at_axis < cond_limit, ub_split_src != 1)
             if tensor_i in self._input_tensor_map:
-                sch[self._input_tensor_map[tensor_i]].set_store_predicate(
-                    self._compute_at_axis.compute_at_axis < cond_limit)
+                sch[self._input_tensor_map[tensor_i]].set_store_predicate(cond)
             else:
-                sch[tensor_i].set_store_predicate(self._compute_at_axis.compute_at_axis < cond_limit)
+                sch[tensor_i].set_store_predicate(cond)
         for tensor_i in self._store_predicate_common_tensors:
             if tensor_i in self._input_tensor_map:
                 sch[self._input_tensor_map[tensor_i]].mem_unique()
@@ -643,30 +651,33 @@ class BroadcastSchedule(Schedule):
                 sch[tensor_i].mem_unique()
 
     def _calc_constraints(self):
+        def add_condition(condition):
+            if isinstance(condition, tvm.expr.Expr):
+                self._constraints.add(condition)
+
         for tensor_i in self._broadcast_tensors:
             if util.is_unknown_broadcast(tensor_i):
                 src_shapes = util.shape_to_list(tensor_i.op.input_tensors[0].shape)
                 dst_shapes = util.shape_to_list(tensor_i.shape)
                 for src_shape, dst_shape in zip(src_shapes, dst_shapes):
-                    cond = src_shape <= dst_shape
-                    if not expr_equal(src_shape, dst_shape) and isinstance(cond, tvm.expr.Expr):
-                        self._constraints.add(cond)
+                    if not expr_equal(src_shape, dst_shape):
+                        add_condition(src_shape <= dst_shape)
 
         shapes = util.shape_to_list(self._out.shape)
         ub_shapes = shapes[self._ub_split_axis + 1:]
-        for s in ub_shapes:
-            cond = s <= self._min_storage_bound
-            if isinstance(cond, tvm.expr.Expr):
-                self._constraints.add(cond)
+        for shape in ub_shapes:
+            add_condition(shape <= self._min_storage_bound)
         if self._tiling_strategy != TilingStrategy.NONE_CUT:
+            block_shapes = shapes[:self._block_split_axis]
+            core_num = util.get_core_num()
+            for shape in block_shapes:
+                add_condition(shape <= core_num)
             ub_shapes.insert(0, self._ub_factor)
             shape_size = reduce(lambda x, y: x * y, ub_shapes)
-            cond = shape_size <= self._min_storage_bound
-            if isinstance(cond, tvm.expr.Expr):
-                self._constraints.add(cond)
-            cond = self._ub_factor <= self._min_storage_bound
-            if isinstance(cond, tvm.expr.Expr):
-                self._constraints.add(cond)
+            add_condition(shape_size <= self._min_storage_bound)
+            block_size = reduce(lambda x, y: x * y, block_shapes or [1])
+            add_condition(block_size <= core_num)
+            add_condition(self._ub_factor <= self._min_storage_bound)
 
     def _do_constraints(self):
         sch = self._schedule
@@ -713,6 +724,42 @@ class BroadcastSchedule(Schedule):
                 return self._cache_write_buffer_tensor_map[tensor_i]
             return tensor_i
 
+        def enable_dynamic_optimize(_tensor_i):
+            def is_original():
+                tiling_key = self._schedule.tiling_key
+                base = 10000000
+                return (tiling_key // base % 10) == 0
+
+            def is_last_align():
+                is_align = False
+                element_in_block = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[_tensor_i.dtype]
+                for _src_shape in reversed(_src_shapes):
+                    if isinstance(_src_shape, tvm.expr.Var) or expr_equal(_src_shape, 1):
+                        break
+                    if _src_shape % element_in_block == 0:
+                        is_align = True
+                        break
+                return is_align
+
+            def is_more_var_shape():
+                var_count = 0
+                tvm_expr = (tvm.expr.Expr, tvm.expr.Var)
+                for _src_shape in _src_shapes:
+                    if isinstance(_src_shape, tvm_expr):
+                        var_count += 1
+                for _dst_shape in _dst_shapes:
+                    if isinstance(_dst_shape, tvm_expr):
+                        var_count += 1
+                if not isinstance(_dst_shapes[0], tvm_expr) and isinstance(self._ub_factor, tvm_expr):
+                    var_count += 1
+                var_num_threshold = 0.6
+                return var_count > ((len(_src_shapes) + len(_dst_shapes)) * var_num_threshold)
+
+            _u_idx = self._ub_split_axis
+            _src_shapes = util.shape_to_list(_tensor_i.op.input_tensors[0].shape[_u_idx:])
+            _dst_shapes = util.shape_to_list(_tensor_i.shape[_u_idx:])
+            return is_original() and not is_last_align() and is_more_var_shape()
+
         sch = self._schedule
         for tensor_i, param in self._emit_insn_map.items():
             emit_insn_axis = param[0]
@@ -734,7 +781,12 @@ class BroadcastSchedule(Schedule):
                 else:
                     src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
                                               tvm.expr.Call.PureIntrinsic, None, 0)
-                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
+                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound],
+                                 dynamic_fuse=False,
+                                 dynamic_split=False)
+                    if enable_dynamic_optimize(tensor_i):
+                        attrs["dynamic_fuse"] = True
+                        attrs["dynamic_split"] = True
             elif compile_broadcast_no_inline:
                 attrs = dict(storage_bound=[tensor_bound])
             elif tensor_i in self._out_tensors and self._is_one_dim:
@@ -814,7 +866,7 @@ class BroadcastSchedule(Schedule):
                 u_i = self._ub_split_axis
                 src_shape = tensor_i.op.input_tensors[0].shape
                 dst_shape = tensor_i.shape
-                return expr_equal(1, src_shape[u_i]) and not expr_equal(1, dst_shape[u_i])
+                return not expr_equal(src_shape[u_i], dst_shape[u_i])
             return False
 
         def _has_ternary_insns():
@@ -838,16 +890,18 @@ class BroadcastSchedule(Schedule):
             _dfs_cur_tensor(cur_tensor)
             self._all_pre_node_broadcast.update(all_pre_node)
 
-        common_in_multi_output = False
+        disable_store_perdicate = False
         for tensor_i in self._all_pre_node_broadcast:
             common_tensor = self._in_out_map[tensor_i] - \
                             (self._all_pre_node_broadcast | self._broadcast_store_predicate)
             if len(common_tensor) > 0:
+                # common in multi output
                 if tensor_i in self._out_tensors:
-                    common_in_multi_output = True
+                    disable_store_perdicate = True
                     break
                 self._store_predicate_common_tensors.add(tensor_i)
-        if common_in_multi_output:
+        extend_node_num = len(self._broadcast_store_predicate) + len(self._store_predicate_common_tensors)
+        if disable_store_perdicate or extend_node_num > MAX_EXTEND_NODE_NUM:
             self._broadcast_store_predicate.clear()
             self._all_pre_node_broadcast.clear()
             self._store_predicate_common_tensors.clear()

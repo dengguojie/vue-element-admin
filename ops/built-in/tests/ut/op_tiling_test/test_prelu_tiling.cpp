@@ -77,7 +77,7 @@ TEST_F(PReluTiling, PReluTiling_test_1) {
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "PRelu";
 
-  std::string compileInfo = R"({"broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false], "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
+  std::string compileInfo = R"({"broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "PReluTiling_test_1";

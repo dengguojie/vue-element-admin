@@ -35,6 +35,7 @@ DEFAULT = "default"
 COMMON = "common"
 BROADCAST = "broadcast"
 SCALAR = "scalar"
+UNKNOWN = "UNKNOWN"
 SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
@@ -132,8 +133,10 @@ class BroadcastComputation(Computation):
                 base_key += base
             elif axis == BROADCAST:
                 base_key += (base * 2)
-            if axis == SCALAR:
+            elif axis == SCALAR:
                 base_key += (base * 3)
+            elif axis == UNKNOWN:
+                base_key += (base * 9)
             base //= 10
 
         t_pattern = tuple(pattern)
@@ -233,6 +236,8 @@ def _pre_build():
                     _pattern_key += base
                 elif axis == BROADCAST:
                     _pattern_key += (base * 2)
+                elif axis == UNKNOWN:
+                    _pattern_key += (base * 9)
                 else:
                     _pattern_key += (base * 3)
         return str(_pattern_key).ljust(3, '0')
@@ -240,7 +245,7 @@ def _pre_build():
     def _add_const_compile_info():
         is_const_shapes = True
         flag_info = [only_const_tiling, is_const_shapes, support_broadcast,
-                     use_special_pattern, support_absorbable_broadcast, unknown_rank]
+                     use_special_pattern, support_absorbable_broadcast, unknown_rank, has_all_unknown]
         operation.add_compile_info_inner(CompileInfo.FLAG_INFO, flag_info)
 
         const_shapes, const_block_dims = [], []
@@ -253,7 +258,7 @@ def _pre_build():
     def _add_schedule_compile_info():
         is_const_shapes = False
         flag_info = [only_const_tiling, is_const_shapes, support_broadcast,
-                     use_special_pattern, support_absorbable_broadcast, unknown_rank]
+                     use_special_pattern, support_absorbable_broadcast, unknown_rank, has_all_unknown]
         operation.add_compile_info_inner(CompileInfo.FLAG_INFO, flag_info)
 
         base_info = {}
@@ -282,6 +287,7 @@ def _pre_build():
     support_absorbable_broadcast = False
     support_broadcast = operation.get_context().get("_support_broadcast")
     unknown_rank = operation.get_context().get("_unknown_rank") or False
+    has_all_unknown = operation.get_context().get("_has_all_unknown") or False
     cpt_computes = operation.get_context().get_computes()
     is_const = False
     for compute in cpt_computes:

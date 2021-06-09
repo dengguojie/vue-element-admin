@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <tuple>
 
 #include "vector_tiling.h"
 
@@ -39,6 +40,8 @@ namespace {
       {100, Pattern::COMMON},    {120, Pattern::COMMON_BROADCAST}, {121, Pattern::COMMON_BROADCAST_COMMON},
       {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON},
   };
+
+  static const std::string ALL_UNKNOWN_PATTERN = "999";
 }
 
 const int64_t BGetElementByType(const std::string& dtype) {
@@ -93,7 +96,7 @@ bool Broadcast::Init() {
              return false);
   only_const_tiling = flag_info[0];
   if (!only_const_tiling) {
-    const size_t flag_info_size = 6;
+    const size_t flag_info_size = 7;
     V_CHECK_EQ(flag_info.size(), flag_info_size,
                OP_LOGE(op_type.c_str(), "flag info must be _only_const_tiling, _is_const_shapes, "
                        "_is_support_broadcast, _use_special_pattern, _is_support_absorbable_broadcast"),
@@ -102,6 +105,7 @@ bool Broadcast::Init() {
     compileInfo.use_special_pattern = flag_info[3];
     compileInfo.is_support_absorbable_broadcast = flag_info[4];
     compileInfo.is_unknown_rank = flag_info[5];
+    compileInfo.has_all_unknown = flag_info[6];
   }
   return true;
 }
@@ -132,7 +136,7 @@ void Broadcast::FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::v
       state = (input_shape_x[i] == input_shape_y[i]);
       fusion_index.push_back(current_index);
       current_index = {i};
-      if (fused_shape_x.size() > MAX_PATTERN_DIM) {
+      if (fused_shape_x.size() > MAX_PATTERN_DIM && !compileInfo.has_all_unknown) {
         break;
       }
     }
@@ -142,20 +146,17 @@ void Broadcast::FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::v
 }
 
 bool Broadcast::TrySwitchToPerfPattern() {
-  if (!compileInfo.use_special_pattern) {
-    return true;
-  }
-  std::vector<int64_t> fused_shape_x{input_shapes[0][0]};
-  std::vector<int64_t> fused_shape_y{input_shapes[1][0]};
-  FusionContinuousAxis(fused_shape_x, fused_shape_y);
-  if (fused_shape_x.size() > MAX_PATTERN_DIM) {
+  fusion_shapes.push_back({input_shapes[0][0]});
+  fusion_shapes.push_back({input_shapes[1][0]});
+  FusionContinuousAxis(fusion_shapes[0], fusion_shapes[1]);
+  if (fusion_shapes[0].size() > MAX_PATTERN_DIM || !compileInfo.use_special_pattern) {
     return true;
   }
   int64_t pattern_key = 0;
   int64_t base = 100;
   size_t b_axis = 0;
-  for (size_t i = 0; i < fused_shape_x.size(); i++) {
-    if (fused_shape_x[i] == fused_shape_y[i]) {
+  for (size_t i = 0; i < fusion_shapes[0].size(); i++) {
+    if (fusion_shapes[0][i] == fusion_shapes[1][i]) {
       pattern_key += base;
     } else {
       pattern_key += (base * BROADCAST_BASE_KEY);
@@ -166,12 +167,12 @@ bool Broadcast::TrySwitchToPerfPattern() {
   if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
     s_pattern = SPECIAL_PATTERN.at(pattern_key);
     if (s_pattern == BROADCAST && compileInfo.is_support_absorbable_broadcast) {
-      s_pattern = fused_shape_x[0] == 1 ? SCALAR_BROADCAST : BROADCAST_SCALAR;
+      s_pattern = fusion_shapes[0][0] == 1 ? SCALAR_BROADCAST : BROADCAST_SCALAR;
     }
-    dim_len = fused_shape_x.size();
+    dim_len = fusion_shapes[0].size();
     for (size_t i = 0; i < dim_len; i++) {
-      input_shapes[0][i] = fused_shape_x[i];
-      input_shapes[1][i] = fused_shape_y[i];
+      input_shapes[0][i] = fusion_shapes[0][i];
+      input_shapes[1][i] = fusion_shapes[1][i];
       output_shape.push_back(std::max(input_shapes[0][i], input_shapes[1][i]));
     }
     broadcast_axis[b_axis] = true;
@@ -187,9 +188,7 @@ void Broadcast::MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusio
     bool all_one = true;
     bool state_same = true;
     for (size_t j = 0; j < input_num; j++) {
-      if (input_shapes[j][i] != 1) {
-        all_one = false;
-      }
+      all_one = all_one && input_shapes[j][i] == 1;
       if (state_same && input_shapes[j][i] != input_shapes[j][last_index] &&
           (input_shapes[j][i] == 1 || input_shapes[j][last_index] == 1)) {
         state_same = false;
@@ -211,7 +210,7 @@ void Broadcast::MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusio
       fusion_length++;
       fusion_index.push_back(current_index);
       current_index = {i};
-      if (fusion_length > (MAX_PATTERN_DIM - 1)) {
+      if (fusion_length > (MAX_PATTERN_DIM - 1) && !compileInfo.has_all_unknown) {
         break;
       }
     }
@@ -221,12 +220,13 @@ void Broadcast::MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusio
 }
 
 bool Broadcast::MulTrySwitchToPerfPattern() {
+  std::vector<std::vector<int64_t>> shapes(input_num, std::vector<int64_t>{1});
+  fusion_shapes = std::move(shapes);
+  size_t fusion_length = 0;
+  MulFusionContinuousAxis(fusion_shapes, fusion_length);
   if (!compileInfo.use_special_pattern) {
     return true;
   }
-  std::vector<std::vector<int64_t>> fusion_shapes(input_num, std::vector<int64_t>{1});
-  size_t fusion_length = 0;
-  MulFusionContinuousAxis(fusion_shapes, fusion_length);
   if (fusion_length <= (MAX_PATTERN_DIM - 1)) {
     int64_t pattern_key = 0;
     int64_t base = 100;
@@ -298,6 +298,161 @@ bool Broadcast::GenerateOutputShape() {
   return ret;
 }
 
+void GenOutputAndBrcAxis(std::vector<int64_t>& out_shape, std::vector<bool>& brc_axis,
+                         const std::vector<std::vector<int64_t>>& fusion_shapes, const size_t shape_len) {
+  for (size_t i = 0; i < shape_len; i++) {
+    int64_t max_output = 1;
+    int64_t min_output = 2;
+    for (size_t j = 0; j < fusion_shapes.size(); j++) {
+      max_output = std::max(max_output, fusion_shapes[j][i]);
+      min_output = std::min(min_output, fusion_shapes[j][i]);
+    }
+    out_shape[i] = max_output;
+    if (min_output == 1 && max_output != 1) {
+      brc_axis[i] = true;
+    }
+  }
+}
+
+int64_t FindAlignFactor(const int64_t max_ub_shape, const int64_t ele_in_block) {
+  int64_t split_factor = -1;
+  for (int64_t f = 2; f <= ele_in_block; f += 2) {
+    if ((max_ub_shape * f) % ele_in_block == 0) {
+      split_factor = f;
+      break;
+    }
+  }
+  return split_factor;
+}
+
+bool Broadcast::CalcSplitFactor(std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
+                                const int64_t ele_in_block, int64_t& split_axis, int64_t& split_factor) {
+  int64_t cur_core;
+  int64_t max_ub;
+  try {
+    const auto& base_info = op_info.at("_base_info").at(ALL_UNKNOWN_PATTERN);
+    const size_t base_info_size = 4;
+    V_CHECK_EQ(base_info.size(), base_info_size,
+               OP_LOGE(op_type.c_str(), "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
+               return false);
+    cur_core = base_info[0];
+    max_ub = base_info[2];
+  } catch (const std::exception &e) {
+    OP_LOGE(op_type.c_str(), "get all unknown compile_info[_base_info] error. Error message: %s", e.what());
+    return false;
+  }
+  int64_t b_axis = 0;
+  int64_t block_output = -1;
+  const int64_t multi_core_threshold = BGetElementByType(out_type) * cur_core * DOUBLE_BUFFER_SIZE;
+  if (output_size > multi_core_threshold) {
+    for (size_t i = 0; i < out_shape.size(); i++) {
+      if (out_shape[i] > cur_core) {
+        b_axis = i;
+        int64_t factor = std::ceil(out_shape[i] * 1.0 / cur_core);
+        block_output = out_shape[i];
+        out_shape[i] = factor;
+        break;
+      } else {
+        cur_core /= out_shape[i];
+      }
+    }
+  }
+  int64_t max_ub_shape = 1;
+  int64_t last_index = static_cast<int64_t>(out_shape.size()) - 1;
+  for (int64_t i = last_index; i >= b_axis; i--) {
+    if (out_shape[i] < max_ub) {
+      max_ub /= out_shape[i];
+      if (brc_axis[i] && i != last_index && i != b_axis &&
+          ((max_ub_shape * out_shape[i]) % ele_in_block == 0) && max_ub_shape % ele_in_block != 0) {
+        split_axis = i;
+        split_factor = FindAlignFactor(max_ub_shape, ele_in_block);
+        break;
+      }
+      max_ub_shape *= out_shape[i];
+    }
+  }
+  out_shape[b_axis] = output_size > multi_core_threshold ? block_output : out_shape[b_axis];
+  return true;
+}
+
+std::tuple<bool, int64_t> LastFuseOutput(const std::string& op_type,
+                                         const std::vector<std::vector<int64_t>>& fusion_shapes) {
+  int64_t fuse_last = 0;
+  for (size_t i = 0; i < fusion_shapes.size(); i++) {
+    V_CHECK_GT(fusion_shapes[i].size(), 0,
+               OP_LOGE(op_type.c_str(), "The input shape must be greater than 0"),
+               return std::make_tuple(false, 0));
+    fuse_last = fusion_shapes[i].back();
+    if (fuse_last != 1) {
+      break;
+    }
+  }
+  return std::make_tuple(true, fuse_last);
+}
+
+void Broadcast::GenerateAllUnknown(const std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
+                                   const int64_t split_axis, const int64_t split_factor) {
+  int64_t shape_len = fusion_shapes[0].size();
+  int64_t fusion_len = output_shape.size();
+  output_shape.clear();
+  size_t start = split_axis == -1 ? fusion_len - 1 - shape_len : fusion_len - shape_len - 2;
+  for (size_t i = 0; i < start; i++) {
+    for (size_t j = 0; j < input_num; j++) {
+      input_shapes[j][i] = 1;
+    }
+    output_shape.push_back(1);
+    broadcast_axis[i] = false;
+  }
+  size_t dim_index = start;
+  for (int64_t i = 0; i < shape_len; i++) {
+    for (int64_t j = 0; j < static_cast<int64_t>(input_num); j++) {
+      if (i == split_axis) {
+        input_shapes[j][dim_index] = fusion_shapes[j][i] == 1 ? 1 : fusion_shapes[j][i] / split_factor;
+        input_shapes[j][dim_index + 1] = fusion_shapes[j][i] == 1 ? 1 : split_factor;
+      } else {
+        input_shapes[j][dim_index] = fusion_shapes[j][i];
+      }
+    }
+    broadcast_axis[dim_index] = brc_axis[i];
+    dim_index++;
+    if (i == split_axis) {
+      broadcast_axis[dim_index] = brc_axis[i];
+      output_shape.push_back(out_shape[i] / split_factor);
+      output_shape.push_back(split_factor);
+      dim_index++;
+    } else {
+      output_shape.push_back(out_shape[i]);
+    }
+  }
+  s_pattern = Pattern::UNKNWON_UNKNOWN;
+}
+
+bool Broadcast::TryMatchAllUnknown() {
+  V_CHECK_GT(fusion_shapes.size(), 0,
+             OP_LOGE(op_type.c_str(), "The input number must be greater than 0"),
+             return false);
+  size_t shape_len = fusion_shapes[0].size();
+  int64_t split_axis = -1;
+  int64_t split_factor = -1;
+  std::vector<int64_t> out_shape(shape_len, 1);
+  std::vector<bool> brc_axis(shape_len, false);
+  GenOutputAndBrcAxis(out_shape, brc_axis, fusion_shapes, shape_len);
+  output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
+  int64_t ele_in_block = BGetElementByType(in_type);
+  bool ret = true;
+  if ((output_shape.size() - 1) > shape_len && shape_len > 2 && output_size % ele_in_block == 0) {
+    ret = CalcSplitFactor(out_shape, brc_axis, ele_in_block, split_axis, split_factor);
+  }
+  int64_t fuse_last = 0;
+  bool check_res = true;
+  std::tie(check_res, fuse_last) = LastFuseOutput(op_type, fusion_shapes);
+  bool need_fuse_axis = output_shape.back() != fuse_last;
+  if (ret && check_res && (need_fuse_axis || split_axis != -1)) {
+    GenerateAllUnknown(out_shape, brc_axis, split_axis, split_factor);
+  }
+  return ret;
+}
+
 bool Broadcast::RefineShapesForBroadcast() {
   size_t fusion_len = 0;
   if (!op_info.contains("_fusion_index")) {
@@ -342,6 +497,9 @@ bool Broadcast::RefineShapesForBroadcast() {
     if (min_output == 1 && max_output != 1) {
       broadcast_axis[i] = true;
     }
+  }
+  if (compileInfo.has_all_unknown) {
+    return TryMatchAllUnknown();
   }
   return true;
 }
@@ -559,7 +717,7 @@ int64_t Broadcast::SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_bl
         is_middle_optimize = true;
         last_broadcast_size = output_shape[i];
       } else if (!broadcast_axis[i + 1] &&
-                 under_ub_shape > (max_ub_shape / under_ub_shape * MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS) &&
+                 under_ub_shape > (max_ub_shape / under_ub_shape * NONE_BRC_AXIS_OPTIMIZE_BLOCK_NUMS) &&
                  under_ub_shape > (BLOCK_NUM * ele_in_block) && !is_middle_optimize) {
         ub_axis = i + 1;
         ub_factor = output_shape[i + 1];
@@ -617,10 +775,9 @@ bool Broadcast::DoUbTiling() {
 
 void Broadcast::OptimizeUbTiling() {
   // tiling optimize for ub factor
-  // 1. convert BA pattern form split COMMON axis to BROADCAST axis
-  // 2. avoid split BROADCAST axis
-  int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
-  if (!only_const_tiling && block_axis < ub_axis && ub_axis == shape_len && ub_factor == output_shape[ub_axis]) {
+  // if BROADCAST axis greater than a half elem_in_block, split ub form split COMMON axis to BROADCAST axis
+  if (!only_const_tiling && block_axis < ub_axis && output_shape[ub_axis - 1] >= (BGetElementByType(in_type) / 2) &&
+      broadcast_axis[ub_axis - 1] && !broadcast_axis[ub_axis] && ub_factor == output_shape[ub_axis]) {
     ub_axis--;
     ub_factor = 1;
   }
