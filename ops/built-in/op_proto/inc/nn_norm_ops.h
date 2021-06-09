@@ -337,6 +337,41 @@ REG_OP(SoftmaxV2)
     .OP_END_FACTORY_REG(SoftmaxV2)
 
 /**
+*@brief Function softmax with dropoutDoMaskV3D
+
+*@par Inputs:
+*Two inputs, including:
+* @li x: A mutable Tensor. The type only support float16.
+* @li mask: A mutable Tensor. Must met all of the following rules:
+*     shape of mask should be 1D.
+*     dtype of mask should be uint8.
+*     value of shape should met the following algorithm:
+*     value = (size(x) + 128 - 1) // 128 * 128
+
+*@par Attributes:
+* @li keep_prob: A mutable Tensor. Must met all of the following rules:
+*     shape of "keep_prob" should be (1,) or [1,].
+*     Has the same type as "x" . \n
+* @li axes: A list of int. The dimension softmax would be performed on. Defaults
+*     to "[-1]" . \n
+
+*@par Outputs:
+*y1: A mutable Tensor. Has the same type as "x".
+*y2: A mutable Tensor. Has the same type as "x". \n
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(SoftmaxV2WithDropOutDoMaskV3D)
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(mask, TensorType({DT_UINT8}))
+    .OUTPUT(y1, TensorType({DT_FLOAT16}))
+    .OUTPUT(y2, TensorType({DT_FLOAT16}))
+    .REQUIRED_ATTR(keep_prob, Float)
+    .ATTR(axes, ListInt, {-1})
+    .OP_END_FACTORY_REG(SoftmaxV2WithDropOutDoMaskV3D)
+
+/**
 *@brief Computes log softmax activations . \n
 
 *@par Inputs:

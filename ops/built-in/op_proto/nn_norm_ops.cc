@@ -314,6 +314,14 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxGradExtInferShape) {
 COMMON_INFER_FUNC_REG(SoftmaxGradExt, SoftmaxGradExtInferShape);
 // ------------------------SoftmaxGradExt END-----------------------
 
+// --------------------------SoftmaxV2WithDropoutDoMaskV3-------------------------
+IMPLEMT_COMMON_INFERFUNC(SoftmaxV2WithDropoutDoMaskV3InferShape) {
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SoftmaxV2WithDropOutDoMaskV3D, SoftmaxV2WithDropoutDoMaskV3InferShape);
+// ------------------------SoftmaxV2WithDropoutDoMaskV3 END-----------------------
+
 //------------------------MVN---------------------------
 IMPLEMT_INFERFUNC(MVN, MVNInferShape) {
   auto outShape = op.GetInputDesc("x").GetShape();
