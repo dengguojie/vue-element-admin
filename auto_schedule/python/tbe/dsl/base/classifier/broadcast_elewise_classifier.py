@@ -121,14 +121,15 @@ class BroadcastElewiseClassifier:
             shapes, ranges = list(_in["shape"]), list(_in.get("range"))
             for index, (shape, (r0, r1)) in enumerate(zip(shapes, ranges)):
                 if shape == 0:
-                    _in["range"][index] = (0, 0)
+                    ranges[index] = (0, 0)
                     is_empty_shape = True
                 if r0 == 0:
-                    _in["range"][index] = (1, r1)
+                    ranges[index] = (1, r1)
                     is_empty_shape = True
                 if r1 == 0:
-                    _in["range"][index] = (0, 0)
+                    ranges[index] = (0, 0)
                     is_empty_shape = True
+            _in["range"] = ranges
         self.maybe_empty_tensor = is_empty_shape
 
     def _normalize(self):
@@ -414,6 +415,13 @@ class BroadcastElewiseClassifier:
             adapter_broadcast_pattern(common_need_update, b_index, b_shape, b_range)
             return [b_shape], [b_range]
 
+        def check_pattern(pattern_key, ranges):
+            is_legal_pattern = True
+            for pattern, _range in zip(pattern_key, ranges):
+                if pattern == 'B' and is_legal_pattern:
+                    is_legal_pattern = any([r0 <= 1 for (r0, _) in _range])
+            return is_legal_pattern
+
         def add_special():
             ins_list = []
             special_pattern = {
@@ -425,7 +433,7 @@ class BroadcastElewiseClassifier:
             if len(self.completed_shapes) > 2:
                 special_pattern[SpecialMode.BROADCAST] = gen_broadcast()
             for key, value in special_pattern.items():
-                if len(value[0]) > 0:
+                if len(value[0]) > 0 and check_pattern(key, value[1]):
                     ins_list.append(SpecialMode.gen_ins(list(zip(*value[0])), list(zip(*value[1])), key))
             return ins_list
 

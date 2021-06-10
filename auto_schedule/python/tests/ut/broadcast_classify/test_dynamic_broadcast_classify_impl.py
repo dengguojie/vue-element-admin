@@ -95,7 +95,16 @@ def test_unknown_rank(_):
               'mode': 'original'}],
             [{'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'},
              {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'},
-             {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}]]
+             {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}],
+            [{'shape': [-1, -1, -1, -1, -1, -1, -1],
+              'range': [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None), (1, None)],
+              'support_broadcast': True, 'mode': 'special', 'pattern': ['UNKNOWN', 'UNKNOWN', 'UNKNOWN']},
+             {'shape': [-1, -1, -1, -1, -1, -1, -1],
+              'range': [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None), (1, None)],
+              'support_broadcast': True, 'mode': 'special', 'pattern': ['UNKNOWN', 'UNKNOWN', 'UNKNOWN']},
+             {'shape': [-1, -1, -1, -1, -1, -1, -1],
+              'range': [(1, None), (1, None), (1, None), (1, None), (1, None), (1, None), (1, None)],
+              'support_broadcast': True, 'mode': 'special', 'pattern': ['UNKNOWN', 'UNKNOWN', 'UNKNOWN']}]]
         return ins == except_ins
 
 
@@ -187,7 +196,11 @@ def test_mix_unknown_rank(_):
                 {'shape': [1, 30, -1, -1], 'range': [(1, 1), (30, 30), (1, 2147483647), (1, 2147483647)],
                  'support_broadcast': True, 'mode': 'original'}],
             [{'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'},
-             {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}]]
+             {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}],
+            [{'shape': [-1, -1, -1], 'range': [(1, None), (1, None), (1, None)], 'support_broadcast': True,
+              'mode': 'special', 'pattern': ['UNKNOWN', 'UNKNOWN', 'UNKNOWN']},
+             {'shape': [-1, -1, -1], 'range': [(1, None), (1, None), (1, None)], 'support_broadcast': True,
+              'mode': 'special', 'pattern': ['UNKNOWN', 'UNKNOWN', 'UNKNOWN']}]]
         return ins == except_ins
 
 
@@ -234,7 +247,12 @@ def test_mix_empty_shape(_):
                                                                              (1, 2147483647)],
                                                                    'support_broadcast': True, 'mode': 'original'}],
                       [{'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'},
-                       {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}]]
+                       {'shape': (0,), 'range': [(0, 0)], 'support_broadcast': True, 'mode': 'empty'}], [
+                          {'shape': [-1, -1, -1], 'range': [(1, None), (1, None), (1, None)], 'support_broadcast': True,
+                           'mode': 'special', 'pattern': ['UNKNOWN', 'UNKNOWN', 'UNKNOWN']},
+                          {'shape': [-1, -1, -1], 'range': [(1, None), (1, None), (1, None)], 'support_broadcast': True,
+                           'mode': 'special', 'pattern': ['UNKNOWN', 'UNKNOWN', 'UNKNOWN']}]]
+        print(ins)
         return ins == except_ins
 
 
