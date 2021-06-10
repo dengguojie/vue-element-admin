@@ -232,9 +232,9 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     elif src_type == "int32":
         check_list = ["bool", "uint8", "int8", "float32", "float16"]
 
-    src_shape = input_x.get("shape")
+    src_shape = input_x.get("ori_shape")
 
-    if len(src_shape) == 1 and src_shape[0] == 1:
+    if (len(src_shape) == 1 and src_shape[0] == 1) or len(src_shape) == 0:
         if src_type == "int64":
             check_list = ["int32", "float32"]
 

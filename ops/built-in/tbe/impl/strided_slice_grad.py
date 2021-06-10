@@ -37,8 +37,8 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
                   % (new_axis_mask, shrink_axis_mask, shrink_axis_mask)
         check_result = False, reason
 
-    strides_size = strides.get("shape")[0]
-    shape_size = shape.get("shape")[0]
+    strides_size = strides.get("ori_shape")[0]
+    shape_size = shape.get("ori_shape")[0]
     if shrink_axis_mask == 2 and (ellipsis_mask != 1 or
                                   strides_size != 2 or shape_size <= 2):
         reason = "the axis is not supported, new_axis_mask:%s, ellipsis_mask:%s, strides_size:%s, shape_size:%s"\

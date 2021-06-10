@@ -27,8 +27,8 @@ def check_supported(x, indices, v, y, kernel_name="inplace_update"):
     """
     To check whether the AICORE operator can support the shape of indices or not
     """
-    shape_indices = indices.get("shape")
-    shape_v = v.get("shape")
+    shape_indices = indices.get("ori_shape")
+    shape_v = v.get("ori_shape")
     dtype_v = v.get("dtype").lower()
     reg_v_len = 1
     for i in range(1, len(shape_v)):

@@ -161,9 +161,9 @@ def check_supported(x,
     """
     verify the types and params of dilation2d_backprop_filter supported by tbe
     """
-    x_shape = x.get("shape")
-    x_format = x.get("format")
-    filter_shape = filter.get("shape")
+    x_shape = x.get("ori_shape")
+    x_format = x.get("ori_format")
+    filter_shape = filter.get("ori_shape")
 
     if data_format == "NHWC":
         stride_h = strides[1]
@@ -186,11 +186,6 @@ def check_supported(x,
     elif x_format == "NCHW":
         filter_h = filter_shape[1]
         filter_w = filter_shape[2]
-        x_h = x_shape[2]
-        x_w = x_shape[3]
-    elif x_format == "NC1HWC0":
-        filter_h = filter_shape[2]
-        filter_w = filter_shape[3]
         x_h = x_shape[2]
         x_w = x_shape[3]
     else:

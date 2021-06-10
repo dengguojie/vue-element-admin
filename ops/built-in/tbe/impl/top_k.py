@@ -1470,7 +1470,7 @@ def check_supported(input_tensor,
     """
     if sorted is not True:
         return False
-    shape = input_tensor.get("shape")
+    shape = input_tensor.get("ori_shape")
     # 1458176 indicates max size of the last dimension.
     if shape[-1] > 1458176:
         reason = "1458176 indicates max size of the last dimension"

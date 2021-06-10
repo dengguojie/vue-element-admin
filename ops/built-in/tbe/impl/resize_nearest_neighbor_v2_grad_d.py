@@ -598,8 +598,8 @@ def check_supported(grads, y, size, align_corners=False,
     -------
     check_supported: bool
     """
-    grads_format = grads.get("format")
-    grads_shape = grads.get("shape")
+    grads_format = grads.get("ori_format")
+    grads_shape = grads.get("ori_shape")
     try:
         if grads_format == "NCHW":
             grads_w = grads_shape[3]

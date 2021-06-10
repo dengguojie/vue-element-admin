@@ -36,8 +36,8 @@ def check_supported(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
     """
     ori_format = x.get("ori_format")
     ori_shape = x.get("ori_shape")
-    block_s = block_shape.get("shape")
-    crop_s = crops.get("shape")
+    block_s = block_shape.get("ori_shape")
+    crop_s = crops.get("ori_shape")
     if ori_format not in ("NHWC", "NCHW", "NDHWC", "NCDHW"):
         reason = "ori_format[%s] not in [NHWC, NCHW, NDHWC, NCDHW]"
         return False, reason
