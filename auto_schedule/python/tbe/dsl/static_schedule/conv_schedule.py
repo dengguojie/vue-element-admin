@@ -18,6 +18,7 @@
 Schedule of conv2d.
 """
 import re
+import math
 from enum import Enum
 from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.dsl.compute.conv_compute import is_support_v200
@@ -4333,9 +4334,9 @@ class CceConvOp:
                     continue
                 # bit tensor set_storage_bound for reluv2 fusion
                 if ConvParam.conv_reluv2_flag and "vcmpv_gt" in lop["op"]:
-                    sch[lop["dst_buffer"]].set_storage_bound(int(ub_storage_bound_size//8))
+                    sch[lop["dst_buffer"]].set_storage_bound(math.ceil(ub_storage_bound_size//8))
                     continue
-                sch[lop["dst_buffer"]].set_storage_bound(int(ub_storage_bound_size))
+                sch[lop["dst_buffer"]].set_storage_bound(math.ceil(ub_storage_bound_size))
 
             # mem_unique
             sch[al1].mem_unique()
@@ -5226,8 +5227,9 @@ class CceConvOp:
         self._compute_at_axis.append(c_slice_axis)
         self._compute_at_buffer.append(res_c)
         self._compute_at_axis.append(m_outer_inner_outer)
-        self._compute_at_axis.append(c_outer_inner_inner)
-        self._compute_at_axis.append(m_outer_inner_inner)
+        if not is_support_v220():
+            self._compute_at_axis.append(c_outer_inner_inner)
+            self._compute_at_axis.append(m_outer_inner_inner)
         # select the real k value to participate in the calculation.(fix random result on dc)
         if ConvParam.para_dict["group_opt"] > 1 and is_support_v200() and not l0a_load2d_flag:
             reduce_k1 = weight.shape[0] // ConvParam.para_dict["group_opt"]
@@ -5703,7 +5705,10 @@ class CceConvOp:
                 if self._conv_quant_fused_flag and self._res_tensor.op.tag == "conv_virtual_res":
                     self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
                 if not self._conv_quant_fused_flag:
-                    if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16S8 or \
+                    if "res_mask_u8" in lop["op"] and self._dynamic_flag:
+                        # disable overlap for non-integer multiple blocks
+                        self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy', {"no_overlap": 2})
+                    elif self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16S8 or \
                             ConvParam.conv_reluv2_flag or \
                             (self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and \
                             self._res_tensor.op.tag == "conv_virtual_res"):
