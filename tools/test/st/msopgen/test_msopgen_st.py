@@ -40,6 +40,15 @@ class TestUtilsMethods(unittest.TestCase):
                 msopgen.main()
         self.assertEqual(error.value.code, utils.MS_OP_GEN_NONE_ERROR)
 
+    def test_mi_query_from_ir_excel_success(self):
+        test_utils.clear_out_path(OUT_PATH_VALID)
+        args = ['msopgen.py', 'mi', 'query', '-i', IR_EXCEL_PATH,
+                '-out', OUT_PATH_VALID]
+        with pytest.raises(SystemExit) as error:
+            with mock.patch('sys.argv', args):
+                msopgen.main()
+        self.assertEqual(error.value.code, utils.MS_OP_GEN_NONE_ERROR)
+
     def test_gen_tf_caffe_from_ir_json_compare_success(self):
         test_utils.clear_out_path(IR_JSON_OUTPUT)
         args = ['msopgen.py', 'gen', '-i', IR_JSON_PATH, '-f', 'tf', '-c',
