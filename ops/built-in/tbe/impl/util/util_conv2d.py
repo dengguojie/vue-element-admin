@@ -14,7 +14,6 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from topi.cce import util
-from topi.cce.util import check_load3d_w_out_1_support
 
 
 PAD_SHAPE_DIM = 2

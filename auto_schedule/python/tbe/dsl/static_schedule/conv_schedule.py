@@ -482,26 +482,26 @@ def reget_tensor_list(outs):
                                 lambda *indice:
                                 res_c(*indice).astype("float16"),
                                 name="cast_0_ub")
-        cast_0 = tvm.compute(conv_res_shape,
-                             lambda *indice: cast_0_ub(*indice),
-                             name="cast_0")
-        cast_1 = tvm.compute(conv_res_shape,
-                             lambda *indice: cast_0(*indice).astype("float32"),
-                             name="cast_1")
-        ConvParam.tensor_map["cast_1"] = cast_1
+        cast0 = tvm.compute(conv_res_shape,
+                            lambda *indice: cast_0_ub(*indice),
+                            name="cast0")
+        cast1 = tvm.compute(conv_res_shape,
+                            lambda *indice: cast0(*indice).astype("float32"),
+                            name="cast1")
+        ConvParam.tensor_map["cast1"] = cast1
         from tbe.dsl.api import vmul
-        mul_0 = vmul(cast_1, cast_1)
+        mul_0 = vmul(cast1, cast1)
 
         tuple_reduce = tvm.comm_reducer(_fcombine,
                                         _fidentity,
                                         name='tuple_reduce')
         mean_out, _ = tvm.compute(reduce_shape,
                                   lambda c1, c0:
-                                  tuple_reduce((cast_1[k_0, c1, k_1, c0],
+                                  tuple_reduce((cast1[k_0, c1, k_1, c0],
                                                 mul_0[k_0, c1, k_1, c0]),
                                                axis=[k_0, k_1]),
                                   name="mean_out")
-        outputs = [cast_0, mean_out]
+        outputs = [cast0, mean_out]
         ConvParam.convbn1_flag = True # used in cce_schedule
     elif check_doubleout_quant_v200(outs):
         outputs = _process_doubleout_quant_v200(outs)
@@ -2033,7 +2033,7 @@ class CceConvOp:
                 # conv_bn1
                 if double_buffer_flag["CUB_pbuffer"] == 2 and self._convbn1_flag:
                     sch[d_pad].double_buffer()
-                    sch[tensor_map['cast_1']].double_buffer()
+                    sch[tensor_map['cast1']].double_buffer()
 
         def intrin_mapping(weight, tiling):
             """
@@ -4327,7 +4327,7 @@ class CceConvOp:
                 if "bias_ub" in lop["op"]:
                     continue
                 #  phony_insn tensor no need set_storage_bound for convbn fusion
-                if self._convbn1_flag and "cast_1" in lop["op"]:
+                if self._convbn1_flag and "cast1" in lop["op"]:
                     continue
                 # elewise_single_relu is cloud, mini and es
                 if self._pre_relu_fused_flag and ("elewise_single_relu" in lop['op'] or "elewise_single_lrelu" in lop['op']):
@@ -5864,9 +5864,9 @@ class CceConvOp:
         elif op_cmd[0].lower() == "elewise" or lop["op"] == "emit_insn_elewise_binary_cmp":
             ele_instr = self._get_elmwise_instr(lop["op"])
             self._schedule[cache_buffer].emit_insn(tensorize_axis, ele_instr)
-        elif lop["op"] == "cast_0" and self._convbn1_flag:
+        elif lop["op"] == "cast0" and self._convbn1_flag:
             self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[0], "dma_copy")
-        elif lop["op"] == "cast_1" and self._convbn1_flag:
+        elif lop["op"] == "cast1" and self._convbn1_flag:
             self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[0], "phony_insn")
             self._schedule[res_c].reused_by(cache_buffer)
         elif op_cmd[0].lower() == "cast" and self._convbn1_flag:
@@ -6495,8 +6495,8 @@ class AutoScheduleOp:
             "res_out_fp16": OpFusionype.DOUBLE_OUT,
             "conv_virtual_res": OpFusionype.DOUBLE_OUT,
             "mean_out": OpFusionype.BN_OP,
-            "cast_1": OpFusionype.ELTWISE_ONE_OP,
-            "cast_0": OpFusionype.ELTWISE_ONE_OP,
+            "cast1": OpFusionype.ELTWISE_ONE_OP,
+            "cast0": OpFusionype.ELTWISE_ONE_OP,
             "cast_0_ub": OpFusionype.ELTWISE_ONE_OP,
             "convolution_c_ub": OpFusionype.DMA_COMMON,
             # conv_pool fusion op
