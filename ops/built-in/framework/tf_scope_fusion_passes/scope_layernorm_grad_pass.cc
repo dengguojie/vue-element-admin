@@ -139,6 +139,7 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
     // find the node whose all inputs are from this scope
     bool can_find = false;
     bool all_in = true;
+    bool all_ln_output = true;
     OP_LOGD(kOpType, "Addn node name is %s", it.second->GetName().c_str());
     size_t input_nums = it.second->GetInputsSize();
     for (size_t i = 0; i < input_nums; i++) {
@@ -148,12 +149,17 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
       if (nodes_map.count(input_name) != 0) {
         can_find = true;
       }
+      if (input_name.find("batchnorm/mul_grad/Sum_1") == std::string::npos &&
+          input_name.find("batchnorm/sub_grad/Sum") == std::string::npos) {
+        all_ln_output = false;
+      }
       if (nodes_map.count(input_name) == 0) {
         all_in = false;
       }
     }
 
-    if ((all_in == true && input_nums == 2) || (input_nums > 2 && can_find == true)) {
+    if ((all_in == true && input_nums == 2) || (input_nums > 2 && can_find == true &&
+         all_ln_output == false)) {
       // if the node is not in result_nodes, it will be insert to result_nodes
       bool find1 = true;
       for (auto& it1 : result_nodes) {
@@ -163,6 +169,7 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
         }
       }
       if (find1) {
+        OP_LOGD(kOpType, " Push Back AddN noede %s into scope", it.second->GetName().c_str());
         result_nodes.push_back(it.second);
       }
     }
@@ -227,6 +234,49 @@ void ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, cons
       OP_LOGI(kOpType, "The %s is not found, the index is %d", base_name.c_str(), i);
       return;
     }
+  }
+}
+
+void ScopeLayerNormGradPass::IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape) {
+  if (scope == nullptr) {
+    OP_LOGE(kOpType, "scope is nullptr.");
+    return;
+  }
+  const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
+  is_connected_reshape = false;
+  for (auto& it : nodes_map) {
+    auto node_def = it.second;
+    std::string sub_name = (node_def->GetName().length() > name.length())
+                              ? node_def->GetName().substr(node_def->GetName().length() - name.length())
+                              : node_def->GetName();
+    if (sub_name == name) {
+      is_connected_reshape = true;
+      return;
+    }
+  }
+return;
+}
+
+void ScopeLayerNormGradPass::OutputGammaBetaProcess(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
+  bool is_connect_reshape = false;
+  for (auto& scope : scopes) {
+    IsConnectReshape(scope, "batchnorm/mul_grad/Reshape_1", is_connect_reshape);
+  }
+  if (is_connect_reshape) {
+    fusion_rlt->InsertOutputs("batchnorm/mul_grad/Reshape_1", {1});  // output d_gamma
+  }
+  else {
+    fusion_rlt->InsertOutputs("batchnorm/mul_grad/Sum_1", {1});  // output d_gamma
+  }
+  is_connect_reshape = false;
+  for (auto& scope : scopes) {
+    IsConnectReshape(scope, "batchnorm/sub_grad/Reshape", is_connect_reshape);
+  }
+  if (is_connect_reshape) {
+    fusion_rlt->InsertOutputs("batchnorm/sub_grad/Reshape", {2});  // output d_beta
+  }
+  else {
+    fusion_rlt->InsertOutputs("batchnorm/sub_grad/Sum", {2});  // output d_beta
   }
 }
 
@@ -374,8 +424,7 @@ void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope*>& sco
 
   fusion_rlt->InsertInputs("moments/SquaredDifference_grad/sub", {kFusionDisableIndex, 3});  // input mean
   ProcessInputGamma(scopes, fusion_rlt);
-  fusion_rlt->InsertOutputs("batchnorm/mul_grad/Sum_1", {1});  // output d_gamma
-  fusion_rlt->InsertOutputs("batchnorm/sub_grad/Sum", {2});    // output d_beta
+  OutputGammaBetaProcess(scopes, fusion_rlt);
   std::string output_dx;
   int add_index = -1;
   FindOutputdXNode(fusion_rlt->Nodes(), output_dx, add_index);
@@ -406,7 +455,7 @@ void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope*>& sco
     }
     fusion_rlt->InsertOutputs(output_dx.c_str(), {0});
     fusion_rlt->SetType(kScopeToMultiNodes);
-    
+
     auto in_layernorm_grad_node = fusion_rlt->AddInnerNode("in_layernorm_grad_node", "LayerNormGrad");
     CHECK_INNER_NODE_CONDITION(in_layernorm_grad_node != nullptr, fusion_rlt);
     Status ret = in_layernorm_grad_node->InsertInput(kInputFromFusionScope, 0)

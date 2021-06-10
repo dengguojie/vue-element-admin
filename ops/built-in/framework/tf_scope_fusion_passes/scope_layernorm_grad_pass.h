@@ -49,11 +49,12 @@ class ScopeLayerNormGradPass : public ScopeBasePass {
   void FindInputXIndex(const Scope* scope, int& index);
 
   void FindInputIndex(const Scope* scope, int& index, const std::string& name, const std::string& base_name);
-
+  void IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape);
   void FindOutputdXNode(const std::vector<ge::OperatorPtr>& nodes, std::string& node_def_name, int &index);
   void ProcessInputDy(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);
   void ProcessInputX(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);
   void ProcessInputGamma(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);
+  void OutputGammaBetaProcess(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);
 };
 }  // namespace ge
 
