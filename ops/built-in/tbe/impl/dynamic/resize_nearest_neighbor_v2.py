@@ -100,6 +100,7 @@ class ResizeNearestNeighbor(OpBase):
         self.core_width_num = self.tik_instance.Scalar("int64", name="core_width_num")
         self.cut_width_num = None
         self.cut_height_num = None
+        self.scale_w_ceil = self.tik_instance.Scalar("int32", name="scale_w_ceil")
 
         # init ub
         self.height_idx_ub = None
@@ -110,13 +111,6 @@ class ResizeNearestNeighbor(OpBase):
         self.image_in_cb_ping = None
         self.image_out_ub = None
         self.image_in_cb_ping = None
-
-        # regist compute base on tiling_key
-        self.regist_compute(100000, self._function_default, is_w_algin=False)
-        self.regist_compute(101000, self._function_default, is_w_algin=True)
-        self.regist_compute(111000, self._function_hw_to_nhnw_resize)
-        self.regist_compute(111001, self._function_hw_to_nhnw_resize_for_small_hw)
-        self.regist_compute(113000, self._function_hw_to_nhnw_resize, is_w_equal=True)
 
     def tiling_args(self):
         """
@@ -328,9 +322,13 @@ class ResizeNearestNeighbor(OpBase):
                                        1, 1, 1, 1, 8, 8, 8)
             self.resize_scale_h.set_as(height_input_fp32[0])
 
+            self.scale_w_ceil.set_as(
+                (self.tiling_in_width + self.tiling_out_width - 1) // self.tiling_out_width)
             with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_width > 1)):
                 self.tik_instance.vadds(1, width_output_fp32, width_output_fp32, -1.0, 1, 1, 1, 8, 8)
                 self.tik_instance.vadds(1, width_input_fp32, width_input_fp32, -1.0, 1, 1, 1, 8, 8)
+                self.scale_w_ceil.set_as(
+                    (self.tiling_in_width + self.tiling_out_width - 3) // (self.tiling_out_width - 1))
             if not self.is_suport_vdiv:
                 self.tik_instance.vrec(1, width_output_fp32[self.block_num:], width_output_fp32, 1, 1, 1, 8, 8)
                 _tik_fuc_vrec_newton(self.tik_instance, width_output_fp32[self.block_num:], width_output_fp32,
@@ -436,7 +434,7 @@ class ResizeNearestNeighbor(OpBase):
                 nc_max_segment.set_as(0)
             # mean: if input_w // output_w > 4, the input_w can not save in l1
             # will modify w_loop_sigment base on input
-            w_input_output_rate = (self.tiling_in_width + self.tiling_out_width - 1) // self.tiling_out_width
+            w_input_output_rate = self.scale_w_ceil
             w_loop_input_sigment = (w_loop_sigment - 1) * w_input_output_rate + 1
             _max_nc_w_in_l1 = self.ub_max_num * 4 // self.images_shape_c0
             with self.tik_instance.if_scope(self.tiling_out_width * 4 < self.tiling_in_width):
@@ -897,16 +895,23 @@ class ResizeNearestNeighbor(OpBase):
         """
         resize_nearest_neighbor_v2_operator
         """
+        # regist compute base on tiling_key
+        self.regist_compute(100000, self._function_default, is_w_algin=False)
+        self.regist_compute(101000, self._function_default, is_w_algin=True)
+        self.regist_compute(111000, self._function_hw_to_nhnw_resize)
+        self.regist_compute(111001, self._function_hw_to_nhnw_resize_for_small_hw)
+        self.regist_compute(113000, self._function_hw_to_nhnw_resize, is_w_equal=True)
+
         # run all regist compute base tiling key
         self.op_run_compute()
         # Build CCE
-        self.op_build_cce()
 
         tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
                                                             "core_num": self.core_nums,
                                                             "max_w_len": self.ub_max_num // self.images_shape_c0,
                                                             "align_corners": int(self.align_corners),
                                                             "half_pixel_centers": int(self.half_pixel_centers)})
+        self.op_build_cce()
 
         return self.tik_instance
 
