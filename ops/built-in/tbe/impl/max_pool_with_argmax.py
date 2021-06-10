@@ -356,7 +356,8 @@ class MaxPoolWithargmax():
             if need_cut_h_w:
                 cut_w_size, cut_w_stride, cut_w_num = self._calc_cut_w_size_fun()
                 cut_w_tail = self.in_size_w + self.pad[0] - cut_w_stride * (cut_w_num - 1)
-                if (cut_w_tail % SCALAR_C0) == 0 and cut_w_size > 0:
+                out_size_tail_w = (cut_w_tail - self.window_w + self.stride_w + self.pad[1]) // self.stride_w
+                if (out_size_tail_w % SCALAR_C0) == 0 and cut_w_size > 0:
                     flag_cut_h = True
                     nc1_cuth = self.nc1 * cut_h_num
                 else:
