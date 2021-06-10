@@ -37,6 +37,9 @@ from . import layer_norm_tilingcase, layer_norm_normal_schedule, layer_norm_work
 from . import bn_update_grad_schedule, bn_training_update_grad_tilingcase
 from . import confusion_softmax_grad_schedule, confusion_softmax_grad_tilingcase
 
+# quant
+from . import ascend_quant_schedule, ascend_quant_tilingcase
+
 # cube
 from . import conv2d_bp_input_schedule
 from . import conv2d_bp_input_tilingcase

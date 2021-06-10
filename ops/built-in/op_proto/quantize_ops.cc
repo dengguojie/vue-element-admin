@@ -98,13 +98,13 @@ COMMON_INFER_FUNC_REG(Quantize, QuantizeInferShape);
 // ----------------Dequantize End----------------------------------------------
 
 IMPLEMT_COMMON_INFERFUNC(AscendQuantInferShape) {
-  TensorDesc x_desc = op.GetInputDesc("x");
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetDataType(DT_INT8);
-  Shape shape = x_desc.GetShape();
-  y_desc.SetShape(shape);
-  (void)op.UpdateOutputDesc("y", y_desc);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    auto output_desc = op_info->MutableOutputDesc(0);
+    output_desc->SetDataType(DT_INT8);
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(AscendQuant, AscendQuantInferShape);
