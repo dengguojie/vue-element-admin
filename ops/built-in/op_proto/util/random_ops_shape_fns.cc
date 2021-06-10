@@ -61,8 +61,19 @@ graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name,
   }
   if (op.GetInputConstData(shape_name, tensor) != GRAPH_SUCCESS) {
     output_desc->SetDataType(type);
-    output_desc->SetShape(GeShape(UNKNOWN_RANK));
-    output_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+    auto input_shape = op.GetInputDesc(shape_name).GetShape();
+    if (input_shape.GetShapeSize() == UNKNOWN_DIM) {
+      output_desc->SetShape(GeShape(UNKNOWN_RANK));
+      output_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+    } else {
+      int64_t rank = input_shape.GetShapeSize();
+      std::vector<int64_t> out_shape;
+      for (int64_t i = 0; i < rank; i++) {
+        out_shape.push_back(UNKNOWN_DIM);
+      }
+      output_desc->SetShape(GeShape(out_shape));
+      output_desc->SetOriginShape(GeShape(out_shape));
+    }
     return GRAPH_SUCCESS;
   }
   Shape shape;
