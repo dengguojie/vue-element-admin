@@ -296,16 +296,16 @@ def op_select_format(input0, input1, input2, input3, input4,
     1. When all of the inputs' shapes are the same, the Op AdamApplyOne can support format NDC1HWC0 and FRACTAL_Z_3D.
     2. In other scenes, the Op can support format ND.
     """
-    shape_input0 = shape_util.scalar2tensor_one(input0.get("shape"))
-    shape_input1 = shape_util.scalar2tensor_one(input1.get("shape"))
-    shape_input2 = shape_util.scalar2tensor_one(input2.get("shape"))
-    shape_input3 = shape_util.scalar2tensor_one(input3.get("shape"))
-    shape_input4 = shape_util.scalar2tensor_one(input4.get("shape"))
-    shape_mul0_x = shape_util.scalar2tensor_one(mul0_x.get("shape"))
-    shape_mul1_x = shape_util.scalar2tensor_one(mul1_x.get("shape"))
-    shape_mul2_x = shape_util.scalar2tensor_one(mul2_x.get("shape"))
-    shape_mul3_x = shape_util.scalar2tensor_one(mul3_x.get("shape"))
-    shape_add2_y = shape_util.scalar2tensor_one(add2_y.get("shape"))
+    shape_input0 = shape_util.scalar2tensor_one(input0.get("ori_shape"))
+    shape_input1 = shape_util.scalar2tensor_one(input1.get("ori_shape"))
+    shape_input2 = shape_util.scalar2tensor_one(input2.get("ori_shape"))
+    shape_input3 = shape_util.scalar2tensor_one(input3.get("ori_shape"))
+    shape_input4 = shape_util.scalar2tensor_one(input4.get("ori_shape"))
+    shape_mul0_x = shape_util.scalar2tensor_one(mul0_x.get("ori_shape"))
+    shape_mul1_x = shape_util.scalar2tensor_one(mul1_x.get("ori_shape"))
+    shape_mul2_x = shape_util.scalar2tensor_one(mul2_x.get("ori_shape"))
+    shape_mul3_x = shape_util.scalar2tensor_one(mul3_x.get("ori_shape"))
+    shape_add2_y = shape_util.scalar2tensor_one(add2_y.get("ori_shape"))
 
     input_shape_list = [shape_input0, shape_input1, shape_input2, shape_input3,
                         shape_input4, shape_mul0_x, shape_mul1_x, shape_mul2_x,

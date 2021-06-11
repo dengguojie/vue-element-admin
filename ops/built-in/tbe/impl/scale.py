@@ -54,16 +54,14 @@ def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True
     > scale : Tensor of (shape=(2), "ND")
     """
     shape_x_ori = x.get("ori_shape")
-    shape_x = x.get("shape")
     shape_scale_ori = scale.get("ori_shape")
-    shape_scale = scale.get("shape")
+    shape_scale = scale.get("ori_shape")
 
     length_x_ori = len(shape_x_ori)
-    length_x = len(shape_x)
     length_scale_ori = len(shape_scale_ori)
     length_scale = len(shape_scale)
 
-    if length_scale == 1 and shape_scale[0] == 1:
+    if (length_scale == 1 and shape_scale[0] == 1) or length_scale == 0:
         format_scale = "ND,ND,ND,ND"
         format_bias = "ND,ND,ND,ND"
         format_scale_hisi = "ND,ND"

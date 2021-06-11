@@ -44,7 +44,7 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     > x : Tensor of (shape=(16, 1, 16, 16, 16), "NDHWC")
     > bias : Tensor of (shape=(2), "ND")
     """
-    shape_bias = bias.get("shape")
+    shape_bias = bias.get("ori_shape")
     ori_shape_x = x.get("ori_shape")
     c0 = 16
     if len(ori_shape_x) <= 4:

@@ -30,7 +30,7 @@ def op_select_format(x, segment_ids, num_segments, y,
     """
     select format dynamically
     """
-    segment_ids_shape = list(segment_ids.get("shape"))
+    segment_ids_shape = list(segment_ids.get("ori_shape"))
     atomic_add = platform.api_check_support("tik.set_atomic_add")
     if len(segment_ids_shape) == 1 and atomic_add:
         input0_dtype = "float16,float16,float,float,int32,int32"

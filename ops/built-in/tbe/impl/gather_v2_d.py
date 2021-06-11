@@ -1206,7 +1206,7 @@ def op_select_format(x, indices, y, axis=0, kernel_name="gather_v2_d"):
         if not is_gather_with_c:
             is_support_hd = True
 
-    indices_shape = indices.get("shape")
+    indices_shape = indices.get("ori_shape")
     if len(indices_shape) > 1:
         is_support_hd = False
 

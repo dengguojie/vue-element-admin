@@ -60,7 +60,7 @@ def op_select_format(x, segment_ids, y, num_segments,
     """
     select format dynamically
     """
-    segment_ids_shape = list(segment_ids.get("shape"))
+    segment_ids_shape = list(segment_ids.get("ori_shape"))
     atomic_add = cce.api_check_support("tik.set_atomic_add") and \
                  cce.api_check_support("te.lang.cce.vmul", "float32")
     if len(segment_ids_shape) == 1 and not atomic_add:
@@ -100,7 +100,7 @@ def op_select_format(x, segment_ids, y, num_segments,
         input1_ori_dtype = "int32,int32,int32"
         input1_ori_format = "ND,ND,ND"
     ori_dtype = x.get("dtype").lower()
-    ori_shape = list(x.get("shape"))
+    ori_shape = list(x.get("ori_shape"))
     id_size = _prod(segment_ids_shape)
     if (ori_dtype in ("float16", "float32")) and atomic_add and (num_segments > 10000 or id_size > 10000):
         input0 = gen_param(classify="input0", name="x",

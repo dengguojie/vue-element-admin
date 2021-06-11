@@ -44,16 +44,14 @@ def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
     > bias : Tensor of (shape=(2), "ND")
     """
     shape_x_ori = x.get("ori_shape")
-    shape_x = x.get("shape")
     shape_bias_ori = bias.get("ori_shape")
-    shape_bias = bias.get("shape")
+    shape_bias = bias.get("ori_shape")
 
     length_x_ori = len(shape_x_ori)
-    length_x = len(shape_x)
     length_bias_ori = len(shape_bias_ori)
     length_bias = len(shape_bias)
 
-    if length_bias == 1 and shape_bias[0] == 1:
+    if (length_bias == 1 and shape_bias[0] == 1) or length_bias == 0:
         format_bias = "ND,ND,ND,ND"
         format_bias_hisi = "ND,ND"
     else:
