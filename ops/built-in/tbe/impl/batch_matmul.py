@@ -26,6 +26,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+from tbe.common.context import op_context
 
 
 # General limitation of the size for input shape: 2**31
@@ -381,6 +382,14 @@ def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
     return param_dynamic_in_json
 
 
+def _is_fuzzily_build():
+    """
+    check fuzzily build flag
+    """
+    context = op_context.get_context()
+    return (context and context.get_build_type() == "fuzzily_build")
+
+
 def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
                     trans_b=False, kernel_name="matmul"):
     """
@@ -453,6 +462,9 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
         if k_shape != k_b_shape:
             reason = "k_shape != k_b_shape, k_shape:%s, k_b_shape:%s" % (k_shape, k_b_shape)
             return False, reason
+    if _is_fuzzily_build() and src_dtype != "float16":
+        reason = "in dynamic mode, src dtype only support float16!"
+        return False, reason
 
     return True, ""
 

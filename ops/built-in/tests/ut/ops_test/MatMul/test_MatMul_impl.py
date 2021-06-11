@@ -9,6 +9,7 @@ from op_test_frame.common import precision_info
 import numpy as np
 from impl.mat_mul import get_op_support_info
 from impl.mat_mul import mat_mul_compute
+from impl.mat_mul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
 from te.platform.cce_conf import te_set_version
 ut_case = OpUT("MatMul", None, None)
@@ -40,6 +41,17 @@ case3 = {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACT
                     {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 64),"ori_format": "ND"},
                     False, True],
          "case_name": "MatMul_3",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case4 = {"params": [{"shape": (32, 96), "dtype": "float32", "format": "ND", "ori_shape": (32, 96),"ori_format": "ND"},
+                    {"shape": (64, 96), "dtype": "float32", "format": "ND", "ori_shape": (64, 96),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (32, 64), "dtype": "float32", "format": "ND", "ori_shape": (32, 64),"ori_format": "ND"},
+                    False, True],
+         "case_name": "MatMul_4",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
@@ -274,3 +286,23 @@ def test_matmul_confusion_transpose_710(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_910)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_710)
+
+
+def test_check_support(test_arg):
+    from tbe.common.context import op_context
+    def _test_supported(case):
+        try:
+            check_supported(*case["params"], kernel_name="matmul")
+        except Exception as e:
+            print("The case is not supported")
+    def _test_fuzzily_supported(case):
+        with op_context.OpContext("dynamic"):
+            context = op_context.get_context()
+            context.set_build_type("fuzzily_build")
+            try:
+                check_supported(*case["params"], kernel_name="matmul")
+            except Exception as e:
+                print("The case is not supported")
+    _test_fuzzily_supported(case4)
+    _test_supported(case1)
+ut_case.add_cust_test_func(test_func=test_check_support)

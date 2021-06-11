@@ -23,7 +23,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-
+from tbe.common.context import op_context
 
 from impl.matmul_vector import matmul_vector_cce
 
@@ -319,6 +319,13 @@ def get_op_support_info(input_x1, # pylint: R0913,R0914,W0613
     return op_cal_info_in_json
 
 
+def _is_fuzzily_build():
+    """
+    check fuzzily build flag
+    """
+    context = op_context.get_context()
+    return (context and context.get_build_type() == "fuzzily_build")
+
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument, too-many-statements
 # pylint: disable=dangerous-default-value
@@ -392,6 +399,9 @@ def check_supported(input_x1,
         if k_shape != k_b_shape:
             reason = "the shape not equal, k_shape:%s, k_b_shape:%s" % (k_shape, k_b_shape)
             res = False, reason
+    if _is_fuzzily_build() and src_dtype != "float16":
+        reason = "in dynamic mode, src dtype only support float16!"
+        res = False, reason
 
     return res
 
