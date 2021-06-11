@@ -85,6 +85,44 @@ cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_fil
 #1.3 Mindspore
 #NA
 
+#1.4 Onnx
+#1.1 Tensorflow
+cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/AICPU/Onnx/
+cp -r ${SRC_DIR}/cpukernel/* ${DST_DIR}/AICPU/Onnx/cpukernel
+# cp ${TF_PLUGIN_CMAKELIST} ${DST_DIR}/AICPU/Tensorflow/framework/tf_plugin
+# copy metadef dependency
+mkdir -p ${DST_DIR}/AICPU/Onnx/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/graph ${DST_DIR}/AICPU/Onnx/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/inc ${DST_DIR}/AICPU/Onnx/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/register ${DST_DIR}/AICPU/Onnx/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_DIR}/AICPU/Onnx/framework
+cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/AICPU/Onnx/framework
+# copy cann/ops dependency
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/inc ${DST_DIR}/AICPU/Onnx/op_proto
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/AICPU/Onnx/op_proto
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/strided_slice_infer_shape.h ${DST_DIR}/AICPU/Onnx/op_proto
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/aicpu/context ${DST_DIR}/AICPU/Onnx/cpukernel
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/aicpu/impl/utils ${DST_DIR}/AICPU/Onnx/cpukernel/impl
+# copy op_log.h log.h
+mkdir -p ${DST_DIR}/AICPU/Onnx/log
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/AICPU/Onnx/log
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/cpukernel/impl/utils/log.h ${DST_DIR}/AICPU/Onnx/cpukernel/impl/utils
+# copy CMakeLists.txt modified for dependency
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_proto/CMakeLists.txt ${DST_DIR}/AICPU/Onnx/op_proto
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/cpukernel/CMakeLists.txt ${DST_DIR}/AICPU/Onnx/cpukernel
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/framework/onnx_plugin/CMakeLists.txt ${DST_DIR}/AICPU/Onnx/framework/onnx_plugin/CMakeLists.txt
+# prepare thirdparty path
+mkdir -p ${DST_DIR}/AICPU/Onnx/third_party
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/secure_c_proto.cmake ${DST_DIR}/AICPU/Onnx/third_party
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/secure_c_kernel.cmake ${DST_DIR}/AICPU/Onnx/third_party
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/eigen.cmake ${DST_DIR}/AICPU/Onnx/third_party
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/protobuf_static.cmake ${DST_DIR}/AICPU/Onnx/third_party
+# copy ge_onnx.pb.h and ge_onnx.pb.cc
+mkdir -p ${DST_DIR}/AICPU/Onnx/proto/onnx
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/ge_onnx.pb.h ${DST_DIR}/AICPU/Onnx/proto/onnx
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/ge_onnx.pb.cc ${DST_DIR}/AICPU/Onnx/proto/onnx
+
+
 ##############2. copy DSL ###################
 #2.1 Tensorflow
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/Tensorflow/
@@ -121,12 +159,12 @@ cp -r ${CODE_ROOT_DIR}/metadef/graph ${DST_DIR}/DSL/PyTorch/metadef
 cp -r ${CODE_ROOT_DIR}/metadef/inc ${DST_DIR}/DSL/PyTorch/metadef
 cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_DIR}/DSL/PyTorch/framework
 cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/DSL/PyTorch/framework
-#copy cann/ops dependency.
+# copy cann/ops dependency.
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/DSL/PyTorch/op_proto
-#copy op_log.h
+# copy op_log.h
 mkdir -p ${DST_DIR}/DSL/PyTorch/log
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/DSL/PyTorch/log
-#copy CMakeList.txt modified for dependency.
+# copy CMakeList.txt modified for dependency.
 cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/PyTorch/op_proto/CMakeLists.txt ${DST_DIR}/DSL/PyTorch/op_proto
 
 #2.3 MindSpore
@@ -135,11 +173,24 @@ cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_fil
 #2.4 Onnx
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/Onnx/
 cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/DSL/Onnx/tbe/
-#copy op_log.h
+# copy metadef dependency
+mkdir -p ${DST_DIR}/DSL/Onnx/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/graph ${DST_DIR}/DSL/Onnx/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/inc ${DST_DIR}/DSL/Onnx/metadef
+# copy CMakeLists.txt modified for dependency
+cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/framework/onnx_plugin/CMakeLists.txt ${DST_DIR}/DSL/Onnx/framework/onnx_plugin/CMakeLists.txt
+# copy cann/ops dependency
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/inc ${DST_DIR}/DSL/Onnx/op_proto
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/ops/built-in/op_proto/util ${DST_DIR}/DSL/Onnx/op_proto
+# copy op_log.h
 mkdir -p ${DST_DIR}/DSL/Onnx/log
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/DSL/Onnx/log
-#copy CMakeList.txt modified for dependency.
+# copy CMakeList.txt modified for dependency.
 cp -rf ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/Onnx/op_proto/CMakeLists.txt ${DST_DIR}/DSL/Onnx/op_proto
+# copy ge_onnx.pb.h and ge_onnx.pb.cc
+mkdir -p ${DST_DIR}/DSL/Onnx/proto/onnx
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/ge_onnx.pb.h ${DST_DIR}/DSL/Onnx/proto/onnx
+cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/ge_onnx.pb.cc ${DST_DIR}/DSL/Onnx/proto/onnx
 
 ##############3. copy TIK ###################
 #3.1 Tensorflow
