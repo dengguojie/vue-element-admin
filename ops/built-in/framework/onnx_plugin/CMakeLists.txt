@@ -115,6 +115,7 @@ set(_onnx_plugins
   quant/int8_fc_plugin.cc
   quant/int8_conv_relu_plugin.cc
   quant/int8_quantize_plugin.cc
+  instancenormalization_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
