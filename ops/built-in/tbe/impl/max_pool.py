@@ -55,6 +55,10 @@ def check_supported(input_data, output_data, ksize, strides, padding,
     if in_size_h <= window_h and in_size_w <= window_w:
         is_global = True
 
+    # dynamic not support global
+    if -1 in input_shape or -2 in input_shape:
+        is_global = False
+
     if window_h * window_w > SCALAR_255 and (window_h > SCALAR_20 or window_w > SCALAR_20) and is_global == False:
         reason = "the size is not supported by schedule, window_h:%s, window_w:%s is_global:%s"\
                   % (window_h, window_w, str(is_global))

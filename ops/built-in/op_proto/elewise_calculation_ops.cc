@@ -2177,19 +2177,19 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   // get all input desc
   const vector<string> depend_names = {"dimension"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto const_desc = op_info->MutableInputDesc("dimension");
-  auto y_desc = op_info->MutableOutputDesc("y");
+  auto node_arg = NodeUtils::GetNodeFromOperator(op);
+  auto op_info_arg = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info_arg->MutableInputDesc("x");
+  auto const_desc = op_info_arg->MutableInputDesc("dimension");
+  auto y_desc = op_info_arg->MutableOutputDesc("y");
 
   // get and set output dtype
   ge::DataType dtype;
   if (op.GetAttr("dtype", dtype) == GRAPH_SUCCESS) {
     y_desc->SetDataType(dtype);
   } else {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[dtype] failed."));
-    return GRAPH_FAILED;
+    OP_LOGW(op.GetName().c_str(), "get attr dtype failed.");
+    y_desc->SetDataType(DT_INT32);
   }
 
   // get x shape
@@ -2210,7 +2210,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   // read dimension const value
   GeTensorPtr dimension_tensor = nullptr;
   vector<int64_t> dimension_value;
-  if (NodeUtils::GetInputConstData(node, "dimension", dimension_tensor) ==
+  if (NodeUtils::GetInputConstData(node_arg, "dimension", dimension_tensor) ==
       GRAPH_SUCCESS) {
     auto const_dtype = const_desc->GetDataType();
     GetConstValue(op, dimension_tensor, const_dtype, dimension_value);
@@ -2322,11 +2322,11 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   // get all input desc
   const vector<string> depend_names = {"dimension"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto const_desc = op_info->MutableInputDesc("dimension");
-  auto y_desc = op_info->MutableOutputDesc("y");
+  auto node_arg = NodeUtils::GetNodeFromOperator(op);
+  auto op_info_arg = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info_arg->MutableInputDesc("x");
+  auto const_desc = op_info_arg->MutableInputDesc("dimension");
+  auto y_desc = op_info_arg->MutableOutputDesc("y");
   // get x shape
   auto x_shape = input_desc->MutableShape().GetDims();
 
@@ -2335,8 +2335,8 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   if (op.GetAttr("dtype", dtype) == GRAPH_SUCCESS) {
     y_desc->SetDataType(dtype);
   } else {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed.");
-    return GRAPH_FAILED;
+    OP_LOGW(op.GetName().c_str(), "get attr dtype failed.");
+    y_desc->SetDataType(DT_INT32);
   }
 
   // if x_shape == -2, set output -2
@@ -2355,7 +2355,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   // read dimension const value
   GeTensorPtr dimension_tensor = nullptr;
   vector<int64_t> dimension_value;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "dimension", dimension_tensor)) {
+  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node_arg, "dimension", dimension_tensor)) {
     auto const_dtype = const_desc->GetDataType();
     GetConstValue(op, dimension_tensor, const_dtype, dimension_value);
     // verify dimension_value

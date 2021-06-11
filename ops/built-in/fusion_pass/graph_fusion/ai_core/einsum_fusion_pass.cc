@@ -90,10 +90,6 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
   GeShape x1_shape = x1_desc.GetShape();
   std::vector<int64_t> x1_dims = x1_shape.GetDims();
 
-  // check dynamic shape
-  FUSION_PASS_CHECK(IsUnknownShape(x0_dims) || IsUnknownShape(x1_dims),
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Einsum is dynamic."), return NOT_CHANGED);
-
   // get attr equation
   std::string equation;
   Operator op = OpDescUtils::CreateOperatorFromNode(node);

@@ -58,6 +58,14 @@ def test_check_support(test_arg):
                     "SAME",
                     "NHWC"
                     "max_pool_check_support_case_003")
+    res = check_supported(
+                    {"shape": (4,-1,-1,16), "dtype": "float16", "format": "NHWC", "ori_shape": (4, -1, -1, 16),"ori_format": "NHWC"},
+                    {"shape": (4,-1,-1,16), "dtype": "float16", "format": "NHWC", "ori_shape": (4, -1, -1, 16),"ori_format": "NHWC"},
+                    [1, 1, 3, 3],
+                    [1, 1, 2, 2],
+                    "VALID",
+                    "NCHW"
+                    "max_pool_check_support_case_001")
 
 ut_case.add_cust_test_func(test_func=test_check_support)
 
