@@ -256,7 +256,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/splitv_fusion_pass.cc
   graph_fusion/ai_core/spp_fusion_pass.cc
   graph_fusion/ai_core/strided_slice_fusion_pass.cc
-  graph_fusion/ai_core/strided_slice_grad_fusion_pass.cc
   graph_fusion/ai_core/tbe_fusion_pass_util.cc
   graph_fusion/ai_core/tbe_ops_pass_util.cc
   graph_fusion/ai_core/tensor_scatter_add_fusion_pass.cc
