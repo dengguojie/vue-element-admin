@@ -36,14 +36,14 @@ case2 = {
     "support_expect": True}
 
 case3 = {
-    "params": get_params(8, 2, 1024, "all_feature", 0.00001),
+    "params": get_params(8, 2, 1024, "all_features", 0.00001),
     "case_name": "normalize_batch_3",
     "expect": "success",
     "format_expect": [],
     "support_expect": True}
 
 case4 = {
-    "params": get_params(3, 2, 60000, "all_feature", 0.00001),
+    "params": get_params(3, 2, 60000, "all_features", 0.00001),
     "case_name": "normalize_batch_4",
     "expect": "success",
     "format_expect": [],
@@ -64,14 +64,14 @@ case6 = {
     "support_expect": True}
 
 case7 = {
-    "params": get_params(8, 2, 1025, "all_feature", 0.00001),
+    "params": get_params(8, 2, 1025, "all_features", 0.00001),
     "case_name": "normalize_batch_7",
     "expect": "success",
     "format_expect": [],
     "support_expect": True}
 
 case8 = {
-    "params": get_params(3, 2, 60001, "all_feature", 0.00001),
+    "params": get_params(3, 2, 60001, "all_features", 0.00001),
     "case_name": "normalize_batch_8",
     "expect": "success",
     "format_expect": [],

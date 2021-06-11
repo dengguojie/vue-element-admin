@@ -127,7 +127,7 @@ class NormalizeBatch(object):
 
     def _get_all_split_mode(self):
         """
-        all_feature: get tiling mode, split n or split d
+        all_features: get tiling mode, split n or split d
         """
         each_batch_size = self._get_split_n_size(self.c_num)
         if each_batch_size > self.ub_size:
@@ -170,11 +170,11 @@ class NormalizeBatch(object):
         # data move in
         self._data_move_in(data_buf, n_index_s, c_index_s, 0, 0, self.d_num)
         # get seq_len
-        seq_len_i_s, seq_len_f_s = self._init_seq_len_s(n_index_s)
+        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(n_index_s)
         # count sum(x) and sum(x^2)
         self._per_count_sum_n(data_buf, mean_buf, seq_len_i_s)
         # count rec_std and ne_mean
-        self._count_rec_std_ne_mean(mean_buf, seq_len_f_s)
+        self._count_rec_std_ne_mean(mean_buf, seq_len_f_s, unbiased_f_s)
         # normalize
         ne_mean_s, rec_std_s = self._get_ne_mean_rec_std_scalar(mean_buf)
         self._stand_data(data_buf, ne_mean_s, rec_std_s)
@@ -223,11 +223,11 @@ class NormalizeBatch(object):
         n_index_s, c_index_s = self._per_init_index(batch_index_s)
         # init mean tensor
         mean_buf = self._init_mean()
-        seq_len_i_s, seq_len_f_s = self._init_seq_len_s(n_index_s)
+        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(n_index_s)
         # count sum(x) and sum(x^2)
         self._per_count_sum_d(mean_buf, n_index_s, c_index_s, seq_len_i_s)
         # count rec_std and ne_mean
-        self._count_rec_std_ne_mean(mean_buf, seq_len_f_s)
+        self._count_rec_std_ne_mean(mean_buf, seq_len_f_s, unbiased_f_s)
         # normalize and move out
         self._per_stand_data_d(mean_buf, n_index_s, c_index_s)
 
@@ -328,17 +328,17 @@ class NormalizeBatch(object):
 
     def _all_compute_n(self, n_index_s):
         """
-        algorithm: all_feature, split n, count normalize.
+        algorithm: all_features, split n, count normalize.
         """
         # init tensor
         mean_buf = self._init_mean()
         data_buf = self._init_data_tensor_n(self.c_num)
         self._all_data_move_in_n(data_buf, n_index_s)
-        seq_len_i_s, seq_len_f_s = self._init_seq_len_s(n_index_s, self.c_num)
+        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(n_index_s, self.c_num)
         # count sum(x) and sum(x^2)
         self._all_count_sum_n(data_buf, mean_buf, seq_len_i_s)
         # count rec_std and ne_mean
-        self._count_rec_std_ne_mean(mean_buf, seq_len_f_s)
+        self._count_rec_std_ne_mean(mean_buf, seq_len_f_s, unbiased_f_s)
         ne_mean_s, rec_std_s = self._get_ne_mean_rec_std_scalar(mean_buf)
         # normalize data
         self._stand_data(data_buf, ne_mean_s, rec_std_s)
@@ -398,15 +398,15 @@ class NormalizeBatch(object):
 
     def _all_compute_d(self, n_index_s):
         """
-        algorithm: all_feature, split d, count normalize.
+        algorithm: all_features, split d, count normalize.
         """
         # init mean tensor
         mean_buf = self._init_mean()
-        seq_len_i_s, seq_len_f_s = self._init_seq_len_s(n_index_s, self.c_num)
+        seq_len_i_s, seq_len_f_s, unbiased_f_s = self._init_seq_len_s(n_index_s, self.c_num)
         # count sum(x) and sum(x^2)
         self._all_count_sum_d(mean_buf, n_index_s, seq_len_i_s)
         # count rec_std and ne_mean
-        self._count_rec_std_ne_mean(mean_buf, seq_len_f_s)
+        self._count_rec_std_ne_mean(mean_buf, seq_len_f_s, unbiased_f_s)
         # normalize and move out
         self._all_stand_data_d(mean_buf, n_index_s)
 
@@ -447,19 +447,26 @@ class NormalizeBatch(object):
     def _init_seq_len_s(self, n_index_, c_num=1):
         seq_len_i_s = self.tik_inst.Scalar(self.int_type)
         seq_len_f_s = self.tik_inst.Scalar(self.data_type)
+        unbiased_f_s = self.tik_inst.Scalar(self.data_type)
         with self.tik_inst.new_stmt_scope():
-            seq_len_i_ub = self.tik_inst.Tensor(self.int_type, (self.int_block_data_num, ),
-                                                self.tik.scope_ubuf, "seq_len_i_ub")
             seq_len_f_ub = self.tik_inst.Tensor(self.data_type, (self.data_block_data_num, ),
                                                 self.tik.scope_ubuf, "seq_len_f_ub")
-            self.tik_inst.data_move(seq_len_i_ub, self.seq_len[n_index_], 0, 1, 1, 0, 0)
-            seq_len_i_s.set_as(seq_len_i_ub[0])
-            mask, repeat = 1, 1
-            self.tik_inst.vconv(mask, "", seq_len_f_ub, seq_len_i_ub, repeat, 1, 1, 8, 8)
+            with self.tik_inst.new_stmt_scope():
+                seq_len_i_ub = self.tik_inst.Tensor(self.int_type, (self.int_block_data_num,),
+                                                    self.tik.scope_ubuf, "seq_len_i_ub")
+                self.tik_inst.data_move(seq_len_i_ub, self.seq_len[n_index_], 0, 1, 1, 0, 0)
+                seq_len_i_s.set_as(seq_len_i_ub[0])
+                mask, repeat = 1, 1
+                self.tik_inst.vconv(mask, "", seq_len_f_ub, seq_len_i_ub, repeat, 1, 1, 8, 8)
+            unbiased_f_ub = self.tik_inst.Tensor(self.data_type, (self.data_block_data_num,),
+                                                 self.tik.scope_ubuf, "unbiased_f_ub")
             if c_num > 1:
                 self.tik_inst.vmuls(mask, seq_len_f_ub, seq_len_f_ub, c_num, repeat, 1, 1, 8, 8)
             seq_len_f_s.set_as(seq_len_f_ub[0])
-        return seq_len_i_s, seq_len_f_s
+            self.tik_inst.vadds(mask, unbiased_f_ub, seq_len_f_ub, -1, repeat, 1, 1, 8, 8)
+            self.tik_inst.vdiv(mask, seq_len_f_ub, seq_len_f_ub, unbiased_f_ub, repeat, 1, 1, 1, 8, 8, 8)
+            unbiased_f_s.set_as(seq_len_f_ub[0])
+        return seq_len_i_s, seq_len_f_s, unbiased_f_s
 
     def _init_mean(self, batch_num=1):
         mean_shape = (batch_num * self.data_block_data_num, )
@@ -501,7 +508,7 @@ class NormalizeBatch(object):
             with self.tik_inst.if_scope(last_num_s > 0):
                 self.tik_inst.vcadd(last_num_s, result_ub, data_ub[n_index_ub_, last_index_s], 1, 1, 1, 8)
 
-    def _count_rec_std_ne_mean(self, mean_buf, seq_len_f_):
+    def _count_rec_std_ne_mean(self, mean_buf, seq_len_f_, unbiased_f_):
         cmd_count_rec_std_ne_mean = [
             VecCmd(cmd_name="vector_dup", dst_name="batch_variance_ub",
                    scalar=seq_len_f_),  # seq_len
@@ -513,6 +520,8 @@ class NormalizeBatch(object):
                    src0_name="batch_mean_ub", src1_name="batch_mean_ub"),  # E(x)^2
             VecCmd(cmd_name="vsub", dst_name="batch_variance_ub",
                    src0_name="batch_mean_square_ub", src1_name="batch_variance_ub"),  # E(x^2) - E(x)^2
+            VecCmd(cmd_name="vmuls", dst_name="batch_variance_ub",
+                   src0_name="batch_variance_ub", scalar=unbiased_f_),
             VecCmd(cmd_name="vabs", dst_name="batch_variance_ub",
                    src0_name="batch_variance_ub"),  # abs(var)
             VecCmd(cmd_name="vmuls", dst_name="batch_mean_ub",
@@ -579,11 +588,14 @@ def check_params(input_x, seq_len, output_y, normalize_type, epsilon, kernel_nam
     input_dtype = input_x.get("dtype").lower()
     if len(input_shape) != 3:
         error_manager_vector.raise_err_input_value_invalid(
-            kernel_name, "len of input_x shape", "equal 2", str(len(input_shape)))
+            kernel_name, "len of input_x shape", "equal 3", str(len(input_shape)))
     if input_dtype != "float32":
         error_manager_vector.raise_err_input_value_invalid(
             kernel_name, "dtype of input_x", "float32", input_dtype)
     n_num, c_num, d_num = input_shape
+    if d_num <= 1:
+        error_manager_vector.raise_err_input_value_invalid(
+            kernel_name, "d_num of input_x shape", "larger than 1", str(d_num))
     shape_seq_len = (n_num, )
     int_type = "int32"
     param_list = (seq_len, output_y)
@@ -599,9 +611,9 @@ def check_params(input_x, seq_len, output_y, normalize_type, epsilon, kernel_nam
         if param_dtype != dtype:
             error_manager_vector.raise_err_input_value_invalid(
                 kernel_name, "dtype of {}".format(param_name), dtype, param_dtype)
-    if normalize_type not in ("per_feature", "all_feature"):
+    if normalize_type not in ("per_feature", "all_features"):
         error_manager_vector.raise_err_input_value_invalid(
-            kernel_name, "normalize_type", "per_feature or all_feature", normalize_type)
+            kernel_name, "normalize_type", "per_feature or all_features", normalize_type)
     if not isinstance(epsilon, float) or epsilon <= 0:
         error_manager_vector.raise_err_input_value_invalid(
             kernel_name, "epsilon", "must be float and greater than 0", "not float or less than 0")
@@ -622,7 +634,7 @@ def normalize_batch(input_x, seq_len, output_y, normalize_type, epsilon=0.00001,
     output_y:
         A Tensor. Support float32. shape (n, c, d)
     normalize_type :
-        Str. Support "per_feature" or "all_feature".
+        Str. Support "per_feature" or "all_features".
     epsilon :
         Float. The epsilon value to use avoid division by zero.
     kernel_name : str
