@@ -472,9 +472,11 @@ def op_select_format(x, y, output, kernel_name="mul"):
     > x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")
     > y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")
     """
-    param_dynamic_in_json = op_sub_select_format(x, y, output, kernel_name)
-    if param_dynamic_in_json is not None:
-        return param_dynamic_in_json
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if cce_product in ("Ascend910"):
+        param_dynamic_in_json = op_sub_select_format(x, y, output, kernel_name)
+        if param_dynamic_in_json is not None:
+            return param_dynamic_in_json
 
     shape_x = x.get("ori_shape")
     shape_y = y.get("ori_shape")
@@ -1121,7 +1123,8 @@ def mul(x, y, output, kernel_name="mul"):
         new_check_list.remove("float32")
         para_check.check_dtype(dtype_x, new_check_list, param_name="x")
 
-    if para_check.is_scalar(shape_y):
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if para_check.is_scalar(shape_y) and cce_product in ("Ascend910"):
         is_scene_1D = True
         shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
     else:
