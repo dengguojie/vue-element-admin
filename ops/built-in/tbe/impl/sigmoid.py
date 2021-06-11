@@ -16,12 +16,15 @@
 sigmoid
 """
 import functools
-
+import math
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+
+CONST_FP32_MAX = 3.4e+38
+CONST_FP16_MAX = 65504
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -48,8 +51,16 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     exp_support = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
     mul_support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
     if dtype == "float32" and not mul_support:
-        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'x', ("float16",), dtype)
+        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'x', ("float16", ), dtype)
 
+    if dtype == "float32" and exp_support:
+        ln_res = -math.log(CONST_FP32_MAX)
+        ln_res = int(ln_res * 10) / 10
+    else:
+        ln_res = -math.log(CONST_FP16_MAX)
+        ln_res = int(ln_res * 1000) / 1000
+
+    data_input = tbe.vmaxs(data_input, ln_res)
     const_num_neg_one = tvm.const(-1, dtype=dtype)
     const_num_one = tvm.const(1, dtype=dtype)
     tmp_negative = tbe.vmuls(data_input, const_num_neg_one)
@@ -101,5 +112,5 @@ def sigmoid(x, y, kernel_name="sigmoid"):
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name, "tensor_list": [data_input, res], "disable_float_overflow": True}
+    config = {"name": kernel_name, "tensor_list": [data_input, res]}
     tbe.cce_build_code(sch, config)
