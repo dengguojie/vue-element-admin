@@ -23,6 +23,14 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
       .Output({"y", data_types[1], shapes[1], output0})           \
       .Output({"argmax", data_types[2], shapes[1], output1});
 
+#define CREATE_NODEDEF2(shapes, data_types, input, output0, output1, list_out)                  \
+  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
+  NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
+      .Attr("output_size", list_out)           \
+      .Input({"x", data_types[0], shapes[0], input})           \
+      .Output({"y", data_types[1], shapes[1], output0})           \
+      .Output({"argmax", data_types[2], shapes[2], output1});
+
 #define ADPOOL2D_CASE_WITH_SHAPE(case_name, base_type, aicpu_type, out_base_type, out_aicpu_type, shapes, input, expect_output0, expect_output1, list_out)      \
   TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_##case_name) {                                  \
     int32_t out_data_num = sizeof(expect_output0)/sizeof(expect_output0[0]);           \
@@ -44,6 +52,18 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
     CREATE_NODEDEF(shapes, data_types, input, output0, output1, list_out);                                 \
     RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);                              \
   }
+
+#define ADPOOL2D_CASE_WITH_SHAPE_DISMATCH2(case_name, base_type, aicpu_type, out_base_type, out_aicpu_type, shapes, input, expect_output0, expect_output1, list_out)      \
+  TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_##case_name) {                                  \
+    int32_t out_data_num = sizeof(expect_output0)/sizeof(expect_output0[0]);           \
+    vector<DataType> data_types = {aicpu_type, aicpu_type, out_aicpu_type};        \
+    base_type output0[out_data_num] = {(base_type)0};                                \
+    out_base_type output1[out_data_num] = {(out_base_type)0};                                          \
+    CREATE_NODEDEF2(shapes, data_types, input, output0, output1, list_out);                                 \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);                              \
+  }
+
+
 
 vector<int64_t> list_out_1 = {1, 2};
 vector<vector<int64_t>> shapes_1 = {{2, 2, 3}, {2, 1, 2}};
@@ -132,5 +152,21 @@ float_t expect_output0_11[] = {6, 8, 14, 16};
 int32_t expect_output1_11[] = {5, 7, 13, 15};
 ADPOOL2D_CASE_WITH_SHAPE_DISMATCH(dapter_max_pool2d_float_failed_4, float_t, DT_FLOAT, int32_t, DT_INT32, shapes_11, input_11, expect_output0_11,
                           expect_output1_11, list_out_11)
+
+vector<int64_t> list_out_12 = {3, 4};
+vector<vector<int64_t>> shapes_12 = {{1, 1, 4}, {1, 1, 1}, {1, 3, 4}};
+float_t input_12[] = {1, 2, 3, 4};
+float_t expect_output0_12[] = {1,2,3,4,1,2,3,4,1,2,3,4};
+int64_t expect_output1_12[] = {0,1,2,3,0,1,2,3,0,1,2,3};
+ADPOOL2D_CASE_WITH_SHAPE_DISMATCH2(dapter_max_pool2d_float_shape_failed_1, float_t, DT_FLOAT, int64_t, DT_INT64, shapes_12, input_12, expect_output0_12,
+                          expect_output1_12, list_out_12)
+
+vector<int64_t> list_out_13 = {3, 4};
+vector<vector<int64_t>> shapes_13 = {{1, 1, 4}, {1, 3, 4}, {1, 1, 1}};
+float_t input_13[] = {1, 2, 3, 4};
+float_t expect_output0_13[] = {1,2,3,4,1,2,3,4,1,2,3,4};
+int64_t expect_output1_13[] = {0,1,2,3,0,1,2,3,0,1,2,3};
+ADPOOL2D_CASE_WITH_SHAPE_DISMATCH2(dapter_max_pool2d_float_shape_failed_2, float_t, DT_FLOAT, int64_t, DT_INT64, shapes_13, input_13, expect_output0_13,
+                          expect_output1_13, list_out_13)
 
 

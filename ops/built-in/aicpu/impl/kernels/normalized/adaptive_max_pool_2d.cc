@@ -160,9 +160,27 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
+  // These multiplications do not overflow
+  int64_t output_data_num = args.out_size_h * args.out_size_w;
+  int64_t output0_data_size = output_data_num * sizeof(SCALAR_T);
+  if (output0_data_size > ctx.Output(kFirstOutputIndex)->GetDataSize()) {
+    KERNEL_LOG_ERROR("Adaptive_max_pool2d: output 0 size must big then [%llu], now size is [%llu].", output0_data_size,
+                     ctx.Output(kFirstOutputIndex)->GetDataSize());
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
+  // These multiplications do not overflow
+  int64_t output1_data_size = output_data_num * sizeof(INDICES_T);
+  if (output1_data_size > ctx.Output(kSecondOutputIndex)->GetDataSize()) {
+    KERNEL_LOG_ERROR("Adaptive_max_pool2d: output 1 size must big then [%llu], now size is [%llu].", output1_data_size,
+                     ctx.Output(kSecondOutputIndex)->GetDataSize());
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
   if (args.out_size_h == 0 || args.out_size_w == 0) {
-    KERNEL_LOG_ERROR("Adaptive_max_pool2d: internal error, output_size H or W can not be zero, now H is [%lld], W is [%lld].",
-                    args.out_size_h, args.out_size_w);
+    KERNEL_LOG_ERROR(
+        "Adaptive_max_pool2d: internal error, output_size H or W can not be zero, now H is [%lld], W is [%lld].",
+        args.out_size_h, args.out_size_w);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -233,6 +251,7 @@ uint32_t AdaptiveMaxPool2d::Compute(CpuKernelContext& ctx) {
 
   KERNEL_LOG_INFO("AdaptiveMaxPool2d kernel,input[0]:size is [%llu];output_0:size is [%llu]; output_1:size is [%llu].",
                   input_0->GetDataSize(), output_0->GetDataSize(), output_1->GetDataSize());
+
   KERNEL_LOG_INFO("[%s] get attr:output_size [%s].", kAdaptiveMaxPool2d, VectorToString(v_output_size).c_str());
 
   auto data_type = static_cast<DataType>(input_0->GetDataType());
