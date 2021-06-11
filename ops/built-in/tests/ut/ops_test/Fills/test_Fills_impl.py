@@ -51,12 +51,19 @@ case4 = {"params": [{"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format"
          "expect": "success",
          "format_expect": ["ND"],
          "support_expect": True}
+case5 = {"params": [{"shape": (3, 30, 100, 16, 17), "dtype": "int8", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND"},
+                    {"shape": (3, 30, 100, 16, 17), "dtype": "int8", "format": "ND", "ori_shape": (3, 30, 100, 16, 17),"ori_format": "ND"},
+                    3.0],
+         "case_name": "Fills_5",
+         "expect": "success",
+         "format_expect": ["ND"],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend910"], case1)
 ut_case.add_case(["Ascend910"], case2)
 ut_case.add_case(["Ascend910"], case3)
 ut_case.add_case(["Ascend910"], case4)
-
+ut_case.add_case(["Ascend910"], case5)
 
 def calc_expect_func(input_x, output, hg):
     shape_x=input_x.get("shape")
@@ -98,6 +105,14 @@ ut_case.add_precision_case("all", {"params": [{"shape": (3, 30, 100, 16, 17), "d
 ut_case.add_precision_case("all", {
     "params": [{"shape": (3, 30, 10, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 10, 16, 17),"ori_format": "ND", "param_type": "input"},
                {"shape": (3, 30, 10, 16, 17), "dtype": "float16", "format": "ND", "ori_shape": (3, 30, 10, 16, 17),"ori_format": "ND", "param_type": "output"},
+               3.0],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{"shape": (3, 30, 10, 16, 17), "dtype": "int8", "format": "ND", "ori_shape": (3, 30, 10, 16, 17),"ori_format": "ND", "param_type": "input"},
+               {"shape": (3, 30, 10, 16, 17), "dtype": "int8", "format": "ND", "ori_shape": (3, 30, 10, 16, 17),"ori_format": "ND", "param_type": "output"},
                3.0],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)

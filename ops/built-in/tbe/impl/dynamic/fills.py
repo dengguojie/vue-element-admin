@@ -60,7 +60,11 @@ def fills_compute(x, value, dtype, kernel_name="fills"):
     res: TVM tensor
         the calculation results
     """
-    res = tbe.broadcast(tvm.const(value, dtype=dtype), x.shape)
+    if dtype == "int8":
+        res = tbe.broadcast(tvm.const(value, dtype="float16"), x.shape)
+        res = tbe.cast_to(res, dtype)
+    else:
+        res = tbe.broadcast(tvm.const(value, dtype=dtype), x.shape)
     return res
 
 
@@ -86,7 +90,7 @@ def fills(x, y, value, kernel_name="fills"):
     dtype = x.get("dtype").lower()
 
     # check whether dtypes are right
-    check_list = ("int32", "float16", "float32")
+    check_list = ("int8", "int32", "float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="x")
 
     ins = classify([x], OpPatternMode.ELEWISE)
