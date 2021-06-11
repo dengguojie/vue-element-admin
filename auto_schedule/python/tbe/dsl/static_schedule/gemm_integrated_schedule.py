@@ -1557,7 +1557,7 @@ class GemmSchedule(object):
         b_type = self.TENSOR_MAP["b_placehold"].dtype
         a_type, b_type = (b_type, a_type) if self.mmad_mode == "gemv" else (a_type, b_type)
 
-        c_type = self.TENSOR_MAP["c_gm"].dtype
+        c_type = self.res.dtype
         a_shape, b_shape = self._get_tiling_param()
         a_ub_fuse_num, b_ub_fuse_num, fused_num = self._compute_buffer_used_multi()
         self.fuse_num_group = [a_ub_fuse_num, b_ub_fuse_num, fused_num]
@@ -1584,7 +1584,7 @@ class GemmSchedule(object):
             "strideH_expand": 1,
             "strideW_expand": 1,
             "dilationH": trans_flag,
-            "dilationW": 1,
+            "dilationW": 0 if self.compress_flag else 1,
             "group": 1,
             "bias_flag": bias_flag,
             "fused_double_operand_num": fused_num,
@@ -1873,6 +1873,8 @@ class GemmSchedule(object):
         sch = self.sch
         cub_tiling = self.tiling.get("CUB_matrix")
         cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, cub_tiling_batch, _ = cub_tiling
+        if self.res.dtype == "int8":
+            cub_tiling_nc_factor = self._int_ceil_div(cub_tiling_nc_factor, 2)
         if self.format_out == "ND":
             affine_cub = [
                 cub_tiling_mc_factor * cub_tiling_m0,

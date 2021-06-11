@@ -33,7 +33,7 @@ from .gemm_compute_util import FormatCompute
 
 # if K_DIM is  equal or larger than GEVM_MODE_K_DIM_LIMIT in gevm/gemv mode, use gemm mode.
 # K_DIM is k * k0
-GEVM_MODE_K_DIM_LIMIT = 18432
+GEVM_MODE_K_DIM_LIMIT = 9216
 
 @para_check.check_input_type(Tensor, Tensor, dict)
 def gemm(tensor_a, tensor_b, para_dict):

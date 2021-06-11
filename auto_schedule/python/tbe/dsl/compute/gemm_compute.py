@@ -540,10 +540,6 @@ def gemm(tensor_a, tensor_b, para_dict):
 
     Returns result
     """
-    # use is_gemm is temporary
-    alpha = para_dict.get("alpha")
-    beta = para_dict.get("beta")
-    is_gemm = (alpha is not None) and (beta is not None)
 
     kernel_name = para_dict.get("kernel_name", "")
     para_dict_copy = para_dict.copy()
@@ -553,7 +549,7 @@ def gemm(tensor_a, tensor_b, para_dict):
     use_old_code = cube_vector_split or is_dynamic or is_confusion_transpose
     use_old_code = filter_case(use_old_code, tensor_a, tensor_b, kernel_name)
 
-    if is_gemm:
+    if not use_old_code:
         result = gemm_integrated(tensor_a, tensor_b, para_dict)
     else:
         gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)
@@ -568,7 +564,14 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
     if in_dynamic():
         return use_old_code
     black_list_compress_fc = [
-        "304_25088_784_256_16_32_int8"
+        "304_25088_784_256_16_32_int8",
+        "1_4096_128_63_16_32_int8",
+        "1_12800_400_256_16_32_int8",
+        "1_4096_128_256_16_32_int8",
+        "1_25088_784_256_16_32_int8",
+        "128_19_16_32_128_256_16_32_int8",
+        "128_19_16_32_128_6_16_32_int8",
+        "128_19_16_32_128_21_16_32_int8"
     ]
     black_list_fc = [
         "304_25088_1568_256_16_16_float16"
