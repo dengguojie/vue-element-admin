@@ -1232,6 +1232,59 @@ COMMON_INFER_FUNC_REG(SoftMarginLossGrad, SoftMarginLossGradInferShape);
 VERIFY_FUNC_REG(SoftMarginLossGrad, SoftMarginLossGradVerify);
 //---------------SoftMarginLossGrad-------------------
 
+// ----------------Cross begin---------------------------------
+bool InferShapeAndTypeCross(Operator& op, const string& input_name1,
+                            const string& input_name2, const string& output_name) {
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_x.size(); i++) {
+    if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
+        OP_LOGE("Operators need to be broadcast");
+        return false;
+      }
+
+    int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
+    dim_vec.push_back(dims);
+  }
+  ge::Shape output_shape = ge::Shape(dim_vec);
+
+  v_output_desc.SetShape(output_shape);
+  v_output_desc.SetDataType(input_dtype);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
+
+  return true;
+}
+
+IMPLEMT_COMMON_INFERFUNC(CrossInferShape)
+{
+  if(InferShapeAndTypeCross(op, "x1", "x2", "y")) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+IMPLEMT_VERIFIER(Cross, CrossVerify)
+{
+  if (op.GetInputDesc("x1").GetDataType() != op.GetInputDesc("x2").GetDataType()) {
+    OP_LOGE(op.GetName().c_str(), "the two inputs datatype not equal!\n");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Cross, CrossInferShape);
+VERIFY_FUNC_REG(Cross, CrossVerify);
+// ----------------Cross End------------------------
+
 // ----------------Cdist Begin------------------------
 bool infer_shape_cdist(Operator& op,
                      const string& input_name1,
