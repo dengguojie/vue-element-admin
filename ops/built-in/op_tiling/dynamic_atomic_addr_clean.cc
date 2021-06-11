@@ -65,11 +65,11 @@ bool GetCompileParams(const std::string& op_type, const nlohmann::json& opCompil
                       uint32_t& core_num, uint32_t& ub_size) {
   using namespace nlohmann;
   const auto& all_vars = opCompileInfoJson["vars"];
-  if (all_vars.count("workspace_num") == 0) {
-    OP_LOGE(op_type.c_str(), "get workspace_num failed");
-    return false;
+  if (all_vars.count("workspace_num") != 0) {
+    // om compatibility, so increase the default value
+    workspace_num = all_vars["workspace_num"].get<std::uint32_t>();
+    OP_LOGI(op_type.c_str(), "get workspace_num sucess");
   }
-  workspace_num = all_vars["workspace_num"].get<std::uint32_t>();
   if (all_vars.count("core_num") == 0) {
     OP_LOGE(op_type.c_str(), "get core_num failed");
     return false;
