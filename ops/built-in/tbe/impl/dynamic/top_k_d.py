@@ -881,7 +881,8 @@ class GlobalVarFunction(object):
             self.sort_region_1981(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1, cols_per_part)
         else:
             # indices_ub is used to store multiplier
-            indices_block_num = indices_ub.buffer_size * _get_dtype_byte(indices_gm.dtype) // tbe_platform.BLOCK_REDUCE_INT8
+            indices_block_num = indices_ub.buffer_size * _get_dtype_byte(
+                indices_gm.dtype) // tbe_platform.BLOCK_REDUCE_INT8
             tik_instance.data_move(offset_ub, indices_gm, 0, 1, indices_block_num, 0, 0)
             tik_instance.vector_dup(indices_block_num, indices_ub, 0.0,
                                     indices_ub.buffer_size // tbe_platform.VECTOR_INST_BLOCK_WIDTH,
@@ -1341,28 +1342,20 @@ class GlobalVarFunction(object):
                 merge_repeat.set_as(loops - 1)
                 need_tail_process.set_as(1)
 
-        if SOC_VERSION_1981:
-            with tik_instance.for_range(0, merge_repeat) as ii:
-                base = region_offset + ii * merge_n0_reg * self.num_per_ele * max_merge_tensors
-                src_list = [
-                    src_ub[base],
-                    src_ub[base + merge_n0_reg * self.num_per_ele],
-                    src_ub[base + merge_n0_reg * self.num_per_ele * 2],
-                    src_ub[base + merge_n0_reg * self.num_per_ele * 3]
-                ]
-                tik_instance.vmrgsort(dst_ub[base], src_list,
-                                      (merge_n0_reg, merge_n0_reg, merge_n0_reg, merge_n0_reg), False, 1)
-        else:
-            with tik_instance.if_scope(merge_repeat > 0):
-                src_list = [
-                    src_ub[region_offset],
-                    src_ub[region_offset + merge_n0_reg * self.num_per_ele],
-                    src_ub[region_offset + merge_n0_reg * self.num_per_ele * 2],
-                    src_ub[region_offset + merge_n0_reg * self.num_per_ele * 3]
-                ]
+        with tik_instance.if_scope(merge_repeat > 0):
+            src_list = [
+                src_ub[region_offset],
+                src_ub[region_offset + merge_n0_reg * self.num_per_ele],
+                src_ub[region_offset + merge_n0_reg * self.num_per_ele * 2],
+                src_ub[region_offset + merge_n0_reg * self.num_per_ele * 3]
+            ]
+            if SOC_VERSION_1981:
+                tik_instance.vmrgsort(dst_ub[region_offset], src_list,
+                                      (merge_n0_reg, merge_n0_reg, merge_n0_reg, merge_n0_reg), False, merge_repeat)
+            else:
                 tik_instance.vmrgsort4(dst_ub[region_offset], src_list,
-                                       (merge_n0_reg, merge_n0_reg, merge_n0_reg, merge_n0_reg), False, 15,
-                                       merge_repeat)
+                                       (merge_n0_reg, merge_n0_reg, merge_n0_reg, merge_n0_reg), False,
+                                       15, merge_repeat)
 
         offset_reg = tik_instance.Scalar(dtype="int32", init_value=merge_repeat * merge_n0_reg * max_merge_tensors,
                                          name="offset_reg")
