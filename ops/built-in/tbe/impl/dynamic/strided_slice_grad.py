@@ -18,7 +18,6 @@ strided_slice_grad
 from impl.dynamic.pad import PadInit
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=unused-argument
@@ -50,27 +49,6 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
         check_result = False, reason
 
     return check_result
-
-
-def _check_mask(input_mask, is_shrink=False):
-    """ Check whether the value of the input mask is 0.
-
-    Parameters
-    ----------
-    input_mask: int.
-        value of the input mask.
-
-    Returns
-    -------
-    None.
-    """
-    if is_shrink:
-        if input_mask not in (0, 2):
-            error_manager_vector.raise_err_input_value_invalid("strided_slice_grad", "shrink_axis_mask",
-                                                               "(0, 2)", str(input_mask))
-    elif input_mask != 0:
-        error_manager_vector.raise_err_input_value_invalid("strided_slice_grad", "new_axis_mask",
-                                                           "0", str(input_mask))
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name
@@ -123,8 +101,6 @@ def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
     """
     dtype = dy.get("dtype").lower()
     para_check.check_dtype(dtype, ("float16", "float32", "int32"), param_name="dy")
-    _check_mask(new_axis_mask)
-    _check_mask(shrink_axis_mask, True)
 
     obj = PadInit(kernel_name)
     obj.init_src_dst_gm((shape, begin, end, strides, dy), (output,), pad_input_idx=4, pad_outnput_idx=0)
