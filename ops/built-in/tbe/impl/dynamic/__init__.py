@@ -95,6 +95,7 @@ from .reduce_max_d import reduce_max_d
 from .reduce_mean import reduce_mean
 from .reduce_min import reduce_min
 from .reduce_mean_d import reduce_mean_d
+from .reduce_std_with_mean import reduce_std_with_mean
 from .resize_nearest_neighbor_v2 import resize_nearest_neighbor_v2
 from .reverse_v2 import reverse_v2
 from .conv2d import conv2d

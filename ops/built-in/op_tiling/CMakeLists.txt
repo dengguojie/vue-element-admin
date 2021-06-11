@@ -125,6 +125,7 @@ set(_optiling_files
   gemm.cc
   bias_add_grad.cc
   reduce_mean.cc
+  reduce_std_with_mean.cc
   softmax_tiling.cc
   flatten.cc
   embedding_dense_grad.cc

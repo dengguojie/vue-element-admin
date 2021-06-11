@@ -1191,6 +1191,40 @@ REG_OP(ReduceStd)
     .ATTR(unbiased, Bool, true)
     .ATTR(keepdim, Bool, false)
     .OP_END_FACTORY_REG(ReduceStd)
+
+/**
+* @brief Calculates the standard deviation of Tensors.
+
+* @par Inputs:
+* include:
+* @li x: A Tensor. Must be one of the following types: float16, float32. \n
+* @li mean: A Tensor. It's the mean of X. Must be one of the following types: float16, float32. \n
+
+
+* @par Attributes:
+* Three Attributes, including:
+* @li dim: An optional listint, Defaults to "None". \n
+* @li unbiased: An optional bool. Defaults to "True".
+*     If "True", Use Bessel Correction.
+*     If "False", Do not use Bessel Correction. \n
+* @li keepdim: An optional bool. Defaults to "False".
+*     If "True", Keep the original tensor dimension.
+*     If "False", Do not keep the original tensor dimension. \n
+
+* @par Outputs:
+* @li y: A Tensor. It's the std of X. Has the same type as "x".
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator ReduceStdWithMean.
+*/
+REG_OP(ReduceStdWithMean)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(mean, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .ATTR(dim, ListInt, {})
+    .ATTR(unbiased, Bool, true)
+    .ATTR(keepdim, Bool, false)
+    .OP_END_FACTORY_REG(ReduceStdWithMean)
 } //namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_REDUCE_OPS_H_

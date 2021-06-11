@@ -1813,4 +1813,67 @@ IMPLEMT_INFERFUNC(ReduceStd, ReduceStdInferShape) {
 INFER_FUNC_REG(ReduceStd, ReduceStdInferShape);
 // ----------------ReduceStd END---------------------
 
+// ----------------ReduceStdWithMean Begin-------------------
+using std::find;
+IMPLEMT_INFERFUNC(ReduceStdWithMean, ReduceStdWithMeanInferShape) {
+  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  Shape input_shape = tensordesc_input.GetShape();
+  DataType input_dtype = tensordesc_input.GetDataType();
+  std::vector<int64_t> dims_input = input_shape.GetDims();
+  int64_t dim_num = input_shape.GetDimNum();
+
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  tensordesc_output.SetDataType(input_dtype);
+  tensordesc_output.SetFormat(tensordesc_input.GetFormat());
+
+  bool keepdim;
+  (void)op.GetAttr("keepdim", keepdim);
+
+  // check parameter dim and keepdim
+  std::vector<int64_t> axis;
+  if (GRAPH_SUCCESS != op.GetAttr("dim", axis)) {
+    OP_LOGE(op.GetName().c_str(), "GE get dim failed");
+    return GRAPH_FAILED;
+  }
+
+  for (int i = 0; i < axis.size(); i++) {
+    if (axis[i] < 0) {
+      axis[i] = axis[i] + dim_num;
+    }
+  }
+
+  if (axis.empty()) {
+    for (int i = 0; i < dim_num; i++) {
+      axis.push_back(i);
+    }
+  }
+
+  std::vector<int64_t> oshape_vector;
+  for (int item = 0; item < dim_num; ++item) {
+    if (find(axis.begin(), axis.end(), item) != axis.end()) {
+      // item in axis
+      if (keepdim == true) {
+        // If keepDims is true, current dimesion set to 1
+        oshape_vector.push_back(1);
+      }
+    } else {
+      // item is not in ConstValueAxis
+      oshape_vector.push_back(dims_input[item]);
+    }
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> input_mean_range;
+  op.GetInputDesc("mean").GetShapeRange(input_mean_range);
+
+  tensordesc_output.SetShapeRange(input_mean_range);
+
+  Shape oshape(oshape_vector);
+  tensordesc_output.SetShape(oshape);
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(ReduceStdWithMean, ReduceStdWithMeanInferShape);
+// ----------------ReduceStdWithMean END---------------------
+
 }  // namespace ge
