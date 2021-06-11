@@ -162,6 +162,7 @@ class SubCaseDesign(object):
 
     def _check_list_list_valid(self, json_obj, key, tensor):
         self._check_key_exist(json_obj, key, tensor)
+        self._check_fuzz_in_json(json_obj, key)
         value_list = []
         if isinstance(json_obj[key], list):
             check_type = None
@@ -298,6 +299,7 @@ class SubCaseDesign(object):
 
     def _check_list_str_valid(self, json_obj, key, support_list, tensor):
         self._check_key_exist(json_obj, key, tensor)
+        self._check_fuzz_in_json(json_obj, key)
         value_list = []
         if isinstance(json_obj[key], str):
             value_list.append(json_obj[key])
@@ -405,6 +407,15 @@ class SubCaseDesign(object):
                 self._check_range_value_valid(item, for_shape_range=True)
             one_op_dict.update({
                 utils.SHAPE_RANGE: shape_range_list_list})
+
+    @staticmethod
+    def _check_fuzz_in_json(json_obj, key):
+        if json_obj.get(key) == "fuzz":
+            utils.print_error_log('The value ("fuzz") of %s is invalid. '
+                                  'Configure "fuzz_impl" filed correctly.'
+                                  % key)
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def get_current_json_path(self):
         """
