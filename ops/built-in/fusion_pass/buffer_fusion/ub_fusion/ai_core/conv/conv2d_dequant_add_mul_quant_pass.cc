@@ -25,6 +25,7 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 
@@ -78,78 +79,58 @@ vector<BufferFusionPattern*> TbeConv2DAddMulQuantPass::DefinePatterns() {
   return patterns;
 }
 
-void TbeConv2DAddMulQuantPass::DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis) {
-  std::vector<AxisSplitMap> temp_maps;
-  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
-    bool del_axis = false;
-    auto input_split_infos = (*it).GetInputSplitInfoVec();
-    for (auto input_split_info : input_split_infos) {
-      if (!input_split_info.GetAxis().empty()) {
-        if (input_split_info.GetAxis()[0] == axis) {
-          del_axis = true;
-        }
-      }
-    }
-    if (!del_axis) {
-      temp_maps.push_back(*it);
-    }
-  }
-  split_maps = temp_maps;
-}
-
 void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
-  int inpre = 0;
-  string op_slice_info_str = "";
-  for (auto conv_node : conv_nodes) {
-    inpre = conv_node->GetInDataNodes().size() - 1;
-    ge::AttrUtils::GetStr(conv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
+  if (conv_nodes.empty()) {
+    OP_LOGD(fused_op_type_.c_str(), "conv node not matched");
+    return;
   }
-  OP_LOGD(fused_op_type_.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
-  if (op_slice_info_str.empty()) {
+  vector<AxisSplitMap> split_maps;
+  if (!GetSplitMap(split_maps, conv_nodes[0], fused_op_type_)) {
     return;
   }
 
+  int inpre = conv_nodes[0]->GetInDataNodes().size() - 1;
   // dequant have one input, add have one input
   inpre += 2;
-  OpCalcInfo op_calc_info;
-  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
-  auto split_maps = op_calc_info.GetAxisSplitMapVec();
-  if (split_maps.empty()) {
-    OP_LOGD(fused_op_type_.c_str(), "axis split map vector is empty");
-    return;
-  }
+  // quant do not split c_out
   int c_axis = 1;
-  DelSplitInfoByAxis(split_maps, c_axis);
+  // deq_scale do not have to process without c_out
+  DelSplitInfoByInputAxis(split_maps, c_axis);
   for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
-    auto input_split_infos = (*it).GetInputSplitInfoVec();
-    vector<int64_t> minus_one_vec = {-1};
-    if (input_split_infos.empty()) {
-      continue;
+    auto exist_in = (*it).GetInputSplitInfoVec();
+    if (!exist_in.empty()) {
+      // the index 0 info is the base op info
+      InputSplitInfo input_info;
+      if(!input_info.Initialize()) {
+        OP_LOGD(fused_op_type_.c_str(), "init input_info failed");
+      } else {
+        input_info.SetIndex(inpre);
+        auto in_axis = exist_in[0].GetAxis();
+        input_info.SetAxis(in_axis);
+        auto head_overlap = exist_in[0].GetHeadOverLap();
+        auto tail_overlap = exist_in[0].GetTailOverLap();
+        input_info.SetHeadOverLap(head_overlap);
+        input_info.SetTailOverLap(tail_overlap);
+        (*it).AddInputSplitInfo(input_info);
+      }
     }
-    vector<int64_t> axis_vec = input_split_infos[0].GetAxis();
-    InputSplitInfo input_split_info = input_split_infos[0];
-    input_split_info.SetIndex(inpre);
-    input_split_info.SetAxis(axis_vec);
-    input_split_info.SetHeadOverLap(minus_one_vec);
-    input_split_info.SetTailOverLap(minus_one_vec);
-    (*it).AddInputSplitInfo(input_split_info);
-
-    auto output_split_infos = (*it).GetOutputSplitInfoVec();
-    if (output_split_infos.empty()) {
-      continue;
+    auto exist_out = (*it).GetOutputSplitInfoVec();
+    if (!exist_out.empty()) {
+      // the index 0 info is the base op info
+      OutputSplitInfo output_info;
+      if (!output_info.Initialize()) {
+        OP_LOGD(fused_op_type_.c_str(), "init output_info failed");
+      } else {
+        int out_idx = 1;
+        output_info.SetIndex(out_idx);
+        auto out_axis = exist_out[0].GetAxis();
+        output_info.SetAxis(out_axis);
+        (*it).AddOutputSplitInfo(output_info);
+      }
     }
-    OutputSplitInfo output_split_info = output_split_infos[0];
-    output_split_info.SetIndex(1);
-    output_split_info.SetAxis(axis_vec);
-    (*it).AddOutputSplitInfo(output_split_info);
   }
-  op_calc_info.SetAxisSplitMaps(split_maps);
-  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
-  for (auto fusion_node : fusion_nodes) {
-    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
-  }
-  OP_LOGD(fused_op_type_.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
+  SetSplitMap(split_maps, fusion_nodes, fused_op_type_);
 }
 
 /*
@@ -161,17 +142,6 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
 Status TbeConv2DAddMulQuantPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(fused_op_type_.c_str(), "Begin to do Conv2DAddMulQuant!");
   fusion_nodes = GetMatchedNodes(mapping);
-  // the outputData can't be fusd
-  for (auto& item : mapping) {
-    auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
-
-    if (opdesc != item.first->types.end()) {
-      for (auto& node : item.second) {
-        auto nodePtr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
-        fusion_nodes.erase(nodePtr);
-      }
-    }
-  }
   SetSplitInfo(mapping, fusion_nodes);
   OP_LOGD(fused_op_type_.c_str(), "End to do Conv2DAddMulQuant!");
 

@@ -27,6 +27,7 @@
 #include "pattern_fusion_util.h"
 #include "graph/utils/attr_utils.h"
 #include "common/lxfusion_json_util.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 static const int64_t AXIS_C_INDEX = 1;
@@ -273,58 +274,37 @@ bool TbeAippFusionRule::CheckElemwiseValidation(ge::NodePtr elemwise_node) {
   return iter != elemwise_op_type_vec.end();
 }
 
-void TbeAippFusionRule::DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, const int64_t &axis) {
-  std::vector<AxisSplitMap> temp_maps;
-  for (auto it = split_maps.begin(); it != split_maps.end(); ++it) {
-    bool del_axis = false;
-    auto input_split_infos = (*it).GetInputSplitInfoVec();
-    for (auto input_split_info : input_split_infos) {
-      if (input_split_info.GetAxis()[0] == axis) {
-        del_axis = true;
-      }
-    }
-    if (!del_axis) {
-      temp_maps.push_back(*it);
-    }
-  }
-  split_maps = temp_maps;
-}
-
 void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::vector<ge::NodePtr> &fusion_nodes,
                                      const bool &is_deal_c_axis) {
-  std::string op_slice_info_str = "";
+  std::string fused_op_type = "FusedOp";
   if (conv_nodes.empty()) {
+    OP_LOGD(fused_op_type.c_str(), "conv node not matched");
     return;
   }
-  ge::NodePtr conv_node = conv_nodes[0];
-  if (conv_node == nullptr) {
-    OP_LOGW(conv_node->GetName().c_str(), "conv nodes is empty");
+  vector<AxisSplitMap> split_maps;
+  if (!GetSplitMap(split_maps, conv_nodes[0], fused_op_type)) {
     return;
   }
-  (void)ge::AttrUtils::GetStr(conv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
-
-  OP_LOGD(conv_node->GetName().c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
-  if (op_slice_info_str.empty()) {
-    return;
-  }
-
-  OpCalcInfo op_calc_info;
-  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
-  auto split_maps = op_calc_info.GetAxisSplitMapVec();
 
   if (is_deal_c_axis) {
-    DelSplitInfoByAxis(split_maps, AXIS_C_INDEX);
+    DelSplitInfoByInputAxis(split_maps, AXIS_C_INDEX);
   }
-  DelSplitInfoByAxis(split_maps, AXIS_H_INDEX);
-  DelSplitInfoByAxis(split_maps, AXIS_W_INDEX);
+  DelSplitInfoByInputAxis(split_maps, AXIS_H_INDEX);
+  DelSplitInfoByInputAxis(split_maps, AXIS_W_INDEX);
 
+  OpCalcInfo op_calc_info;
+  if (!op_calc_info.Initialize()) {
+    OP_LOGD(fused_op_type.c_str(), "init op_calc_info failed");
+    return;
+  }
   op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
   op_calc_info.SetAxisSplitMaps(split_maps);
+  std::string op_slice_info_str = "";
   SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   for (auto fusion_node : fusion_nodes) {
     (void)ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
   }
-  OP_LOGD(conv_node->GetName().c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
+  OP_LOGD(fused_op_type.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
 }
 
 }  // namespace fe

@@ -25,6 +25,7 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 
@@ -58,7 +59,7 @@ vector<BufferFusionPattern*> TbeConv2dWrtselStridewrtPass::DefinePatterns() {
   // conv2d --> dequant --> quant --> write_select --> stride_write
   pattern1->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternStridedWrite, {OP_PATTERN_STRIDED_WRITE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternWriteselect, {OP_PATTERN_WRITE_SELECT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -70,47 +71,19 @@ vector<BufferFusionPattern*> TbeConv2dWrtselStridewrtPass::DefinePatterns() {
       .SetOutputs(kPatternWriteselect, {kPatternStridedWrite});
   patterns.push_back(pattern1);
 
-  string pass_name2 = "TbeConvDequantWriteselectStridewriteFusion";
-  BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
-  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
-  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
-  // conv2d --> dequant --> write_select --> stride_write
-  pattern2->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(kPatternDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(kPatternStridedWrite, {OP_PATTERN_STRIDED_WRITE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(kPatternWriteselect, {OP_PATTERN_WRITE_SELECT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .SetHead({kPatternConv})
-      .SetOutputs(kPatternConv, {kPatternDequant})
-      .SetOutputs(kPatternDequant, {kPatternWriteselect})
-      .SetOutputs(kPatternWriteselect, {kPatternStridedWrite})
-      .SetOutputs(kPatternOtherInput, {kPatternDequant});
-  patterns.push_back(pattern2);
-  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
-
   return patterns;
 }
 
-void TbeConv2dWrtselStridewrtPass::DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis) {
-  std::vector<AxisSplitMap> temp_maps;
-  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
-    bool del_axis = false;
-    auto input_split_infos = (*it).GetInputSplitInfoVec();
-    for (auto input_split_info : input_split_infos) {
-      if (!input_split_info.GetAxis().empty()) {
-        if (input_split_info.GetAxis()[0] == axis) {
-          del_axis = true;
-        }
-      }
-    }
-    if (!del_axis) {
-      temp_maps.push_back(*it);
-    }
-  }
-  split_maps = temp_maps;
-}
-
 void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes){
+  vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
+  if (conv_nodes.empty()) {
+    OP_LOGD(fused_op_type_.c_str(), "conv node not matched");
+    return;
+  }
+  vector<AxisSplitMap> split_maps;
+  if (!GetSplitMap(split_maps, conv_nodes[0], fused_op_type_)) {
+    return;
+  }
   bool existed_quant = false;
   vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(kPatternQuant, mapping);
   if (!quant_nodes.empty()){
@@ -134,57 +107,56 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
   for (auto stride_write_node : stride_write_nodes) {
     AttrUtils::GetInt(stride_write_node->GetOpDesc(), "axis", axis);
   }
-  vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
-  int inpos = 0;
-  string op_slice_info_str = "";
-  for (auto conv_node : conv_nodes) {
-    ge::AttrUtils::GetStr(conv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
-    inpos = conv_node->GetInDataNodes().size() - 1;
-  }
-  OP_LOGD(fused_op_type_.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
-  if (op_slice_info_str.empty()) {
-    return;
-  }
-  OpCalcInfo op_calc_info;
-  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
-  auto split_maps = op_calc_info.GetAxisSplitMapVec();
-  if (split_maps.empty()) {
-    OP_LOGW(fused_op_type_.c_str(), "axis split map vector is empty");
-    return;
-  }
   int h_axis = 2;
   int w_axis = 3;
-  DelSplitInfoByAxis(split_maps, axis);
-  DelSplitInfoByAxis(split_maps, h_axis);
-  DelSplitInfoByAxis(split_maps, w_axis);
+  // stride_write axis do not split
+  DelSplitInfoByInputAxis(split_maps, axis);
+  DelSplitInfoByInputAxis(split_maps, h_axis);
+  DelSplitInfoByInputAxis(split_maps, w_axis);
   if (existed_quant) {
     int c_axis = 1;
-    DelSplitInfoByAxis(split_maps, c_axis);
+    DelSplitInfoByInputAxis(split_maps, c_axis);
   }
 
+  int inpos = conv_nodes[0]->GetInDataNodes().size() - 1;
   if (is_add_deq_scale_splitinfo) {
     inpos += 1;
     for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
-      auto input_split_infos = it->GetInputSplitInfos();
-      for (auto input_split_info : input_split_infos) {
-        if (!input_split_info->GetAxis().empty()) {
-          if (input_split_info->GetAxis()[0] == 1) {
-            InputSplitInfo deq_scale_splitinfo;
-            vector<int64_t> minus_one_vec = {-1};
-            vector<int64_t> one_vec = {1};
-            deq_scale_splitinfo.SetIndex(inpos);
-            deq_scale_splitinfo.SetAxis(one_vec);
-            deq_scale_splitinfo.SetHeadOverLap(minus_one_vec);
-            deq_scale_splitinfo.SetTailOverLap(minus_one_vec);
-            it->AddInputSplitInfo(deq_scale_splitinfo);
+      auto exist_out = (*it).GetOutputSplitInfoVec();
+      std::vector<int64_t> c_out = {1};
+      bool valid = !exist_out.empty() && exist_out[0].GetAxis() == c_out;
+      if (valid) {
+        // process dequant deq_scale if exists
+        auto exist_in = (*it).GetInputSplitInfoVec();
+        if (!exist_in.empty()) {
+          InputSplitInfo input_info;
+          if (!input_info.Initialize()) {
+            OP_LOGD(fused_op_type_.c_str(), "init input_info failed");
+          } else {
+            input_info.SetIndex(inpos);
+            // deq_scale is 5hd format
+            std::vector<int64_t> axis_c = {1};
+            input_info.SetAxis(axis_c);
+            // the index 0 info is the base op info
+            auto head_overlap = exist_in[0].GetHeadOverLap();
+            auto tail_overlap = exist_in[0].GetTailOverLap();
+            input_info.SetHeadOverLap(head_overlap);
+            input_info.SetTailOverLap(tail_overlap);
+            (*it).AddInputSplitInfo(input_info);
           }
         }
+        break;
       }
     }
   }
-
+  OpCalcInfo op_calc_info;
+  if (!op_calc_info.Initialize()) {
+    OP_LOGD(fused_op_type_.c_str(), "init op_calc_info failed");
+    return;
+  }
   op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
   op_calc_info.SetAxisSplitMaps(split_maps);
+  std::string op_slice_info_str = "";
   SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   for (auto fusion_node : fusion_nodes) {
     ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);

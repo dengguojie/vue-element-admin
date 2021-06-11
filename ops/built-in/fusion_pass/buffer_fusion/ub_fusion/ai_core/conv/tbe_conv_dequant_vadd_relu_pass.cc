@@ -130,13 +130,6 @@ Status ConvDequantVaddReluFusionPass::GetFusionNodes(const BufferFusionMapping &
   fusion_nodes = GetMatchedNodes(mapping);
   // the output data can not fusion
   for (auto &item : mapping) {
-    auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
-    if (opdesc != item.first->types.end()) {
-      for (auto &node : item.second) {
-        auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
-        fusion_nodes.erase(node_ptr);
-      }
-    }
     const BufferFusionOpDesc *op_desc = item.first;
     if (op_desc != nullptr && (op_desc->desc_name == kPatternVadd || op_desc->desc_name == kPatternEltwise)) {
       ge::NodePtr node = item.second[0];

@@ -199,7 +199,18 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::Node
  */
 bool TbeAippConvReluMaxpoolingFusionPass::CheckMaxpoolNodeValidation(const ge::NodePtr& max_pool_node) {
   int64_t windowSize = 0;
-  if (max_pool_node->GetOpDesc()->GetType() == kOpTypePooling) {
+  std::vector<std::string> support_type = {kOpTypePooling, kOpTypeMaxPool};
+  bool is_support = false;
+  std::string op_type = max_pool_node->GetOpDesc()->GetType();
+  for (auto type : support_type) {
+    if (type == op_type) {
+      is_support = true;
+      break;
+    }
+  }
+  FUSION_PASS_CHECK(!is_support, OP_LOGD(fused_op_type_.c_str(), "op type [%s] is not supported.", op_type.c_str()),
+                    return false);
+  if (op_type == kOpTypePooling) {
     vector<int64_t> strides;
     vector<int64_t> standard_strides = {2, 2};
     FUSION_PASS_CHECK(
@@ -233,7 +244,7 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckMaxpoolNodeValidation(const ge::N
                               max_pool_node->GetName().c_str(), mode),
                       return false);
   }
-  if (max_pool_node->GetOpDesc()->GetType() == kOpTypeMaxPool) {
+  if (op_type == kOpTypeMaxPool) {
     vector<int64_t> strides;
     FUSION_PASS_CHECK(
         !ge::AttrUtils::GetListInt(max_pool_node->GetOpDesc(), kStrides, strides),

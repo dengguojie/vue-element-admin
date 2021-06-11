@@ -41,7 +41,6 @@ class TbeConv2dWrtselStridewrtPass : public BufferFusionPassBase {
 
  private:
   const string fused_op_type_ = "FusedOp";
-  void DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis);
   void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
 };
 }  // namespace fe
