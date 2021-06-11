@@ -39,8 +39,8 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_0) {
   std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2}}";
 
   std::vector<int64_t> input{64, 64, 64, 64};
-  std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{0, 0, 0, 0};
+  std::vector<int64_t> padding_shape{8};
+  std::vector<int32_t> padding_value{0, 0, 0, 0, 0, 0, 0, 0};
   std::vector<int64_t> output{64, 64, 64, 64};
 
   TeOpTensor tensor_input;
@@ -75,7 +75,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_0) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 33554432 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 33554432 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 }
 
 TEST_F(PadV3Tiling, rpad_v3_tiling_1) {
@@ -87,8 +87,8 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_1) {
   std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2}}";
 
   std::vector<int64_t> input{1, 512, 40, 10};
-  std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{1, 1, 1, 1};
+  std::vector<int64_t> padding_shape{8};
+  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
   std::vector<int64_t> output{1, 512, 42, 12};
 
   TeOpTensor tensor_input;
@@ -123,7 +123,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_1) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 0 0 0 0 0 0 0 0 1 1 2 2 1 1 1 512 40 20 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 1 512 40 20 0 0 0 0 0 0 0 0 1 1 2 2 2 ");
 }
 
 TEST_F(PadV3Tiling, rpad_v3_tiling_2) {
@@ -136,7 +136,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_2) {
 
   std::vector<int64_t> input{1, 512, 40, 1000};
   std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{1, 1, 1, 1};
+  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
   std::vector<int64_t> output{1, 512, 42, 1002};
 
   TeOpTensor tensor_input;
@@ -171,7 +171,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_2) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 0 0 0 0 0 0 0 0 1 1 2 2 1 1 1 512 40 2000 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 1 512 40 2000 0 0 0 0 0 0 0 0 1 1 2 2 1 ");
 }
 
 TEST_F(PadV3Tiling, rpad_v3_tiling_3) {
@@ -183,8 +183,8 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_3) {
   std::string compileInfo = "{\"vars\": {\"ub_size\": 65536, \"core_num\": 32, \"dtype_rate\": 2}}";
 
   std::vector<int64_t> input{1, 512, 40, 10000};
-  std::vector<int64_t> padding_shape{4};
-  std::vector<int32_t> padding_value{1, 1, 1, 1};
+  std::vector<int64_t> padding_shape{8};
+  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
   std::vector<int64_t> output{1, 512, 42, 10002};
 
   TeOpTensor tensor_input;
@@ -219,7 +219,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_3) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 0 0 0 0 0 0 0 0 1 1 2 2 1 1 1 512 40 20000 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 1 512 40 20000 0 0 0 0 0 0 0 0 1 1 2 2 1 ");
 }
 
 TEST_F(PadV3Tiling, rpad_v3_tiling_4) {
@@ -267,7 +267,7 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_4) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 0 0 0 0 0 0 0 0 1 1 2 2 1 1 1 1 400 2000 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 1 1 400 2000 0 0 0 0 0 0 0 0 1 1 2 2 1 ");
 }
 
 TEST_F(PadV3Tiling, rpad_v3_tiling_5) {
@@ -315,5 +315,5 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_5) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 0 0 0 0 0 0 0 0 1 1 2 2 1 1 1 1 400 200000 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 400 200000 0 0 0 0 0 0 0 0 1 1 2 2 0 ");
 }

@@ -460,6 +460,8 @@ COMMON_INFER_FUNC_REG(PadV3D, PadV3DInferShape);
 
 // ----------------PadV3 Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(PadV3InferShape) {
+  const vector<string> depend_names = {"paddings"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   Tensor paddings_tensor;
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", paddings_tensor)) {
     OP_LOGE(op.GetName().c_str(), "Get Const Value [paddings] failed, Setting shape to UNKNOWN_DIM");
