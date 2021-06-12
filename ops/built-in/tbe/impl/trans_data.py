@@ -289,6 +289,7 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     else:
         raise RuntimeError("not support this kind of format transfer !")
 
+
 def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='transdata'):
     """
     algorithm: format_transfer
@@ -327,7 +328,7 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
                 src(n_idx, h_idx, w_idx, c1_idx * dst_c0 + c0_idx),
                 tvm.const(0, src.dtype)),
                 name="res_nc1hwc0",
-                attrs={"ori_format" : "NHWC", "ori_shape" : src.shape},
+                attrs={"ori_format": "NHWC", "ori_shape": src.shape},
                 tag = "NHWC_trans_5HD")
     elif src_format == "NC1HWC0" and dst_format == "NHWC":
         src_n, src_c1, src_hw, src_c0 = tuple(i.value for i in src.shape)
@@ -351,7 +352,7 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             (i % hw) // src_w, (i % hw) // src_w,
             (i // hw) * dst_c0 + l),
             name = "res_fractal_z_weight",
-            attrs={"ori_format" : "NHWC", "ori_shape" : src.shape},
+            attrs={"ori_format": "NHWC", "ori_shape": src.shape},
             tag = "NHWC_trans_FZ"
         )
     else:
