@@ -125,15 +125,17 @@ IMPLEMT_COMMON_INFERFUNC(AscendDequantInferShape) {
 COMMON_INFER_FUNC_REG(AscendDequant, AscendDequantInferShape);
 
 IMPLEMT_COMMON_INFERFUNC(AscendAntiQuantInferShape) {
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  int type;
-  if (op.GetAttr("dtype", type) == GRAPH_SUCCESS) {
-    y_desc.SetDataType((ge::DataType)type);
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    auto output_desc = op_info->MutableOutputDesc(0);
+
+    int type;
+    if (op.GetAttr("dtype", type) == GRAPH_SUCCESS) {
+      output_desc->SetDataType((ge::DataType)type);
+      return GRAPH_SUCCESS;
+    }
   }
-  Shape shape = op.GetInputDesc("x").GetShape();
-  y_desc.SetShape(shape);
-  (void)op.UpdateOutputDesc("y", y_desc);
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(AscendAntiQuant, AscendAntiQuantInferShape);

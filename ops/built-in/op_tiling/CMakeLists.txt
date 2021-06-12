@@ -29,6 +29,7 @@ set(_optiling_files
   avg_pool3d.cc
   avg_pool3d_grad.cc
   ascend_quant.cc
+  ascend_anti_quant.cc
   bias.cc
   bias_add.cc
   bn_reduce.cc

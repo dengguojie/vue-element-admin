@@ -29,6 +29,7 @@ class Pattern:
     OPAQUE = "Opaque"
     SOFTMAX = "Softmax"
     ASCEND_QUANT = "AscendQuant"
+    ASCEND_ANTI_QUANT = "AscendAntiQuant"
     CONV2D = "Convolution"
     CONV2D_BACKPROP_INPUT = "Conv2d_backprop_input"
     CONV2D_BACKPROP_FILTER = "Conv2d_backprop_filter"

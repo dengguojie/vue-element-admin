@@ -39,6 +39,7 @@ from . import confusion_softmax_grad_schedule, confusion_softmax_grad_tilingcase
 
 # quant
 from . import ascend_quant_schedule, ascend_quant_tilingcase
+from . import ascend_anti_quant_schedule, ascend_anti_quant_tilingcase
 
 # cube
 from . import conv2d_bp_input_schedule

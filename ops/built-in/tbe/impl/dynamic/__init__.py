@@ -341,3 +341,4 @@ from .ascend_dequant import ascend_dequant
 from .ascend_dequant_s16 import ascend_dequant_s16
 from .ascend_requant import ascend_requant
 from .ascend_requant_s16 import ascend_requant_s16
+from .ascend_anti_quant import ascend_anti_quant
