@@ -72,9 +72,6 @@ namespace fe {
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr axes failed.");
       return FAILED;
     }
-    //set node to map
-    fused_node = graph.AddNode(fuse_desc);
-    fusion_nodes.push_back(fused_node);
     return SUCCESS;
   }
   REGISTER_PASS("Globalavgpoolpass", BUILT_IN_GRAPH_PASS, Globalavgpoolpass);
