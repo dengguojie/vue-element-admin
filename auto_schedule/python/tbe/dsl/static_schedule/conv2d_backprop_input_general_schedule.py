@@ -290,7 +290,15 @@ def general_schedule(
         def _fill_tensor_map(c_col, var_map, tensor_map):  # pylint: disable=R0915
             a_col = c_col.op.input_tensors[0]  # im2col_fractal in L0A
             b_col = c_col.op.input_tensors[1]  # weight_transform in L0B
-            b_ddr = b_col.op.input_tensors[0]  # weight in ddr
+            b_l1 = b_col.op.input_tensors[0]  # weight in ddr
+
+            if b_l1.op.input_tensors:
+                b_ddr = b_l1.op.input_tensors[0]
+                sch[b_l1].set_scope(tbe_platform_info.scope_cbuf)
+                if "NHWC_trans_FZ" in b_l1.op.tag:
+                    tensor_attr["WEIGHT_NHWC_TRANS_FZ"] = True
+            else:
+                b_ddr = b_l1
 
             if not var_map:
                 # im2col_row_major in L1
@@ -422,7 +430,14 @@ def general_schedule(
                         stride_w = 1
                         sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
                     else:
-                        a_ddr = a_col_before.op.input_tensors[0]
+                        a_l1 = a_col_before.op.input_tensors[0]
+                        if a_l1.op.input_tensors:
+                            a_ddr = a_l1.op.input_tensors[0]
+                            sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
+                            if "NHWC_trans_5HD" in a_l1.op.tag:
+                                tensor_attr["FM_NHWC_TRANS_5HD"] = True
+                        else:
+                            a_ddr = a_l1
                         stride_h = 1
                         stride_w = 1
                         if l1_fusion_type != -1:
@@ -430,9 +445,10 @@ def general_schedule(
                                 a_ddr, tbe_platform_info.scope_cbuf_fusion, [a_col_before]
                             )
                         else:
-                            a_l1 = sch.cache_read(
-                                a_ddr, tbe_platform_info.scope_cbuf, [a_col_before]
-                            )
+                            if not tensor_attr.get("FM_NHWC_TRANS_5HD"):
+                                a_l1 = sch.cache_read(
+                                    a_ddr, tbe_platform_info.scope_cbuf, [a_col_before]
+                                )
                         if input_mem[0] == 1:
                             sch[a_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
                     tensor_map["a_l1"] = a_l1
@@ -461,7 +477,9 @@ def general_schedule(
                 _fill_a_tensormap_dynamic()
             else:
                 _fill_a_tensormap()
-            b_l1 = sch.cache_read(b_ddr, tbe_platform_info.scope_cbuf, [b_col])
+
+            if not tensor_attr.get("WEIGHT_NHWC_TRANS_FZ"):
+                b_l1 = sch.cache_read(b_ddr, tbe_platform_info.scope_cbuf, [b_col])
             tensor_map["b_l1"] = b_l1
             # dataflow management
             sch[b_col].set_scope(tbe_platform_info.scope_cb)
@@ -494,7 +512,7 @@ def general_schedule(
                 sch[bias_ub_brc].set_scope(tbe_platform_info.scope_ubuf)
 
         def _bias_tensor():
-            if c_ub.op.input_tensors[0].name == "c_add_bias":
+            if c_ub is not None and c_ub.op.input_tensors[0].name == "c_add_bias":
                 c_add_bias = c_ub.op.input_tensors[0]
                 bias_l0c = c_add_bias.op.input_tensors[0]
                 c_col = c_add_bias.op.input_tensors[1]
@@ -510,7 +528,11 @@ def general_schedule(
                 tensor_map["bias_ub"] = bias_ub
             else:
                 if cube_vector_split:
-                    c_col = c_ddr.op.input_tensors[0]
+                    if "5HD_trans_NHWC" in c_ddr.op.tag:
+                        c_col_temp = c_ddr.op.input_tensors[0]
+                        c_col = c_col_temp.op.input_tensors[0]
+                    else:
+                        c_col = c_ddr.op.input_tensors[0]
                 else:
                     c_col = c_ub.op.input_tensors[0]
             return c_col
@@ -667,6 +689,17 @@ def general_schedule(
                 c_ub = c_ub.op.input_tensors[0]
             tensor_map["c_ub"] = c_ub
             tensor_attr["output_shape"] = output_shape
+        elif "5HD_trans_NHWC" in deconv_res.op.tag:
+            c_ub = None
+            tensor_map["c_ub"] = c_ub
+            tensor_dx_gm = deconv_res.op.input_tensors[0]
+            group_dict = tensor_dx_gm.op.attrs["group_dict"]
+            output_shape = cube_util.shape_to_list(tensor_dx_gm.op.attrs["output_shape"])
+            tensor_attr["group_dict"] = group_dict
+            tensor_attr["output_shape"] = output_shape
+            tensor_map["tensor_dx_gm"] = tensor_dx_gm
+            tensor_attr["5HD_TRANS_NHWC"] = True
+            sch[tensor_dx_gm].compute_inline()
         else:
             _raise_dx_general_err(
                 DX_SUPPORT_TAG_LOG_PREFIX
@@ -894,7 +927,13 @@ def general_schedule(
     _, _, dx_h, dx_w, _ = output_shape
     output_shape_g = [g_after, output_shape[0], cin1_g] + output_shape[2:]
 
-    img_shape = cube_util.shape_to_list(a_ddr.shape)
+    def _get_fm_5_hd_shape():
+        if tensor_attr.get("FM_NHWC_TRANS_5HD"):
+            return a_l1.shape
+        else:
+            return a_ddr.shape
+
+    img_shape = cube_util.shape_to_list(_get_fm_5_hd_shape())
     dy_h, dy_w = img_shape[2:4]  # pylint: disable=W0632
     img_shape_g = [g_after, img_shape[0], cou1_g] + img_shape[2:]
     # conv1d_situation
@@ -918,17 +957,21 @@ def general_schedule(
         mad_type = "int32"
 
     def _set_filter_shape():
+        if tensor_attr.get("WEIGHT_NHWC_TRANS_FZ"):
+            weight_fz_tensor = b_l1
+        else:
+            weight_fz_tensor = b_ddr
         if w_trans_flag:
             # GCout1HkWk, Cin1, Cin0, Cout0
             b_ddr_k1, b_ddr_n1, b_ddr_n0, b_ddr_k0 \
-                = list(i.value for i in b_ddr.shape)
+                = list(i.value for i in weight_fz_tensor.shape)
             # G, Cout, Cin1, Hk, Wk, Cin0
             filter_shape_g = [cou1_g * b_ddr_k0,
                               cin1_g, kernel_h, kernel_w, b_ddr_n0]
         else:
             # GCin1HkWk, Cout1, Cout0, Cin0
             b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 \
-                = cube_util.shape_to_list(b_ddr.shape)
+                = cube_util.shape_to_list(weight_fz_tensor.shape)
             # Cout, Cin1, Hk, Wk, Cin0
             filter_shape_g = (cou1_g * b_ddr_k0,
                               cin1_g,
@@ -959,6 +1002,9 @@ def general_schedule(
             or tensor_attr.get("elewise_fuse")
         ):
             _kernel_name = c_ub_cut.op.attrs["kernel_name"]
+        elif tensor_attr.get("5HD_TRANS_NHWC"):
+            tensor_dx_gm = tensor_map.get("tensor_dx_gm")
+            _kernel_name = tensor_dx_gm.op.attrs["kernel_name"]
         else:
             _kernel_name = deconv_res.op.attrs["kernel_name"]
         return _kernel_name
@@ -1392,7 +1438,10 @@ def general_schedule(
                           cl0_tiling_mc * cl0_tiling_m0,
                           cl0_tiling_n0 * 2)
         else:
-            affine_l0c = 1, 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
+            if tensor_attr.get("5HD_TRANS_NHWC"):
+                affine_l0c = 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
+            else:
+                affine_l0c = 1, 1, cl0_tiling_nc, cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_n0
 
         if cube_vector_split:
             sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
@@ -1555,6 +1604,11 @@ def general_schedule(
                 [cl0_tiling_g, 1, cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
             )
 
+        if tensor_attr.get("FM_NHWC_TRANS_5HD"):
+            l1a2out_affine_shape = [1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
+        else:
+            l1a2out_affine_shape = [1, 1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
+
         if tiling.get("AL1_shape") == [] and tiling.get("AL0_matrix") == []:
             pass
         elif status == Compare.EQUAL:
@@ -1562,7 +1616,6 @@ def general_schedule(
         elif status == Compare.LESS_EQ:
             sch_agent.attach_at(a_l1, c_col, affine_shape=l1a2l0c_affine_shape)
         elif status == Compare.GREATE_EQ:
-            l1a2out_affine_shape = [1, 1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
             sch_agent.attach_at(a_l1, c_ddr, affine_shape=l1a2out_affine_shape)
         else:
             _raise_dx_general_err("a_l1 atach error.")
@@ -1942,7 +1995,10 @@ def general_schedule(
             if l1_fusion_type != -1 and input_mem[0] == 1:
                 sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "phony_insn")
             else:
-                sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "dma_copy")
+                if tensor_attr.get("FM_NHWC_TRANS_5HD"):
+                    sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "dma_copy", {"layout_transform": "nd2nz"})
+                else:
+                    sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "dma_copy")
                 if l1_fusion_type != -1:
                     sch_agent[a_l1].pragma(a_l1.op.axis[0], "jump_data", 1)
         else:
@@ -2054,7 +2110,10 @@ def general_schedule(
                 sch_agent[mean_matrix].reused_by(mean_matrix_rec)
 
     def _emit_insn():  # pylint: disable=R0914,R0915
-        sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy")
+        if tensor_attr.get("WEIGHT_NHWC_TRANS_FZ"):
+            sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy", {"layout_transform": "nd2nz"})
+        else:
+            sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy")
 
         if bias_add_vector is not None:
             sch[bias_ub].emit_insn(sch[bias_ub].op.axis[0], "dma_copy")
@@ -2114,7 +2173,10 @@ def general_schedule(
         sch_agent[c_col].emit_insn(scope_insn, "mad", mad_dict)
 
         if not double_out_tensor:
-            sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
+            if tensor_attr.get("5HD_TRANS_NHWC"):
+                sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy", {"layout_transform": "nz2nd"})
+            else:
+                sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
         else:
             sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "phony_insn")
             sch[double_out_tensor[0]].emit_insn(sch_agent[double_out_tensor[0]].nlast_scopes(2)[0], "dma_copy")
@@ -2339,7 +2401,10 @@ def general_schedule(
 
     def _bind_core():
         axs = sch_agent[c_ddr].get_active_scopes()
-        ax_g, ax_ni, ax_ci, ax_hw, _ = axs
+        if tensor_attr.get("5HD_TRANS_NHWC"):
+            ax_g, ax_ni, ax_hw, ax_ci = axs
+        else:
+            ax_g, ax_ni, ax_ci, ax_hw, _ = axs
         # g, c both relate to BL1[0], must in the inner of fuse_bind_axis
         ax_core = sch_agent[c_ddr].bind_core(
             [ax_ni, ax_hw, ax_g, ax_ci], [batch_dim, m_dim, group_dim, n_dim])

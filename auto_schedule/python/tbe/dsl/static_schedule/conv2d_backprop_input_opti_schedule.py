@@ -1071,6 +1071,10 @@ class Conv2dDxOptiSchedule:
             elif res.op.tag == "conv2d_backprop_input_opti":
                 self.dx_para.update_para_map("FUSION_TYPE", FUSION_NONE)
                 tensor_dx_gm = res
+            elif "5HD_trans_NHWC" in res.op.tag:
+                tensor_dx_gm = res.op.input_tensors[0]
+                self.dx_para.update_para_map("5HD_TRANS_NHWC", True)
+                sch[tensor_dx_gm].compute_inline()
             else:
                 self._raise_dx_opti_err(DX_SUPPORT_TAG_LOG_PREFIX + " unsupported data flow")
             return tensor_dx_gm, fusion_tensor_map
@@ -1197,9 +1201,17 @@ class Conv2dDxOptiSchedule:
                         (1, 1)
                     )
             else:
-                dedy_col = a_l0a.op.input_tensors[0]
-                dedy = dedy_col.op.input_tensors[0]
-                sch[dedy_col].set_scope(tbe_platform_info.scope_cbuf)
+                dedy_col_ori = a_l0a.op.input_tensors[0]
+                dedy_col = dedy_col_ori.op.input_tensors[0]
+                if dedy_col.op.input_tensors:
+                    dedy = dedy_col.op.input_tensors[0]
+                    self.dx_para.update_para_map("FM_NHWC_TRANS_5HD", True)
+                    sch[dedy_col_ori].compute_inline()
+                    sch[dedy_col].set_scope(tbe_platform_info.scope_cbuf)
+                else:
+                    dedy = dedy_col
+                    dedy_col = dedy_col_ori
+                    sch[dedy_col].set_scope(tbe_platform_info.scope_cbuf)
                 a_l0a_before = None
             return dedy_col, dedy, a_l0a_before
 
@@ -1283,7 +1295,15 @@ class Conv2dDxOptiSchedule:
         a_l0a = tensor_mmad.op.input_tensors[0]
         dedy_col, dedy, a_l0a_before = _al1_fusion_handle()
         weight_l0 = tensor_mmad.op.input_tensors[1]
-        weight_l1 = weight_l0.op.input_tensors[0]
+        weight_l1_ori = weight_l0.op.input_tensors[0]
+        weight_l1 = weight_l1_ori.op.input_tensors[0]
+
+        if weight_l1.op.input_tensors:
+            if "NHWC_trans_FZ" in weight_l1.op.tag:
+                self.dx_para.update_para_map("WEIGHT_NHWC_TRANS_FZ", True)
+                sch[weight_l1_ori].compute_inline()
+        else:
+            weight_l1 = weight_l1_ori
 
         # set scope
         if fusion_type in (FUSION_DX_DEQUANT, FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
@@ -1324,8 +1344,13 @@ class Conv2dDxOptiSchedule:
         DIM_MAP[cube_util.GroupDictKeys.g_extend] = group_dict_map[cube_util.GroupDictKeys.g_extend].value
         DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend] = group_dict_map[cube_util.GroupDictKeys.dy_c1_extend].value
         DIM_MAP[cube_util.GroupDictKeys.dx_c1_extend] = group_dict_map[cube_util.GroupDictKeys.dx_c1_extend].value
-        DIM_MAP["out_img_shape"] = cube_util.shape_to_list(res.shape)
-        DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["img_placehold"].shape)
+        if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
+            res_ori = res.op.input_tensors[0]
+            DIM_MAP["out_img_shape"] = cube_util.shape_to_list(res_ori.shape)
+            DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["a_l1"].shape)
+        else:
+            DIM_MAP["out_img_shape"] = cube_util.shape_to_list(res.shape)
+            DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["img_placehold"].shape)
         DIM_MAP["A_matrix_dim"] = cube_util.shape_to_list(dedy_col.shape)
         DIM_MAP["B_matrix_dim"] = cube_util.shape_to_list(weight_l0.shape)
         DIM_MAP["filter_shape"] = cube_util.shape_to_list(weight_l1.op.input_tensors[0].shape)
@@ -1687,13 +1712,25 @@ class Conv2dDxOptiSchedule:
             self._print_debug("reorder_flag:", reorder_flag)
             return reorder_flag
 
+        if self.dx_para.get_para_map("5HD_TRANS_NHWC"): #(batch, howo_axis, co_axis)
+            c_gm_howo_axis_idx = 1
+            c_gm_co_axis_idx = 2
+        else:                                           #(batch, co_aixs//16, howo_axis, 16)
+            c_gm_howo_axis_idx = 2
+            c_gm_co_axis_idx = 1
+
         # split c_gm according to factor of loc and out_shape
         if not l0c_multi_group_flag:
-            g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], nparts=g_extend)
+            g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[c_gm_co_axis_idx], nparts=g_extend)
         else:
-            g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[0])
-        l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0])
-        l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[2], l0c_factor[1])
+            g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[c_gm_co_axis_idx], l0c_factor[0])
+
+        if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
+            l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0] * 16)
+        else:
+            l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0])
+
+        l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[c_gm_howo_axis_idx], l0c_factor[1])
         sch[c_gm].reorder(g_dim, c_gm.op.axis[0], l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
 
         # split c_gm according to factor of a_l1 and b_l1
@@ -2363,7 +2400,10 @@ class Conv2dDxOptiSchedule:
                     if self.dx_para.get_para_map("input_memory_type")[0] == 1:
                         sch[a_l1].emit_insn(a_l1.op.axis[0], "phony_insn")
                     else:
-                        sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy")
+                        if self.dx_para.get_para_map("FM_NHWC_TRANS_5HD"):
+                            sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", {"layout_transform": "nd2nz"})
+                        else:
+                            sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy")
                         if self.dx_para.get_para_map("l1_fusion_type") != -1:
                             sch[a_l1].pragma(a_l1.op.axis[0], "jump_data", 1)
                 if self.dx_para.get_para_map("load3d_flag"):
@@ -2388,7 +2428,11 @@ class Conv2dDxOptiSchedule:
                     sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy")
 
             _l1fusion_intrin()
-            sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy")
+            if self.dx_para.get_para_map("WEIGHT_NHWC_TRANS_FZ"):
+                sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy", {"layout_transform": "nd2nz"})
+            else:
+                sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy")
+
             sch[b_l0b].emit_insn(b_l0b.op.axis[0], "dma_copy")
 
             if fusion_type not in (
@@ -2404,7 +2448,10 @@ class Conv2dDxOptiSchedule:
                 sch[DOUBLE_TENSOR_OUT[1]].emit_insn(DOUBLE_TENSOR_OUT[1].op.axis[0], "dma_copy")
                 sch[c_gm].emit_insn(l0c_n_inner_inner, "phony_insn")
             else:
-                sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
+                if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
+                    sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy", {"layout_transform": "nz2nd"})
+                else:
+                    sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
 
             if dilate_ub is not None:
                 filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
@@ -2686,9 +2733,14 @@ class Conv2dDxOptiSchedule:
         self._print_ir_conv("split with al1 and bl1 factor", sch)
 
         # attach tensor of CUB
-        l0c_n_inner_outer, l0c_n_inner_inner = sch[c_gm].split(
-            l0c_n_inner, nparts=l0c_ub_parts[0]
-        )
+        if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
+            l0c_n_inner_outer, l0c_n_inner_inner = sch[c_gm].split(
+                l0c_n_inner, factor=16
+            )
+        else:
+            l0c_n_inner_outer, l0c_n_inner_inner = sch[c_gm].split(
+                l0c_n_inner, nparts=l0c_ub_parts[0]
+            )
         l0c_m_inner_outer, l0c_m_inner_inner = sch[c_gm].split(l0c_m_inner, nparts=1)
         add_input_at, l0c_m_inner_outer = sch[c_gm].split(l0c_m_inner_outer, nparts=1)
         sch[c_gm].reorder(

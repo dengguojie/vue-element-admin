@@ -48,7 +48,7 @@ conv2d_bp_input_op_testcase = [
         (1, 1, 2, 2),
         (3, 3, 3, 3),
     ),
-    {
+    (
         "float16",
         "float16",
         "float16",
@@ -61,7 +61,7 @@ conv2d_bp_input_op_testcase = [
         (16, 32, 70000, 5),
         (1, 1, 1,1),
         (0, 0, 0, 0),
-    },
+    ),
     (
         "float16",
         "float16",

@@ -53,7 +53,8 @@ from impl import hwcn_2_fractal_z_g
 from impl import trans_data_positive_source_ntc
 from impl import trans_data_negative_target_ntc
 from impl import trans_data_positive_source_tc
-
+from tbe.dsl.compute import cube_util
+from tbe.tvm import api as tvm
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
 # pylint: disable=too-many-arguments
@@ -287,3 +288,73 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
                                                   dst_format, kernel_name)
     else:
         raise RuntimeError("not support this kind of format transfer !")
+
+def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='transdata'):
+    """
+    algorithm: format_transfer
+    used for on the fly format transformation , For example NHWC TO NC1HWC0,
+    NC1HWC0 TO NHWC, NHWC TO FRACTAL_Z
+    Parameters
+    ----------
+    src : dict
+        shape and dtype of input
+    dst: dict
+        shape and dtype of output, should be same shape and type as input
+    src_format: str
+        source data format, can be NHWC, NCHW, FRACTAL_Zn etc.
+    dst_format: str
+        target data format, can be NC1HWC0, NCHW, FRACTAL_Zn etc.
+    groups: int
+        default 1
+    kernel_name: str
+        kernel name, default value is "format_transfer"
+
+    Returns
+    -------
+    None
+    """
+    dst_tensor = None
+    c0_dict = {"float32": 8, "float16": 16, "int8": 32, "int4": 64}
+
+    if src_format == "NHWC" and dst_format == "NC1HWC0":
+        src_n, src_h, src_w, src_c = tuple(i.value for i in src.shape)
+        dst_c0 = c0_dict.get(src.dtype)
+        dst_c1 = cube_util.ceil_div(src_c, dst_c0)
+        dst_shape = (src_n, dst_c1, src_h, src_w, dst_c0)
+        dst_tensor = tvm.compute(dst_shape,
+            lambda n_idx, c1_idx, h_idx, w_idx, c0_idx: tvm.select(
+                tvm.any(c1_idx * dst_c0 + c0_idx < src_c),
+                src(n_idx, h_idx, w_idx, c1_idx * dst_c0 + c0_idx),
+                tvm.const(0, src.dtype)),
+                name="res_nc1hwc0",
+                attrs={"ori_format" : "NHWC", "ori_shape" : src.shape},
+                tag = "NHWC_trans_5HD")
+    elif src_format == "NC1HWC0" and dst_format == "NHWC":
+        src_n, src_c1, src_hw, src_c0 = tuple(i.value for i in src.shape)
+        dst_shape = dst.get("shape")
+        dst_tensor = tvm.compute(dst_shape,
+            lambda n_idx, hw_idx, c_idx: src(n_idx,
+            c_idx // src_c0, hw_idx, c_idx % src_c0),
+            name = "res_nhwc",
+            tag = "5HD_trans_NHWC")
+    elif src_format == "NHWC" and dst_format == "FRACTAL_Z":
+        src_n, src_h, src_w, src_c = tuple(i.value for i in src.shape)
+        dst_n0 = 16
+        dst_n1 = (src_n + dst_n0 - 1) // dst_n0
+        dst_c0 = c0_dict[src.dtype]
+        dst_c1 = (src_c + dst_c0 - 1) // dst_c0
+        dst_shape = dst_c1 * src_h * src_w, dst_n1, dst_n0, dst_c0
+        hw = src_h * src_w
+        dst_tensor = tvm.compute(
+            dst_shape,
+            lambda  i, j, k, l: src(j * dst_n0 + k,
+            (i % hw) // src_w, (i % hw) // src_w,
+            (i // hw) * dst_c0 + l),
+            name = "res_fractal_z_weight",
+            attrs={"ori_format" : "NHWC", "ori_shape" : src.shape},
+            tag = "NHWC_trans_FZ"
+        )
+    else:
+        raise RuntimeError("not support this kind of format transfer !")
+
+    return dst_tensor

@@ -9,6 +9,14 @@ from math import ceil as math_ceil
 import conv2d_bp_input_ut_testcase
 import util_for_conv2d_bp_input as util
 from op_test_frame.ut import OpUT
+from te import tvm
+from te.platform import cce_conf
+from te.tvm.target import cce
+from topi.generic import auto_schedule
+from te.lang.cce import cce_build_code
+from impl.trans_data import trans_data_compute
+from impl.conv2d_backprop_input_d import conv2d_backprop_input_d_compute
+
 
 ut_case = OpUT(
     "Conv2DBackpropInputD", "impl.conv2d_backprop_input_d", "conv2d_backprop_input_d"
@@ -130,6 +138,44 @@ def _test_op_check_supported(test_arg):
                     dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
                     kernel_name="conv2d_backprop_input")
 
+
+def _test_nhwc_in_nhwc_out_case_1(test_arg):
+    cce_conf.te_set_version('Ascend920A')
+    conv_filter = (160, 1, 1, 160)
+    out_backprop = (1, 64, 128, 160)
+    input_size = (1, 64, 128, 160)
+    strides = (1, 1)
+    pads = (0, 0, 0, 0)
+    dilations = (1, 1, 1, 1)
+    data_type = "float16"
+    param_dict = {
+        "strides" : strides,
+        "padding" : pads,
+        "dilations" : dilations,
+    }
+    with cce():
+        fmap_ori = tvm.placeholder(out_backprop, name="fmap_ori", dtype=data_type)
+        weight_ori = tvm.placeholder(conv_filter, name="weight_ori", dtype=data_type)
+        fmap = trans_data_compute(fmap_ori, None, src_format="NHWC", dst_format="NC1HWC0")
+        weight = trans_data_compute(weight_ori, None, src_format = "NHWC", dst_format="FRACTAL_Z")
+        y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NHWC", "format" : "NC1HWC0"}
+        conv_res = conv2d_backprop_input_d_compute(weight, fmap, y, input_size, strides, pads)
+        src_n, src_c1, src_hw, src_c0 =  tuple(i.value for i in conv_res.shape)
+        out = trans_data_compute(conv_res, {"shape" : (src_n, src_hw, src_c1*src_c0)}, src_format="NC1HWC0",
+                                   dst_format="NHWC")
+        tensor_list = [weight_ori, fmap_ori, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir" : False,
+            "need_build" : True,
+            "name" : "conv2d_bp_input_ut_testcase_1",
+            "tensor_list" : tensor_list
+        }
+        cce_build_code(sch, config)
+    cce_conf.te_set_version('Ascend910A')
+
+
+ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_1)
 
 def _gen_conv2d_bp_input_check_support_case():
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported)
