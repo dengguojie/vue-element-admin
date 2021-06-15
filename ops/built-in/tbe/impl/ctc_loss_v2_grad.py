@@ -23,7 +23,7 @@ import te.platform as tbe_platform
 
 BLOCK = 8
 MIN = -3.4e38
-
+REPEAT_OFFSET = 255
 
 @tbe_platform.fusion_manager.fusion_manager.register("ctc_loss_v2_grad")
 class CTCLossV2Grad(object):
@@ -159,11 +159,11 @@ class CTCLossV2Grad(object):
         grad_out = self.tik_instance.Scalar("float32", init_value=grad_out_ub[0])
         min_float = self.tik_instance.Scalar("float32", init_value=MIN)
 
-        log_ub = self.tik_instance.Tensor("float32", [BLOCK], name="log_ub", scope=tik.scope_ubuf)
-        exp_ub = self.tik_instance.Tensor("float32", [BLOCK], name="exp_ub", scope=tik.scope_ubuf)
-        add_ub = self.tik_instance.Tensor("float32", [BLOCK], name="add_ub", scope=tik.scope_ubuf)
-        sub_ub = self.tik_instance.Tensor("float32", [BLOCK], name="sub_ub", scope=tik.scope_ubuf)
-        tmp_ub = self.tik_instance.Tensor("float32", [BLOCK], name="tmp_ub", scope=tik.scope_ubuf)
+        log_ub = self.tik_instance.Tensor("float32", [self.output_size, BLOCK], name="log_ub", scope=tik.scope_ubuf)
+        exp_ub = self.tik_instance.Tensor("float32", [self.output_size, BLOCK], name="exp_ub", scope=tik.scope_ubuf)
+        add_ub = self.tik_instance.Tensor("float32", [self.output_size, BLOCK], name="add_ub", scope=tik.scope_ubuf)
+        sub_ub = self.tik_instance.Tensor("float32", [self.output_size, BLOCK], name="sub_ub", scope=tik.scope_ubuf)
+        tmp_ub = self.tik_instance.Tensor("float32", [self.output_size, BLOCK], name="tmp_ub", scope=tik.scope_ubuf)
 
         work_tensor_ub = self.tik_instance.Tensor("float32", [BLOCK], name="work_tensor_ub", scope=tik.scope_ubuf)
         log_probs_ub = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="log_probs_ub", scope=tik.scope_ubuf)
@@ -179,6 +179,8 @@ class CTCLossV2Grad(object):
         Function: get log_beta and update grad_ub with log_alpha and log_beta.
         Modify : 2021-5-26
         """
+        offset = self.tik_instance.Scalar("int32")
+        repeat_times = self.tik_instance.Scalar("int32")
         c_tmp = self.tik_instance.Scalar("float32")
         alpha_beta_tmp = self.tik_instance.Scalar("float32")
         max_tmp = self.tik_instance.Scalar("float32")
@@ -193,7 +195,7 @@ class CTCLossV2Grad(object):
         log_beta_ub = self.tik_instance.Tensor("float32", [2, self.output_size_up], name="log_beta_ub",
                                                scope=tik.scope_ubuf)
         self.tik_instance.vector_dup(BLOCK, log_beta_ub[output_dst], MIN, self.output_size_up // BLOCK, 1, 1)
-
+        lamax_ub = self.tik_instance.Tensor("float32", [self.output_size], name="lamax_ub", scope=tik.scope_ubuf)
         log_beta_ub[output_dst + 2 * S_i].set_as(log_probs_ub[self.blank])
         current_target.set_as(targets_ub[S_i - 1])
         log_beta_ub[output_dst + 2 * S_i - 1].set_as(log_probs_ub[current_target])
@@ -256,52 +258,95 @@ class CTCLossV2Grad(object):
                     current_target.set_as(self.blank)
                 with self.tik_instance.else_scope():
                     current_target.set_as(targets_ub[s // 2])
-
-                tmp_ub[0].set_as(log_probs_ub[current_target])
-                log_ub[0].set_as(log_beta_ub[output_dst + s])
-                log_ub[1].set_as(log_beta_ub[output_dst + s + 1])
+                    
+                offset.set_as((s - start) * BLOCK)
+                
+                tmp_ub[offset].set_as(log_probs_ub[current_target])
+                log_ub[offset].set_as(log_beta_ub[output_dst + s])
+                log_ub[offset + 1].set_as(log_beta_ub[output_dst + s + 1])
 
                 with self.tik_instance.if_scope(tik.all((s % 2 != 0), (s < 2 * S_i - 1))):
                     next_target.set_as(targets_ub[s // 2 + 1])
                     with self.tik_instance.if_scope(current_target != next_target):
-                        log_ub[2].set_as(log_beta_ub[output_dst + s + 2])
+                        log_ub[offset + 2].set_as(log_beta_ub[output_dst + s + 2])
                     with self.tik_instance.else_scope():
-                        log_ub[2].set_as(min_float)
+                        log_ub[offset + 2].set_as(min_float)
                 with self.tik_instance.else_scope():
-                    log_ub[2].set_as(min_float)
+                    log_ub[offset + 2].set_as(min_float)
 
                 a_tmp.set_as(log_ub[0])
                 b_tmp.set_as(log_ub[1])
                 c_tmp.set_as(log_ub[2])
+
                 # func: get max in a_tmp/b_tmp/c_tmp
                 with self.tik_instance.if_scope(a_tmp > b_tmp):
                     with self.tik_instance.if_scope(a_tmp > c_tmp):
-                        max_tmp.set_as(a_tmp)
+                        lamax_ub[s - start].set_as(a_tmp)
                     with self.tik_instance.else_scope():
-                        max_tmp.set_as(c_tmp)
+                        lamax_ub[s - start].set_as(c_tmp)
                 with self.tik_instance.else_scope():
                     with self.tik_instance.if_scope(b_tmp > c_tmp):
-                        max_tmp.set_as(b_tmp)
+                        lamax_ub[s - start].set_as(b_tmp)
                     with self.tik_instance.else_scope():
-                        max_tmp.set_as(c_tmp)
-                # func: get -max
+                        lamax_ub[s - start].set_as(c_tmp)
+                        
+            repeat_times.set_as(end_loop - start)        
+            # func: get -max
+            with self.tik_instance.for_range(0, repeat_times) as s:
+                max_tmp.set_as(lamax_ub[s])
                 max_tmp.set_as(-max_tmp)
-                # func: a_tmp/b_tmp/c_tmp - max_tmp
-                self.tik_instance.vec_adds(3, sub_ub, log_ub, max_tmp, 1, 8, 8)
-                # func: exp(a_tmp- max_tmp)  exp(b_tmp- max_tmp)  exp(b_tmp- max_tmp)
-                self.tik_instance.vec_exp(3, exp_ub, sub_ub, 1, 1, 1)
-                # func: exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)
-                self.tik_instance.vec_reduce_add(3, add_ub, exp_ub, work_tensor_ub, 1, 1)
-                # func: log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp))
-                self.tik_instance.vln(1, log_ub, add_ub, 1, 1, 1, 1, 1)
-                # func: log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp
-                max_tmp.set_as(-max_tmp)
-                self.tik_instance.vec_adds(1, sub_ub, log_ub, max_tmp, 1, 8, 8)
-                # func: log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp + log_probs
-                self.tik_instance.vec_add(1, add_ub, tmp_ub, sub_ub, 1, 1, 1, 1)
+                self.tik_instance.vec_adds(3, sub_ub[s * BLOCK], log_ub[s * BLOCK], max_tmp, 1, 8, 8)
+            # func: exp(a_tmp- max_tmp)  exp(b_tmp- max_tmp)  exp(b_tmp- max_tmp)    
+            with self.tik_instance.if_scope(repeat_times > REPEAT_OFFSET):  
+                with self.tik_instance.for_range(0, repeat_times // REPEAT_OFFSET) as b:
+                    self.tik_instance.vec_exp(3, exp_ub[b * REPEAT_OFFSET * BLOCK], sub_ub[b * REPEAT_OFFSET * BLOCK],
+                                              REPEAT_OFFSET, 1, 1)
+                self.tik_instance.vec_exp(3, exp_ub[repeat_times // REPEAT_OFFSET * REPEAT_OFFSET * BLOCK],
+                                          sub_ub[repeat_times // REPEAT_OFFSET * REPEAT_OFFSET * BLOCK],
+                                          repeat_times - repeat_times // REPEAT_OFFSET * REPEAT_OFFSET, 1, 1)
+            with self.tik_instance.else_scope():
+                self.tik_instance.vec_exp(3, exp_ub, sub_ub, repeat_times, 1, 1)
+            # func: exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)
+            with self.tik_instance.for_range(0, repeat_times) as s:    
+                self.tik_instance.vec_reduce_add(3, add_ub[s * BLOCK], exp_ub[s * BLOCK], work_tensor_ub, 1, 1)
 
-                # func: update log_beta in current T
-                log_beta_ub[output_src + s].set_as(add_ub[0])
+            # func: log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp))
+            with self.tik_instance.if_scope(repeat_times > REPEAT_OFFSET):  
+                with self.tik_instance.for_range(0, repeat_times // REPEAT_OFFSET) as b:
+                    self.tik_instance.vln(1, log_ub[b * REPEAT_OFFSET * BLOCK], add_ub[b * REPEAT_OFFSET * BLOCK],
+                                          REPEAT_OFFSET, 1, 1, 1, 1)
+                self.tik_instance.vln(1, log_ub[repeat_times // REPEAT_OFFSET * REPEAT_OFFSET * BLOCK],
+                                      add_ub[repeat_times // REPEAT_OFFSET * REPEAT_OFFSET * BLOCK],
+                                      repeat_times - repeat_times // REPEAT_OFFSET * REPEAT_OFFSET, 1, 1, 1, 1)
+            with self.tik_instance.else_scope():
+                self.tik_instance.vln(1, log_ub, add_ub, repeat_times, 1, 1, 1, 1)
+
+            # func: log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp
+            with self.tik_instance.for_range(0, repeat_times) as s: 
+                max_tmp.set_as(lamax_ub[s])
+                self.tik_instance.vec_adds(1, sub_ub[s * BLOCK], log_ub[s * BLOCK], max_tmp, 1, 8, 8)
+     
+            # func: log(exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)) + max_tmp + log_probs
+            with self.tik_instance.if_scope(repeat_times > REPEAT_OFFSET):  
+                with self.tik_instance.for_range(0, repeat_times // REPEAT_OFFSET) as b:
+                    self.tik_instance.vec_add(1, add_ub[b * REPEAT_OFFSET * BLOCK], tmp_ub[b * REPEAT_OFFSET * BLOCK],
+                                              sub_ub[b * REPEAT_OFFSET * BLOCK], REPEAT_OFFSET, 1, 1, 1)
+                self.tik_instance.vec_add(1, add_ub[repeat_times // REPEAT_OFFSET * REPEAT_OFFSET * BLOCK],
+                                          tmp_ub[repeat_times // REPEAT_OFFSET * REPEAT_OFFSET * BLOCK],
+                                          sub_ub[repeat_times // REPEAT_OFFSET * REPEAT_OFFSET * BLOCK],
+                                          repeat_times - repeat_times // REPEAT_OFFSET * REPEAT_OFFSET, 1, 1, 1)   
+            with self.tik_instance.else_scope():
+                self.tik_instance.vec_add(1, add_ub, tmp_ub, sub_ub, repeat_times, 1, 1, 1)
+
+            # func: update log_beta in current T       
+            with self.tik_instance.for_range(start, end_loop) as s:
+                with self.tik_instance.if_scope(s % 2 == 0):
+                    current_target.set_as(self.blank)
+                with self.tik_instance.else_scope():
+                    current_target.set_as(targets_ub[s // 2])
+                    
+                offset.set_as((s - start) * BLOCK)    
+                log_beta_ub[output_src + s].set_as(add_ub[offset])
 
                 a_tmp.set_as(log_beta_ub[output_src + s])
                 # func: get log_alpha in current T
