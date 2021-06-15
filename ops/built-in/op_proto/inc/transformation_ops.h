@@ -173,21 +173,27 @@ REG_OP(Permute)
     .OP_END_FACTORY_REG(Permute)
 
 /**
-*@brief Flattens the inputs. Reserves axis 0 and flattens the input tensors
-* along axis 1 . \n
+*@brief Flattens the inputs tensor into a 2D matrix. If input tensor has shape (d_0, d_1,..., d_n),
+* then the output will have shape (d_0 X d_1 ... d_(axis-1), d_axis X d_(axis + 1)...X d_n)\n
 
 *@par Inputs:
-*One input:
-*x: A multi-dimensional Tensor. Must be one of the following types:
-* int8, uint8, int16, uint16, int32, uint32, int64,uint64, float16, float32 . \n
+* One input:
+* x: A multi-dimensional Tensor. Must be one of the following types:
+* int8, uint8, int16, uint16, int32, uint32, int64,uint64, float16, float32.
 
 *@par Outputs:
-*y: A 2D flattened Tensor (Reserves axis 0 and flattens the input tensors
-* along axis 1). Must be one of the following data types: int8, uint8, int16,
-* uint16, int32, uint32, int64,uint64, float16, float32 . \n
+* y: A 2D flattened Tensor with the contents of the input tensor, with input dimensions up to axis flattened 
+* to the outer dimension of the output and remaining input dimensions flattened into the inner dimension of the output.
+* Must be one of the following data types: int8, uint8, int16, uint16, int32, uint32, int64,uint64, float16, float32 .
+
+*@par Attributes:
+* axis: A optional int32, default value is 1. Indicate up to which input dimensions (exclusive) should be flattened 
+* to the outer dimension of the output. The value for axis must be in the range [-r, r], where r is the rank of 
+* the input tensor. Negative value means counting dimensions from the back. When axis = 0, the shape of 
+* the output tensor is (1, (d_0 X d_1 ... d_n), where the shape of the input tensor is (d_0, d_1, ... d_n).
 
 *@par Third-party framework compatibility
-* Compatible with TensorFlow operator Flatten.
+* Compatible with TensorFlow / ONNX operator Flatten.
 */
 REG_OP(Flatten)
     .INPUT(x, TensorType({DT_INT8, DT_INT16, DT_INT32, DT_INT64,
@@ -196,6 +202,7 @@ REG_OP(Flatten)
     .OUTPUT(y, TensorType({DT_INT8, DT_INT16, DT_INT32, DT_INT64,
                            DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64,
                            DT_FLOAT, DT_FLOAT16}))
+    .ATTR(axis, Int, 1)
     .OP_END_FACTORY_REG(Flatten)
 
 /**

@@ -36,7 +36,7 @@ case1 = {
         "ori_shape": (255, 8, 33),
         "ori_format": "ND",
         "range": [(255, 255), (264, 264)]
-    }],
+    }, 1],
     "case_name": "Flatten_dynamic_1",
     "expect": "success",
     "format_expect": [],
@@ -57,7 +57,7 @@ case2 = {
         "ori_shape": (255, 8, 33),
         "ori_format": "ND",
         "range": [(1, None),]
-    }],
+    }, 1],
     "case_name": "Flatten_dynamic_2",
     "expect": "success",
     "format_expect": [],
@@ -78,7 +78,7 @@ case3 = {
         "ori_shape": (4, 16, 64),
         "ori_format": "ND",
         "range": [(4, 4), (1, 100)]
-    }],
+    }, 1],
     "case_name": "Flatten_dynamic_3",
     "expect": "success",
     "format_expect": [],
@@ -99,7 +99,7 @@ case4 = {
         "ori_shape": (5, 16, 64),
         "ori_format": "ND",
         "range": [(5, 5), (1, None)]
-    }],
+    }, 1],
     "case_name": "Flatten_dynamic_4",
     "expect": "success",
     "format_expect": [],
@@ -120,7 +120,7 @@ case5 = {
         "ori_shape": (5, 16, 64),
         "ori_format": "ND",
         "range": [(1, 5), (1, None)]
-    }],
+    }, 1],
     "case_name": "Flatten_dynamic_5",
     "expect": "success",
     "format_expect": [],
@@ -141,7 +141,7 @@ case6 = {
         "ori_shape": (5,),
         "ori_format": "ND",
         "range": [(5, 5),]
-    }],
+    }, 1],
     "case_name": "Flatten_dynamic_6",
     "expect": "success",
     "format_expect": [],
@@ -162,7 +162,7 @@ case7 = {
         "ori_shape": (5,),
         "ori_format": "ND",
         "range": [(1, 5),]
-    }],
+    }, 1],
     "case_name": "Flatten_dynamic_7",
     "expect": "success",
     "format_expect": [],

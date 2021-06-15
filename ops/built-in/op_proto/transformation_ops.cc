@@ -35,6 +35,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <numeric>
 #include "util/util.h"
 #include "common_shape_fns.h"
 #include "op_log.h"
@@ -773,6 +774,46 @@ COMMON_INFER_FUNC_REG(BatchToSpaceNDD, BatchToSpaceNDDInferShape);
 // ----------------BatchToSpaceNDD Op End-------------------
 
 // ----------------Flatten Op Start-------------------
+static void FlattenSetDynamicShape(int startIndex, int endIndex, std::vector<int64_t>& x_vector,
+                                   std::vector<int64_t>& y_vector) {
+  int dim = -1;
+  std::vector<int64_t>::iterator start = x_vector.begin() + startIndex;
+  std::vector<int64_t>::iterator end = x_vector.begin() + endIndex;
+  auto found = std::find(start, end, -1);
+  if (found == end) {  // [d_0 X ... X d_(axis-1)] is known (static) shape
+    dim = std::accumulate(start, end, 1, std::multiplies<int>());
+  }
+  y_vector.push_back(dim);
+  return;
+}
+
+static void FlattenSetDynamicRange(int startIndex, int endIndex, int dim,
+                                   std::vector<std::pair<int64_t, int64_t>>& x_range,
+                                   std::vector<std::pair<int64_t, int64_t>>& y_range) {
+  if (dim != -1) {  // known (static) shape
+    y_range.push_back(std::pair<int64_t, int64_t>(dim, dim));
+    return;
+  }
+
+  std::vector<int64_t> range_min;
+  std::vector<int64_t> range_max;
+  for (size_t i = startIndex; i < endIndex; ++i) {
+    range_min.push_back(x_range[i].first);
+    range_max.push_back(x_range[i].second);
+  }
+
+  int min_value = 1;
+  if (!IsUnknown(range_min)) {
+    min_value = std::accumulate(range_min.begin(), range_min.end(), 1, std::multiplies<int>());
+  }
+  int max_value = -1;
+  if (!IsUnknown(range_max)) {
+    max_value = std::accumulate(range_max.begin(), range_max.end(), 1, std::multiplies<int>());
+  }
+  y_range.push_back(std::pair<int64_t, int64_t>(min_value, max_value));
+  return;
+}
+
 IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto x_desc = op_info->MutableInputDesc("x");
@@ -783,28 +824,36 @@ IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
   auto y_desc = op_info->MutableOutputDesc("y");
   y_desc->SetDataType(input_dtype);
 
-  //------------not dynamic case, only set shape-------------------------------------------
-  if (!IsUnknown(x_vector)) {
-    std::vector<int64_t> yVector;
-    yVector.push_back(x_vector[0]);
-    int64_t shape_num = 1;
-    for (size_t i = 0; i < x_vector.size() - 1; ++i) {
-      shape_num = shape_num * x_vector[i + 1];
-    }
-    yVector.push_back(shape_num);
-    y_desc->SetShape(GeShape(yVector));
-    return GRAPH_SUCCESS;
-  }
-
-  //--------------dynamic case, input shape is -2, output is -2-------------------------
+  //--------------dynamic case: unknown rank, input shape is -2, output is -2--------------
   if (IsUnknownRankShape(x_vector)) {
     y_desc->SetShape(GeShape(x_vector));
     OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank.");
     return GRAPH_SUCCESS;
   }
 
+  //------------not dynamic case, only set shape-------------------------------------------
+  const int x_dim = x_vector.size();
+  int64_t axis = 1;
+  if (op.GetAttr("axis", axis) != GRAPH_SUCCESS) {
+    OP_LOGI(op.GetName().c_str(), "attr of axis is null. Default axis is 1");
+  }
+  if (axis < -x_dim || axis > x_dim) {
+    OP_LOGE(op.GetName().c_str(), "axis %d is out of range[-%d, %d]. Please check.", axis, x_dim, x_dim);
+    return GRAPH_FAILED;
+  }
+  axis = (axis >= 0) ? axis : (x_dim + axis);
+
+  if (!IsUnknown(x_vector)) {
+    std::vector<int64_t>::iterator axis_iter = x_vector.begin() + axis;
+    int dim1 = std::accumulate(x_vector.begin(), axis_iter, 1, std::multiplies<int>());
+    int dim2 = std::accumulate(axis_iter, x_vector.end(), 1, std::multiplies<int>());
+    std::vector<int64_t> yVector = {dim1, dim2};
+    y_desc->SetShape(GeShape(yVector));
+    return GRAPH_SUCCESS;
+  }
+
   //---------------dynamic case, input shape is -1, output is -1--------------------
-  if (!IsUnknownRankShape(x_vector) and x_vector.size() == 1) {
+  if (!IsUnknownRankShape(x_vector) && x_vector.size() == 1) {
     std::vector<std::pair<int64_t, int64_t>> x_range;
     x_desc->GetShapeRange(x_range);
     y_desc->SetShape(GeShape(x_vector));
@@ -815,30 +864,20 @@ IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
   //---------------dynamic case, shape range > 1---------------------
   //----------------------shape-----------------------
   std::vector<int64_t> y_vector;
-  y_vector.push_back(x_vector[0]);
-  y_vector.push_back(-1);
+  FlattenSetDynamicShape(0, axis, x_vector, y_vector);
+  FlattenSetDynamicShape(axis, x_dim, x_vector, y_vector);
+  y_desc->SetShape(GeShape(y_vector));
+
   //----------------------range-----------------------
   std::vector<std::pair<int64_t, int64_t>> x_range;
   x_desc->GetShapeRange(x_range);
+  if (x_range.empty()) {
+    OP_LOGI(op.GetName().c_str(), "x range is empty");
+    return GRAPH_SUCCESS;
+  }
   std::vector<std::pair<int64_t, int64_t>> y_range;
-  y_range.push_back(x_range[0]);
-
-  int64_t range_min = 1;
-  std::vector<int64_t> range_max_vector;
-  for (size_t i = 0; i < x_vector.size() - 1; ++i) {
-    range_min = range_min * x_range[i + 1].first;
-    range_max_vector.push_back(x_range[i + 1].second);
-  }
-  if (IsUnKnownShape(range_max_vector)) {
-    y_range.push_back(std::pair<int64_t, int64_t>(range_min, -1));
-  } else {
-    int64_t range_max = 1;
-    for (size_t i = 0; i < range_max_vector.size(); i++) {
-      range_max = range_max * range_max_vector[i];
-    }
-    y_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
-  }
-  y_desc->SetShape(GeShape(y_vector));
+  FlattenSetDynamicRange(0, axis, y_vector[0], x_range, y_range);
+  FlattenSetDynamicRange(axis, x_dim, y_vector[1], x_range, y_range);
   y_desc->SetShapeRange(y_range);
   return GRAPH_SUCCESS;
 }
