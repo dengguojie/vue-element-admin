@@ -19,9 +19,30 @@
  * \brief
  */
 #include "inc/bitwise_ops.h"
+#include "util/util.h"
 #include "common_shape_fns.h"
 
 namespace ge {
+
+IMPLEMT_VERIFIER(LeftShift, LeftShiftVerify) {
+  if (!CheckTwoInputDtypeSame(op, "x", "y")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(LeftShift, LeftShiftInferShape) {
+  Shape data_shape = op.GetInputDesc("x").GetShape();
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc td = op.GetOutputDesc("z");
+  td.SetShape(ge::Shape(data_shape));
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("z", td);
+  return BROADCAST_INFER("x", "y", "z")(op);
+}
+
+INFER_FUNC_REG(LeftShift, LeftShiftInferShape);
+VERIFY_FUNC_REG(LeftShift, LeftShiftVerify);
 
 IMPLEMT_INFERFUNC(RightShift, RightShiftInfer) {
   DataType type = op.GetInputDesc("x").GetDataType();
