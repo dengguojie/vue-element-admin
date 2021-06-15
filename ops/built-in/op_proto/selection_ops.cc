@@ -4610,4 +4610,60 @@ COMMON_INFER_FUNC_REG(AddRowRanges, AddRowRangesInferShape);
 VERIFY_FUNC_REG(AddRowRanges, AddRowRangesVerify);
 // ----------------AddRowRanges END---------------------
 
+// ----------------MaskedFillRange Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(MaskedFillRangeInferShape)
+{
+  auto input_shape = op.GetInputDesc("x").GetShape();
+  auto input_type = op.GetInputDesc("x").GetDataType();
+  auto input_dim = input_shape.GetDims().size();
+
+  std::vector<int64_t> vec_dims;
+  for (int i = 0; i < input_dim; i++) {
+    vec_dims.push_back(input_shape.GetDim(i));
+  }
+
+  ge::Shape output_shape(vec_dims);
+
+  auto output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(ge::DataType(input_type));
+  (void)op.UpdateOutputDesc("y", output_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(MaskedFillRange, MaskedFillRangeVerify)
+{
+  TensorDesc x_desc = op.get_input_desc_x();
+  auto data_type_x = x_desc.GetDataType();
+  TensorDesc value_desc = op.get_input_desc_value();
+  auto data_type_value = value_desc.GetDataType();
+  if (data_type_x != data_type_value) {
+    OP_LOGE("MaskedFillRange", "input x and value date type must be equal!");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc start_desc = op.get_input_desc_start();
+  DataType data_type_start = start_desc.GetDataType();
+  TensorDesc end_desc = op.get_input_desc_end();
+  DataType data_type_end = end_desc.GetDataType();
+  if (data_type_start != data_type_end) {
+    OP_LOGE("MaskedFillRange", "input start and end date type must be equal!");
+    return GRAPH_FAILED;
+  }
+
+  int64_t x_dim = x_desc.GetShape().GetDimNum();
+  int64_t axis = std::abs(op.get_attr_axis());
+  if (axis >= x_dim) {
+    OP_LOGE("MaskedFillRange", "axis is larger than input x dimensions!");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MaskedFillRange, MaskedFillRangeInferShape);
+VERIFY_FUNC_REG(MaskedFillRange, MaskedFillRangeVerify);
+// ----------------MaskedFillRange END---------------------
+
 }  // namespace ge
