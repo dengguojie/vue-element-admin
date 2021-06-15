@@ -9923,7 +9923,7 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
                                                         [16, 10, 10, 486], [16, 38, 38, 324], [16, 5, 5, 486],
                                                         [16, 3, 3, 324], [8, 19, 19, 486], [8, 10, 10, 486],
                                                         [8, 38, 38, 324], [8, 5, 5, 486], [8, 3, 3, 324],
-                                                        [100, 28, 28, 91]]:
+                                                        [100, 28, 28, 91], [4, 800, 1067, 3]]:
         trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
     elif dst_format.lower() == "nchw" and dst_shape in [[2560, 512, 4, 26], [2560, 512, 1, 26], [2560, 256, 8, 25],
                                                         [16, 240, 7, 7], [16, 120, 14, 14]]:

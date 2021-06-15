@@ -20,6 +20,7 @@ import math
 import functools
 from te import tik
 from te import platform as tbe_platform
+from te.utils.error_manager import error_manager_vector
 
 
 # UB size by byte
@@ -177,6 +178,14 @@ def get_tp_zng_2_nchw(args):
     # get hw tiling parameters
     hw_size = _get_shape_size([h, w])  # h, w confused as one dimension
     hw_step_in = _get_shape_size([no, ni, c0])
+    tmp_hw_gate = (ub_size - NI_16 * c0) // 2 // (2 * c0 * c0)  # half UB, move in 2 * c0 * c0 one time
+    hw_gate = tmp_hw_gate // block_elem_cnt * block_elem_cnt if hw_size > tmp_hw_gate else hw_size
+    # for hw cannot move in one time, only support hw block align case now
+    if hw_size > hw_gate and hw_size % block_elem_cnt > 0:
+        error_manager_vector.raise_err_check_params_rules("zng_2_nchw", 'hw_size is not block align',
+                                                          "hw_size", hw_size)
+    hw_lp_cnt = _ceil_div(hw_size, hw_gate)
+    hw_left = hw_size % hw_gate
 
     # get multiple core parameters
     g_size = _ceil_div(groups, e_size)
@@ -198,7 +207,7 @@ def get_tp_zng_2_nchw(args):
     # get output tiling parameters
     tiling_params = [used_core, core_step_in, core_step_out, vnc_line_size] + \
                     [nlc_g_cnt, lc_g_cnt, g_step_in, g_step_out] + \
-                    [e_size, e_factor_1, e_factor_2] + [c, c0, n, hw_size, hw_step_in] + \
+                    [e_size, e_factor_1, e_factor_2] + [c, c0, n, hw_size, hw_step_in, hw_lp_cnt, hw_gate, hw_left] + \
                     [n_loop_cnt, n_step_in, n_step_out, n_cube_size, n_left_size]
 
     return tiling_params
@@ -319,6 +328,20 @@ def _move_data_out_nchw(args):
                                0, 1, in_cube * burst_len, 0, 0)
 
 
+def _move_data_out_nchw_hw_block_align(args):
+    """
+    move data out to gm for fz to nchw when hw block align
+    """
+
+    (tik_inst, dst_gm, level2_out_offset, src_ub, ub_out,
+     hw_size, per_lp_hw, sub_c_size, in_cube, c_size, ele_per_block) = args
+
+    with tik_inst.for_range(0, in_cube) as n_idx_1:
+        tik_inst.data_move(dst_gm[level2_out_offset + n_idx_1 * c_size * hw_size],
+                           src_ub[ub_out + n_idx_1 * sub_c_size * per_lp_hw],
+                           0, sub_c_size, per_lp_hw // ele_per_block, 0, (hw_size - per_lp_hw) // ele_per_block)
+
+
 def zng_nchw_transform(tensor_args, tiling_args):
     """
     do fractal_z_g to nchw transform
@@ -338,12 +361,13 @@ def zng_nchw_transform(tensor_args, tiling_args):
     tik_inst, src_gm, dst_gm, src_ub, c_lp_cnt, c0_cnt, e_in_offset, \
     in_cube, sub_c_size, block_idx, dtype, head_gap, c_mod_c0, ele_per_block = tensor_args
     used_core, core_step_in, core_step_out, vnc_line_size, nlc_g_cnt, lc_g_cnt, g_step_in, g_step_out, \
-    e_size, e_factor_1, e_factor_2, c_size, c0_size, n_size, hw_size, hw_step_in, \
+    e_size, e_factor_1, e_factor_2, c_size, c0_size, n_size, hw_size, hw_step_in, hw_lp_cnt, hw_gate, hw_left, \
     n_loop_cnt, n_step_in, n_step_out, n_cube_size, n_left_size = tiling_args
     ub_in = NI_16 * c0_size  # start to save move in data here
     ub_out = vnc_line_size * VNC_LINES + ub_in
     dtype_factor = C0_16 // ele_per_block
     in_dst_stride = vnc_line_size // ele_per_block - 1 * dtype_factor
+    per_lp_hw = tik_inst.Scalar(name="per_lp_hw")
 
     def _inner_transformer(g_cnt):
         """
@@ -366,56 +390,69 @@ def zng_nchw_transform(tensor_args, tiling_args):
                 level4_in_offset = level5_in_offset + e_in_offset
                 level4_out_offset = level5_out_offset + e_idx * n_size * c_size * hw_size
 
-                with tik_inst.for_range(0, n_loop_cnt) as n_lp_idx:
-                    head_gap.set_as(e_idx * c_size % c0_size)  # used for ubuf_to_ubuf after first vnchwconv
-                    c_mod_c0.set_as((head_gap + c_size) % c0_size)
-                    level3_in_offset = level4_in_offset + n_lp_idx * n_step_in
-                    level3_out_offset = level4_out_offset + n_lp_idx * n_step_out
-                    with tik_inst.if_scope(tik.any(n_lp_idx < n_loop_cnt - 1, n_left_size == 0)):
-                        in_cube.set_as(n_cube_size)
+                with tik_inst.for_range(0, hw_lp_cnt) as hw_lp_idx:
+                    level4_in_offset = level4_in_offset + hw_lp_idx * hw_step_in * hw_gate
+                    level4_out_offset = level4_out_offset + hw_lp_idx * hw_gate
+                    with tik_inst.if_scope(tik.any(hw_lp_idx != hw_lp_cnt - 1, hw_left == 0)):
+                        per_lp_hw.set_as(hw_gate)
                     with tik_inst.else_scope():
-                        in_cube.set_as(n_left_size)
+                        per_lp_hw.set_as(hw_left)
 
-                    level2_in_offset = tik_inst.Scalar(name="level2_in_offset")
-                    level2_out_offset = tik_inst.Scalar(name="level2_out_offset")
-                    level2_out_offset.set_as(level3_out_offset)
-                    with tik_inst.for_range(0, c_lp_cnt) as c_lp_idx:
-                        level2_in_offset.set_as(level3_in_offset + c_lp_idx * c0_cnt * e_factor_1)
-                        with tik_inst.if_scope(c1_cnt <= 2):
-                            sub_c_size.set_as(c_size)
+                    with tik_inst.for_range(0, n_loop_cnt) as n_lp_idx:
+                        head_gap.set_as(e_idx * c_size % c0_size)  # used for ubuf_to_ubuf after first vnchwconv
+                        c_mod_c0.set_as((head_gap + c_size) % c0_size)
+                        level3_in_offset = level4_in_offset + n_lp_idx * n_step_in
+                        level3_out_offset = level4_out_offset + n_lp_idx * n_step_out
+                        with tik_inst.if_scope(tik.any(n_lp_idx < n_loop_cnt - 1, n_left_size == 0)):
+                            in_cube.set_as(n_cube_size)
                         with tik_inst.else_scope():
-                            with tik_inst.if_scope(c_lp_idx == 0):
-                                sub_c_size.set_as(2 * c0_size - head_gap)
+                            in_cube.set_as(n_left_size)
+
+                        level2_in_offset = tik_inst.Scalar(name="level2_in_offset")
+                        level2_out_offset = tik_inst.Scalar(name="level2_out_offset")
+                        level2_out_offset.set_as(level3_out_offset)
+                        with tik_inst.for_range(0, c_lp_cnt) as c_lp_idx:
+                            level2_in_offset.set_as(level3_in_offset + c_lp_idx * c0_cnt * e_factor_1)
+                            with tik_inst.if_scope(c1_cnt <= 2):
+                                sub_c_size.set_as(c_size)
                             with tik_inst.else_scope():
-                                head_gap.set_as(0)
-                                with tik_inst.if_scope(tik.any(c_lp_idx != c_lp_cnt - 1, c1_cnt % 2 == 0)):
-                                    with tik_inst.if_scope(tik.all(c_lp_idx == c_lp_cnt - 1, c_mod_c0 > 0)):
-                                        sub_c_size.set_as(c0_size + c_mod_c0)
-                                    with tik_inst.else_scope():
-                                        sub_c_size.set_as(2 * c0_size)
-
+                                with tik_inst.if_scope(c_lp_idx == 0):
+                                    sub_c_size.set_as(2 * c0_size - head_gap)
                                 with tik_inst.else_scope():
-                                    with tik_inst.if_scope(c_mod_c0 == 0):
-                                        sub_c_size.set_as(c0_size)
-                                    with tik_inst.else_scope():  # roll back c0
-                                        level2_in_offset.set_as(level2_in_offset - e_factor_1)
-                                        level2_out_offset.set_as(level2_out_offset - c0_size * hw_size)
-                                        sub_c_size.set_as(c0_size + c_mod_c0)
+                                    head_gap.set_as(0)
+                                    with tik_inst.if_scope(tik.any(c_lp_idx != c_lp_cnt - 1, c1_cnt % 2 == 0)):
+                                        with tik_inst.if_scope(tik.all(c_lp_idx == c_lp_cnt - 1, c_mod_c0 > 0)):
+                                            sub_c_size.set_as(c0_size + c_mod_c0)
+                                        with tik_inst.else_scope():
+                                            sub_c_size.set_as(2 * c0_size)
 
-                        # move data in
-                        mv_in_args = (tik_inst, src_gm, src_ub, ub_in, hw_size, level2_in_offset,
-                                      hw_step_in, c0_cnt, c0_size, e_factor_1, in_cube, in_dst_stride, dtype_factor)
-                        _move_data_in_nchw(mv_in_args)
-                        # do nhwc to nchw
-                        vnc_args = (tik_inst, src_ub, ub_in, ub_out, vnc_line_size,
-                                    hw_size, c0_cnt, c0_size, sub_c_size, head_gap, dtype_factor)
-                        _twice_vnchwconv_2_nchw(vnc_args)
-                        # move data out
-                        mv_out_args = (tik_inst, dst_gm, level2_out_offset, src_ub, ub_out,
-                                       hw_size, sub_c_size, in_cube, c_lp_idx, c_lp_cnt, c_size, dtype, ele_per_block)
-                        _move_data_out_nchw(mv_out_args)
-                        # update output offset
-                        level2_out_offset.set_as(level2_out_offset + sub_c_size * hw_size)
+                                    with tik_inst.else_scope():
+                                        with tik_inst.if_scope(c_mod_c0 == 0):
+                                            sub_c_size.set_as(c0_size)
+                                        with tik_inst.else_scope():  # roll back c0
+                                            level2_in_offset.set_as(level2_in_offset - e_factor_1)
+                                            level2_out_offset.set_as(level2_out_offset - c0_size * hw_size)
+                                            sub_c_size.set_as(c0_size + c_mod_c0)
+
+                            # move data in
+                            mv_in_args = (tik_inst, src_gm, src_ub, ub_in, per_lp_hw, level2_in_offset,
+                                          hw_step_in, c0_cnt, c0_size, e_factor_1, in_cube, in_dst_stride, dtype_factor)
+                            _move_data_in_nchw(mv_in_args)
+                            # do nhwc to nchw
+                            vnc_args = (tik_inst, src_ub, ub_in, ub_out, vnc_line_size,
+                                        per_lp_hw, c0_cnt, c0_size, sub_c_size, head_gap, dtype_factor)
+                            _twice_vnchwconv_2_nchw(vnc_args)
+                            # move data out
+                            with tik_inst.if_scope(hw_size == hw_gate):
+                                mv_out_args = (tik_inst, dst_gm, level2_out_offset, src_ub, ub_out, hw_size,
+                                               sub_c_size, in_cube, c_lp_idx, c_lp_cnt, c_size, dtype, ele_per_block)
+                                _move_data_out_nchw(mv_out_args)
+                            with tik_inst.else_scope():
+                                mv_out_args = (tik_inst, dst_gm, level2_out_offset, src_ub, ub_out,
+                                               hw_size, per_lp_hw, sub_c_size, in_cube, c_size, ele_per_block)
+                                _move_data_out_nchw_hw_block_align(mv_out_args)
+                            # update output offset
+                            level2_out_offset.set_as(level2_out_offset + sub_c_size * hw_size)
 
     with tik_inst.if_scope(block_idx < used_core):
         with tik_inst.if_scope(block_idx < used_core - 1):
