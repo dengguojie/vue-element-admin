@@ -9,20 +9,23 @@ if("x${PRODUCT_SIDE}" STREQUAL "xdevice")
   if (MINRC)
     set(CMAKE_CXX_COMPILER_ /usr/bin/aarch64-linux-gnu-g++)
     set(CMAKE_C_COMPILER_ /usr/bin/aarch64-linux-gnu-gcc)
+    set(PROTOBUF_STATIC_PKG_DIR ${BUILD_PATH}/protobuf_static_minrc)
   else()
     message("make device static protobuf")
     set(CMAKE_CXX_COMPILER_ ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
     set(CMAKE_C_COMPILER_ ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
+    set(PROTOBUF_STATIC_PKG_DIR ${BUILD_PATH}/protobuf_static_device)
   endif()
 else()
   message("make host static protobuf")
   set(CMAKE_CXX_COMPILER_ ${CMAKE_CXX_COMPILER})
   set(CMAKE_C_COMPILER_ ${CMAKE_C_COMPILER})
+  set(PROTOBUF_STATIC_PKG_DIR ${BUILD_PATH}/protobuf_static_host)
 endif()
 
 set(protobuf_CXXFLAGS "-Wno-maybe-uninitialized -Wno-unused-parameter -fPIC -fstack-protector-all -D_FORTIFY_SOURCE=2 -D_GLIBCXX_USE_CXX11_ABI=1 -O2 -Dgoogle=ascend_private")
 set(protobuf_LDFLAGS "-Wl,-z,relro,-z,now,-z,noexecstack")
-set(PROTOBUF_STATIC_PKG_DIR ${BUILD_PATH}/protobuf_static)
+
 ExternalProject_Add(protobuf_static_build
                     URL ${_protobuf_url}
                         https://github.com/protocolbuffers/protobuf/archive/v3.13.0.tar.gz
