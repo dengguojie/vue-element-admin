@@ -60,12 +60,11 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
     shape_input2 = shape_util.shape_to_list(grad_softmax.shape)
     has_improve_precision = False
 
-    data_vmul = tbe.vmul(softmax, grad_softmax)
     if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
-        data_vmul = tbe.cast_to(data_vmul, "float32")
         grad_softmax = tbe.cast_to(grad_softmax, "float32")
         softmax = tbe.cast_to(softmax, "float32")
         has_improve_precision = True
+    data_vmul = tbe.vmul(softmax, grad_softmax)
     data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
     data_sum_tmp = tbe.broadcast(data_sum, shape_input2)
     data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
