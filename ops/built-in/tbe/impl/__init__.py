@@ -219,6 +219,10 @@ from .gelu import gelu
 from .greater_equal import greater_equal
 from .layer_norm_grad import layer_norm_grad
 from .layer_norm import layer_norm
+from .instance_norm import instance_norm
+from .instance_norm_grad import instance_norm_grad
+from .instance_norm_x_backprop import instance_norm_x_backprop
+from .instance_norm_beta_gamma_backprop import instance_norm_beta_gamma_backprop
 from .less import less
 from .log_softmax_grad import log_softmax_grad
 from .log_softmax_v2 import log_softmax_v2

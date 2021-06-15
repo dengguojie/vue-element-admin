@@ -1118,59 +1118,68 @@ VERIFY_FUNC_REG(INInferV2D, INInferV2DVerify);
 // ----------------InstanceNorm Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(InstanceNormInferShape) {
   // x desc
-  TensorDesc tensor_desc_input = op.GetInputDesc("x");
-  Shape input_shape = tensor_desc_input.GetShape();
-  DataType input_dtype = tensor_desc_input.GetDataType();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
+  auto input_format = input_desc->GetFormat();
+
+  // x dims
   std::vector<int64_t> dims_input = input_shape.GetDims();
   int64_t dim_num = input_shape.GetDimNum();
 
-  TensorDesc tensor_desc_output1 = op.GetOutputDesc("y");
-  TensorDesc tensor_desc_output2 = op.GetOutputDesc("mean");
-  TensorDesc tensor_desc_output3 = op.GetOutputDesc("variance");
-  tensor_desc_output1.SetDataType(input_dtype);
-  tensor_desc_output2.SetDataType(input_dtype);
-  tensor_desc_output3.SetDataType(input_dtype);
+  // update y output desc
+  auto y_desc = op_info->MutableOutputDesc("y");
+  y_desc->SetShape(input_shape);
+  y_desc->SetDataType(input_dtype);
 
-  // construct the mean an variance output shape
+  // get input data_format
+  std::string data_format;
+  if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
+    std::string err_msg = GetInputInvalidErrMsg("data_format");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  // get mean and variance output shape
   std::vector<int64_t> o_shape_vec;
-  for (int i = 0; i < dim_num; i++) {
-    if (i == 2 || i == 3) {
-      o_shape_vec.push_back(1);
-    } else {
-      o_shape_vec.push_back(dims_input[i]);
+  if (data_format == "NCHW" || data_format == "NCDHW") {
+    for (int i = 0; i < dim_num; i++) {
+      if (i != 0 && i != 1) {
+        o_shape_vec.push_back(1);
+      } else {
+        o_shape_vec.push_back(dims_input[i]);
+      }
+    }
+  } else {
+    for (int i = 0; i < dim_num; i++) {
+      if (i != 0 && i != dim_num - 1) {
+        o_shape_vec.push_back(1);
+      } else {
+        o_shape_vec.push_back(dims_input[i]);
+      }
     }
   }
 
-  // update the tensor desc
-  tensor_desc_output1.SetShape(input_shape);
-  Shape oShape(o_shape_vec);
-  tensor_desc_output2.SetShape(oShape);
-  tensor_desc_output3.SetShape(oShape);
-  (void)op.UpdateOutputDesc("y", tensor_desc_output1);
-  (void)op.UpdateOutputDesc("mean", tensor_desc_output2);
-  (void)op.UpdateOutputDesc("variance", tensor_desc_output3);
+  // update mean an variance output desc
+  auto mean_desc = op_info->MutableOutputDesc("mean");
+  auto variance_desc = op_info->MutableOutputDesc("variance");
+  mean_desc->SetShape(GeShape(o_shape_vec));
+  variance_desc->SetShape(GeShape(o_shape_vec));
+  mean_desc->SetDataType(input_dtype);
+  variance_desc->SetDataType(input_dtype);
 
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(InstanceNorm, InstanceNormVerify) {
-  // get dtype
-  std::string x_dtype, gamma_dtype, beta_dtype;
-  x_dtype = op.GetInputDesc("x").GetDataType();
-  gamma_dtype = op.GetInputDesc("gamma").GetDataType();
-  beta_dtype = op.GetInputDesc("beta").GetDataType();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_shape = op_info->MutableInputDesc("x")->MutableShape();
+  int64_t dim_num = input_shape.GetDimNum();
 
-  // compare dtype
-  if (x_dtype != gamma_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "gamma's dtype: %s, is NOT same as x's dtype: %s!!",
-            gamma_dtype.c_str(), x_dtype.c_str());
-    return GRAPH_FAILED;
-  }
-  if (x_dtype != beta_dtype) {
-    OP_LOGE(op.GetName().c_str(),
-            "beta's dtype: %s,  is NOT same as x's dtype: %s!!",
-            beta_dtype.c_str(), x_dtype.c_str());
+  // check input dim_num
+  if (dim_num < 2) {
+    OP_LOGE(op.GetName().c_str(), "the length of input shape must be greater and equal to two.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1179,6 +1188,82 @@ IMPLEMT_VERIFIER(InstanceNorm, InstanceNormVerify) {
 COMMON_INFER_FUNC_REG(InstanceNorm, InstanceNormInferShape);
 VERIFY_FUNC_REG(InstanceNorm, InstanceNormVerify);
 // ----------------InstanceNorm END---------------------
+
+// ----------------InstanceNormGrad Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(InstanceNormGradInferShape) {
+  // x desc and gamma desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
+  auto gamma_desc = op_info->MutableInputDesc("gamma");
+  auto gamma_shape = gamma_desc->MutableShape();
+  auto gamma_dtype = gamma_desc->GetDataType();
+
+  // update output desc
+  auto pd_x_desc = op_info->MutableOutputDesc("pd_x");
+  auto pd_gamma_desc = op_info->MutableOutputDesc("pd_gamma");
+  auto pd_beta_desc = op_info->MutableOutputDesc("pd_beta");
+  pd_x_desc->SetShape(input_shape);
+  pd_gamma_desc->SetShape(gamma_shape);
+  pd_beta_desc->SetShape(gamma_shape);
+  pd_x_desc->SetDataType(input_dtype);
+  pd_gamma_desc->SetDataType(gamma_dtype);
+  pd_beta_desc->SetDataType(gamma_dtype);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(InstanceNormGrad, InstanceNormGradInferShape);
+// ----------------InstanceNormGrad END---------------------
+
+// ----------------InstanceNormXBackprop Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(InstanceNormXBackpropInferShape) {
+  // x desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
+
+  // update output desc
+  auto pd_x_desc = op_info->MutableOutputDesc("pd_x");
+  auto res_for_gamma_desc = op_info->MutableOutputDesc("res_for_gamma");
+  pd_x_desc->SetShape(input_shape);
+  res_for_gamma_desc->SetShape(input_shape);
+  pd_x_desc->SetDataType(input_dtype);
+  res_for_gamma_desc->SetDataType(DT_FLOAT);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(InstanceNormXBackprop, InstanceNormXBackpropInferShape);
+// ----------------InstanceNormXBackprop END---------------------
+
+// ----------------InstanceNormBetaGammaBackprop Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(InstanceNormBetaGammaBackpropInferShape) {
+  // x desc and gamma desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("dy");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
+  std::vector<int64_t> dims_input = input_shape.GetDims();
+  int64_t dim_num = input_shape.GetDimNum();
+
+  // update output desc
+  std::vector<int64_t> o_shape_vec;
+  o_shape_vec.push_back(dims_input[dim_num - 1]);
+  auto pd_gamma_desc = op_info->MutableOutputDesc("pd_gamma");
+  auto pd_beta_desc = op_info->MutableOutputDesc("pd_beta");
+  pd_gamma_desc->SetShape(GeShape(o_shape_vec));
+  pd_beta_desc->SetShape(GeShape(o_shape_vec));
+  pd_gamma_desc->SetDataType(input_dtype);
+  pd_beta_desc->SetDataType(input_dtype);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(InstanceNormBetaGammaBackprop, InstanceNormBetaGammaBackpropInferShape);
+// ----------------InstanceNormBetaGammaBackprop END---------------------
 
 // ----------------KlDivLossGrad Begin-------------------
 bool InferShapeAndTypeKlDivLossGrad(Operator& op, const string& input_name,

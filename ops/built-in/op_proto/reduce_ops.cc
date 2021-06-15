@@ -1559,30 +1559,34 @@ VERIFY_FUNC_REG(INInferV2, INInferV2Verify);
 
 // ------------------------INTrainingReduceV2--------------------------
 IMPLEMT_COMMON_INFERFUNC(INTrainingReduceV2InferShape) {
-  auto inputTensorDesc = op.GetInputDesc("x");
-  auto shape = inputTensorDesc.GetShape();
-  std::vector<int64_t> dims_input;
-  dims_input = shape.GetDims();
-  std::vector<int64_t> dimVector;
-  int64_t dimNum = shape.GetDimNum();
+  // x desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
 
-  for (int64_t item = 0; item < dimNum; ++item) {
-    if (item == 2 || item == 3) {
-      dimVector.push_back(1);
+  // x dims
+  std::vector<int64_t> dims_input = input_shape.GetDims();
+  int64_t dim_num = input_shape.GetDimNum();
+
+  // get sum and square_sum output shape
+  std::vector<int64_t> o_shape_vec;
+  for (int i = 0; i < dim_num; i++) {
+    if (i != 0 && i != dim_num - 1) {
+      o_shape_vec.push_back(1);
     } else {
-      dimVector.push_back(dims_input[item]);
+      o_shape_vec.push_back(dims_input[i]);
     }
   }
 
-  TensorDesc sum = op.GetOutputDesc("sum");
-  sum.SetShape(ge::Shape(dimVector));
-  sum.SetDataType(DT_FLOAT);
-  (void)op.UpdateOutputDesc("sum", sum);
+  // update sum and square_sum output desc
+  auto sum_desc = op_info->MutableOutputDesc("sum");
+  auto square_sum_desc = op_info->MutableOutputDesc("square_sum");
+  sum_desc->SetShape(GeShape(o_shape_vec));
+  square_sum_desc->SetShape(GeShape(o_shape_vec));
+  sum_desc->SetDataType(DT_FLOAT);
+  square_sum_desc->SetDataType(DT_FLOAT);
 
-  TensorDesc square_sum = op.GetOutputDesc("square_sum");
-  square_sum.SetShape(ge::Shape(dimVector));
-  square_sum.SetDataType(DT_FLOAT);
-  (void)op.UpdateOutputDesc("square_sum", square_sum);
   return GRAPH_SUCCESS;
 }
 
@@ -1591,26 +1595,31 @@ COMMON_INFER_FUNC_REG(INTrainingReduceV2, INTrainingReduceV2InferShape);
 
 // -------------------INTrainingUpdateV2--------------------
 IMPLEMT_COMMON_INFERFUNC(INTrainingUpdateV2InferShape) {
-  auto shape = op.GetInputDesc("x").GetShape();
-  auto output_dtype = op.GetInputDesc("x").GetDataType();
+  // x desc and sum desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
+  auto sum_desc = op_info->MutableInputDesc("sum");
+  auto sum_shape = sum_desc->MutableShape();
+  auto sum_dtype = sum_desc->GetDataType();
 
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(shape);
-  td.SetDataType(output_dtype);
-  op.UpdateOutputDesc("y", td);
+  // x dims
+  std::vector<int64_t> dims_input = input_shape.GetDims();
+  int64_t dim_num = input_shape.GetDimNum();
 
-  auto shape_scale = op.GetInputDesc("sum").GetShape();
-  auto output_dtype_scale = op.GetInputDesc("sum").GetDataType();
+  // update y output desc
+  auto y_desc = op_info->MutableOutputDesc("y");
+  y_desc->SetShape(input_shape);
+  y_desc->SetDataType(input_dtype);
 
-  TensorDesc td_mean = op.GetOutputDesc("batch_mean");
-  td_mean.SetShape(shape_scale);
-  td_mean.SetDataType(output_dtype_scale);
-  op.UpdateOutputDesc("batch_mean", td_mean);
-
-  TensorDesc td_variance = op.GetOutputDesc("batch_variance");
-  td_variance.SetShape(shape_scale);
-  td_variance.SetDataType(output_dtype_scale);
-  op.UpdateOutputDesc("batch_variance", td_variance);
+  // update mean an variance output desc
+  auto batch_mean_desc = op_info->MutableOutputDesc("batch_mean");
+  auto batch_variance_desc = op_info->MutableOutputDesc("batch_variance");
+  batch_mean_desc->SetShape(sum_shape);
+  batch_variance_desc->SetShape(sum_shape);
+  batch_mean_desc->SetDataType(DT_FLOAT);
+  batch_variance_desc->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
 }

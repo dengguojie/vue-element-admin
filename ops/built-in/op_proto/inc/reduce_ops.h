@@ -990,7 +990,7 @@ REG_OP(INInferV2)
 *@brief Performs reduced instance normalization . \n
 
 *@par Inputs:
-*x: A Tensor of type float16 or float32, with format NC1HWC0 . \n
+*x: A Tensor of type float16 or float32. \n
 
 *@par Outputs:
 *@li sum: A Tensor of type float32 for SUM reduced "x".
@@ -1013,19 +1013,19 @@ REG_OP(INTrainingReduceV2)
 *@par Inputs:
 * Seven inputs, including: (NC1HWC0supported)
 *@li x: A Tensor of type float16 or float32.
-*@li sum: A T [N, C1, 1, 1, C0] ensor of type float32 for the output of operator INTrainingReduceV2.
-*@li square_sum: A  [N, C1, 1, 1, C0] Tensor of type float32 for the output of operator INTrainingReduceV2.
-*@li gamma: A  [N, C1, 1, 1, C0] Tensor of type float32, for the scaling gamma.
-*@li beta: A  [N, C1, 1, 1, C0] Tensor of type float32, for the scaling beta.
-*@li mean: A  [N, C1, 1, 1, C0] Tensor of type float32, for the updated mean.
-*@li variance: A  [N, C1, 1, 1, C0] Tensor of type float32, for the updated variance . \n
+*@li sum: A Tensor of type float32 for the output of operator INTrainingReduceV2.
+*@li square_sum: A Tensor of type float32 for the output of operator INTrainingReduceV2.
+*@li gamma: A Tensor of type float32, for the scaling gamma.
+*@li beta: A Tensor of type float32, for the scaling beta.
+*@li mean: A Tensor of type float32, for the updated mean.
+*@li variance: A Tensor of type float32, for the updated variance . \n
 
 *@par Attributes:
 *@li momentum: A required float32, specifying the momentum to update mean and var.
 *@li epsilon: A required float32, specifying the small value added to variance to avoid dividing by zero . \n
 
 *@par Outputs:
-* Three outputs, including: (NC1HWC0 supported)
+* Three outputs
 *@li y: A Tensor of type float16 or float32, for normalized "x".
 *@li batch_mean: A Tensor of type float32, for the updated mean.
 *@li batch_variance: A Tensor of type float32, for the updated variance . \n
