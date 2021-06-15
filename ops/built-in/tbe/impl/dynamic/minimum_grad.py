@@ -53,11 +53,11 @@ def _compare_value_float(data_x, data_y):
     else return 0.
     """
     # The smallest positive subnormal number of float32 is 2**(-126)
-    min_value = tvm.const(2 ** (-126), dtype="float32")
+    min_value = tvm.const(2**(-126), dtype="float32")
     # (2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1
     # so min_value*max_value*max_value*max_value_1 = 1
-    max_value = tvm.const(2 ** (62), dtype="float32")
-    max_value_1 = tvm.const(2 ** (2), dtype="float32")
+    max_value = tvm.const(2**(62), dtype="float32")
+    max_value_1 = tvm.const(2**(2), dtype="float32")
 
     data_zero = tbe.vmuls(data_x, 0)
     min_value_tensor = tbe.vadds(data_zero, min_value)
@@ -114,31 +114,8 @@ def _calculate_result_le(data_x, data_y, data_dz, dtype, shape_dz):
     return result_dx, result_dy
 
 
-def _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy):
-    """
-    If the shapes of the two input data are not equal,
-    we need to call this function to do reduce operation.
-    """
-    if shape_x != shape_dz:
-        reduce_axis = []
-        for i, shape_x_i in enumerate(shape_x):
-            if shape_x_i == 1:
-                reduce_axis.append(i)
-        result_dx = tbe.reduce_sum(result_dx, axis=reduce_axis, keepdims=None)
-
-    if shape_y != shape_dz:
-        reduce_axis = []
-        for i, shape_y_i in enumerate(shape_y):
-            if shape_y_i == 1:
-                reduce_axis.append(i)
-        result_dy = tbe.reduce_sum(result_dy, axis=reduce_axis, keepdims=None)
-
-    return result_dx, result_dy
-
-
 @register_operator_compute("MinimumGrad", op_mode="dynamic", support_fusion=True)
-def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
-                         kernel_name="minimum_grad"):
+def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y, kernel_name="minimum_grad"):
     """
     algorithm:
     calculating minimum_grad of the two input data
@@ -171,19 +148,12 @@ def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
     shape_dz = shape_util.shape_to_list(data_dz.shape)
     shape_x = shape_util.shape_to_list(data_x.shape)
     shape_y = shape_util.shape_to_list(data_y.shape)
-    data_x = tbe.broadcast(data_x, shape_dz)
-    data_y = tbe.broadcast(data_y, shape_dz)
+    shape_x, shape_y, shape_dz, shape_max = shape_util.unify_broadcast_shapes([shape_x, shape_y, shape_dz])
+    data_x = tbe.broadcast(data_x, shape_max)
+    data_y = tbe.broadcast(data_y, shape_max)
+    data_dz = tbe.broadcast(data_dz, shape_max)
 
-    result_dx, result_dy = _calculate_result_le(data_x, data_y, data_dz,
-                                                dtype, shape_dz)
-
-    if shape_x != shape_dz or shape_y != shape_dz:
-        if dtype == "int32":
-            rule_desc = "sum not support int32"
-            error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
-                                                              "data_x", dtype)
-        result_dx, result_dy = _reduce_result(shape_x, shape_y, shape_dz,
-                                              result_dx, result_dy)
+    result_dx, result_dy = _calculate_result_le(data_x, data_y, data_dz, dtype, shape_max)
 
     if dtype == "float16":
         result_dx = tbe.cast_to(result_dx, "float16")
@@ -198,8 +168,7 @@ def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
-                 kernel_name="minimum_grad"):
+def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True, kernel_name="minimum_grad"):
     """
     algorithm: minimum_grad
     calculating the reversed outputs of the function "minimum"
@@ -247,8 +216,7 @@ def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
             data_dz = tvm.placeholder(shape_dz, dtype=dtype_dz, name="data_dz")
             data_x = tvm.placeholder(shape_x, dtype=dtype_x, name="data_x")
             data_y = tvm.placeholder(shape_y, dtype=dtype_y, name="data_y")
-            res = minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x,
-                                       grad_y, kernel_name)
+            res = minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y, kernel_name)
             tensors.append([data_dz, data_x, data_y] + res)
         with tvm.target.cce():
             if (grad_x, grad_y) == (True, False):
@@ -261,6 +229,5 @@ def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
                 sch = tbe.auto_schedule(res)
         schedules.append(sch)
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
