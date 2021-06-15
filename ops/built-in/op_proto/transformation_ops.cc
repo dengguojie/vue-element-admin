@@ -3299,140 +3299,145 @@ COMMON_INFER_FUNC_REG(AsStrided, AsStridedInferShape);
 // ----------------AsStrided Op End-------------------
 
 // -----------------TfidVectorizer Op-------------------------
-bool CheckAttrNgramCounts(int64_t inputPoolSize, std::vector<int64_t> &ngramCounts)
+
+static bool CheckAttrNgramCounts(int64_t input_pool_size, std::vector<int64_t> &ngram_counts)
 {
-  int64_t ngramSize = 1;
-  for (size_t i = 0; i < ngramCounts.size(); i++)
+  int64_t ngram_size = 1;
+  for (size_t i = 0; i < ngram_counts.size(); i++)
   {
-    int64_t startIdx = ngramCounts[i];
-    int64_t endIdx = ((i + 1) < ngramCounts.size()) ? ngramCounts[i+1] : inputPoolSize;
-    if (!(endIdx > startIdx && endIdx <= inputPoolSize)) {
-      OP_LOGE("ngram_counts out of bounds of inputPool.");
+    int64_t start_index = ngram_counts[i];
+    int64_t end_index = ((i + 1) < ngram_counts.size()) ? ngram_counts[i+1] : input_pool_size;
+    if (!(end_index > start_index && end_index <= input_pool_size)) {
+      OP_LOGE("TfidVectorizer","ngram_counts out of bounds of inputPool.");
       return false;
     }
-    auto items = endIdx - startIdx;
+    auto items = end_index - start_index;
     if (items > 0) {
-      if (items % ngramSize != 0) {
-        OP_LOGE("ngram_counts and inputPool do not match.");
+      if (items % ngram_size != 0) {
+        OP_LOGE("TfidVectorizer","ngram_counts and inputPool do not match.");
         return false;
       }
       
     }
-    ++ngramSize;  
+    ++ngram_size;  
   }
   return true; 
 }
 
 IMPLEMT_VERIFIER(TfidVectorizer, TfidVectorizerVerify) {
-  TensorDesc inputDesc = op.GetInputDesc("input");
-  auto inputType = inputDesc.GetDataType();
+  TensorDesc input_desc = op.GetInputDesc("input");
+  auto input_type = input_desc.GetDataType();
   // verify input type
-  if (inputType != DT_INT32 && inputType != DT_INT64 && inputType != DT_STRING )
+  if (input_type != DT_INT32 && input_type != DT_INT64 && input_type != DT_STRING )
   {
-    OP_LOGE("input must be string,int32 or int64!");
+    OP_LOGE(op.GetName().c_str(), "input must be string,int32 or int64!");
     return GRAPH_FAILED;
   }
   // verify input shape
-  std::vector<int64_t> inputShape = inputDesc.GetShape().GetDims();
+  std::vector<int64_t> input_shape = input_desc.GetShape().GetDims();
   constexpr int ONEDIMS = 1;
   constexpr int TWODIMS = 2;
-  if (inputShape.size() != ONEDIMS && inputShape.size() != TWODIMS) {
-    OP_LOGE("input dims must be 1 or 2, but get %d.", inputShape.size());
+  if (input_shape.size() != ONEDIMS && input_shape.size() != TWODIMS) {
+    OP_LOGE(op.GetName().c_str(), "input dims must be 1 or 2, but get %d.", input_shape.size());
     return GRAPH_FAILED;
   }
   // verify input dynamic shape
-  if (inputShape.size() == 2 && inputShape[0] == -1 && inputShape[1] == -1) {
-    OP_LOGE("input dynamic shape {-1, -1} not support.");
+  if (input_shape.size() == 2 && input_shape[0] == -1 && input_shape[1] == -1) {
+    OP_LOGE(op.GetName().c_str(), "input dynamic shape {-1, -1} not support.");
     return GRAPH_FAILED;
   }
   // verify attr
-  int64_t maxGramLength = -1; 
-  if (GRAPH_SUCCESS != op.GetAttr("max_gram_length", maxGramLength)) {
-    OP_LOGE("get attr::max_gram_length faild!");
+  int64_t max_gram_length = -1; 
+  if (GRAPH_SUCCESS != op.GetAttr("max_gram_length", max_gram_length)) {
+    OP_LOGE(op.GetName().c_str(), "get attr::max_gram_length faild!");
     return GRAPH_FAILED;
   }
-  if (maxGramLength <= 0 ) {
-    OP_LOGE("attr::max_gram_length is Invalid, must >= 1");
-    return GRAPH_FAILED;
-  }
-
-  int64_t maxSkipCount = -1;
-  if (GRAPH_SUCCESS != op.GetAttr("max_skip_count", maxSkipCount)) {
-    OP_LOGE("get attr::max_skip_count faild!");
-    return GRAPH_FAILED;
-  }
-  if (maxSkipCount < 0 ) {
-    OP_LOGE("attr::max_skip_count is Invalid, must >= 0");
+  if (max_gram_length <= 0 ) {
+    OP_LOGE(op.GetName().c_str(), "attr::max_gram_length is Invalid, must >= 1");
     return GRAPH_FAILED;
   }
 
-  int64_t minGramLength = -1;
-  if (GRAPH_SUCCESS != op.GetAttr("min_gram_length", minGramLength)) {
-    OP_LOGE("get attr::min_gram_length faild!");
+  int64_t max_skip_count = -1;
+  if (GRAPH_SUCCESS != op.GetAttr("max_skip_count", max_skip_count)) {
+    OP_LOGE(op.GetName().c_str(), "get attr::max_skip_count faild!");
     return GRAPH_FAILED;
   }
-  if (minGramLength < 0 ) {
-    OP_LOGE("attr::min_gram_length is Invalid, must >= 1");
+  if (max_skip_count < 0 ) {
+    OP_LOGE(op.GetName().c_str(), "attr::max_skip_count is Invalid, must >= 0");
     return GRAPH_FAILED;
   }
 
-  if (maxGramLength < minGramLength ) {
-    OP_LOGE("attr::max_gram_length is Invalid, must >= attr::min_gram_length");
+  int64_t min_gram_length = -1;
+  if (GRAPH_SUCCESS != op.GetAttr("min_gram_length", min_gram_length)) {
+    OP_LOGE(op.GetName().c_str(), "get attr::min_gram_length faild!");
+    return GRAPH_FAILED;
+  }
+  if (min_gram_length < 0 ) {
+    OP_LOGE(op.GetName().c_str(), "attr::min_gram_length is Invalid, must >= 1");
+    return GRAPH_FAILED;
+  }
+
+  if (max_gram_length < min_gram_length ) {
+    OP_LOGE(op.GetName().c_str(), "attr::max_gram_length is Invalid, must >= attr::min_gram_length");
     return GRAPH_FAILED;
   }
 
   std::string mode = "";
   if (GRAPH_SUCCESS != op.GetAttr("mode", mode)) {
-    OP_LOGE("get attr::mode faild!");
+    OP_LOGE(op.GetName().c_str(), "get attr::mode faild!");
     return GRAPH_FAILED;
   }
   if ((mode != "TF") && (mode != "IDF") && (mode != "TFIDF")) {
-    OP_LOGE("attr::min_gram_length is unrecognized, acceptable values are TF,IDF,TFIDF.");
+    OP_LOGE(op.GetName().c_str(), 
+            "attr::min_gram_length is unrecognized, acceptable values are TF,IDF,TFIDF.");
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> ngramCounts; 
-  if (GRAPH_SUCCESS != op.GetAttr("ngram_counts", ngramCounts)) {
-    OP_LOGE("get attr::ngram_counts faild!");
+  std::vector<int64_t> ngram_counts; 
+  if (GRAPH_SUCCESS != op.GetAttr("ngram_counts", ngram_counts)) {
+    OP_LOGE(op.GetName().c_str(), "get attr::ngram_counts faild!");
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> ngramIndexes; 
-  if (GRAPH_SUCCESS != op.GetAttr("ngram_indexes", ngramIndexes)) {
-    OP_LOGE("get attr::ngram_indexes faild!");
+  std::vector<int64_t> ngram_indexes; 
+  if (GRAPH_SUCCESS != op.GetAttr("ngram_indexes", ngram_indexes)) {
+    OP_LOGE(op.GetName().c_str(), "get attr::ngram_indexes faild!");
     return GRAPH_FAILED;
   }
-  int64_t colSize = *(std::max_element(std::begin(ngramIndexes), std::end(ngramIndexes))) + 1;
+  int64_t col_size = *(std::max_element(std::begin(ngram_indexes), std::end(ngram_indexes))) + 1;
 
-  int64_t inputPoolSize = 0;
-  std::vector<int64_t> poolInt64s;
-  std::vector<std::string> poolStrings;
-  op.GetAttr("pool_strings", poolStrings);
-  if (!poolStrings.empty()) {
-    inputPoolSize = poolStrings.size();
+  int64_t input_pool_size = 0;
+  std::vector<int64_t> pool_int64s;
+  std::vector<std::string> pool_strings;
+  op.GetAttr("pool_strings", pool_strings);
+  if (!pool_strings.empty()) {
+    input_pool_size = pool_strings.size();
   } else {
-    OP_LOGW("get attr::pool_strings is not provided or get empty, need pool_int64s");
-    op.GetAttr("pool_int64s", poolInt64s);
-    if (poolInt64s.empty()) {
-      OP_LOGE("non-nullptr attr::pool_int64s is required, if attr::pool_strings not provided.");
+    OP_LOGW(op.GetName().c_str(), 
+            "get attr::pool_strings is not provided or get empty, need pool_int64s");
+    op.GetAttr("pool_int64s", pool_int64s);
+    if (pool_int64s.empty()) {
+      OP_LOGE(op.GetName().c_str(), 
+              "non-nullptr attr::pool_int64s is required, if attr::pool_strings not provided.");
       return GRAPH_FAILED;
     }
-    inputPoolSize = poolInt64s.size();
+    input_pool_size = pool_int64s.size();
   }
 
-  if (!CheckAttrNgramCounts(inputPoolSize, ngramCounts)) {
-    OP_LOGE("attr::ngram_counts is Invalid, not match inputPoolSize.");
+  if (!CheckAttrNgramCounts(input_pool_size, ngram_counts)) {
+    OP_LOGE(op.GetName().c_str(), "attr::ngram_counts is Invalid, not match input_pool_size.");
     return GRAPH_FAILED;
   }
 
   std::vector<float> weights;
   op.GetAttr("weights", weights);
   if (weights.empty()) {
-    OP_LOGW("get attr::weights is not provided, default is empty.");
+    OP_LOGW(op.GetName().c_str(), "get attr::weights is not provided, default is empty.");
   } else {
-    if (weights.size() != colSize) {
-      OP_LOGE("attr::weights size should be %lld,equal Max(ngram_indexes)+1,but get %d.", 
-              colSize, weights.size());
+    if (weights.size() != col_size) {
+      OP_LOGE(op.GetName().c_str(), 
+              "attr::weights size should be %lld,equal Max(ngram_indexes)+1,but get %d.", 
+              col_size, weights.size());
       return GRAPH_FAILED;
     }
   }
@@ -3441,54 +3446,54 @@ IMPLEMT_VERIFIER(TfidVectorizer, TfidVectorizerVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(TfidVectorizerInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter TfidVectorizer proto inferfunction!");
-  TensorDesc inputDesc = op.GetInputDesc("input");
-  auto inputShape = inputDesc.GetShape();
-  auto inputShapeDim = inputShape.GetDims();
+  TensorDesc input_desc = op.GetInputDesc("input");
+  auto input_shape = input_desc.GetShape();
+  auto input_shape_dim = input_shape.GetDims();
   // infer dynamic shape
-  if (IsUnKnownShape(inputShapeDim)) {
-    auto inputType = inputDesc.GetDataType();
-    int64_t size = inputDesc.GetSize();
-    int64_t elementsNum = size / GetSizeByDataType(inputType);
-    std::vector<int64_t> inputShapeDimNew;
-    if (inputShapeDim.size() == 1) {
-       inputShapeDimNew = {elementsNum};
+  if (IsUnKnownShape(input_shape_dim)) {
+    auto input_type = input_desc.GetDataType();
+    int64_t size = input_desc.GetSize();
+    int64_t elements_num = size / GetSizeByDataType(input_type);
+    std::vector<int64_t> input_shape_dim_new;
+    if (input_shape_dim.size() == 1) {
+       input_shape_dim_new = {elements_num};
     } else {
-      if (inputShapeDim[0] == -1 && inputShapeDim[1] != -1) {
-        int64_t row = elementsNum / inputShapeDim[1];
-        inputShapeDimNew = {row, inputShapeDim[1]};
+      if (input_shape_dim[0] == -1 && input_shape_dim[1] != -1) {
+        int64_t row = elements_num / input_shape_dim[1];
+        input_shape_dim_new = {row, input_shape_dim[1]};
       }
-      else if (inputShapeDim[0] != -1 && inputShapeDim[1] == -1) {
-        int64_t col = elementsNum / inputShapeDim[0];
-        inputShapeDimNew = {inputShapeDim[0], col};
+      else if (input_shape_dim[0] != -1 && input_shape_dim[1] == -1) {
+        int64_t col = elements_num / input_shape_dim[0];
+        input_shape_dim_new = {input_shape_dim[0], col};
       } else {
         return GRAPH_FAILED;
       }
     }
-    Shape inputShapeUpdate(inputShapeDimNew);
-    inputDesc.SetShape(inputShapeUpdate);
-    op.UpdateInputDesc("input", inputDesc);
-    inputShapeDim = inputShapeDimNew;
+    Shape inputShapeUpdate(input_shape_dim_new);
+    input_desc.SetShape(inputShapeUpdate);
+    op.UpdateInputDesc("input", input_desc);
+    input_shape_dim = input_shape_dim_new;
   }
-  std::vector<int64_t> ngramIndexes; 
-  if (GRAPH_SUCCESS != op.GetAttr("ngram_indexes", ngramIndexes)) {
-    OP_LOGE("get attr::ngram_indexes faild!");
+  std::vector<int64_t> ngram_indexes; 
+  if (GRAPH_SUCCESS != op.GetAttr("ngram_indexes", ngram_indexes)) {
+    OP_LOGE(op.GetName().c_str(), "get attr::ngram_indexes faild!");
     return GRAPH_FAILED;
   }
-  int64_t colSize = *(std::max_element(std::begin(ngramIndexes), std::end(ngramIndexes))) + 1;
+  int64_t col_size = *(std::max_element(std::begin(ngram_indexes), std::end(ngram_indexes))) + 1;
   
-  std::vector<int64_t> outputShapeDim;
-  if (inputShapeDim.size() == 1)
+  std::vector<int64_t> output_shape_dim;
+  if (input_shape_dim.size() == 1)
   {
-    outputShapeDim.emplace_back(colSize);
+    output_shape_dim.emplace_back(col_size);
   } else {
-    outputShapeDim = {inputShapeDim[0], colSize};
+    output_shape_dim = {input_shape_dim[0], col_size};
   }
   
-  Shape outputShape(outputShapeDim);
-  TensorDesc outputDesc = op.GetOutputDesc("output");
-  outputDesc.SetShape(outputShape);
-  outputDesc.SetDataType(DT_FLOAT);
-  op.UpdateOutputDesc("output", outputDesc);
+  Shape outputShape(output_shape_dim);
+  TensorDesc output_desc = op.GetOutputDesc("output");
+  output_desc.SetShape(outputShape);
+  output_desc.SetDataType(DT_FLOAT);
+  op.UpdateOutputDesc("output", output_desc);
   return GRAPH_SUCCESS;
 }
 
