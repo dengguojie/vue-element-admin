@@ -339,19 +339,6 @@ class ReduceSchedule(VectorSchedule):
         # Add reorder target for reduce_ub_buffer
         self._tensor_to_reorder_map[reduce_ub_stage_tensor] = reorder_target
 
-        # Add reorder target for all tensors before reduce_ub_buffer
-        all_producers = self.get_all_producer_stages(reduce_ub_stage_tensor)
-        if is_nlast_reduce:
-            reorder_target_original = [*non_reduce_axis_indexes_original[:-1],
-                                       *reduce_axis_indexes_original,
-                                       non_reduce_axis_indexes_original[-1]]
-        else:
-            reorder_target_original = [*non_reduce_axis_indexes_original,
-                                       *reduce_axis_indexes_original]
-        for producer in all_producers:
-            if producer not in self.graph_info.input_tensor_set:
-                self._tensor_to_reorder_map[producer] = reorder_target_original
-
     def _calc_double_buffer(self):
         pass
 

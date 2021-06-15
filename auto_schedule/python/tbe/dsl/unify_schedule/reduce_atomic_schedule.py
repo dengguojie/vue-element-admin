@@ -45,6 +45,7 @@ class _VectorSchedule(object):
 
         self.cache_read_tensors_and_buffer_map = {}
         self.cache_write_tensors_and_buffer_map = {}
+        self.double_buffer_tensors = []
 
         self.need_multi_core = True
         self.multi_core_bind_tensor = None
@@ -122,6 +123,11 @@ class _VectorSchedule(object):
             else:
                 self.schedule[stage].emit_insn(scope_iter_var, instruction)
 
+    def _do_double_buffer(self):
+        for _tensor in self.double_buffer_tensors:
+            self.schedule[_tensor].double_buffer()
+        operation.add_build_arg("double_buffer_non_reuse", True)
+
     def update_stage(self, source_tensor, dst_tensor, before):
         if before:
             self.forward_stage_graph_map.setdefault(source_tensor, set())
@@ -182,7 +188,6 @@ class ReduceAtomicSchedule(_VectorSchedule):
         self._calculate_tiling()
         self._do_tiling()
         self._do_reorder()
-        self._do_pragma()
 
         self._do_storage_bound()
         self._do_set_constraint()
@@ -198,6 +203,10 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         self._calculate_emit_insn()
         self._do_emit_insn()
+        self._do_pragma()
+
+        self._calculate_db()
+        self._do_double_buffer()
 
         self._replace_outs(outs)
 
@@ -325,15 +334,12 @@ class ReduceAtomicSchedule(_VectorSchedule):
             self._reorder_atomic_reduce_all(final_out_tensor_ub_rf,
                                             final_out_tensor_global)
         if self._reduce_case == 2:
-            self._reorder_reduce_not_last_axis_before_reduce()
             # for shape(r4,a4,r3,a3,r2,a2,r1,a1),
             # reorder ir (a1,a2,..ak,rbo,r1,.,rb-1,rb+1,..rn,rbi) to
             # (rbo,a1,a2,..ak,r1,.rb-1,rbi,rb+1,,.rn)
             self._reorder_atomic_reduce_not_last_axis(final_out_tensor_ub_rf,
                                                       final_out_tensor_global)
         if self._reduce_case == 3:
-
-            self._reorder_reduce_last_axis_before_reduce()
             # for shape (a4,r4,a3,r3,a2,r2,a1,r1),
             # reorder ir (a1,a2,..ak,rbo,r1,.,rb-1,rb+1,..rn,rbi) to
             # (rbo,a1,a2,..ak-1,r1,.rb-1,rbi,rb+1,,.,ak,rn)
@@ -516,7 +522,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
             insn = INSN_MAPPING.get(get_dsl_insn(tensor), get_dsl_insn(tensor))
             if insn == "":
                 insn = "dma_copy"
-                emit_insn_axis_index = ub_split_axis
+                emit_insn_axis_index = 0
             else:
                 emit_insn_axis_index = 0
 
@@ -570,6 +576,22 @@ class ReduceAtomicSchedule(_VectorSchedule):
         self.emit_insn_map[res_tensor] = {
             "scope": self.schedule[res_tensor].op.axis[0],
             "instruction": 'phony_insn'}
+
+    def _calculate_db(self):
+        if not self.tiling_case.db:
+            return
+        for _tensor in self.cache_read_tensors_and_buffer_map:
+            _target = self.cache_read_tensors_and_buffer_map[_tensor]
+            self.double_buffer_tensors.append(_target)
+
+        for tensor in self.graph_info.mid_tensor_set:
+            if tensor not in self.graph_info.real_output_tensor_set:
+                self.double_buffer_tensors.append(tensor)
+
+        if hasattr(self.reduce_rfs, "index"):
+            self.double_buffer_tensors.extend(self.reduce_rfs)
+        else:
+            self.double_buffer_tensors.append(self.reduce_rfs)
 
     def _replace_outs(self, outs):
         ori_outs = copy.copy(outs)
@@ -642,9 +664,15 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 for axis_idx in range(self.ub_tiling_result_pair[1],
                                       len(self.reduce_info.shape_before_reduce)):
                     # Simple last two axis
-                    if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
-                                    len(self.reduce_info.shape_before_reduce) - 2):
-                        stage.pragma(stage.op.axis[axis_idx], "axis_group", 0)
+                    if self.tiling_case.tiling_key == 1204100:
+                        if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
+                                        len(self.reduce_info.shape_before_reduce) - 2,
+                                        len(self.reduce_info.shape_before_reduce) - 3,):
+                            stage.pragma(stage.op.axis[axis_idx], "axis_group", 0)
+                    else:
+                        if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
+                                        len(self.reduce_info.shape_before_reduce) - 2):
+                            stage.pragma(stage.op.axis[axis_idx], "axis_group", 0)
 
     def _need_storage_align(self):
         """
@@ -677,65 +705,6 @@ class ReduceAtomicSchedule(_VectorSchedule):
             return False
 
         return True
-
-    def _reorder_reduce_not_last_axis_before_reduce(self):
-
-        reduce_axis_index = self.reduce_info.reduce_axis_indexes
-        shape_before_reduce = self.reduce_info.shape_before_reduce
-
-        a1_start_index, a1_end_index = self._find_last_none_reduce_axis(
-            shape_before_reduce,
-            reduce_axis_index)
-
-        if a1_end_index is None:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "a1_end_index can not be none!"
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        # reorder tensor before reduce,
-        # for shape (r4,a4,r3,a3,r2,a2,r1,a1),
-        # the orignal ir is (r4,a4,r3,a3,r2,a2,r1,a1),
-        # reorder orignal ir to (a4,a3,a2,r4,r3,r2,r1,a1)
-        def __get_reorder_list(_tensor):
-            reorder_list = []
-            for i in range(0, a1_start_index):
-                if i not in reduce_axis_index:
-                    reorder_list.append(_tensor.op.axis[i])
-
-            for i in reduce_axis_index:
-                reorder_list.append(_tensor.op.axis[i])
-
-            return reorder_list
-
-        # Get all reorder targets for reduce_rfs
-        all_producers = self.get_all_producers_stages(self.reduce_rfs)
-        for tensor in all_producers:
-            if tensor not in self.graph_info.input_tensor_set:
-                reordered_axis_list = __get_reorder_list(tensor)
-                self.schedule[tensor].reorder(*reordered_axis_list)
-
-    def _reorder_reduce_last_axis_before_reduce(self):
-
-        reduce_axis_index = self.reduce_info.reduce_axis_indexes
-        shape_before_reduce = self.reduce_info.shape_before_reduce
-
-        # reorder tensor before reduce,
-        # for shape (a4,r4,a3,r3,a2,r2,a1,r1),
-        # the orignal ir is(a4,r4,a3,r3,a2,r2,a1,r1),
-        # reorder orignal ir to (a4,a3,a2,a1,r4,r3,r2,r1)
-        all_producers = self.get_all_producers_stages(self.reduce_rfs)
-        for tensor in all_producers:
-            if tensor not in self.graph_info.input_tensor_set:
-                reordered_axis_list = []
-                for i in range(0, len(shape_before_reduce)):
-                    if i not in reduce_axis_index:
-                        reordered_axis_list.append(tensor.op.axis[i])
-
-                for i in range(0, len(shape_before_reduce)):
-                    if i in reduce_axis_index:
-                        reordered_axis_list.append(tensor.op.axis[i])
-                self.schedule[tensor].reorder(*reordered_axis_list)
 
     def _reorder_atomic_reduce_all(self, out_tensor_ub_rf, out_tensor_global):
 

@@ -104,15 +104,18 @@ class CalcReduceTilingCase(Computation):
             possible_case_list += _calculate_tiling_cases(single_reduce_info)
             possible_case_list += _calculate_atomic_tiling_cases(single_reduce_info)
             for _case in possible_case_list:
+                _enable_db(single_reduce_info, _case)
                 ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
             apply_dyn_compile_info(single_reduce_info, possible_case_list, model=CONST)
             # Get Real TilingCase
             cst_case = ReduceTilingCase()
             _gen_const_tiling_case(single_reduce_info, compute_graph_info, cst_case)
+            _enable_db(single_reduce_info, cst_case)
             tiling_case_list.append(cst_case)
         elif current_compute.get("_mode") == ZERO:
             # SingleCase
             tiling_case_list += [_gen_zero_tiling_case(), ]
+            _enable_db(single_reduce_info, tiling_case_list[0])
             ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, tiling_case_list[0])
             add_compile_info_inner("_zero_ub_factor", tiling_case_list[0].tensor_ub_size_after_reduce)
         else:
@@ -130,6 +133,7 @@ class CalcReduceTilingCase(Computation):
             for _case in tiling_case_list:
                 if _case.type == ReduceTilingCase.Type.EMPTY:
                     continue
+                _enable_db(single_reduce_info, _case)
                 ComputeGraphInfo.get_maximum_subgraph(compute_graph_info, single_reduce_info, _case)
             apply_dyn_compile_info(single_reduce_info, tiling_case_list)
 
@@ -242,6 +246,7 @@ class ReduceTilingCase(TilingCaseBase):
         self.ub_split_axis_index = None
         self.ub_factor = None
         self.multi_core: Optional[bool] = None
+        self.db = False
         self.tiling_key = 2**31 - 1
         self.tensor_ub_size_before_reduce: Optional[int] = None
         self.tensor_ub_size_after_reduce: Optional[int] = None
@@ -820,3 +825,9 @@ def _raise_error(message):
     dict_args["errCode"] = "E90003"
     dict_args["detailed_cause"] = message
     raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def _enable_db(reduce_info, tiling_case):
+    if tiling_case.type == ReduceTilingCase.Type.ATOMIC_REDUCE:
+        if len(reduce_info.shape_before_reduce) == 3:
+            tiling_case.db = True

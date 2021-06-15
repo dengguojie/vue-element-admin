@@ -426,8 +426,8 @@ class ComputeGraphInfo:
         reduce_tensors = list(graph_info.reduce_tensor_set)
         _node_list = graph_info.coexisting_quantities
         coefficients = graph_info.coef
-        soc_ub_size = graph_info.soc_ub_size
         reduce_type = reduce_tensors[0].dtype
+        soc_ub_size = graph_info.soc_ub_size if not tiling_case.db else graph_info.soc_ub_size // 2
 
         def _calc_value(_graph):
             value = 0
@@ -448,12 +448,6 @@ class ComputeGraphInfo:
                     value += coefficients * DTYPE_BYTE_MAPPING[reduce_type]
             return value
 
-        max_value = _calc_value(_node_list[0])
-        for item in _node_list:
-            item_value = _calc_value(item)
-            if max_value < item_value:
-                max_value = item_value
-
         def _r_parent(_child, _parent):
             if not graph_info.tensor_producers_map.get(_child):
                 # reduce_i isn't connect to input directly
@@ -462,6 +456,12 @@ class ComputeGraphInfo:
                 return
             for _tensor in graph_info.tensor_producers_map.get(_child):
                 _r_parent(_tensor, _parent)
+
+        max_value = _calc_value(_node_list[0])
+        for item in _node_list:
+            item_value = _calc_value(item)
+            if max_value < item_value:
+                max_value = item_value
 
         reduce_parents = []
         for reduce_i in reduce_tensors:
