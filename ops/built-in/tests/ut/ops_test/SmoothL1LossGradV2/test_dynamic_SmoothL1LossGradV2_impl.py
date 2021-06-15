@@ -187,9 +187,79 @@ case5 = {
                 "ori_shape": (2, 4),
                 "ori_format": "ND",
                 "range": [(1, 100), (1, 100)]
-            }, 1.0, "means"],
+            }, 1.0, "sum"],
         "case_name": "SmoothL1LossGradV2_5",
-        "expect": RuntimeError,
+        "expect": "success",
+        "support_expect": True}
+
+case6 = {
+        "params": 
+            [{
+                "shape": (-1, -1),
+                "dtype": "float16",
+                "format": "ND",
+                "ori_shape": (2, 4),
+                "ori_format": "ND",
+                "range": [(1, 100), (1, 100)]
+            }, {
+                "shape": (-1, -1),
+                "dtype": "float16",
+                "format": "ND",
+                "ori_shape": (2, 4),
+                "ori_format": "ND",
+                "range": [(1, 100), (1, 100)]
+            }, {
+                "shape": (-1, -1),
+                "dtype": "float16",
+                "format": "ND",
+                "ori_shape": (2, 4),
+                "ori_format": "ND",
+                "range": [(1, 100), (1, 100)]
+            }, {
+                "shape": (-1, -1),
+                "dtype": "float16",
+                "format": "ND",
+                "ori_shape": (2, 4),
+                "ori_format": "ND",
+                "range": [(1, 100), (1, 100)]
+            }, 1.0, "none"],
+        "case_name": "SmoothL1LossGradV2_6",
+        "expect": "success",
+        "support_expect": True}
+
+case7 = {
+        "params": 
+            [{
+                "shape": (-1, -1),
+                "dtype": "float16",
+                "format": "ND",
+                "ori_shape": (2, 4),
+                "ori_format": "ND",
+                "range": [(1, 100), (1, 100)]
+            }, {
+                "shape": (-1, -1),
+                "dtype": "float16",
+                "format": "ND",
+                "ori_shape": (2, 4),
+                "ori_format": "ND",
+                "range": [(1, 100), (1, 100)]
+            }, {
+                "shape": (-1, -1),
+                "dtype": "float16",
+                "format": "ND",
+                "ori_shape": (2, 4),
+                "ori_format": "ND",
+                "range": [(1, 100), (1, 100)]
+            }, {
+                "shape": (-1, -1),
+                "dtype": "float16",
+                "format": "ND",
+                "ori_shape": (2, 4),
+                "ori_format": "ND",
+                "range": [(1, 100), (1, 100)]
+            }, 1.0],
+        "case_name": "SmoothL1LossGradV2_7",
+        "expect": "success",
         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
@@ -197,7 +267,8 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])

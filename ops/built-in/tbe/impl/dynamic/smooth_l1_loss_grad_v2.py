@@ -24,6 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
@@ -61,17 +62,28 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
     """
 
     ori_dtype = input_predict.dtype
-    all_shape = input_predict.shape
-    all_dtype = "float32"
-
-    # vcmpsel of Ascend310 only support float16
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cce_product == "Ascend310":
+    product = tbe_platform.api_check_support("tbe.dsl.vcmpsel", "float32")
+    if product:
+        all_dtype = "float32"
+    else:
         all_dtype = "float16"
 
     if ori_dtype != all_dtype:
         input_predict = tbe.cast_to(input_predict, all_dtype)
         input_label = tbe.cast_to(input_label, all_dtype)
+        input_dout = tbe.cast_to(input_dout, all_dtype)
+
+    # broadcast inputs
+    predict_shape = shape_util.shape_to_list(input_predict.shape)
+    label_shape = shape_util.shape_to_list(input_label.shape)
+    dout_shape = shape_util.shape_to_list(input_dout.shape)
+
+    predict_shape, label_shape, dout_shape, max_shape = shape_util.unify_broadcast_shapes(
+        [predict_shape, label_shape, dout_shape])
+
+    input_predict = tbe.broadcast(input_predict, max_shape)
+    input_label = tbe.broadcast(input_label, max_shape)
+    input_dout = tbe.broadcast(input_dout, max_shape)
 
     # calculate input_predict-input_label
     x = tbe.vsub(input_predict, input_label)
@@ -82,8 +94,8 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
     # create sigma_tensor and negative_sigma_tensor
     sigma_const = tvm.const(sigma, dtype=all_dtype)
     negative_sigma_const = tvm.const(-sigma, dtype=all_dtype)
-    sigma_tensor = tbe.broadcast(sigma_const, all_shape)
-    negative_sigma_tensor = tbe.broadcast(negative_sigma_const, all_shape)
+    sigma_tensor = tbe.broadcast(sigma_const, max_shape)
+    negative_sigma_tensor = tbe.broadcast(negative_sigma_const, max_shape)
 
     # calculate smooth
     temp = tbe.vdiv(x, sigma_tensor)
@@ -94,17 +106,25 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
     smooth1_2 = tbe.vadd(smooth1, smooth2)
     smooth = tbe.vadd(smooth1_2, smooth3)
 
-    # calculate the res value and return
-    if ori_dtype != all_dtype:
-        if all_dtype == "float16":
-            smooth = tbe.cast_to(smooth, ori_dtype)
-            res = tbe.vmul(smooth, input_dout)
+    # if choose "mean", res should divide over n
+    res = tbe.vmul(smooth, input_dout)
+    if reduction == "mean":
+        reduce_elts = 1.0
+        for i in predict_shape:
+            reduce_elts *= i
+        if isinstance(reduce_elts, float):
+            cof = reduce_elts ** (-1)
+            cof = tvm.const(cof, dtype=all_dtype)
         else:
-            input_dout = tbe.cast_to(input_dout, all_dtype)
-            res = tbe.vmul(smooth, input_dout)
-            res = tbe.cast_to(res, ori_dtype)
-    else:
-        res = tbe.vmul(smooth, input_dout)
+            cof = tbe.var("cof", dtype=all_dtype)
+            if all_dtype == "float16":
+                tbe.var("cof_empty", dtype=all_dtype)
+            tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", all_dtype)
+        res = tbe.vmuls(res, cof)
+
+    # calculate finish and return
+    if ori_dtype != res.dtype:
+        res = tbe.cast_to(res, ori_dtype)
 
     return res
 
@@ -149,7 +169,6 @@ def smooth_l1_loss_grad_v2(predict,
     -------
     None
     """
-
     # check input: predict label dout
     check_list = ("float16", "float32")
 
@@ -165,11 +184,10 @@ def smooth_l1_loss_grad_v2(predict,
     # check reduction
     check_list_reduction = ("none", "mean", "sum")
     reduction_type = reduction.lower()
-
     para_check.check_dtype(reduction_type, check_list_reduction, param_name="reduction")
 
     # do compute
-    ins = classify([predict, label, dout], OpPatternMode.ELEWISE)
+    ins = classify([predict, label, dout], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_predict, _label, _dout) in ins:
         with tbe.compute():
@@ -178,8 +196,13 @@ def smooth_l1_loss_grad_v2(predict,
             tensor_label = tvm.placeholder(shape_label, name="tensor_label", dtype=dtype_label)
             tensor_dout = tvm.placeholder(shape_dout, name="tensor_dout", dtype=dtype_dout)
 
-            res = smooth_l1_loss_grad_v2_compute(tensor_predict, tensor_label, tensor_dout, gradient, 
-                                                 sigma, reduction_type, kernel_name)
+            res = smooth_l1_loss_grad_v2_compute(tensor_predict,
+                                                 tensor_label, 
+                                                 tensor_dout,
+                                                 gradient, 
+                                                 sigma,
+                                                 reduction_type,
+                                                 kernel_name)
             tensors.append([tensor_predict, tensor_label, tensor_dout, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

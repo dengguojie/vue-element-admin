@@ -15,14 +15,16 @@
 """
 smooth_l1_loss_grad_v2
 """
-import te.lang.cce as tbe
-from te import tvm
-from te.utils import para_check
-import te.platform as tbe_platform
+import functools
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 
 
 # pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
-@tbe_platform.fusion_manager.fusion_manager.register("smooth_l1_loss_grad_v2")
+@tbe_platform.fusion_manager.register("smooth_l1_loss_grad_v2")
 def smooth_l1_loss_grad_v2_compute(input_predict,
                                    input_label,
                                    input_dout,
@@ -52,17 +54,30 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
     """
 
     ori_dtype = input_predict.dtype
-    all_shape = input_predict.shape
-    all_dtype = "float32"
 
     # vcmpsel of Ascend310 only support float16
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product == "Ascend310":
+    product = tbe_platform.api_check_support("tbe.dsl.vcmpsel", "float32")
+    if product:
+        all_dtype = "float32"
+    else:
         all_dtype = "float16"
 
     if ori_dtype != all_dtype:
         input_predict = tbe.cast_to(input_predict, all_dtype)
         input_label = tbe.cast_to(input_label, all_dtype)
+        input_dout = tbe.cast_to(input_dout, all_dtype)
+
+    # broadcast inputs
+    predict_shape = shape_util.shape_to_list(input_predict.shape)
+    label_shape = shape_util.shape_to_list(input_label.shape)
+    dout_shape = shape_util.shape_to_list(input_dout.shape)
+
+    predict_shape, label_shape, dout_shape, all_shape = shape_util.unify_broadcast_shapes(
+        [predict_shape, label_shape, dout_shape])
+
+    input_predict = tbe.broadcast(input_predict, all_shape)
+    input_label = tbe.broadcast(input_label, all_shape)
+    input_dout = tbe.broadcast(input_dout, all_shape)
 
     # calculate input_predict-input_label
     x = tbe.vsub(input_predict, input_label)
@@ -86,28 +101,57 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
     smooth = tbe.vadd(smooth1_2, smooth3)
 
     # calculate the res value and return
+    res = tbe.vmul(smooth, input_dout)
+
+    if reduction == "mean":
+        reduce_elts = functools.reduce(lambda x, y:x * y, all_shape)
+        cof = reduce_elts ** (-1)
+        cof = tvm.const(cof, dtype=all_dtype)
+        res = tbe.vmuls(res, cof)
+
     if ori_dtype != all_dtype:
-        if all_dtype == "float16":
-            smooth = tbe.cast_to(smooth, ori_dtype)
-            res = tbe.vmul(smooth, input_dout)
-        else:
-            input_dout = tbe.cast_to(input_dout, all_dtype)
-            res = tbe.vmul(smooth, input_dout)
-            res = tbe.cast_to(res, ori_dtype)
-    else:
-        res = tbe.vmul(smooth, input_dout)
+        res = tbe.cast_to(res, ori_dtype)
 
     return res
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR,
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
-def smooth_l1_loss_grad_v2(predict, label, dout, gradient, sigma=1.0, reduction='mean',
+def smooth_l1_loss_grad_v2(predict,
+                           label,
+                           dout,
+                           gradient,
+                           sigma=1.0,
+                           reduction='mean',
                            kernel_name="smooth_l1_loss_grad_v2"):
     """
-    smooth_l1_loss_grad_v2
+    calculating data
+
+    Parameters
+    ----------
+    predict : dict
+        shape and dtype of input
+    label : dict
+        shape and dtype of input
+    dout : dict
+        shape and dtype of input
+    gradient : dict
+        shape and dtype of output, should be same shape and type as predict
+    sigma : float
+        sigma
+    reduction : str
+        default value is "mean"
+    kernel_name : str
+        kernel name, default value is "smooth_l1_loss_grad_v2"
+
+    Returns
+    -------
+    None
     """
     # check input: predict label dout
     check_list = ("float16", "float32")
@@ -131,8 +175,10 @@ def smooth_l1_loss_grad_v2(predict, label, dout, gradient, sigma=1.0, reduction=
     # check reduction
     check_list_reduction = ("none", "mean", "sum")
     reduction_type = reduction.lower()
-
     para_check.check_dtype(reduction_type, check_list_reduction, param_name="reduction")
+
+    if para_check.is_scalar(shape_dout):
+        shape_dout = tuple([1] * (len(shape_label) - len(shape_dout))) + tuple(shape_dout)
 
     input_predict = tvm.placeholder(
         shape_predict, name="predict", dtype=dtype_predict)
@@ -141,7 +187,11 @@ def smooth_l1_loss_grad_v2(predict, label, dout, gradient, sigma=1.0, reduction=
     input_dout = tvm.placeholder(
         shape_dout, name="dout", dtype=dtype_dout)
 
-    res = smooth_l1_loss_grad_v2_compute(input_predict, input_label, input_dout, sigma, reduction_type)
+    res = smooth_l1_loss_grad_v2_compute(input_predict,
+                                         input_label,
+                                         input_dout,
+                                         sigma,
+                                         reduction_type)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
@@ -151,4 +201,4 @@ def smooth_l1_loss_grad_v2(predict, label, dout, gradient, sigma=1.0, reduction=
         "tensor_list": [input_predict, input_label, input_dout, res]
     }
 
-    tbe.cce_build_code(sch, config)
+    tbe.build(sch, config)

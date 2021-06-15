@@ -141,6 +141,7 @@ set(_optiling_files
   roi_align.cc
   roi_align_grad.cc
   smooth_l1_loss_v2.cc
+  smooth_l1_loss_grad_v2.cc
   nll_loss.cc
   nll_loss_grad.cc
   confusion_softmax_grad.cc

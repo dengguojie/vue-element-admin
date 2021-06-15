@@ -96,6 +96,85 @@ case8 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": RuntimeError,
          "support_expect": True}
 
+case9 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    1.0, 
+                    "mean"],
+         "case_name": "smooth_l1_loss_grad_v2_9",
+         "expect": "success",
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    1.0, 
+                    "mean"],
+         "case_name": "smooth_l1_loss_grad_v2_10",
+         "expect": "success",
+         "support_expect": True}
+
+case11 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    1.0, 
+                    "sum"],
+         "case_name": "smooth_l1_loss_grad_v2_11",
+         "expect": "success",
+         "support_expect": True}
+
+case12 = {"params": [{"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    1.0, 
+                    "sum"],
+         "case_name": "smooth_l1_loss_grad_v2_12",
+         "expect": "success",
+         "support_expect": True}
+
+case13 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    1.0, 
+                    "none"],
+         "case_name": "smooth_l1_loss_grad_v2_13",
+         "expect": "success",
+         "support_expect": True}
+
+case14 = {"params": [{"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    1.0, 
+                    "none"],
+         "case_name": "smooth_l1_loss_grad_v2_14",
+         "expect": "success",
+         "support_expect": True}
+
+case15 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND"},
+                    {"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND"},
+                    {"shape": (1, 2), "dtype": "int32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND"},
+                    {"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_shape": (1, 2),"ori_format": "ND"},
+                    1.0, 
+                    "xxx"],
+         "case_name": "smooth_l1_loss_grad_v2_15",
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case16 = {"params": [{"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float32", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    1.0],
+         "case_name": "smooth_l1_loss_grad_v2_16",
+         "expect": "success",
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
@@ -104,6 +183,14 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case14)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case15)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case16)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
