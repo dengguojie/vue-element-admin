@@ -117,6 +117,7 @@ set(_onnx_plugins
   quant/int8_quantize_plugin.cc
   instancenormalization_plugin.cc
   shrink_plugin.cc
+  scatter_elements_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
