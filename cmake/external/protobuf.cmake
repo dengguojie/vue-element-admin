@@ -15,13 +15,13 @@
 
 set(_protobuf_url "")
 if(CANN_PKG_SERVER)
-  set(_protobuf_url "${CANN_PKG_SERVER}/libs/protobuf/v3.8.0.tar.gz")
+  set(_protobuf_url "${CANN_PKG_SERVER}/libs/protobuf/v3.13.0.tar.gz")
 endif()
 
 ExternalProject_Add(external_protobuf
   URL               ${_protobuf_url}
-                    https://github.com/protocolbuffers/protobuf/archive/v3.8.0.tar.gz
-  URL_MD5           3d9e32700639618a4d2d342c99d4507a
+                    https://github.com/protocolbuffers/protobuf/archive/v3.13.0.tar.gz
+  URL_MD5           1a6274bc4a65b55a6fa70e264d796490
   DOWNLOAD_DIR      download/protobuf
   PREFIX            third_party
   SOURCE_SUBDIR     cmake

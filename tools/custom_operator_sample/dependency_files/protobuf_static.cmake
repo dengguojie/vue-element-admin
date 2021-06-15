@@ -2,7 +2,7 @@ include(ExternalProject)
 include(GNUInstallDirs)
 set(_protobuf_url "")
 if(CANN_PKG_SERVER)
-  set(_protobuf_url "${CANN_PKG_SERVER}/libs/protobuf/v3.8.0.tar.gz")
+  set(_protobuf_url "${CANN_PKG_SERVER}/libs/protobuf/v3.13.0.tar.gz")
 endif()
 
 if("x${PRODUCT_SIDE}" STREQUAL "xdevice")
@@ -25,9 +25,9 @@ set(protobuf_LDFLAGS "-Wl,-z,relro,-z,now,-z,noexecstack")
 set(PROTOBUF_STATIC_PKG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/src/protobuf_static)
 ExternalProject_Add(protobuf_static_build
                     URL ${_protobuf_url}
-                        https://github.com/protocolbuffers/protobuf/archive/v3.8.0.tar.gz
+                        https://github.com/protocolbuffers/protobuf/archive/v3.13.0.tar.gz
                     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/../third_party
-                    URL_MD5 3d9e32700639618a4d2d342c99d4507a
+                    URL_MD5 1a6274bc4a65b55a6fa70e264d796490
                     CONFIGURE_COMMAND ${CMAKE_COMMAND}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER_}
                     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER_}
