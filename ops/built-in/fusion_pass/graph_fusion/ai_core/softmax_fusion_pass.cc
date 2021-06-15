@@ -31,6 +31,7 @@
 #include "op_log.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "common/util/platform_info.h"
 
 using namespace ge;
 namespace fe {
@@ -38,10 +39,17 @@ static const char* FUSED_NODE = "SoftmaxV2";
 static const std::string PATTERN_FUSEDNODE = "Softmax";
 static const vector<vector<int>> SHAPE = {{8732, 21}, {8732, 81}};
 
-bool CheckISUsePattern(int inputH, int inputW, int inputC) {
-  for (int i = 0; i < (int)SHAPE.size(); i++) {
+bool SoftmaxFusionPass::CheckISUsePattern(int64_t inputH, int64_t inputW, int64_t inputC) {
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
+                                                                                     optional_info) != fe::SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get platform_info failed."), return false);
+  uint32_t core_num = platform_info.soc_info.ai_core_cnt;
+
+  for (int64_t i = 0; i < (int64_t)SHAPE.size(); i++) {
     if (SHAPE[i][0] == inputW && SHAPE[i][1] == inputC) {
-      if (i == 1 && inputH < 8) {
+      if (i == 1 && (inputH < 8 || core_num <= 2)) {
         return false;
       }
       return true;
@@ -92,8 +100,9 @@ Status SoftmaxFusionPass::UpdateFormat(ge::NodePtr& inNodePtr) {
 }
 
 Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SoftmaxFusionPass");
   ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-
+  
   FUSION_PASS_CHECK(softmaxNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmax node is null"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(UpdateFormat(softmaxNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "update format fail"),
@@ -107,14 +116,15 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::GeShape softmaxInputShape = softmaxInputOpDesc.GetShape();
   vector<int64_t> dimInfo = softmaxInputShape.GetDims();
   vector<int64_t> axes;
+  int64_t inputC = 0;
+  int64_t inputH = 0;
+  int64_t inputW = 0;
+  bool isUsePattern = false;
   ge::AttrUtils::GetListInt(softmaxOpDesc, "axes", axes);
   FUSION_PASS_CHECK(axes.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "axes is null, please check!"), return FAILED);
   if (axes[0] < 0) {
     axes[0] = axes[0] + dimInfo.size();
   }
-  int64_t inputC = 0;
-  int64_t inputH = 0;
-  int64_t inputW = 0;
   if (dimInfo.size() == 3) {
     inputH = dimInfo[0];
     inputW = dimInfo[1];
@@ -122,7 +132,6 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   } else {
     return NOT_CHANGED;
   }
-  bool isUsePattern = false;
   isUsePattern = CheckISUsePattern(inputH, inputW, inputC);
   if (axes[0] == 2 && isUsePattern) {
     vector<int64_t> inputDimInfo = {inputH, inputC, inputW};
