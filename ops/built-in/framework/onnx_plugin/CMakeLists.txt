@@ -118,6 +118,7 @@ set(_onnx_plugins
   instancenormalization_plugin.cc
   shrink_plugin.cc
   scatter_elements_plugin.cc
+  bitshift_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
