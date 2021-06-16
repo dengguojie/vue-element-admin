@@ -31,6 +31,18 @@ VAL_INDEX = 4
 MIN_VAL = -65504
 MAX_VAL = 65504
 NUM_BLOCK = 2048
+DATA_LIMITE = 100000
+
+def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
+    """
+    check the op support situation.
+    Go to AICPU when the date in sort axis is over 100K. 
+    """
+    input_shape = x.get("shape")
+    if input_shape[-1] > DATA_LIMITE:
+        reason = "The date in sort axis is over 100K."
+        return False, reason
+    return True, ""
 
 
 @fusion_manager.register("sort")
@@ -226,7 +238,7 @@ def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_
     with tik_instance.if_scope(descending is False):
         # data is continuous in GM & gather scattered data together
         with tik_instance.for_range(0, num) as i2:
-            input_ub[i2 + src_pos_ub].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + 4 + dest_pos_ub])
+            input_ub[i2 + src_pos_ub].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + VAL_INDEX + dest_pos_ub])
             input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + dest_pos_ub])
 
     # descend
@@ -234,10 +246,10 @@ def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_
         # data is continuous in GM & gather scattered data together
         if version == "mini":
             with tik_instance.for_range(0, num) as i2:
-                input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + 4 + dest_pos_ub])
+                input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_INDEX + dest_pos_ub])
                 input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[i2 * PROPOSAL_NUM + dest_pos_ub])
         elif version == "cloud":
-            tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, 4)
+            tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, VAL_INDEX)
             tik_instance.vextract(input_ub[src_pos_ub + num_16], input_ub[dest_pos_ub], num_16 // BLOCK, 0)
         else:
             raise RuntimeError("Unexcepted version.")
@@ -247,7 +259,7 @@ def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_
 
     # move output (float16) from UB to GM
     tik_instance.data_move(data_out[offset_out], input_ub[src_pos_ub], 0, 1, num_16 // BLOCK, 0, 0)
-    tik_instance.data_move(data_indices[offset_out], int_list, 0, 1, num_16 // 8, 0, 0)
+    tik_instance.data_move(data_indices[offset_out], int_list, 0, 1, 2 * num_16 // BLOCK, 0, 0)
 
     return data_out, data_indices
 
@@ -384,7 +396,7 @@ def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices,
             tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, VAL_INDEX)
         elif version == "mini":
             with tik_instance.for_range(0, NUM_BLOCK) as i2:
-                input_ub[dest_pos_ub + i2].set_as(input_ub[i2 * PROPOSAL_NUM + 4])
+                input_ub[dest_pos_ub + i2].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_INDEX])
         else:
             raise RuntimeError("Unexcepted version.")
 
@@ -429,16 +441,16 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
             int_ub = tik_instance.Tensor("int32", [num_16], name="int_ub", scope=tik.scope_ubuf)
 
             with tik_instance.for_range(0, rounds) as i:
-                tik_instance.data_move(float_ub[0], data_out[i * num_16], 0, 1, num_16 // 16, 0, 0)
-                tik_instance.data_move(data_out_[i * num], float_ub[0], 0, 1, num_16 // 16, 0, 0)
+                tik_instance.data_move(float_ub[0], data_out[i * num_16], 0, 1, num_16 // BLOCK, 0, 0)
+                tik_instance.data_move(data_out_[i * num], float_ub[0], 0, 1, num_16 // BLOCK, 0, 0)
 
-                tik_instance.data_move(int_ub[0], data_indices[i * num_16], 0, 1, num_16 // 8, 0, 0)
-                tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, num_16 // 8, 0, 0)
+                tik_instance.data_move(int_ub[0], data_indices[i * num_16], 0, 1, 2 * num_16 // BLOCK, 0, 0)
+                tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, 2 * num_16 // BLOCK, 0, 0)
 
     else:
         repeat_times = NUM_BLOCK // BLOCK
         threadNum = 2 if num_gm > 1 else 1
-        threadNum = 1 if NUM_BLOCK * 6 > availabel_ub_size else threadNum
+        threadNum = 1 if NUM_BLOCK * 12 > availabel_ub_size else threadNum
         with tik_instance.for_range(0, rounds) as i:
             with tik_instance.for_range(0, num_gm, thread_num=threadNum) as j:
                 float_ub = tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
@@ -492,7 +504,7 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
             with tik_instance.for_range(0, num_16 - num) as i:
                 input_ub[(num + i) + dest_pos_ub].set_as(Max)
 
-        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, 4)
+        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, VAL_INDEX)
 
         if version == "cloud":
             idx = tik_instance.Scalar(dtype="float32", init_value=num)
