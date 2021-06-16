@@ -6,51 +6,51 @@
 #include "op_proto_test_util.h"
 #include "transformation_ops.h"
 
-class TfidVectorizerTest : public testing::Test {
+class TfIdfVectorizerTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "TfidVectorizerTest SetUp" << std::endl;
+    std::cout << "TfIdfVectorizerTest SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "TfidVectorizerTest TearDown" << std::endl;
+    std::cout << "TfIdfVectorizerTest TearDown" << std::endl;
   }
 };
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test1_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test1_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({12}, ge::DT_INT8, ge::FORMAT_ND, {12}, ge::FORMAT_ND));
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test2_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test2_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2,2,2}, ge::DT_INT64, ge::FORMAT_ND, {2,2,2}, ge::FORMAT_ND));
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test3_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test3_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({-1,-1}, ge::DT_INT64, ge::FORMAT_ND, {-1,-1}, ge::FORMAT_ND));
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test4_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test4_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test5_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test5_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", -3);
@@ -58,8 +58,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test5_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test6_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test6_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -68,8 +68,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test6_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test7_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test7_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -79,8 +79,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test7_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test8_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test8_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 1);
@@ -91,8 +91,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test8_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test9_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test9_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -103,8 +103,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test9_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test10_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test10_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -115,8 +115,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test10_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test11_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test11_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -128,8 +128,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test11_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test12_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test12_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -144,8 +144,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test12_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test13_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test13_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -162,8 +162,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test13_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test14_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test14_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -180,8 +180,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test14_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test15_success) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test15_success) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input", create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
   op.SetAttr("max_skip_count", 0);
@@ -197,8 +197,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test15_success) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test16_failed) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test16_failed) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -217,8 +217,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test16_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test17_success) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test17_success) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input", create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
   op.SetAttr("max_skip_count", 0);
@@ -237,8 +237,8 @@ TEST_F(TfidVectorizerTest, TfidVectorizer_verify_test17_success) {
 }
 
 
-TEST_F(TfidVectorizerTest, TfidVectorizer_static_infer_test1_success) {
-  ge::op::TfidVectorizer op;
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_static_infer_test1_success) {
+  ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2, 12}, ge::DT_INT64, ge::FORMAT_ND, {2, 12}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);

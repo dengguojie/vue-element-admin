@@ -3298,7 +3298,7 @@ COMMON_INFER_FUNC_REG(AsStrided, AsStridedInferShape);
 
 // ----------------AsStrided Op End-------------------
 
-// -----------------TfidVectorizer Op-------------------------
+// -----------------TfIdfVectorizer Op-------------------------
 
 static bool CheckAttrNgramCounts(int64_t input_pool_size, std::vector<int64_t> &ngram_counts)
 {
@@ -3308,13 +3308,13 @@ static bool CheckAttrNgramCounts(int64_t input_pool_size, std::vector<int64_t> &
     int64_t start_index = ngram_counts[i];
     int64_t end_index = ((i + 1) < ngram_counts.size()) ? ngram_counts[i+1] : input_pool_size;
     if (!(end_index > start_index && end_index <= input_pool_size)) {
-      OP_LOGE("TfidVectorizer","ngram_counts out of bounds of inputPool.");
+      OP_LOGE("TfIdfVectorizer","ngram_counts out of bounds of inputPool.");
       return false;
     }
     auto items = end_index - start_index;
     if (items > 0) {
       if (items % ngram_size != 0) {
-        OP_LOGE("TfidVectorizer","ngram_counts and inputPool do not match.");
+        OP_LOGE("TfIdfVectorizer","ngram_counts and inputPool do not match.");
         return false;
       }
       
@@ -3324,7 +3324,7 @@ static bool CheckAttrNgramCounts(int64_t input_pool_size, std::vector<int64_t> &
   return true; 
 }
 
-IMPLEMT_VERIFIER(TfidVectorizer, TfidVectorizerVerify) {
+IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
   TensorDesc input_desc = op.GetInputDesc("input");
   auto input_type = input_desc.GetDataType();
   // verify input type
@@ -3444,8 +3444,8 @@ IMPLEMT_VERIFIER(TfidVectorizer, TfidVectorizerVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(TfidVectorizerInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter TfidVectorizer proto inferfunction!");
+IMPLEMT_COMMON_INFERFUNC(TfIdfVectorizerInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter TfIdfVectorizer proto inferfunction!");
   TensorDesc input_desc = op.GetInputDesc("input");
   auto input_shape = input_desc.GetShape();
   auto input_shape_dim = input_shape.GetDims();
@@ -3497,7 +3497,7 @@ IMPLEMT_COMMON_INFERFUNC(TfidVectorizerInferShape) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(TfidVectorizer, TfidVectorizerInferShape);
-VERIFY_FUNC_REG(TfidVectorizer, TfidVectorizerVerify);
-// -----------------TfidVectorizer END-------------------------
+COMMON_INFER_FUNC_REG(TfIdfVectorizer, TfIdfVectorizerInferShape);
+VERIFY_FUNC_REG(TfIdfVectorizer, TfIdfVectorizerVerify);
+// -----------------TfIdfVectorizer END-------------------------
 }  // namespace ge
