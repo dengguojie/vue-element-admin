@@ -26,7 +26,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
 
-EPS = 1.1920929e-07
+SHAPE_SIZE_LIMIT = 2 ** 31
+EPS = 0.001
 
 
 # pylint: disable=invalid-name, too-many-locals
@@ -69,8 +70,8 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     w_max = tbe.vmaxs(w_max, const_0)
 
     # const defination
-    const_eps = tvm.const(EPS, w.dtype)
-    const_1 = tvm.const(1.0, w.dtype)
+    const_eps = tvm.const(EPS, 'float16')
+    const_1 = tvm.const(1.0, 'float16')
 
     if offset_flag:
         # multiply w_max/w_min with const_step_reciprocal firstly,
@@ -79,7 +80,10 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
         scale_upper_bound = tbe.vmuls(w_max, const_step_reciprocal)
         scale_low_bound = tbe.vmuls(w_min, const_step_reciprocal)
         scale = tbe.vsub(scale_upper_bound, scale_low_bound)
+
+        scale = tbe.cast_to(scale, 'float16')
         scale = tbe.vcmpsel(scale, const_eps, operation='lt', slhs=const_1, srhs=scale)
+        scale = tbe.cast_to(scale, w.dtype)
 
         offset = tbe.round(tbe.vdiv(w_min, scale))
         offset = tbe.vmuls(offset, tvm.const(-1, w.dtype))
@@ -95,7 +99,10 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
         scale_1 = tbe.vdiv(tbe.vabs(w_min), step_low)
         scale_2 = tbe.vdiv(w_max, step_upper)
         scale = tbe.vmax(scale_1, scale_2)
+
+        scale = tbe.cast_to(scale, 'float16')
         scale = tbe.vcmpsel(scale, const_eps, operation='lt', slhs=const_1, srhs=scale)
+        scale = tbe.cast_to(scale, w.dtype)
 
     y = tbe.vdiv(w, scale)
     y = tbe.round(y)
@@ -144,9 +151,15 @@ def wts_arq(w, w_min, w_max, y, num_bits=8, offset_flag=False, kernel_name='wts_
     -------
     None
     """
+    if num_bits != 8:
+        error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'num_bits', 8, 8, num_bits)
+
     w_shape = w.get('shape')
     w_min_shape = w_min.get('shape')
     w_max_shape = w_max.get('shape')
+    w_range =w.get('range')
+    w_min_range = w_min.get('range')
+    w_max_range = w_max.get('range')
 
     if w_min_shape != w_max_shape:
         error_manager_vector.raise_err_inputs_shape_not_equal(
@@ -161,10 +174,36 @@ def wts_arq(w, w_min, w_max, y, num_bits=8, offset_flag=False, kernel_name='wts_
             error_detail = "The shape value of w_min&w_max must be the same as w or equal to 1!"
             error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, 'w_min', 'w_max', error_detail)
 
+    w_size = 1
+    for i in range(len(w_shape)):
+        if w_shape[i] == -1:
+            if w_range[i][1] is None:
+                w_size *= SHAPE_SIZE_LIMIT
+            else:
+                w_size *= w_range[i][1]
+            if w_min_shape[i] == -1:
+                if w_range[i] != w_min_range[i]:
+                    error_manager_vector.raise_err_inputs_shape_not_equal(
+                        kernel_name, 'w', 'w_min', w_range, w_min_range, w_range)
+                if w_range[i] != w_max_range[i]:
+                    error_manager_vector.raise_err_inputs_shape_not_equal(
+                        kernel_name, 'w', 'w_max', w_range, w_max_range, w_range)
+        else:
+            w_size *= w_shape[i]
+
+    if w_size > SHAPE_SIZE_LIMIT:
+        error_detail = "The shape size of w must be smaller than {}!".format(SHAPE_SIZE_LIMIT)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, 'w', error_detail)
+
+    y_shape = y.get('shape')
+    if y_shape != w_shape:
+        error_manager_vector.raise_err_inputs_shape_not_equal(kernel_name, 'y', 'w', y_shape, w_shape, w_shape)
+
     check_list = ['float16', 'float32']
     w_type = w.get('dtype').lower()
     w_min_type = w_min.get('dtype').lower()
     w_max_type = w_max.get('dtype').lower()
+    y_type = y.get('dtype').lower()
 
     para_check.check_dtype_rule(w_type, check_list, 'w')
 
@@ -173,6 +212,9 @@ def wts_arq(w, w_min, w_max, y, num_bits=8, offset_flag=False, kernel_name='wts_
 
     if w_type != w_max_type:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'w', 'w_max', w_type, w_max_type)
+
+    if y_type != w_type:
+        error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'w', 'y', w_type, y_type)
 
     ins = classify([w, w_min, w_max], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

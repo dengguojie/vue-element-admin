@@ -26,6 +26,9 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
 
+SHAPE_SIZE_LIMIT = 2 ** 31
+
+
 # pylint: disable=unused-argument
 @register_operator_compute('ActULQClampMaxGrad', op_mode='dynamic', support_fusion=False)
 def act_ulq_clamp_max_grad_compute(
@@ -88,6 +91,20 @@ def act_ulq_clamp_max_grad(input_x, input_y, input_z, output, kernel_name='act_u
     ----------
     """
     input_x_shape = input_x.get('shape')
+    input_x_range =input_x.get('range')
+    input_x_size = 1
+    for i in range(len(input_x_shape)):
+        if input_x_shape[i] == -1:
+            if input_x_range[i][1] is None:
+                input_x_size *= SHAPE_SIZE_LIMIT
+            else:
+                input_x_size *= input_x_range[i][1]
+        else:
+            input_x_size *= input_x_shape[i]
+    if input_x_size > SHAPE_SIZE_LIMIT:
+        error_detail = "The shape size of y_grad must be smaller than {}!".format(SHAPE_SIZE_LIMIT)
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, 'y_grad', error_detail)
+
     input_y_shape = input_y.get('shape')
     input_z_shape = input_z.get('shape')
 
@@ -99,14 +116,27 @@ def act_ulq_clamp_max_grad(input_x, input_y, input_z, output, kernel_name='act_u
         error_manager_vector.raise_err_inputs_shape_not_equal(
             kernel_name, 'y_grad', 'x_clamped_loss', input_x_shape, input_z_shape, input_x_shape)
 
+    output_shape = output.get('shape')
+    if output_shape != ():
+        for i in output_shape:
+            if i != 1:
+                error_info = {'errCode': 'E80001', 'op_name': kernel_name, 'param_name': 'clamp_max_grad'}
+                raise RuntimeError(error_info, "In op[{}], the mandatory parameter[{}] is missed.".format(
+                    kernel_name, 'clamp_max_mask'))
+
     check_list = ['float16', 'float32']
     input_x_type = input_x.get('dtype').lower()
     input_y_type = input_y.get('dtype').lower()
     input_z_type = input_z.get('dtype').lower()
+    output_type = output.get('dtype').lower()
 
     para_check.check_dtype_rule(input_x_type, check_list, 'y_grad')
     para_check.check_dtype_rule(input_y_type, check_list, 'clamp_max_mask')
     para_check.check_dtype_rule(input_z_type, check_list, 'x_clamped_loss')
+
+    if input_x_type != output_type:
+        error_manager_vector.raise_err_inputs_dtype_not_equal(
+            kernel_name, 'y_grad', 'clamp_max_grad', input_x_type, output_type)
 
     axis = list(range(len(input_x_shape)))
     input_axis = {'shape': [len(axis),], 'value': axis, 'rel_pos_to_reduce': 'axis'}
