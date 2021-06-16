@@ -234,9 +234,9 @@ template<typename T> static void ReverseArray(T * array,  int64_t size) {
 }
 
 static int64_t SizeofDType(const string & dType) {
-    if (dType == "int8" || dType == "uint8") {
+    if (dType == "int8" || dType == "uint8" || dType == "bool") {
         return 1;
-    } else if (dType == "int16" || dType == "uint16" || dType == "float16" || dType == "bool") {
+    } else if (dType == "int16" || dType == "uint16" || dType == "float16") {
         return 2;
     } else if (dType == "int32" || dType == "uint32" || dType == "float" || dType == "float32") {
         return 4;
@@ -247,9 +247,9 @@ static int64_t SizeofDType(const string & dType) {
 }
 
 static int64_t ElementNumPerBlock(const string & dType) {
-    if (dType == "int8" || dType == "uint8") {
+    if (dType == "int8" || dType == "uint8" || dType == "bool") {
         return 32;
-    } else if (dType == "int16" || dType == "uint16" || dType == "float16" || dType == "bool") {
+    } else if (dType == "int16" || dType == "uint16" || dType == "float16") {
         return 16;
     } else if (dType == "int32" || dType == "uint32" || dType == "float" || dType == "float32") {
         return 8;
@@ -724,6 +724,12 @@ void ReduceAxis(const string & opType,
         shapeInfo.scenario = SCENARIO_6;
         Reshape(shapeInfo);
         UpdateCoreNum(compilerInfo, shapeInfo);
+    } else if (shapeInfo.elePerBlock == ELE_NUM_PER_BLOCK_B8) {
+        shapeInfo.scenario = SCENARIO_2;
+        shapeInfo.isLastAxisHuge = true;
+        if (IsLastAxisJoinTranspose(shapeInfo)) {
+            Reshape(shapeInfo);
+        }
     } else if (IsLastAxisJoinTranspose(shapeInfo)) {
         shapeInfo.scenario = SCENARIO_7;
         shapeInfo.isLastAxisTranspose = true;

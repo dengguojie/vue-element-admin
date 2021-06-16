@@ -49,13 +49,17 @@ BLOCK_SIZE = 32
 TRANSPOSE_MAX_AXIS_NUM = 8
 RESERVED_UB = 4  # 4KB
 EPB16 = 16
+EPB32 = 32 
 ELE_NUM_PER_BLOCK_FP32 = 8
 ELE_NUM_PER_BLOCK_INT64 = 4
 TILING_HEAD_LEN = 4
 TILING_FIXED_MAX_LEN = 1024
 
 
-def fuzzy_match(shape_t):
+def _fuzzy_match(shape_t):
+    """
+    temporary function, for dynamic & static union version not fully verified
+    """
     white_list_shape_fuzzy =  [
                                [-1, 12, 197, 64], [-1, 197, 12, 64], [-1, 197, 768], [-1, 768, 196],
                                [-1, 768, 197], [768, -1, 197], [128, 197, 12, -1], [128, 12, 197, -1]
@@ -73,6 +77,7 @@ def fuzzy_match(shape_t):
         if count == len(shape_t):
             return True
     return False
+
 
 def _by_dynamic_static_union_version(shape, core_num):
     """
@@ -98,9 +103,9 @@ def _by_dynamic_static_union_version(shape, core_num):
                          [80, 8, 1, 240], [80, 240, 8], [80, 240, 1, 8], [8, 80, 240], [240, 8, 64], [80, 8, 84],
                          [8, 80, 64], [1, 4, 1080, 1920, 3], [2, 100, 28, 28, 91], [2560, 26, 512],
                          [16, 40, 3, 14, 14], [16, 80, 3, 7, 7], [16, 20, 3, 28, 28],
-                         [32, 3, 76, 76, 85], [32, 3, 38, 38, 85], [32, 3, 19, 19, 85],[32, 3, 85, 76, 76],
+                         [32, 3, 76, 76, 85], [32, 3, 38, 38, 85], [32, 3, 19, 19, 85], [32, 3, 85, 76, 76],
                          [32, 3, 85, 38, 38], [32, 3, 85, 19, 19], [512, 512, 9],
-                         [3, 256, 1024], [48, 56, 64], [3, 16, 256, 64], [3, 1024, 256], [3, 3, 16, 16, 16,16],
+                         [3, 256, 1024], [48, 56, 64], [3, 16, 256, 64], [3, 1024, 256], [3, 3, 16, 16, 16, 16],
                          [3, 256, 16, 64], [48, 256, 64], [48, 256, 256], [768, 768], [3072, 768], [768, 197, 197],
                          [768, 3072]
                        ]
@@ -108,7 +113,7 @@ def _by_dynamic_static_union_version(shape, core_num):
     if shape_t in white_list_shape:
         return True
 
-    if fuzzy_match(shape_t):
+    if _fuzzy_match(shape_t):
         return True
 
     return False
@@ -117,17 +122,17 @@ def _by_dynamic_static_union_version(shape, core_num):
 # pylint: disable=unused-argument
 def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     """
-    dynamic transpose is selected when any condition is true
-        -1 in input_x shape
-        -1 in output_y shape
-        -2 in input_x shape
+    dynamic transpose is selected when any condition is true: \n
+        -1 in input_x shape \n
+        -1 in output_y shape \n
+        -2 in input_x shape \n
     """
     x_shape = input_x.get("ori_shape")
     x_dtype = input_x.get("dtype")
 
-    check_list = ["float", "float32", "int32", "uint32", "int16", "uint16", "float16"]
+    check_list = ["int8", "uint8", "bool", "float", "float32", "int32", "uint32", "int16", "uint16", "float16"]
     if x_dtype not in check_list:
-        reason = "x_dtype[%s] not in %s" %(x_dtype, str(check_list))
+        reason = "x_dtype [%s] not in %s" %(x_dtype, str(check_list))
         return False, reason
 
     if util_common.is_unknown([input_x, perm, output_y]):
@@ -148,6 +153,10 @@ def _assert(tik_inst, ub_input, p, v):
     index = tik_inst.Scalar("int64", init_value=1)
     with tik_inst.if_scope(p != v):
         tik_inst.data_move(ub_input, ub_input[index], 0, 1, 1, 0, 0)
+
+
+def _get_half_ub():
+    return (UB_SIZE - RESERVED_UB * 1024) // 2 // 2
 
 
 # pylint: disable=unused-argument,invalid-name, too-many-arguments, unused-variable, too-many-locals
@@ -596,12 +605,12 @@ class Transpose(object):
         self._init_mem_make_ub_allocated(self.ub_input_64)
         self.tiling_reg_list = [self.tik_inst.Scalar("int64") for i in range(TILING_MAX_PARAM_NUM)]
         self.element_per_block = self._element_per_block(self.x_dtype)
-        self.fp16_times = self._sizeof_dtype(x_dtype) // self._sizeof_dtype("float16") # fp32/int32:2  fp16/int16:1
+        self.fp16_times = (self._sizeof_dtype(x_dtype) + 1) // self._sizeof_dtype("float16") # fp32/int32:2  fp16/int16:1
         self.ele_per_block = BLOCK_SIZE // self._sizeof_dtype(x_dtype)
         tik_inst.data_move(self.ub_input_64_t, self.data_tiling, 0, 1, TILING_FIXED_MAX_LEN // BLOCK_SIZE, 0, 0)
 
     def _sizeof_dtype(self, dtype):
-        if dtype in ("int8", "uint8"):
+        if dtype in ("int8", "uint8", "bool"):
             return 1
         if dtype in ("float16", "int16", "uint16"):
             return 2
@@ -612,7 +621,7 @@ class Transpose(object):
         return 8
 
     def _element_per_block(self, dtype):
-        if dtype in ("int8", "uint8"):
+        if dtype in ("int8", "uint8", "bool"):
             return 32
         if dtype in ("float16", "int16", "uint16"):
             return 16
@@ -868,36 +877,72 @@ class Transpose(object):
 
     # pylint: disable=too-many-arguments, unused-argument, invalid-name
     def _reorder_s2(self, tp, ub_input, ub_offset, ub_offset_exclude_pad):
-        # step1. make all elements in the first col
-        fp16_offset_1 = ACCU_BLOCK_SIZE * 32
-        fp16_offset_2 = ACCU_BLOCK_SIZE * 32 + ACCU_BLOCK_SIZE * 32 * 16
-        ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
-        src_ele_num_in_fp16 = self._get_src_size() # avoid bank conflict
-        src_list = [ub_input_fp16[src_ele_num_in_fp16 * i] for i in range(EPB16)]
-        dst_list = [ub_input_fp16[fp16_offset_1 + EPB16 * i] for i in range(EPB16)]
-        with self.tik_inst.if_scope(ub_offset == 1):
-            self.tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
-        with self.tik_inst.if_scope(ub_offset != 1):
-            self.tik_inst.vnchwconv(False, False, dst_list, src_list, ub_offset, EPB16, 1)
+        if self.x_dtype in ("int8", "uint8", "bool"):
+            b8_offset = _get_half_ub() * 2
+            ub_input_b8 = ub_input.reinterpret_cast_to("int8")
+            src_ele_num_in_b8 = self._get_src_size() * 2 # avoid bank conflict
+            src_list = [ub_input_b8[src_ele_num_in_b8 * i] for i in range(EPB16)]
+            dst_list_low = [ub_input_b8[b8_offset + EPB32 * i] for i in range(EPB16)]
+            dst_list_high = [ub_input_b8[b8_offset + EPB32 * i + EPB32 * EPB16] for i in range(EPB16)]
 
-        # step2. erase unused elements aligned
-        all_line_number = tp.last_axis_burst_len * EPB16
-        pad_line_number = tp.align_ele * self.fp16_times
-        nburst = ub_offset // tp.last_axis_burst_len
-        burst_len = all_line_number - pad_line_number
-        self.tik_inst.data_move(ub_input_fp16[fp16_offset_2], ub_input_fp16[fp16_offset_1],
-                                0, nburst, burst_len, pad_line_number, 0)
+            with self.tik_inst.if_scope(ub_offset == 1):
+                self.tik_inst.vnchwconv(False, False, dst_list_low, src_list, 1, 0, 0)
+                self.tik_inst.vnchwconv(False, True, dst_list_high, src_list, 1, 0, 0)
+            with self.tik_inst.if_scope(ub_offset != 1):
+                self.tik_inst.vnchwconv(False, False, dst_list_low, src_list, ub_offset, EPB32, 1)
+                self.tik_inst.vnchwconv(False, True, dst_list_high, src_list, ub_offset, EPB32, 1)
+            
+            # step2. erase unused elements aligned
+            all_line_number = tp.last_axis_burst_len * EPB32
+            pad_line_number = tp.align_ele * self.fp16_times
+            nburst = ub_offset // tp.last_axis_burst_len
+            burst_len = all_line_number - pad_line_number
+            self.tik_inst.data_move(ub_input_b8, ub_input_b8[b8_offset], 0, nburst, burst_len, pad_line_number, 0)
 
-        # step3. make all elements in the first col be in memory of contiguous
-        ub_offset_exclude_pad.set_as(((all_line_number - pad_line_number) * nburst + EPB16 - 1)// EPB16)
-        src_list = [ub_input_fp16[fp16_offset_2 + EPB16 * i] for i in range(EPB16)]
-        # 247 avoid bank conflict
-        dst_list = [ub_input_fp16[self._get_dst_size() * EPB16 * i] for i in range(EPB16)]
+            # step3. make all elements in the first col be in memory of contiguous
+            ub_offset_exclude_pad.set_as(((all_line_number - pad_line_number) * nburst + EPB32 - 1)// EPB32)
+            src_list_low = [ub_input_b8[EPB32 * i] for i in range(EPB16)]
+            src_list_high = [ub_input_b8[EPB32 * i + EPB32 * EPB16] for i in range(EPB16)]
+            dst_list = [ub_input_b8[b8_offset + self._get_dst_size() * EPB32 * i] for i in range(EPB16)]
 
-        with self.tik_inst.if_scope(ub_offset_exclude_pad == 1):
-            self.tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
-        with self.tik_inst.if_scope(ub_offset_exclude_pad > 1):
-            self.tik_inst.vnchwconv(False, False, dst_list, src_list, ub_offset_exclude_pad, 1, EPB16)
+            with self.tik_inst.if_scope(ub_offset_exclude_pad == 1):
+                self.tik_inst.vnchwconv(False, False, dst_list, src_list_low, 1, 0, 0)
+                self.tik_inst.vnchwconv(True, False, dst_list, src_list_high, 1, 0, 0)
+            with self.tik_inst.if_scope(ub_offset_exclude_pad > 1):
+                self.tik_inst.vnchwconv(False, False, dst_list, src_list_low, ub_offset_exclude_pad, 1, EPB32)
+                self.tik_inst.vnchwconv(True, False, dst_list, src_list_high, ub_offset_exclude_pad, 1, EPB32)
+            self.tik_inst.data_move(ub_input_b8, ub_input_b8[b8_offset], 0, 1, ub_offset_exclude_pad, 0, 0)
+        else:
+            # step1. make all elements in the first col
+            fp16_offset_1 = ACCU_BLOCK_SIZE * 32
+            fp16_offset_2 = ACCU_BLOCK_SIZE * 32 + ACCU_BLOCK_SIZE * 32 * 16
+            ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
+            src_ele_num_in_fp16 = self._get_src_size() # avoid bank conflict
+            src_list = [ub_input_fp16[src_ele_num_in_fp16 * i] for i in range(EPB16)]
+            dst_list = [ub_input_fp16[fp16_offset_1 + EPB16 * i] for i in range(EPB16)]
+            with self.tik_inst.if_scope(ub_offset == 1):
+                self.tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
+            with self.tik_inst.if_scope(ub_offset != 1):
+                self.tik_inst.vnchwconv(False, False, dst_list, src_list, ub_offset, EPB16, 1)
+
+            # step2. erase unused elements aligned
+            all_line_number = tp.last_axis_burst_len * EPB16
+            pad_line_number = tp.align_ele * self.fp16_times
+            nburst = ub_offset // tp.last_axis_burst_len
+            burst_len = all_line_number - pad_line_number
+            self.tik_inst.data_move(ub_input_fp16[fp16_offset_2], ub_input_fp16[fp16_offset_1],
+                                    0, nburst, burst_len, pad_line_number, 0)
+
+            # step3. make all elements in the first col be in memory of contiguous
+            ub_offset_exclude_pad.set_as(((all_line_number - pad_line_number) * nburst + EPB16 - 1)// EPB16)
+            src_list = [ub_input_fp16[fp16_offset_2 + EPB16 * i] for i in range(EPB16)]
+            # 247 avoid bank conflict
+            dst_list = [ub_input_fp16[self._get_dst_size() * EPB16 * i] for i in range(EPB16)]
+
+            with self.tik_inst.if_scope(ub_offset_exclude_pad == 1):
+                self.tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
+            with self.tik_inst.if_scope(ub_offset_exclude_pad > 1):
+                self.tik_inst.vnchwconv(False, False, dst_list, src_list, ub_offset_exclude_pad, 1, EPB16)
 
     def _get_src_addr_s2(self, tp):
         self._get_src_addr_s1(tp)
@@ -927,7 +972,7 @@ class Transpose(object):
             self._update_tuple_with_steps(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor, tp.dst_jump_factor_mod,
                                           tp.base, steps)
             accu_blocks.set_as(accu_blocks + major_num * tp.last_axis_burst_len)
-            with self.tik_inst.if_scope(accu_blocks >= ACCU_BLOCK_SIZE):  # 128=4KB, 200=6.4KB
+            with self.tik_inst.if_scope(accu_blocks >= ACCU_BLOCK_SIZE):  # 64=2KB, 128=4KB, 200=6.4KB
                 self._copy_out_s2(tp, ub_input, accu_blocks, backup_steps, steps)
 
         with tik_inst.if_scope(tail_num != 0):
@@ -938,7 +983,7 @@ class Transpose(object):
             self._update_tuple_with_steps(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor, tp.dst_jump_factor_mod,
                                           tp.base, steps)
             accu_blocks.set_as(accu_blocks + tail_num * tp.last_axis_burst_len)
-            with self.tik_inst.if_scope(accu_blocks >= ACCU_BLOCK_SIZE):  # 128=4KB, 200=6.4KB
+            with self.tik_inst.if_scope(accu_blocks >= ACCU_BLOCK_SIZE):  # 64=2KB, 128=4KB, 200=6.4KB
                 self._copy_out_s2(tp, ub_input, accu_blocks, backup_steps, steps)
 
         with self.tik_inst.if_scope(accu_blocks != 0):

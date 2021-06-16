@@ -4,6 +4,11 @@ import numpy as np
 from impl.util.platform_adapter import tbe_context
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
+import os
+import time
+
+#np.set_printoptions(threshold=np.inf)
+#np.set_printoptions(linewidth=10000)
 
 ut_case = OpUT("Transpose", "impl.dynamic.transpose", "transpose")
 
@@ -11,9 +16,9 @@ def calc_expect_func(x, perm, y):
     x_val = x.get("value")
     p_val = perm.get("value")
     y_val = np.transpose(x_val, p_val)
-    print("------------------expect---------------------")
-    print(y.get("value"))
     print("------------------actual---------------------")
+    print(y.get("value"))
+    print("------------------expect---------------------")
     print(y_val)
     return (y_val,)
 
@@ -115,6 +120,121 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_true_2)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_false_3)
 
+def add_ts_case(soc, d_type, x, perm, y, value_type="default"):
+    if d_type == "bool":
+        d_type ="uint8"
+    perm = np.array(perm)
+    x_dynamic = x
+    x_dynamic = (-1,) + x[1:]
+    print(x_dynamic)
+    x_range = []
+    y_range = []
+    p_shape = len(perm)
+    vol = 1
+
+    for i in x:
+        x_range.append((i,i))
+
+    for i in y:
+        y_range.append((i,i))
+
+    for i in x:
+        vol = vol * i
+
+    if value_type == "arange":
+        value = np.arange(0, vol, dtype = d_type).reshape(x)
+    else:
+        value = np.random.randint(100, size=vol, dtype=d_type).reshape(x)
+
+
+    ut_case.add_precision_case(["Ascend910A"],
+                               {
+                                   "params":
+                                       [
+                                           {
+                                               "shape": x_dynamic,
+                                               "dtype": d_type,
+                                               "format": "ND",
+                                               "ori_shape": x,
+                                               "range": x_range,
+                                               "run_shape": x,
+                                               "ori_format": "ND",
+                                               "param_type": "input",
+                                               "value": value
+                                           },
+                                           {
+                                               "shape": (p_shape,),
+                                               "run_shape": (p_shape,),
+                                               "dtype": "int32",
+                                               "ori_shape": (p_shape),
+                                               "ori_format" : "ND",
+                                               "format": "ND",
+                                               "value": perm,
+                                               "value_need_in_tiling": True,
+                                               "param_type": "input"
+                                           },
+                                           {
+                                               "shape": y,
+                                               "dtype": d_type,
+                                               "format": "ND",
+                                               "ori_shape": y,
+                                               "range": y_range,
+                                               "run_shape": y,
+                                               "ori_format": "ND",
+                                               "param_type": "output"
+                                           },
+                                       ],
+                                   "calc_expect_func": calc_expect_func,
+                                   "case_name": "case_" + str(os.getpid())+ "_" + str((int)(time.time())),
+                                   "precision_standard": precision_info.PrecisionStandard(0, 0)
+                               })
+
+add_ts_case(["Ascend910A", "Ascend310"], "bool", (7, 9, 30, 8),           (2, 1, 0, 3),           (30, 9, 7, 8),         "random")
+add_ts_case(["Ascend910A", "Ascend310"], "bool", (7, 9, 30, 3),           (2, 1, 0, 3),           (30, 9, 7, 3),         "random")
+#for i in range(1,64):
+#    add_ts_case(["Ascend910A"], "bool", (7, 9, 30, i),           (2, 1, 0, 3),           (30, 9, 7, i),         "random")
+
+
+ut_case.add_precision_case("Ascend910A",
+                           {
+                               "params":
+                                   [
+                                       {
+                                           "shape": (-1, 200),
+                                           "dtype": "uint8",
+                                           "format": "ND",
+                                           "ori_shape": (33, 200),
+                                           "range": ((33, 33), (200, 200)),
+                                           "run_shape": (33, 200),
+                                           "value": np.random.randint(100, size=33*200, dtype="uint8").reshape(33, 200),
+                                           "ori_format": "ND",
+                                           "param_type": "input"
+                                       },
+                                       {
+                                           "shape": (2,),
+                                           "run_shape": (2,),
+                                           "dtype": "int32",
+                                           "ori_shape": (2),
+                                           "ori_format" : "ND",
+                                           "format": "ND",
+                                           "value": np.array([1, 0]),
+                                           "value_need_in_tiling": True,
+                                           "param_type": "input"
+                                       },
+                                       {
+                                           "shape": (200, 33),
+                                           "dtype": "uint8",
+                                           "format": "ND",
+                                           "ori_shape": (200, 33),
+                                           "range": ((200, 200), (33, 33),),
+                                           "run_shape": (200, 33),
+                                           "ori_format": "ND",
+                                           "param_type": "output"
+                                       },
+                                   ],
+                               "calc_expect_func": calc_expect_func,
+                               "precision_standard": precision_info.PrecisionStandard(0, 0)
+                           })
 
 ut_case.add_precision_case("Ascend910A",
                            {
@@ -236,87 +356,47 @@ ut_case.add_precision_case("Ascend910A",
                                "precision_standard": precision_info.PrecisionStandard(0, 0)
                            })
 
-ut_case.add_precision_case(["Hi3796CV300ES","Hi3796CV300CS"],
-                           {
-                               "params":
-                                   [
-                                       {
-                                           "shape": (-1, 24, 3, 20),
-                                           "dtype": "float16",
-                                           "format": "ND",
-                                           "ori_shape": (-1, 24, 3, 20),
-                                           "range": ((1, 1), (24, 24), (3, 3), (20, 20),),
-                                           "run_shape": (1, 24, 3, 20),
-                                           "ori_format": "ND",
-                                           "param_type": "input"
-                                       },
-                                       {
-                                           "shape": (4,),
-                                           "run_shape": (4,),
-                                           "dtype": "int32",
-                                           "ori_shape": (4),
-                                           "ori_format" : "ND",
-                                           "format": "ND",
-                                           "value": np.array([3, 0, 1, 2]),
-                                           "value_need_in_tiling": True,
-                                           "param_type": "input"
-                                       },
-                                       {
-                                           "shape": (20, -1, 24, 3),
-                                           "dtype": "float16",
-                                           "format": "ND",
-                                           "ori_shape": (20, 1, 24, 3),
-                                           "range": ((20, 20), (1, 1), (24, 24), (3, 3), ),
-                                           "run_shape": (20, 1, 24, 3),
-                                           "ori_format": "ND",
-                                           "param_type": "output"
-                                       },
-                                   ],
-                               "calc_expect_func": calc_expect_func,
-                               "precision_standard": precision_info.PrecisionStandard(0, 0)
-                           })
-
-ut_case.add_precision_case(["Ascend920A"],
-                           {
-                               "params":
-                                   [
-                                       {
-                                           "shape": (4, 255, 3, 8),
-                                           "dtype": "int32",
-                                           "format": "ND",
-                                           "ori_shape": (-1, 255, 3, 8),
-                                           "range": ((4, 4), (255, 255), (3, 3), (8, 8),),
-                                           "run_shape": (4, 255,3, 8),
-                                           "ori_format": "ND",
-                                           "param_type": "input",
-                                           #"value": np.arange(0, 256*8*4*20*16*16, dtype="int32").reshape(256, 8, 4, 20, 16, 16)
-                                       },
-                                       {
-                                           "shape": (4,),
-                                           "run_shape": (4,),
-                                           "dtype": "int32",
-                                           "ori_shape": (4),
-                                           "ori_format" : "ND",
-                                           "format": "ND",
-                                           "value": np.array([2, 1, 0, 3]),
-                                           "value_need_in_tiling": True,
-                                           "param_type": "input"
-                                       },
-                                       {
-                                           "shape": (3, 255, 4, 8),
-                                           "dtype": "int32",
-                                           "format": "ND",
-                                           "ori_shape": (3, 255, 4, 8),
-                                           "range": ((3, 3), (255, 255), (4, 4), (8, 8), ),
-                                           "run_shape": (3, 255, 4, 8),
-                                           "ori_format": "ND",
-                                           "param_type": "output"
-                                       },
-                                   ],
-                               "calc_expect_func": calc_expect_func,
-                               "precision_standard": precision_info.PrecisionStandard(0, 0)
-                           })
-
+#ut_case.add_precision_case(["Ascend920A"],
+#                           {
+#                               "params":
+#                                   [
+#                                       {
+#                                           "shape": (4, 255, 3, 8),
+#                                           "dtype": "int32",
+#                                           "format": "ND",
+#                                           "ori_shape": (-1, 255, 3, 8),
+#                                           "range": ((4, 4), (255, 255), (3, 3), (8, 8),),
+#                                           "run_shape": (4, 255,3, 8),
+#                                           "ori_format": "ND",
+#                                           "param_type": "input",
+#                                           #"value": np.arange(0, 256*8*4*20*16*16, dtype="int32").reshape(256, 8, 4, 20, 16, 16)
+#                                       },
+#                                       {
+#                                           "shape": (4,),
+#                                           "run_shape": (4,),
+#                                           "dtype": "int32",
+#                                           "ori_shape": (4),
+#                                           "ori_format" : "ND",
+#                                           "format": "ND",
+#                                           "value": np.array([2, 1, 0, 3]),
+#                                           "value_need_in_tiling": True,
+#                                           "param_type": "input"
+#                                       },
+#                                       {
+#                                           "shape": (3, 255, 4, 8),
+#                                           "dtype": "int32",
+#                                           "format": "ND",
+#                                           "ori_shape": (3, 255, 4, 8),
+#                                           "range": ((3, 3), (255, 255), (4, 4), (8, 8), ),
+#                                           "run_shape": (3, 255, 4, 8),
+#                                           "ori_format": "ND",
+#                                           "param_type": "output"
+#                                       },
+#                                   ],
+#                               "calc_expect_func": calc_expect_func,
+#                               "precision_standard": precision_info.PrecisionStandard(0, 0)
+#                           })
+#
 #def test_transpose_920a(test_arg):
 #    from impl.dynamic.transpose import transpose 
 #    from te import platform as cce_conf
@@ -361,5 +441,5 @@ ut_case.add_precision_case(["Ascend920A"],
 
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
-    ut_case.run(["Ascend910A", "Ascend920A", "Hi3796CV300ES", "Hi3796CV300CS"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910A", "Ascend920A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
 

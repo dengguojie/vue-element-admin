@@ -59,10 +59,10 @@ def _is_dynamic(input_x, perm, output_y):
 # pylint: disable=unused-argument
 def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     """
-    dynamic transpose is selected when any condition is true
-        -1 in input_x shape
-        -1 in output_y shape
-        -2 in input_x shape
+    dynamic transpose is selected when any condition is true: \n
+        -1 in input_x shape \n
+        -1 in output_y shape \n
+        -2 in input_x shape \n
     """
     x_shape = input_x.get("ori_shape")
     x_dtype = input_x.get("dtype")
