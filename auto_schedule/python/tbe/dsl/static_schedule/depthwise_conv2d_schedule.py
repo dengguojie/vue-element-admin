@@ -3178,6 +3178,8 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     pad_left = int(depthwise_dfilter_res.op.attrs['padding'][2].value)
     pad_right = int(depthwise_dfilter_res.op.attrs['padding'][3].value)
     kernel_name = depthwise_dfilter_res.op.attrs['kernel_name']
+    if not isinstance(kernel_name, str):
+        kernel_name = kernel_name.value
 
     dout_shape_5hd = (dout_n, dout_cg, dout_h, dout_w, dout_c0)
     fmap_shape_5hd = (fmap_n, fmap_cg, fmap_h, fmap_w, fmap_c0)
@@ -3374,6 +3376,8 @@ def _tiling_fetch(dx_res, stride, mad_cc, dout_shape, weight_shape):
     kernel_h = int(dx_res.op.attrs['weight_height'])
     kernel_w = int(dx_res.op.attrs['weight_width'])
     kernel_name = dx_res.op.attrs['kernel_name']
+    if not isinstance(kernel_name, str):
+        kernel_name = kernel_name.value
     strideh_expand = stride
     stridew_expand = stride
     dilation_h = 1

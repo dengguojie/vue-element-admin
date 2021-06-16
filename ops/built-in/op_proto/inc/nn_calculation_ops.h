@@ -369,16 +369,16 @@ REG_OP(BiasAddGrad)
  *\n
  * The following are the supported data types and data formats:
 *@verbatim
-    | Tensor    | out_bckprop | filter  | y
-    ------------|-------------|---------|--------
-    | Data Type | float16     | float16 | float16
-    |           |-------------|---------|--------
-    |           | float32     | float32 | float32
-    |           |-------------|---------|--------
-    |           | float64     | float64 | float64
-    ------------|-------------|---------|--------
-    | Format    | NCHW        | NCHW    | NCHW
-    |           | NHWC        | HWCN    | NHWC
+    | Tensor    | out_bckprop | filter  | y\n
+    ------------|-------------|---------|--------\n
+    | Data Type | float16     | float16 | float16\n
+    |           |-------------|---------|--------\n
+    |           | float32     | float32 | float32\n
+    |           |-------------|---------|--------\n
+    |           | float64     | float64 | float64\n
+    ------------|-------------|---------|--------\n
+    | Format    | NCHW        | NCHW    | NCHW\n
+    |           | NHWC        | HWCN    | NHWC\n
 @endverbatim
  * For float32 and float64 type, the actual calculation on the chip is based on
  * float16.
@@ -400,34 +400,35 @@ REG_OP(BiasAddGrad)
  *\n
  * The following value range restrictions must be met:
 *@verbatim
-    | Name             | Field    | Scope
-    -------------------|----------|--------------
-    | input_size       | H        | [1, 4096]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | Filter           | H        | [1, 255]
-    |                  | W        | [1, 255]
-    -------------------|----------|--------------
-    | out_backprop     | H*strideH| [1, 4096]
-    |                  | W*strideW| [1, 4096]
-    -------------------|----------|--------------
-    | y(fmap)          | H        | [1, 4096]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | Stride           | H        | [1, 63]
-    |                  | W        | [1, 63]
-    -------------------|----------|--------------
-    | Padding          | Top      | [0, 255]
-    |                  | Bottom   | [0, 255]
-    |                  | Left     | [0, 255]
-    |                  | Right    | [0, 255]
-    -------------------|----------|--------------
-    | Dilation         | H        | [1, 255]
-    |                  | W        | [1, 255]
+    | Name             | Field    | Scope\n
+    -------------------|----------|--------------\n
+    | input_size       | H        | [1, 200000]\n
+    |                  | W        | [1, 4096]\n
+    -------------------|----------|--------------\n
+    | Filter           | H        | [1, 255]\n
+    |                  | W        | [1, 255]\n
+    -------------------|----------|--------------\n
+    | out_backprop     | H*strideH| [1, 200000]\n
+    |                  | W*strideW| [1, 4096]\n
+    -------------------|----------|--------------\n
+    | y(fmap)          | H        | [1, 200000]\n
+    |                  | W        | [1, 4096]\n
+    -------------------|----------|--------------\n
+    | Stride           | H        | [1, 63]\n
+    |                  | W        | [1, 63]\n
+    -------------------|----------|--------------\n
+    | Padding          | Top      | [0, 255]\n
+    |                  | Bottom   | [0, 255]\n
+    |                  | Left     | [0, 255]\n
+    |                  | Right    | [0, 255]\n
+    -------------------|----------|--------------\n
+    | Dilation         | H        | [1, 255]\n
+    |                  | W        | [1, 255]\n
 
 @endverbatim
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
+ * and filter_width > fmap_width
  * If filter_h = 1 and filter_w = 1, out_backprop_w * stride_h * stride_w < 4096
  *\n
  *
@@ -508,7 +509,7 @@ REG_OP(Conv2DBackpropInputD)
 /**
 *@brief Computes the Deconvolution with respect to the input.
 *@par Inputs:
- * Three inputs:
+ * Two required inputs:
  * @li x: A Tensor of type float16 or int8.  4D with shape
  * [batch, out_channels, out_height, out_width]. Gradients with respect
  * to the output of the convolution.
@@ -522,13 +523,13 @@ REG_OP(Conv2DBackpropInputD)
  *\n
  * The following are the supported data types and data formats:
 *@verbatim
-    | Tensor    | x       | filter  | bias    | y
-    ------------|---------|---------|---------|--------
-    | Data Type | float16 | float16 | float16 | float16
-    |           |---------|---------|---------|--------
-    |           | int8    | int8    | int32   | int32
-    ------------|---------|---------|---------|--------
-    | Format    | NCHW    | NCHW    | ND      | NCHW
+    | Tensor    | x       | filter  | bias    | y\n
+    ------------|---------|---------|---------|--------\n
+    | Data Type | float16 | float16 | float16 | float16\n
+    |           |---------|---------|---------|--------\n
+    |           | int8    | int8    | int32   | int32\n
+    ------------|---------|---------|---------|--------\n
+    | Format    | NCHW    | NCHW    | ND      | NCHW\n
 @endverbatim
  * For int8, a dequant or requant operator must be followed.
  *\n
@@ -552,33 +553,34 @@ REG_OP(Conv2DBackpropInputD)
  *\n
  * The following value range restrictions must be met:
 *@verbatim
-    | Name             | Field    | Scope
-    -------------------|----------|--------------
-    | x (out_backprop) | H*strideH| [1, 4096]
-    |                  | W*strideW| [1, 4096]
-    -------------------|----------|--------------
-    | Filter           | H        | [1, 255]
-    |                  | W        | [1, 255]
-    -------------------|----------|--------------
-    | y (fmap)         | H        | [1, 4096]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | Stride           | H        | [1, 63]
-    |                  | W        | [1, 63]
-    -------------------|----------|--------------
-    | Padding          | Top      | [0, 255]
-    |                  | Bottom   | [0, 255]
-    |                  | Left     | [0, 255]
-    |                  | Right    | [0, 255]
-    -------------------|----------|--------------
-    | Dilation         | H        | [1, 255]
-    |                  | W        | [1, 255]
-    -------------------|----------|--------------
-    | Offset_x         |          | [-128, 127]
+    | Name             | Field    | Scope\n
+    -------------------|----------|--------------\n
+    | x (out_backprop) | H*strideH| [1, 200000]\n
+    |                  | W*strideW| [1, 4096]\n
+    -------------------|----------|--------------\n
+    | Filter           | H        | [1, 255]\n
+    |                  | W        | [1, 255]\n
+    -------------------|----------|--------------\n
+    | y (fmap)         | H        | [1, 200000]\n
+    |                  | W        | [1, 4096]\n
+    -------------------|----------|--------------\n
+    | Stride           | H        | [1, 63]\n
+    |                  | W        | [1, 63]\n
+    -------------------|----------|--------------\n
+    | Padding          | Top      | [0, 255]\n
+    |                  | Bottom   | [0, 255]\n
+    |                  | Left     | [0, 255]\n
+    |                  | Right    | [0, 255]\n
+    -------------------|----------|--------------\n
+    | Dilation         | H        | [1, 255]\n
+    |                  | W        | [1, 255]\n
+    -------------------|----------|--------------\n
+    | Offset_x         |          | [-128, 127]\n
 
 @endverbatim
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
+ * and filter_width > fmap_width
  * If filter_h = 1 and filter_w = 1, out_backprop_w * stride_h * stride_w < 4096
  *\n
  *
@@ -630,16 +632,16 @@ REG_OP(Deconvolution)
  *\n
  * The following are the supported data types and data formats:
 *@verbatim
-    | Tensor    | x       | out_backprop | y
-    ------------|---------|--------------|---------
-    | Data Type | float16 |    float16   | float16
-    |           |---------|--------------|---------
-    |           | float32 |    float32   | float32
-    |           |---------|--------------|---------
-    |           | float64 |    float64   | float64
-    |-----------|---------|--------------|---------
-    | Format    | NCHW    |     NCHW     | NCHW
-    |           | NHWC    |     NHWC     | HWCN
+    | Tensor    | x       | out_backprop | y\n
+    ------------|---------|--------------|---------\n
+    | Data Type | float16 |    float16   | float16\n
+    |           |---------|--------------|---------\n
+    |           | float32 |    float32   | float32\n
+    |           |---------|--------------|---------\n
+    |           | float64 |    float64   | float64\n
+    |-----------|---------|--------------|---------\n
+    | Format    | NCHW    |     NCHW     | NCHW\n
+    |           | NHWC    |     NHWC     | HWCN\n
 @endverbatim
  * For float32 and float64 type of x and outbackprop, the actual calculation on the chip
  * is based on float16.
@@ -661,36 +663,31 @@ REG_OP(Deconvolution)
 *\n
 * The following value range restrictions must be met:
 *@verbatim
-    | Name             | Field    | Scope
-    -------------------|----------|--------------
-    | x(fmap)          | H        | [1, 4096]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | Filter Size      | H        | [1, 255]
-    |                  | W        | [1, 255]
-    -------------------|----------|--------------
-    | out_backprop     | H        | [1, 4096]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | y                | H        | [1, 4096]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | Stride           | H        | [1, 63]
-    |                  | W        | [1, 63]
-    -------------------|----------|--------------
-    | Padding          | Top      | [0, 255]
-    |                  | Bottom   | [0, 255]
-    |                  | Left     | [0, 255]
-    |                  | Right    | [0, 255]
-    -------------------|----------|--------------
-    | Dilation         | H        | [1, 255]
-    |                  | W        | [1, 255]
+    | Name             | Field    | Scope\n
+    -------------------|----------|--------------\n
+    | x(fmap)          | H        | [1, 200000]\n
+    |                  | W        | [1, 4096]\n
+    -------------------|----------|--------------\n
+    | Filter Size      | H        | [1, 255]\n
+    |                  | W        | [1, 255]\n
+    -------------------|----------|--------------\n
+    | out_backprop     | H        | [1, 200000]\n
+    |                  | W        | [1, 4096]\n
+    -------------------|----------|--------------\n
+    | y                | H        | [1, 200000]\n
+    |                  | W        | [1, 4096]\n
+    -------------------|----------|--------------\n
+    | Stride           | H        | [1, 63]\n
+    |                  | W        | [1, 63]\n
+    -------------------|----------|--------------\n
+    | Padding          | Top      | [0, 255]\n
+    |                  | Bottom   | [0, 255]\n
+    |                  | Left     | [0, 255]\n
+    |                  | Right    | [0, 255]\n
+    -------------------|----------|--------------\n
+    | Dilation         | H        | [1, 255]\n
+    |                  | W        | [1, 255]\n
 
-@endverbatim
- * In Ascend910, out_backprop's H and W not support 1 when
- * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
- *\n
- *
 *@par Outputs:
  * y: A Tensor. Has the same type as x, has the same format as filter_size.
  *\n
@@ -1471,14 +1468,14 @@ REG_OP(Conv3DTransposeD)
  *\n
  * The following are the supported data types and data formats:
 *@verbatim
-    | Tensor    | x       | filter  | bias    | y
-    ------------|---------|---------|---------|--------
-    | Data Type | float16 | float16 | float16 | float16
-    |           |---------|---------|---------|--------
-    |           | int8    | int8    | int32   | int32
-    ------------|---------|---------|---------|--------
-    | Format    | NCHW    | NCHW    | ND      | NCHW
-    |           | NHWC    | HWCN    |         | NHWC
+    | Tensor    | x       | filter  | bias    | y\n
+    ------------|---------|---------|---------|--------\n
+    | Data Type | float16 | float16 | float16 | float16\n
+    |           |---------|---------|---------|--------\n
+    |           | int8    | int8    | int32   | int32\n
+    ------------|---------|---------|---------|--------\n
+    | Format    | NCHW    | NCHW    | ND      | NCHW\n
+    |           | NHWC    | HWCN    |         | NHWC\n
 @endverbatim
  * For int8, a dequant or requant operator must be followed.
  *\n
@@ -1506,36 +1503,37 @@ REG_OP(Conv3DTransposeD)
  *\n
  * The following value range restrictions must be met:
 *@verbatim
-    | Name             | Field    | Scope
-    -------------------|----------|--------------
-    | input_size       | H        | [1, 4096]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | x (out_backprop) | H*strideH| [1, 4096]
-    |                  | W*strideW| [1, 4096]
-    -------------------|----------|--------------
-    | filter           | H        | [1, 255]
-    |                  | W        | [1, 255]
-    -------------------|----------|--------------
-    | y (fmap)         | H        | [1, 4096]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | Stride           | H        | [1, 63]
-    |                  | W        | [1, 63]
-    -------------------|----------|--------------
-    | Padding          | Top      | [0, 255]
-    |                  | Bottom   | [0, 255]
-    |                  | Left     | [0, 255]
-    |                  | Right    | [0, 255]
-    -------------------|----------|--------------
-    | Dilation         | H        | [1, 255]
-    |                  | W        | [1, 255]
-    -------------------|----------|--------------
-    | Offset_x         |          | [-128, 127]
+    | Name             | Field    | Scope\n
+    -------------------|----------|--------------\n
+    | input_size       | H        | [1, 200000]\n
+    |                  | W        | [1, 4096]\n
+    -------------------|----------|--------------\n
+    | x (out_backprop) | H*strideH| [1, 200000]\n
+    |                  | W*strideW| [1, 4096]\n
+    -------------------|----------|--------------\n
+    | filter           | H        | [1, 255]\n
+    |                  | W        | [1, 255]\n
+    -------------------|----------|--------------\n
+    | y (fmap)         | H        | [1, 200000]\n
+    |                  | W        | [1, 4096]\n
+    -------------------|----------|--------------\n
+    | Stride           | H        | [1, 63]\n
+    |                  | W        | [1, 63]\n
+    -------------------|----------|--------------\n
+    | Padding          | Top      | [0, 255]\n
+    |                  | Bottom   | [0, 255]\n
+    |                  | Left     | [0, 255]\n
+    |                  | Right    | [0, 255]\n
+    -------------------|----------|--------------\n
+    | Dilation         | H        | [1, 255]\n
+    |                  | W        | [1, 255]\n
+    -------------------|----------|--------------\n
+    | Offset_x         |          | [-128, 127]\n
 
 @endverbatim
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
+ * and filter_width > fmap_width
  * If filter_h = 1 and filter_w = 1, out_backprop_w * stride_h * stride_w < 4096
  *\n
  *
