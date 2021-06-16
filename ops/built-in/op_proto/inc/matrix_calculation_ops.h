@@ -67,11 +67,15 @@ REG_OP(MatMul)
 * @li x2: A matrix Tensor. 2D. Must be one of the following types: float16,
 * float32, int32. Has format [ND, NHWC, FRACTAL_NZ].
 * @li bias: A 1D Tensor. Must be one of the following types: float16,
-* float32, int32. Has format [ND, NHWC] . \n
+* float32, int32. Has format [ND, NHWC]
+* @li offset_w: A Optional 1D Tensor for quantized interference. Type is int8. Reserved. \n
 
 *@par Attributes:
 *@li transpose_x1: A bool. If True, changes the shape of "x1" from [M, K] to [K, M].
-*@li transpose_x2: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] . \n
+*@li transpose_x2: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] .
+*@li offset_x: An optional integer for quantized deconvolution.
+*The negative offset added to the input image for int8 type. Ensure offset_x within the
+*effective range of int8 [-128, 127]. Defaults to "0". \n
 
 *@par Outputs:
 *y: The result matrix Tensor. 2D. Must be one of the following types: float16,

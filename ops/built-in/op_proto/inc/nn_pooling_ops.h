@@ -50,6 +50,7 @@ namespace ge {
 *dilation[2]: An optional int32, specifying the left dilation. Defaults to "1".
 *dilation[3]: An optional int32, specifying the right dilation. Defaults to "1".
 *@li ceil_mode: An optional int32, either "0" (ceil mode) or "1" (floor mode). Defaults to "0".
+*@li data_format: An optional string, Specify the data format of the input and output data. With the default format "NCHW".
 *@par Outputs:
 *y: An NCHW tensor of type float16, float32, int32.
 *@attention Constraints:
@@ -931,11 +932,11 @@ REG_OP(AvgPoolV2GradD)
     .OP_END_FACTORY_REG(AvgPoolV2GradD)
 
 /**
-*@brief :upsample the layer
+*@brief upsample the layer, similar to the nearest-neighbor difference scaling algorithm.
 
 *@par Inputs:
 * one input, including:
-*@li x: A tensor of type float16 or float32.
+* x: A tensor of type float16 or float32.
 *@par Attributes:
 *@li  scale: A optional float32, scale factor of x. Defaults to "1.0".
 *@li  stride_h: An optional int32, broadcast the axis of h. Defaults to "2".

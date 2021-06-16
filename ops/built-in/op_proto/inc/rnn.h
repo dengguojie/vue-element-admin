@@ -491,7 +491,6 @@ REG_OP(DynamicLSTMV2)
 *ten inputs: \n
 *@li w:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li init_c:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
-*@li h:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li c:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dy:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dh:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
@@ -508,6 +507,7 @@ REG_OP(DynamicLSTMV2)
 *@li dx:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dh_prev:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dc_prev:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
+*@li dgate:A 4D Tensor. Must be one of the following types: float16. The format must be FRACTAL_NZ.
 */
 REG_OP(LSTMInputGrad)
     .INPUT(w, TensorType({DT_FLOAT16, DT_FLOAT}))

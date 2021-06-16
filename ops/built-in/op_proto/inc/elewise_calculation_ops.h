@@ -3154,13 +3154,13 @@ REG_OP(FusedMulAddNL2loss)
 *@brief Tests whether the input exceeds a threshold. \n
 
 *@par Inputs:
-*@li x: A Tensor with any format. Must be one of the following types: float16, float32. \n
+* x: A Tensor with any format. Must be one of the following types: float16, float32. \n
 
 *@par Attributes:
-*@li threshold: A required float32. Defaults to "0.0". "x" is compared with "threshold", outputs "1" for inputs above threshold; "0" otherwise. \n
+* threshold: A required float32. Defaults to "0.0". "x" is compared with "threshold", outputs "1" for inputs above threshold; "0" otherwise. \n
 
 *@par Outputs:
-*@li y: A Tensor with any format. Has the same type as the input. Must be one of the following types: float16, float32.
+* y: A Tensor with any format. Has the same type as the input. Must be one of the following types: float16, float32.
 *@par Third-party framework compatibility
 * Compatible with the Caffe operator Threshold.
 */
