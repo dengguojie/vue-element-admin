@@ -81,35 +81,40 @@ TEST_F(DynamicLSTMGradCellTest, dynamic_lstm_v2_test_case_1_success) {
   j_desc.SetShape(j_shape);
   dynamic_lstm_v2_op.UpdateInputDesc("j", j_desc);
 
-    ge::TensorDesc f_desc;
+  ge::TensorDesc f_desc;
   ge::Shape f_shape({t, input_size, batch, 16, 16});
   f_desc.SetDataType(ge::DT_FLOAT16);
   f_desc.SetShape(f_shape);
   dynamic_lstm_v2_op.UpdateInputDesc("f", f_desc);
 
-    ge::TensorDesc o_desc;
+  ge::TensorDesc o_desc;
   ge::Shape o_shape({t, input_size, batch, 16, 16});
   o_desc.SetDataType(ge::DT_FLOAT16);
   o_desc.SetShape(o_shape);
   dynamic_lstm_v2_op.UpdateInputDesc("o", o_desc);
 
-    ge::TensorDesc tanhct_desc;
+  ge::TensorDesc tanhct_desc;
   ge::Shape tanhct_shape({t, input_size, batch, 16, 16});
   tanhct_desc.SetDataType(ge::DT_FLOAT16);
   tanhct_desc.SetShape(tanhct_shape);
   dynamic_lstm_v2_op.UpdateInputDesc("tanhct", tanhct_desc);
 
-    ge::TensorDesc mask_desc;
+  ge::TensorDesc mask_desc;
   ge::Shape mask_shape({t, input_size, batch, 16, 16});
   mask_desc.SetDataType(ge::DT_FLOAT16);
   mask_desc.SetShape(mask_shape);
   dynamic_lstm_v2_op.UpdateInputDesc("mask", mask_desc);
 
-      ge::TensorDesc t_state_desc;
+  ge::TensorDesc t_state_desc;
   ge::Shape t_state_shape({1});
   t_state_desc.SetDataType(ge::DT_FLOAT16);
   t_state_desc.SetShape(t_state_shape);
   dynamic_lstm_v2_op.UpdateInputDesc("t_state", t_state_desc);
+
+  dynamic_lstm_v2_op.SetAttr("forget_bias", (float)1.0);
+  dynamic_lstm_v2_op.SetAttr("activation", "tanh");
+  dynamic_lstm_v2_op.SetAttr("direction", "UNIDIRECTIONAL");
+  dynamic_lstm_v2_op.SetAttr("gate_order", "ijfo");
 
   auto ret = dynamic_lstm_v2_op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);

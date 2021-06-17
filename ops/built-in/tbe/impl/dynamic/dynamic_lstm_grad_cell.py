@@ -1,5 +1,5 @@
-import te.platform as tbe_platform
-from te import tik
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tik
 from tbe.dsl.base.operation import add_compile_info
 from te.utils import para_check
 from impl.util.platform_adapter import register_operator
@@ -9,7 +9,7 @@ TILLING_ARG_NUM = 12
 T_STATE_NUM = 1
 INT64 = 'int64'
 INT32 = 'int32'
-FORWARD = 'Forward'
+FORWARD = 'UNIDIRECTIONAL'
 TILLING_PARA_INDEX_MAP = {
     't_size': 0,
     'eleEachCore': 1,
@@ -267,13 +267,13 @@ class LstmCellGrad(LstmCellGradInput):
             self.ub_pice_num = 21
 
         # get vector compute parameters
-        dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.dht_dtype) // 8
+        dtype_bytes_size = tbe_platform.get_bit_len(self.dht_dtype) // 8
         int64_bytes_size = 8
         self.v_mask_max = 128 // (dtype_bytes_size // 2)
         self.v_repeat_max = 255
         self.v_ele_each_block = 32 // dtype_bytes_size
 
-        self.ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         t_state_and_tilling_size = ((T_STATE_NUM + 15) // 16 * 16 * dtype_bytes_size + (
                 TILLING_ARG_NUM + 15) // 16 * 16 * int64_bytes_size) * 2
         ub_max_ele_num = (self.ub_size_bytes - t_state_and_tilling_size) // dtype_bytes_size
@@ -602,7 +602,7 @@ class LstmCellGrad(LstmCellGradInput):
         self.tik_instance.data_move(self.ub_t_state, self.gm_t_state, 0, 1, 1, 0, 0)
         self.t_state = self.tik_instance.Scalar(INT32, name='t_state', init_value=self.ub_t_state[0])
         if self.direction == FORWARD:
-            t_offset = self.t_size = self.t_state - 1
+            t_offset = self.t_size - self.t_state - 1
         else:
             t_offset = self.t_state
         return t_offset
@@ -640,18 +640,12 @@ class LstmCellGrad(LstmCellGradInput):
                                     v_burst_lens, 0, 0)
         self.tik_instance.data_move(self.ub_ft, self.gm_ft[t_offset], 0, 1,
                                     v_burst_lens, 0, 0)
-        self.tik_instance.data_move(self.ub_dct, self.gm_dct[t_offset], 0, 1,
+        self.tik_instance.data_move(self.ub_dct, self.gm_dct[start_index], 0, 1,
                                     v_burst_lens, 0, 0)
-        if self.direction == FORWARD:
-            with self.tik_instance.if_scope(self.t_state == self.t_size - 1):
-                self.tik_instance.data_move(self.ub_c, self.gm_init_c[start_index], 0, 1, v_burst_lens, 0, 0)
-            with self.tik_instance.else_scope():
-                self.tik_instance.data_move(self.ub_c, self.gm_c[c_t_offset], 0, 1, v_burst_lens, 0, 0)
-        else:
-            with self.tik_instance.if_scope(self.t_state == 0):
-                self.tik_instance.data_move(self.ub_c, self.gm_init_c[start_index], 0, 1, v_burst_lens, 0, 0)
-            with self.tik_instance.else_scope():
-                self.tik_instance.data_move(self.ub_c, self.gm_c[c_t_offset], 0, 1, v_burst_lens, 0, 0)
+        with self.tik_instance.if_scope(self.t_state == self.t_size - 1):
+            self.tik_instance.data_move(self.ub_c, self.gm_init_c[start_index], 0, 1, v_burst_lens, 0, 0)
+        with self.tik_instance.else_scope():
+            self.tik_instance.data_move(self.ub_c, self.gm_c[c_t_offset], 0, 1, v_burst_lens, 0, 0)
 
     def compute_each_core(self, core_index, out_loop_index, t_offset):
         """
@@ -674,8 +668,12 @@ class LstmCellGrad(LstmCellGradInput):
         with self.tik_instance.if_scope(self.inner_loop_num > 0):
             with self.tik_instance.for_range(0, self.inner_loop_num) as index:
                 start_index = loop_offset + index * self.inner_loop_ele_num
-                self.input_data_move_in(start_index, t_offset * self.fuse_size + start_index,
-                                        (t_offset - 1) * self.fuse_size + start_index, self.inner_loop_ele_num)
+                if self.direction == FORWARD:
+                    self.input_data_move_in(start_index, t_offset * self.fuse_size + start_index,
+                                            (t_offset - 1) * self.fuse_size + start_index, self.inner_loop_ele_num)
+                else:
+                    self.input_data_move_in(start_index, t_offset * self.fuse_size + start_index,
+                                            (t_offset + 1) * self.fuse_size + start_index, self.inner_loop_ele_num)
                 self.compute_each_loop(self.inner_loop_ele_num)
 
                 # move vector compute result to l2 and gm
@@ -684,8 +682,12 @@ class LstmCellGrad(LstmCellGradInput):
         with self.tik_instance.if_scope(self.last_loop_ele_num > 0):
             start_index = (
                     loop_offset + self.inner_loop_num * self.inner_loop_ele_num)
-            self.input_data_move_in(start_index, t_offset * self.fuse_size + start_index,
-                                    (t_offset - 1) * self.fuse_size + start_index, self.last_loop_ele_num)
+            if self.direction == FORWARD:
+                self.input_data_move_in(start_index, t_offset * self.fuse_size + start_index,
+                                        (t_offset - 1) * self.fuse_size + start_index, self.last_loop_ele_num)
+            else:
+                self.input_data_move_in(start_index, t_offset * self.fuse_size + start_index,
+                                        (t_offset + 1) * self.fuse_size + start_index, self.inner_loop_ele_num)
             self.compute_each_loop(self.last_loop_ele_num)
 
             # move vector compute result to l2 and gm
@@ -773,7 +775,7 @@ class LstmCellGrad(LstmCellGradInput):
 # pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
 @register_operator("DynamicLSTMGradCell")
 def dynamic_lstm_grad_cell(init_c, c, dy, dh, dc, i, j, f, o, tanhct, t_state, mask, dgate, dct1, forget_bias=1,
-                            activation="None", direction="Forward", gate_order="ijfo", kernel_name="dynamic_lstm_grad_cell"):
+                            activation="tanh", direction="UNIDIRECTIONAL", gate_order="ijfo", kernel_name="dynamic_lstm_grad_cell"):
     """
     Calculate the gradient of the four gates and the state of c at t-1
 
