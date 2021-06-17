@@ -125,8 +125,7 @@ bool PadV3FusionPass::AutoRemoveInput(ge::ComputeGraph &graph, ge::NodePtr &pad_
                         return false);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Remove const Node:[%s].", constNode1->GetName().c_str());
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:[%s] have output link to other node.", constNode1->GetName().c_str());
-      return false;
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Node:[%s] have output link to other node.", constNode1->GetName().c_str());
     }
   }
 
