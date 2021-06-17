@@ -207,7 +207,7 @@ def im2col(images, y, ksizes, strides, dilates, padding_mode, pads, kernel_name=
         cut_h_col = fmap_h
 
     cut_w_row_s = (BLOCK_SIZE - 1) * stride_w + 1
-    cut_h_row_s = (((cut_w_row_s - 1) // fmap_w + 1) - 1) * stride_h + 1
+    cut_h_row_s = ((cut_w_row_s - 1) // fmap_w + 1) * stride_h + 1
     min_cut_h = min(cut_h_col, cut_h_row_s)
 
     if min_cut_h * fmap_w * fmap_c0 * type_size * DOUBLE_BUFFER > SIZE_L1:
