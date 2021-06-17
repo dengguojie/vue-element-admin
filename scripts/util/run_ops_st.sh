@@ -31,15 +31,18 @@ RESULT="result.txt"
 
 set_st_env() {
   local install_path="$1"
+  local soc_version="$2"
   # atc
   export PATH=$install_path/atc/ccec_compiler/bin:$install_path/atc/bin:$PATH
   export PYTHONPATH=$install_path/atc/python/site-packages:$install_path/toolkit/python/site-packages:$PYTHONPATH
   export LD_LIBRARY_PATH=$install_path/atc/lib64:$LD_LIBRARY_PATH
   export ASCEND_OPP_PATH=$install_path/opp
   # acl
-  export DDK_PATH=$install_path
-  export NPU_HOST_LIB=$install_path/acllib/lib64/stub
-  export LD_LIBRARY_PATH=$install_path/acllib/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
+  if [[ $soc_version == "Ascend310" ]]; then
+    export DDK_PATH=$install_path
+    export NPU_HOST_LIB=$install_path/acllib/lib64/stub
+    export LD_LIBRARY_PATH=$install_path/acllib/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
+  fi
 }
 
 modify_for_cov() {
@@ -160,7 +163,7 @@ main() {
   modify_for_cov
   delete_unmatch_cases $soc_version
   gen_all_cases
-  set_st_env "${base_path}"
+  set_st_env "${base_path}"  "${soc_version}"
   run_st "${op_type}" "${soc_version}"
   get_results
   clear_tmp
