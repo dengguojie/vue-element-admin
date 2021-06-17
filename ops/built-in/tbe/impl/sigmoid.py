@@ -53,14 +53,15 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     if dtype == "float32" and not mul_support:
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'x', ("float16", ), dtype)
 
-    if dtype == "float32" and exp_support:
-        ln_res = -math.log(CONST_FP32_MAX)
-        ln_res = int(ln_res * 10) / 10
-    else:
-        ln_res = -math.log(CONST_FP16_MAX)
-        ln_res = int(ln_res * 1000) / 1000
+    if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if dtype == "float32" and exp_support:
+            ln_res = -math.log(CONST_FP32_MAX)
+            ln_res = int(ln_res * 10) / 10
+        else:
+            ln_res = -math.log(CONST_FP16_MAX)
+            ln_res = int(ln_res * 1000) / 1000
+        data_input = tbe.vmaxs(data_input, ln_res)
 
-    data_input = tbe.vmaxs(data_input, ln_res)
     const_num_neg_one = tvm.const(-1, dtype=dtype)
     const_num_one = tvm.const(1, dtype=dtype)
     tmp_negative = tbe.vmuls(data_input, const_num_neg_one)
