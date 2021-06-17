@@ -121,8 +121,10 @@ bool SliceTiling(const std::string& opType, const TeOpParas& opParas, const nloh
   slice_params_output.stride_list.assign(slice_params_output.end_list.size(), 1);
   OP_LOGD(opType.c_str(), "origin slice params: %s", slice_params_output.to_string().c_str());
 
-  SetSliceTilingData(opType, slice_params_output, runInfo);
   int32_t core_num = GetCompileInfo<int32_t>(opCompileInfo, "block_dim");
+  int32_t ub_size = GetCompileInfo<int32_t>(opCompileInfo, "ub_size");
+  SetSliceTilingData(opType, slice_params_output, runInfo, opParas, core_num, ub_size);
+
   runInfo.block_dim = core_num;
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;

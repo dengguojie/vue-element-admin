@@ -83,6 +83,7 @@ class StridedSlice:
             self.output_steps = inst.ScalarArray(dtype=dtype, length=len(input_x_shape), name="output_steps")
 
             self.shape_length = inst.Scalar(dtype, name="shape_length", init_value=len(input_x_shape))
+            self.tiling_mode = inst.Scalar(dtype, name="tiling_mode")
             self.out_dim = inst.Scalar(dtype, name="out_dim")
             self.out_dim_with_vnchwconv = inst.Scalar(dtype, name="out_dim_with_vnchwconv")
 
@@ -97,6 +98,7 @@ class StridedSlice:
                                                      scope=tik.scope_ubuf)
                 _data_move(self.tik_instance, tiling_ub, self.tiling_gm, need_ub_size)
 
+                self.tiling_mode.set_as(tiling_ub[0])
                 self.shape_length.set_as(tiling_ub[1])
                 index = self.tik_instance.Scalar(init_value=2)
                 items = (self.input_shape, self.output_shape, self.begin, self.end, self.stride)
@@ -233,33 +235,116 @@ class StridedSlice:
         """
         inst = self.tik_instance
         core_num = self.aicore_num
-        output_shape = self.tiling_param.output_shape
-        input_shape = self.tiling_param.input_shape
-
         if self.dtype == "float16":
             with inst.for_range(0, core_num, block_num=core_num, name="core_idx") as i:
                 self.tiling_param.init()
                 self.shape_length = self.tiling_param.shape_length
-                with inst.if_scope(output_shape[self.shape_length - 1] >= self.block_element):
-                    self._do_large_last_dim(i)
+                with inst.if_scope(self.tiling_param.tiling_mode == 1):
+                    self._do_small_last_dim(i)
                 with inst.else_scope():
-                    with inst.if_scope(tik.all(
-                            self.tiling_param.out_dim_with_vnchwconv % core_num == 0,
-                            self.shape_length > 2,
-                            output_shape[self.shape_length - 2] >= 16,
-                            input_shape[self.shape_length - 1] * 256 <= self.ub_size_with_vnchwconv
-                    )):
-                        self._do_small_last_dim_with_vnchwconv(i)
+                    with inst.if_scope(self.tiling_param.tiling_mode == 2):
+                        self._do_large_last_dim(i)
                     with inst.else_scope():
-                        self._do_small_last_dim(i)
+                        with inst.if_scope(self.tiling_param.tiling_mode == 3):
+                            self._do_small_last_dim_with_vnchwconv(i)
+                        with inst.else_scope():
+                            self._do_large_last_dim_multi_rows(i)
         else:
             with inst.for_range(0, core_num, block_num=core_num, name="core_idx") as i:
                 self.tiling_param.init()
                 self.shape_length = self.tiling_param.shape_length
-                with inst.if_scope(output_shape[self.shape_length - 1] >= self.block_element):
-                    self._do_large_last_dim(i)
-                with inst.else_scope():
+                with inst.if_scope(tik.any(self.tiling_param.tiling_mode == 1, self.tiling_param.tiling_mode == 3)):
                     self._do_small_last_dim(i)
+                with inst.else_scope():
+                    with inst.if_scope(self.tiling_param.tiling_mode == 2):
+                        self._do_large_last_dim(i)
+                    with inst.else_scope():
+                        self._do_large_last_dim_multi_rows(i)
+
+    def _do_large_last_dim_multi_rows(self, core_idx):
+        """
+        _do_large_last_dim_multi_rows
+        """
+        inst = self.tik_instance
+        core_num = self.aicore_num
+        # out_dim = 67, num_rows_per_aicore: 3, 3, 3, 2, 2, 2 ...
+        num_rows_per_aicore = inst.Scalar("int64", name="num_rows_per_aicore")
+        num_tail_rows = inst.Scalar("int64", name="num_tail_rows")
+        num_rows_per_aicore.set_as(self.tiling_param.out_dim // core_num)
+        num_tail_rows.set_as(self.tiling_param.out_dim - core_num * num_rows_per_aicore)
+
+        row_idx = inst.Scalar("int64", name="row_idx")
+        with inst.if_scope(core_idx < num_tail_rows):
+            row_idx.set_as(core_idx + core_idx * num_rows_per_aicore)
+        with inst.else_scope():
+            row_idx.set_as(num_tail_rows + core_idx * num_rows_per_aicore)
+
+        with inst.if_scope(core_idx < num_tail_rows):
+            num_rows_per_aicore.set_as(num_rows_per_aicore + 1)
+
+        with inst.if_scope(row_idx < self.tiling_param.out_dim):
+            self._do_large_last_dim_multi_rows_per_aicore(row_idx, num_rows_per_aicore)
+
+    def _do_large_last_dim_multi_rows_per_aicore(self, row_idx, num_rows):
+        """
+        _do_large_last_dim_multi_rows_per_aicore
+        """
+        inst = self.tik_instance
+        output_shape = self.tiling_param.output_shape
+        input_shape = self.tiling_param.input_shape
+        dim_count = self.tiling_param.shape_length
+        max_rows_per_data_move = inst.Scalar("int64", name="loops")
+        max_rows_per_data_move.set_as(self.ub_size // output_shape[dim_count - 1])
+        loops = inst.Scalar("int64", name="loops")
+        loops.set_as(num_rows // max_rows_per_data_move)
+
+        row_loop_idx = inst.Scalar("int64", name="row_loop_idx")
+
+        with inst.new_stmt_scope():
+            ub = inst.Tensor(self.dtype, (self.ub_size,), scope=tik.scope_ubuf, name="ub")
+            with inst.for_range(0, loops, name="loops_for_range") as loop_idx:
+                row_loop_idx.set_as(row_idx + loop_idx * max_rows_per_data_move)
+                input_gm_addr = self._get_input_gm_addr(row_loop_idx)
+                output_gm_addr = self._get_output_gm_addr(row_loop_idx)
+                inst.data_move(
+                    ub,
+                    self.input_gm[input_gm_addr],
+                    0,
+                    max_rows_per_data_move,
+                    output_shape[dim_count - 1] // self.block_element,
+                    (input_shape[dim_count - 1] - output_shape[dim_count - 1]) // self.block_element,
+                    0)  # input gm -> ub
+
+                inst.data_move(
+                    self.output_gm[output_gm_addr],
+                    ub,
+                    0,
+                    1,
+                    max_rows_per_data_move * output_shape[dim_count - 1] // self.block_element,
+                    0,
+                    0)  # ub -> output gm
+
+            num_remain_rows = num_rows - loops * max_rows_per_data_move
+            with inst.if_scope(num_remain_rows > 0):
+                row_loop_idx.set_as(row_idx + loops * max_rows_per_data_move)
+                input_gm_addr = self._get_input_gm_addr(row_loop_idx)
+                output_gm_addr = self._get_output_gm_addr(row_loop_idx)
+                inst.data_move(
+                    ub,
+                    self.input_gm[input_gm_addr],
+                    0,
+                    num_remain_rows,
+                    output_shape[dim_count - 1] // self.block_element,
+                    (input_shape[dim_count - 1] - output_shape[dim_count - 1]) // self.block_element,
+                    0)  # input gm -> ub
+                inst.data_move(
+                    self.output_gm[output_gm_addr],
+                    ub,
+                    0,
+                    1,
+                    num_remain_rows * output_shape[dim_count - 1] // self.block_element,
+                    0,
+                    0)  # ub -> output gm
 
     def _do_large_last_dim(self, core_idx):
         self._do_large_last_dim_normal(core_idx)
@@ -418,7 +503,7 @@ class StridedSlice:
         output_shape = self.tiling_param.output_shape
         out_loops = self._ceil_div(self.tiling_param.out_dim_with_vnchwconv, core_num)
         compute_rows_each_inner_loops = self.ub_size_with_vnchwconv // (
-                    16 * input_shape[self.shape_length - 1]) // 16 * 16
+            16 * input_shape[self.shape_length - 1]) // 16 * 16
 
         inner_loops = self._ceil_div(output_shape[self.shape_length - 2], compute_rows_each_inner_loops) - 1
         compute_rows_tail = output_shape[self.shape_length - 2] - inner_loops * compute_rows_each_inner_loops
@@ -430,9 +515,9 @@ class StridedSlice:
                 output_gm_base_addr = self._get_output_base_gm_addr_with_vnchwconv(idx)
                 with inst.for_range(0, inner_loops, name="inner_loops") as inner_loops_idx:
                     input_gm_addr = input_gm_base_addr + inner_loops_idx * \
-                                    compute_rows_each_inner_loops * input_shape[self.shape_length - 1]
+                        compute_rows_each_inner_loops * input_shape[self.shape_length - 1]
                     output_gm_addr = output_gm_base_addr + inner_loops_idx * \
-                                     compute_rows_each_inner_loops * output_shape[self.shape_length - 1]
+                        compute_rows_each_inner_loops * output_shape[self.shape_length - 1]
 
                     self._do_each_matrix_align(input_gm_addr, output_gm_addr, compute_rows_each_inner_loops)
 
@@ -642,5 +727,6 @@ def strided_slice(input_x, begin, end, strides=None, output_x=None, begin_mask=0
                                                         "end_mask": strided_slice_instance.end_mask,
                                                         "ellipsis_mask": strided_slice_instance.ellipsis_mask,
                                                         "new_axis_mask": strided_slice_instance.new_axis_mask,
-                                                        "shrink_axis_mask": strided_slice_instance.shrink_axis_mask})
+                                                        "shrink_axis_mask": strided_slice_instance.shrink_axis_mask,
+                                                        "ub_size": tik.Dprofile().get_unified_buffer_size()})
     return inst

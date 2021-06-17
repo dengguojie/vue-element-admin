@@ -17,9 +17,10 @@ strided slice
 """
 from __future__ import absolute_import
 from impl.util.platform_adapter import para_check
-from .strided_slice import StridedSlice
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import tik
+from .strided_slice import StridedSlice
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument
@@ -68,5 +69,6 @@ def slice(x, offsets, size, y, kernel_name="slice"):
                   config=opt_config,
                   enable_l2=False)
 
-    tbe_context.get_context().add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num})
+    tbe_context.get_context().add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num,
+                                                        "ub_size": tik.Dprofile().get_unified_buffer_size()})
     return inst

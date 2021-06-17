@@ -81,7 +81,7 @@ TEST_F(slice_tiling, slice_tiling_no_mask) {
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
+            "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
 }
 
 TEST_F(slice_tiling, slice_tiling_with_mask1) {
@@ -134,7 +134,7 @@ TEST_F(slice_tiling, slice_tiling_with_mask1) {
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 2 10 10 3 3 0 0 3 3 1 1 ");
+            "1 2 10 10 3 3 0 0 3 3 1 1 ");
 }
 
 TEST_F(slice_tiling, slice_tiling_no_const_value) {
@@ -333,7 +333,7 @@ TEST_F(slice_tiling, slice_tiling_end_value_negative_one) {
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 1 100 100 0 100 1 ");
+            "2 1 100 100 0 100 1 ");
 }
 
 TEST_F(slice_tiling, slice_tiling_empty_input) {

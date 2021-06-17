@@ -45,6 +45,7 @@ std::string SliceParameters::to_string() const {
   result += " begin:" + ops::to_string(begin_list);
   result += " end:" + ops::to_string(end_list);
   result += " stride:" + ops::to_string(stride_list);
+  result += " tiling_mode:" + std::to_string(tiling_mode);
   return result;
 }
 
@@ -59,7 +60,7 @@ struct SliceMasks {
 static string to_string(const ByteBuffer& tiling_data) {
   auto data = tiling_data.str();
   string result = "(";
-  const int64_t *data_addr = reinterpret_cast<const int64_t*>(data.c_str());
+  const int64_t* data_addr = reinterpret_cast<const int64_t*>(data.c_str());
   for (size_t i = 0; i < data.length(); i += sizeof(int64_t)) {
     result += std::to_string(*data_addr);
     data_addr++;
@@ -72,7 +73,7 @@ static string to_string(const ByteBuffer& tiling_data) {
 
 static bool GetStridedSliceSocParams(const std::string& opType, const nlohmann::json& opCompileInfo, int32_t& core_num,
                                      uint32_t& begin_mask, uint32_t& end_mask, uint32_t& ellipsis_mask,
-                                     uint32_t& new_axis_mask, uint32_t& shrink_axis_mask) {
+                                     uint32_t& new_axis_mask, uint32_t& shrink_axis_mask, int32_t& ub_size) {
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("block_dim") == 0) {
@@ -117,17 +118,23 @@ static bool GetStridedSliceSocParams(const std::string& opType, const nlohmann::
   }
   shrink_axis_mask = allVars["shrink_axis_mask"].get<std::int32_t>();
 
+  if (allVars.count("ub_size") == 0) {
+    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
+    ge::OpsGetCompileParamsErrReport(opType, "ub_size");
+    return false;
+  }
+  ub_size = allVars["ub_size"].get<std::int32_t>();
   return true;
 }
 
-static void MakeSameDims(SliceParameters &parameters, const vector<int64_t> &shape) {
+static void MakeSameDims(SliceParameters& parameters, const vector<int64_t>& shape) {
   if (parameters.input.size() < shape.size()) {
     return;
   }
 
   bool same_size = parameters.input.size() == parameters.begin_list.size() &&
-      parameters.input.size() == parameters.end_list.size() &&
-      parameters.input.size() == parameters.stride_list.size();
+                   parameters.input.size() == parameters.end_list.size() &&
+                   parameters.input.size() == parameters.stride_list.size();
 
   if (!same_size) {
     return;
@@ -139,7 +146,7 @@ static void MakeSameDims(SliceParameters &parameters, const vector<int64_t> &sha
   std::vector<int64_t> tmp_stride_list;
   std::vector<int64_t> tmp_output_shape;
   bool wrong_dim = false;
-  for (size_t i=0,j=0; i<parameters.input.size(); i++) {
+  for (size_t i = 0, j = 0; i < parameters.input.size(); i++) {
     if (j < shape.size() && parameters.input[i] == shape[j]) {
       tmp_input.push_back(parameters.input[i]);
       tmp_begin_list.push_back(parameters.begin_list[i]);
@@ -170,7 +177,7 @@ static void MakeSameDims(SliceParameters &parameters, const vector<int64_t> &sha
   }
 }
 
-static void MakePerformanceParams(SliceParameters &parameters) {
+static void MakePerformanceParams(SliceParameters& parameters) {
   SliceParameters perf_params;
   bool last_same = false;
   size_t perf_size = 0;
@@ -210,8 +217,7 @@ static void MakePerformanceParams(SliceParameters &parameters) {
     perf_params.stride_list[perf_index] = 1;
   }
 
-  if (perf_params.input.size() > 1 &&
-      perf_params.input.back() == perf_params.output_shape.back() &&
+  if (perf_params.input.size() > 1 && perf_params.input.back() == perf_params.output_shape.back() &&
       perf_params.stride_list[perf_params.input.size() - 2] == 1) {
     const auto last_second_index = perf_params.input.size() - 2;
     perf_params.input[last_second_index] *= perf_params.input.back();
@@ -293,9 +299,11 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
   }
 
   int32_t core_num = 0;
-  bool flag = GetStridedSliceSocParams(opType, opCompileInfo, core_num, slice_masks.begin_mask,
-                                       slice_masks.end_mask, slice_masks.ellipsis_mask,
-                                       slice_masks.new_axis_mask, slice_masks.shrink_axis_mask);
+  int32_t ub_size = 0;
+  bool flag = GetStridedSliceSocParams(opType, opCompileInfo, core_num, slice_masks.begin_mask, slice_masks.end_mask,
+                                       slice_masks.ellipsis_mask, slice_masks.new_axis_mask,
+                                       slice_masks.shrink_axis_mask, ub_size);
+  OP_LOGD(opType.c_str(), "param ub_size: %d", ub_size);
   if (!flag) {
     OP_LOGE(opType.c_str(), "StridedSliceTiling: get soc params error");
     return false;
@@ -334,7 +342,7 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
   MakeSameDims(slice_params, input_shape);
   OP_LOGD(opType.c_str(), "origin slice params: %s", slice_params.to_string().c_str());
 
-  SetSliceTilingData(opType, slice_params, runInfo);
+  SetSliceTilingData(opType, slice_params, runInfo, opParas, core_num, ub_size);
   runInfo.block_dim = core_num;
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
@@ -343,9 +351,13 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
   return true;
 }
 
-void SetSliceTilingData(const string& opType, SliceParameters& slice_params, OpRunInfo& runInfo) {
+void SetSliceTilingData(const string& opType, SliceParameters& slice_params, OpRunInfo& runInfo,
+                        const TeOpParas& opParas, int32_t core_num, int32_t ub_size) {
   MakePerformanceParams(slice_params);
   OP_LOGD(opType.c_str(), "perf slice params: %s", slice_params.to_string().c_str());
+
+  SetTilingMode(slice_params, core_num, opParas.inputs[0].tensor[0].dtype, ub_size, opType);
+  OP_LOGD(opType.c_str(), "set tiling_mode params: %s", slice_params.to_string().c_str());
 
   SetRuningParams(slice_params, runInfo);
   OP_LOGD(opType.c_str(), "tiling param:%s", to_string(runInfo.tiling_data).c_str());

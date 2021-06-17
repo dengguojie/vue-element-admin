@@ -76,7 +76,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_no_mask) {
       std::tuple<const uint8_t *, size_t, ge::Tensor>((const uint8_t *) strides.data(),
                                                       strides.size() * sizeof(int32_t), ge::Tensor());
   std::string compileInfo =
-      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0}})";
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 262144}})";
 
   OpRunInfo runInfo;
   OpCompileInfo op_compile_info;
@@ -84,9 +84,10 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_no_mask) {
   op_compile_info.key = this->test_info_->name();
 
   auto ret = iter->second(opParas, op_compile_info, runInfo);
+  std::cout << to_string(runInfo.tiling_data) << std::endl;
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
+            "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
 }
 
 TEST_F(stried_slice_tiling, stried_slice_tiling_with_mask1) {
@@ -134,7 +135,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_with_mask1) {
       std::tuple<const uint8_t *, size_t, ge::Tensor>((const uint8_t *) strides.data(),
                                           strides.size() * sizeof(int32_t), ge::Tensor());
   std::string compileInfo =
-      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2}})";
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2, "ub_size": 262144}})";
 
   OpRunInfo runInfo;
   OpCompileInfo op_compile_info;
@@ -144,7 +145,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_with_mask1) {
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 2 300 2 300 1 0 0 300 1 1 1 ");
+            "1 2 300 2 300 1 0 0 300 1 1 1 ");
 }
 
 TEST_F(stried_slice_tiling, stried_slice_tiling_int64_const) {
@@ -192,7 +193,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_int64_const) {
       std::tuple<const uint8_t *, size_t, ge::Tensor>((const uint8_t *) strides.data(),
                                                       strides.size() * sizeof(int64_t), ge::Tensor());
   std::string compileInfo =
-      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2}})";
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2, "ub_size": 262144}})";
 
   OpRunInfo runInfo;
   OpCompileInfo op_compile_info;
@@ -202,7 +203,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_int64_const) {
   auto ret = iter->second(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 2 300 2 300 1 0 0 300 1 1 1 ");
+            "1 2 300 2 300 1 0 0 300 1 1 1 ");
 }
 
 TEST_F(stried_slice_tiling, stried_slice_no_mask) {
@@ -607,7 +608,7 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_fused_dims) {
       std::tuple<const uint8_t *, size_t, ge::Tensor>((const uint8_t *) strides.data(),
                                                       strides.size() * sizeof(int32_t), ge::Tensor());
   std::string compileInfo =
-      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0}})";
+      R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 262144}})";
 
   OpRunInfo runInfo;
   OpCompileInfo op_compile_info;
@@ -622,5 +623,5 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_fused_dims) {
   InitLogLevelByEnv();
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 3 4 4 16 2 2 8 1 1 4 3 3 12 1 1 1 ");
+            "1 3 4 4 16 2 2 8 1 1 4 3 3 12 1 1 1 ");
 }
