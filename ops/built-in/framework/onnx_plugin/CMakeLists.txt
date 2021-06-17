@@ -119,6 +119,7 @@ set(_onnx_plugins
   shrink_plugin.cc
   scatter_elements_plugin.cc
   bitshift_plugin.cc
+  tfidf_vectorizer_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
