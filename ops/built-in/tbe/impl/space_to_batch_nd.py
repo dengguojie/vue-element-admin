@@ -22,17 +22,18 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements
 def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
-    """check supported dynamiclly.
-    only spported format NHWC,NCHW,NC1HWC0,NDHWC,NCDHW,NDC1HWC0
-    ori_format:NHWC
-        ori shape must be 4([-1,-1,-1,-1]), block_shape must be 1([2]), paddings must be 2([2,2]) or
-        ori shape must be 3([-1,-1,-1]), block_shape must be 1([1]), paddings must be 2([1,2])
-    ori format:NCHW
-        ori shape must be 4([-1,-1,-1,-1]), block_shape must be 1([3]), paddings must be 2([3,2])
-    ori format:NDHWC
-        ori shape must be 5([-1,-1,-1,-1,-1]), block_shape must be 1([3]), paddings must be 2([3,2])
-    ori format:NCDHW
-        ori shape must be 5([-1,-1,-1,-1,-1]), block_shape must be 1([4]), paddings must be 2([4,2])
+    """
+    check supported dynamiclly. \n
+    only spported format NHWC,NCHW,NC1HWC0,NDHWC,NCDHW,NDC1HWC0 \n
+    ori_format:NHWC \n
+        ori shape must be 4([-1,-1,-1,-1]), block_shape must be 1([2]), paddings must be 2([2,2]) \n
+        ori shape must be 3([-1,-1,-1]), block_shape must be 1([1]), paddings must be 2([1,2]) \n
+    ori format:NCHW \n
+        ori shape must be 4([-1,-1,-1,-1]), block_shape must be 1([3]), paddings must be 2([3,2]) \n
+    ori format:NDHWC \n
+        ori shape must be 5([-1,-1,-1,-1,-1]), block_shape must be 1([3]), paddings must be 2([3,2]) \n
+    ori format:NCDHW \n
+        ori shape must be 5([-1,-1,-1,-1,-1]), block_shape must be 1([4]), paddings must be 2([4,2]) \n
     """
     ori_format = x.get("ori_format")
     ori_shape = x.get("ori_shape")
@@ -64,32 +65,33 @@ def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"
 
 
 def op_select_format(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
-    """select format dynamiclly.
-    op_select_format support desc:
-        1. when ori_format is 'NHWC' or 'NCHW', input_format is 'NC1HWC0'
-            for example:
-                ori:
-                    x              shape = [16,16,16,16]           format = 'NHWC'
-                    block_shape    shape = [2,]                    format = 'ND'
-                    pads           shape = [2,2]                   format = 'ND'
-                    y              shape = [None,None,None,16]     format = 'NHWC'
-                format transformer:
-                    x              shape = [16,1,16,16,16]         format = 'NC1HWC0'
-                    block_shape    shape = [2,]                    format = 'ND'
-                    pads           shape = [2,2]                   format = 'ND'
-                    y              shape = [None,1,None,None,16]   format = 'NC1HWC0'
-        2. when ori_format is 'NDHWC' or 'NCDHW', input_format is 'NDC1HWC0'
-            for example:
-                ori:
-                    x              shape = [16,16,16,16,16]              format = 'NDHWC'
-                    block_shape    shape = [3,]                          format = 'ND'
-                    pads           shape = [3,2]                         format = 'ND'
-                    y              shape = [None,None,None,None,16]      format = 'NDHWC'
-                format transformer:
-                    x              shape = [16,16,1,16,16,16]            format = 'NDC1HWC0'
-                    block_shape    shape = [3,]                          format = 'ND'
-                    pads           shape = [3,2]                         format = 'ND'
-                    y              shape = [None,None,1,None,None,16]    format = 'NDC1HWC0'
+    """
+    select format dynamiclly. \n
+    op_select_format support desc: \n
+        1. when ori_format is 'NHWC' or 'NCHW', input_format is 'NC1HWC0' \n
+            for example: \n
+                ori: \n
+                    x              shape = [16,16,16,16]           format = 'NHWC' \n
+                    block_shape    shape = [2,]                    format = 'ND' \n
+                    pads           shape = [2,2]                   format = 'ND' \n
+                    y              shape = [None,None,None,16]     format = 'NHWC' \n
+                format transformer: \n
+                    x              shape = [16,1,16,16,16]         format = 'NC1HWC0' \n
+                    block_shape    shape = [2,]                    format = 'ND' \n
+                    pads           shape = [2,2]                   format = 'ND' \n
+                    y              shape = [None,1,None,None,16]   format = 'NC1HWC0' \n
+        2. when ori_format is 'NDHWC' or 'NCDHW', input_format is 'NDC1HWC0' \n
+            for example: \n
+                ori: \n
+                    x              shape = [16,16,16,16,16]              format = 'NDHWC' \n
+                    block_shape    shape = [3,]                          format = 'ND' \n
+                    pads           shape = [3,2]                         format = 'ND' \n
+                    y              shape = [None,None,None,None,16]      format = 'NDHWC' \n
+                format transformer: \n
+                    x              shape = [16,16,1,16,16,16]            format = 'NDC1HWC0' \n
+                    block_shape    shape = [3,]                          format = 'ND' \n
+                    pads           shape = [3,2]                         format = 'ND' \n
+                    y              shape = [None,None,1,None,None,16]    format = 'NDC1HWC0' \n
     """
     input_dtype = "float16, float, float16, float"
     input_format = "NC1HWC0, NC1HWC0, NC1HWC0, NC1HWC0"
