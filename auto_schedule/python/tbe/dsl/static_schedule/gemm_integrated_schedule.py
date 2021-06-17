@@ -431,10 +431,11 @@ class GemmSchedule(object):
         format_out = "FRACTAL_NZ"
         if tensor is None:
             return format_out
-        if tensor.op.attrs is None:
+        if (tensor.op.attrs is None) or ("format" not in tensor.op.attrs):
+            if len(tensor.shape) in (2, 3):
+                format_out = "ND"
             return format_out
-        if "format" not in tensor.op.attrs:
-            return format_out
+
         format_out = tensor.op.attrs["format"]
         return format_out
 
