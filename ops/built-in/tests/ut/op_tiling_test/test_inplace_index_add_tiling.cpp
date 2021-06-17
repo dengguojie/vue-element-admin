@@ -96,5 +96,58 @@ TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_0) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 2 2 2 1 16 24 8 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "7 1 2 2 2 16 24 8 ");
+}
+
+TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_1) {
+  using namespace optiling;
+  std::string op_name = "InplaceIndexAdd";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("InplaceIndexAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"vconv_size\":2, \"axis\":1}}";
+
+  std::vector<int64_t> inputA{3, 3, 3};
+  std::vector<int64_t> inputB{3};
+  std::vector<int64_t> inputC{3, 3, 3};
+  std::vector<int64_t> output{3, 3, 3};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "int32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "int32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "int32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "1234561";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "7 1 3 3 3 9 9 3 ");
 }

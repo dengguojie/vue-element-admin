@@ -57,10 +57,22 @@ case4 = {"params": [{"shape": (-1, 8, 375), "dtype": "int8", "format": "ND", "or
          "expect": "success",
          "support_expect": True}
 
+case5 = {"params": [{"shape": (-1, 3, 2), "dtype": "int8", "format": "ND", "ori_shape": (3, 3, 2), "ori_format": "ND", "range": [(3, 3), (3, 3), (2, 2)]},
+                    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (3,), "ori_format": "ND", "range": [(1, 8)]},
+                    {"shape": (-1, 3, 2), "dtype": "int8", "format": "ND", "ori_shape": (3, 3, 2), "ori_format": "ND", "range": [(3, 3), (3, 3), (2, 2)]},
+                    {"shape": (3, 3, 2), "dtype": "int8", "format": "ND", "ori_shape": (3, 3, 2), "ori_format": "ND", "range": [(3, 3), (3, 3), (2, 2)]},
+                    1,
+                    ],
+         "case_name": "InplaceIndexAdd_dynamic_5",
+         "expect": "success",
+         "support_expect": True}
+
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
 
 
 if __name__ == "__main__":

@@ -28,7 +28,19 @@ case1 = {"params": [{"shape": (16, 8, 375), "dtype": "int32", "format": "ND", "o
          "format_expect": [],
          "support_expect": True}
 
+case2 = {"params": [{"shape": (3, 3, 2), "dtype": "int32", "format": "ND", "ori_shape": (3, 3, 2), "ori_format": "ND"},
+                    {"shape": (3,), "dtype": "int32", "format": "ND", "ori_shape": (3,), "ori_format": "ND"},
+                    {"shape": (3, 3, 2), "dtype": "int32", "format": "ND", "ori_shape": (3, 3, 2), "ori_format": "ND"},
+                    {"shape": (3, 3, 2), "dtype": "int32", "format": "ND", "ori_shape": (3, 3, 2), "ori_format": "ND"},
+                    1,
+                    ],
+         "case_name": "inplace_index_add_2",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910"], case1)
+ut_case.add_case(["Ascend910"], case2)
 
 if __name__ == '__main__':
     ut_case.run()

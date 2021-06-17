@@ -38,6 +38,7 @@ const int32_t TILING_MODE_3 = 3;
 const int32_t TILING_MODE_4 = 4;
 const int32_t TILING_MODE_5 = 5;
 const int32_t TILING_MODE_6 = 6;
+const int32_t TILING_MODE_7 = 7;
 
 struct InplaceIndexAddTilingParam {
   int32_t tilingMode;
@@ -192,6 +193,7 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
   int32_t updatesSizeBytes = varSize * runParams.updateDataNum;
   int32_t indicesSizeBytes = indicesSize * runParams.indicesNum;
   int32_t vconvSizeBtytes = runParams.updateDataNum * vconvSize;
+
   if (inputDtype == "int8_t" || inputDtype == "uint8_t") {
     if ((updatesSizeBytes + vconvSizeBtytes) * 2 < ubSize) {
       runParams.tilingMode = TILING_MODE_4;
@@ -208,6 +210,12 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
     } else {
       runParams.tilingMode = TILING_MODE_3;
     }
+  }
+
+  if (updatesSizeBytes <= 32) {
+    runParams.tilingMode = TILING_MODE_7;
+    runParams.blockNum = 1;
+    runParams.outerLoopPerBlock = runParams.outerLoop;
   }
 
   SetRunningParam(runParams, runInfo);

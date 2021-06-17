@@ -269,6 +269,11 @@ class InplaceIndexAdd():
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             self.vconv_ub_number = self.updates_ub_number
+        with self.tik_instance.if_scope(self.tiling_mode == 7):
+            self.updates_ub_number = self.var_data_each_block
+            self.indices_ub_number = (self.ub_size_bytes - 64) // self.indices_dtype_bytes_size // \
+                                     self.indices_data_each_block * self.indices_data_each_block
+            self.vconv_ub_number = self.updates_ub_number
 
     def init_ub_tensor(self):
         """
