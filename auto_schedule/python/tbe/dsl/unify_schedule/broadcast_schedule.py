@@ -912,7 +912,7 @@ class BroadcastSchedule(Schedule):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE * (VCMP_INPUT_NUMBER - len(_tensor.op.input_tensors))
             if util.is_vsel_insn(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE * (VSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))
-                if util.is_v200() and (VSEL_INPUT_NUMBER == len(_tensor.op.input_tensors)):
+                if (util.is_v200() or util.is_v220()) and (VSEL_INPUT_NUMBER == len(_tensor.op.input_tensors)):
                     self._tmp_ub_size += BLOCK_SIZE_BYTE
             if util.is_vcmpsel_insn(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))

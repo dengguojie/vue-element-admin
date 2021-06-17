@@ -22,6 +22,7 @@ from typing import Any
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
 
+from . import util
 from .computation import Computation
 from .constants import CompileInfo
 from .constants import DTYPE_BYTE_MAPPING
@@ -179,11 +180,16 @@ def _pre_build(schedules_list):
                     _pattern_key += base
         return str(_pattern_key).ljust(3, '0')
 
-    # add build config
-    operation.add_build_arg("double_buffer_non_reuse", True)
-    # close double calculation switch
-    operation.add_build_arg("enable_vector_2x", False)
+    def _set_special_build_config():
+        # add build config
+        operation.add_build_arg("double_buffer_non_reuse", True)
+        # close double calculation switch
+        operation.add_build_arg("enable_vector_2x", False)
+        # ascend 920 eletwise schedule use mask counter mode
+        if util.is_v220():
+            operation.add_build_arg("enable_mask_counter_mode", "default_counter")
 
+    _set_special_build_config()
     only_const_tiling = False
     support_broadcast = operation.get_context().get("_support_broadcast")
     unknown_rank = operation.get_context().get("_unknown_rank")
