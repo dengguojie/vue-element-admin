@@ -368,7 +368,7 @@ REG_OP(BiasAddGrad)
  *\n
  *\n
  * The following are the supported data types and data formats:
-*@verbatim
+
     | Tensor    | out_bckprop | filter  | y\n
     ------------|-------------|---------|--------\n
     | Data Type | float16     | float16 | float16\n
@@ -379,7 +379,7 @@ REG_OP(BiasAddGrad)
     ------------|-------------|---------|--------\n
     | Format    | NCHW        | NCHW    | NCHW\n
     |           | NHWC        | HWCN    | NHWC\n
-@endverbatim
+
  * For float32 and float64 type, the actual calculation on the chip is based on
  * float16.
  *\n
@@ -399,7 +399,7 @@ REG_OP(BiasAddGrad)
  *\n
  *\n
  * The following value range restrictions must be met:
-*@verbatim
+
     | Name             | Field    | Scope\n
     -------------------|----------|--------------\n
     | input_size       | H        | [1, 200000]\n
@@ -425,7 +425,7 @@ REG_OP(BiasAddGrad)
     | Dilation         | H        | [1, 255]\n
     |                  | W        | [1, 255]\n
 
-@endverbatim
+
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
  * and filter_width > fmap_width
@@ -522,7 +522,7 @@ REG_OP(Conv2DBackpropInputD)
  *\n
  *\n
  * The following are the supported data types and data formats:
-*@verbatim
+
     | Tensor    | x       | filter  | bias    | y\n
     ------------|---------|---------|---------|--------\n
     | Data Type | float16 | float16 | float16 | float16\n
@@ -530,7 +530,7 @@ REG_OP(Conv2DBackpropInputD)
     |           | int8    | int8    | int32   | int32\n
     ------------|---------|---------|---------|--------\n
     | Format    | NCHW    | NCHW    | ND      | NCHW\n
-@endverbatim
+
  * For int8, a dequant or requant operator must be followed.
  *\n
  *
@@ -552,7 +552,7 @@ REG_OP(Conv2DBackpropInputD)
  *\n
  *\n
  * The following value range restrictions must be met:
-*@verbatim
+
     | Name             | Field    | Scope\n
     -------------------|----------|--------------\n
     | x (out_backprop) | H*strideH| [1, 200000]\n
@@ -577,7 +577,6 @@ REG_OP(Conv2DBackpropInputD)
     -------------------|----------|--------------\n
     | Offset_x         |          | [-128, 127]\n
 
-@endverbatim
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
  * and filter_width > fmap_width
@@ -631,7 +630,7 @@ REG_OP(Deconvolution)
  *\n
  *\n
  * The following are the supported data types and data formats:
-*@verbatim
+
     | Tensor    | x       | out_backprop | y\n
     ------------|---------|--------------|---------\n
     | Data Type | float16 |    float16   | float16\n
@@ -642,7 +641,7 @@ REG_OP(Deconvolution)
     |-----------|---------|--------------|---------\n
     | Format    | NCHW    |     NCHW     | NCHW\n
     |           | NHWC    |     NHWC     | HWCN\n
-@endverbatim
+
  * For float32 and float64 type of x and outbackprop, the actual calculation on the chip
  * is based on float16.
  *\n
@@ -662,7 +661,7 @@ REG_OP(Deconvolution)
  *\n
 *\n
 * The following value range restrictions must be met:
-*@verbatim
+
     | Name             | Field    | Scope\n
     -------------------|----------|--------------\n
     | x(fmap)          | H        | [1, 200000]\n
@@ -1467,7 +1466,7 @@ REG_OP(Conv3DTransposeD)
  *\n
  *\n
  * The following are the supported data types and data formats:
-*@verbatim
+
     | Tensor    | x       | filter  | bias    | y\n
     ------------|---------|---------|---------|--------\n
     | Data Type | float16 | float16 | float16 | float16\n
@@ -1476,7 +1475,7 @@ REG_OP(Conv3DTransposeD)
     ------------|---------|---------|---------|--------\n
     | Format    | NCHW    | NCHW    | ND      | NCHW\n
     |           | NHWC    | HWCN    |         | NHWC\n
-@endverbatim
+
  * For int8, a dequant or requant operator must be followed.
  *\n
  *
@@ -1502,7 +1501,7 @@ REG_OP(Conv3DTransposeD)
  *\n
  *\n
  * The following value range restrictions must be met:
-*@verbatim
+
     | Name             | Field    | Scope\n
     -------------------|----------|--------------\n
     | input_size       | H        | [1, 200000]\n
@@ -1530,7 +1529,6 @@ REG_OP(Conv3DTransposeD)
     -------------------|----------|--------------\n
     | Offset_x         |          | [-128, 127]\n
 
-@endverbatim
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
  * and filter_width > fmap_width
