@@ -23,7 +23,7 @@ from te import tik
 from te.utils.error_manager import error_manager_vector as error_manager
 from impl import pad_d
 from impl import copy_only
-from impl import strided_slice_d
+from impl.strided_slice_d import _init_parameter
 from impl import common_util
 from impl.util.util_tik_comm_func import ceil_align
 
@@ -1089,10 +1089,10 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
     begin = list(begin)
     end = list(end)
     strides = list(strides)
-    shape, begin_shape, end_shape, stride_shape = strided_slice_d._init_parameter(shape, begin, end,
-                                                                                  strides, begin_mask, end_mask,
-                                                                                  ellipsis_mask, new_axis_mask,
-                                                                                  shrink_axis_mask)
+    shape, begin_shape, end_shape, stride_shape = _init_parameter(shape, begin, end,
+                                                                  strides, begin_mask, end_mask,
+                                                                  ellipsis_mask, new_axis_mask,
+                                                                  shrink_axis_mask)
     shape_dy = list(map(lambda x, y, z: math.ceil((x - y) / (1 if z == 0 else z)),
                         end_shape, begin_shape, stride_shape))
     _check_shape_parameter(shape, shape_dy, begin_shape, end_shape, stride_shape)

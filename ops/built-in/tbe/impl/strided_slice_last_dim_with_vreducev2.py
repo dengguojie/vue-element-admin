@@ -443,7 +443,7 @@ class StridedSliceLastDimWithVreducev2:
         one_line_loop_times = ceil_div(self.output_inner_dims, num_each_loop)
         loop_tail_count = self.output_inner_dims % num_each_loop
         loop_tail_count_32b_align = ceil_align(loop_tail_count, self.element_each_block)
-        curr_roll_back_num = self.tik_instance.Scalar(dtype="int64", name="curr_roll_back_num", init_value=0)
+        curr_roll_back_num = loop_tail_count_32b_align - loop_tail_count
 
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, repeat_times) as repeat_idx:
