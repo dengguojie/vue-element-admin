@@ -127,9 +127,10 @@ REG_OP(SoftmaxGrad)
 *@brief Computes the sigmoid cross entropy loss of "predict" and "target" . \n
 
 *@par Inputs:
-* Two inputs, including:
+* Three inputs, including:
 *@li predict: A multi-dimensional Tensor of type float16 or float32, specifying the predictive value.
-*@li target: A multi-dimensional Tensor of type float16 or float32, specifying the target value . \n
+*@li target: A multi-dimensional Tensor of type float16 or float32, specifying the target value .
+*@li dout:A multi-dimensional Tensor of float16 or float32,specifying the gradient transferred from the upper layer. \n
 
 *@par Outputs:
 *loss: Sigmoid cross entropy between the predictive value and target value. Has the same dimensions as "predict" . \n

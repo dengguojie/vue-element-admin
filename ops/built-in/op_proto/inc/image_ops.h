@@ -585,9 +585,11 @@ REG_OP(ResizeNearestNeighborV2GradD)
 channels], The image tensor that was resized . \n
 
 *@par Attributes:
-*align_corners: An optional bool. Defaults to False. If true, the centers of
+*@li align_corners: An optional bool. Defaults to False. If true, the centers of
 the 4 corner pixels of the input and grad tensors are aligned. Defaults to
-false . \n
+false .
+*@li half_pixel_centers: indicates if the offset coordinates are normalized. Defaults
+to false . \n
 
 *@par Outputs:
 *y: A Tensor. Has the same type as original_image . \n

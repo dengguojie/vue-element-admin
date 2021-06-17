@@ -670,7 +670,8 @@ REG_OP(Conj)
 *@li weight: A Tensor dtype of float32 . \n
 
 *@par Attributes:
-*reduction: An optional attribute. Defaults to "mean" . \n
+*@li reduction: An optional attribute. Defaults to "mean" .
+*@li ignore_index:An optional attribute.Defaults to -100 . \n
 
 *@par Outputs:
 *@li y: A Tensor dtype of float32.
@@ -700,7 +701,8 @@ REG_OP(NLLLoss)
 *@li total_weight:A Tensor dtype of float32 . \n
 
 *@par Attributes:
-*reduction: An optional attribute. Defaults to "mean" . \n
+*@li reduction: An optional attribute. Defaults to "mean" .
+*@li ignore_index:An optional attribute.Defaults to -100 . \n
 
 *@par Outputs:
 *x_grad: A Tensor. Must be the following type: float32 . \n

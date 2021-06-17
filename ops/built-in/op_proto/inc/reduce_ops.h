@@ -576,7 +576,7 @@ REG_OP(ReduceAll)
 *@li axis: A mutable Tensor. The dimensions to reduce . \n
 
 *@par Attributes:
-*@li keep_dims: A bool. If true, retains reduced dimensions with length 1. Defaults to "False" . \n
+*keep_dims: A bool. If true, retains reduced dimensions with length 1. Defaults to "False" . \n
 
 *@par Outputs:
 *y: A Tensor. Has the same type and format as input "x" . \n
@@ -967,9 +967,9 @@ REG_OP(EuclideanNormD)
 Defaults to "0.00001" . \n
 
 *@par Outputs:
-*y: A Tensor of type float16 or float32 for the normalized "x".
-*batch_mean: A Tensor of type float32 for the result mean.
-*batch_ variance: A Tensor of type float32 for the result variance . \n
+*@li y: A Tensor of type float16 or float32 for the normalized "x".
+*@li batch_mean: A Tensor of type float32 for the result mean.
+*@li batch_ variance: A Tensor of type float32 for the result variance . \n
 
 *@attention Constraints:
 *For Ascend 310, the result accuracy fails to reach 0.001 due to the square root instruction.
@@ -1063,7 +1063,7 @@ REG_OP(INTrainingUpdateV2)
 
 
 *@par Attributes:
-*@li num_groups: Int, specifying the num of groups. required, same to GNTrainingUpdate . \n
+*num_groups: Int, specifying the num of groups. required, same to GNTrainingUpdate . \n
 
 *@attention Constraints:
 * This operator is a GroupNorm fusion operator for updating the moving averages for training.
@@ -1081,7 +1081,7 @@ REG_OP(GNTrainingReduce)
 *@brief Performs update group normalization . \n
 
 *@par Inputs:
-* Eight inputs, including: (NCHW NHWC supported)
+* Seven inputs, including: (NCHW NHWC supported)
 *@li x: A Tensor of type float16 or float32.
 *@li sum: A 5D Tensor of type float32,
 shape is [N, G, 1, 1, 1] for NCHW, [N, 1, 1, G, 1] for NHWC

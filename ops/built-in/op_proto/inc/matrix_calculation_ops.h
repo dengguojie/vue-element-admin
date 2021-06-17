@@ -492,13 +492,13 @@ REG_OP(ScatterElements)
 
 *@par Inputs:
 * Three inputs, including:
-*@li var: An ND Tensor . \n
+*@li var: An ND Tensor .
 
 *Must be one of the following types: float16, float32, int32, int8, uint8
 *@li indices: An ND Tensor of type int32 or int64
 
 
-*@li updates: An Tensor. format:NCHW, NHWC . \n
+*@li updates: An Tensor. format:NCHW, NHWC .
 
 *Must be one of the following types: float16, float32, int32, int8, uint8
 
@@ -929,13 +929,13 @@ REG_OP(ScatterMin)
 
 *@par Inputs:
 * Three inputs, including:
-*@li var: An ND Tensor . \n
+*@li var: An ND Tensor .
 
 *Must be one of the following types: float16, float, int32, int8, uint8
 *@li indices: An NCHW, NHWC, or ND Tensor . \n
 
 *Must be one of the following types: int32 or int64
-*@li updates: An NCHW, NHWC, or ND Tensor . \n
+*@li updates: An NCHW, NHWC, or ND Tensor .
 
 *Must be one of the following types: float16, float, int32, int8, uint8
 
@@ -962,13 +962,13 @@ REG_OP(ScatterMax)
 
 *@par Inputs:
 * Three inputs, including:
-*@li var: An ND Tensor . \n
+*@li var: An ND Tensor .
 
 *Must be one of the following types: float16, float, int32, int8, uint8
 *@li indices: An ND Tensor . \n
 
 *Must be one of the following types: int32 or int64
-*@li updates: An ND Tensor . \n
+*@li updates: An ND Tensor .
 
 *Must be one of the following types: float16, float, int32, int8, uint8
 

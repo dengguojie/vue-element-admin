@@ -50,7 +50,7 @@ case3 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format"
                      "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     {"shape": (2,), "dtype": "int32", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW", "range": [(1, None)]},
-                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
                      "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],

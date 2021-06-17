@@ -359,7 +359,7 @@ class ResizeBilinearV2(OpBase):
             if self.align_corners:
                 # will use vconv_f322s32r to cast to int32
                 util_tik_comm_func.tik_func_vconv(self.tik_instance, des_idx_ub, calcu_out_in_idx_tmp_ub,
-                                                  idx_num, mode="round")
+                                                  idx_num, mode="floor")
             else:
                 # will use vconv_f322s32f to cast to int32
                 util_tik_comm_func.tik_func_vconv(self.tik_instance, des_idx_ub, calcu_out_in_idx_tmp_ub,
@@ -431,7 +431,7 @@ class ResizeBilinearV2(OpBase):
             if self.align_corners:
                 # will use vconv_f322s32r to cast to int32
                 util_tik_comm_func.tik_func_vconv(self.tik_instance, src0_offset, src1,
-                                                  idx_num * 4, mode="round")
+                                                  idx_num * 4, mode="floor")
             else:
                 # will use vconv_f322s32f to cast to int32
                 util_tik_comm_func.tik_func_vconv(self.tik_instance, src0_offset, src1,

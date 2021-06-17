@@ -636,7 +636,8 @@ REG_OP(MaxPoolV2)
 *@li strides: A required list of int8, int16, int32, or int64 values,
  * specifying the stride of the sliding window for each dimension of
  * the input tensor. No default value.
-*@li padding: A required string. No default value . \n
+*@li padding: A required string. No default value .
+*@li Targmax:An optional int with default value 7 . \n
 
 *@par Outputs:
 *@li y: A Tensor. Has the same type and format as input "x".
@@ -646,7 +647,7 @@ REG_OP(MaxPoolV2)
  * ksize[1] * ksize[2] <= 255.
 *@li "stride is a list that has length 4: strides[0] = 1 or strides[3] = 1,
  * strides[1] <= 63, strides[0] >= 1, strides[2] <= 63, strides[2] >= 1.
-*@li "padding" is either "SAME" or "VALID" . \n
+*@li "padding" is either "SAME" or "VALID" .
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator MaxPoolWithArgmax.
@@ -711,14 +712,15 @@ REG_OP(MaxPoolGradWithArgmax)
 *@brief Performs transform mask to argmax . \n
 
 *@par Inputs:
-* Two input:
-*x: An NC1HWC0 Tensor of type float16.
-*mask: An NC1HWC0 Tensor of type uint16 . \n
+* Two inputs:
+*@li x: An NC1HWC0 Tensor of type float16.
+*@li mask: An NC1HWC0 Tensor of type uint16 . \n
 
 *@par Attributes:
 *@li ksize: A required list of int8, int16, int32, or int64 values, specifying the size of the window for each dimension of the input tensor. No default value.
 *@li strides: A required list of int8, int16, int32, or int64 values, specifying the stride of the sliding window for each dimension of the input tensor. No default value.
-*@li padding: A required string. No default value . \n
+*@li padding: A required string. No default value .
+*@li originshape:A required list of int8, int16, int32, or int64 values, No default value. \n
 
 *@par Outputs:
 *argmax: An NC1HWC0 Tensor of type int32 . \n
@@ -1420,7 +1422,7 @@ REG_OP(MaxPoolV3)
 * the floor function will be used. Default False \n
 
 * @par Outputs:
-* y: A mutable tensor. Has the same shape and type as "x1" . \n
+* out_grad: A mutable tensor. Has the same shape and type as "x1" . \n
 
 * @attention Constraints:
 * @li Computing gradients of global pooling is not supported, which means

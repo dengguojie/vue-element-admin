@@ -1428,9 +1428,9 @@ REG_OP(NormalizeBBox)
 * @li anchors: A Tensor. Must be int32.
 *
 *@par Attributes:
-* @li scales: optional, listfloat, .
+* @li scales: optional, listfloat.
 * @li decode_clip: optional, float, threahold of decode process.
-* @li reversed_boxes: optional, bool,.
+* @li reversed_boxes: optional, bool.
 *
 *@par Outputs:
 * y: A Tensor. Must have the same type as box_predictions.
