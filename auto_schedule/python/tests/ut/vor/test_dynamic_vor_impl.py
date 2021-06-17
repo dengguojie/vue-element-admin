@@ -80,8 +80,64 @@ case2 = {
         True
 }
 
+case3 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    }],
+    "case_name":
+        "test_dync_vor_int32",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case4 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "uint32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "uint32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "uint32",
+        "range": [(1, None), (1, None)]
+    }],
+    "case_name":
+        "test_dync_vor_uint32",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case5 = {"params": [{"shape": (5, 8, 16, 16), "dtype": "int32", "format": "ND"},
+                    {"shape": (5, 8, 16, 16), "dtype": "int32", "format": "ND"},
+                    {"shape": (5, 8, 16, 16), "dtype": "int32", "format": "ND"}
+                    ],
+         "case_name": "test_vor_int32",
+         "expect": "success",
+         "support_expect": True
+         }
+
 ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 ut_case.add_case(["Ascend910A", "Ascend310"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310"], case4)
+ut_case.add_case(["Ascend910A", "Ascend310"], case5)
 
 
 def calc_expect_func(x, y, z):
@@ -151,3 +207,63 @@ ut_case.add_precision_case(
         "case_name": "test_dync_vor_prec_02"
     })
 
+
+ut_case.add_precision_case(
+    "all", {
+        "params": [
+            {
+                "shape": (-1, -1),
+                "dtype": "int32",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (-1, -1),
+                "dtype": "int32",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (-1, -1),
+                "dtype": "int32",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "output"
+            },
+        ],
+        "calc_expect_func": calc_expect_func,
+        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
+        "case_name": "test_dync_vor_prec_int32"
+    })
+
+ut_case.add_precision_case(
+    "all", {
+        "params": [
+            {
+                "shape": (-1, -1),
+                "dtype": "uint32",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (-1, -1),
+                "dtype": "uint32",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (-1, -1),
+                "dtype": "uint32",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "output"
+            },
+        ],
+        "calc_expect_func": calc_expect_func,
+        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
+        "case_name": "test_dync_vor_prec_uint32"
+    })
