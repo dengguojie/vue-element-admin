@@ -27,11 +27,14 @@ import te.platform as tbe_platform
 
 PROPOSAL_NUM = 8
 BLOCK = 16
-VAL_INDEX = 4
+VAL_IDX = 4
+INT_IDX = 0
+REM_IDX = 1
 MIN_VAL = -65504
 MAX_VAL = 65504
 NUM_BLOCK = 2048
 DATA_LIMITE = 100000
+TASK_LIMITE = 10000
 
 def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
     """
@@ -41,6 +44,11 @@ def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
     input_shape = x.get("shape")
     if input_shape[-1] > DATA_LIMITE:
         reason = "The date in sort axis is over 100K."
+        return False, reason
+
+    allnum = functools_reduce(lambda x, y: x * y, input_shape)
+    if allnum // input_shape[-1] > TASK_LIMITE:
+        reason = "The task for sort op is over 10K."
         return False, reason
     return True, ""
 
@@ -238,7 +246,7 @@ def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_
     with tik_instance.if_scope(descending is False):
         # data is continuous in GM & gather scattered data together
         with tik_instance.for_range(0, num) as i2:
-            input_ub[i2 + src_pos_ub].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + VAL_INDEX + dest_pos_ub])
+            input_ub[i2 + src_pos_ub].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + VAL_IDX + dest_pos_ub])
             input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + dest_pos_ub])
 
     # descend
@@ -246,11 +254,11 @@ def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_
         # data is continuous in GM & gather scattered data together
         if version == "mini":
             with tik_instance.for_range(0, num) as i2:
-                input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_INDEX + dest_pos_ub])
+                input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX + dest_pos_ub])
                 input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[i2 * PROPOSAL_NUM + dest_pos_ub])
         elif version == "cloud":
-            tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, VAL_INDEX)
-            tik_instance.vextract(input_ub[src_pos_ub + num_16], input_ub[dest_pos_ub], num_16 // BLOCK, 0)
+            tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, VAL_IDX)
+            tik_instance.vextract(input_ub[src_pos_ub + num_16], input_ub[dest_pos_ub], num_16 // BLOCK, INT_IDX)
         else:
             raise RuntimeError("Unexcepted version.")
 
@@ -284,9 +292,9 @@ def sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, o
 
     tik_instance.vector_dup(BLOCK, tmp_ub[0], i, repeat_times, 1, 1)
     # index // 2048
-    tik_instance.vconcat(input_ub[0], tmp_ub[0], repeat_times, 0)
+    tik_instance.vconcat(input_ub[0], tmp_ub[0], repeat_times, INT_IDX)
     # index % 2048
-    tik_instance.vconcat(input_ub[0], idx_ub[0], repeat_times, 1)
+    tik_instance.vconcat(input_ub[0], idx_ub[0], repeat_times, REM_IDX)
 
     with tik_instance.if_scope(num < (i + 1) * NUM_BLOCK):
         # aline for NUM_BLOCK
@@ -304,7 +312,7 @@ def sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, o
             tik_instance.vec_dup(BLOCK, input_ub[dest_pos_ub + num % NUM_BLOCK + aline % BLOCK], Tmp,
                                  aline // BLOCK, 1)
 
-    tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], repeat_times, VAL_INDEX)
+    tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], repeat_times, VAL_IDX)
     # 2. vrpsort16
     tik_instance.vrpsort16(dst=input_ub[dest_pos_ub], src=input_ub[0], repeat_times=repeat_times)
     # 3. vms4
@@ -383,8 +391,8 @@ def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices,
 
         tik_instance.vector_dup(BLOCK, int_list_4, NUM_BLOCK, repeat_times, 1, 2)
 
-        tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, 0)
-        tik_instance.vextract(input_ub[dest_pos_ub + NUM_BLOCK], input_ub[0], repeat_times, 1)
+        tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, INT_IDX)
+        tik_instance.vextract(input_ub[dest_pos_ub + NUM_BLOCK], input_ub[0], repeat_times, REM_IDX)
         tik_instance.vec_conv(BLOCK, "round", int_list_1, input_ub[dest_pos_ub], repeat_times, 2, 1)
         tik_instance.vec_conv(BLOCK, "round", int_list_2, input_ub[dest_pos_ub + NUM_BLOCK], repeat_times, 2, 1)
 
@@ -393,10 +401,10 @@ def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices,
 
         # data is continuous in GM & gather scattered data together
         if version == "cloud":
-            tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, VAL_INDEX)
+            tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, VAL_IDX)
         elif version == "mini":
             with tik_instance.for_range(0, NUM_BLOCK) as i2:
-                input_ub[dest_pos_ub + i2].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_INDEX])
+                input_ub[dest_pos_ub + i2].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX])
         else:
             raise RuntimeError("Unexcepted version.")
 
@@ -504,7 +512,7 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
             with tik_instance.for_range(0, num_16 - num) as i:
                 input_ub[(num + i) + dest_pos_ub].set_as(Max)
 
-        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, VAL_INDEX)
+        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, VAL_IDX)
 
         if version == "cloud":
             idx = tik_instance.Scalar(dtype="float32", init_value=num)
@@ -522,7 +530,7 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
         else:
             raise RuntimeError("Unexcepted version.")
 
-        tik_instance.vconcat(input_ub[0], idx_ub[0], n_repeat_total, 0)
+        tik_instance.vconcat(input_ub[0], idx_ub[0], n_repeat_total, INT_IDX)
 
         # 2. vbs16
         tik_instance.vrpsort16(dst=input_ub[dest_pos_ub], src=input_ub[0], repeat_times=n_repeat_total)

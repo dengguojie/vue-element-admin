@@ -106,11 +106,12 @@ def expand(x, shape, y, kernel_name="expand"):
     if dims_value < -1:
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape[0] should be more than -1")
 
-    shape_shape_adapt = [-1] + input_x_shape
-    shape_range_adapt = [(1, None)] + input_x_range
-
-    shape["shape"] = shape_shape_adapt
-    shape["range"] = shape_range_adapt
+    if dims_value == -1:
+        shape["shape"] = [-1] * len(input_x_shape)
+        shape["range"] = [(1, None)] * len(input_x_shape)
+    else:
+        shape["shape"] = [-1] * dims_value
+        shape["range"] = [(1, None)] * dims_value
 
     extra_params = {"disable_optimization":True}
     ins = classify([shape, x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
