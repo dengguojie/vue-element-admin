@@ -111,6 +111,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     temp = tbe.cast_to(temp, 'float16')
     clamped_loss = tbe.vsel(clamp_min_mask, clamped_loss_float16, temp)
     clamped_loss = tbe.vsel(clamp_max_mask, clamped_loss_float16, temp)
+    clamped_loss = tbe.cast_to(clamped_loss, data.dtype)
 
     output = tbe.vmul(round_x, tbe.broadcast(scale, shape_broadcast))
     clamp_min_mask = tbe.vsel(clamp_min_mask, tvm.const(1, 'float16'), tvm.const(0, 'float16'))

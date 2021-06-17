@@ -725,7 +725,7 @@ REG_OP(NLLLossGrad)
 *@brief IFMR(Input Feature Map Reconstruction). \n
 
 *@par Inputs:
-*@li data: A Tensor of feature map
+*@li data: A Tensor of feature map.
 *@li data_min: A Tensor of min value of feature map.
 *@li data_max: A Tensor of max value of feature map.
 *@li cumsum: A Tensor of cumsum bin of data . \n
@@ -794,7 +794,7 @@ REG_OP(WtsARQ)
 *@brief Activations Universal Linear Quantization. \n
 
 *@par Inputs:
-*@li x: A Tensor of feature map
+*@li x: A Tensor of feature map.
 *@li clamp _min: A Tensor of min clamp value of feature map.
 *@li clamp _max: A Tensor of max clamp value of feature map.
 
@@ -804,8 +804,8 @@ REG_OP(WtsARQ)
 
 *@par Outputs:
 *@li y: output fake quant feature map.
-*@li clamp_min_mask: where x > clamp_min
-*@li clamp_min_mask: where x < clamp_max
+*@li clamp_min_mask: where x > clamp_min.
+*@li clamp_min_mask: where x < clamp_max.
 *@li x_clamped_loss: clamp loss. \n
 
 *@par Third-party framework compatibility
@@ -831,9 +831,9 @@ REG_OP(ActsULQ)
 *@brief The gradient of Activations Universal Linear Quantization. \n
 
 *@par Inputs:
-*@li y_grad: A Tensor of gradient
-*@li clamp_min_mask: A Tensor of boolean mask indicating whether an additional one is needed'
-*@li clamp_max_mask: A Tensor of boolean mask indicating whether an additional one is needed'
+*@li y_grad: A Tensor of gradient.
+*@li clamp_min_mask: A Tensor of boolean mask indicating whether an additional one is needed'.
+*@li clamp_max_mask: A Tensor of boolean mask indicating whether an additional one is needed'.
 
 *@par Outputs:
 *x_grapd: The gradient of inpust. \n
@@ -856,7 +856,7 @@ REG_OP(ActsULQInputGrad)
 *@brief The gradient of Activations Universal Linear Quantization clamp max. \n
 
 *@par Inputs:
-*@li y_grad: A Tensor of gradient
+*@li y_grad: A Tensor of gradient.
 *@li clamp_max_mask: A Tensor of boolean mask indicating whether an additional one is needed.
 *@li x_clamped_loss: A Tensor of gradient. \n
 
@@ -881,7 +881,7 @@ REG_OP(ActULQClampMaxGrad)
 *@brief The gradient of Activations Universal Linear Quantization clamp min. \n
 
 *@par Inputs:
-*@li y_grad: A Tensor of gradient
+*@li y_grad: A Tensor of gradient.
 *@li clamp_min_mask: A Tensor of boolean mask indicating whether an additional one is needed.
 *@li x_clamped_loss: A Tensor of gradient. \n
 

@@ -54,18 +54,14 @@ def act_ulq_clamp_min_grad_compute(
     shape = y_grad.shape
     dtype = y_grad.dtype
 
-    clamp_min_mask = tbe.cast_to(clamp_min_mask, 'float32')
-    signal = tbe.broadcast(tvm.const(1, 'float32'), shape)
+    signal = tbe.broadcast(tvm.const(1, dtype), shape)
     signal = tbe.vsub(clamp_min_mask, signal)
     signal = tbe.vabs(clamp_min_mask)
 
-    x_clamped_loss = tbe.cast_to(x_clamped_loss, 'float32')
     x_min_grad = tbe.vadd(x_clamped_loss, signal)
 
-    y_grad = tbe.cast_to(y_grad, 'float32')
     clamp_min_grad = tbe.vmul(y_grad, x_min_grad)
     clamp_min_grad = tbe.reduce_sum(clamp_min_grad, axis)
-    clamp_min_grad = tbe.cast_to(clamp_min_grad, dtype)
 
     return clamp_min_grad
 
@@ -131,8 +127,14 @@ def act_ulq_clamp_min_grad(input_x, input_y, input_z, output, kernel_name='act_u
     output_type = output.get('dtype').lower()
 
     para_check.check_dtype_rule(input_x_type, check_list, 'y_grad')
-    para_check.check_dtype_rule(input_y_type, check_list, 'clamp_min_mask')
-    para_check.check_dtype_rule(input_z_type, check_list, 'x_clamped_loss')
+
+    if input_x_type != input_y_type:
+        error_manager_vector.raise_err_inputs_dtype_not_equal(
+            kernel_name, 'y_grad', 'clamp_min_mask', input_x_type, input_y_type)
+
+    if input_x_type != input_z_type:
+        error_manager_vector.raise_err_inputs_dtype_not_equal(
+            kernel_name, 'y_grad', 'x_clamped_loss', input_x_type, input_z_type)
 
     if input_x_type != output_type:
         error_manager_vector.raise_err_inputs_dtype_not_equal(

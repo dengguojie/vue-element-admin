@@ -50,9 +50,6 @@ def acts_ulq_input_grad_compute(data_y_grad, data_clamp_min_mask, data_clamp_max
     -------
     res : grade of acts_ulq
     """
-    dtype = data_y_grad.dtype
-    data_clamp_min_mask = tbe.cast_to(data_clamp_min_mask, dtype)
-    data_clamp_max_mask = tbe.cast_to(data_clamp_max_mask, dtype)
     signal = tbe.vmul(data_clamp_min_mask, data_clamp_max_mask)
     x_grad = tbe.vmul(data_y_grad, signal)
 
@@ -120,8 +117,10 @@ def acts_ulq_input_grad(y_grad, clamp_min_mask, clamp_max_mask, x_grad, kernel_n
     x_grad_type = x_grad.get('dtype').lower()
 
     para_check.check_dtype_rule(y_grad_type, check_list, 'y_grad')
-    para_check.check_dtype_rule(clamp_min_mask_type, check_list, 'clamp_min_mask')
-    para_check.check_dtype_rule(clamp_max_mask_type, check_list, 'clamp_max_mask')
+
+    if y_grad_type != clamp_min_mask_type:
+        error_manager_vector.raise_err_inputs_dtype_not_equal(
+            kernel_name, 'y_grad', 'clamp_min_mask', y_grad_type, clamp_min_mask_type)
 
     if clamp_min_mask_type != clamp_max_mask_type:
         error_manager_vector.raise_err_inputs_dtype_not_equal(

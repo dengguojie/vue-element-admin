@@ -40,6 +40,28 @@ ut_case.add_case(
     ['Ascend910A'],
     {'params': [
         {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
+        {'shape': (-1, -1, -1, -1), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
+        {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
+        {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]}],
+        'expect': RuntimeError,
+        'case_name': 'test_acts_ulq_input_grad_float16_clamp_min_mask_type_error',
+        'support_expect': True})
+
+ut_case.add_case(
+    ['Ascend910A'],
+    {'params': [
+        {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
+        {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
+        {'shape': (-1, -1, -1, -1), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
+        {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]}],
+        'expect': RuntimeError,
+        'case_name': 'test_acts_ulq_input_grad_float16_clamp_max_mask_type_error',
+        'support_expect': True})
+
+ut_case.add_case(
+    ['Ascend910A'],
+    {'params': [
+        {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
         {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
         {'shape': (-1, -1, -1, -1), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]},
         {'shape': (-1, -1, -1, -1), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND', 'range': [(1, 100), (1, 100), (1, 100), (1, 100)]}],
