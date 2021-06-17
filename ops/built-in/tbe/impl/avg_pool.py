@@ -39,33 +39,18 @@ def check_supported(x, filter, bias, y, ksize, strides,
                     padding="VALID", data_format="NHWC", offset_x=0,
                     kernel_name="avg_pool"):
     """
-    Parameters
-    ----------
-    x : dict, shape and dtype of input_data, only support float16 or int8
-
-    filter : dict, optional input, shape and dtype of input_data, only support float16 or int8
-
-    bias : dict, optional input, shape and dtype of input_data, only support int32
-
-    y : dict, shape and dtype of output_data, only support float16 or int32
-
+    x : dict, shape and dtype of input_data, only support float16 or int8 \n
+    filter : dict, optional input, shape and dtype of input_data, only support float16 or int8 \n
+    bias : dict, optional input, shape and dtype of input_data, only support int32 \n
+    y : dict, shape and dtype of output_data, only support float16 or int32 \n
     ksize : list or tuple, the window of avgpooling, only support avgpooling
-            in H or W
-
+            in H or W \n
     strides : list or tuple, the stride of avgpooling window, only support
-              avgpooling in H or W
-
-    padding : str, the mode of padding, support padding and not padding
-
-    data_format : str, default = "NHWC"
-
-    offset_x : int, quantization parameter
-
+              avgpooling in H or W \n
+    padding : str, the mode of padding, support padding and not padding \n
+    data_format : str, default = "NHWC" \n
+    offset_x : int, quantization parameter \n
     kernel_name : cce kernel name, default value is "avg_pool_cce"
-
-    Returns
-    -------
-    True or False
     """
     ori_shape = y.get("ori_shape")
     input_shape = x.get("ori_shape")
