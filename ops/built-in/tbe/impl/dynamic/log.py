@@ -146,9 +146,7 @@ def log(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype, name="data_input")
+            data_input = tvm.placeholder(x_shape[0], dtype=input_dtype, name="data_input")
             res = log_compute(data_input, output_y, base, scale, shift, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():

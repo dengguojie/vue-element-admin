@@ -15,7 +15,6 @@
 """
 abs
 """
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -46,16 +45,13 @@ def abs_compute(x, y, kernel_name="abs"):
         the result of compute
     """
     inp_dtype = x.dtype
-    if not tbe_platform.api_check_support("te.lang.cce.vabs", inp_dtype):
+    if not tbe_platform.api_check_support("tbe.dsl.vabs", inp_dtype):
         x = tbe.cast_to(x, "float16")
-
     res = tbe.vabs(x)
     if inp_dtype == "int32":
         res = tbe.round(res)
-
-    if not tbe_platform.api_check_support("te.lang.cce.vabs", inp_dtype):
+    if not tbe_platform.api_check_support("tbe.dsl.vabs", inp_dtype):
         res = tbe.cast_to(res, inp_dtype)
-
     return res
 
 
@@ -90,10 +86,7 @@ def abs(x, y, kernel_name="abs"):
     for (_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
-
-            fuse_shape = [1]
-            fuse_shape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuse_shape, name="data_input",
+            data_input = tvm.placeholder(x_shape[0], name="data_input",
                                          dtype=dtype_input)
             res = abs_compute(data_input, y, kernel_name)
 

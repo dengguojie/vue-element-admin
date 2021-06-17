@@ -15,7 +15,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 log1p
 """
-from functools import reduce as reduce_ins
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
@@ -76,8 +75,8 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
     """
     dtype = input_x.dtype
     shape_in = input_x.shape
-    cloud_check = tbe_platform.api_check_support("te.lang.cce.vlog", "float32")
-    mini_check = tbe_platform.api_check_support("te.lang.cce.vadd", "float32")
+    cloud_check = tbe_platform.api_check_support("tbe.dsl.vlog", "float32")
+    mini_check = tbe_platform.api_check_support("tbe.dsl.vadd", "float32")
     if dtype == "float16" and cloud_check:
         input_x = tbe.cast_to(input_x, "float32")
     if dtype == "float32" and (not cloud_check):
@@ -311,9 +310,7 @@ def log1p(input_x, output_y, kernel_name="log1p"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+            data_input = tvm.placeholder(x_shape[0], dtype=input_dtype,
                                          name="data_input")
             res = log1p_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])

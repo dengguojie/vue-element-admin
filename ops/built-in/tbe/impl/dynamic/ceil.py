@@ -15,7 +15,6 @@
 """
 dynamic ceil
 """
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
@@ -23,6 +22,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_platform
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -45,9 +45,13 @@ def ceil_compute(input_x, output_x, kernel_name="ceil"):
     res: TVM tensor
         the result of ceil(input_x)
     """
-    res_int32 = tbe.ceil(input_x)
-    res = tbe.cast_to(res_int32, input_x.dtype)
-
+    dtype_x = input_x.dtype.lower()
+    if dtype_x == "float32" and not tbe_platform.api_check_support("tbe.dsl.ceil", "float32"):
+        input_x_16 = tbe.cast_to(input_x, "float16")
+        res_int32 = tbe.ceil(input_x_16)
+    else:
+        res_int32 = tbe.ceil(input_x)
+    res = tbe.cast_to(res_int32, dtype_x)
     return res
 
 
@@ -81,9 +85,7 @@ def ceil(input_x, output_x, kernel_name="ceil"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            input_data = tvm.placeholder(fuseshape, name="input_data", dtype=x_dtype)
+            input_data = tvm.placeholder(x_shape[0], name="input_data", dtype=x_dtype)
             res = ceil_compute(input_data, output_x, kernel_name)
             tensors.append([input_data, res])
         with tvm.target.cce():

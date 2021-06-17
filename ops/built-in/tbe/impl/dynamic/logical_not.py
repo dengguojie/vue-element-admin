@@ -15,7 +15,6 @@
 """
 logical_not
 """
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -88,9 +87,7 @@ def logical_not(x, y, kernel_name="logical_not"):
     for (input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([input_x])
-            fuseshape = [1]
-            fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype=dtype_x, name="data_input")
+            data_input = tvm.placeholder(x_shape[0], dtype=dtype_x, name="data_input")
             res = logical_not_compute(data_input, y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():

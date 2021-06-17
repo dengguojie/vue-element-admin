@@ -123,8 +123,6 @@ def sigmoid_grad(x,
     for (sig, dx) in ins:
         with tbe.compute():
             shape_sig, shape_dx = shape_util.variable_shape([sig, dx])
-            shape_sig = [reduceIns(lambda x, y: x * y, shape_sig)]
-            shape_dx = [reduceIns(lambda x, y: x * y, shape_dx)]
             tensor_sig = tvm.placeholder(shape_sig, x_dtype, "tensor_x")
             tensor_dx = tvm.placeholder(shape_dx, dx_dtype, "tensor_dx")
             res = sigmoid_grad_compute(tensor_sig, tensor_dx, out, kernel_name)
