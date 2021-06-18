@@ -742,10 +742,6 @@ def _check_and_config_para(fmap,
         error_manager_cube.raise_err_specific_user(
             'conv3d', "offset_w is not supported yet in dynamic conv3d")
 
-    if groups != 1:
-        error_manager_cube.raise_err_specific_user(
-            'conv3d', "group != 1 is not supported yet in dynamic conv3d")
-
     cin0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
     cout0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
     _check_conv3d_dtype(in_dtype, w_dtype, res_dtype)

@@ -571,38 +571,28 @@ class CceConv3dOp:
         -------
         tiling
         """
-        fmap_shape_ndc1hwc0 = conv3d_compute.Conv3DParam.tiling_query_param[
-            "fmap_shape_ndc1hwc0"]
-        shape_w_ndc1hwc0 = conv3d_compute.Conv3DParam.tiling_query_param[
-            "shape_w_ndc1hwc0"]
-        in_dtype = conv3d_compute.Conv3DParam.tiling_query_param["in_dtype"]
-        w_dtype = conv3d_compute.Conv3DParam.tiling_query_param["w_dtype"]
-        res_dtype = conv3d_compute.Conv3DParam.tiling_query_param["res_dtype"]
-        mad_dtype = conv3d_compute.Conv3DParam.tiling_query_param["mad_dtype"]
-        padw = conv3d_compute.Conv3DParam.tiling_query_param["padw"]
-        padh = conv3d_compute.Conv3DParam.tiling_query_param["padh"]
-        padd = conv3d_compute.Conv3DParam.tiling_query_param["padd"]
-        strideh = conv3d_compute.Conv3DParam.tiling_query_param["strideh"]
-        stridew = conv3d_compute.Conv3DParam.tiling_query_param["stridew"]
-        strided = conv3d_compute.Conv3DParam.tiling_query_param["strided"]
-        dilationh = conv3d_compute.Conv3DParam.tiling_query_param["dilationh"]
-        dilationw = conv3d_compute.Conv3DParam.tiling_query_param["dilationw"]
-        dilationd = conv3d_compute.Conv3DParam.tiling_query_param["dilationd"]
-        bias_flag = conv3d_compute.Conv3DParam.tiling_query_param["bias_flag"]
+        fmap_shape_ndc1hwc0 = conv3d_compute.Conv3DParam.tiling_info_dict["a_shape"]
+        shape_w_ndc1hwc0 = conv3d_compute.Conv3DParam.tiling_info_dict["b_shape"]
+        in_dtype = conv3d_compute.Conv3DParam.tiling_info_dict["a_dtype"]
+        w_dtype = conv3d_compute.Conv3DParam.tiling_info_dict["b_dtype"]
+        res_dtype = conv3d_compute.Conv3DParam.tiling_info_dict["c_dtype"]
+        mad_dtype = conv3d_compute.Conv3DParam.tiling_info_dict["mad_dtype"]
+        padd = conv3d_compute.Conv3DParam.tiling_info_dict["pad"][0:2]
+        padh = conv3d_compute.Conv3DParam.tiling_info_dict["pad"][2:4]
+        padw = conv3d_compute.Conv3DParam.tiling_info_dict["pad"][4:6]
+        strided = conv3d_compute.Conv3DParam.tiling_info_dict["stride"][0]
+        strideh = conv3d_compute.Conv3DParam.tiling_info_dict["stride"][1]
+        stridew = conv3d_compute.Conv3DParam.tiling_info_dict["stride"][2]
+        dilationd = conv3d_compute.Conv3DParam.tiling_info_dict["dilation"][0]
+        dilationh = conv3d_compute.Conv3DParam.tiling_info_dict["dilation"][1]
+        dilationw = conv3d_compute.Conv3DParam.tiling_info_dict["dilation"][2]
+        bias_flag = conv3d_compute.Conv3DParam.tiling_info_dict["bias_flag"]
         batch_size = fmap_shape_ndc1hwc0[0]
         in_size_w = fmap_shape_ndc1hwc0[-2]
         kernel_d = shape_w_ndc1hwc0[1]
         kernel_h = shape_w_ndc1hwc0[-3]
         kernel_w = shape_w_ndc1hwc0[-2]
 
-        # Get tiling
-        real_g = self._tensor_map["group_dict"]["real_g"]
-        cin1_g = self._tensor_map["group_dict"]["cin1_g"]
-        cout_g = self._tensor_map["group_dict"]["cout_g"]
-        fmap_n, fmap_d, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_shape_ndc1hwc0
-        fmap_shape_ndc1hwc0 = [fmap_n, fmap_d, cin1_g, fmap_h, fmap_w, fmap_c0]
-        shape_w_ndc1hwc0 = [cout_g, kernel_d, cin1_g, kernel_h, kernel_w,
-                            _TILING_FLOAT16_MKN]
         if self.var_map:
             tiling_new = self.tiling_case
         else:
@@ -619,7 +609,7 @@ class CceConv3dOp:
                 "dilation": [1, dilationh, dilationw],
                 "bias_flag": bias_flag,
                 "fused_coefficient": [0, 0, self._fused_op_num],
-                "group": real_g,
+                "group": self._tensor_map["group_dict"]["real_g"],
                 "kernel_name": self._tensor_map["kernel_name"],
             }
             tiling_new = get_tiling(info_dict)
@@ -676,7 +666,7 @@ class CceConv3dOp:
         tiling["bias_split_flag"] = False
 
         if compute_util.get_or_res(tiling_ok_flag is False,
-                              conv3d_compute.Conv3DParam.tiling_query_param["default_tiling"]):
+                              conv3d_compute.Conv3DParam.tiling_info_dict["default_tiling"]):
             tiling = {}
             config = tbe_platform.CUBE_MKN[w_dtype]
             ci0 = config['mac'][1]
@@ -802,19 +792,19 @@ class CceConv3dOp:
         if double_buffer_flag["CUB_pbuffer"] == 2:
             sch[buffer_dict["c_ub"]].double_buffer()
 
-    def _condition_cycle_buffer_dynamic(self, cyclebuffer_flag, fmap,
-                                        al1, c_col, c_ub, tiling):
+    def _condition_cycle_buffer_dynamic(self, cyclebuffer_flag,
+                                        al1, c_col, c_ub, tiling, cin1_g):
         sch = self._schedule
         d_out = self._tensor_map["d_out"]
         pad_head = c_col.op.attrs['pad_head']
         stride_d = c_col.op.attrs['stride_d']
         kernel_d = c_ub.op.attrs['kernel_d']
-        _, _, fmap_c1_dim, _, _, _ = fmap.shape
+
         if cyclebuffer_flag:
             # set_store_predicate for cycle buffer
-            _, dc_index = sch[al1].split(al1.op.axis[1], nparts=1)
-            _, n_index = sch[al1].split(al1.op.axis[0], nparts=1)
-            d_index = n_index % d_out * stride_d + (dc_index // fmap_c1_dim +
+            _, dc_index = sch[al1].split(al1.op.axis[2], nparts=1)
+            _, n_index = sch[al1].split(al1.op.axis[1], nparts=1)
+            d_index = n_index % d_out * stride_d + (dc_index // cin1_g +
                         n_index % d_out * (kernel_d - stride_d)) % kernel_d - pad_head
             # condition_update is a refers to the conditions that
             # need to be updated during this load and the last load
@@ -869,6 +859,7 @@ class CceConv3dOp:
         c_col = buffer_dict["c_col"]
         c_ub = buffer_dict["c_ub"]
 
+        cin1_g = self._tensor_map["group_dict"]["cin1_g"]
         setfmatrix_dict = {
             "conv_kernel_h": c_ub.op.attrs['kernel_h'],
             "conv_kernel_w": c_ub.op.attrs['kernel_w'],
@@ -879,13 +870,12 @@ class CceConv3dOp:
             "conv_stride_h": c_ub.op.attrs['stride'][0],
             "conv_stride_w": c_ub.op.attrs['stride'][1],
             "conv_dilation_h": c_ub.op.attrs['dilation'][0],
-            "conv_dilation_w":  c_ub.op.attrs['dilation'][1]
+            "conv_dilation_w":  c_ub.op.attrs['dilation'][1],
+            "conv_fm_c": cin1_g * fmap.op.shape[5],
+            "conv_fm_h": fmap.op.shape[3],
+            "conv_fm_w": fmap.op.shape[4]
         }
 
-        setfmatrix_dict["conv_fm_c"] = self._tensor_map["group_dict"][
-                                            "cin1_g"] * fmap.op.shape[5]
-        setfmatrix_dict["conv_fm_h"] = fmap.op.shape[3]
-        setfmatrix_dict["conv_fm_w"] = fmap.op.shape[4]
         stride_d = c_col.op.attrs['stride_d']
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
         kernel_d = c_ub.op.attrs['kernel_d']
@@ -894,8 +884,10 @@ class CceConv3dOp:
             sch[al1].mem_unique()
             sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
         elif self.var_map and not l0a_load2d_flag:
-            self._condition_cycle_buffer_dynamic(cyclebuffer_flag, fmap, al1, c_col,
-                                                 c_ub, tiling)
+            self._condition_cycle_buffer_dynamic(cyclebuffer_flag, al1, c_col,
+                                                 c_ub, tiling, cin1_g)
+        elif self.var_map and l0a_load2d_flag:
+            sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
         else:
             sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
 
@@ -905,31 +897,32 @@ class CceConv3dOp:
             stride_update = 1 if self._tensor_map["opti_h_flag"] else c_ub.op.attrs['stride'][0]
             im2col_attr = {
                 'set_fmatrix': 1,
+                'conv_kernel_d': kernel_d,
                 'conv_kernel_h': c_ub.op.attrs['kernel_h'],
                 'conv_kernel_w': c_ub.op.attrs['kernel_w'],
                 'conv_padding_top': c_ub.op.attrs['padding'][0],
                 'conv_padding_bottom': c_ub.op.attrs['padding'][1],
                 'conv_padding_left': c_ub.op.attrs['padding'][2],
                 'conv_padding_right': c_ub.op.attrs['padding'][3],
+                'conv_stride_d': stride_d,
                 'conv_stride_h': stride_update,
                 'conv_stride_w': c_ub.op.attrs['stride'][1],
-                'conv_fm_c': fmap.op.shape[2] * fmap.op.shape[5],
-                'conv_fm_c1': fmap.op.shape[2],
+                'conv_fm_c': cin1_g * fmap.op.shape[5],
+                'conv_fm_c1': cin1_g,
                 'conv_fm_h': fmap.shape[3],
                 'conv_fm_w': fmap.shape[4],
                 'conv_fm_c0': fmap.shape[5],
                 'group_flag': 1,
+                'l1_group_flag': 1,
                 'circular_buf': cyclebuffer_flag,
                 'conv_batch': fmap_col.op.axis[1],
                 'conv_intrin_batch': new_fmap_col_axis[-5],
-                'conv_kernel_d': kernel_d,
-                'conv_stride_d': stride_d,
                 'conv_d_out': self._tensor_map.get("d_out"),
             }
             if self._tensor_map["opti_h_flag"]:
                 im2col_attr["conv_stride_h"] = 1
             sch[fmap_col].emit_insn(new_fmap_col_axis[-5], 'im2col_v2', im2col_attr)
-            sch[al1].emit_insn(al1.op.axis[2], 'dma_copy')
+            sch[al1].emit_insn(al1.op.axis[3], 'dma_copy')
         else:
             if self._tensor_map["opti_h_flag"]:
                 setfmatrix_dict["conv_stride_h"] = 1
@@ -938,7 +931,6 @@ class CceConv3dOp:
                                            'set_fmatrix', setfmatrix_dict)
             sch[fmap_col].emit_insn(new_fmap_col_axis[-5], 'im2col')
 
-        real_g = self._tensor_map["group_dict"]["real_g"]
         if tiling["BL1_shape"] is not None:
             sch[bl1].emit_insn(sch[bl1].op.axis[0], 'dma_copy')
         sch[bl0].emit_insn(bl0.op.axis[0], 'dma_copy')
@@ -1228,7 +1220,7 @@ class CceConv3dOp:
         res_c = self._res_tensor
         self._cachebuffer(spec_node_list)
         l0a_load2d_flag = tensor_map["l0a_load2d_flag"]
-        bias_flag = conv3d_compute.Conv3DParam.tiling_query_param["bias_flag"]
+        bias_flag = conv3d_compute.Conv3DParam.tiling_info_dict["bias_flag"]
 
         def _get_fused_op_num():
             fuse_op_num = len(self.body_ops) - _CONV_NUM
@@ -1612,8 +1604,7 @@ class CceConv3dOp:
             "al1_at_c_axis": al1_at_c_axis,
             "noo": noo
         }
-        shape_w = conv3d_compute.Conv3DParam.tiling_query_param[
-            "shape_w_ndc1hwc0"]
+        shape_w = conv3d_compute.Conv3DParam.tiling_info_dict["b_shape"]
         k_outer_outer_inner_size = int(k_outer_outer_size //
                                        max(al1_factor[0], bl1_factor[0]))
 
@@ -1734,8 +1725,9 @@ class CceConv3dOp:
         self._to_pragma(self.body_ops, self.input_ops, c_outer_inner_inner)
 
         def _get_al1_bound():
-            _, fmap_d_dim, fmap_c1, fmap_hi, fmap_wi, fmap_c0 = fmap.shape
-            stride_h = conv3d_compute.Conv3DParam.tiling_query_param["strideh"]
+            cin1_g = group_dict["cin1_g"]
+            _, _, _, fmap_hi, fmap_wi, fmap_c0 = fmap.shape
+            stride_h = conv3d_compute.Conv3DParam.tiling_info_dict["stride"][1]
             l0c_mc, l0c_m0 = tiling['CL0_matrix'][1:3]
             stride_update = 1 if self._tensor_map["opti_h_flag"] else stride_h
             EXTEND_H_CALCULATE_FACTOR = 2
@@ -1763,7 +1755,7 @@ class CceConv3dOp:
                     ho_len = tvm.floordiv(al1_m_tiling, w_out) + additional_rows
                     hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*stride_update
                     al1_m = hi_max * fmap_wi
-                return al1_m * tiling["AL1_shape"][0]*fmap_c0
+                return al1_m * tiling["AL1_shape"][0] * fmap_c0
             else:
                 if self._tensor_map["opti_h_flag"]:
                     fmap_hi = (fmap_hi - 1) // stride_h + 1
@@ -1771,7 +1763,7 @@ class CceConv3dOp:
                 if l0a_load2d_flag:
                     align_util = 16
                     al1_m = compute_util.align(al1_m, align_util)
-                return al1_m * fmap_c1 * fmap_c0 * kernel_d
+                return al1_m * cin1_g * fmap_c0 * kernel_d
 
         if self.var_map:
             sch[al1].set_storage_bound(_get_al1_bound())

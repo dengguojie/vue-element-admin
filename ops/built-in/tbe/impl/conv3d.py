@@ -337,7 +337,7 @@ def _conv3d_compute(shape_fm,
         "mad_dtype": mad_dtype,
         "kernel_name": kernel_name,
         "group_dict": group_dict,
-        "dilations": dilation_dhw
+        "dilation_dhw": dilation_dhw
     }
 
     conv_res = tbe.conv3d(data, weight, shape_filter, para_dict)
@@ -835,7 +835,7 @@ def _cal_input_param(fmap, weight, bias_tensor, strides, pads, dilations, groups
         "mad_dtype": mad_dtype,
         "kernel_name": kernel_name,
         "group_dict": group_dict,
-        "dilations": dilation_dhw
+        "dilation_dhw": dilation_dhw
     }
 
     return para_dict, shape_filter

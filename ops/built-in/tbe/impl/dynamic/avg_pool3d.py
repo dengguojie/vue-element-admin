@@ -173,7 +173,7 @@ def avg_pool3d(x,
                strides,
                pads,
                ceil_mode=False,
-               count_inclue_pad=True,
+               count_include_pad=True,
                divisor_override=0,
                data_format="NDHWC",
                kernel_name="avg_pool3d"):
@@ -223,8 +223,6 @@ def avg_pool3d(x,
     fmap_ori_shape = x.get("ori_shape")
     fmap_dtype = x.get("dtype")
     fmap_range = x.get("range")
-    filter_ori_shape = filter.get("ori_shape")
-    filter_ori_format = filter.get("ori_format")
 
     if len(fmap_range) == _ORI_SHAPE_DIM:
         fmap_range = _trans_range_to_6d(fmap_range, fmap_ori_format)
@@ -237,10 +235,6 @@ def avg_pool3d(x,
                                                                       _FMAP_TARGET_FORMAT,
                                                                       fmap_ori_shape,
                                                                       _FORMAT_WHITE_LIST)
-    filter_ori_shape_formated = util_conv3d.transform_shape_with_format(filter_ori_format,
-                                                                        _FILTER_WHITE_LIST,
-                                                                        filter_ori_shape,
-                                                                        _FORMAT_WHITE_LIST)
 
     fmap_range_updated, output_range_updated = _range_correction(fmap_range, ksize_formated, strides_formated, pads)
     dync_fmap_ori_shape = _init_dynamic_shape_var(fmap_ori_shape_formated, fmap_range_updated, output_range_updated)
@@ -254,7 +248,7 @@ def avg_pool3d(x,
                          util_common.ceil(dync_output_ori_shape[4], _C0_SIZE),
                          dync_output_ori_shape[2], dync_output_ori_shape[3], _C0_SIZE)
     group_dict = util_common.calculate_group(fmap_ori_shape_formated[4],
-                                             filter_ori_shape_formated[4],
+                                             fmap_ori_shape_formated[4],
                                              fmap_ori_shape_formated[4],
                                              _C0_SIZE,
                                              _C0_SIZE)
@@ -262,8 +256,8 @@ def avg_pool3d(x,
     _, stride_d, stride_h, stride_w, _ = strides_formated
 
     filter_fracz = (dync_fmap_shape[2] * kd * kh * kw, 1, _C0_SIZE, _C0_SIZE)
-    align_filter_shape = (util_common.align(filter_ori_shape_formated[0], _C0_SIZE),
-                          util_common.align(filter_ori_shape_formated[1], _C0_SIZE),
+    align_filter_shape = (util_common.align(fmap_ori_shape_formated[4], _C0_SIZE),
+                          16,
                           kd, kh, kw)
     para_dict = {
         "dsl_flag": True,

@@ -68,7 +68,6 @@ class Conv3DParam(object):
     _TENSOR_MAP = {}
     dim_map = {}
     tiling = None
-    tiling_query_param = {}
     var_map = {}
     tiling_info_dict = {}
     para_dict = {}
@@ -158,27 +157,11 @@ def _cube_3d_compute(fmap,
     opti_h_flag = filter_h == 1 and stride_h > 1
     _TENSOR_MAP["opti_h_flag"] = opti_h_flag
     _TENSOR_MAP["d_out"] = d_out
-
     _TENSOR_MAP["group_dict"] = group_dict
     real_g = group_dict["real_g"]
     cin1_g = group_dict["cin1_g"]
     cout_g = group_dict["cout_g"]
-    cin_ori = group_dict["cin_ori"]
     cout_ori = group_dict["cout_ori"]
-    fmap_fuse_shape = (batch_size * d_out, filter_d * fmap_c1, fmap_h, fmap_w,
-                       fmap_c0)
-    fuse_fmap_tensor = _get_fuse_fmap_tensor(fmap_fuse_shape,
-                                             fmap,
-                                             d_out,
-                                             filter_d,
-                                             stride_d,
-                                             stride_h,
-                                             pad_head,
-                                             opti_h_flag,
-                                             cyclebuffer_flag,
-                                             tag=_OP_TAG)
-
-    _TENSOR_MAP["fmap_do_tensor"] = fuse_fmap_tensor
 
     # im2col
     # small-z-big-Z
@@ -187,27 +170,53 @@ def _cube_3d_compute(fmap,
     pad_hw = pads[2:]
 
     if Conv3DParam.var_map:
+        # Change fmap shape into a new data layout (N,D,C1,H,W,C0) -> (G,NDout,DkCin1_g,H,W,C0)
+        fmap_fuse_shape = (real_g, batch_size * d_out, filter_d * cin1_g, fmap_h, fmap_w,
+                           fmap_c0)
+        fused_batch_dout = fmap_fuse_shape[1]
+        fused_dk_c1 = fmap_fuse_shape[2]
+
+        al1_para_dict = (d_out, cin1_g, filter_d, stride_d, stride_h, pad_head,
+                         opti_h_flag, cyclebuffer_flag)
+        fuse_fmap_tensor = _get_fuse_fmap_tensor(fmap_fuse_shape,
+                                                 fmap,
+                                                 al1_para_dict,
+                                                 tag=_OP_TAG)
+
+        _TENSOR_MAP["fmap_do_tensor"] = fuse_fmap_tensor
         # new data layout (N, C1, H, W, C0) -> (N, loop_m, loop_k, cube_m, cube_k)
         howo_mad_1 = (height_out * width_out + block_size_m -
                     1) // block_size_m
-        fmap_im2col_fractal_shape = (real_g, fmap_fuse_shape[0],
+        fmap_im2col_fractal_shape = (real_g, fused_batch_dout,
                     howo_mad_1, filter_d * cin1_g * filter_h * filter_w,
                     block_size_m, block_size_k)
         stride_hw = stride_dhw[1:]
         if opti_h_flag:
             stride_hw[0] = 1
-        im2col_para = (fuse_fmap_tensor, filter_h, filter_w, pad_hw, stride_hw,
-                       width_out, 1, cin_ori)
+        im2col_para = (fuse_fmap_tensor, filter_h, filter_w,
+                       width_out, pad_hw, stride_hw, dilation_dhw[1:], cin1_g)
         # Data rearrangement from l1 to l0a in the dynamic shape
         # cycle buffer is enabled by instruction mapping stage
-        fmap_im2col_fractal_res = cube_util.im2col_fractal_v2(
+        fmap_im2col_fractal_res = _dyn_im2col_fractal(
                     fmap_im2col_fractal_shape, im2col_para)
         _TENSOR_MAP["fmap_im2col_fractal_res"] = fmap_im2col_fractal_res
     else:
+        fmap_fuse_shape = (batch_size * d_out, filter_d * fmap_c1, fmap_h, fmap_w,
+                           fmap_c0)
+        fused_batch_dout = fmap_fuse_shape[0]
+        fused_dk_c1 = fmap_fuse_shape[1]
+        al1_para_dict = (d_out, cin1_g, filter_d, stride_d, stride_h, pad_head,
+                         opti_h_flag, cyclebuffer_flag)
+        fuse_fmap_tensor = _get_fuse_fmap_tensor(fmap_fuse_shape,
+                                                 fmap,
+                                                 al1_para_dict,
+                                                 tag=_OP_TAG)
+
+        _TENSOR_MAP["fmap_do_tensor"] = fuse_fmap_tensor
         # set_fmatrix
         # new data layout (N,C1,H,W,C0) -> (N,HoWo,C1,Hk,Wk,C0)
-        fmap_im2col_row_major_shape = (fmap_fuse_shape[0], height_out * width_out,
-                                       fmap_fuse_shape[1], filter_h, filter_w,
+        fmap_im2col_row_major_shape = (fused_batch_dout, height_out * width_out,
+                                       fused_dk_c1, filter_h, filter_w,
                                        fmap_c0)
         stride_hw = [stride_h, stride_w]
         dilation_hw = [dilation_h, dilation_w]
@@ -225,7 +234,7 @@ def _cube_3d_compute(fmap,
         # im2col
         # small-z-big-Z
         # new data layout (N,HoWo,C1,Hk,Wk,C0) -> (N,loop_m,loop_k,cube_m,cube_k)
-        fmap_im2col_fractal_shape = (real_g, fmap_fuse_shape[0],
+        fmap_im2col_fractal_shape = (real_g, fused_batch_dout,
                                      howo_mad // block_size_m,
                                      filter_d * cin1_g * filter_h * filter_w,
                                      block_size_m, block_size_k)
@@ -246,7 +255,7 @@ def _cube_3d_compute(fmap,
 
     l0a_load2d_flag = _TENSOR_MAP["l0a_load2d_flag"]
 
-    mad_shape = (real_g, fmap_fuse_shape[0],
+    mad_shape = (real_g, fused_batch_dout,
                  (cout_g + config['mac'][2] - 1) // (config['mac'][2]),
                  howo_mad, config['mac'][2])
 
@@ -261,7 +270,7 @@ def _cube_3d_compute(fmap,
 
     _TENSOR_MAP["c_col"] = c_col
 
-    conv_shape = (fmap_fuse_shape[0],
+    conv_shape = (fused_batch_dout,
                   (cout_ori + config['mac'][2] - 1) // (config['mac'][2]),
                   height_out * width_out, config['mac'][2])
 
@@ -278,9 +287,9 @@ def _cube_3d_compute(fmap,
                   'stride': stride_dhw[1:],
                   'dilation': dilation_dhw[1:]}
 
-    conv_aligned_shape = (fmap_fuse_shape[0],
-                  (cout_ori + config['mac'][2] - 1) // (config['mac'][2]),
-                  howo_mad, config['mac'][2])
+    conv_aligned_shape = (fused_batch_dout,
+                          (cout_ori + config['mac'][2] - 1) // (config['mac'][2]),
+                          howo_mad, config['mac'][2])
     c_ub = tvm.compute(conv_aligned_shape,
                         lambda n, i, j, k: c_col(i // cout1_g, n,
                                                  i % cout1_g, j, k).astype(
@@ -307,9 +316,7 @@ def _cube_3d_compute(fmap,
     return res
 
 
-def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
-                          stride_h, pad_head, opti_h_flag,
-                          cyclebuffer_flag, tag):
+def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, al1_para_dict, tag):
     """
     calculate expand tensor
     Parameters
@@ -318,6 +325,10 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
     fmap_fuse_shape : the shape of new tensor
 
     fmap : the input feature
+
+    tag : the tensor tag
+
+    al1_para_dict : Contains the following parameters
 
     d_out : the D dimension of out shape
 
@@ -333,20 +344,23 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
 
     cyclebuffer_flag : the flag for cyclebuffer
 
-    tag : the tensor tag
-
     Returns
     -------
     new tensor
     """
     _, fmap_d, fmap_c1, _, _, _ = fmap.shape
+    (d_out, cin1_g, kernel_d, stride_d, stride_h,
+        pad_head, opti_h_flag, cyclebuffer_flag) = al1_para_dict
     # multi core
     d_dim = tvm.var(name='d_dim', dtype='int')
     _TENSOR_MAP["d_dim"] = d_dim
     opti_h_factor = 1
     if opti_h_flag:
         fmap_fuse_shape = list(fmap_fuse_shape)
-        fmap_fuse_shape[2] = (fmap_fuse_shape[2] - 1) // stride_h + 1
+        if Conv3DParam.var_map:
+            fmap_fuse_shape[3] = (fmap_fuse_shape[3] - 1) // stride_h + 1
+        else:
+            fmap_fuse_shape[2] = (fmap_fuse_shape[2] - 1) // stride_h + 1
         opti_h_factor = stride_h
 
     def __get_fuse_tensor_indices(indices):
@@ -360,14 +374,10 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
                   n_index % d_out * (kernel_d - stride_d) * cyclebuffer_flag) % \
                   kernel_d - pad_head
         c1_index = dc_index % fmap_c1
-        if Conv3DParam.var_map:
-            # Only the conditions for pad are retained in the dynamic shape compute
-            fuse_tensor_condition = tvm.all(d_index >= 0, d_index < fmap_d)
-        else:
-            cycle_condition = tvm.any(tvm.floordiv(cyclebuffer_flag, 1) == 0,
-                                d_index + pad_head > (n_index % d_out - 1) * stride_d + kernel_d - 1,
-                                tvm.floormod(n_index, tvm.floordiv(d_out, d_dim)) == 0)
-            fuse_tensor_condition = tvm.all(d_index >= 0, d_index < fmap_d, cycle_condition)
+        cycle_condition = tvm.any(tvm.floordiv(cyclebuffer_flag, 1) == 0,
+                                  d_index + pad_head > (n_index % d_out - 1) * stride_d + kernel_d - 1,
+                                  tvm.floormod(n_index, tvm.floordiv(d_out, d_dim)) == 0)
+        fuse_tensor_condition = tvm.all(d_index >= 0, d_index < fmap_d, cycle_condition)
         return tvm.select(fuse_tensor_condition,
                           fmap(batch_index,
                                d_index,
@@ -376,10 +386,90 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
                                w_index,
                                c0_index))
 
-    return tvm.compute(fmap_fuse_shape,
-                       lambda *indices: __get_fuse_tensor_indices(indices),
-                       name="fuse_fmap_tensor",
-                       tag=tag + "fuse_fmap_tensor")
+    def __get_dyn_fuse_tensor_indices(indices):
+        """
+        return the indices of the fuse_fmap for Dynamic Mode
+        """
+        g_index, n_index, dc_index, h_index, w_index, c0_index = indices
+
+        batch_index = n_index // d_out
+        # Rewrite the Data distribution and checking the validation in C direction
+        d_index = n_index % d_out * stride_d + (dc_index // cin1_g + \
+                  n_index % d_out * (kernel_d - stride_d) * cyclebuffer_flag) % \
+                  kernel_d - pad_head
+        c1_index = g_index * cin1_g + dc_index % cin1_g
+        c1_index_valid = c1_index < fmap_c1
+        # Only the conditions for pad are retained in the dynamic shape compute
+        fuse_tensor_condition = tvm.all(d_index >= 0, d_index < fmap_d, c1_index_valid)
+        return tvm.select(fuse_tensor_condition,
+                          fmap(batch_index,
+                               d_index,
+                               c1_index,
+                               h_index * opti_h_factor,
+                               w_index,
+                               c0_index))
+    if Conv3DParam.var_map:
+        fmap_al1 = tvm.compute(fmap_fuse_shape,
+                               lambda g_idx, n_idx, dc_idx, h_idx, w_idx, c0:
+                               __get_dyn_fuse_tensor_indices((g_idx, n_idx, dc_idx, h_idx, w_idx, c0)),
+                               name="fuse_fmap_tensor",
+                               tag=tag + "fuse_fmap_tensor")
+    else:
+        fmap_al1 = tvm.compute(fmap_fuse_shape,
+                               lambda n_idx, dc_idx, h_idx, w_idx, c0:
+                               __get_fuse_tensor_indices((n_idx, dc_idx, h_idx, w_idx, c0)),
+                               name="fuse_fmap_tensor",
+                               tag=tag + "fuse_fmap_tensor")
+    return fmap_al1
+
+
+def _dyn_im2col_fractal(shape, img2col_para):
+    """
+    calculate im2col_fractal tensor without tensor row_major
+    Parameters
+    ----------
+    shape : shape of a_im2col
+
+    img2col_para : tensor of fmap, kernel_h, kernel_w, fmap_wo, padding, stride,
+                   dilation, cin1_g
+    -------
+    Returns : a_im2col_fractal tensor
+    """
+
+    block_size = shape[-1]
+    fmap, kernel_h, kernel_w, fmap_wo, padding, stride, dilation, cin1_g = img2col_para
+
+    def __im2col_idx(idx):
+        group_idx, batch, col_h, dk_c1_hk_wk, block_size_h, block_size_w = idx
+
+        dk_idx = dk_c1_hk_wk // kernel_w // kernel_h // cin1_g
+        cin1_g_idx = dk_c1_hk_wk // kernel_w // kernel_h % cin1_g
+        dk_c1g = dk_idx * cin1_g + cin1_g_idx
+
+        virtual_h = col_h * block_size + block_size_h
+
+        back_h = (virtual_h // fmap_wo) * stride[0] + (dk_c1_hk_wk // kernel_w % kernel_h)
+        back_w = (virtual_h % fmap_wo) * stride[1] + (dk_c1_hk_wk % kernel_w)
+
+        return tvm.select(
+            tvm.any(back_h < padding[0], back_h > fmap.shape[3] + padding[0] - 1, back_w < padding[2],
+                    back_w > fmap.shape[4] + padding[2] - 1), tvm.const(0, fmap.dtype),
+            fmap(group_idx, batch, dk_c1g, back_h - padding[0], back_w - padding[2], block_size_w))
+
+    return tvm.compute(shape,
+                       lambda g_idx, batch, howo1, dk_c1_hk_wk, m0, c0:
+                       __im2col_idx((g_idx, batch, howo1, dk_c1_hk_wk, m0, c0)),
+                       name="img2col_fractal_v2",
+                       tag="im2col_fractal_v2",
+                       attrs={
+                           "fmap_shape": fmap.shape,
+                           "kernel_h": kernel_h,
+                           "kernel_w": kernel_w,
+                           "padding": padding,
+                           "stride": stride,
+                           "dilation": dilation
+                       })
+
 
 def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
                    d_out, group_dict):
@@ -419,7 +509,6 @@ def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
     fmap_c0 = fmap_shape[5]
     real_g = group_dict["real_g"]
     cin1_g = group_dict["cin1_g"]
-    cin_ori = group_dict["cin_ori"]
 
     shape_al1_load2d = (batch_size * fmap_d, fmap_c1, fmap_h * fmap_w, fmap_c0)
     al1_load2d = tvm.compute(
@@ -498,8 +587,10 @@ def _im2col_dim(shape_fmap, shape_filter_ncdhw, pads, stride_dhw, dilation_dhw, 
     img_shape, fmap_matrix_dim
     """
     mac_dim = config['mac']
-
-    batch, fmap_c1, fmap_h, fmap_w, fmap_c0 = shape_fmap
+    if Conv3DParam.var_map:
+        _, batch, fmap_c1, fmap_h, fmap_w, fmap_c0 = shape_fmap
+    else:
+        batch, fmap_c1, fmap_h, fmap_w, fmap_c0 = shape_fmap
     filter_cout, _, _, filter_h, filter_w = shape_filter_ncdhw
     _, _, pad_top, pad_bottom, pad_left, pad_right = pads
     _, dilation_h, dilation_w = dilation_dhw
@@ -677,7 +768,8 @@ def _remove_pad(res, res_remove_pad_shape):
     _NAME_INDEX[0] += 1
     with tvm.tag_scope('conv_vector_remove_pad'):
         res_tensor = tvm.compute(res_remove_pad_shape,
-                                 lambda *indice: res(*indice),
+                                 lambda batch_dout, cout1, howo, cout0:
+                                 res(batch_dout, cout1, howo, cout0),
                                  name='remove_pad' + "_cc_" +
                                       str(_NAME_INDEX[0]))
     return res_tensor
@@ -1006,19 +1098,15 @@ def conv3d(x, filter, filter_size, para_dict):
 
     stride_dhw = para_dict["strides"]
     stride_d, stride_h, stride_w = stride_dhw
-    if Conv3DParam.var_map:
-        dilation_dhw = para_dict["dilation_dhw"]
-    else:
-        dilation_dhw = para_dict["dilations"]
+    dilation_dhw = para_dict["dilation_dhw"]
     
     shape_filter_ncdhw = filter_size
-    filter_n, filter_c, filter_d, filter_h, filter_w = shape_filter_ncdhw
+    _, _, filter_d, filter_h, filter_w = shape_filter_ncdhw
 
     mad_dtype = para_dict["mad_dtype"]
     res_dtype = para_dict["res_dtype"]
 
     block_size_k = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
-    filter_c1 = (filter_c + block_size_k - 1) // block_size_k
 
     # for tiling
     cin1_g = group_dict["cin1_g"]
@@ -1035,48 +1123,28 @@ def conv3d(x, filter, filter_size, para_dict):
         _check_conv3d_shape(shape_fmap_ncdhw, shape_filter_ncdhw, pads,
                             stride_dhw, dilation_dhw, in_dtype, w_dtype)
 
-    dilation_d, dilation_h, dilation_w = dilation_dhw
-    Conv3DParam.tiling_query_param = {
-        "fmap_shape_ndc1hwc0": fmap_shape_ndc1hwc0,
-        "shape_w_ndc1hwc0": shape_w_ndc1hwc0,
-        "in_dtype": in_dtype,
-        "w_dtype": w_dtype,
-        "res_dtype": res_dtype,
+    _, dilation_h, dilation_w = dilation_dhw
+    Conv3DParam.tiling_info_dict = {
+        "op_type": "convolution_3d",
+        "a_shape": fmap_shape_ndc1hwc0,
+        "b_shape": shape_w_ndc1hwc0,
+        "a_dtype": in_dtype,
+        "b_dtype": w_dtype,
+        "c_dtype": res_dtype,
         "mad_dtype": mad_dtype,
-        "padw": pad_w,
-        "padh": pad_h,
-        "padd": pad_d,
-        "strideh": stride_h,
-        "stridew": stride_w,
-        "strided": stride_d,
-        "dilationd": dilation_d,
-        "dilationh": dilation_h,
-        "dilationw": dilation_w,
         "bias_flag": bias_flag,
         "default_tiling": False,
-        "group": group_dict["real_g"]
+        "group": group_dict["real_g"],
+        "pad":[pad_d[0], pad_d[1], pad_h[0], pad_h[1], pad_w[0], pad_w[1]],
+        "stride":[stride_d, stride_h, stride_w],
+        "dilation":[1, dilation_h, dilation_w],
+        "kernel_name": para_dict["kernel_name"]
     }
 
     _TENSOR_MAP["kernel_name"] = para_dict["kernel_name"]
     l0a_load2d_flag = _get_load2d_flag(stride_dhw, pads, shape_filter_ncdhw)
     cyclebuffer_flag = tvm.var(name='cyclebuffer_flag', dtype='int')
-    if Conv3DParam.var_map:
-        Conv3DParam.tiling_info_dict = {
-            "op_type": "convolution_3d",
-            "a_shape": fmap_shape_ndc1hwc0,
-            "b_shape": shape_w_ndc1hwc0,
-            "a_dtype": in_dtype,
-            "b_dtype": w_dtype,
-            "c_dtype": res_dtype,
-            "mad_dtype": mad_dtype,
-            "pad": [pad_d[0], pad_d[1], pad_h[0], pad_h[1], pad_w[0], pad_w[1]],
-            "stride": [stride_d, stride_h, stride_w],
-            "bias_flag": bias_flag,
-            "fused_double_operand_num": 0,
-            "kernel_name": para_dict["kernel_name"],
-            "dynamic_shape_flag": True,
-            "dilation": dilation_dhw
-        }
+
     _TENSOR_MAP["l0a_load2d_flag"] = l0a_load2d_flag
     _TENSOR_MAP["cycle_flag_info"] = cyclebuffer_flag
     dsl_flag = para_dict.get("dsl_flag")

@@ -297,7 +297,9 @@ def query_tiling_cases(tgt_list, conv_info, max_kernel_id, var_names):
                         add_compile_info(key, all_compile_info[key])
             else:
                 all_compile_info = current_info
-        add_compile_info("fmap_c1", conv_info.get("a_shape")[2])
+        group_dict = Conv3DParam._TENSOR_MAP["group_dict"]
+        fmap_cin1_g = utils.icd(group_dict["cin_ori"], conv_info.get("a_shape")[-1])
+        add_compile_info("fmap_c1", fmap_cin1_g)
     return tiling_cases
 
 
@@ -362,6 +364,7 @@ def calc_conv3d(outs, option=None):
     tgt_list = []
     tgt_area = {}
     conv_info = Conv3DParam.tiling_info_dict
+    conv_info["dynamic_shape_flag"] = True
     shape_dict = {"batch_n": conv_info.get("a_shape")[0],
                   "fmap_d": conv_info.get("a_shape")[1],
                   "fmap_h": conv_info.get("a_shape")[3],

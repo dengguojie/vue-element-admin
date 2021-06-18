@@ -131,20 +131,5 @@ ut_case.add_precision_case("Ascend910", {
 })
 
 
-ut_case.add_case({'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
-         {'ori_shape': (16,2,3,-1,1), 'shape': (16,2,1,3,-1,16), 'format': "NDC1HWC0", 'ori_format': 'NDHWC', 'dtype': 'float16',
-            'range': ((16,16),(2,2),(1,1),(3,3),(3,40),(16,16))},
-         {'ori_shape': (1,5,1,16,1), 'shape': (5,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
-            'range':((5,5),(1,1),(16,16),(16,16))},
-         {'ori_shape': (16,12,12,-1,1), 'shape': (16,12,1,12,-1,16), 'format': "NDC1HWC0", 'ori_format': 'NDHWC', 'dtype': 'float16',
-            'range': ((16,16), (12,12), (1,1), (12,12), (12,294), (16,16))},
-         (5,1,1),
-         (4,2,10),
-         (-1,-1,-1,-1,-1,-1),
-         False,
-         False,
-         0,
-         "NDHWC")
-
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run()
