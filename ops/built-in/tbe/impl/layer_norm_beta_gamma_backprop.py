@@ -370,14 +370,15 @@ def _get_data_gm(shapes, dtype):
     data_gm: tuple
         (data_dy, data_x, data_variance, data_mean, data_gamma)
     """
+    attr = {"op_type": "layer_norm_beta_gamma_backprop"}
     data_dy = tvm.placeholder(shapes.get("shape_dy"),
-                              name="data_dy", dtype=dtype)
+                              name="data_dy", dtype=dtype, attrs=attr)
     data_x = tvm.placeholder(shapes.get("shape_x"),
-                             name="data_x", dtype=dtype)
+                             name="data_x", dtype=dtype, attrs=attr)
     data_variance = tvm.placeholder(shapes.get("shape_var"),
-                                    name="data_variance", dtype=dtype)
+                                    name="data_variance", dtype=dtype, attrs=attr)
     data_mean = tvm.placeholder(shapes.get("shape_mean"),
-                                name="data_mean", dtype=dtype)
+                                name="data_mean", dtype=dtype, attrs=attr)
 
     data_gm = (data_dy, data_x, data_variance, data_mean)
 
@@ -1064,18 +1065,19 @@ def layer_norm_beta_gamma_backprop(input_dy, input_x, input_variance,
     shape_mean = input_mean.get("shape")
 
     format_dy = input_dy.get("format")
+    attr = {"op_type": "layer_norm_beta_gamma_backprop"}
 
     if format_dy.upper() == "FRACTAL_NZ":
         param_nz = update_shape_nz(shape_x, shape_variance, shape_gamma)
 
         data_dy = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_dy",
-                                  dtype=dtype)
+                                  dtype=dtype, attrs=attr)
         data_x = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_x",
-                                 dtype=dtype)
+                                 dtype=dtype, attrs=attr)
         data_variance = tvm.placeholder(param_nz.get("shape_var_nz"),
-                                        name="data_variance", dtype=dtype)
+                                        name="data_variance", dtype=dtype, attrs=attr)
         data_mean = tvm.placeholder(param_nz.get("shape_var_nz"),
-                                    name="data_mean", dtype=dtype)
+                                    name="data_mean", dtype=dtype, attrs=attr)
 
         res_list = layer_norm_beta_gamma_back_nz_compute(data_dy,
                                                          data_x,

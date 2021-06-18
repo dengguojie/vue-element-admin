@@ -1161,6 +1161,13 @@ def layer_norm_grad_schedule(res, input_tensors):
     visited_list = []
     input_broadcast_tensors = []
     final_out_tensor_list = []
+
+    op_type = ""
+    if 'op_type' in input_tensors[0].op.attrs:
+        op_type = input_tensors[0].op.attrs['op_type'].value
+    if op_type not in ["layer_norm_beta_gamma_backprop", "layer_norm_beta_gamma_backprop_v2"]:
+        return None
+
     for tensor in res[1:]:
         _gen_reversed_subgraph_list(tensor, tensor_list,
                                     tensor_list_dst_tensor_map, visited_list,

@@ -374,12 +374,13 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
     dtype_x = res_for_gamma.get("dtype").lower()
 
     format_dy = input_dy.get("format")
+    attr = {"op_type": "layer_norm_beta_gamma_backprop_v2"}
 
     if format_dy.upper() == "FRACTAL_NZ":
         param_nz = update_shape_nz(shape_x)
 
         data_dy = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_dy",
-                                  dtype=dtype)
+                                  dtype=dtype, attrs=attr)
         data_x = tvm.placeholder(param_nz.get("shape_x_nz"), name="data_x",
                                  dtype=dtype_x)
 
@@ -402,7 +403,7 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
                        "shape_gamma": shape_gamma,
                        "dtype": dtype, "kernel_name": kernel_name})
 
-        data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype)
+        data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype, attrs=attr)
         data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x)
 
         res_list = layer_norm_beta_gamma_backprop_v2_compute(data_dy,
