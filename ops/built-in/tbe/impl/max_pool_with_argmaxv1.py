@@ -740,7 +740,7 @@ class MaxPoolWithargmaxPytorch(object):
         fmap_shape_ub = (fmap_cut_h_num * 16 * self.kernel_h * self.kernel_w * self.c0_size,)
 
         fmap_ub = self.tik_instance.Tensor(self.input_dtype, fmap_shape_ub, name="fmap_ub", scope=tik.scope_ubuf)
-        mask_shape_ub = (self.kernel_h * self.kernel_w * fmap_cut_h_num * self.c0_size,)
+        mask_shape_ub = (self.kernel_h, self.kernel_w, fmap_cut_h_num, self.c0_size)
         if flag_cut_h:
             cur_h_idx = (block_index * nc1_cuth_size + nc1_cuth_index) % cut_h_num
             nc1_num = (block_index * nc1_cuth_size + nc1_cuth_index) // cut_h_num
