@@ -41,15 +41,17 @@ def test_leakyrelu_depthwise_fusion_testcase(test_arg):
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
     dynamic_depthwise_testcase.append([[-1, 5, -1, 100], (5, 5, 5, 5), (0, 0, 2, 2), (0, 0, 0, 0), (1, 1, 1, 1), None, [(1, 101), (5, 5), (5, 200), (100, 100)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
-    dynamic_depthwise_testcase.append([[-1, 32, 13, -1], (32, 32, 1, 1), (0, 0, 4, 4), (0, 0, 0, 0), (1, 1, 1, 1), None, [(1, 101), (32, 32), (13, 13), (1, 113)],
+    dynamic_depthwise_testcase.append([[-1, 32, 13, -1], (1, 1, 32, 32), (0, 0, 4, 4), (0, 0, 0, 0), (1, 1, 1, 1), None, [(1, 101), (32, 32), (13, 13), (1, 113)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
-    dynamic_depthwise_testcase.append([[-1, 32, 31, -1], (32, 32, 4, 4), (0, 0, 5, 5), (1, 2, 1, 2), (1, 1, 1, 1), None, [(1, 101), (32, 32), (13, 13), (1, 113)],
+    dynamic_depthwise_testcase.append([[-1, 32, 31, -1], (4, 4, 32, 32), (0, 0, 5, 5), (1, 2, 1, 2), (1, 1, 1, 1), None, [(1, 101), (32, 32), (13, 13), (1, 113)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
     dynamic_depthwise_testcase.append([[-1, 5, -1, 100], (5, 5, 5, 5), (0, 0, 5, 5), (1, 2, 1, 2), (1, 1, 1, 1), None, [(1, 101), (32, 32), (13, 13), (1, 113)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
-    dynamic_depthwise_testcase.append([[-1, 32, 11, -1], (32, 32, 1, 1), (0, 0, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), None, [(1, 101), (32, 32), (11, 11), (1, 111)],
+    dynamic_depthwise_testcase.append([[-1, 32, 11, -1], (1, 1, 32, 32), (0, 0, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), None, [(1, 101), (32, 32), (11, 11), (1, 111)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
-    dynamic_depthwise_testcase.append([[8, 32, 11, -1], (9472, 32, 5, 5), (0, 0, 2, 2), (2, 2, 2, 2), (1, 1, 1, 1), None, [(8, 8), (32, 32), (5, 119), (5, 119)],
+    dynamic_depthwise_testcase.append([[8, 32, 11, -1], (5, 5, 32, 32), (0, 0, 2, 2), (2, 2, 2, 2), (1, 1, 1, 1), None, [(8, 8), (32, 32), (11, 11), (5, 119)],
+                                    "leakyrelu_depthwise", None, "NCHW", "float16"])
+    dynamic_depthwise_testcase.append([[168, 168, -1, -1], (3, 3, 168, 168), (0, 0, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), None, [(168, 168), (168, 168), (3, None), (1, None)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
     # with bias
     dynamic_depthwise_testcase.append([[-1, 64, -1, -1], (3, 3, 64, 64), (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), (1, 960, 1, 1), [(1, 10), (64, 64), (20, 40), (20, 40)],
@@ -99,6 +101,10 @@ def test_leakyrelu_depthwise_fusion_testcase(test_arg):
         filter_w = tvm.placeholder(filter_fracz, dtype='float16', name='filter_w', attrs = filter)
         leaky_relu_res = leaky_relu_compute(fmap_tensor, None, kernel_name= kernel_name)
         for k, value in fmap.items():
+            if k == "range":
+                for ind in range(len(value)):
+                    if None in value[ind]:
+                        value[ind] = (value[ind][0], -1)
             fmap_tensor.op.attrs[k] = value
             leaky_relu_res.op.attrs[k] = value
         tensor_list = [fmap_tensor, filter_w]
@@ -180,7 +186,7 @@ def test_leakyrelu_depthwise_fusion_testcase(test_arg):
             "bias": bias,
             "outputs": outputs,
             "data_format": data_format,
-            "groups": x['ori_shape'][1],
+            "groups": filter['ori_shape'][2],
             "optim_dict": {"c0_optim_flg": False},
             "kernel_name": "leakyrelu_depthwiseconv2d"
         }

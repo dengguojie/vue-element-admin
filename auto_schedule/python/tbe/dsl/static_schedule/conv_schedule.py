@@ -94,6 +94,10 @@ WEIGHT_UNZIP_FUSION_TYPE_BIT = 8
 AIPP_FUSION_TYPE_BIT = 8
 AIPP_FUSION_TYPE_FLAG = 3
 
+# the fmap max h and w in dynamic
+DYNAMIC_FMAP_MAX_HEIGHT = 4096
+DYNAMIC_FMAP_MAX_WIDTH = 4096
+
 def get_srctensor(tensor):
     """
     fetch input_tensor tensor if it exists
@@ -4142,14 +4146,26 @@ class CceConvOp:
             """
             def get_max_out_for_dynamic():
                 if "ho" in self._dyn_var_map:
-                    h_out = self._var_range['ho'][1]
+                    if self._var_range['ho'][1]:
+                        h_out_max = self._var_range['ho'][1]
+                    else:
+                        h_out_max = math.ceil((DYNAMIC_FMAP_MAX_HEIGHT + ConvParam.padding[0] +
+                                               ConvParam.padding[1] - (ConvParam.dilate_h * (
+                                                   ConvParam.filter_h - 1) + 1))\
+                                                   / ConvParam.stride_h + 1)
                 else:
-                    h_out = ConvParam.h_out
+                    h_out_max = ConvParam.h_out
                 if "wo" in self._dyn_var_map:
-                    w_out = self._var_range['wo'][1]
+                    if self._var_range['wo'][1]:
+                        w_out_max = self._var_range['wo'][1]
+                    else:
+                        w_out_max = math.ceil((DYNAMIC_FMAP_MAX_WIDTH + ConvParam.padding[2] +
+                                               ConvParam.padding[3] - (ConvParam.dilate_w * (
+                                                   ConvParam.filter_w - 1) + 1))\
+                                                   / ConvParam.stride_w + 1)
                 else:
-                    w_out = ConvParam.w_out
-                return h_out, w_out
+                    w_out_max = ConvParam.w_out
+                return h_out_max, w_out_max
 
             if self._pre_relu_fused_flag:
                 h_out, w_out = get_max_out_for_dynamic()
@@ -4164,73 +4180,93 @@ class CceConvOp:
                                                 (ConvParam.dilate_h - 1) - ConvParam.pad_h[0]
                 fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
                 if "fmap_w" in self._dyn_var_map:
-                    fmap_width = self._var_range['fmap_w'][1]
+                    fmap_width = self._var_range['fmap_w'][1] if self._var_range['fmap_w'][1]\
+                        else DYNAMIC_FMAP_MAX_WIDTH
                 else:
                     fmap_width = fmap_shape_nc1hwc0[3]
                 need_buffer_size = int(in_row_num * fmap_width * 16) # 16 is c0
                 if aub_factor == [1, 1] and need_buffer_size > PRE_BUFFER_SIZE_MAX:
                     if "fmap_h" in self._dyn_var_map:
-                        aub_factor[1] = self._var_range['fmap_h'][1]
+                        aub_factor[1] = self._var_range['fmap_h'][1] if self._var_range['fmap_h'][1]\
+                            else DYNAMIC_FMAP_MAX_HEIGHT
                     else:
                         aub_factor[1] = fmap_shape_nc1hwc0[2]
 
-                if self._dynamic_flag and not l0a_load2d_flag:
-                    al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[0])
-                else:
-                    al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[1], nparts=aub_factor[0])
-                if self._conv1d_split_w_flag:
-                    if self._dynamic_flag and not l0a_load2d_flag:
-                        # al1 is [group, n, c1, h, w, c0] in dynamic
-                        # load 2d has not group
-                        al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[4], nparts=aub_factor[1])
-                    else:
-                        al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
-                    sch[al1].reorder(al1_k_outer, al1.op.axis[2], al1_w_outer, al1_k_inner, al1_w_inner)
-                    sch[fmap].compute_at(sch[al1], al1_w_outer)
-                    sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_w_outer)
-                else:
-                    if self._dynamic_flag and not l0a_load2d_flag:
-                        al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
-                    else:
-                        al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[1])
-                    sch[al1].reorder(al1_k_outer, al1_h_outer, al1_k_inner, al1_h_inner)
-                    sch[fmap].compute_at(sch[al1], al1_h_outer)
-                    sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_h_outer)
-                if self._dynamic_flag:
-                    if strideh_opti_flag:
-                        strideh_update = 1
-                    else:
-                        strideh_update = ConvParam.stride_h
-                    im2col_attr = {
-                        'set_fmatrix': 1,
-                        'conv_kernel_h': ConvParam.filter_h,
-                        'conv_kernel_w': ConvParam.filter_w,
-                        'conv_padding_top': ConvParam.padding[0],
-                        'conv_padding_bottom': ConvParam.padding[1],
-                        'conv_padding_left': ConvParam.padding[2],
-                        'conv_padding_right': ConvParam.padding[3],
-                        'conv_stride_h': strideh_update,
-                        'conv_stride_w': ConvParam.stride_w,
-                        'conv_fm_c': fmap.shape[4]*fmap.shape[1],
-                        'conv_fm_c1': fmap.shape[1],
-                        'conv_fm_h': fmap.shape[2],
-                        'conv_fm_w': fmap.shape[3],
-                        'conv_fm_c0': fmap.shape[4],
-                    }
-                    if not l0a_load2d_flag:
-                        sch[al1].emit_insn(al1_k_inner, 'dma_copy', im2col_attr)
-                    else:
-                        # load 2d does not set_fmatrix
-                        sch[al1].emit_insn(al1_k_inner, 'dma_copy')
-                    sch[fmap].set_storage_bound(int_ceil_div(need_buffer_size, aub_factor[0] * aub_factor[1]))
-                    sch[tensor_map['fmap_ub']].set_storage_bound(int_ceil_div(need_buffer_size,
-                                                                              aub_factor[0] * aub_factor[1]))
-                else:
-                    sch[al1].emit_insn(al1_k_inner, 'dma_copy')
-                self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
+                set_prefusion_sch(need_buffer_size)
 
             if self._l0a_dma_flag and "fmap_ub_for_dma_im2col" in tensor_map:
                 sch[fmap_ub_for_dma_im2col].compute_at(sch[fmap_col_before], fmap_col_before.op.axis[4])
+
+        def set_prefusion_sch(need_buffer_size):
+            """
+            config pre relu fusion sch
+            """
+            if self._dynamic_flag and not l0a_load2d_flag:
+                al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[0])
+            else:
+                al1_k_outer, al1_k_inner = sch[al1].split(al1.op.axis[1], nparts=aub_factor[0])
+            if self._conv1d_split_w_flag:
+                set_attrs_conv1d_split_w(al1_k_outer, al1_k_inner)
+            else:
+                if self._dynamic_flag and not l0a_load2d_flag:
+                    al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
+                else:
+                    al1_h_outer, al1_h_inner = sch[al1].split(al1.op.axis[2], nparts=aub_factor[1])
+                sch[al1].reorder(al1_k_outer, al1_h_outer, al1_k_inner, al1_h_inner)
+                sch[fmap].compute_at(sch[al1], al1_h_outer)
+                sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_h_outer)
+            if self._dynamic_flag:
+                set_attrs_prefusion_dynamic(al1_k_inner, need_buffer_size)
+            else:
+                sch[al1].emit_insn(al1_k_inner, 'dma_copy')
+            self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
+
+        def set_attrs_prefusion_dynamic(al1_k_inner, need_buffer_size):
+            """
+            set sch insn for prefusion in dynamic
+            """
+            if strideh_opti_flag:
+                strideh_update = 1
+            else:
+                strideh_update = ConvParam.stride_h
+            im2col_attr = {
+                'set_fmatrix': 1,
+                'conv_kernel_h': ConvParam.filter_h,
+                'conv_kernel_w': ConvParam.filter_w,
+                'conv_padding_top': ConvParam.padding[0],
+                'conv_padding_bottom': ConvParam.padding[1],
+                'conv_padding_left': ConvParam.padding[2],
+                'conv_padding_right': ConvParam.padding[3],
+                'conv_stride_h': strideh_update,
+                'conv_stride_w': ConvParam.stride_w,
+                'conv_fm_c': fmap.shape[4]*fmap.shape[1],
+                'conv_fm_c1': fmap.shape[1],
+                'conv_fm_h': fmap.shape[2],
+                'conv_fm_w': fmap.shape[3],
+                'conv_fm_c0': fmap.shape[4],
+            }
+            if not l0a_load2d_flag:
+                sch[al1].emit_insn(al1_k_inner, 'dma_copy', im2col_attr)
+            else:
+                # load 2d does not set_fmatrix
+                sch[al1].emit_insn(al1_k_inner, 'dma_copy')
+            sch[fmap].set_storage_bound(int_ceil_div(need_buffer_size, aub_factor[0] * aub_factor[1]))
+            sch[tensor_map['fmap_ub']].set_storage_bound(int_ceil_div(need_buffer_size,
+                                                                      aub_factor[0] * aub_factor[1]))
+
+        def set_attrs_conv1d_split_w(al1_k_outer, al1_k_inner):
+            """
+            set sch attrs for conv1d splitw in prefusion
+            """
+            if self._dynamic_flag and not l0a_load2d_flag:
+                # al1 is [group, n, c1, h, w, c0] in dynamic
+                # load 2d has not group
+                al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[4], nparts=aub_factor[1])
+            else:
+                al1_w_outer, al1_w_inner = sch[al1].split(al1.op.axis[3], nparts=aub_factor[1])
+            sch[al1].reorder(al1_k_outer, al1.op.axis[2], al1_w_outer, al1_k_inner, al1_w_inner)
+            sch[fmap].compute_at(sch[al1], al1_w_outer)
+            sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_w_outer)
 
         def parser_tbe_compile_para(compile_para):
             """
