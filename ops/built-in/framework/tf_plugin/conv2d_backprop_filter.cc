@@ -23,6 +23,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 #include "register/register.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 
@@ -40,11 +41,7 @@ Status ParseParamsConv2DBackpropFilter(const Message* op_src, ge::Operator& op) 
   org_tensor_w.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateOutputDesc(CV_NUM_0, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update filter format failed!");
-    ErrorManager::GetInstance().ATCReportErrMessage("E50012",
-                                                    {"op_name", "param_name", "rule_desc", "param_value"},
-                                                    {"Conv2dBackpropFilter", "updating output_desc's format",
-                                                    "update output_desc format", "failed"});
+    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Update output_desc format failed!");
     return FAILED;
   } else {
     OP_LOGI(op.GetName().c_str(), "Update filter format success, now is %d", op.GetInputDesc(CV_NUM_0).GetFormat());

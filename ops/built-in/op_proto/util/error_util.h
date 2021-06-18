@@ -29,6 +29,7 @@
 #include "securec.h"
 #include "graph/operator.h"
 
+
 #define AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg) \
   do { \
     OP_LOGE(op_name, "%s", err_msg.c_str()); \
@@ -53,13 +54,13 @@
 #define CUBE_INNER_ERR_REPORT(op_name, err_msg, ...) \
   do { \
       OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
-      REPORT_INNER_ERROR("E69998", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
+      REPORT_INNER_ERROR("E69999", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
 
 #define CUBE_CALL_ERR_REPORT(op_name, err_msg, ...) \
   do { \
       OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
-      REPORT_CALL_ERROR("E69998", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
+      REPORT_CALL_ERROR("E69999", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
 
 #define CUBE_INNER_ERR_REPORT_PLUGIN(op_name, err_msg, ...) \

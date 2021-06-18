@@ -106,10 +106,11 @@ def avg_pool_1d_compute(x,
 
     if x_wo <= 0:
         dict_args = {
-            'errCode': 'E50044',
+            'errCode': 'E80009',
             'op_name': 'avg_pool_1d',
-            'w_of_x': x_wi + pad_l + pad_r,
-            'w_of_filter': kernel
+            'rule_desc': 'x W(after pad) must >= filter W',
+            'param_name': '[x W, filter W]',
+            'param_value': '[{},{}]'.format(x_wi + pad_l + pad_r, kernel)
         }
         raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
 

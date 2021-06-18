@@ -22,6 +22,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph/operator.h"
 #include "common/util/error_manager/error_manager.h"
+#include "../../op_proto/util/error_util.h"
 
 #include "op_log.h"
 
@@ -40,24 +41,14 @@ const size_t kPaddingSize = 8;
 Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   // Convert original tf graph conv2d attrs to GE graph attrs
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "auto mapping failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["description"] = "auto mapping failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "auto mapping failed.");
     return FAILED;
   }
 
   // The filter format shuold be HWCN, not NHWC or NCHW, so set here to fix this problem
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "get op desc failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["description"] = "get op desc failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "get op desc failed.");
     return FAILED;
   }
   ge::GeTensorDesc org_tensor_w = op_dsc->GetInputDesc(kInputFilter);
@@ -65,12 +56,7 @@ Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   org_tensor_w.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateInputDesc(kInputFilter, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update filter format failed.");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["description"] = "update filter format failed.";
-    std::string report_error_code = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "update filter format failed.");
     return FAILED;
   }
 

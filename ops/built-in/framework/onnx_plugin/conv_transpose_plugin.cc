@@ -15,15 +15,9 @@
 #include "op_log.h"
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
-static void ReportErr(const string &op_name, const string &desc,
-                      const string &err_code) {
-  std::map<string, string> err_map;
-  err_map["op_name"] = op_name;
-  err_map["description"] = desc;
-  ErrorManager::GetInstance().ReportErrMessage(err_code, err_map);
-}
 
 static bool CheckOnnxAttr(const ge::onnx::NodeProto *p_node) {
   for (const auto &attr : p_node->attribute()) {
@@ -32,16 +26,14 @@ static bool CheckOnnxAttr(const ge::onnx::NodeProto *p_node) {
       const bool b_valide = (attr.type() == ge::onnx::AttributeProto::INTS &&
                              attr.ints_size() == 2);
       if (!b_valide) {
-        ReportErr("ConvTransPose", "only ConvTransPose2D is supported now.",
-                  "E50058");
+        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTransPose", "only ConvTransPose2D is supported now.");
         return false;
       }
     } else if (attr.name() == "pads") {
       const bool b_valide = (attr.type() == ge::onnx::AttributeProto::INTS &&
                              attr.ints_size() == 4);
       if (!b_valide) {
-        ReportErr("ConvTransPose", "only ConvTransPose2D is supported now.",
-                  "E50058");
+        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTransPose", "only ConvTransPose2D is supported now.");
         return false;
       }
     }
@@ -54,8 +46,7 @@ static bool CheckOnnxAttrValue(const ge::onnx::NodeProto *p_node) {
     if (attr.name() == "dilations") {
       const bool b_valide = (attr.ints(0) == 1 && attr.ints(1) == 1);
       if (!b_valide) {
-        ReportErr("ConvTransPose", "only dilations == 1 is supported now.",
-                  "E50058");
+        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTransPose", "only dilations == 1 is supported now.");
         return false;
       }
     } else {
@@ -78,15 +69,15 @@ static bool SetOpOriginFmt(ge::Operator &op_dst) {
   const ge::graphStatus w_res = op_dst.UpdateInputDesc("filter", w_t_d);
   const ge::graphStatus out_res = op_dst.UpdateOutputDesc("y", out_t_d);
   if (x_res != ge::GRAPH_SUCCESS) {
-    ReportErr(op_dst.GetName(), "update x fmt failed.", "E50058");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(), "update x fmt failed.");
     return false;
   }
   if (w_res != ge::GRAPH_SUCCESS) {
-    ReportErr(op_dst.GetName(), "update w fmt failed", "E50058");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(), "update w fmt failed.");
     return false;
   }
   if (out_res != ge::GRAPH_SUCCESS) {
-    ReportErr(op_dst.GetName(), "update y fmt failed", "E50058");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(), "update y fmt failed.");
     return false;
   }
   return true;
@@ -204,23 +195,23 @@ Status ParseParamsConv2DTranspose(const Message *op_src, ge::Operator &op_dst) {
   const ge::onnx::NodeProto *p_node =
       reinterpret_cast<const ge::onnx::NodeProto *>(op_src);
   if (p_node == nullptr) {
-    OP_LOGE("Conv2DTranspose", "Dynamic cast op_src to NodeProto failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   if (!CheckOnnxAttr(p_node)) {
-    OP_LOGE("Conv2DTranspose", "Check onnx attr failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Check onnx attr failed.");
     return FAILED;
   }
   if (!CheckOnnxAttrValue(p_node)) {
-    OP_LOGE("Conv2DTranspose", "Check onnx attr value failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Check onnx attr value failed.");
     return FAILED;
   }
   if (!SetOpOriginFmt(op_dst)) {
-    OP_LOGE("Conv2DTranspose", "Update op format failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Update op format failed.");
     return FAILED;
   }
   if (!SetDefaultAttr(op_dst)) {
-    OP_LOGE("Conv2DTranspose", "Set op default attr failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Set op default attr failed.");
     return FAILED;
   }
   

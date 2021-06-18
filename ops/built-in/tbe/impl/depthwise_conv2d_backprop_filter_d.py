@@ -107,9 +107,9 @@ def _check_data_format(data_format, expect_format_list):
     """
     if data_format not in expect_format_list:
         dict_args = {
-            'errCode': 'E50002',
+            'errCode': 'E60004',
             'op_name': 'depthwise_conv2d',
-            'param': 'featuremap',
+            'param_name': 'featuremap',
             'expected_format_list': str(expect_format_list),
             'format': data_format
         }
@@ -273,8 +273,8 @@ def depthwise_conv2d_backprop_filter_d(input_fm,
     # check pad parameter
     if len(pads) != 4:
         dict_args = {
-            'errCode': 'E50001',
-            'param': 'pads',
+            'errCode': 'E60006',
+            'param_name': 'pads',
             'op_name': 'depthwise_conv2d_backprop_filter',
             'expected_length': "4",
             'length': str(len(pads))

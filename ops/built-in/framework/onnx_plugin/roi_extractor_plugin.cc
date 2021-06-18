@@ -19,6 +19,7 @@ rights reserved.
 #include <vector>
 #include <map>
 #include "common/util/error_manager/error_manager.h"
+#include "../../op_proto/util/error_util.h"
 
 namespace domi {
 static const uint32_t MIN_INPUT_NUM = 2;
@@ -26,11 +27,7 @@ static const uint32_t MIN_INPUT_NUM = 2;
 Status ParseParamsRoiExtractor(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    map<string, string> errMap;
-    errMap["op_name"] = "RoiExtractor";
-    errMap["description"] = "Dynamic cast op_src to NodeProto failed.";
-    std::string reportErrorCode = "E50058";
-    ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
+    OP_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
