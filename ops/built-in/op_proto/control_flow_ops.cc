@@ -221,14 +221,13 @@ graphStatus MergeInferImpl(Operator &op) {
       }
 
       if (j < xi_range.size()) {
-        if (xi_range[j].second >= 0) {
-          if (dim_group.dim_value_min > xi_range[j].first) {
-            dim_group.dim_value_min = xi_range[j].first;
-          }
-          if (dim_group.dim_value_max < xi_range[j].second) {
-            dim_group.dim_value_max = xi_range[j].second;
-          }
-        } else {
+        if (dim_group.dim_value_min > xi_range[j].first) {
+          dim_group.dim_value_min = xi_range[j].first;
+        }
+        if (dim_group.dim_value_max < xi_range[j].second) {
+          dim_group.dim_value_max = xi_range[j].second;
+        }
+        if (xi_range[j].second < 0) {
           dim_group.is_unknown_shape = true;
           dim_group.is_max_unknown = true;
         }
@@ -365,6 +364,9 @@ graphStatus PassThroughInferImpl(Operator& op, const std::string& in_name, const
   TensorDesc tensordesc_output = op.GetOutputDesc(out_name);
   tensordesc_output.SetShape(ge::Shape(input_dims));
   tensordesc_output.SetDataType(input_type);
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  (void)op.GetInputDesc(in_name).GetShapeRange(input_range);
+  (void)tensordesc_output.SetShapeRange(input_range);
   (void)op.UpdateOutputDesc(out_name, tensordesc_output);
 
   return GRAPH_SUCCESS;

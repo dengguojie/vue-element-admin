@@ -372,4 +372,9 @@ TEST_F(Merge, merge_infer_normal_unknown) {
   EXPECT_EQ(output_shape_range_v, expected_shape_range_v);
 }
 
+TEST_F(Merge, pass_throw_infer) {
+  auto next_iteration = ge::op::NextIteration("next_iteration");
+  auto ret = next_iteration.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
 
