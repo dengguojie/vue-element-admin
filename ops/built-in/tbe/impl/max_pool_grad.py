@@ -434,11 +434,21 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
 
     if ho != 1 and wo == 1:
         col2img_ub_shape = (max(kernel_h, stride_h), fmap_w, C0)
-        if _cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) > SIZE_UB:
+        if kernel_h > stride_h:
+            temp_size = ((kernel_h - stride_h), fmap_w, C0)
+        else:
+            temp_size = (1, 16, C0)
+        total_used_ub = _cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) + _cal_shape_ele(
+            temp_size) * fp32_data_size
+        remain_hi = (fmap_h - (ho - 1) * stride_h - pad_top) - max(kernel_h, stride_h)
+        if remain_hi > 0:
+            total_used_ub += _cal_shape_ele((remain_hi, fmap_w * C0)) * fp16_data_size
+        if total_used_ub > SIZE_UB:
             atomic_flag = True
         return atomic_flag
 
     wi_temp = fmap_w + pad_left + pad_right
+    hi_temp = fmap_h + pad_top + pad_bottom
     if kernel_h > stride_h or stride_h * wi_temp * c0_local * (fp16_data_size + fp32_data_size) > SIZE_L1:
         each_process_hi = kernel_h
     else:
@@ -642,10 +652,13 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
 
     if each_process_ho >= ho:
         l1_input_ori = (fmap_h, fmap_w, C0)
-        col2img_ub_shape = (kernel_h, fmap_w, C0) if stride_h * fmap_w * C0 * 6 > SIZE_L1 else (fmap_h, fmap_w, C0)
+        col2img_ub_shape = (kernel_h, wi_temp, C0) if stride_h * fmap_w * C0 * 6 > SIZE_L1 else (hi_temp, fmap_w, C0)
+        ori_output_shape = (_ceil_div(ho * wo, 16), 16, C0)
+        bank_used_ub = 512 * 4 + 128 * 2
         if _cal_shape_ele(l1_input_ori) * fp16_data_size > SIZE_L1:
             atomic_flag = True
-        if _cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) > SIZE_UB:
+        if _cal_shape_ele(col2img_ub_shape) * (fp16_data_size * 2 + fp32_data_size) + _cal_shape_ele(
+                ori_output_shape) * fp16_data_size * 3 + bank_used_ub > SIZE_UB:
             atomic_flag = True
         return atomic_flag
 
@@ -655,7 +668,17 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
         else:
             each_process_hi = each_process_ho * stride_h
         col2img_ub_shape = (each_process_hi, fmap_w, C0)
-        if _cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) > SIZE_UB:
+        cut_ho_nums = ho // each_process_ho
+        last_valid_hi = hi_temp - (cut_ho_nums * each_process_ho * stride_h - pad_top)
+        extra_ub = 512 * 3 + 256
+        temp_process_hi = kernel_h
+        if last_valid_hi > temp_process_hi:
+            remain_hi = last_valid_hi - temp_process_hi
+            extra_ub += _cal_shape_ele((remain_hi, wi_temp * C0)) * fp16_data_size
+        if kernel_h > stride_h:
+            temp_size = ((kernel_h - stride_h), wi_temp, C0)
+            extra_ub += _cal_shape_ele(temp_size) * fp32_data_size
+        if _cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) + extra_ub > SIZE_UB:
             atomic_flag = True
         return atomic_flag
     
@@ -665,7 +688,14 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
         col_w = (each_process_wo - 1) * stride_w + kernel_w
     
     col_ub_shape = (max(stride_h, kernel_h), col_w, C0)
-    if _cal_shape_ele(col_ub_shape) * (fp16_data_size + fp32_data_size) > SIZE_UB:
+    if stride_h < kernel_h:
+        overlap_l1_shape = (kernel_h - stride_h, (fmap_w + pad_left + pad_right) * C0)
+        if _cal_shape_ele(overlap_l1_shape) * fp32_data_size + _cal_shape_ele(col_ub_shape) * fp16_data_size > SIZE_L1:
+            atomic_flag = True
+    elif _cal_shape_ele(col_ub_shape) * fp16_data_size > SIZE_L1:
+        atomic_flag = True
+    if _cal_shape_ele(col_ub_shape) * (fp16_data_size + fp32_data_size) + _cal_shape_ele(
+            (fmap_w, C0)) * fp16_data_size > SIZE_UB:
         atomic_flag = True
     return atomic_flag
 
