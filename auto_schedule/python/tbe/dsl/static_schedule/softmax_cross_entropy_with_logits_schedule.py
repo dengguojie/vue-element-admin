@@ -35,6 +35,8 @@ from .util import DTYPE_WIDTH_MAP
 softmax_cross_logits_nhw = [11842605]
 softmax_cross_logits_nd = [2105352]
 
+# softmax_logits_2d_csize includes shapes that auto tiling can not support
+softmax_logits_2d_csize = [11760]
 
 def get_mask_fp16_skip_one(length):
     """
@@ -585,7 +587,7 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
                     block_split_inner_size = n_h_w // npart_factor
 
     else:
-        if npart_factor <= 1:
+        if npart_factor <= 1 and c_size not in softmax_logits_2d_csize:
             return None, []
 
         block_split_inner_size = n_h_w // npart_factor
