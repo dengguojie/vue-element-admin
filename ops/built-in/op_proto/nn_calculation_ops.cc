@@ -6617,7 +6617,7 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   vector<int64_t> y_shape;
   auto y_tensor = op.get_output_desc_y();
   auto y_format = y_tensor.GetFormat();
-  CHECK_FORMAT(y_format)
+
   if (y_format == FORMAT_NCDHW) {
     y_shape.push_back(in);
     y_shape.push_back(kn);
@@ -6699,15 +6699,56 @@ static void InferHWConv3d(int32_t kernel,
                           uint32_t pad_idx) {
   int32_t kernel_size = (kernel - 1) * dilation + 1;
   int32_t pad_h = pad_list[pad_idx];
-  input[0] = std::max(stride * output[0] - pad_h, 0L);
-  input[1] = std::min(stride * output[1] - pad_h + kernel_size - 1,
-                      static_cast<int64_t>(input_size - 1));
+  if (input_size > 0) {
+    input[0] = std::max(stride * output[0] - pad_h, 0L);
+    input[1] = std::min(stride * output[1] - pad_h + kernel_size - 1,
+                        static_cast<int64_t>(input_size - 1));
 
-  pad_list[pad_idx] = std::max(static_cast<int32_t>(pad_h - stride * output[0]), 0);
-  pad_list[pad_idx + 1] = std::max(static_cast<int32_t>(
-                                      stride * output[1] - pad_h +
-                                      kernel_size - input_size),
-                                   0);
+    pad_list[pad_idx] = std::max(static_cast<int32_t>(pad_h - stride * output[0]), 0);
+    pad_list[pad_idx + 1] = std::max(static_cast<int32_t>(
+                                        stride * output[1] - pad_h +
+                                        kernel_size - input_size),
+                                     0);
+  } else {
+    input[0] = -1;
+    input[1] = -1;
+  }
+}
+
+static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<int64_t>>& data_slice) {
+  // check data_slice attr
+  if (data_slice.size() != kConv3dDataSlice) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "y_data_slice's size should be 6.");
+    return GRAPH_FAILED;
+  }
+
+  // no support C0 axis
+  if (data_slice[kConv3dDataSlice - 1].size() != 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "no support to cut C0 axis.");
+    return NOT_SUPPORT_SLICE;
+  }
+
+  // check valid slice num in data slice
+  int32_t valid_cnt = 0;
+  for (uint32_t i = 0; i < data_slice.size(); ++i) {
+    if (data_slice[i].size() == 0) {
+      continue;
+    }
+    if (data_slice[i].size() != 2) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice format input size should be 2.");
+      return GRAPH_FAILED;
+    }
+    valid_cnt ++;
+  }
+  if (valid_cnt == 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice is empty.");
+    return GRAPH_FAILED;
+  }
+  if (valid_cnt != 1) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "valid slice range num is more than 1.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
@@ -6740,37 +6781,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
     return GRAPH_FAILED;
   }
 
-  // check data_slice attr
-  if(y_data_slice.size() != kConv3dDataSlice) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "y_data_slice's size should be 6.");
-    return GRAPH_FAILED;
-  }
-
-  // no support for C0 axis
-  if(y_data_slice[kConv3dDataSlice - 1].size() != 0) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "no support for cut C0 axis.");
-    return NOT_SUPPORT_SLICE;
-  }
-
-  // check valid slice num in data slice
-  int32_t valid_cnt = 0;
-  for(uint32_t i = 0; i < y_data_slice.size(); ++i) {
-    if(y_data_slice[i].size() == 0) {
-      continue;
-    }
-    if(y_data_slice[i].size() != 2) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice format input size should be 2.");
-      return GRAPH_FAILED;
-    }
-    valid_cnt ++;
-  }
-  if(valid_cnt == 0) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice is empty.");
-    return GRAPH_FAILED;
-  }
-  if(valid_cnt != 1) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "valid slice range num is more than 1.");
-    return GRAPH_FAILED;
+  graphStatus ret = VerifyDataSlice(op, y_data_slice);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
   }
 
   vector<int32_t> pad_list;
@@ -6786,9 +6799,20 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
   CHECK_POSITION(h_input_position);
   int32_t w_input_position = x_format_str.find("W");
   CHECK_POSITION(w_input_position);
-  int32_t id = x_shape[d_input_position];
-  int32_t ih = x_shape[h_input_position];
-  int32_t iw = x_shape[w_input_position];
+  int32_t n_input_position = x_format_str.find("N");
+  CHECK_POSITION(n_input_position);
+
+  int32_t id = -1;
+  int32_t ih = -1;
+  int32_t iw = -1;
+  int32_t in = -1;
+
+  if (x_shape != DYNAMIC_DIM_ALL) {
+    id = x_shape[d_input_position];
+    ih = x_shape[h_input_position];
+    iw = x_shape[w_input_position];
+    in = x_shape[n_input_position];
+  }
 
   auto filter_format = op.get_input_desc_filter().GetFormat();
   auto w_shape = op.get_input_desc_filter().GetShape().GetDims();
@@ -6806,6 +6830,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
   // cut N
   if(y_data_slice[0].size() != 0) {
     x_data_slice[0] = y_data_slice[0];
+    if (in < 0) {
+      x_data_slice[0] = {-1, -1};
+    }
     needUpdateX = true;
   }
 
@@ -7510,7 +7537,6 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
   return true;
 }
 
-
 static void InferHWConv3dBackpropInput(int32_t kernel,
                                        int32_t dilation,
                                        int32_t stride,
@@ -7521,60 +7547,29 @@ static void InferHWConv3dBackpropInput(int32_t kernel,
                                        uint32_t pad_idx) {
   int32_t kernel_size = (kernel - 1) * dilation + 1;
   int32_t pad_out = kernel_size - pad_list[pad_idx] - 1;
+  if (input_size > 0) {
+    input[0] = std::min(std::max(static_cast<int64_t>( 
+                                 std::ceil(
+                                  static_cast<float>(output[0] - pad_out) /
+                                  static_cast<float>(stride))),
+                                 0L),
+                        static_cast<int64_t>(input_size - 1));
+    input[1] = std::min((output[1] + kernel_size - 1 - pad_out) / static_cast<int64_t>(stride),
+                        static_cast<int64_t>(input_size - 1));
 
-  input[0] = std::min(std::max(static_cast<int64_t>(
-                               std::ceil(
-                                static_cast<float>(output[0] - pad_out) /
-                                static_cast<float>(stride))),
-                               0L),
-                      static_cast<int64_t>(input_size - 1));
-  input[1] = std::min((output[1] + kernel_size - 1 - pad_out) / static_cast<int64_t>(stride),
-                      static_cast<int64_t>(input_size - 1));
+    int32_t oh = static_cast<int32_t>(output[1] - output[0] + 1);
+    int32_t ih = static_cast<int32_t>(input[1] - input[0] + 1);
 
-  int32_t oh = static_cast<int32_t>(output[1] - output[0] + 1);
-  int32_t ih = static_cast<int32_t>(input[1] - input[0] + 1);
-
-  pad_list[pad_idx] = kernel_size - static_cast<int32_t>(
-                                      input[0] * stride + pad_out - output[0]) - 1;
-  pad_list[pad_idx + 1] = std::max(stride * (ih - 1) + kernel_size -
-                                      oh - pad_list[pad_idx],
-                                   0);
-}
-
-static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<int64_t>>& data_slice) {
-  // check data_slice attr
-  if (data_slice.size() != kConv3dDataSlice) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "y_data_slice's size should be 6.");
-    return GRAPH_FAILED;
+    pad_list[pad_idx] = kernel_size - static_cast<int32_t>(
+                                        input[0] * stride + pad_out - output[0]) - 1;
+    pad_list[pad_idx + 1] = std::max(stride * (ih - 1) + kernel_size -
+                                        oh - pad_list[pad_idx],
+                                    0);
+  } else {
+    input[0] = -1;
+    input[1] = -1;
   }
 
-  // no support C0 axis
-  if (data_slice[kConv3dDataSlice - 1].size() != 0) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "no support to cut C0 axis.");
-    return NOT_SUPPORT_SLICE;
-  }
-
-  // check valid slice num in data slice
-  int32_t valid_cnt = 0;
-  for (uint32_t i = 0; i < data_slice.size(); ++i) {
-    if (data_slice[i].size() == 0) {
-      continue;
-    }
-    if (data_slice[i].size() != 2) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice format input size should be 2.");
-      return GRAPH_FAILED;
-    }
-    valid_cnt ++;
-  }
-  if (valid_cnt == 0) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice is empty.");
-    return GRAPH_FAILED;
-  }
-  if (valid_cnt != 1) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "valid slice range num is more than 1.");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
@@ -8672,6 +8667,155 @@ static graphStatus VerifyConv3dTransposeInput(const ge::Operator& op) {
 
   return GRAPH_SUCCESS;
 }
+
+graphStatus InferConv3dTransposeDataSlice(ge::Operator& op) {
+  auto x_format = op.GetInputDesc("x").GetOriginFormat();
+  int32_t strd = 0;
+  int32_t strh = 0;
+  int32_t strw = 0;
+  int32_t dild = 0;
+  int32_t dilh = 0;
+  int32_t dilw = 0;
+
+  if (!GetAttrsConv3DTranspose(op, x_format, strd, strh, strw, dild, dilh, dilw)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get attrs failed.");
+    return GRAPH_FAILED;
+  }
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("filter");
+
+  vector<vector<int64_t>> y_data_slice(6, vector<int64_t>(0));
+  vector<vector<int64_t>> x_data_slice(6, vector<int64_t>(0));
+  vector<vector<int64_t>> w_data_slice(4, vector<int64_t>(0));
+  vector<vector<int64_t>> bias_data_slice(1, vector<int64_t>(0));
+
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  graphStatus ret = VerifyDataSlice(op, y_data_slice);
+  if (ret != GRAPH_SUCCESS) {
+    return ret;
+  }
+
+  vector<int32_t> pad_list;
+  op.GetAttr("pads", pad_list);
+
+  auto x_shape = op.GetInputDesc("x").GetOriginShape().GetDims();
+  std::string x_format_str = format2str[x_format];
+  int32_t d_input_position = x_format_str.find("D");
+  CHECK_POSITION(d_input_position);
+  int32_t h_input_position = x_format_str.find("H");
+  CHECK_POSITION(h_input_position);
+  int32_t w_input_position = x_format_str.find("W");
+  CHECK_POSITION(w_input_position);
+  int32_t n_input_position = x_format_str.find("N");
+  CHECK_POSITION(n_input_position);
+
+  int32_t in = -1;
+  int32_t id = -1;
+  int32_t ih = -1;
+  int32_t iw = -1;
+  if (x_shape != DYNAMIC_DIM_ALL) {
+    id = x_shape[d_input_position];
+    ih = x_shape[h_input_position];
+    iw = x_shape[w_input_position];
+    in = x_shape[n_input_position];
+  }
+
+  auto filter_format = op.GetInputDesc("filter").GetOriginFormat();
+  auto w_shape = op.GetInputDesc("filter").GetOriginShape().GetDims();
+  std::string filter_format_str = format2str[filter_format];
+  int32_t d_filter_position = filter_format_str.find("D");
+  CHECK_POSITION(d_filter_position);
+  int32_t h_filter_position = filter_format_str.find("H");
+  CHECK_POSITION(h_filter_position);
+  int32_t w_filter_position = filter_format_str.find("W");
+  CHECK_POSITION(w_filter_position);
+  int32_t kd = w_shape[d_filter_position];
+  int32_t kh = w_shape[h_filter_position];
+  int32_t kw = w_shape[w_filter_position];
+
+  bool needUpdateX = false;
+  bool needUpdateW = false;
+  // cut N
+  if (y_data_slice[0].size() != 0) {
+    x_data_slice[0] = y_data_slice[0];
+    if (in < 0) {
+      x_data_slice[0] = {-1, -1};
+    }
+    needUpdateX = true;
+  }
+
+  // cut D
+  if (y_data_slice[1].size() != 0 && pad_list.size() > 2) {
+    x_data_slice[1].clear();
+    x_data_slice[1].resize(2);
+    InferHWConv3dBackpropInput(kd, dild, strd, id,
+                           y_data_slice[1], x_data_slice[1],
+                           pad_list, 0);
+    needUpdateX = true;
+  }
+
+  // cut H
+  if (y_data_slice[3].size() != 0 && pad_list.size() > 4) {
+    x_data_slice[3].clear();
+    x_data_slice[3].resize(2);
+    InferHWConv3dBackpropInput(kh, dilh, strh, ih,
+                           y_data_slice[3], x_data_slice[3],
+                           pad_list, 2);
+    needUpdateX = true;
+  }
+
+  // cut W
+  if (y_data_slice[4].size() != 0 && pad_list.size() == kConv3dLengthPadsLimit) {
+    x_data_slice[4].clear();
+    x_data_slice[4].resize(2);
+    InferHWConv3dBackpropInput(kw, dilw, strw, iw,
+                           y_data_slice[4], x_data_slice[4],
+                           pad_list, 4);
+    needUpdateX = true;
+  }
+
+  // cut Cout
+  if (y_data_slice[2].size() != 0) {
+    w_data_slice[0].clear();
+    w_data_slice[0].resize(2);
+    w_data_slice[0][0] = y_data_slice[2][0] * static_cast<int64_t>(kh * kw);
+    w_data_slice[0][1] = y_data_slice[2][1] * static_cast<int64_t>(kh * kw);
+    bias_data_slice[0] = y_data_slice[2];
+    needUpdateW = true;
+  }
+
+  // check update flag
+  if (!needUpdateX && !needUpdateW) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "there's no update in desc.");
+    return GRAPH_FAILED;
+  }
+
+  // update data slice attr
+  if (needUpdateX) {
+    if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set x data slice attr failed.");
+      return GRAPH_FAILED;
+    }
+  }
+  if (needUpdateW) {
+    if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set w data slice attr failed");
+      return GRAPH_FAILED;
+    }
+  }
+
+  // update pads attr info
+  op.SetAttr("pads", pad_list);
+  return GRAPH_SUCCESS;
+}
+
 // ----------------Conv3DTranspose-------------------
 IMPLEMT_INFERFUNC(Conv3DTranspose, Conv3DTransposeInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv3DTranspose inferfunction!");
@@ -8758,6 +8902,13 @@ IMPLEMT_VERIFIER(Conv3DTranspose, Conv3DTransposeVerify) {
   }
 }
 
+IMPLEMT_INFER_DATA_SLICE(Conv3DTranspose, Conv3DTransposeInfereDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv3DTransposeInfereDataSlice.");
+  graphStatus ret = InferConv3dTransposeDataSlice(op);
+  return ret;
+}
+
+INFER_DATA_SLICE_FUNC_REG(Conv3DTranspose, Conv3DTransposeInfereDataSlice);
 INFER_FUNC_REG(Conv3DTranspose, Conv3DTransposeInfer);
 VERIFY_FUNC_REG(Conv3DTranspose, Conv3DTransposeVerify);
 // ----------------Conv3DTransposeD-------------------
@@ -8852,167 +9003,8 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
 
 IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   OP_LOGD(op.GetName().c_str(), "Enter Conv3DTransposeDInfereDataSlice.");
-
-  auto x_format = op.get_input_desc_x().GetFormat();
-  int32_t strd = 0;
-  int32_t strh = 0;
-  int32_t strw = 0;
-  int32_t dild = 0;
-  int32_t dilh = 0;
-  int32_t dilw = 0;
-
-  if (!GetAttrsConv3DTranspose(op, x_format, strd, strh, strw, dild, dilh, dilw)) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get attrs failed.");
-    return GRAPH_FAILED;
-  }
-
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
-  GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
-  GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("filter");
-
-  vector<vector<int64_t>> y_data_slice(6, vector<int64_t>(0));
-  vector<vector<int64_t>> x_data_slice(6, vector<int64_t>(0));
-  vector<vector<int64_t>> w_data_slice(4, vector<int64_t>(0));
-  vector<vector<int64_t>> bias_data_slice(1, vector<int64_t>(0));
-
-  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
-    return GRAPH_FAILED;
-  }
-
-  // check data_slice attr
-  if (y_data_slice.size() != kConv3dDataSlice) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "y_data_slice's size should be 6.");
-    return GRAPH_FAILED;
-  }
-
-  // no support C0 axis
-  if (y_data_slice[kConv3dDataSlice - 1].size() != 0) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "no support to cut C0 axis.");
-    return NOT_SUPPORT_SLICE;
-  }
-
-  // check valid slice num in data slice
-  int32_t valid_cnt = 0;
-  for (uint32_t i = 0; i < y_data_slice.size(); ++i) {
-    if (y_data_slice[i].size() == 0) {
-      continue;
-    }
-    if (y_data_slice[i].size() != 2) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice format input size should be 2.");
-      return GRAPH_FAILED;
-    }
-    valid_cnt ++;
-  }
-  if (valid_cnt == 0) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "data slice is empty.");
-    return GRAPH_FAILED;
-  }
-  if (valid_cnt != 1) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "valid slice range num is more than 1.");
-    return GRAPH_FAILED;
-  }
-
-  vector<int32_t> pad_list;
-  op.GetAttr("pads", pad_list);
-
-  auto x_shape = op.get_input_desc_x().GetShape().GetDims();
-  std::string x_format_str = format2str[x_format];
-  int32_t d_input_position = x_format_str.find("D");
-  CHECK_POSITION(d_input_position);
-  int32_t h_input_position = x_format_str.find("H");
-  CHECK_POSITION(h_input_position);
-  int32_t w_input_position = x_format_str.find("W");
-  CHECK_POSITION(w_input_position);
-  int32_t id = x_shape[d_input_position];
-  int32_t ih = x_shape[h_input_position];
-  int32_t iw = x_shape[w_input_position];
-
-  auto filter_format = op.get_input_desc_filter().GetFormat();
-  auto w_shape = op.get_input_desc_filter().GetShape().GetDims();
-  std::string filter_format_str = format2str[filter_format];
-  int32_t d_filter_position = filter_format_str.find("D");
-  CHECK_POSITION(d_filter_position);
-  int32_t h_filter_position = filter_format_str.find("H");
-  CHECK_POSITION(h_filter_position);
-  int32_t w_filter_position = filter_format_str.find("W");
-  CHECK_POSITION(w_filter_position);
-  int32_t kd = w_shape[d_filter_position];
-  int32_t kh = w_shape[h_filter_position];
-  int32_t kw = w_shape[w_filter_position];
-
-  bool needUpdateX = false;
-  bool needUpdateW = false;
-  // cut N
-  if (y_data_slice[0].size() != 0) {
-    x_data_slice[0] = y_data_slice[0];
-    needUpdateX = true;
-  }
-
-  // cut D
-  if (y_data_slice[1].size() != 0 && pad_list.size() > 2) {
-    x_data_slice[1].clear();
-    x_data_slice[1].resize(2);
-    InferHWConv3dBackpropInput(kd, dild, strd, id,
-                           y_data_slice[1], x_data_slice[1],
-                           pad_list, 0);
-    needUpdateX = true;
-  }
-
-  // cut H
-  if (y_data_slice[3].size() != 0 && pad_list.size() > 4) {
-    x_data_slice[3].clear();
-    x_data_slice[3].resize(2);
-    InferHWConv3dBackpropInput(kh, dilh, strh, ih,
-                           y_data_slice[3], x_data_slice[3],
-                           pad_list, 2);
-    needUpdateX = true;
-  }
-
-  // cut W
-  if (y_data_slice[4].size() != 0 && pad_list.size() == kConv3dLengthPadsLimit) {
-    x_data_slice[4].clear();
-    x_data_slice[4].resize(2);
-    InferHWConv3dBackpropInput(kw, dilw, strw, iw,
-                           y_data_slice[4], x_data_slice[4],
-                           pad_list, 4);
-    needUpdateX = true;
-  }
-
-  // cut Cout
-  if (y_data_slice[2].size() != 0) {
-    w_data_slice[0].clear();
-    w_data_slice[0].resize(2);
-    w_data_slice[0][0] = y_data_slice[2][0] * static_cast<int64_t>(kh * kw);
-    w_data_slice[0][1] = y_data_slice[2][1] * static_cast<int64_t>(kh * kw);
-    bias_data_slice[0] = y_data_slice[2];
-    needUpdateW = true;
-  }
-
-  // check update flag
-  if (!needUpdateX && !needUpdateW) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "there's no update in desc.");
-    return GRAPH_FAILED;
-  }
-
-  // update data slice attr
-  if (needUpdateX) {
-    if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set x data slice attr failed.");
-      return GRAPH_FAILED;
-    }
-  }
-  if (needUpdateW) {
-    if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set w data slice attr failed");
-      return GRAPH_FAILED;
-    }
-  }
-
-  // update pads attr info
-  op.SetAttr("pads", pad_list);
-  return GRAPH_SUCCESS;
+  graphStatus ret = InferConv3dTransposeDataSlice(op);
+  return ret;
 }
 
 IMPLEMT_VERIFIER(Conv3DTransposeD, Conv3DTransposeDVerify) {
@@ -9026,6 +9018,7 @@ IMPLEMT_VERIFIER(Conv3DTransposeD, Conv3DTransposeDVerify) {
 
   return GRAPH_SUCCESS;
 }
+
 INFER_DATA_SLICE_FUNC_REG(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice);
 INFER_FUNC_REG(Conv3DTransposeD, Conv3DTransposeDInfer);
 VERIFY_FUNC_REG(Conv3DTransposeD, Conv3DTransposeDVerify);

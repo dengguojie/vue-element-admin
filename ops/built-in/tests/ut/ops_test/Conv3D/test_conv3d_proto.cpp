@@ -681,3 +681,115 @@ TEST_F(Conv3DProtoTest, conv3d_fuzzy_compile)
     EXPECT_EQ((input_range == expect_input_range), true);
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+TEST_F(Conv3DProtoTest, conv3d_dynamic_cut_info_d){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {-1, 3, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 3, -1, -1, -1}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {8, 8, 2, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+      {8, 8, 2, 3, 3}, ge::FORMAT_DHWCN));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {-1, 3, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 3, -1, -1, -1}, ge::FORMAT_NCDHW));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1, 1, 1});
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice = {{}, {0, 1}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {-1, -1}, {}, {}, {}, {}};
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+}
+
+TEST_F(Conv3DProtoTest, conv3d_dynamic_cut_info_h){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {-1, 3, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 3, -1, -1, -1}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {8, 8, 2, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+      {8, 8, 2, 3, 3}, ge::FORMAT_DHWCN));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {-1, 3, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 3, -1, -1, -1}, ge::FORMAT_NCDHW));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1, 1, 1});
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice = {{}, {}, {}, {0, 1}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {}, {-1, -1}, {}, {}};
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+}
+
+TEST_F(Conv3DProtoTest, conv3d_dynamic_cut_info_w){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {-1, 3, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 3, -1, -1, -1}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {8, 8, 2, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+      {8, 8, 2, 3, 3}, ge::FORMAT_DHWCN));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {-1, 3, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 3, -1, -1, -1}, ge::FORMAT_NCDHW));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1, 1, 1});
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {0, 1}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {}, {}, {-1, -1}, {}};
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+}
+
+TEST_F(Conv3DProtoTest, conv3d_dynamic_cut_info_n){
+    ge::op::Conv3D op;
+    op.UpdateInputDesc("x", create_desc_with_ori(
+      {-1, 3, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 3, -1, -1, -1}, ge::FORMAT_NCDHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {8, 8, 2, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_DHWCN,
+      {8, 8, 2, 3, 3}, ge::FORMAT_DHWCN));
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {-1, 3, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+      {-1, 3, -1, -1, -1}, ge::FORMAT_NCDHW));
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {1, 1, 1, 1, 1, 1});
+    op.SetAttr("dilations", {1, 1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice = {{0, 1}, {}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{-1, -1}, {}, {}, {}, {}, {}};
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+}

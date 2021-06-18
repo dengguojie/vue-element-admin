@@ -20,7 +20,7 @@ def _gen_data_case(case, expect, case_name_val, support_expect=True):
 def _run_api(
         input_size={'ori_shape': (5,), 'ori_format': 'ND', 'dtype': 'int32'},
         x={'ori_shape': (-1, -1, -1, -1, 64), 'ori_format': 'NDHWC', 'dtype': 'float16', 
-           'range': ((1, 3), (12, 12), (4, 4), (5, 40), (9, 9), (16, 16))},
+           'range': ((1, 3), (12, 12), (4, 4), (5, 40), (9, 9), (16, 16)), 'format': 'NDC1HWC0'},
         filter={'ori_shape': (1, 1, 1, 256, 64), 'ori_format': 'DHWCN', 'dtype': 'float16'},
         bias=None,
         offset_w=None,
@@ -35,6 +35,29 @@ def _run_api(
         offset_x=0):
     return [input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
             groups, data_format, output_padding, offset_x]
+
+def _test_op_get_op_support_info_succ(test_arg):
+    from impl.dynamic.conv3d_transpose import get_op_support_info
+
+    [input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
+    groups, data_format, output_padding, offset_x] = _run_api()
+    bias = {'ori_shape': (256,), 'ori_format': 'ND', 'dtype': 'float16'}
+    get_op_support_info(
+        input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
+        groups, data_format, output_padding, offset_x)
+
+def _test_op_get_op_support_info_wrong_input(test_arg):
+    from impl.dynamic.conv3d_transpose import get_op_support_info
+
+    [input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
+    groups, data_format, output_padding, offset_x] = _run_api()
+    input_size = {'ori_shape': (-2,), 'ori_format': 'ND', 'dtype': 'int32'}
+    get_op_support_info(
+        input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
+        groups, data_format, output_padding, offset_x)
+
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info_succ)
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info_wrong_input)
 
 
 # test_conv3d_transpose_succ_dynamic

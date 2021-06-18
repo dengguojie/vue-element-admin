@@ -21,6 +21,8 @@ import warnings
 import math
 
 from impl.util import util_common
+from impl.util import util_conv3d
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import para_check
@@ -75,7 +77,140 @@ FILTER_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC", "DHWCN"]
 VALID_DTYPE = ("float16",)
 DYNAMIC_FLAG = -1
 RANGE_DIM_LEN = 2
+L1FUSION_INPUT_CTR = 2
 
+
+def get_op_support_info(fmap,
+                        weight,
+                        bias,
+                        offset_w,
+                        output,
+                        strides,
+                        pads,
+                        dilations=(1, 1, 1, 1, 1),
+                        groups=1,
+                        data_format="NDHWC",
+                        offset_x=0,
+                        kernel_name="conv3d",
+                        op_slice_info=""):
+    """
+    algorithm: get_op_support_info
+
+    Parameters
+    ----------
+    fmap: A dict with keys(shape and dtype)
+        Input 5d feature map tensor
+
+    weight: A dict with keys(shape and dtype)
+        Input 5d weight tensor
+
+    bias: A dict with keys(shape and dtype) or None
+        Input bias tensor
+
+    offset_w: A dict with keys(shape and dtype) or None
+        Input offset_w tensor
+
+    output: A dict with keys(shape and dtype)
+        Output tensor, dtype must be assigned
+
+    strides: A tuple/list of 5 integers, format sensitive
+        [strides_batch, strides_depth, strides_height, strides_width, strides_channel]
+
+    pads: A tuple/list of 6 integers
+        [pad_head, pad_tail, pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: A tuple/list of 5 integers
+        Dilation on D/H/W, format sensitive, default value is (1, 1, 1, 1, 1)
+
+    groups: Int of blocked connections from input channels to output channels
+        Default value is 1
+
+    data_format: The data format of the input and output data
+        Default format is "NDHWC"
+
+    offset_x: Int
+        Input offset_x value, default value is 0
+
+    kernel_name: Str
+        Kernel name, default value is "conv3d"
+
+    op_slice_info: Str
+        Default value is ""
+
+    Returns
+    -------
+    op_cal_info_in_json: A dict with keys(split_maps, reduce_maps, l1_fusion_enable
+                         and min_tbe_l1_space)
+    """
+    def _get_slice_info():
+        overlap_d = -1 if (filter_d == 1 and strides_d == 1) else 0
+        overlap_h = -1 if (filter_h == 1 and strides_h == 1) else 0
+        overlap_w = -1 if (filter_w == 1 and strides_w == 1) else 0
+
+        axis_split_matrix = []
+        axis_reduce_list = []
+        if fm_format == "NDC1HWC0":
+            # cut N
+            axis_split_matrix.append([util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                                      util_select_op_base.SplitOutput([0, [0]])])
+            # cut D
+            axis_split_matrix.append([util_select_op_base.SplitInput([0, [1], [overlap_d], [overlap_d]]),
+                                      util_select_op_base.SplitOutput([0, [1]])])
+            # cut H
+            axis_split_matrix.append([util_select_op_base.SplitInput([0, [3], [overlap_h], [overlap_h]]),
+                                      util_select_op_base.SplitOutput([0, [3]])])
+            # cut W
+            axis_split_matrix.append([util_select_op_base.SplitInput([0, [4], [overlap_w], [overlap_w]]),
+                                      util_select_op_base.SplitOutput([0, [4]])])
+            # cut Cout
+            if bias:
+                axis_split_matrix.append(
+                    [util_select_op_base.SplitInput([1, [1], [-1], [-1]], [2, [0], [-1], [-1]]),
+                     util_select_op_base.SplitOutput([0, [2]])]
+                )
+            else:
+                axis_split_matrix.append(
+                    [util_select_op_base.SplitInput([1, [1], [-1], [-1]]),
+                     util_select_op_base.SplitOutput([0, [2]])]
+                )
+            axis_reduce_list = None
+        else:
+            axis_split_matrix = None
+            axis_reduce_list = None
+
+        return axis_split_matrix, axis_reduce_list
+
+    fm_format = fmap.get("format")
+    filter_shape = util_conv3d.transform_shape_with_format(weight.get("ori_format"),
+                                                           FILTER_TARGET_FORMAT,
+                                                           weight.get("ori_shape"),
+                                                           FILTER_FORMAT_WHITE_LIST)
+    if filter_shape is None:
+        error_manager_cube.raise_err_one_para("E62306", "Conv3d", "filter format should be NDHWC/NCDHW/DHWCN")
+
+    strides_formated = util_conv3d.transform_shape_with_format(fmap.get("ori_format"),
+                                                               FMAP_TARGET_FORMAT,
+                                                               strides,
+                                                               FMAP_FORMAT_WHITE_LIST)
+    if strides_formated is None:
+        error_manager_cube.raise_err_one_para("E62306", "Conv3d", "data format should be NDHWC or NCDHW")
+
+    dilations_formated = util_conv3d.transform_shape_with_format(fmap.get("ori_format"),
+                                                                 FMAP_TARGET_FORMAT,
+                                                                 dilations,
+                                                                 FMAP_FORMAT_WHITE_LIST)
+
+    _, _, filter_d, filter_h, filter_w = filter_shape
+    _, strides_d, strides_h, strides_w, _ = strides_formated
+    _, dilation_d, dilation_h, dilation_w, _ = dilations_formated
+
+    axis_split_info, axis_reduce_info = _get_slice_info()
+
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_info,
+                                                              axis_reduce_info,
+                                                              L1FUSION_INPUT_CTR,
+                                                              None)
+    return op_cal_info_in_json
 
 def _check_groups_validation(fmap_cin, filter_cin, groups):
     """

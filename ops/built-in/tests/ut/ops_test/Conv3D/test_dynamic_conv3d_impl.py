@@ -58,6 +58,27 @@ def test_conv3d_fuzzy_build_generalization(test_arg):
         }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization']
     conv3d_generalization(*input_list)
 
+def _test_op_get_op_support_info(test_arg):
+    from impl.dynamic.conv3d import get_op_support_info
+    [fmap, weight, bias, offset_w, output, strides,
+     pads, dilations, groups, data_format, offset_x] = _run_api_end_with_d()
+    fmap['format'] = 'NDC1HWC0'
+    get_op_support_info(
+        fmap, weight, bias, offset_w, output, strides,
+        pads, dilations, groups, data_format, offset_x)
+
+def _test_op_get_op_support_info_bias(test_arg):
+    from impl.dynamic.conv3d import get_op_support_info
+    [fmap, weight, bias, offset_w, output, strides,
+     pads, dilations, groups, data_format, offset_x] = _run_api_end_with_d()
+    fmap['format'] = 'NDC1HWC0'
+    bias = {'ori_shape': (32,), 'shape': (32,), 'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+    get_op_support_info(
+        fmap, weight, bias, offset_w, output, strides,
+        pads, dilations, groups, data_format, offset_x)
+
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info_bias)
 
 # test_conv3dbp_succ_d
 case1 = _run_api_end_with_d()

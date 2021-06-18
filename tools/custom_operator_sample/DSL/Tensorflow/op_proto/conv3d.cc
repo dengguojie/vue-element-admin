@@ -660,7 +660,7 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   vector<int64_t> y_shape;
   auto y_tensor = op.get_output_desc_y();
   auto y_format = y_tensor.GetFormat();
-  CHECK_FORMAT(y_format)
+
   if (y_format == FORMAT_NCDHW) {
     y_shape.push_back(in);
     y_shape.push_back(kn);

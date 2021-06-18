@@ -150,7 +150,8 @@ void TbeConv3dDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, s
       if (output_split_infos.empty() || input_split_infos.empty()) {
         continue;
       }
-      InputSplitInfo input_split_info = input_split_infos[0];
+      InputSplitInfo input_split_info;
+      input_split_info.Initialize();
       input_split_info.SetIndex(i);
       input_split_info.SetHeadOverLap(split_flag);
       input_split_info.SetTailOverLap(split_flag);
