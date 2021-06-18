@@ -47,11 +47,72 @@ using namespace std;
 namespace ge {
 // ----------------FullyConnection-------------------
 
+bool InferFC5HD(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
+                vector<vector<int64_t>>& y_data_slice, int32_t& infer_x, int32_t& infer_w) {
+  for (int i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      if (i == 0) {
+        x_data_slice[i] = y_data_slice[i];
+        infer_x = 1;
+      } else if (i == 1) {
+        w_data_slice[i] = y_data_slice[i];
+        infer_w = 1;
+      }
+    }
+  }
+}
+
+bool InferFC5HD2NZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
+                   vector<vector<int64_t>>& y_data_slice, int32_t& infer_x, int32_t& infer_w,
+                   const vector<int64_t>& x_shape) {
+  for (int i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      if (i == 0) {
+        w_data_slice[1] = y_data_slice[i];
+        infer_w = 1;
+      } else if (i == 1 && y_data_slice[i].size() == 2) {
+        int64_t m_start = y_data_slice[i][0] * 16;
+        int64_t m_end = std::min(y_data_slice[i][1]*16 + 15, x_shape[0] - 1);
+        x_data_slice[0] = {m_start, m_end};
+        infer_x = 1;
+      }
+    }
+  }
+}
+
+bool InferFCNZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
+              vector<vector<int64_t>>& y_data_slice, int32_t& infer_x, int32_t& infer_w,
+              const int64_t axis) {
+  for (int i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      if (axis == 2) {
+        if (i == 0 || i == 2){
+          x_data_slice[i] = y_data_slice[i];
+          infer_x = 1;
+        } else if (i == 1) {
+          w_data_slice[i] = y_data_slice[i];
+          infer_w = 1;
+        }
+      } else {
+        if (i == 0) {
+          w_data_slice[1] = y_data_slice[i];
+          infer_w = 1;
+        } else if (i == 1) {
+          x_data_slice[i] = y_data_slice[i];
+          infer_x = 1;
+        }
+      }
+    }
+  }
+}
+
+
 bool InferFullyConnectionDataSlice(ge::Operator& op) {
   auto x_tensor = op.GetInputDesc("x");
   auto w_tensor = op.GetInputDesc("w");
   auto y_tensor = op.GetOutputDesc("y");
 
+  auto x_shape = x_tensor.GetShape().GetDims();
   auto w_shape = w_tensor.GetShape().GetDims();
   auto x_format = x_tensor.GetFormat();
   auto y_format = y_tensor.GetFormat();
@@ -79,52 +140,35 @@ bool InferFullyConnectionDataSlice(ge::Operator& op) {
     return false;
   }
 
-  bool infer_x = false;
-  bool infer_w = false;
-  for (int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 0) {
-      if (i == 0) {
-        if (x_format == FORMAT_NC1HWC0 || axis == 2){
-          x_data_slice[i] = y_data_slice[i];
-          infer_x = true;
-        } else {
-          w_data_slice[1] = y_data_slice[i];
-          num_output = (w_data_slice[1][1] - w_data_slice[1][0] + 1) * w_shape[2];
-          infer_w = true;
-        }
-      } else if (i == 1){
-        if (x_format == FORMAT_NC1HWC0 || axis == 2) {
-          w_data_slice[i] = y_data_slice[i];
-          num_output = (w_data_slice[1][1] - w_data_slice[1][0] + 1) * w_shape[2];
-          infer_w = true;
-        } else {
-          x_data_slice[i] = y_data_slice[i];
-          infer_x = true;
-        }
-      } else {
-        if (axis == 2) {
-          x_data_slice[i] = y_data_slice[i];
-          infer_x = true;
-        }
-      }
-    }
+  int32_t infer_x = 0;
+  int32_t infer_w = 0;
+  if (y_format == FORMAT_NC1HWC0) {
+    OP_LOGI(op.GetName().c_str(), "infer dataslice from 5HD to 5HD");
+    InferFC5HD(x_data_slice, w_data_slice, y_data_slice, infer_x, infer_w);
+  } else if (x_format == FORMAT_NC1HWC0) {
+    OP_LOGI(op.GetName().c_str(), "infer dataslice from 5HD to NZ");
+    InferFC5HD2NZ(x_data_slice, w_data_slice, y_data_slice, infer_x, infer_w, x_shape);
+  } else {
+    OP_LOGI(op.GetName().c_str(), "infer dataslice from NZ to NZ");
+    InferFCNZ(x_data_slice, w_data_slice, y_data_slice, infer_x, infer_w, axis);
   }
 
-  if (!infer_x && !infer_w ) {
+  if (infer_x == 0 && infer_w == 0) {
     OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
     return false;
   }
 
-  if (infer_x) {
+  if (infer_x == 1) {
     if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
       return false;
     }
     OP_LOGI(op.GetName().c_str(), "infer input x success");
   }
-  if (infer_w) {
+  if (infer_w == 1) {
     if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
       return false;
     }
+    num_output = (w_data_slice[1][1] - w_data_slice[1][0] + 1) * w_shape[2];
     op.SetAttr("num_output", num_output);
     OP_LOGI(op.GetName().c_str(), "infer input w success");
   }

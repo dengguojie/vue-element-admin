@@ -30,6 +30,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
+from impl.util.util_common import cal_mini_l1_size_matmul
 
 # General limitation of the size for input shape: 2**32 - 1
 SHAPE_SIZE_LIMIT = 2147483648
@@ -94,8 +95,9 @@ def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
     ]
 
     axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b
+    min_l1space = cal_mini_l1_size_matmul(dtype_b)
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(
-        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, None)
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
 
     return op_cal_info_in_json
 

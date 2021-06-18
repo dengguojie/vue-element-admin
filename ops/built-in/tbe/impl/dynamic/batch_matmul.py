@@ -29,6 +29,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
+from impl.util.util_common import cal_mini_l1_size_matmul
 
 
 # General limitation of the size for input shape: 2**31 - 1
@@ -52,6 +53,7 @@ def get_op_support_info(input_x1, input_x2, bias=None, output_z=None,
     format_b = input_x2.get("format")
     a_shape = input_x1.get("ori_shape")
     b_shape = input_x2.get("ori_shape")
+    dtype_b = input_x2.get("dtype")
     if format_a == 'FRACTAL_NZ':
         trans_a = not trans_a
     if format_b == 'FRACTAL_NZ':
@@ -107,8 +109,9 @@ def get_op_support_info(input_x1, input_x2, bias=None, output_z=None,
     ]
 
     axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b + axis_split_matrix_batch
+    min_l1space = cal_mini_l1_size_matmul(dtype_b)
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(
-        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, None)
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
 
     return op_cal_info_in_json
 

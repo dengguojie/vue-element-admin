@@ -334,6 +334,7 @@ def get_op_support_info(x, w, b, offset_w, y, num_output, transpose, axis, offse
     shape_x = x.get('shape')
     dtype_w = w.get('dtype')
     format_x = x.get('format')
+    format_y = y.get('format')
 
     if axis == 2:
         b_split_list = [0, [0], [-1], [-1]]
@@ -359,37 +360,35 @@ def get_op_support_info(x, w, b, offset_w, y, num_output, transpose, axis, offse
         if format_x == 'NC1HWC0':
             m_split_list = [0, [0], [-1], [-1]]
             n_split_list = [[1, [1], [-1], [-1]]]
-            if b is not None:
-                n_split_list.append([2, [1], [-1], [-1]])
-                axis_reduce_list = None
-            else:
-                axis_reduce_list = [
-                    [util_select_op_base.ReduceInput([0, [1]], [1, [0]]),
-                     util_select_op_base.ReduceOutput([0, 1, False])]
-                ]
-            axis_split_matrix = [
-                [util_select_op_base.SplitInput(m_split_list),
-                 util_select_op_base.SplitOutput([0, [0]])],
-                [util_select_op_base.SplitInput(*n_split_list),
-                 util_select_op_base.SplitOutput([0, [1]])]
-            ]
+            km_reduce_list = [0, [1]]
+            kn_reduce_list = [1, [0]]
         else:
             m_split_list = [0, [1], [-1], [-1]]
             n_split_list = [[1, [1], [-1], [-1]]]
-            if b is not None:
-                n_split_list.append([2, [1], [-1], [-1]])
-                axis_reduce_list = None
-            else:
-                axis_reduce_list = [
-                    [util_select_op_base.ReduceInput([0, [0]], [1, [0]]),
-                     util_select_op_base.ReduceOutput([0, 1, False])]
-                ]
-            axis_split_matrix = [
-                [util_select_op_base.SplitInput(m_split_list),
-                 util_select_op_base.SplitOutput([0, [1]])],
-                [util_select_op_base.SplitInput(*n_split_list),
-                 util_select_op_base.SplitOutput([0, [0]])]
+            km_reduce_list = [0, [0]]
+            kn_reduce_list = [1, [0]]
+
+        if b is not None:
+            n_split_list.append([2, [1], [-1], [-1]])
+            axis_reduce_list = None
+        else:
+            axis_reduce_list = [
+                [util_select_op_base.ReduceInput(km_reduce_list, kn_reduce_list),
+                 util_select_op_base.ReduceOutput([0, 1, False])]
             ]
+        if format_y == "NC1HWC0":
+            m_out_axis = 0
+            n_out_axis = 1
+        else:
+            m_out_axis = 1
+            n_out_axis = 0
+        axis_split_matrix = [
+            [util_select_op_base.SplitInput(m_split_list),
+             util_select_op_base.SplitOutput([0, [m_out_axis]])],
+            [util_select_op_base.SplitInput(*n_split_list),
+             util_select_op_base.SplitOutput([0, [n_out_axis]])]
+        ]
+
     min_l1space = cal_mini_l1_size_matmul(dtype_w)
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(
         axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
