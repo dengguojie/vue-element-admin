@@ -540,13 +540,13 @@ case_multi_dim_aligned_indices_int64 = {
     "expect": "success"
 }
 
-ut_case.add_case(["Ascend910"], case_small_shape_scalar_fp32)
-ut_case.add_case(["Ascend910"], case_not_aligned_gt_one_block_fp32)
-ut_case.add_case(["Ascend910"], case_multi_dim_aligned_fp32)
-ut_case.add_case(["Ascend910"], case_big_prime_scalar_fp32)
-ut_case.add_case(["Ascend910"], case_big_shape_not_aligned_fp32)
-ut_case.add_case(["Ascend910"], case_multi_core_single_not_aligned_fp32)
-ut_case.add_case(["Ascend910"], case_multi_dim_aligned_indices_int64)
+ut_case.add_case(["Ascend910A"], case_small_shape_scalar_fp32)
+ut_case.add_case(["Ascend910A"], case_not_aligned_gt_one_block_fp32)
+ut_case.add_case(["Ascend910A"], case_multi_dim_aligned_fp32)
+ut_case.add_case(["Ascend910A"], case_big_prime_scalar_fp32)
+ut_case.add_case(["Ascend910A"], case_big_shape_not_aligned_fp32)
+ut_case.add_case(["Ascend910A"], case_multi_core_single_not_aligned_fp32)
+ut_case.add_case(["Ascend910A"], case_multi_dim_aligned_indices_int64)
 
 
 def calc_expect_func(var, ms, mom, lr, grad, indices, out_var,
@@ -565,7 +565,7 @@ def calc_expect_func(var, ms, mom, lr, grad, indices, out_var,
 
     return [var_data, ms_data, mom_data]
 
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"shape": (16, 16, 32), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (16, 16, 32), "ori_format": "NC1HWC0", "param_type": "input"},
                {"shape": (16, 16, 32), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (16, 16, 32), "ori_format": "NC1HWC0", "param_type": "input"},
                {"shape": (16, 16, 32), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (16, 16, 32), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -579,7 +579,7 @@ ut_case.add_precision_case("Ascend910", {
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"shape": (4, 1, 317), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (4, 1, 317), "ori_format": "NC1HWC0", "param_type": "input"},
                {"shape": (4, 1, 317), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (4, 1, 317), "ori_format": "NC1HWC0", "param_type": "input"},
                {"shape": (4, 1, 317), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (4, 1, 317), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -594,7 +594,7 @@ ut_case.add_precision_case("Ascend910", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"shape": (128, 1, 64), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (128, 1, 64), "ori_format": "NC1HWC0", "param_type": "input"},
                {"shape": (128, 1, 64), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (128, 1, 64), "ori_format": "NC1HWC0", "param_type": "input"},
                {"shape": (128, 1, 64), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (128, 1, 64), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -609,7 +609,7 @@ ut_case.add_precision_case("Ascend910", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"shape": (14, 1, 8, 16), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (14, 1, 8, 16), "ori_format": "NC1HWC0", "param_type": "input"},
                {"shape": (14, 1, 8, 16), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (14, 1, 8, 16), "ori_format": "NC1HWC0", "param_type": "input"},
                {"shape": (14, 1, 8, 16), "format": "NC1HWC0", "dtype": "float32", "ori_shape": (14, 1, 8, 16), "ori_format": "NC1HWC0", "param_type": "input"},
@@ -625,5 +625,5 @@ ut_case.add_precision_case("Ascend910", {
 })
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
     exit(0)

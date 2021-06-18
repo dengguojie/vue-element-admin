@@ -33,7 +33,7 @@ case1 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND", "ori_sha
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case("Ascend910", case1)
+ut_case.add_case("Ascend910A", case1)
 
 def calc_expect_func(var, accum, grad, indices, var_out, accum_out,
                      lr, use_locking, update_slots):
@@ -49,7 +49,7 @@ def calc_expect_func(var, accum, grad, indices, var_out, accum_out,
 
     return [outputArr, outputArr_accum]
 
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     'params': [{'shape': (33, 16), 'dtype': 'float32', 'ori_shape': (33, 16), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
                {'shape': (33, 16), 'dtype': 'float32', 'ori_shape': (33, 16), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
                {'shape': (33, 16), 'dtype': 'float32', 'ori_shape': (33, 16), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
@@ -61,7 +61,7 @@ ut_case.add_precision_case("Ascend910", {
     "precision_standard": precision_info.PrecisionStandard(0.05, 0.05)
 })
 
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     'params': [{'shape': (33, 77), 'dtype': 'float32', 'ori_shape': (33, 77), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
                {'shape': (33, 77), 'dtype': 'float32', 'ori_shape': (33, 77), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
                {'shape': (33, 77), 'dtype': 'float32', 'ori_shape': (33, 77), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
@@ -73,7 +73,7 @@ ut_case.add_precision_case("Ascend910", {
     "precision_standard": precision_info.PrecisionStandard(0.05, 0.05)
 })
 
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     'params': [{'shape': (77, 3, 6, 3), 'dtype': 'float32', 'ori_shape': (77, 3, 6, 3), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
                {'shape': (77, 3, 6, 3), 'dtype': 'float32', 'ori_shape': (77, 3, 6, 3), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
                {'shape': (77, 3, 6, 3), 'dtype': 'float32', 'ori_shape': (77, 3, 6, 3), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
@@ -85,7 +85,7 @@ ut_case.add_precision_case("Ascend910", {
     "precision_standard": precision_info.PrecisionStandard(0.05, 0.05)
 })
 
-ut_case.add_precision_case("Ascend910", {
+ut_case.add_precision_case("Ascend910A", {
     'params': [{'shape': (32, 3, 6, 32), 'dtype': 'float32', 'ori_shape': (32, 3, 6, 32), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
                {'shape': (32, 3, 6, 32), 'dtype': 'float32', 'ori_shape': (32, 3, 6, 32), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
                {'shape': (32, 3, 6, 32), 'dtype': 'float32', 'ori_shape': (32, 3, 6, 32), 'ori_format': 'ND', 'format': 'ND', "param_type": "input"},
@@ -97,5 +97,5 @@ ut_case.add_precision_case("Ascend910", {
     "precision_standard": precision_info.PrecisionStandard(0.05, 0.05)
 })
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
 

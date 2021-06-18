@@ -107,6 +107,7 @@ from .conv3d_transpose import conv3d_transpose
 from .conv3d_backprop_filter import conv3d_backprop_filter
 from .dynamic_atomic_addr_clean import dynamic_atomic_addr_clean
 from .sparse_apply_ftrl_d import sparse_apply_ftrl_d
+from .sparse_apply_adagrad_v2_d import sparse_apply_adagrad_v2_d
 from .div import div
 from .sqrt import sqrt
 from .threshold_v2_d import threshold_v2_d

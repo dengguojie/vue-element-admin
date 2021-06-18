@@ -40,6 +40,16 @@ void ApplyInferShapeAndDtype(Operator& op, const string& input_name, const strin
   }
 }
 
+void DynamicApplyInferShapeRange(Operator& op, const string& input_name, const string& output_name) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr input_tensor_desc = op_desc->MutableInputDesc(input_name);
+  GeTensorDescPtr output_tensor_desc = op_desc->MutableOutputDesc(output_name);
+  std::vector<std::pair<int64_t, int64_t>> input_shape_range;
+  if (input_tensor_desc->GetShapeRange(input_shape_range) == GRAPH_SUCCESS) {
+    output_tensor_desc->SetShapeRange(input_shape_range);
+  }
+}
+
 // Set ref port for ref input without ref output
 void SetRefInput(Operator& op, const string& input_name) {
   const OpDescPtr opDesc = OpDescUtils::GetOpDescFromOperator(op);
@@ -227,6 +237,8 @@ VERIFY_FUNC_REG(SparseApplyAdagrad, SparseApplyAdagradVerify);
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradV2DInferShape) {
   ApplyInferShapeAndDtype(op, "var", "var");
   ApplyInferShapeAndDtype(op, "accum", "accum");
+  DynamicApplyInferShapeRange(op, "var", "var");
+  DynamicApplyInferShapeRange(op, "accum", "accum");
   return GRAPH_SUCCESS;
 }
 
