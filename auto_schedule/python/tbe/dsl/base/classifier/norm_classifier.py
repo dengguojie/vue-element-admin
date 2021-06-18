@@ -15,6 +15,10 @@
 """
 classifier of shape in norm
 """
+import copy
+
+from tbe.common.buildcfg import get_current_build_config
+from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.operation import add_compile_info_inner
 
 from . import reduce_helper as helper
@@ -26,17 +30,88 @@ BEFORE = "before"
 AXIS = "axis"
 
 
+def _check(ins, dim_len, min_dim_len):
+    is_illegal_case = False
+    for single_input in ins:
+        if single_input.get("rel_pos_to_reduce") != AXIS:
+            if len(single_input.get("shape")) != dim_len:
+                is_illegal_case = True
+
+    if is_illegal_case:
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "dim len of input in norm classifier must be the same except -2"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    if min_dim_len > dim_len:
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "min_dim_len in norm classifier should not be larger than dim_len"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def _infer_negative_two(ins, axis):
+    dim_len = 8
+    is_all_unknown_dim_len = True
+    ins_list = []
+
+    for single_input in ins:
+        if single_input.get("rel_pos_to_reduce") != AXIS:
+            single_shape = single_input.get("shape")
+            if tuple(single_shape) != (-2, ):
+                is_all_unknown_dim_len = False
+                dim_len = len(single_shape)
+                break
+
+    local_ins = copy.deepcopy(ins)
+    for single_input in local_ins:
+        if single_input.get("rel_pos_to_reduce") != AXIS:
+            if tuple(single_input.get("shape")) == (-2, ):
+                single_input["shape"] = [-1] * dim_len
+                single_input["range"] = [(1, None)] * dim_len
+    ins_list.append(local_ins)
+
+    min_dim_len = max([x + dim_len if x < 0 else x for x in axis]) + 1
+    _check(local_ins, dim_len, min_dim_len)
+
+    # special case, input are all -2
+    # example: axis is 2, the options of dim_len are as follows:
+    # 4, 5, 6, 7, 8 is the same pattern
+    # 3 is another pattern
+    # 1, 2 is impossible
+    if is_all_unknown_dim_len:
+        if min_dim_len != dim_len:
+            local_ins = copy.deepcopy(ins)
+            for single_input in local_ins:
+                if single_input.get("rel_pos_to_reduce") != AXIS:
+                    if tuple(single_input.get("shape")) == (-2, ):
+                        single_input["shape"] = [-1] * min_dim_len
+                        single_input["range"] = [(1, None)] * min_dim_len
+            ins_list.append(local_ins)
+
+    return ins_list
+
+
 def classify(ins: list):
     """
     classify
     :param ins:
     :return:
     """
+    axis = None
     for single_input in ins:
         if single_input.get("rel_pos_to_reduce") == AXIS:
-            add_compile_info_inner("_ori_axis", single_input.get("value"))
+            axis = single_input.get("value")
+            add_compile_info_inner("_ori_axis", axis)
 
-    return NormClassifier(ins).classify()
+    ins_list = _infer_negative_two(ins, axis)
+    norm_classify_out = []
+
+    for single_ins in ins_list:
+        for single_item in NormClassifier(single_ins).classify():
+            norm_classify_out.append(single_item)
+
+    return norm_classify_out
 
 
 class NormClassifier:
@@ -55,7 +130,6 @@ class NormClassifier:
         self.f_shape, self.f_ranges, self.f_reduce_axes = self._simplify()
 
     def classify(self):
-        from tbe.common.buildcfg import get_current_build_config
         if get_current_build_config("enable_op_prebuild"):
             return [helper.ins_of_prebuild(self.ins, self.reduce_axes)]
 

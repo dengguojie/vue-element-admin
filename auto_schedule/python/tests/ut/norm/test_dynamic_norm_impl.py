@@ -99,5 +99,62 @@ case2 = {
         True
 }
 
+case3 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None)]
+    }, [0]],
+    "case_name":
+        "test_dync_norm_3",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case4 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "float16",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float16",
+        "range": [(1, None), (1, None)]
+    }, [0]],
+    "case_name":
+        "test_dync_norm_4",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case5 = {
+    "params": [{
+        "shape": (-2, ),
+        "dtype": "float16",
+        "range": [(1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float16",
+        "range": [(1, None), (1, None)]
+    }, [1]],
+    "case_name":
+        "test_dync_norm_5",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)

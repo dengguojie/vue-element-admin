@@ -18,9 +18,6 @@ operation
 import functools
 import re
 import threading
-from dataclasses import dataclass
-from typing import Any
-from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Union
@@ -40,16 +37,6 @@ _tiling_cases = {}
 _builds = {}
 
 _contexts = {}
-
-
-@dataclass
-class Compute:
-    """
-    The attribute of registered compute.
-    """
-    func: Callable[..., Any]
-    op_mode: str
-    support_fusion: bool
 
 
 def _get_contexts():
@@ -421,10 +408,6 @@ def schedule(_compute=None):
 @op_context.register_custom_context("dsl")
 def _():
     return OperatorContext()
-
-
-def _in_compatible_mode():
-    return _get_contexts()[-1] if _get_contexts() else None
 
 
 def _raise_error(message):
