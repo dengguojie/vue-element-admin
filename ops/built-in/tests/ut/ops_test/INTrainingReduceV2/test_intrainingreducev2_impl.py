@@ -145,14 +145,6 @@ ut_case.add_precision_case(["Ascend910A"],
                            generate_precision_case((6, 5, 8, 7, 16), (6, 5, 1, 1, 16), "NC1HWC0", "float16", "float32",
                                                    "in_training_reduce_v2_precision_002", "success"))
 
-ut_case.add_precision_case(["Ascend910A"],
-                           generate_precision_case((6, 5, 8, 123, 16), (6, 5, 1, 1, 16), "NC1HWC0", "float16",
-                                                   "float32", "in_training_reduce_v2_precision_003", "success"))
-
-ut_case.add_precision_case(["Ascend910A"],
-                           generate_precision_case((6, 5, 8, 123, 16), (6, 5, 1, 1, 16), "NC1HWC0", "float32",
-                                                   "float32", "in_training_reduce_v2_precision_004", "success"))
-
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, "/usr/local/Ascend/toolkit/tools/simulator")

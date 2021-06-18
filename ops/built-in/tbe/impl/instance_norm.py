@@ -20,6 +20,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
@@ -38,11 +39,11 @@ def instance_norm_compute(x,
     Parameters
     ----------
     x: TVM tensor
-        the placeholder of x input data
+        the placeholder of input x
     gamma: TVM tensor
-        the placeholder of gamma input data
+        the placeholder of input gamma
     beta: TVM tensor
-        the placeholder of beta input data
+        the placeholder of input beta
     y: dict
         shape and dtype of output y
     mean: dict
@@ -50,8 +51,8 @@ def instance_norm_compute(x,
     variance: dict
         shape and dtype of output variance
     data_format: str
-        A `string` from: `"NDHWC", "NCDHW"`.
-    epsilon: float,
+        A `string` from: `"NDHWC", "NCDHW", "NHWC", "NCHW"`
+    epsilon: float
         minimum positive number greater than 0
     kernel_name: str
         cce kernel name, default value is "instance_norm"
@@ -59,7 +60,7 @@ def instance_norm_compute(x,
     Returns
     -------
     res_tuple: tuple
-        (mean, variance, result)
+        (result, result_mean, result_variance)
     """
     shape_x = shape_util.shape_to_list(x.shape)
     dtype_x = x.dtype.lower()
@@ -73,6 +74,12 @@ def instance_norm_compute(x,
         axis = [1, 2, 3]
     elif data_format in ("NCDHW",):
         axis = [2, 3, 4]
+    elif data_format in ("NHWC",):
+        axis = [1, 2]
+    elif data_format in ("NCHW",):
+        axis = [2, 3]
+    elif data_format in ("ND",):
+        axis = list(range(2, len(shape_x)))
 
     reduce_elts = 1.0
     for i in axis:
@@ -81,14 +88,14 @@ def instance_norm_compute(x,
 
     # DSL description of the mean calculation process
     mean_muls = tbe.vmuls(x, mean_cof)
-    mean = tbe.reduce_sum(mean_muls, axis=axis, keepdims=True)
-    mean_broadcast = tbe.broadcast(mean, shape_x)
+    result_mean = tbe.reduce_sum(mean_muls, axis=axis, keepdims=True)
+    mean_broadcast = tbe.broadcast(result_mean, shape_x)
     # DSL description of the variance calculation process
     variance_sub = tbe.vsub(x, mean_broadcast)
     variance_mul = tbe.vmul(variance_sub, variance_sub)
     variance_muls = tbe.vmuls(variance_mul, mean_cof)
-    variance = tbe.reduce_sum(variance_muls, axis=axis, keepdims=True)
-    variance_broadcast = tbe.broadcast(variance, shape_x)
+    result_variance = tbe.reduce_sum(variance_muls, axis=axis, keepdims=True)
+    variance_broadcast = tbe.broadcast(result_variance, shape_x)
     # DSL description of the result calculation process
     epsilon = tvm.const(epsilon, dtype="float32")
     normalize_add = tbe.vadds(variance_broadcast, epsilon)
@@ -100,14 +107,14 @@ def instance_norm_compute(x,
     gamma_broadcast = tbe.broadcast(gamma, shape_x)
     beta_broadcast = tbe.broadcast(beta, shape_x)
     scale_mul = tbe.vmul(gamma_broadcast, normalize_mul)
-    res = tbe.vadd(scale_mul, beta_broadcast)
+    result = tbe.vadd(scale_mul, beta_broadcast)
 
     if dtype_x == "float16":
-        mean = tbe.cast_to(mean, "float16")
-        variance = tbe.cast_to(variance, "float16")
-        res = tbe.cast_to(res, "float16")
+        result = tbe.cast_to(result, "float16")
+        result_mean = tbe.cast_to(result_mean, "float16")
+        result_variance = tbe.cast_to(result_variance, "float16")
 
-    return mean, variance, res
+    return result, result_mean, result_variance
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -136,8 +143,8 @@ def instance_norm(x, gamma, beta, y, mean, variance, data_format="NDHWC", epsilo
     variance: dict
         shape and dtype of output variance, only support float16, float32
     data_format: str
-        A `string` from: `"NDHWC", "NCDHW"`.
-    epsilon: float,
+        A `string` from: `"NDHWC", "NCDHW", "NHWC", "NCHW"`
+    epsilon: float
         minimum positive number greater than 0
     kernel_name: str
         cce kernel name, default value is "instance_norm"
@@ -152,6 +159,10 @@ def instance_norm(x, gamma, beta, y, mean, variance, data_format="NDHWC", epsilo
     para_check.check_shape(shape_x, param_name="x")
     para_check.check_shape(shape_gamma, param_name="gamma")
     para_check.check_shape(shape_beta, param_name="beta")
+    if len(shape_x) < 2:
+        expected_value = "must be greater or equal to 2"
+        real_value = str(len(shape_x))
+        error_manager_vector.raise_err_input_value_invalid("instacenorm", "input x", expected_value, real_value)
 
     dtype_x = x.get("dtype").lower()
     dtype_gamma = gamma.get("dtype").lower()
@@ -163,21 +174,30 @@ def instance_norm(x, gamma, beta, y, mean, variance, data_format="NDHWC", epsilo
 
     format_x = x.get("format")
     if format_x in ("NDHWC",) and len(shape_gamma) == 1 and len(shape_beta) == 1:
-        shape_gamma = (1, 1, 1, 1, shape_gamma[0])
-        shape_beta = (1, 1, 1, 1, shape_beta[0])
+        shape_gamma = [1, 1, 1, 1, shape_gamma[0]]
+        shape_beta = [1, 1, 1, 1, shape_beta[0]]
     elif format_x in ("NCDHW",) and len(shape_gamma) == 1 and len(shape_beta) == 1:
-        shape_gamma = (1, shape_gamma[0], 1, 1, 1)
-        shape_beta = (1, shape_beta[0], 1, 1, 1)
+        shape_gamma = [1, shape_gamma[0], 1, 1, 1]
+        shape_beta = [1, shape_beta[0], 1, 1, 1]
+    elif format_x in ("NHWC",) and len(shape_gamma) == 1 and len(shape_beta) == 1:
+        shape_gamma = [1, 1, 1, shape_gamma[0]]
+        shape_beta = [1, 1, 1, shape_beta[0]]
+    elif format_x in ("NCHW",) and len(shape_gamma) == 1 and len(shape_beta) == 1:
+        shape_gamma = [1, shape_gamma[0], 1, 1]
+        shape_beta = [1, shape_beta[0], 1, 1]
+    elif format_x in ("ND",) and len(shape_gamma) == 1 and len(shape_beta) == 1:
+        shape_gamma = [1, shape_gamma[0]] + [1] * (len(shape_x) - 2)
+        shape_beta = [1, shape_beta[0]] + [1] * (len(shape_x) - 2)
 
     data_x = tvm.placeholder(shape_x, name="x", dtype=dtype_x)
     data_gamma = tvm.placeholder(shape_gamma, name="gamma", dtype=dtype_x)
     data_beta = tvm.placeholder(shape_beta, name="beta", dtype=dtype_x)
-    mean, variance, res = instance_norm_compute(data_x, data_gamma, data_beta, y, mean, variance, format_x, epsilon,
-                                                kernel_name)
+    result, result_mean, result_variance = instance_norm_compute(data_x, data_gamma, data_beta, y, mean, variance,
+                                                                 format_x, epsilon, kernel_name)
 
     with tvm.target.cce():
-        sch = tbe.auto_schedule([res, mean, variance])
+        sch = tbe.auto_schedule([result, result_mean, result_variance])
 
-    config = {"name": kernel_name, "tensor_list": [data_x, data_gamma, data_beta, res, mean, variance]}
+    config = {"name": kernel_name, "tensor_list": [data_x, data_gamma, data_beta, result, result_mean, result_variance]}
 
     tbe.build(sch, config)

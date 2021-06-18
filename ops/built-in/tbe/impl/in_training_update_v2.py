@@ -42,46 +42,51 @@ def op_select_format(x,
     """
     select format dynamically
     """
+    input_format = "NC1HWC0, NC1HWC0"
+    ori_format = x.get("ori_format")
+    if ori_format in ("NDHWC", "NCDHW"):
+        input_format = "NDC1HWC0, NDC1HWC0"
+
     input0 = gen_param(classify="input0",
                        name="x",
-                       datatype="float16,float,float16,float",
-                       format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                       datatype="float16,float",
+                       format=input_format)
     input1 = gen_param(classify="input1",
                        name="sum",
-                       datatype="float,float,float,float",
-                       format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                       datatype="float,float",
+                       format=input_format)
     input2 = gen_param(classify="input2",
                        name="square_sum",
-                       datatype="float,float,float,float",
-                       format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                       datatype="float,float",
+                       format=input_format)
     input3 = gen_param(classify="input3",
                        name="gamma",
-                       datatype="float,float,float,float",
-                       format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                       datatype="float,float",
+                       format=input_format)
     input4 = gen_param(classify="input4",
                        name="beta",
-                       datatype="float,float,float,float",
-                       format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                       datatype="float,float",
+                       format=input_format)
     input5 = gen_param(classify="input5",
                        name="mean",
-                       datatype="float,float,float,float",
-                       format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                       datatype="float,float",
+                       format=input_format)
     input6 = gen_param(classify="input6",
                        name="variance",
-                       datatype="float,float,float,float",
-                       format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                       datatype="float,float",
+                       format=input_format)
     output0 = gen_param(classify="output0",
                         name="y",
-                        datatype="float16,float,float16,float",
-                        format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                        datatype="float16,float",
+                        format=input_format)
     output1 = gen_param(classify="output1",
                         name="batch_mean",
-                        datatype="float,float,float,float",
-                        format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                        datatype="float,float",
+                        format=input_format)
     output2 = gen_param(classify="output2",
                         name="batch_variance",
-                        datatype="float,float,float,float",
-                        format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                        datatype="float,float",
+                        format=input_format)
 
     param_list = [input0, input1, input2, input3, input4, input5, input6, output0, output1, output2]
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
@@ -104,54 +109,49 @@ def in_training_update_compute(x,
                                format_x,
                                kernel_name="in_training_update_v2"):
     """
-    algorithm: instance_norm_v2
-    instance normalization.
+    DSL description of the instancenorm operator's mathematical calculation process
 
-    Parameters
-    ----------
-    x: TVM tensor
-        contains x data
-    sum: TVM tensor
-        contains sum data
-    square_sum: TVM tensor
-        contains square_sum data
-    gamma: TVM tensor
-        contains scale data
-    beta: TVM tensor
-        contains offset data
-    mean: TVM tensor
-        contains mean data
-    variance: TVM tensor
-        contains variance data
-    data_format: str
-        data format
+    x: dict
+        the placeholder of input x
+    sum: dict
+        the placeholder of input sum
+    square_sum: dict
+        the placeholder of input square_sum
+    gamma: dict
+        the placeholder of input gamma
+    beta: dict
+        the placeholder of input beta
+    mean: dict
+        the placeholder of input mean
+    variance: dict
+        the placeholder of input variance
     y: dict
-        dict of output, A `Tensor`. Has the same type as `x`.
-    mean_out: dict
-        dict of mean, A `Tensor`. The update mean of save mean and running mean.
-    variance_out: dict
-        dict of variance, A `Tensor`.
-        The update variance of save variance and running variance.
+        shape and dtype of output y
+    batch_mean: dict
+        shape and dtype of output batch_mean
+    batch_variance: dict
+        shape and dtype of output batch_variance
     momentum: float
-        A ratio to calculate the update mean or variance.
+        A ratio to calculate the update mean or variance
     epsilon: float
-        A small float number added to the variance of x.
+        A small float number added to the variance of x
     kernel_name: str
-        kernel name, default value is "in_training_update_v2"
+        cce kernel name, default value is "in_training_update_v2"
 
     Returns
     -------
-    res: TVM tensor list
-        the result of in_training_update_v2 compute
+    res_list: list
+        [result, result_mean, result_variance]
     """
     shape_x = shape_util.shape_to_list(x.shape)
+    dtype_x = x.dtype.lower()
 
     # compute the instance normalization of x
-    if x.dtype == "float16":
+    if dtype_x == "float16":
         x = tbe.cast_to(x, "float32")
 
     if format_x in ("NDC1HWC0",):  # only support NDC1HWC0 and NC1HWC0
-        num = shape_x[1] * shape_x[3] * shape_x[4]
+        num = shape_x[1] * shape_x[3]
     else:
         num = shape_x[2] * shape_x[3]
 
@@ -177,7 +177,7 @@ def in_training_update_compute(x,
         gamma_scale = tbe.vmul(result, gamma)
         result = tbe.vadd(gamma_scale, beta)
 
-    if x.dtype == "float16":
+    if dtype_x == "float16":
         result = tbe.cast_to(result, "float16")
 
     if num == 1:
@@ -189,7 +189,6 @@ def in_training_update_compute(x,
     result_variance = tbe.vmuls(compute_var, batch_var_scalar)
 
     # if input mean and var, use input values and momentum to update
-    # else, output compute values
     if mean is not None and variance is not None:
         factor_reverse = 1.0 - momentum
         mean_mul = tbe.vmuls(compute_mean, momentum)
@@ -199,8 +198,8 @@ def in_training_update_compute(x,
         var_mul = tbe.vmuls(result_variance, momentum)
         var_mul_rev = tbe.vmuls(variance, factor_reverse)
         result_variance = tbe.vadd(var_mul, var_mul_rev)
-    res = [result, result_mean, result_variance]
-    return res
+
+    return [result, result_mean, result_variance]
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -222,40 +221,36 @@ def in_training_update_v2(x,
                           epsilon=0.00001,
                           kernel_name="in_training_update_v2"):
     """
-    algorithm: instance_norm_v2
-    instance normalization.
+    instancenorm operator interface implementation
 
     Parameters
     ----------
     x: dict
-        dict of input, A Tensor for input data.
+        shape and dtype of input x, only support float16, float32
     sum: dict
-        dict of sum, A Tensor for sum.
-        The output of instance_normalization_forward_training_reduce.
+        shape and dtype of input sum, only support float32
     square_sum: dict
-        dict of square_sum, A Tensor for square_sum.
-        The output of instance_normalization_forward_training_reduce.
+        shape and dtype of input square_sum, only support float32
     gamma: dict
-        dict of scale, A Tensor for mean.
+        shape and dtype of input gamma, only support float32
     beta: dict
-        dict of offset, A Tensor for variance.
+        shape and dtype of input beta, only support float32
     mean: dict
-        dict of mean, A Tensor for mean.
+        shape and dtype of input mean, only support float32
     variance: dict
-        dict of variance, A Tensor for variance.
+        shape and dtype of input variance, only support float32
     y: dict
-        dict of output, A `Tensor`. Has the same type as `x`.
+        shape and dtype of output y, only support float16, float32
     batch_mean: dict
-        dict of mean, A `Tensor`. The update mean of save mean and running mean.
+        shape and dtype of output batch_mean, only support float32
     batch_variance: dict
-        dict of variance, A `Tensor`.
-        The update variance of save variance and running variance.
+        shape and dtype of output batch_variance, only support float32
     momentum: float
-        A ratio to calculate the update mean or variance.
+        A ratio to calculate the update mean or variance
     epsilon: float
-        A small float number added to the variance of x.
+        A small float number added to the variance of x
     kernel_name: str
-        kernel name, default value is "in_training_update_v2"
+        cce kernel name, default value is "in_training_update_v2"
 
     Returns
     -------
@@ -277,6 +272,14 @@ def in_training_update_v2(x,
     para_check.check_dtype(dtype_sum.lower(), ("float32",), param_name="sum")
     para_check.check_dtype(dtype_square_sum.lower(), ("float32",), param_name="square_sum")
 
+    if format_x in ("NDC1HWC0",):
+        shape_x = [shape_x[0], shape_x[1], shape_x[2], shape_x[3] * shape_x[4], shape_x[5]]
+        shape_sum = [shape_sum[0], shape_sum[1], shape_sum[2], shape_sum[3] * shape_sum[4], shape_sum[5]]
+        shape_square_sum = [
+            shape_square_sum[0], shape_square_sum[1], shape_square_sum[2], shape_square_sum[3] * shape_square_sum[4],
+            shape_square_sum[5]
+        ]
+
     x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
     sum_input = tvm.placeholder(shape_sum, name="sum_input", dtype=dtype_sum.lower())
     square_sum_input = tvm.placeholder(shape_square_sum, name="square_sum_input", dtype=dtype_square_sum.lower())
@@ -294,6 +297,12 @@ def in_training_update_v2(x,
         para_check.check_dtype(dtype_gamma.lower(), ("float32",), param_name="gamma")
         para_check.check_dtype(dtype_beta.lower(), ("float32",), param_name="beta")
 
+        if format_x in ("NDC1HWC0",):
+            shape_gamma = [
+                shape_gamma[0], shape_gamma[1], shape_gamma[2], shape_gamma[3] * shape_gamma[4], shape_gamma[5]
+            ]
+            shape_beta = [shape_beta[0], shape_beta[1], shape_beta[2], shape_beta[3] * shape_beta[4], shape_beta[5]]
+
         gamma_input = tvm.placeholder(shape_gamma, name="gamma_input", dtype=dtype_gamma.lower())
         beta_input = tvm.placeholder(shape_beta, name="beta_input", dtype=dtype_beta.lower())
 
@@ -308,6 +317,10 @@ def in_training_update_v2(x,
         dtype_var = variance.get("dtype")
         para_check.check_dtype(dtype_mean.lower(), ("float32",), param_name="mean")
         para_check.check_dtype(dtype_var.lower(), ("float32",), param_name="variance")
+
+        if format_x in ("NDC1HWC0",):
+            shape_mean = [shape_mean[0], shape_mean[1], shape_mean[2], shape_mean[3] * shape_mean[4], shape_mean[5]]
+            shape_var = [shape_var[0], shape_var[1], shape_var[2], shape_var[3] * shape_var[4], shape_var[5]]
 
         mean_input = tvm.placeholder(shape_mean, name="mean_input", dtype=dtype_mean.lower())
         var_input = tvm.placeholder(shape_var, name="variance_input", dtype=dtype_var.lower())

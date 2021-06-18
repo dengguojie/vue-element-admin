@@ -257,6 +257,11 @@ ut_case.add_case(["Ascend910A", "Ascend710"],
                                                 (6, 5, 1, 1, 16), "NC1HWC0", 0.001, 0.0001, True, False, "float16",
                                                 "float32", "test_right_003", "success"))
 
+ut_case.add_case(["Ascend910A", "Ascend710"],
+                 gen_in_training_update_v2_case((6, 2, 5, 4, 4, 16), (6, 2, 5, 1, 1, 16), (6, 2, 5, 1, 1, 16),
+                                                (1, 2, 5, 1, 1, 16), (6, 2, 5, 1, 1, 16), "NDC1HWC0", 0.001, 0.0001,
+                                                True, False, "float16", "float32", "test_right_004", "success"))
+
 ut_case.add_precision_case(["Ascend910A"],
                            gen_in_training_update_v2_precision_case(
                                (6, 5, 4, 4, 16), (6, 5, 1, 1, 16), (6, 5, 1, 1, 16), (1, 5, 1, 1, 16), (6, 5, 1, 1, 16),

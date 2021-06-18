@@ -83,6 +83,18 @@ ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_instance_norm_case((2, 16, 5, 8, 7), (16,), (2, 16, 1, 1, 1), "NCDHW", "float16", "test_right_004",
                                         "success"))
 
+ut_case.add_case(["Ascend910A", "Ascend710"],
+                 gen_instance_norm_case((2, 8, 7, 16), (16,), (2, 1, 1, 16), "NHWC", "float32", "test_right_005",
+                                        "success"))
+
+ut_case.add_case(["Ascend910A", "Ascend710"],
+                 gen_instance_norm_case((2, 16, 8, 7), (16,), (2, 16, 1, 1), "NCHW", "float32", "test_right_006",
+                                        "success"))
+
+ut_case.add_case(["Ascend910A", "Ascend710"],
+                 gen_instance_norm_case((2, 16, 8, 7), (16,), (2, 16, 1, 1), "ND", "float32", "test_right_007",
+                                        "success"))
+
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")

@@ -29,18 +29,23 @@ def op_select_format(x, sum, square_sum, kernel_name="in_training_reduce_v2"):
     """
     select format dynamically
     """
+    input_format = "NC1HWC0, NC1HWC0"
+    ori_format = x.get("ori_format")
+    if ori_format in ("NDHWC", "NCDHW"):
+        input_format = "NDC1HWC0, NDC1HWC0"
+
     input0 = gen_param(classify="input0",
                        name="x",
-                       datatype="float16,float,float16,float",
-                       format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                       datatype="float16,float",
+                       format=input_format)
     output0 = gen_param(classify="output0",
                         name="sum",
-                        datatype="float,float,float,float",
-                        format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                        datatype="float,float",
+                        format=input_format)
     output1 = gen_param(classify="output1",
                         name="square_sum",
-                        datatype="float,float,float,float",
-                        format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                        datatype="float,float",
+                        format=input_format)
 
     param_list = [input0, output0, output1]
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
@@ -48,81 +53,56 @@ def op_select_format(x, sum, square_sum, kernel_name="in_training_reduce_v2"):
     return param_dynamic_in_json
 
 
-def _reduce_compute(x, format_x):
+def in_training_reduce_compute(x, sum, square_sum, format_x, kernel_name="in_training_reduce_v2"):
     """
-    algorithm: part of instance_norm_v2
-    The first step of instance_norm
-    which to calculate the sum and square sum of x.
-    The major component of this operator is reduce operation.
+    DSL description of the instancenorm operator's mathematical calculation process
 
     Parameters
     ----------
     x: TVM tensor
-        contains x data
+        the placeholder of input x
     sum: dict
-        dict of sum, A `Tensor`. Sum of x.
+        shape and dtype of input sum
+    square_sum: dict
+        shape and dtype of input square_sum
+    kernel_name: str
+        cce kernel name, default value is "in_training_reduce_v2"
 
     Returns
     -------
-    res: TVM tensor list
-        the result of in_training_reduce compute
+    res_tuple: tuple
+        (sum_x, square_sum_x)
     """
     if format_x in ("NDC1HWC0",):  # only support NDC1HWC0 and NC1HWC0
         axis = [1, 3, 4]
     else:
         axis = [2, 3]
 
-    square_x = tbe.vmul(x, x)
-    sum_x, square_sum_x = tuple_sum([x, square_x], axis, True)
-    res = [sum_x, square_sum_x]
-
-    return res
-
-
-def in_training_reduce_compute(x, format_x):
-    """
-    algorithm: part of instance_norm_v2
-    The first step of instance_norm_v2
-    which to calculate the sum and square sum of x.
-    The major component of this operator is reduce operation.
-
-    Parameters
-    ----------
-    x: TVM tensor
-        contains x data
-    kernel_name: str
-        kernel name, default value is "in_training_reduce_v2"
-
-    Returns
-    -------
-    res: TVM tensor list
-        the result of in_training_reduce_v2 compute
-    """
     if x.dtype == "float16":
         x = tbe.cast_to(x, "float32")
-    res = _reduce_compute(x, format_x)
-    return res
+
+    square_x = tbe.vmul(x, x)
+    sum_x, square_sum_x = tuple_sum([x, square_x], axis, True)
+
+    return sum_x, square_sum_x
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def in_training_reduce_v2(x, sum, square_sum, kernel_name="in_training_reduce_v2"):
     """
-    algorithm: part of instance_norm_v2
-    The first step of instance_norm
-    which to calculate the sum and square sum of x.
-    The major component of this operator is reduce operation.
+    instancenorm operator interface implementation
 
     Parameters
     ----------
     x: dict
-        dict of input, A Tensor for input data.
+        shape and dtype of input x, only support float16, float32
     sum: dict
-        dict of sum, A `Tensor`. Sum of x.
+        shape and dtype of input sum, only support float32
     square_sum: dict
-        dict of square_sum, A `Tensor`. Square sum of x.
+        shape and dtype of input square_sum, only support float32
     kernel_name: str
-        kernel name, default value is "in_training_reduce_v2"
+        cce kernel name, default value is "in_training_reduce_v2"
 
     Returns
     -------
@@ -137,11 +117,10 @@ def in_training_reduce_v2(x, sum, square_sum, kernel_name="in_training_reduce_v2
 
     data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x.lower())
 
-    res = in_training_reduce_compute(data_x, format_x)
+    sum_x, square_sum_x = in_training_reduce_compute(data_x, sum, square_sum, format_x, kernel_name)
 
     with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
+        sch = tbe.auto_schedule([sum_x, square_sum_x])
 
-    tensor_list = [data_x] + list(res)
-    config = {"name": kernel_name, "tensor_list": tensor_list}
+    config = {"name": kernel_name, "tensor_list": [data_x, sum_x, square_sum_x]}
     tbe.build(sch, config)
