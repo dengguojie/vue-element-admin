@@ -44,8 +44,8 @@ case1 = {
         "shape": (-1, -1),
         "dtype": "float32",
         "range": [(1, None), (1, None)]
-    }, 
-    "float32"],
+    },
+        "float32"],
     "case_name":
         "test_dync_cast_to_1",
     "expect":
@@ -63,8 +63,8 @@ case2 = {
         "shape": (-1, -1),
         "dtype": "int8",
         "range": [(1, None), (1, None)]
-    }, 
-    "int8"],
+    },
+        "int8"],
     "case_name":
         "test_dync_cast_to_2",
     "expect":
@@ -72,7 +72,6 @@ case2 = {
     "support_expect":
         True
 }
-
 
 case3 = {
     "params": [{
@@ -83,8 +82,8 @@ case3 = {
         "shape": (-1, -1),
         "dtype": "uint8",
         "range": [(1, None), (1, None)]
-    }, 
-    "uint8"],
+    },
+        "uint8"],
     "case_name":
         "test_dync_cast_to_3",
     "expect":
@@ -102,8 +101,8 @@ case4 = {
         "shape": (-1, -1),
         "dtype": "int32",
         "range": [(1, None), (1, None)]
-    }, 
-    "int32"],
+    },
+        "int32"],
     "case_name":
         "test_dync_cast_to_4",
     "expect":
@@ -121,8 +120,8 @@ case5 = {
         "shape": (-1, -1),
         "dtype": "float16",
         "range": [(1, None), (1, None)]
-    }, 
-    "float16"],
+    },
+        "float16"],
     "case_name":
         "test_dync_cast_to_5",
     "expect":
@@ -140,8 +139,8 @@ case6 = {
         "shape": (-1, -1),
         "dtype": "uint8",
         "range": [(1, None), (1, None)]
-    }, 
-    "uint8"],
+    },
+        "uint8"],
     "case_name":
         "test_dync_cast_to_6",
     "expect":
@@ -149,7 +148,6 @@ case6 = {
     "support_expect":
         True
 }
-
 
 case7 = {
     "params": [{
@@ -160,8 +158,8 @@ case7 = {
         "shape": (-1, -1),
         "dtype": "float16",
         "range": [(1, None), (1, None)]
-    }, 
-    "float16"],
+    },
+        "float16"],
     "case_name":
         "test_dync_cast_to_7",
     "expect":
@@ -179,8 +177,8 @@ case8 = {
         "shape": (-1, -1),
         "dtype": "int8",
         "range": [(1, None), (1, None)]
-    }, 
-    "int8"],
+    },
+        "int8"],
     "case_name":
         "test_dync_cast_to_8",
     "expect":
@@ -198,8 +196,8 @@ case9 = {
         "shape": (-1, -1),
         "dtype": "float16",
         "range": [(1, None), (1, None)]
-    }, 
-    "float16"],
+    },
+        "float16"],
     "case_name":
         "test_dync_cast_to_9",
     "expect":
@@ -217,8 +215,8 @@ case10 = {
         "shape": (-1, -1),
         "dtype": "int8",
         "range": [(1, None), (1, None)]
-    }, 
-    "int8"],
+    },
+        "int8"],
     "case_name":
         "test_dync_cast_to_10",
     "expect":
@@ -226,7 +224,6 @@ case10 = {
     "support_expect":
         True
 }
-
 
 case11 = {
     "params": [{
@@ -237,8 +234,8 @@ case11 = {
         "shape": (-1, -1),
         "dtype": "uint8",
         "range": [(1, None), (1, None)]
-    }, 
-    "uint8"],
+    },
+        "uint8"],
     "case_name":
         "test_dync_cast_to_11",
     "expect":
@@ -256,10 +253,67 @@ case12 = {
         "shape": (-1, -1),
         "dtype": "float32",
         "range": [(1, None), (1, None)]
-    }, 
-    "float32"],
+    },
+        "float32"],
     "case_name":
         "test_dync_cast_to_12",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case13 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int64",
+        "range": [(1, None), (1, None)]
+    },
+        "int64"],
+    "case_name":
+        "test_dync_cast_to_13_s32_s64",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case14 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "int64",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    },
+        "int32"],
+    "case_name":
+        "test_dync_cast_to_14_s64_s32",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case15 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "custom[bfloat]16",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None)]
+    },
+        "float32"],
+    "case_name":
+        "test_dync_cast_to_15_bf16_f32",
     "expect":
         "success",
     "support_expect":
@@ -278,12 +332,15 @@ ut_case.add_case("all", case9)
 ut_case.add_case("all", case10)
 ut_case.add_case("all", case11)
 ut_case.add_case("all", case12)
+# ut_case.add_case(case=case13, support_soc="Ascend920A")
+# ut_case.add_case(case=case14, support_soc="Ascend920A")
+# ut_case.add_case(case=case15, support_soc="Ascend920A")
 
 
 def calc_expect_func(x, y, dst_dtype):
-    x_value = x.get("value") 
+    x_value = x.get("value")
     res = x_value.astype(dst_dtype)
-    return (res, )
+    return (res,)
 
 
 ut_case.add_precision_case(

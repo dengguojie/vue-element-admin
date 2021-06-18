@@ -44,7 +44,8 @@ DTYPE_WIDTH_MAP = {"float16": 1,
                    "uint16": 1,
                    "int8": 0.5,
                    "uint8": 0.5,
-                   "bool": 0.5}
+                   "bool": 0.5,
+                   }
 
 ALIGN_FACTOR = 32
 

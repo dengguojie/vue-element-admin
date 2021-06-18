@@ -4,35 +4,38 @@ from sch_test_frame.common import precision_info
 import warnings
 
 from te import tvm
-import te.lang.cce as tbe
+import tbe
 
 warnings.filterwarnings("ignore")
 
 
 def dsl_cast_to(x, _, dest_type, f16_8_flag, kernel_name='dsl_cast_to'):
-    input_shape = x.get("shape")
-    input_dtype = x.get("dtype")
-    data1 = tvm.placeholder(input_shape, name='data1', dtype=input_dtype)
-    res = tbe.cast_to(data1, dest_type, f16_8_flag)
+    with tbe.common.context.op_context.OpContext("static"):
+        input_shape = x.get("shape")
+        input_dtype = x.get("dtype")
 
-    tensor_list = [data1, res]
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
-    config = {
-        "print_ir": False,
-        "name": kernel_name,
-        "tensor_list": tensor_list
-    }
-    tbe.cce_build_code(sch, config)
+        data1 = tvm.placeholder(input_shape, name='data1', dtype=input_dtype)
+        with tbe.dsl.compute():
+            res = tbe.dsl.cast_to(data1, dest_type, f16_8_flag)
+            tensor_list = [data1, res]
+            with tvm.target.cce():
+                sch = tbe.dsl.auto_schedule(res)
+            config = {
+                "print_ir": False,
+                "name": kernel_name,
+                "tensor_list": tensor_list,
+                "save_temp_cce_file": True
+            }
+            tbe.dsl.build(sch, config)
 
 
-ut_case = OpUT("cast_to", "cast_to.test_cast_to_impl", "dsl_cast_to")
+ut_case = OpUT("cast_to", "cast_to.test_static_cast_to_impl", "dsl_cast_to")
 
 
 def test_input_not_tensor(_):
     try:
         input1 = tvm.const(1, dtype="float16")
-        tbe.cast_to(input1, "float32")
+        tbe.dsl.cast_to(input1, "float32")
     except RuntimeError as e:
         print(e.args[0].get("detailed_cause"))
     return True
@@ -44,41 +47,40 @@ test_func_list = [
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)
 
-case1 = {"params": [{"shape": (100, ), "dtype": "float16", "format": "ND"},
-                    {"shape": (100, ), "dtype": "float16", "format": "ND"},
+case1 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "int64", "format": "ND"},
+                    {"shape": (1, 227, 227, 3), "dtype": "int32", "format": "ND"},
+                    "int32",
+                    False
+                    ],
+         "case_name": "test_cast_to_s64_s32",
+         "expect": "success",
+         "support_expect": True
+         }
+
+case2 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "int32", "format": "ND"},
+                    {"shape": (1, 227, 227, 3), "dtype": "int64", "format": "ND"},
+                    "int64",
+                    False
+                    ],
+         "case_name": "test_cast_to_s32_s64",
+         "expect": "success",
+         "support_expect": True
+         }
+
+case3 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "custom[bfloat]16", "format": "ND"},
+                    {"shape": (1, 227, 227, 3), "dtype": "float32", "format": "ND"},
                     "float32",
                     False
                     ],
-         "case_name": "test_cast_to_1",
+         "case_name": "test_cast_to_bf16_f32",
          "expect": "success",
          "support_expect": True
          }
-
-case2 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "float16", "format": "ND"},
-                    {"shape": (1, 227, 227, 3), "dtype": "float16", "format": "ND"},
-                    "uint8",
-                    False
-                    ],
-         "case_name": "test_cast_to_frozen_inference_graph",
-         "expect": "success",
-         "support_expect": True
-         }
-
-case3 = {"params": [{"shape": (1, 227, 227, 3), "dtype": "int32", "format": "ND"},
-                    {"shape": (1, 227, 227, 3), "dtype": "float16", "format": "ND"},
-                    "float16",
-                    False
-                    ],
-         "case_name": "test_cast_to_2",
-         "expect": "success",
-         "support_expect": True
-         }
-
 
 compile_case_list = {
-    "1": [case1, None],
-    "2": [case2, None],
-    "3": [case3, "Hi3796CV300CS"],
+    # "1": [case1, "Ascend920A"],
+    # "2": [case2, "Ascend920A"],
+    # "3": [case3, "Ascend920A"],
 }
 for _, item in compile_case_list.items():
     ut_case.add_case(case=item[0], support_soc=item[1])

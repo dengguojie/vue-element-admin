@@ -49,7 +49,7 @@ for item in test_func_list:
 case1 = {"params": [{"shape": (2, 282, 282, 128), "dtype": "float16", "format": "ND"},
                     {"shape": (2, 282, 282, 128), "dtype": "float16", "format": "ND"}
                     ],
-         "case_name": "test_round_1",
+         "case_name": "test_round_f16_int32",
          "expect": "success",
          "support_expect": True
          }
@@ -57,10 +57,11 @@ case1 = {"params": [{"shape": (2, 282, 282, 128), "dtype": "float16", "format": 
 case2 = {"params": [{"shape": (17, 11, 19, 23, 7, 3), "dtype": "float32", "format": "ND"},
                     {"shape": (17, 11, 19, 23, 7, 3), "dtype": "float32", "format": "ND"}
                     ],
-         "case_name": "test_round_2",
+         "case_name": "test_round_f32_int32",
          "expect": "success",
          "support_expect": True
          }
+
 
 compile_case_list = [
     case1,

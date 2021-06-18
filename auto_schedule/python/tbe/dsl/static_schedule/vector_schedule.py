@@ -38,7 +38,8 @@ DTYPE_WIDTH_MAP = {"float16": 1,
                    "uint16": 1,
                    "int8": 0.5,
                    "uint8": 0.5,
-                   "bool": 0.5}
+                   "bool": 0.5,
+                   }
 
 # For non-divisible multi-core splitting, block dim is at most a multiple of core num
 BLOCK_DIM_MULTIPLE = 4  # Bytes

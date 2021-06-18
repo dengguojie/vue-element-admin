@@ -1,14 +1,14 @@
 # source file:python/tbe/dsl/api.py
 
-def ceil(raw_tensor):
+def ceil(raw_tensor, dtype="int32"):
 
-def floor(raw_tensor):
+def floor(raw_tensor, dtype="int32"):
 
-def round(raw_tensor):
+def round(raw_tensor, dtype="int32"):
 
-def trunc(raw_tensor):
+def trunc(raw_tensor, dtype="int32"):
 
-def round_half_up(raw_tensor):
+def round_half_up(raw_tensor, dtype="int32"):
 
 def cast_to(data, dtype, f1628IntegerFlag=True):
 

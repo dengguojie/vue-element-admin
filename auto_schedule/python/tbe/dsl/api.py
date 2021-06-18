@@ -43,54 +43,58 @@ from .unify_schedule import auto_schedule as tbe_auto_schedule
 from .unify_schedule.build import build as tbe_build
 from .base import shape_classifier
 from .base import operation
+import traceback
 
 
-def ceil(raw_tensor):
+def ceil(raw_tensor, dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with ceiling method
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-
+    dtype : string
+        dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
     """
-    return cast.ceil(raw_tensor)
+    return cast.ceil(raw_tensor, dtype)
 
 
-def floor(raw_tensor):
+def floor(raw_tensor, dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with flooring method
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-
+    dtype : string
+        dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
     """
-    return cast.floor(raw_tensor)
+    return cast.floor(raw_tensor, dtype)
 
 
-def round(raw_tensor):
+def round(raw_tensor, dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with rounding method
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-
+    dtype : string
+        dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
     """
-    return cast.round(raw_tensor)
+    return cast.round(raw_tensor, dtype)
 
 
-def trunc(raw_tensor):
+def trunc(raw_tensor, dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with trunc method
 
@@ -98,26 +102,29 @@ def trunc(raw_tensor):
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
 
+    dtype : string
+        dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
     """
-    return cast.trunc(raw_tensor)
+    return cast.trunc(raw_tensor, dtype)
 
 
-def round_half_up(raw_tensor):
+def round_half_up(raw_tensor, dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with rounding method
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-
+    dtype : string
+        dst dtype need to cast to
     Returns
     -------
     wrapped_tensor : casted tensor
     """
-    return cast.round_half_up(raw_tensor)
+    return cast.round_half_up(raw_tensor, dtype)
 
 
 def cast_to(data, dtype, f1628IntegerFlag=True):

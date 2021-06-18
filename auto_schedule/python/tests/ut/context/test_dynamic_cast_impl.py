@@ -32,22 +32,6 @@ def test_cast_para_check_of_cast_tensor(_):
     return False
 
 
-@_para_check_of_cast
-def stub_for_cast_para_check(_):
-    return True
-
-
-def test_cast_para_check_of_cast_dtype_support(_):
-    lhs_shape = (16, 64, 1, 8)
-    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float161")
-    try:
-        stub_for_cast_para_check(lhs)
-    except RuntimeError as e:
-        if e.args[0].get("errCode") == "E90002":
-            return True
-    return False
-
-
 def test_cast_ceil(_):
     lhs_shape = (16, 64, 1, 8)
     lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
@@ -237,7 +221,6 @@ def test_cast_to_same_dtype(_):
 test_func_list_Ascend910 = [
     test_cast_para_check_of_cast_dynamic,
     test_cast_para_check_of_cast_tensor,
-    test_cast_para_check_of_cast_dtype_support,
     test_cast_ceil,
     test_cast_floor,
     test_cast_round,

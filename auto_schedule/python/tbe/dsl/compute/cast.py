@@ -37,22 +37,21 @@ from .util import shape_to_list
 
 NAME_INDEX = [0]
 
-
 @decorator
 def _para_check_of_cast(func, *args, **kwargs):
     '''
-    auto cast dectorator.
+    cast dectorator used for round ceil floor trunc and round_half_up.
     Before calling elewise api, check the input tensor is supported by the intr.
-    If not supported, casting the input tensor to supported dtype.
-    Only static shape support auto cast.
-    (On condition that the cast type is supported.
-    If the cast type is not supported,raising a RuntimeError).
+    If not supported, would rasie up and error
+    CAST_MAP:
+        "round": "r",
+        "floor": "f",
+        "trunc": "z",
+        "round_half_up": "a",
+        "ceil": "c"
     '''
-    if in_dynamic_and_static_unify():
-        return func(*args, **kwargs)
     intr = func.__name__
-
-    if len(args) == 1:
+    if len(args) == 2:
         if not isinstance(args[0], tvm.tensor.Tensor):
             dict_args = dict()
             dict_args["errCode"] = "E90001"
@@ -60,11 +59,22 @@ def _para_check_of_cast(func, *args, **kwargs):
                                           " while type is [%s]" % ('tvm.tensor', type(args[0]))
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
+        src_dtype = args[0].dtype.lower()
+        dst_dtype = args[1]
+        cast_type = DTYPE_MAP[src_dtype] + "2" + DTYPE_MAP[dst_dtype]
+
         supported_dtypes = dsl_support_dtype(intr)
         if not supported_dtypes:
             dict_args = dict()
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "[%s] is not supported!" % intr
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        if cast_type not in supported_dtypes:
+            dict_args = dict()
+            dict_args["errCode"] = "E90002"
+            dict_args["detailed_cause"] = "the target platform is not " \
+                                          "support %s %s" % (cast_type, intr)
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     return func(*args, **kwargs)
@@ -126,7 +136,7 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
 
 @source_info_decorator()
 @_para_check_of_cast
-def ceil(raw_tensor):
+def ceil(raw_tensor, dst_dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with ceiling method
 
@@ -138,13 +148,27 @@ def ceil(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
-    dst_dtype = "int32"
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_ceil")
 
 
 @source_info_decorator()
 @_para_check_of_cast
-def floor(raw_tensor):
+def floor(raw_tensor, dst_dtype="int32"):
+    """
+    cast tensor from src_type to dst_dtype with flooring method
+
+    Parameters
+    ----------
+    raw_tensor : wrapped_tensor or tvm.tensor
+
+    Returns
+    -------
+    wrapped_tensor : casted tensor
+    """
+    return _cast_op(raw_tensor, dst_dtype, "elewise_single_floor")
+
+
+def _floor(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with flooring method
 
@@ -163,9 +187,24 @@ def floor(raw_tensor):
 # pylint: disable=redefined-builtin
 @source_info_decorator()
 @_para_check_of_cast
-def round(raw_tensor):
+def round(raw_tensor, dst_dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with rounding method
+
+    Parameters
+    ----------
+    raw_tensor : wrapped_tensor or tvm.tensor
+
+    Returns
+    -------
+    wrapped_tensor : casted tensor
+    """
+    return _cast_op(raw_tensor, dst_dtype, "elewise_single_round")
+
+
+def _round(raw_tensor):
+    """
+    cast tensor from src_type to dst_dtype with rounding method for inner use
 
     Parameters
     ----------
@@ -181,7 +220,7 @@ def round(raw_tensor):
 
 @source_info_decorator()
 @_para_check_of_cast
-def trunc(raw_tensor):
+def trunc(raw_tensor, dst_dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with trunc method
 
@@ -193,22 +232,12 @@ def trunc(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
-    src_dtype = raw_tensor.dtype.lower()
-    cast_type = DTYPE_MAP[src_dtype] + "2s32z"
-    is_support = intrinsic_check_support("Intrinsic_vconv", cast_type)
-    if not is_support:
-        dict_args = dict()
-        dict_args["errCode"] = "E90002"
-        dict_args["detailed_cause"] = "the target platform is not " \
-                                      "support %s trunc" % src_dtype
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    dst_dtype = "int32"
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_trunc")
 
 
 @source_info_decorator()
-def round_half_up(raw_tensor):
+@_para_check_of_cast
+def round_half_up(raw_tensor, dst_dtype="int32"):
     """
     cast tensor from src_type to dst_dtype with rounding method
 
@@ -220,17 +249,6 @@ def round_half_up(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
-    src_dtype = raw_tensor.dtype.lower()
-    cast_type = DTYPE_MAP[src_dtype] + "2s32a"
-    is_support_round_d = intrinsic_check_support("Intrinsic_vconv", cast_type)
-    if not is_support_round_d:
-        dict_args = dict()
-        dict_args["errCode"] = "E90002"
-        dict_args["detailed_cause"] = "the target platform is not " \
-                                      "support %s round" % src_dtype
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    dst_dtype = "int32"
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_round_d")
 
 
@@ -346,7 +364,7 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
     if (data_dtype.lower() == "float32") and (dtype == "int32") and \
             not intrinsic_check_support("Intrinsic_vconv", "f322s32z"):
         fp32_max = tvm.const(2147483648, dtype="float32")
-        fp32_min = tvm.const(2**(-31), dtype="float32")
+        fp32_min = tvm.const(2 ** (-31), dtype="float32")
         data1 = tbe.dsl.clip(data, 0.5, -0.5)
         new_data = tbe.dsl.vmuls(data1, fp32_max)
         tmp2 = tbe.dsl.vabs(new_data)
@@ -354,11 +372,11 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
         fp32_res = tbe.dsl.vmul(new_data, tbe.dsl.vrec(tmp3, "high_precision"))
         if not api_check_support("tbe.dsl.round", "float32"):
             fp32_res = _cast(fp32_res, dst_dtype="float16")
-        sign_res = round(fp32_res)  # get the sign data[-1,0,1]
+        sign_res = _round(fp32_res)  # get the sign data[-1,0,1]
         abs_data = tbe.dsl.vabs(data)
         if not api_check_support("tbe.dsl.floor", "float32"):
             abs_data = _cast(abs_data, dst_dtype="float16")
-        floor_data = floor(abs_data)  # get the floor data
+        floor_data = _floor(abs_data)  # get the floor data
         res = tbe.dsl.vmul(floor_data, sign_res)
         return res
 
@@ -373,9 +391,9 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
         tmp2 = tbe.dsl.vabs(new_data)
         tmp3 = tbe.dsl.vadds(tmp2, fp16_min)
         fp16_res = tbe.dsl.vmul(new_data, tbe.dsl.vrec(tmp3, "high_precision"))
-        sign_res = round(fp16_res)
+        sign_res = _round(fp16_res)
 
-        floor_data = floor(tbe.dsl.vabs(data))
+        floor_data = _floor(tbe.dsl.vabs(data))
         res = tbe.dsl.vmul(floor_data, sign_res)
         return res
 
