@@ -967,7 +967,6 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
 IMPLEMT_COMMON_INFERFUNC(TransposeInferShape) {
   const vector<string> depend_names = {"perm"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  op_desc->SetOpInferDepends(depend_names);
   auto node = NodeUtils::GetNodeFromOperator(op);
 
   bool perm_done = false;

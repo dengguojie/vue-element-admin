@@ -623,7 +623,6 @@ class Hwcn2Fractalzg(object):
 
             #with tik_inst.if_scope(block_idx < 32):
             self._zero_offset_1(self.ub_input)
-            self._zero_offset_2(self.ub_input)
 
             with tik_inst.for_range(pc_kernel_base, pc_kernel_base + pc_kernel_repeat) as lk:
                 self._restore(left_zero, top_distance, nc0_counter,
