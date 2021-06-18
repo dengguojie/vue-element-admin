@@ -247,24 +247,24 @@ def check_supported(x_dict,
                     data_format='NDHWC',
                     kernel_name="conv3d_backprop_filter"):
     """
-    The H and W dimension of dilation should be in range [1, 255]
-    The D,H or W dimension of the filter should be in range [1, 255]
-    The padding in each dimension should be in range [0, 255]
-    The feature map's H,W and D dimension should be in [1, 4096]
-    The out_backprop's H and W dimension should be in [1, 4096]
-    If filter h,w in [1,11] and fmap h/w after padding equals to filter h/w, the out_backprop's h,w,d dimension should be in range [2, 4096]
-    The D,H or W dimension of the stride should be in range [1, 63]
+    The H and W dimension of dilation should be in range [1, 255] \n
+    The D,H or W dimension of the filter should be in range [1, 255] \n
+    The padding in each dimension should be in range [0, 255] \n
+    The feature map's H,W and D dimension should be in [1, 4096] \n
+    The out_backprop's H and W dimension should be in [1, 4096] \n
+    If filter h,w in [1,11] and fmap h/w after padding equals to filter h/w, the out_backprop's h,w,d dimension should be in range [2, 4096] \n
+    The D,H or W dimension of the stride should be in range [1, 63] \n
 
-    The groups should <= the feature map's and the out_backprop's channel dimension
-    Feature map's channel dimension or out_backprop's channel dimension must be divisible by groups
-    The channel dimension of feature map should = the filter's channel dimension * groups
-    The out_backprop's channel dimension should = the filter's batch dimension
-    The feature map's batch dimension should = the out_backprop's batch dimensionss
-    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation
-    The padding in each dimension should < the filter's corresponding dimension after dilation
-    The out_backprop's H * stride's H should < 4096
-    The out_backprop's W * stride's W should < 4096
-    If the output H dimension is not 1, the output W dimension should >= 2
+    The groups should <= the feature map's and the out_backprop's channel dimension \n
+    Feature map's channel dimension or out_backprop's channel dimension must be divisible by groups \n
+    The channel dimension of feature map should = the filter's channel dimension * groups \n
+    The out_backprop's channel dimension should = the filter's batch dimension \n
+    The feature map's batch dimension should = the out_backprop's batch dimensionss \n
+    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation \n
+    The padding in each dimension should < the filter's corresponding dimension after dilation \n
+    The out_backprop's H * stride's H should < 4096 \n
+    The out_backprop's W * stride's W should < 4096 \n
+    If the output H dimension is not 1, the output W dimension should >= 2 \n
 
     The data in L1 buffer should <= the chip's L1 buffer size
     """

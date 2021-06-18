@@ -854,18 +854,18 @@ def check_supported(fmap,
                     offset_x=0,
                     kernel_name="conv3d"):
     """
-    The H and W dimension of dilation should be in range [1, 255]
-    The D,H or W dimension of the filter should be in range [1, 255]
-    The padding in each dimension should be in range [0, 255]
-    The D,H or W dimension of the stride should be in range [1, 63]
+    The H and W dimension of dilation should be in range [1, 255] \n
+    The D,H or W dimension of the filter should be in range [1, 255] \n
+    The padding in each dimension should be in range [0, 255] \n
+    The D,H or W dimension of the stride should be in range [1, 63] \n
 
-    The groups should <= the feature map's and the filter's channel dimension
-    Feature map's channel dimension or filter's channel dimension must be divisible by groups
-    The channel dimension of the feature map should = filter's channel dimension * groups
-    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation
-    The padding in each dimension should < the filter's corresponding dimension after dilation
+    The groups should <= the feature map's and the filter's channel dimension \n
+    Feature map's channel dimension or filter's channel dimension must be divisible by groups \n
+    The channel dimension of the feature map should = filter's channel dimension * groups \n
+    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation \n
+    The padding in each dimension should < the filter's corresponding dimension after dilation \n
     
-    If the output H dimension is not 1, the output W dimension should >= 2
+    If the output H dimension is not 1, the output W dimension should >= 2 \n
     The feature map size in L1 buffer should <= the chip's L1 buffer size
     """
     fmp_shape = fmap.get("ori_shape")
