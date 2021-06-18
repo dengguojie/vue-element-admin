@@ -21,7 +21,65 @@ RELEASE_PATH="${BASE_PATH}/output"
 INSTALL_PATH="${BUILD_PATH}/install"
 CMAKE_HOST_PATH="${BUILD_PATH}/cann"
 CMAKE_DEVICE_PATH="${BUILD_PATH}/cann_device"
-
+down_third_libs(){
+  if [ ! -d "./build" ];then
+    mkdir build
+  fi
+  if [ ! -d "./build/download" ];then
+    mkdir build/download
+  fi
+  if [ ! -f "./build/download/eigen/eigen-3.3.7.tar.gz" ];then
+      if [ ! -d "./build/download/eigen" ];then
+	  mkdir build/download/eigen
+      fi
+	  wget -P build/download/eigen --debug https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
+      
+  fi
+  if [ ! -f "./build/download/gtest/release-1.8.0.tar.gz" ];then
+      if [ ! -d "./build/download/gtest" ];then
+	    mkdir build/download/gtest
+      fi
+	  wget -P build/download/gtest --debug https://github.com/google/googletest/archive/release-1.8.0.tar.gz
+      
+  fi
+  if [ ! -f "./build/download/nlohmann_json/include.zip" ];then
+      if [ ! -d "./build/download/nlohmann_json" ];then
+	    mkdir build/download/nlohmann_json
+      fi
+	  wget -P build/download/nlohmann_json --debug  https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip
+      
+  fi
+  if [ ! -f "./build/download/protobuf/v3.8.0.tar.gz" ];then
+      if [ ! -d "./build/download/protobuf" ];then
+	    mkdir build/download/protobuf
+      fi
+	  wget -P build/download/protobuf --debug https://github.com/protocolbuffers/protobuf/archive/v3.8.0.tar.gz
+      
+  fi
+  if [ ! -f "./build/download/secure_c/v1.1.10.tar.gz" ];then
+      if [ ! -d "./build/download/secure_c" ];then
+	    mkdir build/download/secure_c
+      fi
+	  wget -P build/download/secure_c --debug  https://gitee.com/openeuler/libboundscheck/repository/archive/v1.1.10.tar.gz
+  fi
+}
+check_third_libs(){
+  if [ ! -f "./build/download/eigen/eigen-3.3.7.tar.gz" ];then
+	  echo "download from https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz failed"
+  fi
+  if [ ! -f "./build/download/gtest/release-1.8.0.tar.gz" ];then
+  	  echo "download from https://github.com/google/googletest/archive/release-1.8.0.tar.gz failed"
+  fi
+  if [ ! -f "./build/download/nlohmann_json/include.zip" ];then
+      echo "download from https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip failed"
+  fi
+  if [ ! -f "./build/download/protobuf/v3.8.0.tar.gz" ];then
+      echo "download from https://github.com/protocolbuffers/protobuf/archive/v3.8.0.tar.gz failed"
+  fi
+  if [ ! -f "./build/download/secure_c/v1.1.10.tar.gz" ];then
+      echo "download from https://gitee.com/openeuler/libboundscheck/repository/archive/v1.1.10.tar.gz failed"
+  fi
+}
 source scripts/util/util.sh
 
 # print usage message
@@ -30,6 +88,8 @@ usage() {
   echo "    bash build.sh [-h] [-j[n]] [-u] [-s] [-v] [-g]"
   echo ""
   echo "Options:"
+  echo "    -d Download third party libs"
+  echo "    -x Download git submodule"
   echo "    -h Print usage"
   echo "    -j[n] Set the number of threads used to build CANN, default is 8"
   echo "    -u Build all UT"
@@ -67,9 +127,13 @@ checkopts() {
   UT_NO_EXEC=FALSE
   CHANGED_FILES=""
   # Process the options
-  while getopts 'hj:usvg:a-:m-:f:' opt
+  while getopts 'dxhj:usvg:a-:m-:f:' opt
   do
     case "${opt}" in
+      d) down_third_libs;check_third_libs
+	 exit 0;;
+      x) git submodule init &&git submodule update
+	 exit 0;;
       h) usage
          exit 0 ;;
       j) THREAD_NUM=$OPTARG ;;
