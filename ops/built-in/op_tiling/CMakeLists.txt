@@ -149,7 +149,6 @@ set(_optiling_files
   sort.cc
   as_strided.cc
   inplace_index_add.cc
-  inplace_index_add.cc
 )
 
 set(_op_tiling_include
