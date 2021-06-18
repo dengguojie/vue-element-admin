@@ -161,6 +161,7 @@ if(ENABLE_TEST STREQUAL "")
   )
   target_link_libraries(opsproto PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:slog_headers>>
     ${_op_proto_link_libs}
   )
 

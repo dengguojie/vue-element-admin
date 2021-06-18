@@ -135,6 +135,7 @@ add_library(cpu_kernels_context_static STATIC
 
 target_link_libraries(cpu_kernels_context PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:slog_headers>
     slog
     PUBLIC c_sec
     ascend_protobuf
@@ -188,6 +189,7 @@ target_compile_options(cpu_kernels_context_static PRIVATE
 
 target_link_libraries(cpu_kernels_context_static PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:slog_headers>
     ascend_protobuf_inc
     -Wl,-z,relro,-z,now
     -s

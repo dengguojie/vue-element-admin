@@ -119,6 +119,7 @@ if(NOT ENABLE_TEST)
 
   target_link_libraries(ops_all_caffe_plugin PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:slog_headers>>
     -Wl,--no-as-needed
       graph
       register

@@ -256,6 +256,7 @@ target_include_directories(cpu_kernels_static PRIVATE
 
 target_link_libraries(cpu_kernels_host PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:slog_headers>
     -ldl
     slog
     c_sec
@@ -264,6 +265,7 @@ target_link_libraries(cpu_kernels_host PRIVATE
 
 target_link_libraries(cpu_kernels PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:slog_headers>
     -Wl,--whole-archive
     cpu_kernels_context_static
     -Wl,--no-whole-archive
@@ -303,6 +305,7 @@ target_compile_definitions(cpu_kernels_static PRIVATE
 
 target_link_libraries(cpu_kernels_static PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:slog_headers>
 )
 
 

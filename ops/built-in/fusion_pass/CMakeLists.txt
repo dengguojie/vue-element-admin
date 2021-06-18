@@ -321,13 +321,19 @@ set(_llt_aic_srcs
 )
 if(ENABLE_TEST STREQUAL "")
   add_library(ops_fusion_pass_aicore SHARED ${_aic_srcs})
+
   target_include_directories(ops_fusion_pass_aicore PRIVATE
     ${_common_fusion_pass_inc}
   )
+
   target_link_libraries(ops_fusion_pass_aicore PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:slog_headers>>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:msprof_headers>>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:mmpa_headers>>
     ${_common_fusion_pass_dep}
   )
+
   # to solve the compile warnings in fp16_t.cc
   target_compile_options(ops_fusion_pass_aicore PRIVATE
     "-fno-strict-aliasing"
@@ -367,6 +373,8 @@ if(ENABLE_TEST STREQUAL "")
 
   target_link_libraries(ops_fusion_pass_vectorcore PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:slog_headers>>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:msprof_headers>>
     ${_common_fusion_pass_dep}
   )
 

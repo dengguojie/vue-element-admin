@@ -75,6 +75,7 @@ if(BUILD_OPEN_PROJECT)
 else()
   target_link_libraries(constant_folding_ops PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:slog_headers>
     -Wl,--whole-archive
     cpu_kernels_static
     cpu_kernels_context_static

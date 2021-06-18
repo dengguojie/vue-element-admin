@@ -494,6 +494,7 @@ if(ENABLE_TEST STREQUAL "")
 
   target_link_libraries(ops_all_plugin PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:slog_headers>>
     ${_ops_plugin_link_libs}
   )
 

@@ -190,6 +190,7 @@ if(ENABLE_TEST STREQUAL "")
   )
   target_link_libraries(optiling PRIVATE
     $<BUILD_INTERFACE:intf_pub>
+    $<$<NOT:$<BOOL:${BUILD_OPEN_PROJECT}>>:$<BUILD_INTERFACE:slog_headers>>
     ${_op_tiling_link_libs}
   )
   # to solve the compile warnings in fp16_t.cc
