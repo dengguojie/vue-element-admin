@@ -55,6 +55,12 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, kernel_name="r
     -------
     output tensorlist
     """
+    x_type = x.dtype.lower()
+
+    if x_type == "float16":
+        x = tbe.cast_to(x, "float32")
+        mean = tbe.cast_to(mean, "float32")
+
     kernel_name_var = kernel_name
 
     shape_x = shape_util.shape_to_list(x.shape)
@@ -101,6 +107,10 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, kernel_name="r
     var = tbe.reduce_sum(var_muls, axis=dim, keepdims=keepdim)
     # calculate the square root
     y = tbe.vsqrt(var)
+
+    if y.dtype != x_type:
+        y = tbe.cast_to(y, dtype=x_type)
+
     # form a list and return
     return y
 
