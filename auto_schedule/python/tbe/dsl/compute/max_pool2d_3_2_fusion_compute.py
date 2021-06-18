@@ -63,7 +63,7 @@ def _is_support_v200():
 
     Returns
     -------
-    True:  Ascend610/Ascend710/Hi3796CV300CS version
+    True:  Ascend610/Ascend710/Hi3796CV300CS/SD3403 version
     False: Other version
     """
     soc_version = get_soc_spec("SOC_VERSION")
@@ -173,9 +173,9 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
             res = tvm.compute(res_shape,
                               lambda n, c1, m, c0:
                               ub_reshape[n, c1,
-                                            m // max_pool_res_shape[3],
-                                            m % max_pool_res_shape[3],
-                                            c0],
+                                         m // max_pool_res_shape[3],
+                                         m % max_pool_res_shape[3],
+                                         c0],
                               name=NAME + 'max_pool_res',
                               tag=OP_TAG + "max_pool_res")
         MaxPoolParam.update_tensormap("max_pool_res", res)
@@ -204,17 +204,17 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
         if data_mode == 0:
             h_out, w_out, padding = \
                 _get_caffe_out_size_and_pad(ceil_mode,
-                                           input_5d_shape,
-                                           ksize,
-                                           strides,
-                                           padding)
+                                            input_5d_shape,
+                                            ksize,
+                                            strides,
+                                            padding)
         else:
             h_out, w_out, padding = \
                 _get_tensorflow_out_size_and_pad(pad_mode,
-                                                input_5d_shape,
-                                                ksize,
-                                                strides,
-                                                padding)
+                                                 input_5d_shape,
+                                                 ksize,
+                                                 strides,
+                                                 padding)
         MaxPoolParam.update_tensormap("pooling_padding", padding)
         if padding == [0, 0, 0, 0]:
             data_pad = input_5d_data
@@ -244,15 +244,15 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
         # compute col max and get final res
         col_max_res, ret_col_max_pool_tensors = \
             _compute_col_optimization(row_max_res,
-                                     max_pool_res_shape,
-                                     strides,
-                                     ksize)
+                                      max_pool_res_shape,
+                                      strides,
+                                      ksize)
         # get list of vector max tensors
         ret_out_list = ret_row_max_pool_tensors + ret_col_max_pool_tensors
 
         return col_max_res, ret_out_list
 
-    _check_para(ksize, strides)
+    _check_para(ksize, strides, input_data)
 
     dtype = input_data.dtype
     # hard code to get conv_res attrs!!!
@@ -266,7 +266,7 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
     return res
 
 
-def _check_para(window, strides):
+def _check_para(window, strides, input_data):
     """
     check the window and stride
     """
@@ -277,6 +277,11 @@ def _check_para(window, strides):
     stride_h, stride_w = strides
     if (stride_h != 2) or (stride_w != 2):
         raise RuntimeError("pooling stride size must be [2, 2].")
+
+    input_shape = _shape_to_list(input_data.shape)
+    data_access_size = 4
+    if len(input_shape) < data_access_size:
+        raise RuntimeError("input data length is less than the data access size.")
 
 
 def _compute_col_optimization(data, max_pool_res_shape, stride, window):

@@ -149,7 +149,14 @@ def test_conv2d_pooling(test_arg):
             conv_pooling_fusion(*testcases[key])
             print("[passed: %s]" % key)
 
-
+    def run_input_shape_size_error_case():
+        fm = tvm.placeholder((1, 224, 224), name='fm', dtype="float16", attrs={'ori_format': 'NCHW', 'format':'NC1HWC0_C04'})
+        try:
+            res = te.lang.cce.max_pool_compute(fm, (2, 2), (2, 2), "SAME", (0, 0, 0, 0), 0)
+        except RuntimeError:
+            print("[Passed: run_input_shape_size_error_case pass]")
+        else:
+            print("[Passed: run_input_shape_size_error_case end]")
     """
     The UT for cce Test_conv2d_v200
     """
@@ -159,6 +166,7 @@ def test_conv2d_pooling(test_arg):
 
     if cce_conf.get_product() in ("1910"):
         run_testcase()
+        run_input_shape_size_error_case()
     else:
         pass
 
