@@ -99,8 +99,8 @@ class LstmCellGradInput():
         self.check_input_param()
 
         product_name = "cloud"
-        self.tik_instance = tik.Tik(tik.Dprofile("v100", product_name))
-        self.aicore_num = tik.Dprofile("v100", product_name).get_aicore_num()
+        self.tik_instance = tik.Tik(tik.Dprofile())
+        self.aicore_num = tik.Dprofile().get_aicore_num()
 
         if self.c_shape[1] * self.c_shape[0] < self.aicore_num:
             self.aicore_num = self.c_shape[1] * self.c_shape[0]

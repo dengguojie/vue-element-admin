@@ -258,21 +258,6 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
     if cell_depth != 1:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr cell_depth is not support, please check!")
 
-    if use_peephole is not False:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr use_peephole is not support, please check!")
-
-    if keep_prob != 1.0:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr keep_prob is not support, please check!")
-
-    if cell_clip != -1.0:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr cell_clip is not support, please check!")
-
-    if num_proj != 0:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr num_proj is not support, please check!")
-
-    if time_major is not True:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr time_major only support True, please check!")
-
     if activation not in ["tanh"]:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr activation only support tanh, please check!")
 
@@ -312,9 +297,9 @@ def dynamic_rnn_v3(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
         real_mask_fun = True
     if project is not None:
         project_fun = True
-    if len(init_h["shape"]) == 4:
+    if init_h is not None and len(init_h["shape"]) == 4:
         init_h["shape"] = [1, init_h["shape"][0], init_h["shape"][1], init_h["shape"][2], init_h["shape"][3]]
-    if len(init_c["shape"]) == 4:
+    if init_c is not None and len(init_c["shape"]) == 4:
         init_c["shape"] = [1, init_c["shape"][0], init_c["shape"][1], init_c["shape"][2], init_c["shape"][3]]
     if pipe_hole_fun and len(wci["shape"]) == 4:
         wci["shape"] = [1, wci["shape"][0], wci["shape"][1], wci["shape"][2], wci["shape"][3]]
