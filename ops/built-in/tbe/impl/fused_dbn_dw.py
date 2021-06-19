@@ -21,6 +21,9 @@ from impl.util.platform_adapter import error_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
 
+BLOCK_DIM = 32
+BATCH_256 = 256
+BATCH_PER_CORE = 8
 class Dbn2Conv2dBackpropFilter(object):
     """
     class of fused_dbn2_dw
@@ -73,6 +76,7 @@ class Dbn2Conv2dBackpropFilter(object):
         case_dedyh_fmap_h_dedychannel_fmapchannel
         """
         CASE_56_56_256_64_SPLIT_DICT = {
+            "batch_status": "outer",
             "mode": "common",
             "dedy_wigth": 56,
             "dedy_height": 56,
@@ -87,6 +91,7 @@ class Dbn2Conv2dBackpropFilter(object):
         }
 
         CASE_28_28_512_128_SPLIT_DICT = {
+            "batch_status": "outer",
             "mode": "common",
             "dedy_wigth": 28,
             "dedy_height": 28,
@@ -101,6 +106,7 @@ class Dbn2Conv2dBackpropFilter(object):
         }
 
         CASE_56_56_64_64_SPLIT_DICT = {
+            "batch_status": "outer",
             "mode": "big_x",
             "dedy_wigth": 56,
             "dedy_height": 56,
@@ -115,6 +121,7 @@ class Dbn2Conv2dBackpropFilter(object):
         }
 
         CASE_28_56_512_256_SPLIT_DICT = {
+            "batch_status":"outer",
             "mode": "common",
             "dedy_wigth": 28,
             "dedy_height": 28,
@@ -129,6 +136,7 @@ class Dbn2Conv2dBackpropFilter(object):
         }
 
         CASE_56_56_64_256_SPLIT_DICT = {
+            "batch_status": "inner",
             "mode": "big_x",
             "dedy_wigth": 56,
             "dedy_height": 56,
@@ -143,6 +151,7 @@ class Dbn2Conv2dBackpropFilter(object):
         }
 
         CASE_56_56_64_64_3_SPLIT_DICT = {
+            "batch_status": "inner",
             "mode": "big_x",
             "dedy_wigth": 56,
             "dedy_height": 56,
@@ -157,6 +166,7 @@ class Dbn2Conv2dBackpropFilter(object):
         }
 
         CASE_28_28_128_512_SPLIT_DICT = {
+            "batch_status": "inner",
             "mode": "big_x",
             "dedy_wigth": 28,
             "dedy_height": 28,
@@ -171,6 +181,7 @@ class Dbn2Conv2dBackpropFilter(object):
         }
 
         CASE_56_56_128_256_SPLIT_DICT = {
+            "batch_status": "inner",
             "mode": "big_x",
             "dedy_wigth": 56,
             "dedy_height": 56,
@@ -579,7 +590,7 @@ class Dbn2Conv2dBackpropFilter(object):
             with self.tik_instance.for_range(0, cub_N) as loop_n:
                 self._ub_mpp_fun(loop_n, loop_m, split_dict, mn_context, cub_N)
 
-    def _loopk_mpp_big_x(self, loop_k, loop_n, mn_context, split_dict):
+    def _loopk_mpp_big_x(self, loop_k, loop_n, mn_context, split_dict, loop_batch=0):
         """load3d and mad for big_x model which fmap is load """
         _, fmap_w = self.shape_x_5hd[2:4]
         filter_h, filter_w = self.shape_4d_filters[2:]
@@ -590,6 +601,8 @@ class Dbn2Conv2dBackpropFilter(object):
         fmap_l0B0 = mn_context.get("fmap_l0B0")
         dw_l0C = mn_context.get("dw_l0C")
         dedy_l0A0 = mn_context.get("dedy_l0A0")
+        stride_h, stride_w = self.strides
+        _, dedy_w = self.shape_4d_dedy[2:]
         c_index = loop_n * cal_n // self.block
         if filter_w == 1:
             fmap_l1 = mn_context.get("fmap_l1")[0, c_index, 0, 0]
@@ -598,6 +611,7 @@ class Dbn2Conv2dBackpropFilter(object):
                                            fmap_w, c_i, 0, 0, 0, 0, self.strides[1], self.strides[0], filter_w,
                                            filter_h, 1, 1, cal_n // self.block, 1, (cal_hw // self.block))
         else:
+            fmap_l1_h = cal_hw // dedy_w * stride_h + filter_h -1
             padu, padd, padl, padr = self.padding
             pad_u = self.tik_instance.Scalar("int8", "pad_u")
             pad_d = self.tik_instance.Scalar("int8", "pad_d")
@@ -607,18 +621,18 @@ class Dbn2Conv2dBackpropFilter(object):
             with self.tik_instance.if_scope(loop_k == 0):
                 pad_u.set_as(padu)
                 pad_d.set_as(0)
-                fmap_h.set_as(cal_hw // fmap_w - padu)
+                fmap_h.set_as(fmap_l1_h - padu)
                 left_top_h.set_as(-padu)
             with self.tik_instance.else_scope():
                 with self.tik_instance.if_scope(loop_k == loop_K - 1):
                     pad_u.set_as(0)
                     pad_d.set_as(padd)
-                    fmap_h.set_as(cal_hw // fmap_w - padd)
+                    fmap_h.set_as(fmap_l1_h- padd)
                     left_top_h.set_as(0)
                 with self.tik_instance.else_scope():
                     pad_u.set_as(0)
                     pad_d.set_as(0)
-                    fmap_h.set_as(cal_hw // fmap_w)
+                    fmap_h.set_as(fmap_l1_h)
                     left_top_h.set_as(0)
             with self.tik_instance.for_range(0, cal_n // self.block, thread_num=1) as c_i:
                 self.tik_instance.load3dv1(fmap_l0B0[0, c_i, 0, 0], fmap_l1, [padl, padr, pad_u, pad_d], fmap_h,
@@ -627,7 +641,10 @@ class Dbn2Conv2dBackpropFilter(object):
                                            1, cal_n // self.block, 1, (cal_hw // self.block))
 
         with self.tik_instance.if_scope(loop_k == 0):
-            self.tik_instance.mmad(dw_l0C[c_index, 0, 0, 0], dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 0)
+            with self.tik_instance.if_scope(loop_batch == 0):
+                self.tik_instance.mmad(dw_l0C[c_index, 0, 0, 0], dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 0)
+            with self.tik_instance.else_scope():
+                self.tik_instance.mmad(dw_l0C[c_index, 0, 0, 0], dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 1)
         with self.tik_instance.else_scope():
             self.tik_instance.mmad(dw_l0C[c_index, 0, 0, 0], dedy_l0A0, fmap_l0B0, cal_m, cal_hw, cal_n, 1)
 
@@ -782,6 +799,7 @@ class Dbn2Conv2dBackpropFilter(object):
             self.tik_instance.mmad(dw_l0C_addr, dedy_l0A0, fmap_l0B0, cal_m, cal_k, cal_n, 1)
 
     def _outer_loop_mpp_fun_conv1(self, mn_context, split_dict, block_idx):
+
         loop_K = split_dict.get("loop_K")
         loop_K_BL1 = split_dict.get("loop_K_BL1")
         stride_h, _ = self.strides
@@ -830,7 +848,16 @@ class Dbn2Conv2dBackpropFilter(object):
         """
         fused_compute
         """
-        with self.tik_instance.for_range(0, 32, block_num=32) as block_idx:
+
+        def _choose_mode(mn_context, split_dict, block_idx):
+            if split_dict.get("mode") == "common" or split_dict.get("mode") == "3a_1":
+                self._outer_loop_mpp_fun_common(mn_context, split_dict, block_idx)
+            if split_dict.get("mode") == "big_x":
+                self._outer_loop_mpp_fun_big_x(mn_context, split_dict, block_idx)
+            if split_dict.get("mode") == "conv1":
+                self._outer_loop_mpp_fun_conv1(mn_context, split_dict, block_idx)
+
+        with self.tik_instance.for_range(0, BLOCK_DIM, block_num=BLOCK_DIM) as block_idx:
             diff_scale_ub = self.tik_instance.Tensor(self.diff_scale_dtype, self.dedy_channel_wise,
                                                      name="diff_scale_ub", scope=tik.scope_ubuf)
 
@@ -853,12 +880,13 @@ class Dbn2Conv2dBackpropFilter(object):
             self._load_dbn_abc_all(mn_context)
             self._cal_dbn_abc(mn_context)
             split_dict = self._choose_split_dict()
-            if split_dict.get("mode") == "common" or split_dict.get("mode") == "3a_1":
-                self._outer_loop_mpp_fun_common(mn_context, split_dict, block_idx)
-            if split_dict.get("mode") == "big_x":
-                self._outer_loop_mpp_fun_big_x(mn_context, split_dict, block_idx)
-            if split_dict.get("mode") == "conv1":
-                self._outer_loop_mpp_fun_conv1(mn_context, split_dict, block_idx)
+            batch_num = self.shape_4d_dedy[0]
+            if batch_num == BATCH_256:
+                with self.tik_instance.for_range(0, BATCH_PER_CORE) as loop_batch:
+                    batch_dim = block_idx * BATCH_PER_CORE + loop_batch
+                    _choose_mode(mn_context, split_dict, batch_dim)
+            else:
+                _choose_mode(mn_context, split_dict, block_idx)
 
 
 def _check_shape_and_format(

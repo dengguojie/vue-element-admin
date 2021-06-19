@@ -46,7 +46,7 @@ static const string PATTERN_DBN = "BNTrainingReduceGrad";
 static const string PATTERN_CONV2DBPFILTER = "Conv2DBackpropFilterD";
 static const string PATTERN_FUSEDDBNDW = "FusedDbnDw";
 static const uint32_t kSupportAicoreNum = 32;
-static const int64_t kSupportBatch = 32;
+static const vector<int64_t> kSupportBatch = {32, 256};
 static const vector<vector<int64_t>> kSupportCases = {
     // c_in, c_out, x_h, x_w, y_h, y_w, k_h, k_w
     {64, 256, 56, 56, 56, 56, 1, 1},
@@ -294,7 +294,8 @@ Status Resnet50DbnDwFusionPass::CheckSupportCase(OpDescPtr &dw_op_desc) {
   params.push_back(filter_h);
   params.push_back(filter_w);
 
-  if (batch != kSupportBatch || group != 1) {
+  int64_t batch_march = count(kSupportBatch.begin(), kSupportBatch.end(), batch);
+  if (batch_march == 0 || group != 1) {
     return FAILED;
   }
   for (auto case_now : kSupportCases) {
