@@ -2496,6 +2496,14 @@ def general_schedule(
             sch[b_l1].compute_at(sch[c_ddr], bl1_at_inner)
             if not tiling.get("BL0_matrix"):
                 sch[b_col].compute_at(sch[c_ddr], bl1_at_inner)
+        if cube_vector_split:
+            if tensor_attr.get("5HD_TRANS_NHWC") and not tiling.get("BL1_shape"):
+                axs = sch_agent[c_ddr].get_active_scopes()
+                _, _, _, ax_n = axs
+                sch[b_l1].compute_at(sch[c_ddr], ax_n)
+                if not tiling.get("BL0_matrix"):
+                    sch[b_col].compute_at(sch[c_ddr], ax_n)
+
     _full_load_bl1_bl0()
 
     if tiling.get('A_overhead_opt_flag') or tiling.get('B_overhead_opt_flag'):

@@ -148,11 +148,6 @@ def _test_nhwc_in_nhwc_out_case_1(test_arg):
     pads = (0, 0, 0, 0)
     dilations = (1, 1, 1, 1)
     data_type = "float16"
-    param_dict = {
-        "strides" : strides,
-        "padding" : pads,
-        "dilations" : dilations,
-    }
     with cce():
         fmap_ori = tvm.placeholder(out_backprop, name="fmap_ori", dtype=data_type)
         weight_ori = tvm.placeholder(conv_filter, name="weight_ori", dtype=data_type)
@@ -174,8 +169,42 @@ def _test_nhwc_in_nhwc_out_case_1(test_arg):
         cce_build_code(sch, config)
     cce_conf.te_set_version('Ascend910A')
 
+def _test_nhwc_in_nhwc_out_case_2(test_arg):
+    cce_conf.te_set_version('Ascend920A')
+    conv_filter = (256, 3, 3, 256)
+    out_backprop = (2, 14, 14, 256)
+    input_size = (2, 28, 28, 256)
+    strides = (2, 2)
+    pads = (0, 1, 0, 1)
+    dilations = (1, 1, 1, 1)
+    out_backprop_after_dialtion = (2, 27, 27, 256)
+    strides_after_dialtion = (1, 1)
+    pads_after_dilation = (0, 1, 0, 1)
+    data_type = "float16"
+    with cce():
+        fmap_ori = tvm.placeholder(out_backprop_after_dialtion, name="fmap_ori", dtype=data_type)
+        weight_ori = tvm.placeholder(conv_filter, name="weight_ori", dtype=data_type)
+        fmap = trans_data_compute(fmap_ori, None, src_format="NHWC", dst_format="NC1HWC0")
+        weight = trans_data_compute(weight_ori, None, src_format = "NHWC", dst_format="FRACTAL_Z")
+        y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NHWC", "format" : "NC1HWC0"}
+        conv_res = conv2d_backprop_input_d_compute(weight, fmap, y, input_size, strides_after_dialtion, pads_after_dilation)
+        src_n, src_c1, src_hw, src_c0 =  tuple(i.value for i in conv_res.shape)
+        out = trans_data_compute(conv_res, {"shape" : (src_n, src_hw, src_c1*src_c0)}, src_format="NC1HWC0",
+                                   dst_format="NHWC")
+        tensor_list = [weight_ori, fmap_ori, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir" : False,
+            "need_build" : True,
+            "name" : "conv2d_bp_input_ut_testcase_2",
+            "tensor_list" : tensor_list
+        }
+        cce_build_code(sch, config)
+    cce_conf.te_set_version('Ascend910A')
+
 
 ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_1)
+ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_2)
 
 def _gen_conv2d_bp_input_check_support_case():
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported)
