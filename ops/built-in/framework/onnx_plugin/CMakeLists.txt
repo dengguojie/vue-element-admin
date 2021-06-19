@@ -120,6 +120,8 @@ set(_onnx_plugins
   scatter_elements_plugin.cc
   bitshift_plugin.cc
   tfidf_vectorizer_plugin.cc
+  custom/yolo_plugin.cc
+  custom/yolov3detectionoutputv2_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
