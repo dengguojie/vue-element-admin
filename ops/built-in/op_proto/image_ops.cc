@@ -3126,4 +3126,186 @@ IMPLEMT_INFERFUNC(GridSampler3DGrad, GridSampler3DGradInferShape) {
 INFER_FUNC_REG(GridSampler3DGrad, GridSampler3DGradInferShape);
 // ----------------GridSampler3DGrid END---------------------
 
+// ---------------Upsample3dForward Op START-------------------
+static bool Upasmple3dForwardInferShape(Operator& op) {
+  OP_LOGI(op.GetName().c_str(), "Enter proto inferfunction!");
+  TensorDesc input_desc = op.GetInputDesc("x");
+  auto input_shape_dims = input_desc.GetShape().GetDims();
+  DataType input_dtype = input_desc.GetDataType();
+  constexpr int FIVEDIMS = 5;
+  constexpr int THREEDIMS = 3;
+  std::vector<int64_t> output_shape;
+  
+  if (input_dtype != DT_FLOAT && input_dtype != DT_DOUBLE)
+  {
+    OP_LOGE(op.GetName().c_str(), "input must be float or double!");
+    return false;
+  }
+  if (input_shape_dims.size() != 5) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
+    return false;
+  }
+  output_shape.emplace_back(input_shape_dims[0]);
+  output_shape.emplace_back(input_shape_dims[1]);
+
+  std::vector<int64_t> output_size; 
+  op.GetAttr("output_size", output_size);
+  std::vector<float> scales; 
+  op.GetAttr("scales", scales);
+ 
+  if (!output_size.empty() && scales.empty())
+  { 
+    if (output_size.size() != THREEDIMS) {
+      OP_LOGE(op.GetName().c_str(),"attr::output_size dims must be 3, but get %d.", output_size.size());
+      return false;
+    }
+    output_shape.insert(output_shape.end(),output_size.begin(),output_size.end());
+  } else if (output_size.empty() && !scales.empty()) {
+    if (scales.size() != THREEDIMS) {
+      OP_LOGE(op.GetName().c_str(),"attr::scales dims must be 3, but get %d.", scales.size());
+      return false;
+    }
+    for (int i = 0; i < THREEDIMS; i++) {
+      output_shape.emplace_back(int64_t(floor(input_shape_dims[i+2] * scales[i])));
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(),
+            "only one of attr::output_size or attr::scales should be defined as a non-empty value.");
+    return false;
+  }
+
+  Shape output_desc_shape(output_shape);
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(output_desc_shape);
+  output_desc.SetDataType(input_dtype);
+  op.UpdateOutputDesc("y", output_desc);
+  return true;
+}
+
+// ---------------UpsampleNearest3d Op START-------------------
+IMPLEMT_INFERFUNC(UpsampleNearest3d, UpsampleNearest3dInferShape) {
+  if (Upasmple3dForwardInferShape(op)) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+INFER_FUNC_REG(UpsampleNearest3d, UpsampleNearest3dInferShape);
+// ----------------UpsampleNearest3d END---------------------
+
+// ---------------UpsampleTrilinear3d Op START-------------------
+IMPLEMT_INFERFUNC(UpsampleTrilinear3d, UpsampleTrilinear3dInferShape) {
+  if (Upasmple3dForwardInferShape(op)) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+INFER_FUNC_REG(UpsampleTrilinear3d, UpsampleTrilinear3dInferShape);
+// ----------------UpsampleTrilinear3d END---------------------
+// ---------------Upsample3dForward Op END-------------------
+
+// ---------------Upsample3dBackward Op START-------------------
+static bool Upsample3dBackwardInferShape(Operator& op) {
+  OP_LOGI(op.GetName().c_str(), "Enter proto inferfunction!");
+  TensorDesc inputDesc = op.GetInputDesc("grad_output");
+  auto input_dtype = inputDesc.GetDataType();
+  auto input_shape_dims = inputDesc.GetShape().GetDims();
+  constexpr int FIVEDIMS = 5;
+  constexpr int THREEDIMS = 3;
+
+  if (input_dtype != DT_FLOAT && input_dtype != DT_DOUBLE)
+  {
+    OP_LOGE(op.GetName().c_str(), "input must be float or double!");
+    return false;
+  }
+
+  if (input_shape_dims.size() != FIVEDIMS) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
+    return false;
+  }
+
+  std::vector<int64_t> input_size;
+  if (GRAPH_SUCCESS != op.GetAttr("input_size", input_size)) {
+    OP_LOGE(op.GetName().c_str(), "get attr::input_size faild!");
+    return false;
+  } 
+  if (input_size.size() != FIVEDIMS) {
+    OP_LOGE(op.GetName().c_str(),"attr::input_size dims must be 5, but get %d.", input_size.size());
+    return false;
+  }
+
+  std::vector<int64_t> output_size; 
+  if (GRAPH_SUCCESS != op.GetAttr("output_size", output_size)) {
+    OP_LOGD(op.GetName().c_str(), "get attr::output_size faild!");
+    return false;
+  }
+
+  std::vector<float> scales; 
+  if (GRAPH_SUCCESS != op.GetAttr("scales", scales)) {
+    OP_LOGD(op.GetName().c_str(), "get attr::scales faild!");
+    return false;
+  }
+
+  if (!output_size.empty() && scales.empty())
+  { 
+    if (output_size.size() != THREEDIMS) {
+      OP_LOGE(op.GetName().c_str(),"attr::output_size dims must be 3, but get %d.", output_size.size());
+      return false;
+    }
+    for (int i = 0; i < THREEDIMS; i++) {
+      if (output_size[i] != input_shape_dims[i+2])
+      {
+        OP_LOGE(op.GetName().c_str(),"attr::output_size[%d](get %ld) != input::grad_output_size[%d](get %ld).", 
+                i, output_size[i], i+2, input_shape_dims[i+2]);
+        return false;
+      }
+    }
+  } else if (output_size.empty() && !scales.empty()) {
+    if (scales.size() != THREEDIMS) {
+      OP_LOGE(op.GetName().c_str(),"attr::scales dims must be 3, but get %d.", scales.size());
+      return false;
+    }
+    for (int i = 0; i < THREEDIMS; i++) {
+      int64_t tmp = int64_t(floor(input_size[i+2] * scales[i]));
+      if (tmp != input_shape_dims[i+2])
+      {
+        OP_LOGE(op.GetName().c_str(),"input_size[%d]*scales[%d](get %ld) != grad_output_size[%d](get %ld).", 
+                i+2, i, tmp, i+2, input_shape_dims[i+2]);
+        return false;
+      }
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(),
+            "only one of attr::output_size or attr::scales should be defined as a non-empty value.");
+    return false;
+  }
+
+  Shape output_desc_shape(input_size);
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(output_desc_shape);
+  output_desc.SetDataType(input_dtype);
+  op.UpdateOutputDesc("y", output_desc);
+  return true;
+}
+
+// ---------------UpsampleNearest3dGrad Op START-------------------
+IMPLEMT_INFERFUNC(UpsampleNearest3dGrad, UpsampleNearest3dGradInferShape) {
+  if (Upsample3dBackwardInferShape(op)) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+INFER_FUNC_REG(UpsampleNearest3dGrad, UpsampleNearest3dGradInferShape);
+// ----------------UpsampleNearest3dGrad END---------------------
+
+// ---------------UpsampleTrilinear3dGrad Op START-------------------
+IMPLEMT_INFERFUNC(UpsampleTrilinear3dGrad, UpsampleTrilinear3dGradInferShape) {
+  if (Upsample3dBackwardInferShape(op)) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+INFER_FUNC_REG(UpsampleTrilinear3dGrad, UpsampleTrilinear3dGradInferShape);
+// ----------------UpsampleTrilinear3dGrad END---------------------
+
+// ---------------Upsample3dBackward Op END---------------------
 }  // namespace ge
