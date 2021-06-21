@@ -10,7 +10,7 @@ ut_case = OpUT("BatchMatMul", "impl.dynamic.batch_matmul", "batch_matmul")
 
 #shape_a, shape_b, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, case_name
 matmul_case_succ = [
-    ((-1, -1, -1, -1), (-1, -1), ((2, 3), (4, 7)), (1, 3), (4, 15), (4, 15), "float16", "float16", "FRACTAL_NZ", False, False, False, "fuzzy_compile_matmul_case0"),
+    ((-1, -1, -1, -1), (-1, -1), ((2, 3), (4, 2048)), (1, 3), (4, 15), (4, 15), "float16", "float16", "FRACTAL_NZ", False, False, False, "fuzzy_compile_matmul_case0"),
 ]
 
 #shape_a, shape_b, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, case_name, expect_result

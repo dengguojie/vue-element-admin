@@ -49,7 +49,7 @@ BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
 BIT_DIR = {"float32": 16, "int32": 16, "float16": 16, "int8": 32}
 UNKNOWN_DIM = -1
 INITIAL_TILING_ID = 10000
-
+SHAPE_BMKN_LEN = 4
 
 def set_var_value(info, target_area):
     """
@@ -554,7 +554,10 @@ class MatmulTiling(CubeTilingOp):
         tiling: tiling retrieved by cost model
         """
         self.tiling_info["tiling_type"] = "cost_model_tiling"
-        self.a_info[0] = 1
+        if len(shape) == SHAPE_BMKN_LEN:
+            self.a_info[0] = shape[3]
+        else:
+            self.a_info[0] = 1
         self.a_info[1] = shape[1]
         self.a_info[2] = shape[0]
         self.b_info[0] = shape[1] * self.a_info[4]
