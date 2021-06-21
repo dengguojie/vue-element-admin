@@ -114,6 +114,7 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     y = tbe.vmins(y, const_int8_high)
     if offset_flag:
         y = tbe.vsub(y, offset)
+    y = tbe.cast_to(y, 'float16')
     y = tbe.cast_to(y, w.dtype)
     y = tbe.vmul(y, scale)
 

@@ -75,6 +75,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
 
     offset = tbe.vdiv(ori_clip_min, scale)
     offset = tbe.round(offset)
+    offset = tbe.cast_to(offset, 'float16')
     offset = tbe.cast_to(offset, data.dtype)
 
     #fake quant clip min/max
@@ -95,6 +96,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     #fake quant x
     raw_x = tbe.vdiv(clamped_x, tbe.broadcast(scale, shape_broadcast))
     round_x = tbe.round(raw_x)
+    round_x = tbe.cast_to(round_x, 'float16')
     round_x = tbe.cast_to(round_x, data.dtype)
 
     clamped_loss = tbe.vsub(round_x, raw_x)
@@ -102,6 +104,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
 
     raw_m = tbe.vdiv(ori_clip_min, scale)
     round_m = tbe.round(raw_m)
+    round_m = tbe.cast_to(round_m, 'float16')
     round_m = tbe.cast_to(round_m, data.dtype)
     loss_m = tbe.vsub(round_m, raw_m)
     loss_m = tbe.vdiv(loss_m, tbe.broadcast(tvm.const(step, loss_m.dtype), loss_m.shape))
