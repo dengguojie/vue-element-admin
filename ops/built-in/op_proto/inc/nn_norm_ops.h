@@ -84,8 +84,8 @@ REG_OP(SparseSoftmaxCrossEntropyWithLogits)
 * @li labels: A Tensor of the same type as "features". A "batch_size * num_classes" matrix . \n
 
 *@par Outputs:
-*loss: A Tensor for per example loss (a "batch_size" vector). Has the same type as "features".
-*backprop: A Tensor for the backpropagated gradients (a batch_size * num_classes matrix). Has the same type as "features" . \n
+* @li loss: A Tensor for per example loss (a "batch_size" vector). Has the same type as "features".
+* @li backprop: A Tensor for the backpropagated gradients (a batch_size * num_classes matrix). Has the same type as "features" . \n
 
 *@par Third-party framework compatibility
 *Compatible with the TensorFlow operator SoftmaxCrossEntropyWithLogits.

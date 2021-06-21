@@ -169,7 +169,7 @@ REG_OP(Relu)
 * x: A Tensor of type RealNumberType . \n
 
 * @par Outputs:
-* y: A Tensor of type RealNumberType . \n
+* y: A Tensor with the same type as x . \n
 
 * @par Third-party framework compatibility
 * Compatible with the TensorFlow operator Relu6.
@@ -209,8 +209,12 @@ REG_OP(Relu6D)
 *     backprops = gradients * (features > 0) * (features < 6) . \n
 
 * @par Inputs:
-* @li features: A Tensor of type RealNumberType.
-* @li gradients: A Tensor of type RealNumberType . \n
+* @li gradients: A Tensor of type RealNumberType. The backpropagated
+      gradients to the corresponding Relu6 operation. 
+* @li features: A Tensor with the same type as gradients.he features passed
+      as input to the corresponding Relu6 operation, or its output;
+      using either one produces the same result.  \n
+
 
 * @par Outputs:
 * backprops: A Tensor of type RealNumberType . \n

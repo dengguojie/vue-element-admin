@@ -757,7 +757,7 @@ REG_OP(Mask2Argmax)
 * @li strides: A required list, specifying the stride of the sliding window.
 * @li padding: A required string, window sliding mode. Either SAME or VALID.
 * @par Outputs:
-* @li y:Result tensor. Supported type: float, double, int32,
+* y:Result tensor. Supported type: float, double, int32,
  * uint8, int16, int8, int64, uint16, half, uint32, uint64
 
 * @attention Constraints:
@@ -770,7 +770,7 @@ REG_OP(Mask2Argmax)
 * (shape_max_pool[2] * shape_max_pool[3] + 31) // 16, 16), else failed . \n
 
 * @par Third-party framework compatibility
-* @li Compatible with the TensorFlow operator MaxPoolGradGradWithArgmax.
+* Compatible with the TensorFlow operator MaxPoolGradGradWithArgmax.
 */
 REG_OP(MaxPoolGradGradWithArgmax)
     .INPUT(x, TensorType::RealNumberType())

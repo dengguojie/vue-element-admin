@@ -67,17 +67,17 @@ def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
 # pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
 def op_select_format(x, y, num, axis, kernel_name="unpack"):
     """
-    unpacks the given dimension of a rank R tensor into rank (R-1) tensors.
-    1. when unpack by C, but output size not C0 align so don't support NC1HWC0
-    2. when split_d by N,H,W, support NC1HWC0
-    when x's format is one of [NCHW,NHWC], the lengths of x's shape == 4, dim of axis in x's format != C:
-    support 5HD format.
-    > example:
-    > original:
-    > axis=1
-    > x's Tensor(shape=(2, 3, 4, 5), "NHWC")
-    > support conversion to 5HD fromat:
-    > x's Tensor(shape=(2, 1, 3, 4, 16), "5HD")
+    unpacks the given dimension of a rank R tensor into rank (R-1) tensors. \n
+    1. when unpack by C, but output size not C0 align so don't support NC1HWC0 \n
+    2. when split_d by N,H,W, support NC1HWC0 \n
+    when x's format is one of [NCHW,NHWC], the lengths of x's shape == 4, dim of axis in x's format != C: \n
+    support 5HD format. \n
+    > example: \n
+    > original: \n
+    > axis=1 \n
+    > x's Tensor(shape=(2, 3, 4, 5), "NHWC") \n
+    > support conversion to 5HD fromat: \n
+    > x's Tensor(shape=(2, 1, 3, 4, 16), "5HD") \n
     """
     support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + util_common.get_fused_format_str(["N", "H", "W", "C"])
 
