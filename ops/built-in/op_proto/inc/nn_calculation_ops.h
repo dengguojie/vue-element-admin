@@ -776,16 +776,14 @@ REG_OP(Conv2DBackpropFilterD)
 *\n
 *\n
 * The following are the supported data types and data formats:
-*@verbatim
-    | Tensor    | x       | filter  | bias    | y
-    ------------|---------|---------|---------|--------
-    | Data Type | float16 | float16 | float16 | float16
-    |           | float32 | float32 | float32 | float32
-    |           | int8    | int8    | int32   | int32
-    ------------|---------|---------|---------|--------
-    | Format    | NCHW    | NCHW    | ND      | NCHW
-    |           | NHWC    | HWCN    |         | NHWC
-@endverbatim
+*\n
+| Tensor    | x       | filter  | bias    | y       |\n
+| :-------: | :-----: | :-----: | :-----: | :-----: |\n
+| Data Type | float16 | float16 | float16 | float16 |\n
+|           | float32 | float32 | float32 | float32 |\n
+|           | int8    | int8    | int32   | int32   |\n
+| Format    | NCHW    | NCHW    | ND      | NCHW    |\n
+|           | NHWC    | HWCN    |         | NHWC    |\n
 * For float32 type, the actual calculation on the chip is based on
 * float16.
 *\n
@@ -809,35 +807,28 @@ REG_OP(Conv2DBackpropFilterD)
 *\n
 *\n
 * The following value range restrictions must be met:
-*@verbatim
-    | Name             | Field    | Scope
-    -------------------|----------|--------------
-    | Input Image Size | H        | [1, 100000]
-    |                  | W        | [1, 4096]
-    -------------------|----------|--------------
-    | Filter Size      | H        | [1, 255]
-    |                  | W        | [1, 255]
-    -------------------|----------|--------------
-    | Stride           | H        | [1, 63]
-    |                  | W        | [1, 63]
-    -------------------|----------|--------------
-    | Padding          | Top      | [0, 255]
-    |                  | Bottom   | [0, 255]
-    |                  | Left     | [0, 255]
-    |                  | Right    | [0, 255]
-    -------------------|----------|--------------
-    | Dilation         | H        | [1, 255]
-    |                  | W        | [1, 255]
-    -------------------|----------|--------------
-    | Offset_x         |          | [-128, 127]
-
-@endverbatim
+*\n
+| Name             | Field    | Scope       |\n
+| :--------------: | :------: | :---------: |\n
+| Input Image Size | H        | [1, 100000] |\n
+|                  | W        | [1, 4096]   |\n
+| Filter Size      | H        | [1, 255]    |\n
+|                  | W        | [1, 255]    |\n
+| Stride           | H        | [1, 63]     |\n
+|                  | W        | [1, 63]     |\n
+| Padding          | Top      | [0, 255]    |\n
+|                  | Bottom   | [0, 255]    |\n
+|                  | Left     | [0, 255]    |\n
+|                  | Right    | [0, 255]    |\n
+| Dilation         | H        | [1, 255]    |\n
+|                  | W        | [1, 255]    |\n
+| Offset_x         | -        | [-128, 127] |\n
 * The W dimension of the input image supports cases exceeding 4096, but it may
 * cause compilation errors.
 *\n
 *
 *@par Outputs:
-*@li y: A 4D Tensor of output feature map. Has the same type as "x". With the
+* y: A 4D Tensor of output feature map. Has the same type as "x". With the
 * format "NHWC", the data is stored in the order of: [batch, out_height,
 * out_width, out_channels].
 *\n
@@ -952,16 +943,13 @@ REG_OP(Conv2DCompress)
 *\n
 *\n
 * The following are the supported data types and data formats:
-*@verbatim
-    | Tensor    | x       | filter  | offsets | bias     | y
-    ------------|---------|---------|---------|----------|--------
-    | Data Type | float16 | float16 | float16 | float16  | float16
-    |           |---------|---------|---------|----------|--------
-    |           | float32 | float32 | float32 | float32  | float32
-    ------------|---------|---------|---------|----------|--------
-    | Format    | NCHW    | NCHW    | NCHW    | ND       | NCHW
-    |           | NHWC    | HWCN    | NHWC    |          | NHWC
-@endverbatim
+*\n
+| Tensor    | x       | filter  | offsets | bias    | y       |\n
+| :-------: | :-----: | :-----: | :-----: | :-----: | :-----: |\n
+| Data Type | float16 | float16 | float16 | float16 | float16 |\n
+|           | float32 | float32 | float32 | float32 | float32 |\n
+| Format    | NCHW    | NCHW    | NCHW    | ND      | NCHW    |\n
+|           | NHWC    | HWCN    | NCHW    |         | NHWC    |\n
 * For float32 type, the actual convolution calculation part on the chip is
 * based on float16.
 *\n
@@ -988,19 +976,17 @@ REG_OP(Conv2DCompress)
 *\n
 *\n
 * The following value range restrictions must be met:
-*@verbatim
-    | Name              | Field  | Scope
-    --------------------|--------|----------------------------
-    | Input Image Size  | H      | [1, 100000 / filter_height]
-    |                   | W      | [1, 4096 / filter_width]
-    --------------------|--------|----------------------------
-    | Filter Size       | H      | [1, 63]
-    |                   | W      | [1, 63]
-@endverbatim
+*\n
+| Name             | Field    | Scope                       |\n
+| :--------------: | :------: | :-------------------------: |\n
+| Input Image Size | H        | [1, 100000 / filter_height] |\n
+|                  | W        | [1, 4096 / filter_width]    |\n
+| Filter Size      | H        | [1, 63]                     |\n
+|                  | W        | [1, 63]                     |\n
 *\n
 *
 *@par Outputs:
-*@li y:  A 4D Tensor of output feature map. Has the same type as "x". With the
+* y:  A 4D Tensor of output feature map. Has the same type as "x". With the
 * format "NHWC", the data is stored in the order of: [batch, out_height,
 * out_width, out_channels].
 *\n
