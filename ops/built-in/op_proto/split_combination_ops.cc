@@ -1225,6 +1225,7 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Pack, PackInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(Pack);
 // ----------------Pack OP End-------------------
 
 // --------------------ConcatOffset------------------------

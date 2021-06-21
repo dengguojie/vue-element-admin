@@ -1002,6 +1002,7 @@ IMPLEMT_COMMON_INFERFUNC(GatherV2InferShape) {
 }
 
 COMMON_INFER_FUNC_REG(GatherV2, GatherV2InferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(GatherV2);
 // ----------------GatherV2 END-------------------
 
 // ----------------GatherV2D-----------------------
@@ -1675,6 +1676,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(StridedSlice, StridedSliceInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(StridedSlice);
 // ----------------StridedSlice Op End-------------------
 
 // ----------------ReverseV2 Op Begin-----------------

@@ -1335,6 +1335,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceSumInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ReduceSum, ReduceSumInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(ReduceSum);
 // ----------------ReduceSum END-------------------
 
 // ----------------ReduceSumD Op-------------------
