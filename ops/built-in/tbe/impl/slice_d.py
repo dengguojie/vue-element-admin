@@ -7480,6 +7480,7 @@ def _use_strided_slice(ori_x, ori_begin, ori_size):
         ["float32", [64, 1200, 85], [64, 1200, 2]],
         ["float32", [64, 4800, 85], [64, 4800, 1]],
         ["float32", [64, 4800, 85], [64, 4800, 2]],
+        ["float16", [104, 80, 896], [104, 80, 1]],
     ]
 
     return [dtype, input_shape, output_shape] in supported_params
