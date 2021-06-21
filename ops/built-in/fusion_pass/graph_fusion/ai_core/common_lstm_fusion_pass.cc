@@ -533,7 +533,9 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
                                               {"bidirectional", "BIDIRECITIONAL"}};
   ge::AttrUtils::GetStr(fusedDesc, "direction", direction);
 
-  if (direction == "forward") {
+  std::vector<string> singleList {"forward", "reverse"};
+  bool is_single = std::find(singleList.begin(), singleList.end(), direction) != singleList.end();
+  if (is_single) {
     int32_t num_directions = 1;
     auto dynamicRnnOp = ge::OperatorFactory::CreateOperator(fusedDesc->GetName() + "/DynamicRnn", "DynamicRNN");
     FUSION_PASS_CHECK(dynamicRnnOp.IsEmpty(),
