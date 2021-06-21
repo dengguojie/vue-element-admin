@@ -7412,16 +7412,37 @@ IMPLEMT_INFERFUNC(AdaptiveMaxPool2d, AdaptiveMaxPool2dInferShape) {
     int64_t dims = dims_input[i];
     dim_vector.push_back(dims);
   }
+  OP_LOGI(op.GetName().c_str(), 
+          " AdaptiveMaxPool2d inferShape dims: [%u] ", dims_input.size());
+
   size_t index0 = dims_input.size() - 2;
   size_t index1 = dims_input.size() - 1;
+  Format input_format = input_tensor_desc.GetFormat();
+  OP_LOGI(op.GetName().c_str(), " AdaptiveMaxPool2d inferShape format: [%u] ", input_format);
+  if ((input_format == FORMAT_NC1HWC0) || (input_format == FORMAT_NHWC)) {
+    index0 = dims_input.size() - 3;
+    index1 = dims_input.size() - 2;
+  }
   dim_vector[index0] = ouput_size_list[0];
   dim_vector[index1] = ouput_size_list[1];
+  
   TensorDesc td = op.GetOutputDesc("y");
   DataType input_dtype = input_tensor_desc.GetDataType();
   Shape output_shape(dim_vector);
   td.SetShape(output_shape);
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
+
+  TensorDesc out1_td = op.GetOutputDesc("argmax");
+  DataType out1_dtype = out1_td.GetDataType();
+  OP_LOGI(op.GetName().c_str(),  " AdaptiveMaxPool2d inferShape argmax dtype: [%u] ", out1_dtype);
+  if (out1_dtype == DT_UNDEFINED) {
+      out1_td.SetDataType(DT_INT32);
+      OP_LOGI(op.GetName().c_str(), " AdaptiveMaxPool2d inferShape set argmax dtype: [%u] ", DT_INT32);
+  }
+  out1_td.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("argmax", out1_td);
+
   return GRAPH_SUCCESS;
 }
 
