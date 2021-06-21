@@ -55,10 +55,15 @@ Status TransposedUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
     }
 
     transposeOpDesc->SetType("Transpose");
+    vector<string> permVec;
+    permVec.push_back("perm");
+    transposeOpDesc->SetOpInferDepends(permVec);
     std::vector<int64_t> perm;
     ge::AttrUtils::GetListInt(transposeOpDesc, "perm", perm);
     transposeOpDesc->DelAttr("perm");
-    ge::GeShape constInPerm = ge::GeShape(perm);
+    vector<int64_t> permShape;
+    permShape.push_back(perm.size());
+    ge::GeShape constInPerm = ge::GeShape(permShape);
     auto permInputDesc = ge::GeTensorDesc(constInPerm, ge::FORMAT_ND, ge::DT_INT32);
     ge::GeTensorPtr outTensor = std::make_shared<ge::GeTensor>(permInputDesc);
     vector<int32_t> permB32;
@@ -87,6 +92,8 @@ Status TransposedUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
             return FAILED;
         }
         ge::AttrUtils::SetListInt(transposeOpDesc, "perm", perm);
+        permVec.clear();
+        transposeOpDesc->SetOpInferDepends(permVec);
         transposeOpDesc->SetType("TransposeD");
     }
     return SUCCESS;

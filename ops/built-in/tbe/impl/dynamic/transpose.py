@@ -2224,6 +2224,10 @@ def transpose(x, perm, y, kernel_name="transpose"):
     x_dtype = x.get("dtype").lower()
     p_dtype = perm.get("dtype").lower()
     y_dtype = y.get("dtype").lower()
+    if x_dtype == "bool":
+        x_dtype = "uint8"
+    if y_dtype == "bool":
+        y_dtype = "uint8"
     tik_inst = tik.Tik()
     data_in = tik_inst.Tensor(x_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "x")
     data_perm = tik_inst.Tensor(p_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "perm")

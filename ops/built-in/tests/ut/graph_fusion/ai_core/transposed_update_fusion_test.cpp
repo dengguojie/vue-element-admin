@@ -21,11 +21,11 @@ protected:
     }
 };
 
-TEST_F(transposed_update_fusion_pass_test, in_white_list_and_update_ok) {
-    ge::Graph graph("in_white_list_and_update_ok");
+TEST_F(transposed_update_fusion_pass_test, in_white_list_and_no_update) {
+    ge::Graph graph("in_white_list_and_no_update");
 
     auto x = op::Data("x");
-    std::vector<int64_t> dims_x{1024, 512};
+    std::vector<int64_t> dims_x{1024, 1024};
     ge::Shape shape_x(dims_x);
     ge::TensorDesc tensorDescX(shape_x, FORMAT_ND,  DT_FLOAT);
     x.update_input_desc_x(tensorDescX);
@@ -35,10 +35,9 @@ TEST_F(transposed_update_fusion_pass_test, in_white_list_and_update_ok) {
     perm.push_back(0);
 
     auto y = op::Data("y");
-    std::vector<int64_t> dims_y{512, 1024};
+    std::vector<int64_t> dims_y{1024, 1024};
     ge::Shape shape_b(dims_y);
-    ge::TensorDesc tensorDescB(shape_b, FORMAT_NHWC,  DT_FLOAT);
-    y.update_input_desc_x(tensorDescB);
+    ge::TensorDesc tensorDescB(shape_b, FORMAT_ND,  DT_FLOAT);
     y.update_output_desc_y(tensorDescB);
 
     auto transposedOp= op::TransposeD("TransposeD_1");
@@ -50,29 +49,27 @@ TEST_F(transposed_update_fusion_pass_test, in_white_list_and_update_ok) {
 
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("TransposedUpdateFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr, true);
+    fe::FusionPassTestUtils::RunGraphFusionPass("TransposedUpdateFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr, true);
 
-    bool findTranspose  = false;
     bool findTransposed = false;
+    bool findTranspose  = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
         if (node->GetType() == "TransposeD") {
-            findTranspose = true;
+            findTransposed = false;
         }
         if (node->GetType() == "Transpose") {
-            findTransposed = true;
+            findTranspose = true;
         }
     }
     EXPECT_EQ(findTranspose, true);
     EXPECT_EQ(findTransposed, false);
 }
 
-
 TEST_F(transposed_update_fusion_pass_test, not_in_white_list_and_no_update) {
     ge::Graph graph("not_in_white_list_and_no_update");
 
     auto x = op::Data("x");
-    std::vector<int64_t> dims_x{1024, 512};
+    std::vector<int64_t> dims_x{99999, 77777};
     ge::Shape shape_x(dims_x);
     ge::TensorDesc tensorDescX(shape_x, FORMAT_ND,  DT_FLOAT);
     x.update_input_desc_x(tensorDescX);
@@ -82,10 +79,9 @@ TEST_F(transposed_update_fusion_pass_test, not_in_white_list_and_no_update) {
     perm.push_back(0);
 
     auto y = op::Data("y");
-    std::vector<int64_t> dims_y{512, 1024};
+    std::vector<int64_t> dims_y{77777, 99999};
     ge::Shape shape_b(dims_y);
-    ge::TensorDesc tensorDescB(shape_b, FORMAT_NHWC,  DT_FLOAT);
-    y.update_input_desc_x(tensorDescB);
+    ge::TensorDesc tensorDescB(shape_b, FORMAT_ND,  DT_FLOAT);
     y.update_output_desc_y(tensorDescB);
 
     auto transposedOp= op::TransposeD("TransposeD_2");
@@ -97,8 +93,7 @@ TEST_F(transposed_update_fusion_pass_test, not_in_white_list_and_no_update) {
 
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("TransposedUpdateFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr, false);
+    fe::FusionPassTestUtils::RunGraphFusionPass("TransposedUpdateFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS, *compute_graph_ptr, false);
 
     bool findTransposed = false;
     bool findTranspose  = false;
@@ -113,3 +108,4 @@ TEST_F(transposed_update_fusion_pass_test, not_in_white_list_and_no_update) {
     EXPECT_EQ(findTranspose, false);
     EXPECT_EQ(findTransposed, true);
 }
+

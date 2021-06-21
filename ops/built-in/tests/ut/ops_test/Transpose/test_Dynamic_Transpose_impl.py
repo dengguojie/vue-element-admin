@@ -241,6 +241,46 @@ ut_case.add_precision_case("Ascend910A",
                                "params":
                                    [
                                        {
+                                           "shape": (-1, 200),
+                                           "dtype": "bool",
+                                           "format": "ND",
+                                           "ori_shape": (33, 200),
+                                           "range": ((33, 33), (200, 200)),
+                                           "run_shape": (33, 200),
+                                           "ori_format": "ND",
+                                           "param_type": "input"
+                                       },
+                                       {
+                                           "shape": (2,),
+                                           "run_shape": (2,),
+                                           "dtype": "int32",
+                                           "ori_shape": (2),
+                                           "ori_format" : "ND",
+                                           "format": "ND",
+                                           "value": np.array([1, 0]),
+                                           "value_need_in_tiling": True,
+                                           "param_type": "input"
+                                       },
+                                       {
+                                           "shape": (200, 33),
+                                           "dtype": "bool",
+                                           "format": "ND",
+                                           "ori_shape": (200, 33),
+                                           "range": ((200, 200), (33, 33),),
+                                           "run_shape": (200, 33),
+                                           "ori_format": "ND",
+                                           "param_type": "output"
+                                       },
+                                   ],
+                               "calc_expect_func": calc_expect_func,
+                               "precision_standard": precision_info.PrecisionStandard(0, 0)
+                           })
+
+ut_case.add_precision_case("Ascend910A",
+                           {
+                               "params":
+                                   [
+                                       {
                                            "shape": (-1, 2000),
                                            "dtype": "float32",
                                            "format": "ND",
