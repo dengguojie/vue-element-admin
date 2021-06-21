@@ -3879,6 +3879,58 @@ COMMON_INFER_FUNC_REG(MaskedSelectV2, MaskedSelectV2InferShape);
 VERIFY_FUNC_REG(MaskedSelectV2, MaskedSelectV2Verify);
 // ----------------MaskedSelectV2 END---------------------
 
+
+// ----------------MaskedScatter Begin-------------------
+
+IMPLEMT_COMMON_INFERFUNC(MaskedScatterInferShape) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto output_y = op_info->MutableOutputDesc("y");
+  auto input_x = op_info->MutableInputDesc("x");
+ 
+  auto x_dtype = input_x->GetDataType();
+  auto x_shape = input_x->GetShape(); 
+
+  output_y->SetShape(x_shape);
+  output_y->SetDataType(x_dtype);
+  
+  auto input_dims = x_shape.GetDims();
+  if (input_dims == UNKNOWN_RANK) {
+    std::vector<std::pair<int64_t, int64_t>> x_range;
+    input_x->GetShapeRange(x_range);
+    output_y->SetShapeRange(x_range);
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MaskedScatter, MaskedScatterInferShape);
+// ----------------MaskedScatter END---------------------
+
+// ----------------MaskedSelect Begin-------------------
+
+IMPLEMT_COMMON_INFERFUNC(MaskedSelectInferShape) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto output_y = op_info->MutableOutputDesc("y");
+  auto input_x = op_info->MutableInputDesc("x");
+
+  auto x_dtype = input_x->GetDataType();
+  
+  std::vector<std::pair<int64_t, int64_t>> range;
+  auto range_value = std::make_pair(1, -1);
+  range.push_back(range_value);
+        
+  output_y->SetShape(GeShape({UNKNOWN_DIM}));
+  output_y->SetDataType(x_dtype);
+  output_y->SetShapeRange(range);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MaskedSelect, MaskedSelectInferShape);
+// ----------------MaskedSelect END---------------------
+
 // ----------------StridedSliceV2 Begin-------------------
 struct SliceParametersFormal {
   std::vector<int64_t> begin_list;

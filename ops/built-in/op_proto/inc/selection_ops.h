@@ -2129,6 +2129,43 @@ REG_OP(MaskedSelectV2)
     .INPUT(mask, TensorType({DT_BOOL}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(MaskedSelectV2)
+    
+/**
+* @brief Choose the value of X with value according to mask.
+
+* @par Inputs:
+* two inputs, including:
+*  @li x: A Tensor of dtype is float16 or float32 or float64 or int64 or int32 or int16 or int8 or uint8.
+*  @li mask: A Tensor of dtype is bool. \n
+
+* @par Outputs:
+*  @li y: A tensor with the same type as x. \n
+
+*/
+REG_OP(MaskedSelect)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE, DT_UINT8,  DT_INT8, DT_INT16, DT_INT32, DT_INT64}))
+    .INPUT(mask, TensorType({DT_BOOL}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE, DT_UINT8, DT_INT8, DT_INT16, DT_INT32, DT_INT64}))
+    .OP_END_FACTORY_REG(MaskedSelect)
+
+/**
+* @brief update the value of X with value according to mask.
+
+* @par Inputs:
+* three inputs, including:
+*  @li x: A Tensor of dtype is float16 or float32 or float64 or int64 or int32 or int16 or int8 or uint8.
+*  @li mask: A Tensor of dtype is bool.
+*  @li updates: A tensor with the same type as x. \n
+
+* @par Outputs:
+*  @li y: A tensor with the same type as x. \n
+*/
+REG_OP(MaskedScatter)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE, DT_UINT8,  DT_INT8, DT_INT16, DT_INT32, DT_INT64}))
+    .INPUT(mask, TensorType({DT_BOOL}))
+    .INPUT(updates, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE, DT_UINT8,  DT_INT8, DT_INT16, DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_DOUBLE, DT_UINT8, DT_INT8, DT_INT16, DT_INT32, DT_INT64}))
+    .OP_END_FACTORY_REG(MaskedScatter)
 
 /**
 * @brief Slice a tensor at its last dim, e.x. a[..., begin:end:stride]. \n
