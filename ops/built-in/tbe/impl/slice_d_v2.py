@@ -176,6 +176,39 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
 
             return output_shape, input_shape, input_begin, input_end
 
+        def _set_tiling_mode(output_shape, input_shape):
+
+            date_move_stride_limit = 65535 * constant.BLOCK_SIZE
+            dtype = x.get("dtype").lower()
+            dtype_size = common_util.get_data_size(dtype)
+            shape_len = len(input_shape)
+            tmp_profile = tik.Dprofile()
+            block_element = constant.BLOCK_SIZE // dtype_size
+            ub_size_with_vnchwconv = (tmp_profile.get_unified_buffer_size() // dtype_size - block_element) \
+                // 2 // block_element * block_element
+
+            if output_shape[-1] * dtype_size < constant.BLOCK_SIZE:
+                tiling_mode = 1
+            else:
+                tiling_mode = 2
+
+            if output_shape[-1] * dtype_size < constant.BLOCK_SIZE \
+                    and shape_len >= 2 \
+                    and dtype == "float16" \
+                    and math.prod(output_shape[:-2]) % tmp_profile.get_aicore_num() == 0 \
+                    and output_shape[-2] >= 16 \
+                    and input_shape[-1] * 256 <= ub_size_with_vnchwconv:
+                tiling_mode = 3
+
+            if shape_len >= 2 \
+                    and output_shape[-1] * dtype_size % constant.BLOCK_SIZE == 0 \
+                    and input_shape[-1] * dtype_size % constant.BLOCK_SIZE == 0 \
+                    and input_shape[:-1] == output_shape[:-1] \
+                    and tmp_profile.get_unified_buffer_size() >= 2 * output_shape[-1] * dtype_size \
+                    and (input_shape[-1] - output_shape[-1]) * dtype_size <= date_move_stride_limit:
+                tiling_mode = 4
+            return tiling_mode
+
         perf_output_shape, perf_input_shape, perf_input_begin, perf_input_end = _make_perf_params(size,
                                                                                                   input_shape,
                                                                                                   begin,
@@ -185,7 +218,8 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
         tiling_inst.shape_length.set_as(len(perf_input_shape))
         tiling_ub = tiling_inst.tik_instance.ScalarArray(dtype=tiling_inst.dtype, name="tiling_ub",
                                                          length=2 + len(perf_input_shape) * 5)
-        tiling_ub[0].set_as(0)
+        tiling_ub[0].set_as(_set_tiling_mode(perf_output_shape, perf_input_shape))
+        tiling_inst.tiling_mode.set_as(tiling_ub[0])
         tiling_ub[1].set_as(len(perf_input_shape))
         index = 2
         items = (perf_input_shape, perf_output_shape, perf_input_begin, perf_input_end, [1] * len(perf_input_shape))
