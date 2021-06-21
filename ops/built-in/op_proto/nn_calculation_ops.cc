@@ -3550,7 +3550,17 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
       int32_t dy_c_position = dy_format_str.find("C");
       filter_sizes[filter_co_position] = out_backprop_sizes[dy_c_position];
     }
-    filter_sizes[filter_ci_position] = x_c;
+    int32_t groups_ori = 1;
+    op.GetAttr("groups", groups_ori);
+    if (groups_ori == 0) {
+      OP_LOGE(op.GetName().c_str(), "Get illegal groups: groups should not be zero.");
+      return GRAPH_FAILED;
+    }
+    if (x_c % groups_ori != 0) {
+      OP_LOGE(op.GetName().c_str(), "Get illegal groups: fmap's channel must be a multiple of groups.");
+      return GRAPH_FAILED;
+    }
+    filter_sizes[filter_ci_position] = x_c / groups_ori;
   }
 
   // set dtype of output desc
