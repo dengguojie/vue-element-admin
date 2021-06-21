@@ -208,6 +208,5 @@ def test_matmul_cpu_validation(test_arg):
     params = dsl_case["params"]
     matmul_cpu_validation(params)
 
-
 ut_case.add_cust_test_func(test_func=test_matmul_cpu_validation)
 

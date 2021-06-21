@@ -563,6 +563,7 @@ def gemm(tensor_a, tensor_b, para_dict):
 def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
     if in_dynamic():
         return use_old_code
+    # vgg16_faster_rcnn_coco_int8 sppnet vgg16_faster_rcnn_coco vgg_ilsvrc_16
     black_list_compress_fc = [
         "304_25088_784_256_16_32_int8",
         "1_4096_128_63_16_32_int8",
@@ -577,11 +578,13 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
         "304_25088_1568_256_16_16_float16"
     ]
 
-    block_list_1980 = [
+    black_list_1980 = [
+        # multi_op
         "64_512_16_16_64_64_16_16_float16",
         "512_4_16_16_16_512_4_16_16_16_float16",
         "512_16_16_16_16_512_4_16_16_16_float16",
         "64_512_16_16_64_512_16_16_float16",
+        # bert_nv_1p_512_lamb_bs24
         "64_768_16_16_256_64_16_16_float16",
         "256_768_16_16_64_256_16_16_float16",
         "64_768_16_16_64_256_16_16_float16",
@@ -602,7 +605,10 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
         use_old_code = True
     if info_str in black_list_fc and kernel_name.find("fully_connection") != -1:
         use_old_code = True
-    if info_str in block_list_1980:
+    if info_str in black_list_1980:
+        use_old_code = True
+    # ACL_BERTBASE excute fail
+    if kernel_name.find("gelu") != -1:
         use_old_code = True
 
     return use_old_code
