@@ -282,7 +282,7 @@ class BroadcastElewiseClassifier:
             if not common_need_update:
                 b_pattern = self.f_shapes[b_index[0]]
             if len(known_broadcast_index) > 0:
-                b_pattern = self.f_shapes[known_broadcast_index[0]]
+                b_pattern = known_broadcast_pattern[0]
             if len(b_pattern) > 0:
                 for index, pattern in enumerate(b_pattern):
                     if pattern == ShapeValueType.ONE:
@@ -485,14 +485,34 @@ class BroadcastElewiseClassifier:
             def _all_const(shape):
                 return all([s == ShapeValueType.COMMON for s in shape])
 
+            def _pattern_equal(last_pattern, cur_pattern):
+                for last, current in zip(last_pattern, cur_pattern):
+                    if last != current and ((last == ShapeValueType.ONE and current == ShapeValueType.COMMON) or
+                                            (last == ShapeValueType.COMMON and current == ShapeValueType.ONE)):
+                        return False
+                return True
+
+            def _update_pattern(last_pattern, cur_pattern):
+                new_pattern = []
+                for last, current in zip(last_pattern, cur_pattern):
+                    if last != current and ShapeValueType.ONE in (last, current):
+                        new_pattern.append(ShapeValueType.ONE)
+                    elif last != current and ShapeValueType.COMMON in (last, current):
+                        new_pattern.append(ShapeValueType.COMMON)
+                    else:
+                        new_pattern.append(last)
+                return new_pattern
+
             known_broadcast_pattern = []
             known_broadcast_index = []
             known_const_index = []
             new_broadcast = True
             for i, n_s in enumerate(n_shapes):
                 if not new_broadcast and _is_known_broadcast(n_s):
-                    if known_broadcast_pattern[-1] != n_s:
+                    if not _pattern_equal(known_broadcast_pattern[-1], n_s):
                         known_broadcast_pattern.append(n_s)
+                    else:
+                        known_broadcast_pattern[-1] = _update_pattern(known_broadcast_pattern[-1], n_s)
                     known_broadcast_index.append(i)
                 elif new_broadcast and _is_known_broadcast(n_s):
                     known_broadcast_pattern.append(n_s)
