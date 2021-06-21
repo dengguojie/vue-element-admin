@@ -177,11 +177,12 @@ def check_supported(x,
                     offset_x=0,
                     kernel_name="deconvolution"):
     """
-    the h and w of x or y must be in [1, 4096]\n
-    the h and w of weight or dilations must be in [1, 255]\n
-    the h and w of strides must be in [1, 63]\n
-    the n and c of dilations must be 1\n
-    the h and w must meet:\n
+    The h of x or y must be in [1, 200000].\n
+    The w of x or y must be in [1, 4096].\n
+    The h and w of weight or dilations must be in [1, 255].\n
+    The h and w of strides must be in [1, 63].\n
+    The n and c of dilations must be 1.\n
+    The h and w must meet:\n
        hi - (hk - 1)*dk + 1 + padh // strideh = ho\n
        wi - (wk - 1)*wk + 1 + padw // stridew = wo\n
     """

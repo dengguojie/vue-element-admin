@@ -367,8 +367,8 @@ REG_OP(BiasAddGrad)
  * Gradients with respect to the output of the convolution.
  *\n
  *\n
- * The following are the supported data types and data formats:
-
+ * The following are the supported data types and data formats:\n
+ *\n
     | Tensor    | out_bckprop | filter  | y\n
     ------------|-------------|---------|--------\n
     | Data Type | float16     | float16 | float16\n
@@ -379,7 +379,7 @@ REG_OP(BiasAddGrad)
     ------------|-------------|---------|--------\n
     | Format    | NCHW        | NCHW    | NCHW\n
     |           | NHWC        | HWCN    | NHWC\n
-
+ *\n
  * For float32 and float64 type, the actual calculation on the chip is based on
  * float16.
  *\n
@@ -398,8 +398,8 @@ REG_OP(BiasAddGrad)
  * "NHWC". Specify the data format of the input and output data.
  *\n
  *\n
- * The following value range restrictions must be met:
-
+ * The following value range restrictions must be met:\n
+ *\n
     | Name             | Field    | Scope\n
     -------------------|----------|--------------\n
     | input_size       | H        | [1, 200000]\n
@@ -424,7 +424,7 @@ REG_OP(BiasAddGrad)
     -------------------|----------|--------------\n
     | Dilation         | H        | [1, 255]\n
     |                  | W        | [1, 255]\n
-
+ *\n
 
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
@@ -521,8 +521,8 @@ REG_OP(Conv2DBackpropInputD)
  * Type is int8. Reserved.\n
  *\n
  *\n
- * The following are the supported data types and data formats:
-
+ * The following are the supported data types and data formats:\n
+ *\n
     | Tensor    | x       | filter  | bias    | y\n
     ------------|---------|---------|---------|--------\n
     | Data Type | float16 | float16 | float16 | float16\n
@@ -530,7 +530,7 @@ REG_OP(Conv2DBackpropInputD)
     |           | int8    | int8    | int32   | int32\n
     ------------|---------|---------|---------|--------\n
     | Format    | NCHW    | NCHW    | ND      | NCHW\n
-
+ *\n
  * For int8, a dequant or requant operator must be followed.
  *\n
  *
@@ -551,8 +551,8 @@ REG_OP(Conv2DBackpropInputD)
  * within the effective range of int8 [-128, 127]. Defaults to "0".
  *\n
  *\n
- * The following value range restrictions must be met:
-
+ * The following value range restrictions must be met:\n
+ *\n
     | Name             | Field    | Scope\n
     -------------------|----------|--------------\n
     | x (out_backprop) | H*strideH| [1, 200000]\n
@@ -576,7 +576,7 @@ REG_OP(Conv2DBackpropInputD)
     |                  | W        | [1, 255]\n
     -------------------|----------|--------------\n
     | Offset_x         |          | [-128, 127]\n
-
+ *\n
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
  * and filter_width > fmap_width
@@ -629,8 +629,8 @@ REG_OP(Deconvolution)
  * convolution.
  *\n
  *\n
- * The following are the supported data types and data formats:
-
+ * The following are the supported data types and data formats:\n
+ *\n
     | Tensor    | x       | out_backprop | y\n
     ------------|---------|--------------|---------\n
     | Data Type | float16 |    float16   | float16\n
@@ -641,7 +641,7 @@ REG_OP(Deconvolution)
     |-----------|---------|--------------|---------\n
     | Format    | NCHW    |     NCHW     | NCHW\n
     |           | NHWC    |     NHWC     | HWCN\n
-
+ *\n
  * For float32 and float64 type of x and outbackprop, the actual calculation on the chip
  * is based on float16.
  *\n
@@ -659,9 +659,9 @@ REG_OP(Deconvolution)
  * @li data_format: An optional string from: "NHWC", "NCHW". Defaults to
  * "NHWC". Specify the data format of the input and output data.
  *\n
-*\n
-* The following value range restrictions must be met:
-
+ *\n
+ * The following value range restrictions must be met:\n
+ *\n
     | Name             | Field    | Scope\n
     -------------------|----------|--------------\n
     | x(fmap)          | H        | [1, 200000]\n
@@ -686,7 +686,7 @@ REG_OP(Deconvolution)
     -------------------|----------|--------------\n
     | Dilation         | H        | [1, 255]\n
     |                  | W        | [1, 255]\n
-
+ *\n
 *@par Outputs:
  * y: A Tensor. Has the same type as x, has the same format as filter_size.
  *\n
@@ -1431,8 +1431,8 @@ REG_OP(Conv3DTransposeD)
  * @li offset_w: An optional 1D tensor for quantized inference. Reserved.
  *\n
  *\n
- * The following are the supported data types and data formats:
-
+ * The following are the supported data types and data formats:\n
+ *\n
     | Tensor    | x       | filter  | bias    | y\n
     ------------|---------|---------|---------|--------\n
     | Data Type | float16 | float16 | float16 | float16\n
@@ -1441,7 +1441,7 @@ REG_OP(Conv3DTransposeD)
     ------------|---------|---------|---------|--------\n
     | Format    | NCHW    | NCHW    | ND      | NCHW\n
     |           | NHWC    | HWCN    |         | NHWC\n
-
+ *\n
  * For int8, a dequant or requant operator must be followed.
  *\n
  *
@@ -1466,8 +1466,8 @@ REG_OP(Conv3DTransposeD)
  * within the effective range of int8 [-128, 127]. Defaults to "0".
  *\n
  *\n
- * The following value range restrictions must be met:
-
+ * The following value range restrictions must be met:\n
+ *\n
     | Name             | Field    | Scope\n
     -------------------|----------|--------------\n
     | input_size       | H        | [1, 200000]\n
@@ -1494,7 +1494,7 @@ REG_OP(Conv3DTransposeD)
     |                  | W        | [1, 255]\n
     -------------------|----------|--------------\n
     | Offset_x         |          | [-128, 127]\n
-
+ *\n
  * In Ascend910, fmap or out_backprop's H and W not support 1 when
  * fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
  * and filter_width > fmap_width
