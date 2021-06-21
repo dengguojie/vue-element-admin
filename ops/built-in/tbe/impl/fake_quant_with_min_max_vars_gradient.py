@@ -378,32 +378,19 @@ def fake_quant_with_min_max_vars_gradient_compute(gradients, x, min,
     backprops_wrt_x = te.lang.cce.vadd(wrt_input_weight, gradients_weight)
 
     # cloud version: optimize to eliminating workspace by reducing atomic
-    if util.get_product_version() == util.VERSION_CLOUD:
-        # insert temp node to make vadd_last node as mid_outputTensor for eliminating workspace
-        temp_insert_node_mul = te.lang.cce.vmuls(backprops_wrt_x,
-                                                 tvm.const(0, D_TYPE))
-        temp_insert_node_add = te.lang.cce.vadd(temp_insert_node_mul,
-                                                below_min_data)
-        below_min_data_tensor = te.lang.cce.vmul(temp_insert_node_add,
-                                                 bool_both_no_zero)
-        below_max_data_tensor = te.lang.cce.vmul(below_max_data,
-                                                 bool_both_no_zero)
-        backprop_wrt_min_max_list = te.lang.cce.tuple_sum(
-            [below_min_data_tensor,
-             below_max_data_tensor],
-            axis=shape_list)
-        output_list = [backprops_wrt_x] + list(backprop_wrt_min_max_list)
-
-    else:
-        below_min_data_tensor = te.lang.cce.vmul(below_min_data,
-                                                 bool_both_no_zero)
-        below_max_data_tensor = te.lang.cce.vmul(below_max_data,
-                                                 bool_both_no_zero)
-        backprop_wrt_min = te.lang.cce.sum(below_min_data_tensor,
-                                           axis=shape_list)
-        backprop_wrt_max = te.lang.cce.sum(below_max_data_tensor,
-                                           axis=shape_list)
-        output_list = [backprops_wrt_x, backprop_wrt_min, backprop_wrt_max]
+    # insert temp node to make vadd_last node as mid_outputTensor for eliminating workspace
+    temp_insert_node_mul = te.lang.cce.vmuls(backprops_wrt_x, tvm.const(0, D_TYPE))
+    temp_insert_node_add = te.lang.cce.vadd(temp_insert_node_mul,
+                                            below_min_data)
+    below_min_data_tensor = te.lang.cce.vmul(temp_insert_node_add,
+                                             bool_both_no_zero)
+    below_max_data_tensor = te.lang.cce.vmul(below_max_data,
+                                             bool_both_no_zero)
+    backprop_wrt_min_max_list = te.lang.cce.tuple_sum(
+        [below_min_data_tensor,
+         below_max_data_tensor],
+        axis=shape_list)
+    output_list = [backprops_wrt_x] + list(backprop_wrt_min_max_list)
 
     return output_list
 
