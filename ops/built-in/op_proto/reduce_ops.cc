@@ -1569,7 +1569,7 @@ IMPLEMT_COMMON_INFERFUNC(INTrainingReduceV2InferShape) {
   std::vector<int64_t> dims_input = input_shape.GetDims();
   int64_t dim_num = input_shape.GetDimNum();
 
-  // get sum and square_sum output shape
+  // get sum and square_sum output shape for nhwc or ndhwc
   std::vector<int64_t> o_shape_vec;
   for (int i = 0; i < dim_num; i++) {
     if (i != 0 && i != dim_num - 1) {
@@ -1625,6 +1625,73 @@ IMPLEMT_COMMON_INFERFUNC(INTrainingUpdateV2InferShape) {
 }
 COMMON_INFER_FUNC_REG(INTrainingUpdateV2, INTrainingUpdateV2InferShape);
 // ------------------INTrainingUpdateV2 END---------------------
+
+// ------------------------INTrainingReduceGrad--------------------------
+IMPLEMT_COMMON_INFERFUNC(INTrainingReduceGradInferShape) {
+  // x desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
+
+  // update output desc
+  auto pd_x_desc = op_info->MutableOutputDesc("pd_x");
+  pd_x_desc->SetShape(input_shape);
+  pd_x_desc->SetDataType(input_dtype);;
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(INTrainingReduceGrad, INTrainingReduceGradInferShape);
+// ----------------------INTrainingReduceGrad End--------------------------
+
+// -------------------INTrainingUpdateGrad--------------------
+IMPLEMT_COMMON_INFERFUNC(INTrainingUpdateGradInferShape) {
+  // variance desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("variance");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
+
+  // update output desc
+  auto res_gamma_desc = op_info->MutableOutputDesc("res_gamma");
+  auto res_beta_desc = op_info->MutableOutputDesc("res_beta");
+  res_gamma_desc->SetShape(input_shape);
+  res_beta_desc->SetShape(input_shape);
+  res_gamma_desc->SetDataType(input_dtype);
+  res_beta_desc->SetDataType(input_dtype);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(INTrainingUpdateGrad, INTrainingUpdateGradInferShape);
+// ------------------INTrainingUpdateGrad END---------------------
+
+// -------------------INTrainingUpdateGradGammaBeta--------------------
+IMPLEMT_COMMON_INFERFUNC(INTrainingUpdateGradGammaBetaInferShape) {
+  // res_gamma desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("res_gamma");
+  auto input_shape = input_desc->MutableShape();
+  auto input_dtype = input_desc->GetDataType();
+
+  // res_gamma dims
+  std::vector<int64_t> dims_input = input_shape.GetDims();
+  if (input_shape.GetDimNum() >= 1) {
+    dims_input[0] = 1;
+  }
+
+  // update output desc
+  auto pd_gamma_desc = op_info->MutableOutputDesc("pd_gamma");
+  auto pd_beta_desc = op_info->MutableOutputDesc("pd_beta");
+  pd_gamma_desc->SetShape(GeShape(dims_input));
+  pd_beta_desc->SetShape(GeShape(dims_input));
+  pd_gamma_desc->SetDataType(input_dtype);
+  pd_beta_desc->SetDataType(input_dtype);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(INTrainingUpdateGradGammaBeta, INTrainingUpdateGradGammaBetaInferShape);
+// ------------------INTrainingUpdateGradGammaBeta END---------------------
 
 // ------------------------GNTrainingReduce--------------------------
 IMPLEMT_COMMON_INFERFUNC(GNTrainingReduceInferShape) {

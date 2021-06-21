@@ -1217,54 +1217,6 @@ IMPLEMT_COMMON_INFERFUNC(InstanceNormGradInferShape) {
 COMMON_INFER_FUNC_REG(InstanceNormGrad, InstanceNormGradInferShape);
 // ----------------InstanceNormGrad END---------------------
 
-// ----------------InstanceNormXBackprop Begin-------------------
-IMPLEMT_COMMON_INFERFUNC(InstanceNormXBackpropInferShape) {
-  // x desc
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto input_shape = input_desc->MutableShape();
-  auto input_dtype = input_desc->GetDataType();
-
-  // update output desc
-  auto pd_x_desc = op_info->MutableOutputDesc("pd_x");
-  auto res_for_gamma_desc = op_info->MutableOutputDesc("res_for_gamma");
-  pd_x_desc->SetShape(input_shape);
-  res_for_gamma_desc->SetShape(input_shape);
-  pd_x_desc->SetDataType(input_dtype);
-  res_for_gamma_desc->SetDataType(DT_FLOAT);
-
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(InstanceNormXBackprop, InstanceNormXBackpropInferShape);
-// ----------------InstanceNormXBackprop END---------------------
-
-// ----------------InstanceNormBetaGammaBackprop Begin-------------------
-IMPLEMT_COMMON_INFERFUNC(InstanceNormBetaGammaBackpropInferShape) {
-  // x desc and gamma desc
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("dy");
-  auto input_shape = input_desc->MutableShape();
-  auto input_dtype = input_desc->GetDataType();
-  std::vector<int64_t> dims_input = input_shape.GetDims();
-  int64_t dim_num = input_shape.GetDimNum();
-
-  // update output desc
-  std::vector<int64_t> o_shape_vec;
-  o_shape_vec.push_back(dims_input[dim_num - 1]);
-  auto pd_gamma_desc = op_info->MutableOutputDesc("pd_gamma");
-  auto pd_beta_desc = op_info->MutableOutputDesc("pd_beta");
-  pd_gamma_desc->SetShape(GeShape(o_shape_vec));
-  pd_beta_desc->SetShape(GeShape(o_shape_vec));
-  pd_gamma_desc->SetDataType(input_dtype);
-  pd_beta_desc->SetDataType(input_dtype);
-
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(InstanceNormBetaGammaBackprop, InstanceNormBetaGammaBackpropInferShape);
-// ----------------InstanceNormBetaGammaBackprop END---------------------
-
 // ----------------KlDivLossGrad Begin-------------------
 bool InferShapeAndTypeKlDivLossGrad(Operator& op, const string& input_name,
                                     const string& output_name) {

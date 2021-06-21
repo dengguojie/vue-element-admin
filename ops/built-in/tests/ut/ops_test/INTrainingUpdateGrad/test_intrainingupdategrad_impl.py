@@ -13,58 +13,53 @@
 # limitations under the License.
 # ============================================================================
 """
-InstanceNormXBackprop ut testcase
+INTrainingUpdateV2 ut testcase
 """
 
-# pylint: disable=too-many-arguments,unused-variable,invalid-name,missing-function-docstring,unused-argument,too-many-function-args
+# pylint: disable=too-many-arguments,unused-variable,invalid-name,missing-function-docstring,unused-argument,too-many-locals
 import os
+import numpy as np
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("InstanceNormXBackprop", "impl.instance_norm_x_backprop", "instance_norm_x_backprop")
+ut_case = OpUT("INTrainingUpdateGrad", "impl.in_training_update_grad", "in_training_update_grad")
 
 
-def gen_instance_norm_x_backprop_case(shape_x, shape_gamma, shape_mean, data_format, dtype, kernel_name, expect):
+def gen_in_training_update_grad_case(shape_x, shape_var, data_format, dtype_x, dtype_var, kernel_name, expect):
     return {
         "params": [{
             "shape": shape_x,
             "ori_shape": shape_x,
-            "dtype": dtype,
+            "dtype": dtype_x,
             "format": data_format,
             "ori_format": data_format
         }, {
             "shape": shape_x,
             "ori_shape": shape_x,
-            "dtype": dtype,
+            "dtype": dtype_x,
             "format": data_format,
             "ori_format": data_format
         }, {
-            "shape": shape_mean,
-            "ori_shape": shape_mean,
-            "dtype": dtype,
+            "shape": shape_var,
+            "ori_shape": shape_var,
+            "dtype": dtype_var,
             "format": data_format,
             "ori_format": data_format
         }, {
-            "shape": shape_mean,
-            "ori_shape": shape_mean,
-            "dtype": dtype,
+            "shape": shape_var,
+            "ori_shape": shape_var,
+            "dtype": dtype_var,
             "format": data_format,
             "ori_format": data_format
         }, {
-            "shape": shape_gamma,
-            "dtype": dtype,
-            "ori_shape": shape_gamma,
+            "shape": shape_var,
+            "ori_shape": shape_var,
+            "dtype": dtype_var,
             "format": data_format,
             "ori_format": data_format
         }, {
-            "shape": shape_x,
-            "ori_shape": shape_x,
-            "dtype": dtype,
-            "format": data_format,
-            "ori_format": data_format
-        }, {
-            "shape": shape_x,
-            "ori_shape": shape_x,
-            "dtype": "float32",
+            "shape": shape_var,
+            "ori_shape": shape_var,
+            "dtype": dtype_var,
             "format": data_format,
             "ori_format": data_format
         }],
@@ -74,14 +69,13 @@ def gen_instance_norm_x_backprop_case(shape_x, shape_gamma, shape_mean, data_for
 
 
 ut_case.add_case(["Ascend910A", "Ascend710"],
-                 gen_instance_norm_x_backprop_case((2, 5, 2, 8, 7, 16), (1, 1, 2, 1, 1, 16), (2, 1, 2, 1, 1, 16),
-                                                   "NDC1HWC0", "float32", "test_right_001", "success"))
-
+                 gen_in_training_update_grad_case((2, 128, 2, 128, 128, 16), (2, 1, 2, 1, 1, 16), "NDC1HWC0", "float32",
+                                                  "float32", "test_right_001", "success"))
 ut_case.add_case(["Ascend910A", "Ascend710"],
-                 gen_instance_norm_x_backprop_case((2, 5, 2, 8, 7, 16), (1, 1, 2, 1, 1, 16), (2, 1, 2, 1, 1, 16),
-                                                   "NDC1HWC0", "float16", "test_right_002", "success"))
+                 gen_in_training_update_grad_case((2, 128, 2, 128, 128, 16), (2, 1, 2, 1, 1, 16), "NDC1HWC0", "float16",
+                                                  "float32", "test_right_002", "success"))
 
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
-    simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+    simulator_lib_path = os.path.join(user_home_path, "/usr/local/Ascend/toolkit/tools/simulator")
     ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
