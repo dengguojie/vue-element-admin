@@ -27,7 +27,6 @@
 #include "util/util.h"
 #include "util/error_util.h"
 #include "op_log.h"
-#include "strided_slice_infer_shape.h"
 #include "graph/utils/op_desc_utils.h"
 #include "register/infer_data_slice_registry.h"
 #include "util/error_util.h"
