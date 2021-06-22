@@ -69,13 +69,24 @@ TEST_F(StringNormalizer, string_normalizer_verify_success){
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(StringNormalizer, string_normalizer__infershape){
+TEST_F(StringNormalizer, string_normalizer_infershape1){
   ge::op::StringNormalizer op;
   op.UpdateInputDesc("input", create_desc({1,3}, ge::DT_STRING));
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("output");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_STRING);
-  std::vector<int64_t> expected_output_shape = {1, 3};
+  std::vector<int64_t> expected_output_shape = {1, -1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(StringNormalizer, string_normalizer_infershape2){
+  ge::op::StringNormalizer op;
+  op.UpdateInputDesc("input", create_desc({3}, ge::DT_STRING));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("output");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_STRING);
+  std::vector<int64_t> expected_output_shape = {-1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

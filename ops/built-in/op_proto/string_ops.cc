@@ -964,12 +964,27 @@ IMPLEMT_COMMON_INFERFUNC(StringNormalizerInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter StringNormalizer proto inferfunction!");
   TensorDesc input_desc = op.GetInputDesc("input");
   auto input_type = input_desc.GetDataType();
-  auto input_shape = input_desc.GetShape();
-  auto input_shape_dim = input_shape.GetDims();
-  Shape output_shape(input_shape_dim);
+  auto input_shape = input_desc.GetShape().GetDims();
+  constexpr int ONEDIMS = 1;
+  constexpr int TWODIMS = 2;
+  std::vector<int64_t> output_shape;
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (input_shape.size() == ONEDIMS) {
+    output_shape.emplace_back(UNKNOWN_DIM);
+    range.emplace_back(std::make_pair(1, input_shape[0]));
+  } else if (input_shape.size() == TWODIMS && input_shape[0] ==1) {
+    output_shape.emplace_back(1);
+    output_shape.emplace_back(UNKNOWN_DIM);
+    range.emplace_back(std::make_pair(1, 1));
+    range.emplace_back(std::make_pair(1, input_shape[1]));
+  } else {
+    return GRAPH_FAILED;
+  }
   TensorDesc output_desc = op.GetOutputDesc("output");
-  output_desc.SetShape(output_shape);
   output_desc.SetDataType(input_type);
+  Shape output_desc_shape(output_shape);
+  output_desc.SetShape(output_desc_shape);
+  output_desc.SetShapeRange(range);
   op.UpdateOutputDesc("output", output_desc);
   return GRAPH_SUCCESS;
 }
