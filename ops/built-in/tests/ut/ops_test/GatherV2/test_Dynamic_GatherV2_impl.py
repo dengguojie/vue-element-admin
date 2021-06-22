@@ -37,11 +37,17 @@ def test_op_check_supported(test_arg):
                      {"shape": [-2], "dtype": "int32", "format": "NCHW", "ori_shape": [1], "ori_format": "NCHW"},
                      {"shape": [10, 5, 61], "dtype": "int32", "format": "NCHW", "ori_shape": [10, 5, 61],
                       "ori_format": "ND"})
-    check_supported({"shape": [10, 1, 28, 16], "dtype": "int64", "format": "ND", "ori_shape": [10, 1, 28, 16],
+    check_supported({"shape": (21128, 128), "dtype": "int64", "format": "ND", "ori_shape": (21128, 128),
                      "ori_format": "ND"},
-                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [10], "ori_format": "ND"},
-                     {"shape": [1], "dtype": "int32", "format": "NCHW", "ori_shape": [-2], "ori_format": "NCHW"},
-                     {"shape": [10, 1, 28, 16], "dtype": "int64", "format": "NCHW", "ori_shape": [10, 1, 28, 16],
+                     {"shape": (120,), "dtype": "int32", "format": "ND", "ori_shape": (120,), "ori_format": "ND"},
+                     {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,), "ori_format": "NCHW"},
+                     {"shape": (120, 128), "dtype": "int64", "format": "NCHW", "ori_shape": (120, 128),
+                      "ori_format": "ND"})
+    check_supported({"shape": (17191, 512), "dtype": "int64", "format": "ND", "ori_shape": (17191, 512),
+                     "ori_format": "ND"},
+                     {"shape": (-1, 128), "dtype": "int32", "format": "ND", "ori_shape": (64, 128), "ori_format": "ND"},
+                     {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,), "ori_format": "NCHW"},
+                     {"shape": (-1, 128, 512), "dtype": "int64", "format": "NCHW", "ori_shape": (64, 128, 512),
                       "ori_format": "ND"})
 
 

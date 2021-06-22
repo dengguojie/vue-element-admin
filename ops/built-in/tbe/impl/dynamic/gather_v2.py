@@ -133,6 +133,14 @@ def check_supported(x_dict, indices_dict, axis_dict, y_dict, kernel_name="Gather
         reason = "shape_axis contains -2."
         return False, reason
 
+    shape_x_list = [(7709, 512)]
+    shape_indices_list = [(1,)]
+
+    if shape_x in shape_x_list and shape_indices in shape_indices_list:
+        reason = "shape in bad-performance list."
+        return False, reason
+
+
     return True, ""
 
 
@@ -390,13 +398,15 @@ class GatherV2():
                                        ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num > 0):
-                    self.process_loop_mode_1(self.inner_loop_num, indices_num_offset, pre_i, quarter_ub_size,
-                                             indices_ub, res_ub, block_ub, self.x)
+                    with tik_instance.for_range(0, self.inner_loop_num) as inner_loop_i:
+                        inner_indices_offset = inner_loop_i * self.row_num_once_ub
+                        self.process_mode_1(self.row_num_once_ub, indices_num_offset, inner_indices_offset,
+                                                 pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, self.x)
 
                 # a2. process row_num_once_tail_ub
                 with tik_instance.if_scope(self.row_num_once_tail_ub > 0):
                     inner_indices_offset = self.inner_loop_num * self.row_num_once_ub
-                    self.process_last_mode_1(self.row_num_once_tail_ub, indices_num_offset, inner_indices_offset,
+                    self.process_mode_1(self.row_num_once_tail_ub, indices_num_offset, inner_indices_offset,
                                              pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, self.x)
 
             with tik_instance.if_scope(self.indices_row_num_last > 0):
@@ -407,122 +417,27 @@ class GatherV2():
                                        ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num_last > 0):
-                    self.process_loop_mode_1(self.inner_loop_num_last, indices_num_offset, pre_i,
-                                             quarter_ub_size, indices_ub, res_ub, block_ub, self.x)
+                    with tik_instance.for_range(0, self.inner_loop_num_last) as inner_loop_i:
+                        inner_indices_offset = inner_loop_i * self.row_num_once_ub
+                        self.process_mode_1(self.row_num_once_ub, indices_num_offset, inner_indices_offset,
+                                                 pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, self.x)
 
                 with tik_instance.if_scope(self.row_num_last_tail_ub > 0):
                     inner_indices_offset = self.inner_loop_num_last * self.row_num_last_ub
-                    self.process_last_mode_1(self.row_num_last_tail_ub, indices_num_offset, inner_indices_offset,
+                    self.process_mode_1(self.row_num_last_tail_ub, indices_num_offset, inner_indices_offset,
                                              pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, self.x)
 
             with tik_instance.if_scope(tik.all(self.indices_num_remaining > 0, block_id == self.tail_process_core)):
                 self.process_remaining_tail_mode_1(pre_i, indices_ub, res_ub, self.x)
 
-    def process_loop_mode_1(self, loop_num, indices_num_offset, pre_i, quarter_ub_size, indices_ub,
-                            res_ub, block_ub, x_src):
-        """
-        previous loop_num times process for tiling mode 1
-
-        Parameters
-        ----------
-        loop_num: loop times
-        indices_num_offset: indices num offset
-        pre_i: params_pre
-        quarter_ub_size: a quarter of ub size
-        indices_ub: cache indices data in UB
-        res_ub: cache result data in UB
-        block_ub: cache result data in UB
-        x_src: source params
-
-        Returns
-        -------
-        None
-        """
-        tik_instance = self.tik_instance
-
-        with tik_instance.for_range(0, loop_num) as inner_loop_i:
-
-            inner_indices_offset = inner_loop_i * self.row_num_once_ub
-
-            # count num of every loop from result_ub to gm
-            res_ub_to_gm_per_loop_num = quarter_ub_size / self.params_dsize
-            # loop num from result_ub to gm
-            res_ub_to_gm_loop_num = (self.row_num_once_ub + res_ub_to_gm_per_loop_num - 1) // res_ub_to_gm_per_loop_num
-            # elements num in block_ub
-            block_per_loop_num = quarter_ub_size / BLOCK_SIZE
-
-            res_to_gm_loop_num = tik_instance.Scalar(dtype=self.tiling_dtype, name="res_to_gm_loop_num")
-            row_num_once_remaining = tik_instance.Scalar(dtype=self.tiling_dtype, name="row_num_once_remaining")
-            res_to_gm_loop_num.set_as(res_ub_to_gm_loop_num)
-            row_num_once_remaining.set_as(self.row_num_once_ub)
-
-            with tik_instance.for_range(0, res_to_gm_loop_num) as row_g:
-                with tik_instance.if_scope(res_to_gm_loop_num == 2):
-                    with tik_instance.if_scope(row_g == 0):
-                        row_num_once_remaining.set_as(res_ub_to_gm_per_loop_num)
-                    with tik_instance.else_scope():
-                        row_num_once_remaining.set_as(self.row_num_once_ub - res_ub_to_gm_per_loop_num)
-
-                # loop num from x_src to block_ub
-                x_to_block_loop_num = row_num_once_remaining // block_per_loop_num
-                # compute output offset of every loop
-                output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row \
-                                + row_g * res_ub_to_gm_per_loop_num
-                burst_len_res = ceil_value(row_num_once_remaining * self.params_row * self.params_dsize, BLOCK_SIZE)
-
-                with tik_instance.for_range(0, x_to_block_loop_num) as row_h:
-                    with tik_instance.for_range(0, block_per_loop_num) as row_i:
-                        # compute gm offset of x
-                        indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value",
-                                                            init_value=0)
-                        indices_value.set_as(indices_ub[inner_indices_offset + row_g * res_ub_to_gm_per_loop_num
-                                                        + (row_h * block_per_loop_num + row_i)])
-                        gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
-
-                        # copy params row from gm to block_ub
-                        tik_instance.data_move(block_ub[self.block_elem * row_i], x_src[gm_offset], 0, 1, 1, 0, 0)
-
-                    with tik_instance.for_range(0, block_per_loop_num) as row_i:
-                        # set result to res_ub
-                        res_ub_offset = (row_h * block_per_loop_num + row_i) * self.params_row
-                        block_ub_offset = row_i * self.block_elem
-                        with tik_instance.for_range(0, self.params_row) as i:
-                            res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset + i])
-
-                # move tail data from ub to gm
-                with tik_instance.new_stmt_scope(disable_sync=True):
-                    tail_indices = x_to_block_loop_num * block_per_loop_num
-
-                    with tik_instance.for_range(tail_indices, row_num_once_remaining) as row_i:
-                        # compute gm offset of x
-                        indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value",
-                                                            init_value=0)
-                        indices_value.set_as(indices_ub[inner_indices_offset + row_g * res_ub_to_gm_per_loop_num
-                                                        + row_i])
-                        gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
-
-                        # copy params row from gm to block_ub
-                        tik_instance.data_move(block_ub[self.block_elem * (row_i - tail_indices)], x_src[gm_offset],
-                                               0, 1, 1, 0, 0)
-
-                with tik_instance.for_range(tail_indices, row_num_once_remaining) as row_i:
-                    # set result to res_ub
-                    res_ub_offset = row_i * self.params_row
-                    block_ub_offset = (row_i - tail_indices) * self.block_elem
-                    with tik_instance.for_range(0, self.params_row) as i:
-                        res_ub[res_ub_offset + i].set_as(block_ub[block_ub_offset + i])
-
-                # copy result data from ub to gm
-                tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
-
-    def process_last_mode_1(self, row_num_last, indices_num_offset, inner_indices_offset,
+    def process_mode_1(self, row_num_last, indices_num_offset, inner_indices_offset,
                             pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, x_src):
         """
         process row_num_last indices for tiling mode 1
 
         Parameters
         ----------
-        row_num_last: the last indices num
+        row_num_last: the indices num
         indices_num_offset: indices num offset
         inner_indices_offset: inner indices num offset
         quarter_ub_size: a quarter of ub size
@@ -540,7 +455,8 @@ class GatherV2():
         # count num of every loop from result_ub to gm
         res_ub_to_gm_per_loop_num = quarter_ub_size / self.params_dsize
         # loop num from result_ub to gm
-        res_ub_to_gm_loop_num = (row_num_last + res_ub_to_gm_per_loop_num - 1) // res_ub_to_gm_per_loop_num
+        res_ub_to_gm_loop_num = (row_num_last * self.params_row +
+                                 res_ub_to_gm_per_loop_num - 1) // res_ub_to_gm_per_loop_num
         # elements num in block_ub
         block_per_loop_num = quarter_ub_size / BLOCK_SIZE
 
@@ -550,24 +466,24 @@ class GatherV2():
         row_num_last_remaining.set_as(row_num_last)
 
         with tik_instance.for_range(0, res_to_gm_loop_num) as row_g:
-            with tik_instance.if_scope(res_to_gm_loop_num == 2):
-                with tik_instance.if_scope(row_g == 0):
-                    row_num_last_remaining.set_as(res_ub_to_gm_per_loop_num)
+            with tik_instance.if_scope(res_to_gm_loop_num > 1):
+                with tik_instance.if_scope(row_g != res_to_gm_loop_num - 1):
+                    row_num_last_remaining.set_as(row_num_last // res_to_gm_loop_num)
                 with tik_instance.else_scope():
-                    row_num_last_remaining.set_as(row_num_last - res_ub_to_gm_per_loop_num)
+                    row_num_last_remaining.set_as(row_num_last - (row_num_last // res_to_gm_loop_num) * row_g)
 
             # loop num from x_src to block_ub
             x_to_block_loop_num = row_num_last_remaining // block_per_loop_num
             # compute output offset of every loop
             burst_len_res = ceil_value(row_num_last_remaining * self.params_row * self.params_dsize, BLOCK_SIZE)
             output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row \
-                            + row_g * res_ub_to_gm_per_loop_num
+                            + row_g * (row_num_last // res_to_gm_loop_num) * self.params_row
 
             with tik_instance.for_range(0, x_to_block_loop_num) as row_h:
                 with tik_instance.for_range(0, block_per_loop_num) as row_i:
                     # compute gm offset of x
                     indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
-                    indices_value.set_as(indices_ub[inner_indices_offset + row_g * res_ub_to_gm_per_loop_num
+                    indices_value.set_as(indices_ub[inner_indices_offset + row_g * (row_num_last // res_to_gm_loop_num)
                                                     + (row_h * block_per_loop_num + row_i)])
                     gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
 
@@ -587,7 +503,7 @@ class GatherV2():
                 with tik_instance.for_range(tail_indices, row_num_last_remaining) as row_i:
                     # compute gm offset of x
                     indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
-                    indices_value.set_as(indices_ub[inner_indices_offset + row_g * res_ub_to_gm_per_loop_num
+                    indices_value.set_as(indices_ub[inner_indices_offset + row_g * (row_num_last // res_to_gm_loop_num)
                                                     + row_i])
                     gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
 
@@ -1681,13 +1597,15 @@ class GatherV2():
                                    ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num > 0):
-                self.process_loop_mode_1(self.inner_loop_num, indices_num_offset, pre_i, quarter_ub_size,
-                                         indices_ub, res_ub, block_ub, x_src)
+                with tik_instance.for_range(0, self.inner_loop_num) as inner_loop_i:
+                    inner_indices_offset = inner_loop_i * self.row_num_once_ub
+                    self.process_mode_1(self.row_num_once_ub, indices_num_offset, inner_indices_offset,
+                                        pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, self.x)
 
             # a2. process row_num_once_tail_ub
             with tik_instance.if_scope(self.row_num_once_tail_ub > 0):
                 inner_indices_offset = self.inner_loop_num * self.row_num_once_ub
-                self.process_last_mode_1(self.row_num_once_tail_ub, indices_num_offset, inner_indices_offset,
+                self.process_mode_1(self.row_num_once_tail_ub, indices_num_offset, inner_indices_offset,
                                          pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, x_src)
 
         with tik_instance.if_scope(self.indices_row_num_last > 0):
@@ -1697,12 +1615,14 @@ class GatherV2():
                                    ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num_last > 0):
-                self.process_loop_mode_1(self.inner_loop_num_last, indices_num_offset, pre_i, quarter_ub_size,
-                                         indices_ub, res_ub, block_ub, x_src)
+                with tik_instance.for_range(0, self.inner_loop_num_last) as inner_loop_i:
+                    inner_indices_offset = inner_loop_i * self.row_num_once_ub
+                    self.process_mode_1(self.row_num_once_ub, indices_num_offset, inner_indices_offset,
+                                        pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, self.x)
 
             with tik_instance.if_scope(self.row_num_last_tail_ub > 0):
                 inner_indices_offset = self.inner_loop_num_last * self.row_num_last_ub
-                self.process_last_mode_1(self.row_num_last_tail_ub, indices_num_offset, inner_indices_offset,
+                self.process_mode_1(self.row_num_last_tail_ub, indices_num_offset, inner_indices_offset,
                                          pre_i, quarter_ub_size, indices_ub, res_ub, block_ub, x_src)
 
     def compute_mode_10(self, remain_half_ub_size, block_id):
