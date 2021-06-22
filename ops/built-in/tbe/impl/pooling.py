@@ -443,7 +443,7 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
         dilations = (1, 1, 1, 1)
         strides = (1, 1, stride[0], stride[1])
         conv2d(x, matrix, bias, offset_w, y, strides, pad, dilations,
-               groups=input_c, data_format=input_dtype, offset_x=offset_x,
+               groups=input_c, data_format="NCHW", offset_x=offset_x,
                kernel_name=kernel_name)
     else:
         # set tensor attrs
