@@ -27,7 +27,8 @@
 #include "array_ops.h"
 #include "graph/ge_tensor.h"
 
-
+using std::make_pair;
+static const int64_t UNKNOWN_DIM = -1;
 class RESHAPE_UNKNOWN_SHAPE_UT : public testing::Test {
  protected:
   static void SetUpTestCase() {
@@ -64,18 +65,7 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, InferShape) {
   a = -100;
   b = -10;
   ret = ge::array_ops::CheckInt64MulOverflow(a, b);
-  std::vector<std::pair<int64_t, int64_t>> x_range1;
-  int64_t range_max1 = 1;
-  ge::array_ops::ReshapeRangeInfer(op, x_range1, range_max1);
 
-  std::vector<std::pair<int64_t, int64_t>> x_range2;
-  std::pair<int64_t,int64_t> pair1(16, 16);
-  std::pair<int64_t,int64_t> pair2(1, -1);
-  int64_t range_max2 = 1;
-  x_range2.push_back(pair1);
-  x_range2.push_back(pair2);
-  ge::array_ops::ReshapeRangeInfer(op, x_range2, range_max2);
-  
   std::vector<std::pair<int64_t, int64_t>> x_range3;
   std::vector<std::pair<int64_t, int64_t>> y_range3;
   std::pair<int64_t,int64_t> pair3(16, 16);
@@ -94,4 +84,120 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, InferShape) {
   ge::GeShape shape4(dims2);
   ge::array_ops::ReshapeRangeInfer(op, x_range4, y_range4, shape4);  
   EXPECT_EQ(ret, true);
+}
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, reshape_range_infer_test_precise_max) {
+  ge::op::Reshape op("Reshape");
+  auto rank = 4;
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range = {make_pair(1, 100), make_pair(1, 400)};
+  ge::GeShape x_shape = ge::GeShape(std::vector<int64_t>(2, UNKNOWN_DIM));
+  std::vector<std::pair<int64_t, int64_t>> shape_value_range = {make_pair(100, -1), make_pair(-1, -10),
+                                                                make_pair(1, 20),   make_pair(10, 10)};
+  std::vector<std::pair<int64_t, int64_t>> y_shape_range;
+  ge::GeShape y_shape = ge::GeShape(std::vector<int64_t>(rank, UNKNOWN_DIM));
+  ge::array_ops::ReshapeRangeInferAllDims(op, x_shape_range, x_shape, shape_value_range, rank, y_shape_range, y_shape);
+
+  std::vector<int64_t> target_y_shape_dims = {-1, -1, -1, 10};
+  EXPECT_EQ(y_shape.GetDims(), target_y_shape_dims);
+
+  std::vector<int64_t> target_y_shape_range = {100, 4000, 1, 40, 1, 20, 10, 10};
+  std::vector<int64_t> output_shape_range;
+  for (auto pair : y_shape_range) {
+    output_shape_range.push_back(pair.first);
+    output_shape_range.push_back(pair.second);
+  }
+  EXPECT_EQ(output_shape_range, target_y_shape_range);
+}
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, reshape_range_infer_test_unknown_max) {
+  ge::op::Reshape op("Reshape");
+  auto rank = 4;
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range = {make_pair(1, 100), make_pair(1, 400), make_pair(-1, -1)};
+  ge::GeShape x_shape = ge::GeShape(std::vector<int64_t>(3, UNKNOWN_DIM));
+  std::vector<std::pair<int64_t, int64_t>> shape_value_range = {make_pair(100, -1), make_pair(1, -10),
+                                                                make_pair(1, 20),   make_pair(10, 10)};
+  std::vector<std::pair<int64_t, int64_t>> y_shape_range;
+  ge::GeShape y_shape = ge::GeShape(std::vector<int64_t>(rank, UNKNOWN_DIM));
+  ge::array_ops::ReshapeRangeInferAllDims(op, x_shape_range, x_shape, shape_value_range, rank, y_shape_range, y_shape);
+
+  std::vector<int64_t> target_y_shape_dims = {-1, -1, -1, 10};
+  EXPECT_EQ(y_shape.GetDims(), target_y_shape_dims);
+
+  std::vector<int64_t> target_y_shape_range = {100, -1, 1, -1, 1, 20, 10, 10};
+  std::vector<int64_t> output_shape_range;
+  for (auto pair : y_shape_range) {
+    output_shape_range.push_back(pair.first);
+    output_shape_range.push_back(pair.second);
+  }
+  EXPECT_EQ(output_shape_range, target_y_shape_range);
+}
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, reshape_range_infer_test_lower_boundary) {
+  ge::op::Reshape op("Reshape");
+  auto rank = 4;
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range = {};
+  ge::GeShape x_shape = ge::GeShape(std::vector<int64_t>(3, 100));
+  std::vector<std::pair<int64_t, int64_t>> shape_value_range = {make_pair(100, -1), make_pair(1, -10),
+                                                                make_pair(1, 20),   make_pair(10, 10)};
+  std::vector<std::pair<int64_t, int64_t>> y_shape_range;
+  ge::GeShape y_shape = ge::GeShape(std::vector<int64_t>(rank, UNKNOWN_DIM));
+  ge::array_ops::ReshapeRangeInferAllDims(op, x_shape_range, x_shape, shape_value_range, rank, y_shape_range, y_shape);
+
+  std::vector<int64_t> target_y_shape_dims = {-1, -1, -1, 10};
+  EXPECT_EQ(y_shape.GetDims(), target_y_shape_dims);
+
+  std::vector<int64_t> target_y_shape_range = {100, 100000, 1, 1000, 1, 20, 10, 10};
+  std::vector<int64_t> output_shape_range;
+  for (auto pair : y_shape_range) {
+    output_shape_range.push_back(pair.first);
+    output_shape_range.push_back(pair.second);
+  }
+  EXPECT_EQ(output_shape_range, target_y_shape_range);
+}
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, reshape_range_infer_test_empty_tensor) {
+  ge::op::Reshape op("Reshape");
+  auto rank = 4;
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range = {make_pair(1, 100), make_pair(0, 0)};
+  ge::GeShape x_shape = ge::GeShape({-1, 0});
+  std::vector<std::pair<int64_t, int64_t>> shape_value_range = {make_pair(0, 0), make_pair(-1, -10),
+                                                                make_pair(10, 20),   make_pair(100, 100)};
+  std::vector<std::pair<int64_t, int64_t>> y_shape_range;
+  ge::GeShape y_shape = ge::GeShape(std::vector<int64_t>(rank, UNKNOWN_DIM));
+  ge::array_ops::ReshapeRangeInferAllDims(op, x_shape_range, x_shape, shape_value_range, rank, y_shape_range, y_shape);
+
+  std::vector<int64_t> target_y_shape_dims = {0, -1, -1, 100};
+  EXPECT_EQ(y_shape.GetDims(), target_y_shape_dims);
+
+  std::vector<int64_t> target_y_shape_range = {0, 0, 1, -1, 10, 20, 100, 100};
+  std::vector<int64_t> output_shape_range;
+  for (auto pair : y_shape_range) {
+    output_shape_range.push_back(pair.first);
+    output_shape_range.push_back(pair.second);
+  }
+  EXPECT_EQ(output_shape_range, target_y_shape_range);
+}
+
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, reshape_range_infer_test_probable_empty_tensor) {
+  ge::op::Reshape op("Reshape");
+  auto rank = 4;
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range = {make_pair(1, 100), make_pair(0, 100)};
+  ge::GeShape x_shape = ge::GeShape({-1, -1});
+  std::vector<std::pair<int64_t, int64_t>> shape_value_range = {make_pair(0, 5000), make_pair(-1, -10),
+                                                                make_pair(10, 20),  make_pair(10, 10)};
+  std::vector<std::pair<int64_t, int64_t>> y_shape_range;
+  ge::GeShape y_shape = ge::GeShape(std::vector<int64_t>(rank, UNKNOWN_DIM));
+  ge::array_ops::ReshapeRangeInferAllDims(op, x_shape_range, x_shape, shape_value_range, rank, y_shape_range, y_shape);
+
+  std::vector<int64_t> target_y_shape_dims = {-1, -1, -1, 10};
+  EXPECT_EQ(y_shape.GetDims(), target_y_shape_dims);
+
+  std::vector<int64_t> target_y_shape_range = {0, 1000, 1, 1000, 10, 20, 10, 10};
+  std::vector<int64_t> output_shape_range;
+  for (auto pair : y_shape_range) {
+    output_shape_range.push_back(pair.first);
+    output_shape_range.push_back(pair.second);
+  }
+  EXPECT_EQ(output_shape_range, target_y_shape_range);
 }

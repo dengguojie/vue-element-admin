@@ -376,11 +376,32 @@ bool SetScalarOutputDesc(const string& input,
                          OpDescPtr op_desc, 
                          GeShape& output_shape);
 
+bool IsEmptyTensor(GeTensorDescPtr tensor_desc);
+
+bool IsEmptyTensor(const GeShape &ge_shape);
+
+std::string RangeToString(const std::vector<std::pair<int64_t, int64_t>> &ranges);
+
 namespace array_ops {
 bool CheckInt64MulOverflow(int64_t a, int64_t b);
+int64_t CalcMaxElementsCount(const Operator &op, const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
+                             const GeShape &x_shape);
+void GenerateWorstYShapeAndYShapeRange(int64_t y_rank, int64_t max_elements_count, 
+                                      std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape);
+bool RepairAndCheckRange(const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
+                         std::vector<std::pair<int64_t, int64_t>> &value_range);
+void InferShapeRangeForEmptyTensor(int64_t y_rank, int64_t max_elements_count, 
+                                   const std::vector<std::pair<int64_t, int64_t>> &value_range,
+                                   std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape);
+void UpdateDimsAndShapeRange(const Operator &op, int64_t max_elements_count,
+                             const std::vector<std::pair<int64_t, int64_t>> &value_range,
+                             std::vector<int64_t> &y_dims,
+                             std::vector<std::pair<int64_t, int64_t>> &y_shape_range);
 
-void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
-                       int64_t& range_max);
+void ReshapeRangeInferAllDims(const Operator &op, const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
+                              const GeShape &x_shape,
+                              const std::vector<std::pair<int64_t, int64_t>> &shape_value_range, int64_t y_rank,
+                              std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape);
 
 void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
                        std::vector<std::pair<int64_t, int64_t>>& y_range, GeShape& output_shape);

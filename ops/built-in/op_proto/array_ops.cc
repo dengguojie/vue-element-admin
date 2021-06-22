@@ -30,6 +30,7 @@
 #include "graph/utils/node_utils.h"
 #include "./util/error_util.h"
 #include "util/util.h"
+#include "framework/common/debug/ge_log.h"
 
 namespace ge {
 const char* const kShape = "shape";
@@ -1167,17 +1168,6 @@ static graphStatus CaffeReshapeInferShape(const vector<int64_t> &dims, const int
   return GRAPH_SUCCESS;
 }
 
-bool IsEmptyTensor(GeTensorDescPtr tensor_desc) {
-  bool is_empty = false;
-  for (const auto &dim : tensor_desc->MutableShape().GetDims()) {
-    if (dim == 0) {
-      is_empty = true;
-      break;
-    }
-  }
-  return is_empty;
-}
-
 template <typename T>
 graphStatus GetOutShapeFromTensor(OpDescPtr op_desc, GeTensorPtr tensor, std::vector<int64_t> &v_out) {
   auto shape_desc = tensor->MutableTensorDesc();
@@ -1289,9 +1279,9 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   graphStatus state = NodeUtils::GetInputConstData(node, "shape", tensor);
   if (state != GRAPH_SUCCESS) {
     GE_OP_LOGW(op.GetName().c_str(), "Op get input const data of shape failed");
-    auto input_shape = op_desc->MutableInputDesc("x")->MutableShape();
-    auto shape_input_desc = op_desc->MutableInputDesc("shape");
-    auto shape_shape = shape_input_desc->MutableShape();
+    auto input_x_desc = op_desc->MutableInputDesc("x");
+    auto input_shape_desc = op_desc->MutableInputDesc("shape");
+    auto shape_shape = input_shape_desc->MutableShape();
     // because shape's value stand for output shape, so it should be smaller than 1 dim
     auto shape_rank = shape_shape.GetDims().size();
     if (shape_rank > 1) {
@@ -1302,38 +1292,28 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
       return GRAPH_PARAM_INVALID;
     }
     if (shape_shape.GetDims() != UNKNOWN_RANK && shape_shape.GetDims() != UNKNOWN_SHAPE) {
-      auto x_type = op_desc->MutableInputDesc("x")->GetDataType();
+      auto x_type = input_x_desc->GetDataType();
       auto td = op_desc->MutableOutputDesc("y");
-      int64_t rank = (shape_rank == 0) ? 0 : shape_shape.GetDims().at(0);
-      td->SetShape(GeShape(std::vector<int64_t>(rank, UNKNOWN_DIM)));
-      td->SetOriginShape(GeShape(std::vector<int64_t>(rank, UNKNOWN_DIM)));
       td->SetDataType(x_type);
-      // calc shape range
-      if (input_shape.GetDims() == UNKNOWN_RANK) {
-        GE_OP_LOGD("input x is unknown rank!no way to set shape range!");
-        return GRAPH_SUCCESS;
-      }
 
-      auto input_shape_size = input_shape.GetShapeSize();
-      int64_t range_max = 1;
-      if (input_shape_size <= 0) {
-        // unknown dim , by input shape range calc output range
-        std::vector<std::pair<int64_t, int64_t>> x_range;
-        (void)op_desc->MutableInputDesc("x")->GetShapeRange(x_range);
-        if (x_range.empty()) {
-          return GRAPH_SUCCESS;
-        }
-        ge::array_ops::ReshapeRangeInfer(op, x_range, range_max);
-      } else {
-        // known dim, shape size as range_max
-        range_max = input_shape_size;
-      }
-      range_max = (range_max > INT32_MAX) ? INT32_MAX : range_max;
-      std::vector<std::pair<int64_t, int64_t>> y_range(rank, {1, range_max});
-      td->SetShapeRange(y_range);
+      // calc y shape and y shape range
+      int64_t y_rank = (shape_rank == 0) ? 0 : shape_shape.GetDims().at(0);
+      auto x_shape = input_x_desc->MutableShape();
+      std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+      (void)input_x_desc->GetShapeRange(x_shape_range);
+      std::vector<std::pair<int64_t, int64_t>> shape_value_range;
+      (void)input_shape_desc->GetValueRange(shape_value_range);
+      std::vector<std::pair<int64_t, int64_t>> y_shape_range;
+      GeShape y_shape;
+
+      ge::array_ops::ReshapeRangeInferAllDims(op, x_shape_range, x_shape, shape_value_range,
+                                              y_rank, y_shape_range, y_shape);
+      td->SetShapeRange(y_shape_range);
+      td->SetShape(y_shape);
+      td->SetOriginShape(y_shape);
       return GRAPH_SUCCESS;
     }
-    auto x_type = op_desc->MutableInputDesc("x")->GetDataType();
+    auto x_type = input_x_desc->GetDataType();
     auto td = op_desc->MutableOutputDesc("y");
     td->SetShape(GeShape({-2}));
     td->SetOriginShape(GeShape({-2}));
@@ -1786,6 +1766,45 @@ IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
 
 INFER_FUNC_REG(Shape, ShapeInfer);
 
+static graphStatus ShapeValueRangeInfer(const Operator &op) {
+  size_t cur_op_input_size = op.GetInputsSize();
+  size_t cur_op_output_size = op.GetOutputsSize();
+  if (cur_op_input_size != cur_op_output_size) {
+    OP_LOGI(op.GetName().c_str(), "Current op inputs_size %zu and outputs_size %zu are not the same.",
+            cur_op_input_size, cur_op_output_size);
+    return GRAPH_PARAM_INVALID;
+  }
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  for (size_t i = 0; i < cur_op_input_size; i++) {
+    auto input_i_desc = op_desc->MutableInputDesc(i);
+    auto input_dims = input_i_desc->MutableShape().GetDims();
+    if (input_dims == UNKNOWN_RANK) {
+      continue;
+    }
+
+    std::vector<std::pair<int64_t, int64_t>> in_shape_range;
+    input_i_desc->GetShapeRange(in_shape_range);
+    if (in_shape_range.empty()) {
+      continue;
+    }
+
+    auto output_i_desc = op_desc->MutableOutputDesc(i);
+    output_i_desc->SetValueRange(in_shape_range);
+    if (IsLogEnable(GE, DLOG_DEBUG)) {
+      OP_LOGD(op.GetName().c_str(), "Current op set output %zu value range success, value range = %s.", i,
+              RangeToString(in_shape_range).c_str());
+    }
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPL_INFER_VALUE_RANGE_FUNC(Shape, ShapeValueRangeInferFunc){
+  return ShapeValueRangeInfer(op);
+}
+
+INFER_VALUE_RANGE_CUSTOM_FUNC_REG(Shape, INPUT_IS_DYNAMIC, ShapeValueRangeInferFunc);
+
+
 IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   for (size_t i = 0; i < op.GetInputsSize(); i++) {
@@ -1823,6 +1842,12 @@ IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
 }
 
 INFER_FUNC_REG(ShapeN, ShapeNInfer);
+
+IMPL_INFER_VALUE_RANGE_FUNC(ShapeN, ShapeNValueRangeInferFunc){
+  return ShapeValueRangeInfer(op);
+}
+
+INFER_VALUE_RANGE_CUSTOM_FUNC_REG(ShapeN, INPUT_IS_DYNAMIC, ShapeNValueRangeInferFunc);
 
 IMPLEMT_INFERFUNC(IdentityN, IdentityNInfer) {
   OP_LOGI(op.GetName().c_str(), "IdentityN infershape start");

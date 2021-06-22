@@ -1295,8 +1295,41 @@ bool SetScalarOutputDesc(const string& input, const string& output, OpDescPtr op
   }
 }
 
-namespace array_ops {
+bool IsEmptyTensor(GeTensorDescPtr tensor_desc) {
+  return IsEmptyTensor(tensor_desc->MutableShape());
+}
 
+bool IsEmptyTensor(const GeShape &ge_shape) {
+  bool is_empty = false;
+  for (const auto &dim : ge_shape.GetDims()) {
+    if (dim == 0) {
+      is_empty = true;
+      break;
+    }
+  }
+  return is_empty;
+}
+
+std::string RangeToString(const std::vector<std::pair<int64_t, int64_t>> &ranges) {
+  bool first = true;
+  std::stringstream ss;
+  ss << "[";
+  for (const auto &range : ranges) {
+    if (first) {
+      first = false;
+    } else {
+      ss << ",";
+    }
+    ss << "{";
+    ss << range.first << "," << range.second;
+    ss << "}";
+  }
+  ss << "]";
+  return ss.str();
+}
+
+namespace array_ops {
+// If not overflow return true
 bool CheckInt64MulOverflow(int64_t a, int64_t b) {
   if (a > 0) {
     if (b > 0) {
@@ -1323,22 +1356,152 @@ bool CheckInt64MulOverflow(int64_t a, int64_t b) {
   return true;
 }
 
-void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
-                       int64_t& range_max) {
-  for (const auto& ele : x_range) {
-    if (ele.second < 0) {
-      range_max = -1;
-      return;
+int64_t CalcMaxElementsCount(const Operator &op, const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
+                             const GeShape &x_shape) {
+  int64_t max_elements_count = 1;
+  auto x_shape_size = x_shape.GetShapeSize();
+  if (x_shape_size > 0) {
+    // when known dim, x_shape_size is max_elements_count
+    max_elements_count = x_shape_size;
+  } else {
+    // unknown dim
+    if (x_shape_range.empty()) {
+      max_elements_count = -1;
     }
-
-    if (array_ops::CheckInt64MulOverflow(range_max, ele.second)) {
-      range_max *= ele.second;
-    } else {
-      range_max = INT64_MAX;
-      GE_OP_LOGW(op.GetName().c_str(), "Range Infer out of int64 max!Do set int64max!");
-      return;
+    for (const auto &x_range_i : x_shape_range) {
+      if (x_range_i.second <= 0) {
+        max_elements_count = -1;
+        break;
+      }
+      if (array_ops::CheckInt64MulOverflow(max_elements_count, x_range_i.second)) {
+        max_elements_count *= x_range_i.second;
+      } else {
+        max_elements_count = -1;
+      }
     }
   }
+
+  return max_elements_count;
+}
+
+void GenerateWorstYShapeAndYShapeRange(int64_t y_rank, int64_t max_elements_count,
+                                      std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape) {
+  y_shape = GeShape(std::vector<int64_t>(y_rank, UNKNOWN_DIM));
+  y_shape_range.clear();
+  for (int64_t i = 0; i < y_rank; ++i) {
+    y_shape_range.emplace_back(std::pair<int64_t, int64_t>(1, max_elements_count));
+  }
+}
+
+bool RepairAndCheckRange(const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
+                         std::vector<std::pair<int64_t, int64_t>> &value_range) {
+  bool has_zero_in_range = false;
+  for (auto &range_i : value_range) {
+    if (range_i.first < 0) {
+      range_i.first = 1;
+    }
+    if (range_i.second < 0) {
+      range_i.second = -1;
+    }
+    if (range_i.first == 0) {
+      has_zero_in_range = true;
+    }
+  }
+
+  for (auto &range_i : x_shape_range) {
+    if (range_i.first == 0) {
+      has_zero_in_range = true;
+      break;
+    }
+  }
+  return has_zero_in_range;
+}
+
+void InferShapeRangeForEmptyTensor(int64_t y_rank, int64_t max_elements_count,
+                                   const std::vector<std::pair<int64_t, int64_t>> &value_range,
+                                   std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape) {
+  y_shape_range = value_range;
+  int64_t known_dims_product = 1;
+  std::vector<int64_t> y_dims = y_shape.GetDims();
+  for (int64_t i = 0; i < y_rank; ++i) {
+    if (y_shape_range[i].first == y_shape_range[i].second) {
+      y_dims[i] = y_shape_range[i].first;
+      if (max_elements_count != -1 && y_dims[i] != 0) {
+        known_dims_product *= y_dims[i];
+      }
+    }
+  }
+  y_shape = GeShape(y_dims);
+
+  if (known_dims_product != 1) {
+    auto cur_dim_max_elements_count = (max_elements_count - 1) / known_dims_product + 1;
+    for (int64_t i = 0; i < y_rank; ++i) {
+      if (y_dims[i] == -1) {
+        if (y_shape_range[i].second != -1) {
+          y_shape_range[i].second = std::min(cur_dim_max_elements_count, y_shape_range[i].second);
+        } else {
+          y_shape_range[i].second = cur_dim_max_elements_count;
+        }
+      }
+    }
+  }
+}
+
+void UpdateDimsAndShapeRange(const Operator &op, int64_t max_elements_count,
+                             const std::vector<std::pair<int64_t, int64_t>> &value_range,
+                             std::vector<int64_t> &y_dims,
+                             std::vector<std::pair<int64_t, int64_t>> &y_shape_range) {
+  size_t y_rank = y_dims.size();
+  for (size_t i = 0; i < y_rank; ++i) {
+    if (value_range[i].first == value_range[i].second) {
+      y_dims[i] = value_range[i].first;
+      y_shape_range[i] = std::pair<int64_t, int64_t>(y_dims[i], y_dims[i]);
+    } else {
+      if (max_elements_count == -1) {
+        // while max_elements_count = -1, y shape range i is always value_range[i].second;
+        y_shape_range[i] = std::pair<int64_t, int64_t>(value_range[i].first, value_range[i].second);
+        continue;
+      }
+      int64_t other_dims_range_lower_boundary = 1;
+      for (size_t j = 0; j < y_rank; ++j) {
+        if (i != j) {
+          other_dims_range_lower_boundary *= value_range[j].first;
+        }
+      }
+      int64_t cur_dim_range_max = (max_elements_count - 1) / other_dims_range_lower_boundary + 1;
+      if (value_range[i].second > 0) {
+        cur_dim_range_max = std::min(cur_dim_range_max, value_range[i].second);
+      }
+      y_shape_range[i] = std::pair<int64_t, int64_t>(value_range[i].first, cur_dim_range_max);
+    }
+  }
+}
+
+void ReshapeRangeInferAllDims(const Operator &op, const std::vector<std::pair<int64_t, int64_t>> &x_shape_range,
+                              const GeShape &x_shape,
+                              const std::vector<std::pair<int64_t, int64_t>> &shape_value_range, int64_t y_rank,
+                              std::vector<std::pair<int64_t, int64_t>> &y_shape_range, GeShape &y_shape) {
+  // step 1, calculate input_x range max and init worst y shape and y shape range
+  int64_t max_elements_count = CalcMaxElementsCount(op, x_shape_range, x_shape);
+  GenerateWorstYShapeAndYShapeRange(y_rank, max_elements_count, y_shape_range, y_shape);
+  if (shape_value_range.empty()) {
+    // no value range, can not calculate accurate shape range.
+    return;
+  }
+
+  // step 2, deal with empty tensor. if no value range cannot infer empty tensor.
+  bool is_probable_empty_tensor = false;
+  std::vector<std::pair<int64_t, int64_t>> value_range = shape_value_range;
+  bool has_zero_in_range = RepairAndCheckRange(x_shape_range, value_range);
+  if (IsEmptyTensor(x_shape) || has_zero_in_range) {
+    InferShapeRangeForEmptyTensor(y_rank, max_elements_count, value_range, y_shape_range, y_shape);
+    return;
+  }
+
+  // step 3, calculate accurate dims and shape_range
+  std::vector<int64_t> y_dims = y_shape.GetDims();
+  UpdateDimsAndShapeRange(op, max_elements_count, value_range, y_dims, y_shape_range);
+  y_shape = GeShape(y_dims);
 }
 
 void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
