@@ -14,7 +14,6 @@
 # limitations under the License.
 # ============================================================================
 
-set -e
 CUR_PATH=$(dirname $0)
 
 source ${CUR_PATH}/config.ini
