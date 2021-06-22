@@ -386,35 +386,49 @@ class CTCLossV2Grad(object):
         """
         copy_ub_a = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_a", scope=tik.scope_ubuf)
         copy_ub_b = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_b", scope=tik.scope_ubuf)
+        copy_ub_zero = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_zero", scope=tik.scope_ubuf)
+        self.tik_instance.vector_dup(BLOCK, copy_ub_zero, 0, self.C_BLOCK // BLOCK, 1, 1)
 
-        with self.tik_instance.for_range(0, T_i) as t:
-            self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx + self.N * self.C * t], 0,
-                                        1, self.C_BLOCK // BLOCK, 0, 0)
-            # func: grad = exp(log_probs)
-            self.tik_instance.vec_exp(BLOCK, copy_ub_a[0], log_probs_ub[0], self.C_BLOCK // BLOCK, 1, 1)
+        with self.tik_instance.for_range(0, self.T) as t:
+            with self.tik_instance.if_scope(t < T_i):
+                self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx + self.N * self.C * t], 0,
+                                            1, self.C_BLOCK // BLOCK, 0, 0)
+                # func: grad = exp(log_probs)
+                self.tik_instance.vec_exp(BLOCK, copy_ub_a[0], log_probs_ub[0], self.C_BLOCK // BLOCK, 1, 1)
 
-            with self.tik_instance.for_range(0, self.C) as c:
-                lp.set_as(log_probs_ub[c])
-                res.set_as(grad_ub[t * self.C + c])
-                # func: update certain grad
-                with self.tik_instance.if_scope(res != 0):
-                    log_ub[0].set_as(res + nll - lp)
-                    self.tik_instance.vec_exp(1, exp_ub, log_ub, 1, 1, 1)
+                with self.tik_instance.for_range(0, self.C) as c:
+                    lp.set_as(log_probs_ub[c])
+                    res.set_as(grad_ub[t * self.C + c])
+                    # func: update certain grad
+                    with self.tik_instance.if_scope(res != 0):
+                        log_ub[0].set_as(res + nll - lp)
+                        self.tik_instance.vec_exp(1, exp_ub, log_ub, 1, 1, 1)
 
-                    a_tmp.set_as(copy_ub_a[c])
-                    b_tmp.set_as(exp_ub[0])
-                    copy_ub_a[c].set_as(a_tmp - b_tmp)
-            
-            self.tik_instance.vec_muls(BLOCK, copy_ub_b[0], copy_ub_a[0], grad_out, self.C_BLOCK // BLOCK, 1, 1)
-            with self.tik_instance.if_scope(t != T_i - 1):
-                self.tik_instance.data_move(self.grad[task_idx * self.grad_block + t * self.C], copy_ub_b[0], 0, 1,
-                                            self.C_BLOCK // BLOCK, 1, 1)
-            with self.tik_instance.else_scope():
-                if self.C >= BLOCK:            
+                        a_tmp.set_as(copy_ub_a[c])
+                        b_tmp.set_as(exp_ub[0])
+                        copy_ub_a[c].set_as(a_tmp - b_tmp)
+                
+                self.tik_instance.vec_muls(BLOCK, copy_ub_b[0], copy_ub_a[0], grad_out, self.C_BLOCK // BLOCK, 1, 1)
+                with self.tik_instance.if_scope(t == self.T - 1):
+                    if self.C >= BLOCK:            
+                        self.tik_instance.data_move(self.grad[task_idx * self.grad_block + t * self.C], copy_ub_b[0], 0,
+                                                    1, self.C // BLOCK, 1, 1)
+                    self.tik_instance.data_move(self.grad_[task_idx * BLOCK], copy_ub_b[self.C_BLOCK - BLOCK], 0, 1,
+                                                1, 1, 1)
+                with self.tik_instance.else_scope():
                     self.tik_instance.data_move(self.grad[task_idx * self.grad_block + t * self.C], copy_ub_b[0], 0, 1,
-                                                self.C // BLOCK, 1, 1)
-                self.tik_instance.data_move(self.grad_[task_idx * BLOCK], copy_ub_b[self.C_BLOCK - BLOCK], 0, 1,
-                                            1, 1, 1)
+                                                self.C_BLOCK // BLOCK, 1, 1)
+                    
+            with self.tik_instance.else_scope():
+                with self.tik_instance.if_scope(t == self.T - 1):
+                    if self.C >= BLOCK:            
+                        self.tik_instance.data_move(self.grad[task_idx * self.grad_block + t * self.C], copy_ub_zero[0],
+                                                    0, 1, self.C // BLOCK, 1, 1)
+                    self.tik_instance.data_move(self.grad_[task_idx * BLOCK], copy_ub_zero[self.C_BLOCK - BLOCK], 0, 1,
+                                                1, 1, 1)
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(self.grad[task_idx * self.grad_block + t * self.C], copy_ub_zero[0], 0,
+                                                1, self.C_BLOCK // BLOCK, 1, 1)
 
     def count_trace(self, S_i, targets_ub):
         """

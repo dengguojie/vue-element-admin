@@ -246,8 +246,6 @@ class CTCLossV2(object):
                                           repeat_times - repeat_times // REPEAT_OFFSET * REPEAT_OFFSET, 1, 1)
             with self.tik_instance.else_scope():
                 self.tik_instance.vec_exp(3, exp_ub, sub_ub, repeat_times, 1, 1)
-                
-       
 
             # func: exp(a_tmp- max_tmp) + exp(b_tmp- max_tmp) + exp(b_tmp- max_tmp)
             with self.tik_instance.for_range(0, repeat_times) as s:    
