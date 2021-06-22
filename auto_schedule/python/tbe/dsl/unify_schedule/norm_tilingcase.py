@@ -164,27 +164,35 @@ def _apply_compile_info(graph_info):
 def _add_tiling_case(norm_info):
     shape_before_reduce = norm_info.shape_before_reduce
     reduce_axis_index = norm_info.reduce_axis_indices
-    is_reduce_last_axis = norm_info.is_reduce_last_axis
     tiling_case_list = []
 
-    reordered_shape, reorder_to_ori_axis_map, _ = \
-        reorder_reduce_shape(shape_before_reduce, reduce_axis_index, is_reduce_last_axis)
-
-    for i in range(len(reordered_shape)):
-        block_split_axis = reorder_to_ori_axis_map[i]
+    for block_split_axis in range(len(shape_before_reduce)):
         # block split on A axis
         if block_split_axis in reduce_axis_index:
             continue
-        for j in range(len(reordered_shape)):
-            ub_split_axis = reorder_to_ori_axis_map[j]
+        for ub_split_axis in range(len(shape_before_reduce)):
             # ub tiling axis is after block tiling axis if ub tiling split normal axis
-            if ub_split_axis not in reduce_axis_index and j < i:
+            if ub_split_axis not in reduce_axis_index and ub_split_axis < block_split_axis:
                 continue
             tiling_case = NormTilingCase()
             tiling_case.block_split_axis_index = block_split_axis
             tiling_case.ub_split_axis_index = ub_split_axis
             tiling_case.multi_core = True
             tiling_case_list.append(tiling_case)
+
+    # some special cases need workspace sch with partial reorder
+    if len(reduce_axis_index) > 1:
+        for block_split_axis in range(len(shape_before_reduce)):
+            # block split on A axis
+            if block_split_axis in reduce_axis_index:
+                continue
+            for ub_split_axis in reduce_axis_index:
+                tiling_case = NormTilingCase()
+                tiling_case.block_split_axis_index = block_split_axis
+                tiling_case.ub_split_axis_index = ub_split_axis
+                tiling_case.multi_core = False
+                tiling_case.is_partial_reorder_case = True
+                tiling_case_list.append(tiling_case)
 
     return tiling_case_list
 
@@ -193,6 +201,9 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
     add_compile_info_inner("_reduce_shape_known", True)
     const_tiling_case = NormTilingCase()
     ori_reduce_axis = get_compile_info().get("_ori_axis")
+    block_size = get_block_size(compute_graph_info.min_type)
+    reduce_axis_index = norm_info.reduce_axis_indices
+
     inputs = []
     for single_tensor in compute_graph_info.input_tensor_set:
         shape = util.shape_to_list(single_tensor.shape)
@@ -201,10 +212,11 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
     for single_tensor in compute_graph_info.output_tensor_set:
         shape = util.shape_to_list(single_tensor.shape)
         outputs.append({"shape": shape, "dtype": single_tensor.dtype})
-    reduce_axis_index = norm_info.reduce_axis_indices
     add_compile_info_inner("_ori_axis", reduce_axis_index)
+
     # the flag of invoking op_tiling interface during compilation
     add_compile_info_inner("_const_shape_post", False)
+
     run_info = do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
     tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int"}
     tiling_data = decode(run_info["tiling_data"], tiling_format)
@@ -213,7 +225,11 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
     const_tiling_case.ub_split_axis_index = tiling_data["ub_axis"]
     const_tiling_case.ub_factor = tiling_data["ub_factor"]
     const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
+    if len(reduce_axis_index) > 1 and util.shape_to_list(norm_info.shape_before_reduce)[-1] < block_size:
+        const_tiling_case.is_partial_reorder_case = True
+
     _calc_tiling_key(norm_info, const_tiling_case)
+
     # the flag of invoking op_tiling interface during running
     add_compile_info_inner("_const_shape_post", True)
     if ori_reduce_axis is not None:
@@ -221,6 +237,7 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
     add_compile_info_inner(CompileInfo.BLOCK_DIMS, run_info["block_dim"])
     add_compile_info_inner("_const_block_axis", tiling_data["block_axis"])
     add_compile_info_inner("_const_ub_axis", tiling_data["ub_axis"])
+
     # add workspace info in json
     if tiling_data["ub_axis"] in reduce_axis_index and get_op_context():
         workspace_num = 0
@@ -229,7 +246,6 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
 
         workspace_info = get_compile_info().get("_workspace_info")
 
-        block_size = get_block_size(compute_graph_info.min_type)
         before_reduce_align_shape = util.shape_to_list(norm_info.shape_before_reduce)[:]
         before_reduce_align_shape[-1] = (before_reduce_align_shape[-1] + block_size - 1) // block_size * block_size
         after_reduce_align_shape = util.shape_to_list(norm_info.shape_before_reduce)[:]
@@ -314,10 +330,16 @@ def _calc_tiling_key(norm_info, tiling_case):
     reduce_axis_idx = norm_info.reduce_axis_indices
     block_split_axis = tiling_case.block_split_axis_index
     ub_split_axis = tiling_case.ub_split_axis_index
-    sch_type = 0
     db = 0
-    if get_context().get_current_compute().get("_mode") == "const":
+    sch_type = 0
+    is_const = get_context().get_current_compute().get("_mode") == "const"
+    if is_const and not tiling_case.is_partial_reorder_case:
         sch_type = 1
+    elif not is_const and tiling_case.is_partial_reorder_case:
+        sch_type = 2
+    elif is_const and tiling_case.is_partial_reorder_case:
+        sch_type = 3
+
     tiling_key = _get_tiling_key(db, sch_type, block_split_axis, ub_split_axis, shape, reduce_axis_idx)
     tiling_case.tiling_key = tiling_key
 
@@ -397,6 +419,7 @@ class NormComputeGraphInfo:
         self.coexisting_quantity = 0
         self.available_ub_size = 0
         self.workspace_available_min_ub_size = 0
+        self.reduce_axis_len = 0
         # Do info collection
         self.collect_info(output_tensors)
         self.get_tensors_before_and_after_reduce()
@@ -553,6 +576,7 @@ class NormComputeGraphInfo:
         shape_after_reduce = list(reduce_tensor.shape)
         shape_before_reduce = list(reduce_tensor.op.input_tensors[0].shape)
 
+        self.reduce_axis_len = len(util.get_reduce_axes(reduce_tensor))
         self.max_type = self.tensor_list[0].dtype
         self.min_type = self.tensor_list[0].dtype
 
@@ -738,7 +762,7 @@ class NormComputeGraphInfo:
                 _current_space = len(dependent_map) + 1
             if util.need_extent_node(_tensor):
                 _current_space += 1
-            if util.is_unified_broadcast(_tensor):
+            if util.is_unified_broadcast(_tensor) and self.reduce_axis_len > 1:
                 _current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self.temp_ub_size += BLOCK_SIZE_BYTE
@@ -897,6 +921,7 @@ class NormTilingCase:
         self.ub_factor = None
         self.multi_core = None
         self.tiling_key = 2**31 - 1
+        self.is_partial_reorder_case = False
 
     def __hash__(self):
         return hash((self.block_split_axis_index, self.block_factor, self.ub_split_axis_index,

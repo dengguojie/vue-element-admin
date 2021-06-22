@@ -319,6 +319,14 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
 }
 
 bool Norm::GetBlockTilingInfo() {
+  if (is_partial_reorder) {
+    // don't split block
+    tilingInfo.block_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
+    tilingInfo.block_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
+    is_need_workspace = true;
+    sch_type = 2;
+    return true;
+  }
   if (is_need_workspace && compileInfo.workspace_type.size() != 0) {
     return GetWorkspaceBlockTilingInfo();
   }
@@ -468,8 +476,23 @@ bool Norm::ProcessReorderAxis() {
   return true;
 }
 
-
 int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_axis_in_reorder) {
+  int64_t result = 1;
+
+  for (uint32_t i = axis_index + 1; i < reorderInfo.reorder_input_shape.size(); i++) {
+    if (IsInVector(reorderInfo.fused_block_tiling_axis, i)) {
+      continue;
+    }
+    if (i == (uint32_t)block_tiling_axis_in_reorder) {
+      result = result * tilingInfo.block_tiling_factor;
+    } else {
+      result = result * reorderInfo.reorder_input_shape[i];
+    }
+  }
+  return result;
+}
+
+int64_t Norm::CalcReorderShapeProductAlign(int32_t axis_index, int32_t block_tiling_axis_in_reorder) {
   int64_t result = 1;
 
   for (uint32_t i = axis_index + 1; i < reorderInfo.reorder_input_shape.size(); i++) {
@@ -498,11 +521,31 @@ int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_a
   return result;
 }
 
+bool Norm::PartialReorderUbTiling() {
+  if (!is_partial_reorder) {
+    return false;
+  }
+  for (std::size_t i = 0; i < input_shape.size(); i++) {
+    if (!IsInVector(reduce_axis, i)) {
+      continue;
+    }
+    int64_t right_product_align = (i == input_shape.size() - 1 ?
+                                   1:
+                                   std::accumulate(input_align_shape.begin() + i + 1, input_align_shape.end(), 1,
+                                                   std::multiplies<int64_t>()));
+    if (right_product_align <= compileInfo.workspace_max_ub_count) {
+      int64_t cur_ub_factor = compileInfo.workspace_max_ub_count / right_product_align;
+      tilingInfo.ub_tiling_axis = (int32_t)i;
+      tilingInfo.ub_tiling_factor = cur_ub_factor > input_shape[i] ? input_shape[i] : cur_ub_factor;
+      return true;
+    }
+  }
+  is_partial_reorder = false;
+  return false;
+}
+
 bool Norm::GetUbTilingInfo() {
-  // if after shape product < block_size, don't split ub
-  if (!is_need_workspace && shape_after_reduce_product * reduce_product < block_size) {
-    tilingInfo.ub_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
-    tilingInfo.ub_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
+  if (PartialReorderUbTiling()) {
     return true;
   }
   int32_t block_tiling_axis_in_reorder = -1;
@@ -515,6 +558,7 @@ bool Norm::GetUbTilingInfo() {
   int32_t first_r_axis_in_reorder = input_shape.size() - reduce_axis.size() - (!is_last_axis_reduce);
   int32_t last_r_axis_in_reorder = input_shape.size() - 1 - (!is_last_axis_reduce);
   int64_t right_product = 1;
+  int64_t right_product_align = 1;
   // normal, ub split A
   if (!is_need_workspace) {
     for (int32_t i = 0; i < (int32_t)reorderInfo.reorder_input_shape.size(); i++) {
@@ -525,14 +569,15 @@ bool Norm::GetUbTilingInfo() {
         continue;
       }
       right_product = CalcReorderShapeProduct(i, block_tiling_axis_in_reorder);
+      right_product_align = CalcReorderShapeProductAlign(i, block_tiling_axis_in_reorder);
       int64_t current_dim = (i == block_tiling_axis_in_reorder) ?
                             tilingInfo.block_tiling_factor:
                             reorderInfo.reorder_input_shape[i];
       int64_t current_dim_tail = (i == block_tiling_axis_in_reorder) ?
                                  (reorderInfo.reorder_input_shape[i] % tilingInfo.block_tiling_factor):
                                  reorderInfo.reorder_input_shape[i];
-      if (right_product <= compileInfo.max_ub_count) {
-        int64_t cur_ub_factor = compileInfo.max_ub_count / right_product;
+      if (right_product_align <= compileInfo.max_ub_count) {
+        int64_t cur_ub_factor = compileInfo.max_ub_count / right_product_align;
         for (; cur_ub_factor >= 1; cur_ub_factor--) {
           int64_t tail_ub_factor =
               current_dim % cur_ub_factor == 0 ? cur_ub_factor : current_dim % cur_ub_factor;
@@ -542,10 +587,14 @@ bool Norm::GetUbTilingInfo() {
           int64_t tail_tail_ub_tilling_inner_ddr_count = tail_tail_ub_factor * right_product;
           if (tail_ub_tilling_inner_ddr_count >= block_size && tail_tail_ub_tilling_inner_ddr_count >= block_size) {
             tilingInfo.ub_tiling_axis = reorderInfo.reorderPos_oriPos[i];
-            tilingInfo.ub_tiling_factor = cur_ub_factor > current_dim ? current_dim : cur_ub_factor;
+            int64_t ub_loop = cur_ub_factor > current_dim ? 1 : (current_dim + cur_ub_factor - 1) / cur_ub_factor;
+            tilingInfo.ub_tiling_factor = (current_dim + ub_loop - 1) / ub_loop;
+            if (tilingInfo.ub_tiling_factor > compileInfo.max_ub_count / right_product_align) {
+              tilingInfo.ub_tiling_factor = cur_ub_factor > current_dim ? current_dim : cur_ub_factor;
+            }
             // storage align last A when is nlast reduce, but align_factor * right_product is larger than max_ub
             if (!(!is_last_axis_reduce && i == (int32_t)reorderInfo.reorder_input_shape.size() - 1 &&
-                  (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size * right_product >
+                  (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size * right_product_align >
                   compileInfo.max_ub_count)) {
               return true;
             }
@@ -553,6 +602,10 @@ bool Norm::GetUbTilingInfo() {
         }
       }
     }
+    tilingInfo.ub_tiling_axis = IsInVector(reduce_axis, 0) ? 1 : 0;
+    tilingInfo.ub_tiling_factor = IsInVector(reduce_axis, 0) ? input_shape[1] : input_shape[0];
+    return true;
+
   } else {
     // workspace, ub split R
     for (int32_t i = 0; i < (int32_t)reorderInfo.reorder_input_shape.size(); i++) {
@@ -563,19 +616,24 @@ bool Norm::GetUbTilingInfo() {
         continue;
       }
       right_product = CalcReorderShapeProduct(i, block_tiling_axis_in_reorder);
+      right_product_align = CalcReorderShapeProductAlign(i, block_tiling_axis_in_reorder);
       int64_t current_dim = reorderInfo.reorder_input_shape[i];
-      if (right_product <= compileInfo.workspace_max_ub_count) {
-        int64_t cur_ub_factor = compileInfo.workspace_max_ub_count / right_product;
+      if (right_product_align <= compileInfo.workspace_max_ub_count) {
+        int64_t cur_ub_factor = compileInfo.workspace_max_ub_count / right_product_align;
         for (; cur_ub_factor >= 1; cur_ub_factor--) {
           int64_t tail_ub_factor =
               current_dim % cur_ub_factor == 0 ? cur_ub_factor : current_dim % cur_ub_factor;
           int64_t tail_ub_tilling_inner_ddr_count = tail_ub_factor * right_product;
           if (tail_ub_tilling_inner_ddr_count >= block_size) {
             tilingInfo.ub_tiling_axis = reorderInfo.reorderPos_oriPos[i];
-            tilingInfo.ub_tiling_factor = cur_ub_factor > current_dim ? current_dim : cur_ub_factor;
+            int64_t ub_loop = cur_ub_factor > current_dim ? 1 : (current_dim + cur_ub_factor - 1) / cur_ub_factor;
+            tilingInfo.ub_tiling_factor = (current_dim + ub_loop - 1) / ub_loop;
+            if (tilingInfo.ub_tiling_factor > compileInfo.workspace_max_ub_count / right_product_align) {
+              tilingInfo.ub_tiling_factor = cur_ub_factor > current_dim ? current_dim : cur_ub_factor;
+            }
             // storage align last R when is last reduce, but align_factor * right_product is larger than max_ub
             if (!(is_last_axis_reduce && i == (int32_t)reorderInfo.reorder_input_shape.size() - 1 &&
-                  (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size * right_product >
+                  (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size * right_product_align >
                    compileInfo.max_ub_count)) {
               return true;
             }
@@ -665,6 +723,7 @@ bool Norm::DoTiling() {
   shape_after_reduce_product = CalcAfterReduceShapeProduct(input_shape, reduce_axis);
   reduce_product = CalcReduceShapeProduct(input_shape, reduce_axis);
   is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
+  is_partial_reorder = reduce_axis.size() > 1 && input_shape.back() < block_size;
   pattern = CalcPattern(input_shape, reduce_axis);
   is_need_workspace = IsNeedWorkspace();
   // calculate tiling info
@@ -707,7 +766,7 @@ bool Norm::ConstInputProcPost() {
     tilingInfo.ub_tiling_axis = op_info.at("_const_ub_axis").get<std::int32_t>();
     run_info.block_dim = op_info.at("_block_dims").get<std::int32_t>();
     // const sch
-    sch_type = 1;
+    sch_type = is_partial_reorder ? 3 : 1;
     run_info.tiling_key = CalcTilingKey();
     if (is_need_workspace && compileInfo.workspace_type.size() != 0) {
       run_info.workspaces = CalcWorkspace();

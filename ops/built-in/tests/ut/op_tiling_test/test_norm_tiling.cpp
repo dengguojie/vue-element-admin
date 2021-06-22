@@ -66,7 +66,7 @@ TEST_F(NormTiling, NormTiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "20992 41 656 335 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "20992 41 656 328 ");
 }
 
 TEST_F(NormTiling, NormTiling2) {
@@ -104,7 +104,7 @@ TEST_F(NormTiling, NormTiling2) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 10);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "80 15003 8 12896 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "80 15003 8 7502 ");
 }
 
 TEST_F(NormTiling, NormTiling3) {
@@ -181,4 +181,42 @@ TEST_F(NormTiling, NormTiling4) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 30);
   EXPECT_EQ(to_string(runInfo.tiling_data), "31 2400 80 31 ");
+}
+
+TEST_F(NormTiling, NormTiling5) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+
+  std::string compileInfo = R"({ "_ori_axis": [0, 2], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4]}, "_vars": {"21001200": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}})";
+
+  std::vector<int64_t> input{1968, 3, 3};
+  std::vector<int64_t> output{1968, 3, 3};
+  std::string in_dtype = "float32";
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = in_dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = in_dtype;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_input);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg_out;
+  tensor_arg_out.tensor.push_back(tensor_output);
+  tensor_arg_out.arg_type = TA_SINGLE;
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_arg);
+  opParas.outputs.push_back(tensor_arg_out);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "NormTiling5";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.block_dim, 1);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1968 3 3 3 677 ");
 }

@@ -73,6 +73,7 @@ class Norm {
     bool GetWorkspaceBlockTilingInfo();
     bool GetBlockTilingInfo();
     bool ProcessReorderAxis();
+    bool PartialReorderUbTiling();
     bool GetUbTilingInfo();
     bool NeedRefineBlockTiling();
     bool DoTiling();
@@ -89,6 +90,7 @@ class Norm {
     bool IsNeedWorkspace();
     int32_t GetBlockDim(int32_t tiling_axis, int64_t tiling_factor);
     int64_t CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
+    int64_t CalcReorderShapeProductAlign(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
 
   private:
     const std::string& op_type;
@@ -110,6 +112,7 @@ class Norm {
 
     bool is_last_axis_reduce{false};
     bool is_need_workspace{false};
+    bool is_partial_reorder{false};
     int64_t shape_after_reduce_product{-1};
     int64_t reduce_product{-1};
     int32_t pattern{-1};

@@ -288,31 +288,10 @@ class NormNormalSchedule:
 
             return reorder_axis
 
-        def __calc_other_tensor_reorder_axis(tensor):
-            ori_axis = tensor.op.axis
-            reduce_axis_index = self._norm_info.reduce_axis_indices
-            is_reduce_last_axis = self._norm_info.is_reduce_last_axis
-
-            reduce_reorder_axis, _, _ = reorder_reduce_shape(ori_axis,
-                                                             reduce_axis_index,
-                                                             is_reduce_last_axis)
-
-            return reduce_reorder_axis
-
         for single_tensor in self._graph_info.mid_tensor_set - self._compute_inline_tensors:
             if single_tensor in self._graph_info.reduce_tensor_set:
                 reorder_axis_list = __calc_reduce_tensor_reorder_axis(single_tensor)
-            else:
-                reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-            self._reorder_map[single_tensor] = reorder_axis_list
-
-        for single_tensor in self._cache_read_buffer_and_tensor_map:
-            reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-            self._reorder_map[single_tensor] = reorder_axis_list
-
-        for single_tensor in self._cache_write_buffer_and_tensor_map:
-            reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-            self._reorder_map[single_tensor] = reorder_axis_list
+                self._reorder_map[single_tensor] = reorder_axis_list
 
         reorder_axis_list = __calc_split_tensor_reorder_axis(self._res_tensor)
         self._reorder_map[self._res_tensor] = reorder_axis_list
@@ -399,15 +378,21 @@ class NormNormalSchedule:
             self._sch[single_tensor].compute_at(self._sch[param[0]], param[1])
 
     def _calc_emit_insn(self):
-        emit_insn_axis_index = self._tiling_case.ub_split_axis_index
+        emit_insn_axis_index = 0
         # TODO
         self._emit_insn_map[self._res_tensor] = [self._ub_split_result["inner_itervar"], "dma_copy"]
         if self._is_nlast_block_split_last_a:
-            # first r index in reorder shape
-            emit_insn_axis_index = len(self._norm_info.shape_before_reduce) - 1 - \
-                                   len(self._norm_info.reduce_axis_indices)
             # copy ub to gm with stride, the last block need process the overlap too
             self._emit_insn_map[self._res_tensor].append({"no_overlap": 2})
+        elif self._tiling_case.ub_split_axis_index == len(self._norm_info.shape_before_reduce) - 1 and \
+                len(self._norm_info.reduce_axis_indices) > 1:
+            self._emit_insn_map[self._res_tensor] = [self._ub_split_result["inner_itervar"],
+                                                     "dma_copy",
+                                                     {"no_overlap": 2}]
+        elif len(self._norm_info.reduce_axis_indices) > 1:
+            self._emit_insn_map[self._res_tensor] = [self._res_tensor.op.axis[-1],
+                                                     "dma_copy",
+                                                     {"no_overlap": 2}]
 
         for source, _ in self._cache_read_buffer_and_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], "dma_copy"]
@@ -766,58 +751,34 @@ class NormWorkspaceSchedule:
 
             return reorder_axis
 
-        def __calc_other_tensor_reorder_axis(tensor):
-            ori_axis = tensor.op.axis
-            reduce_axis_index = self._norm_info.reduce_axis_indices
-            is_reduce_last_axis = self._norm_info.is_reduce_last_axis
+        def __common_reorder_process():
+            for workspace_tensor in self._workspace_tensor_set:
+                workspace_ub_tensor = self._workspace_map[workspace_tensor]["ub_tensor"]
+                if workspace_tensor in self._graph_info.reduce_tensor_set:
+                    reorder_axis_list = __calc_split_tensor_reorder_axis(workspace_tensor)
+                    self._reorder_map[workspace_tensor] = reorder_axis_list
+                    reorder_axis_list = __calc_reduce_tensor_reorder_axis(workspace_ub_tensor)
+                    self._reorder_map[workspace_ub_tensor] = reorder_axis_list
+                else:
+                    reorder_axis_list = __calc_split_tensor_reorder_axis(workspace_tensor)
+                    self._reorder_map[workspace_tensor] = reorder_axis_list
 
-            reduce_reorder_axis, _, _ = reorder_reduce_shape(ori_axis,
-                                                             reduce_axis_index,
-                                                             is_reduce_last_axis)
+            reorder_axis_list = __calc_split_tensor_reorder_axis(self._res_tensor)
+            self._reorder_map[self._res_tensor] = reorder_axis_list
 
-            return reduce_reorder_axis
+        def __partial_reorder_process():
+            for workspace_tensor in self._workspace_tensor_set:
+                workspace_ub_tensor = self._workspace_map[workspace_tensor]["ub_tensor"]
+                if workspace_tensor in self._graph_info.reduce_tensor_set:
+                    reorder_axis_list = __calc_split_tensor_reorder_axis(workspace_tensor)
+                    self._reorder_map[workspace_tensor] = reorder_axis_list
+                    reorder_axis_list = __calc_reduce_tensor_reorder_axis(workspace_ub_tensor)
+                    self._reorder_map[workspace_ub_tensor] = reorder_axis_list
 
-        for single_tensor in self._graph_info.mid_tensor_set - self._compute_inline_tensors -\
-                             self._workspace_tensor_set:
-            reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-            self._reorder_map[single_tensor] = reorder_axis_list
-
-        for single_tensor in self._cache_clone_buffer_and_tensor_map:
-            reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-            self._reorder_map[single_tensor] = reorder_axis_list
-
-        for single_tensor in self._cache_read_buffer_and_tensor_map:
-            reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-            self._reorder_map[single_tensor] = reorder_axis_list
-
-        for single_tensor in self._cache_write_buffer_and_tensor_map:
-            reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-            self._reorder_map[single_tensor] = reorder_axis_list
-
-        for workspace_tensor in self._workspace_tensor_set:
-            workspace_ub_tensor = self._workspace_map[workspace_tensor]["ub_tensor"]
-            reread_workspace_ub_tensor_map = self._workspace_map[workspace_tensor]["reread_ub_tensor"]
-            if workspace_tensor in self._graph_info.reduce_tensor_set:
-                reorder_axis_list = __calc_split_tensor_reorder_axis(workspace_tensor)
-                self._reorder_map[workspace_tensor] = reorder_axis_list
-                reorder_axis_list = __calc_reduce_tensor_reorder_axis(workspace_ub_tensor)
-                self._reorder_map[workspace_ub_tensor] = reorder_axis_list
-                # the reread_ub_tensor of workspace tensor is a normal tensor
-                for single_tensor in reread_workspace_ub_tensor_map.keys():
-                    reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-                    self._reorder_map[single_tensor] = reorder_axis_list
-            else:
-                reorder_axis_list = __calc_split_tensor_reorder_axis(workspace_tensor)
-                self._reorder_map[workspace_tensor] = reorder_axis_list
-                reorder_axis_list = __calc_other_tensor_reorder_axis(workspace_ub_tensor)
-                self._reorder_map[workspace_ub_tensor] = reorder_axis_list
-                # the reread_ub_tensor of workspace tensor is a normal tensor
-                for single_tensor in reread_workspace_ub_tensor_map.keys():
-                    reorder_axis_list = __calc_other_tensor_reorder_axis(single_tensor)
-                    self._reorder_map[single_tensor] = reorder_axis_list
-
-        reorder_axis_list = __calc_split_tensor_reorder_axis(self._res_tensor)
-        self._reorder_map[self._res_tensor] = reorder_axis_list
+        if self._tiling_case.is_partial_reorder_case:
+            __partial_reorder_process()
+        else:
+            __common_reorder_process()
 
     def _do_reorder(self):
         for single_tensor, param in self._reorder_map.items():
@@ -1001,17 +962,15 @@ class NormWorkspaceSchedule:
             self._sch[single_tensor].compute_at(self._sch[param[0]], param[1])
 
     def _calc_emit_insn(self):
-        ub_split_axis = self._tiling_case.ub_split_axis_index
-
         for source, _ in self._cache_clone_buffer_and_tensor_map.items():
-            self._emit_insn_map[source] = [source.op.axis[ub_split_axis], _get_insn(source)]
+            self._emit_insn_map[source] = [source.op.axis[0], _get_insn(source)]
 
         for source, _ in self._cache_read_buffer_and_tensor_map.items():
-            self._emit_insn_map[source] = [source.op.axis[ub_split_axis], "dma_copy"]
+            self._emit_insn_map[source] = [source.op.axis[0], "dma_copy"]
 
         for single_tensor in self._graph_info.mid_tensor_set - self._compute_inline_tensors -\
                              self._workspace_tensor_set:
-            self._emit_insn_map[single_tensor] = [single_tensor.op.axis[ub_split_axis], _get_insn(single_tensor)]
+            self._emit_insn_map[single_tensor] = [single_tensor.op.axis[0], _get_insn(single_tensor)]
 
         for workspace_tensor in self._workspace_tensor_set:
             workspace_ub_tensor = self._workspace_map[workspace_tensor]["ub_tensor"]
@@ -1024,6 +983,15 @@ class NormWorkspaceSchedule:
                         [self._block_split_result[workspace_tensor]["inner_itervar"],
                          "dma_copy",
                          {"no_overlap": 2}]
+                elif self._tiling_case.ub_split_axis_index == len(self._norm_info.shape_before_reduce) - 1 and \
+                        len(self._norm_info.reduce_axis_indices) > 1:
+                    self._emit_insn_map[workspace_tensor] = [self._ub_split_result[workspace_tensor]["inner_itervar"],
+                                                            "dma_copy",
+                                                            {"no_overlap": 2}]
+                elif len(self._norm_info.reduce_axis_indices) > 1:
+                    self._emit_insn_map[workspace_tensor] = [workspace_tensor.op.axis[-1],
+                                                            "dma_copy",
+                                                            {"no_overlap": 2}]
                 else:
                     self._emit_insn_map[workspace_tensor] =\
                         [self._ub_split_result[workspace_tensor]["inner_itervar"], "dma_copy"]
@@ -1035,7 +1003,7 @@ class NormWorkspaceSchedule:
                     self._emit_insn_map[workspace_tensor].append({"no_overlap": 0})
 
                 self._emit_insn_map[workspace_ub_tensor] =\
-                    [workspace_ub_tensor.op.axis[ub_split_axis], _get_insn(workspace_tensor)]
+                    [workspace_ub_tensor.op.axis[0], _get_insn(workspace_tensor)]
             # reduce workspace node, block split on workspace tensor and ub split on workspace ub tensor
             else:
                 self._emit_insn_map[workspace_tensor] =\
@@ -1053,16 +1021,25 @@ class NormWorkspaceSchedule:
 
             for reread_workspace_ub_tensor in reread_workspace_ub_tensor_map.keys():
                 self._emit_insn_map[reread_workspace_ub_tensor] =\
-                    [reread_workspace_ub_tensor.op.axis[ub_split_axis], "dma_copy"]
+                    [reread_workspace_ub_tensor.op.axis[0], "dma_copy"]
 
         for source, target_map in self._cache_write_buffer_and_tensor_map.items():
             target = list(target_map.values())[0]
-            self._emit_insn_map[source] = [source.op.axis[ub_split_axis], _get_insn(target)]
+            self._emit_insn_map[source] = [source.op.axis[0], _get_insn(target)]
 
         # TODO
         if self._is_nlast_block_split_last_a:
             self._emit_insn_map[self._res_tensor] =\
                 [self._block_split_result[self._res_tensor]["inner_itervar"], "dma_copy", {"no_overlap": 2}]
+        elif self._tiling_case.ub_split_axis_index == len(self._norm_info.shape_before_reduce) - 1 and \
+                len(self._norm_info.reduce_axis_indices) > 1:
+            self._emit_insn_map[self._res_tensor] = [self._ub_split_result[self._res_tensor]["inner_itervar"],
+                                                    "dma_copy",
+                                                    {"no_overlap": 2}]
+        elif len(self._norm_info.reduce_axis_indices) > 1:
+            self._emit_insn_map[self._res_tensor] = [self._res_tensor.op.axis[-1],
+                                                    "dma_copy",
+                                                    {"no_overlap": 2}]
         else:
             self._emit_insn_map[self._res_tensor] =\
                 [self._ub_split_result[self._res_tensor]["inner_itervar"], "dma_copy"]
