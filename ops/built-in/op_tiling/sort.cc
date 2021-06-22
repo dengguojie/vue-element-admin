@@ -26,6 +26,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling
 {
@@ -114,8 +115,7 @@ namespace optiling
     using namespace nlohmann;
     if (op_compile_info_json == nullptr)
     {
-      ge::OpsGetCompileParamsErrReport("Sort", "op_compile_info_json");
-      OP_LOGE(op_type.c_str(), "op_compile_info_json is null");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_compile_info_json is null");
       return false;
     }
 
@@ -123,16 +123,14 @@ namespace optiling
     // core num
     if (all_vars.count("core_num") == 0)
     {
-      ge::OpsGetCompileParamsErrReport("Sort", "core_num");
-      OP_LOGE(op_type.c_str(), "core_num is null");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is null");
       return false;
     }
     core_num = all_vars["core_num"].get<std::int32_t>();
     // ub size
     if (all_vars.count("ub_size") == 0)
     {
-      ge::OpsGetCompileParamsErrReport("Sort", "ub_size");
-      OP_LOGE(op_type.c_str(), "ub_size is null");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size is null");
       return false;
     }
     ub_size = all_vars["ub_size"].get<std::int32_t>();
@@ -176,7 +174,7 @@ namespace optiling
     bool flag = GetSortCompileParams(op_type, op_compile_info, core_max, ub_size);
     if (!flag)
     {
-      OP_LOGE("op[%s] GetSortCompileParams failed.", op_type.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetSortCompileParams failed.");
       return false;
     }
     OP_LOGI("op[%s] GetSortCompileParams success.", op_type.c_str());

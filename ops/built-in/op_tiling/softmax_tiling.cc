@@ -20,6 +20,7 @@
  */
 
 #include "softmax_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -38,7 +39,7 @@ bool Softmax::Init() {
   if (op_paras.inputs.size() > 0 && op_paras.inputs[0].tensor.size() > 0) {
     input_shape_ori = op_paras.inputs[0].tensor[0].shape;
   } else {
-    OP_LOGE(op_type.c_str(), "input shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
     return false;
   }
 

@@ -34,18 +34,18 @@ bool GetCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum, int
   using namespace nlohmann;
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("device_aicore_num") == 0) {
-    OP_LOGE("op [DynamicLSTMGradCellTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("DynamicLSTMGradCellTiling", "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["device_aicore_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE("op [DynamicLSTMGradCellTiling] : GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING("DynamicLSTMGradCellTiling", "GetCompileParams, get ub_size error");
     return false;
   }
   ubByteSize = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("mask_input") == 0) {
-    OP_LOGE("op [DynamicLSTMGradCellTiling] : GetCompileParams, get mask_input error");
+    VECTOR_INNER_ERR_REPORT_TILIING("DynamicLSTMGradCellTiling", "GetCompileParams, get mask_input error");
     return false;
   }
   if (allVars["mask_input"].get<std::int64_t>() == 0) {
@@ -59,13 +59,13 @@ bool GetCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum, int
 
 bool CheckInput(const TeOpParas& op_paras) {
   if (op_paras.inputs.size() < INPUT_SIZE) {
-    OP_LOGE("op[%s] : opParas.inputs.size error", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING("DynamicLSTMGradCellTiling", "opParas.inputs.size error");
     return false;
   }
 
   for (int i = 0; i < INPUT_SIZE; i++) {
     if (op_paras.inputs[i].tensor.size() == 0) {
-      OP_LOGE("op[%s] : opParas.input[%d].tensor.size error", opType.c_str(), i);
+      VECTOR_INNER_ERR_REPORT_TILIING("DynamicLSTMGradCellTiling",  "opParas.input[%d].tensor.size error", i);
       return false;
     }
   }
@@ -109,7 +109,7 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
 
   GELOGD("op [%s] Enter DynamicLSTMGradCellTilling inputs size:%d", op_type.c_str(), op_paras.inputs.size());
   if (op_info == nullptr) {
-    OP_LOGE(op_type.c_str(), "op DynamicLSTMGradCellTilling: op_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op DynamicLSTMGradCellTilling: op_info json error.");
     return false;
   }
 
@@ -119,7 +119,7 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
   bool getInfoStatus = GetCompileParams(op_info, deviceCoreNum, ubByteSize, maskInput);
   GELOGD("op [%s] Enter DynamicLSTMGradCellTilling check input pass0", op_type.c_str());
   if (!getInfoStatus || deviceCoreNum == 0 || ubByteSize == 0) {
-    OP_LOGE("op[%s] Tiling: DynamicLSTMGradCellTilling error.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Tiling: DynamicLSTMGradCellTilling error.");
     return false;
   }
   GELOGD("op [%s] Enter DynamicLSTMGradCellTilling check input pass1", op_type.c_str());

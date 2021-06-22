@@ -26,6 +26,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -51,24 +52,21 @@ bool CheckTensorShape(const std::string& opType, const TeOpParas& opParas, int32
   int32_t varDims = varShape.size();
 
   if (indicesShape[0] != gradShape[0]) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices",
-                                  "the shape 0 of indices must be equal to the shape 0 of grad");
-    OP_LOGE(opType.c_str(), "op [SparseApplyFtrlTiling] : grad shape[0] must be equal to indices shape[0]");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [SparseApplyFtrlTiling] : grad shape[0] must be equal to indices shape[0]");
     return false;
   }
 
   for (int32_t i = 0; i < varDims; i++) {
     if (varShape[i] != accumShape[i] || varShape[i] != linearShape[i]) {
-      ge::OpsOneInputShapeErrReport(opType.c_str(), "var",
-                                    "the shapes of var must be equal to the shapes of accum or linear");
-      OP_LOGE(opType.c_str(), "op [SparseApplyFtrlTiling] : accum and linear shape must be equal to var shape");
+
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [SparseApplyFtrlTiling] : accum and linear shape must be equal to var shape");
       return false;
     }
     if (i > 0) {
       if (varShape[i] != gradShape[i]) {
-        ge::OpsOneInputShapeErrReport(opType.c_str(), "var",
-                                      "the shapes of var must be equal to the shapes of grad except shape 0");
-        OP_LOGE(opType.c_str(), "op [SparseApplyFtrlTiling] : grad shape is invalid");
+
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [SparseApplyFtrlTiling] : grad shape is invalid");
         return false;
       }
       varRowElem *= varShape[i];
@@ -84,22 +82,19 @@ bool GetCompileParameters(const std::string& opType, const nlohmann::json& opCom
 
   const auto& allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    OP_LOGE("op [SparseApplyFtrlTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SparseApplyFtrlTiling", "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int32_t>();
 
   if (allVars.count("ub_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
-    OP_LOGE(opType.c_str(), "op [SparseApplyFtrlTiling] : GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [SparseApplyFtrlTiling] : GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int32_t>();
 
   if (allVars.count("indices_dsize") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_dsize");
-    OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : GetCompileParams, get indices_dsize error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherV2Tiling] : GetCompileParams, get indices_dsize error");
     return false;
   }
   indicesDSize = allVars["indices_dsize"].get<std::int32_t>();
@@ -120,15 +115,14 @@ bool SparseApplyFtrlDTiling(const std::string& opType, const TeOpParas& opParas,
                             OpRunInfo& runInfo) {
   GELOGI("op[%s] tiling running.", opType.c_str());
   if (op_info == nullptr) {
-    OP_LOGE(opType.c_str(), "SparseApplyFtrlTiling: op_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SparseApplyFtrlTiling: op_info json error.");
     return false;
   }
   if (opParas.inputs.empty() || opParas.inputs.size() < 5 || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty() || opParas.inputs[2].tensor.empty() || opParas.inputs[3].tensor.empty() ||
       opParas.inputs[4].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "var or accum or linear",
-                                  "The length of inputs is less than 5 or the inputs is empty");
-    OP_LOGE(opType.c_str(), "SparseApplyFtrlTiling: input shape error.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SparseApplyFtrlTiling: input shape error.");
     return false;
   }
 
@@ -136,7 +130,7 @@ bool SparseApplyFtrlDTiling(const std::string& opType, const TeOpParas& opParas,
   // check inputs shape
   bool ret = CheckTensorShape(opType, opParas, varRowElem);
   if (!ret) {
-    OP_LOGE(opType.c_str(), "op[parseApplyFtrlTiling] SparseApplyFtrlTiling: inputs shape are invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[parseApplyFtrlTiling] SparseApplyFtrlTiling: inputs shape are invalid.");
     return ret;
   }
 
@@ -155,7 +149,7 @@ bool SparseApplyFtrlDTiling(const std::string& opType, const TeOpParas& opParas,
   int32_t coreNum = 0;
   bool flag = GetCompileParameters(opType, op_info, coreNum, ubSize, indicesDSize);
   if (!flag) {
-    OP_LOGE(opType.c_str(), "op SparseApplyFtrlTiling: GetCompileParams error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op SparseApplyFtrlTiling: GetCompileParams error.");
     return false;
   }
   int32_t ubIndicesNum = UB_INDICES_SIZE / indicesDSize;
@@ -165,9 +159,8 @@ bool SparseApplyFtrlDTiling(const std::string& opType, const TeOpParas& opParas,
   onePartElem = onePartElem - onePartElem % varElemVector;
 
   if (varRowElem > onePartElem) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "var",
-                                  "the one row elements of var is too large, is not support yet");
-    OP_LOGE(opType.c_str(), "SparseApplyFtrlTiling: inputs var row elements is too large, is not support yet.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SparseApplyFtrlTiling: inputs var row elements is too large, is not support yet.");
     return false;
   }
 
@@ -235,8 +228,7 @@ bool SparseApplyFtrlDTiling(const std::string& opType, const TeOpParas& opParas,
       }
     }
   } else {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "var", "the one row elements of var is not 32 bytes align");
-    OP_LOGE(opType.c_str(), "op SparseApplyFtrlTiling: inputs var row elements is not 32B aligned.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op SparseApplyFtrlTiling: inputs var row elements is not 32B aligned.");
     return false;
   }
 

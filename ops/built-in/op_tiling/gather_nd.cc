@@ -26,6 +26,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -89,16 +90,14 @@ bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
   int32_t calcOutputDims = 0;
 
   if (indicesLastDim == 0 && indicesDims == 1) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices", "the last dim of indices can not be equal to 0 or 1");
-    OP_LOGE(opType.c_str(), "op [GatherNdTiling] : CheckTensorShape, indices.shape is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, indices.shape is invalid.");
     return false;
   }
   // output shape is: indicesShape[:-1] + paramsShape[indicesShape[-1]:]
   std::vector<int64_t> outputShape;
   for (int32_t i = 0; i < indicesDims - 1; i++) {
     if (indicesShape[i] <= 0) {
-      ge::OpsOneInputShapeErrReport(opType.c_str(), "indices", "the shape i of indices must be large than 0");
-      OP_LOGE(opType.c_str(), "op [GatherNdTiling] : CheckTensorShape, indices.shape[i] must be > 0");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, indices.shape[i] must be > 0");
       return false;
     }
     outputShape.push_back(indicesShape[i]);
@@ -114,15 +113,13 @@ bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
   calcOutputDims = outputShape.size();
 
   if (yDims != calcOutputDims) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the dim of y must be equal to the dim of output");
-    OP_LOGE(opType.c_str(), "op [GatherNdTiling] : CheckTensorShape, y Shape dim is invalid");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, y Shape dim is invalid");
     return false;
   }
 
   for (int32_t i = 0; i < yDims; i++) {
     if (yShape[i] != outputShape[i]) {
-      ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the shape of y must be equal to the shape of output");
-      OP_LOGE(opType.c_str(), "op [GatherNdTiling] : CheckTensorShape, y Shape is invalid");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, y Shape is invalid");
       return false;
     }
   }
@@ -146,36 +143,31 @@ bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompile
 
   const auto& allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    OP_LOGE(opType.c_str(), "op [GatherNdTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int32_t>();
 
   if (allVars.count("ub_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
-    OP_LOGE(opType.c_str(), "op [GatherNdTiling] : GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int32_t>();
 
   if (allVars.count("l1_size") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "l1_size");
-    OP_LOGE(opType.c_str(), "op [GatherNdTiling] : GetCompileParams, get l1_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : GetCompileParams, get l1_size error");
     return false;
   }
   l1Size = allVars["l1_size"].get<std::int32_t>();
 
   if (allVars.count("params_dsize") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "params_dsize");
-    OP_LOGE(opType.c_str(), "op [GatherNdTiling] : GetCompileParams, get params_dsize error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : GetCompileParams, get params_dsize error");
     return false;
   }
   paramsDSize = allVars["params_dsize"].get<std::int32_t>();
 
   if (allVars.count("indices_dsize") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_dsize");
-    OP_LOGE(opType.c_str(), "op [GatherNdTiling] : GetCompileParams, get indices_dsize error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : GetCompileParams, get indices_dsize error");
     return false;
   }
   indicesDSize = allVars["indices_dsize"].get<std::int32_t>();
@@ -261,19 +253,17 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
                     OpRunInfo& runInfo) {
   OP_LOGD(opType.c_str(), "op[GatherNdTiling] tiling running.");
   if (op_info == nullptr) {
-    OP_LOGE(opType.c_str(), "op GatherNdTiling: op_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: op_info json error.");
     return false;
   }
   if (opParas.inputs.empty() || opParas.inputs.size() < 2 || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices",
-                                  "The length of inputs is less than 2 or the inputs is empty");
-    OP_LOGE(opType.c_str(), "op GatherNdTiling: input shape error.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: input shape error.");
     return false;
   }
   if (opParas.outputs.empty() || opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "y", "The length of outputs is less than 1 or the outputs is empty");
-    OP_LOGE(opType.c_str(), "op GatherNdTiling: output shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: output shape error.");
     return false;
   }
 
@@ -283,8 +273,7 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
   int32_t paramsDims = paramsShape.size();
   int32_t indicesDims = indicesShape.size();
   if (indicesDims < 1) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "indices", "the dim of indices is less than 1.");
-    OP_LOGE(opType.c_str(), "op GatherNdTiling: indices dim is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: indices dim is invalid.");
     return false;
   }
 
@@ -294,14 +283,14 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
     ge::OpsOneInputShapeErrReport(opType.c_str(), "indices",
                                   "the last dim of indices is more than the dim of x, "
                                   "or the last dim of indices is greater than 8 or less than 0");
-    OP_LOGE(opType.c_str(), "op GatherNdTiling: the last dim of indices shape is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: the last dim of indices shape is invalid.");
     return false;
   }
 
   // check inputs shape
   bool ret = CheckTensorShape(opType, paramsShape, indicesShape, yShape, indicesLastDim);
   if (!ret) {
-    OP_LOGE(opType.c_str(), "op GatherNdTiling: inputs shape are invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: inputs shape are invalid.");
     return ret;
   }
 
@@ -313,7 +302,7 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
   int32_t indicesDSize = 0;
   bool flag = GetCompileParams(opType, op_info, coreNum, ubSize, l1Size, paramsDSize, indicesDSize);
   if (!flag) {
-    OP_LOGE(opType.c_str(), "op GatherNdTiling: GetCompileParams error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: GetCompileParams error.");
     return false;
   }
 

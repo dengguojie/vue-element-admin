@@ -26,6 +26,7 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "trans_data_common.h"
+#include "error_log.h"
 
 namespace optiling
 {
@@ -47,7 +48,7 @@ namespace optiling
     size_t resValue = format.find(axis);
     if (resValue == std::string::npos) {
       resValue = 0;
-      OP_LOGE("TransData", "Axis is not in format.");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransData", "Axis is not in format.");
     }
     return resValue;
   }
@@ -133,7 +134,7 @@ namespace optiling
                                    std::string &srcFormatNew, std::string &dstFormatNew) {
     if (srcFormat == "NCDHW" && dstFormat == "NDC1HWC0") {
       if (inShape.size() != 5) {
-        OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+        VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
       srcFormatNew = "NCDH";
@@ -151,7 +152,7 @@ namespace optiling
       outShapeNew.push_back(c0Len);
     } else if (srcFormat == "NCHW" && dstFormat == "NC1HWC0") {
       if (inShape.size() != 4) {
-        OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+        VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
       srcFormatNew = "NCH";
@@ -167,7 +168,7 @@ namespace optiling
       outShapeNew.push_back(c0Len);
     } else if (srcFormat == "HWCN" && (dstFormat == "FRACTAL_Z" || dstFormat == "FRACTAL_ZN")) {
       if (inShape.size() != 4) {
-        OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+        VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
       srcFormatNew = "HCN";
@@ -185,7 +186,7 @@ namespace optiling
       outShapeNew.push_back(c0Len);
     } else if (srcFormat == "DHWCN" && dstFormat == "FRACTAL_Z_3D") {
       if (inShape.size() != 5) {
-        OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+        VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
       srcFormatNew = "DHCN";
@@ -235,7 +236,7 @@ namespace optiling
       outShapeNew.push_back(c0Len);
     } else if (srcFormat == "NCHW" && (dstFormat == "FRACTAL_Z" || dstFormat == "FRACTAL_ZN")) {
       if (inShape.size() != 4) {
-        OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+        VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
       srcFormatNew = "NCH";
@@ -253,7 +254,7 @@ namespace optiling
       outShapeNew.push_back(c0Len);
     } else if (srcFormat == "NCDHW" && dstFormat == "FRACTAL_Z_3D") {
       if (inShape.size() != 5) {
-        OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+        VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
       srcFormatNew = "NCDH";
@@ -424,7 +425,7 @@ namespace optiling
     bool ret = GetMcInfoPositiveNtc100(srcCrLpCnt, axisSrcCrSize, srcCLpCnt, axisSrcCSize, srcClLpCnt, axisSrcClSize,
                                        coreNum, params);
     if (!ret) {
-      OP_LOGE("op TransDataTiling: GetMcInfoPositiveNtc100 Failed.");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositiveNtc100 Failed.");
       return ret;
     }
 

@@ -4,6 +4,7 @@
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -89,7 +90,7 @@ namespace optiling {
         using namespace nlohmann;
         auto all_vars = op_compile_info["vars"];
         if (all_vars.count("core_num") == 0) {
-            OP_LOGE("op [MaxPoolWithArgmaxV1Tiling] : GetCompileInfo, get core_num error");
+            VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolWithArgmaxV1Tiling", "GetCompileInfo, get core_num error");
             return false;
         }
         compile_params.core_num = all_vars["core_num"].get<std::int32_t>();
@@ -523,7 +524,7 @@ namespace optiling {
 
         bool get_compile_info = GetCompileInfo(op_type, op_compile_info, compile_params);
         if (!get_compile_info) {
-            OP_LOGE("op[%s] MaxPoolWithArgmaxV1Tiling: GetCompileInfo error.", op_type.c_str());
+            VECTOR_INNER_ERR_REPORT_TILIING(op_type, "MaxPoolWithArgmaxV1Tiling: GetCompileInfo error.");
             return false;
         }
 

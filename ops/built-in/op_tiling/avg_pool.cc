@@ -197,12 +197,12 @@ bool AvgPoolTilingVector(const string& op_type, const TeOpParas& op_paras, const
   string input_format = op_paras.inputs[0].tensor[0].format;
   OP_TILING_CHECK(
     input_format != "NC1HWC0",
-    OP_LOGE(op_type.c_str(), "Get input format failed, only support NC1HWC0, but got %s", input_format.c_str()),
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input format failed, only support NC1HWC0, but got %s", input_format.c_str()),
     return false);
   vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   OP_TILING_CHECK(
     input_shape.size() != 5,
-    OP_LOGE(op_type.c_str(), "Get input shape failed, the length of input shape must be 5, but got %d",
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, the length of input shape must be 5, but got %d",
             input_shape.size()),
     return false);
 
@@ -222,7 +222,7 @@ bool AvgPoolTilingVector(const string& op_type, const TeOpParas& op_paras, const
     OP_LOGD(op_type.c_str(), "GetCompileInfo %s.", name.c_str());
     OP_TILING_CHECK(
       !GetCompileInfo<int32_t>(op_info, name, param.second),
-          OP_LOGE(op_type.c_str(), "GetCompileInfo %s failed", name.c_str()),
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo %s failed", name.c_str()),
           return false);
     OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
   }
@@ -232,12 +232,12 @@ bool AvgPoolTilingVector(const string& op_type, const TeOpParas& op_paras, const
   param.input_w = input_shape[3];
   OP_TILING_CHECK(
     (padding == 1) && ((ksize_h > param.input_h) || (ksize_w > param.input_w)),
-        OP_LOGE(op_type.c_str(), "Input height or width must greater than or equal to ksize when padding mode is valid."),
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Input height or width must greater than or equal to ksize when padding mode is valid."),
         return false);
   int32_t one_fourth_ub_ele = ub_ele / 4;
   OP_TILING_CHECK(
     (one_fourth_ub_ele / input_shape[4] / ksize_h < ksize_w),
-        OP_LOGE(op_type.c_str(), "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
         return false);
   CalTilingParam(param, input_shape, ub_ele, core_num, ksize_h, ksize_w, strides_h, strides_w, padding);
   SetTilingParam(param, run_info);

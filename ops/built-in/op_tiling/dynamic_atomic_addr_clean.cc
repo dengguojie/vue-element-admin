@@ -23,6 +23,7 @@
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -71,12 +72,12 @@ bool GetCompileParams(const std::string& op_type, const nlohmann::json& opCompil
     OP_LOGI(op_type.c_str(), "get workspace_num sucess");
   }
   if (all_vars.count("core_num") == 0) {
-    OP_LOGE(op_type.c_str(), "get core_num failed");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get core_num failed");
     return false;
   }
   core_num = all_vars["core_num"].get<std::uint32_t>();
   if (all_vars.count("ub_size") == 0) {
-    OP_LOGE(op_type.c_str(), "get ub_size failed");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get ub_size failed");
     return false;
   }
   ub_size = all_vars["ub_size"].get<std::uint32_t>();
@@ -172,11 +173,11 @@ void PrintTilingParams(const std::string& op_type, const CleanTilingParams& para
 
 bool CheckSize(const std::string& op_type, const uint32_t& size) {
   if (size <= 0) {
-    OP_LOGE(op_type.c_str(), "op: workspace size must be greater than 0!");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op: workspace size must be greater than 0!");
     return false;
   }
   if (size % 32 != 0) {
-    OP_LOGE(op_type.c_str(), "op : workspace size must be able to be divided by 32!");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op : workspace size must be able to be divided by 32!");
     return false;
   }
   return true;
@@ -187,7 +188,7 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& o
                                   const nlohmann::json& opCompileInfoJson, OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "op[%s] op tiling begin.", op_type.c_str());
   if (op_paras.const_inputs.find("workspace_size") == op_paras.const_inputs.end()) {
-    OP_LOGE(op_type.c_str(), "op : workspace_size not exists");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op : workspace_size not exists");
     return false;
   }
   uint32_t workspace_num = 1;
@@ -196,7 +197,7 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const TeOpParas& o
   // get compile_info params
   bool flag = GetCompileParams(op_type, opCompileInfoJson, workspace_num, core_num, ub_size);
   if (!flag) {
-    OP_LOGE(op_type.c_str(), "GetCompileParams failed");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed");
     return false;
   }
   OP_LOGI(op_type.c_str(), "op[%s] GetCompileParams success.", op_type.c_str());

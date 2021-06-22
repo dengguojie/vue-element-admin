@@ -26,6 +26,7 @@
 #include "../op_proto/util/util.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -123,17 +124,17 @@ static bool GetPadV3CompileParams(const nlohmann::json& compile_info,
   OP_LOGD("begin to GetPadV3CompileParams.");
   auto allVars = compile_info["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get core_num error");
     return false;
   }
   compile_params.core_num = allVars["core_num"].get<std::int64_t>();
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get ub_size error");
     return false;
   }
   compile_params.ub_size = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("dtype_rate") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get dtype_rate error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get dtype_rate error");
     return false;
   }
   compile_params.dtype_rate = allVars["dtype_rate"].get<std::int64_t>();
@@ -297,22 +298,21 @@ bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nl
 
   OP_LOGD("begin to run tiling.");
   if (op_compile_info == nullptr) {
-    OP_LOGE(op_type, "op [PadV3Tiling] : op_compile_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadV3Tiling] : op_compile_info json error.");
     return false;
   }
 
   if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() ||
       op_paras.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(op_type.c_str(), "input_x or paddings",
-                                  "The input may be empty");
-    OP_LOGE(op_type, "op [PadV3Tiling] : input shape error");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadV3Tiling] : input shape error");
     return false;
   }
   // begin to get compile data
   PadV3CompileParams compile_params;
   compile_params.op_type = op_type;
   if (!GetPadV3CompileParams(op_compile_info, compile_params)) {
-    OP_LOGE(op_type, "get compile info from nlohmann json failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
     return false;
   }
   int64_t pad_input_idx = 0;

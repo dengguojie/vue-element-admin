@@ -25,6 +25,7 @@
 
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
+#include "error_log.h"
 
 namespace optiling {
 using namespace ge;
@@ -77,27 +78,22 @@ static string to_string(const vector<vector<int64_t>>& shapes) {
 
 static bool CheckParams(const string& op, const vector<vector<int64_t>>& input_shapes, int32_t dim) {
   if (input_shapes.empty()) {
-    OP_LOGE(op.c_str(), "The input count should be more than 0");
-    ge::OpsMissInputErrReport(op.c_str(), "input_values");
+    VECTOR_INNER_ERR_REPORT_TILIING(op, "The input count should be more than 0");
     return false;
   }
 
   auto shape_length = input_shapes[0].size();
   for (const auto& input_shape : input_shapes) {
     if (input_shape.size() != shape_length) {
-      OP_LOGE(op.c_str(), "The length of each shape must be equal");
-      ge::OpsInputShapeErrReport(op, "The length of each shape must be equal", "input_values", to_string(input_shapes));
+      VECTOR_INNER_ERR_REPORT_TILIING(op, "The length of each shape must be equal");
       return false;
     }
   }
 
   int max_dim = static_cast<int32_t>(shape_length);
   if (dim >= max_dim or dim < -max_dim) {
-    OP_LOGE(op.c_str(), "the parameter[%s] should be [between %d and %d], but actually is [%d].",
+    VECTOR_INNER_ERR_REPORT_TILIING(op, "the parameter[%s] should be [between %d and %d], but actually is [%d].",
             "concat_dim", min(max_dim - 1, -max_dim), max(max_dim - 1, -max_dim), dim);
-    ge::OpsAttrValueErrReport(op, "concat_dim",
-                              ConcatString("between ", min(max_dim - 1, -max_dim), " and ", max(max_dim - 1, -max_dim)),
-                              std::to_string(dim));
     return false;
   }
 
@@ -106,10 +102,8 @@ static bool CheckParams(const string& op, const vector<vector<int64_t>>& input_s
   for (size_t i = 1; i < input_shapes.size(); i++) {
     for (size_t j = 0; j < shape_length; j++) {
       if (j != new_dims && input_shapes[i][j] != shape[j]) {
-        OP_LOGE(op.c_str(), "dims must equal except concat dim[%zu], input_values[%s]", dim,
+        VECTOR_INNER_ERR_REPORT_TILIING(op, "dims must equal except concat dim[%zu], input_values[%s]", dim,
                 to_string(input_shapes).c_str());
-        ge::OpsInputShapeErrReport(op, ConcatString("Dims must be equal except concat axis[", dim, "]"), "input_values",
-                                   to_string(input_shapes));
         return false;
       }
     }
@@ -150,8 +144,7 @@ struct TilingParam {
 
 static bool GetTilingParam(const vector<vector<int64_t>>& input_shapes, int32_t concat_dim, TilingParam& tiling_param) {
   if (input_shapes.empty()) {
-    OP_LOGE("concat", "The input count should be more than 0");
-    ge::OpsMissInputErrReport("concat", "input_values");
+    VECTOR_INNER_ERR_REPORT_TILIING("concat", "The input count should be more than 0");
     return false;
   }
 
@@ -233,8 +226,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
 
   vector<vector<int64_t>> input_shapes = GetInputShapes(opParas);
   if (input_shapes.empty()) {
-    OP_LOGE(opType.c_str(), "Get input shapes failed.");
-    OpsMissInputErrReport(opType, "input_values");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get input shapes failed.");
     return false;
   }
 
@@ -252,7 +244,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
     const auto& name = param.first;
     OP_LOGD(opType.c_str(), "GetCompileInfo %s.", name.c_str());
     if (!GetCompileInfo<int32_t>(op_info, name, param.second)) {
-      OP_LOGE(opType.c_str(), "GetCompileInfo %s failed.", name.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileInfo %s failed.", name.c_str());
       return false;
     }
     OP_LOGD(opType.c_str(), "%s=%d.", name.c_str(), param.second);
@@ -265,7 +257,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   }
 
   if (input_size != static_cast<int32_t>(input_shapes.size())) {
-    OP_LOGE(opType.c_str(),
+    VECTOR_INNER_ERR_REPORT_TILIING(opType,
             "check input size failed. "
             "Input_size in compile is %zd, but in params is %zd",
             input_size, input_shapes.size());

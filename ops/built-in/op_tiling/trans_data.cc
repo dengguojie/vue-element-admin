@@ -27,6 +27,7 @@
 #include "op_log.h"
 #include "trans_data_common.h"
 #include "transpose.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -56,27 +57,23 @@ bool CheckTensorShape(const std::string& opType, int64_t ubSize, int64_t blockDi
   int32_t outDims = outShape.size();
 
   if (ubSize < 0) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "ubSize", "ubSize can not be less than 0");
-    OP_LOGE(opType.c_str(), "op [TransDataTiling] : CheckTensorShape, ubSize is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransDataTiling] : CheckTensorShape, ubSize is invalid.");
     return false;
   }
 
   if (blockDim < 0) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "blockDim", "blockDim can not be less than 0");
-    OP_LOGE(opType.c_str(), "op [TransDataTiling] : CheckTensorShape, blockDim is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransDataTiling] : CheckTensorShape, blockDim is invalid.");
     return false;
   }
 
   if (outDims == 0) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "outShape", "outShape can not be null");
-    OP_LOGE(opType.c_str(), "op [TransDataTiling] : CheckTensorShape, outShape is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransDataTiling] : CheckTensorShape, outShape is invalid.");
     return false;
   }
 
   for (int32_t i = 0; i < outDims; i++) {
     if (outShape[i] <= 0) {
-      ge::OpsOneInputShapeErrReport(opType.c_str(), "outShape", "the value of outShape must be large than 0");
-      OP_LOGE(opType.c_str(), "op [TransDataTiling] : CheckTensorShape, outShape.shape[i] must be > 0");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransDataTiling] : CheckTensorShape, outShape.shape[i] must be > 0");
       return false;
     }
   }
@@ -91,55 +88,55 @@ bool GetCompileParams(const nlohmann::json& opCompileInfoJson, std::string& srcF
 
   auto allVars = opCompileInfoJson["vars"];
   if (allVars.count("srcFormat") == 0) {
-    OP_LOGE("op [TransDataTiling] : GetCompileParams, get srcFormat error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get srcFormat error");
     return false;
   }
   srcFormat = allVars["srcFormat"].get<std::string>();
 
   if (allVars.count("dstFormat") == 0) {
-    OP_LOGE("op [TransDataTiling] : GetCompileParams, get dstFormat error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get dstFormat error");
     return false;
   }
   dstFormat = allVars["dstFormat"].get<std::string>();
 
   if (allVars.count("dType") == 0) {
-    OP_LOGE("op [TransDataTiling] : GetCompileParams, get dType error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get dType error");
     return false;
   }
   dType = allVars["dType"].get<std::string>();
 
   if (allVars.count("ubSize") == 0) {
-    OP_LOGE("op [TransDataTiling] : GetCompileParams, get ubSize error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get ubSize error");
     return false;
   }
   ubSize = allVars["ubSize"].get<std::int64_t>();
 
   if (allVars.count("blockDim") == 0) {
-    OP_LOGE("op [TransDataTiling] : GetCompileParams, get blockDim error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get blockDim error");
     return false;
   }
   blockDim = allVars["blockDim"].get<std::int64_t>();
 
   if (allVars.count("inputSize") == 0) {
-    OP_LOGE("op [TransDataTiling] : GetCompileParams, get inputSize error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get inputSize error");
     return false;
   }
   inputSize = allVars["inputSize"].get<std::int64_t>();
 
   if (allVars.count("hiddenSize") == 0) {
-    OP_LOGE("op [TransDataTiling] : GetCompileParams, get hiddenSize error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get hiddenSize error");
     return false;
   }
   hiddenSize = allVars["hiddenSize"].get<std::int64_t>();
 
   if (allVars.count("group") == 0) {
-    OP_LOGE("op [TransDataTiling] : GetCompileParams, get group error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get group error");
     return false;
   }
   group = allVars["group"].get<std::int64_t>();
 
   if (blockDim == 0) {
-    OP_LOGE("op [TransDataTiling] : Core count cannot be zero!");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "Core count cannot be zero!");
     return false;
   }
 
@@ -156,7 +153,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
                     std::string& realDstFormat) {
   int32_t combAxisCnt = combAxis.size();
   if (combAxisCnt > 0) {
-    OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, combAxisCnt > 0");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, combAxisCnt > 0");
     return false;
   }
 
@@ -173,7 +170,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
       inShapeNew.push_back(lastSize);
     } else {
       if (inShape.size() < 1) {
-        OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, inShape size < 1");
+        VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, inShape size < 1");
         return false;
       }
       realSrcFormat = "NHC";
@@ -236,7 +233,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "NC1HWC0" && dstFormat == "NCHW") {
     if (inShape.size() < 5) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, inShape size < 5");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, inShape size < 5");
       return false;
     }
     realSrcFormat = "NCHT";
@@ -257,7 +254,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     realDstFormat = "NDCHT";
 
     if (inShape.size() != 5) {
-      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
     inShapeNew.push_back(inShape[0]);
@@ -279,11 +276,11 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     realDstFormat = "CHNT";
 
     if (inShape.size() != 4) {
-      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
     if (outShape.size() < 2) {
-      OP_LOGE("trans_data", "The output shape dimension size is not correct!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The output shape dimension size is not correct!");
       return false;
     }
     inShapeNew.push_back(inShape[0] * inShape[1]);
@@ -303,7 +300,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "DHWCN" && dstFormat == "FRACTAL_Z_3D") {
     if (inShape.size() != 5) {
-      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
     realSrcFormat = "DHCN";
@@ -326,7 +323,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "NDHWC" && dstFormat == "FRACTAL_Z_3D") {
     if (inShape.size() != 5) {
-      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
     realSrcFormat = "NDHC";
@@ -349,7 +346,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "NC1HWC0" && dstFormat == "FRACTAL_Z") {
     if (inShape.size() != 5) {
-      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
     realSrcFormat = "NDHC";
@@ -369,7 +366,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "NDHWC" && dstFormat == "NDC1HWC0") {
     if (inShape.size() != 5) {
-      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
     realSrcFormat = "NDHC";
@@ -390,7 +387,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "NDC1HWC0" && dstFormat == "NCDHW") {
     if (inShape.size() != 6 || outShape.size() != 5) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
     realSrcFormat = "NDCHT";
@@ -408,7 +405,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NCDHW") {
     if (inShape.size() < 2 || outShape.size() != 5) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
     realSrcFormat = "DCHNT";
@@ -428,7 +425,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "NC1HWC0" && dstFormat == "NHWC") {
     if (inShape.size() != 5 || outShape.size() != 4) {
-      OP_LOGE("trans_data", "The input shape dimension size should be 5 and output's should be 4!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size should be 5 and output's should be 4!");
       return false;
     }
     realSrcFormat = "NCHT";
@@ -446,7 +443,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "NDC1HWC0" && dstFormat == "NDHWC") {
     if (inShape.size() != 6 || outShape.size() != 5) {
-      OP_LOGE("trans_data", "The input shape dimension size should be 6 and output's should be 5!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size should be 6 and output's should be 5!");
       return false;
     }
     realSrcFormat = "NCHT";
@@ -465,7 +462,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if ((srcFormat == "FRACTAL_NZ") && (dstFormat == "ND" || dstFormat == "NCHW" || dstFormat == "NHWC")) {
     if (outShape.size() == 0) {
-      OP_LOGE("trans_data", "The output shape dimension size cannot be 0!");
+      VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The output shape dimension size cannot be 0!");
       return false;
     }
     realSrcFormat = "HCNT";
@@ -499,7 +496,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC") {
     if (inShape.size() != 4 || outShape.size() != 5) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
     realSrcFormat = "DCHNT";
@@ -521,7 +518,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "FRACTAL_NZ" && dstFormat == "NC1HWC0") {
     if (outShape.size() != 5) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
     realSrcFormat = "DCHNT";
@@ -546,7 +543,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     realDstFormat = "HCN";
 
     if (outShape.size() != 4 || inShape.size() < 2) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect!");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
 
@@ -565,7 +562,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
   if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "DHWCN") {
     if (inShape.size() < 2 || outShape.size() != 5) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
     realSrcFormat = "DCHNT";
@@ -588,7 +585,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     realDstFormat = "NCH";
 
     if (outShape.size() != 4 || inShape.size() < 2) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect!");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
 
@@ -610,7 +607,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     realDstFormat = "HCN";
 
     if (inShape.size() < 2) {
-      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect!");
+      VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
     int64_t axisN;
@@ -727,19 +724,17 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
                      OpRunInfo& runInfo) {
   OP_LOGI(opType.c_str(), "Tiling is running.");
   if (op_info == nullptr) {
-    OP_LOGE(opType.c_str(), "op TransDataTiling: op_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: op_info json error.");
     return false;
   }
   if (opParas.inputs.empty() || opParas.inputs.size() < 1 || opParas.inputs[0].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "src",
-                                  "The length of inputs is less than 1 or the inputs is empty");
-    OP_LOGE(opType.c_str(), "op TransDataTiling: input shape error.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: input shape error.");
     return false;
   }
   if (opParas.outputs.empty() || opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "dst",
-                                  "The length of outputs is less than 1 or the outputs is empty");
-    OP_LOGE(opType.c_str(), "op TransDataTiling: output shape error.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: output shape error.");
     return false;
   }
   std::string srcFormat = opParas.inputs[0].tensor[0].format;
@@ -782,13 +777,13 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   bool flag = GetCompileParams(op_info, srcFormat, dstFormat, dType, ubSize, blockDim, inputSize, hiddenSize, group,
                                 opType);
   if (!flag) {
-    OP_LOGE("op[%s] TransDataTiling: GetCompileParams error.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: GetCompileParams error.");
     return false;
   }
   int64_t c0Len = GetC0Len(dType);
   bool ret = CheckTensorShape(opType, ubSize, blockDim, outShape);
   if (!ret) {
-    OP_LOGE(opType.c_str(), "op TransDataTiling: CheckTensor Failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: CheckTensor Failed.");
     return ret;
   }
   int64_t blockElemCnt = BLOCK_BYTE_SIZE / GetDTypeLen(dType);
@@ -796,7 +791,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   flag = GetRenew2Shape(inShape, outShape, srcFormat, dstFormat, combAxis, c0Len, group, inShapeNew,
                           outShapeNew, realSrcFormat, realDstFormat);
   if (!flag) {
-    OP_LOGE(opType.c_str(), "TransDataTiling: GetRenew2Shape tiling params error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: GetRenew2Shape tiling params error");
     return false;
   }
 
@@ -805,7 +800,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     flag = TilingPositiveSourceNtc100(inShape, outShape, srcFormat, dstFormat, blockDim,
                                             blockElemCnt, ubSize, c0Len, dType, runParams100);
     if (!flag) {
-      OP_LOGE(opType, "TransDataTiling: get TilingPositiveSourceNtc100 tiling params error");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingPositiveSourceNtc100 tiling params error");
       return false;
     }
     SetRunningNtc100Params(runParams100, runInfo);
@@ -816,7 +811,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
       flag = TillingPositiveMode1010(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
                                      blockDim, blockElemCnt, ubSize, runParamsPart1);
       if (!flag) {
-        OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode101Param tiling params error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TransDataMode101Param tiling params error");
         return false;
       }
       SetRunningMode1010Params(runParamsPart1, runInfo);
@@ -827,7 +822,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
       flag = TillingPositiveMode1011(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
                                      blockDim, blockElemCnt, ubSize, runParamsPart1);
       if (!flag) {
-        OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode101Param tiling params error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TransDataMode101Param tiling params error");
         return false;
       }
       SetRunningMode1011Params(runParamsPart1, runInfo);
@@ -843,7 +838,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     flag = TilingNegativeTc201(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
                                ubSize, runParams201);
     if (!flag) {
-      OP_LOGE(opType.c_str(), "TransDataTiling: get TilingNegativeTc201 tiling params error");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingNegativeTc201 tiling params error");
       return false;
     }
     OP_LOGD(opType.c_str(), "***start to put mode 201 tiling parameters");
@@ -860,7 +855,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     flag = TilingNegativeNtc200(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
                                 ubSize, runParams200);
     if (!flag) {
-      OP_LOGE(opType.c_str(), "TransDataTiling: get TilingNegativeNtc200 tiling params error");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: get TilingNegativeNtc200 tiling params error");
       return false;
     }
     SetRunningNtc200Params(runParams200, runInfo);

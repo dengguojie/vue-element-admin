@@ -5,6 +5,7 @@
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 struct InTopKTilingParams {
@@ -29,7 +30,7 @@ bool InTopKDTiling (const std::string& op_type, const TeOpParas& op_paras, const
                    OpRunInfo& run_info) {
   GELOGI("========================InTopKTiling running.====================");
   if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty()) {
-    OP_LOGE(op_type.c_str(), "input shape cannot be empty");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty");
     return false;
   }
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;

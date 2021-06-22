@@ -377,7 +377,7 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   block_axis = 0;
   block_factor = output_shape[0];
   if (output_shape[1] > (compile_info.ub_size / dtype_size / 10)) {
-      OP_LOGE("SoftmaxCrossEntropyWithLogitsTiling: not supported shape");
+      VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "not supported shape");
       return false;
   } else if (ub_factor * output_shape[1] > (compile_info.ub_size / dtype_size / 10)) {
       ub_factor = max<int32_t>(compile_info.ub_size / (dtype_size * output_shape[1] * 10), 1);
@@ -399,21 +399,21 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
 bool GetPreCompileParams(const std::string& op_type, const nlohmann::json& op_info,
                          CompileInfo& compile_info) {
   if (op_info == nullptr) {
-    OP_LOGE(op_type.c_str(), "op_info is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info is null");
     return false;
   }
   const auto& common_info = op_info["common_info"];
 
   // core num
   if (common_info.count("core_num") == 0) {
-    OP_LOGE(op_type.c_str(), "core_num is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is null");
     return false;
   }
   compile_info.core_num = common_info["core_num"].get<std::int32_t>();
 
   // ub size
   if (common_info.count("ub_size") == 0) {
-    OP_LOGE(op_type.c_str(), "ub_size is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size is null");
     return false;
   }
   compile_info.ub_size = common_info["ub_size"].get<std::int32_t>();
@@ -444,7 +444,7 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const TeOpP
   CHECK((op_info.find("flag_info") != op_info.end()), "op [%s] : compile info not contain [flag_info]",
         op_type.c_str());
   if (kDtypeSizeMap.count(input_features.dtype) == 0) {
-    OP_LOGE("SoftmaxCrossEntropyWithLogitsTiling: Invalid input dtype");
+    VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "Invalid input dtype");
     return false;
   }
   const std::vector<bool>& flag_info = op_info["flag_info"];

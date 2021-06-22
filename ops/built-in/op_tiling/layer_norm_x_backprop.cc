@@ -18,20 +18,19 @@
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
   bool GetLayerNormXBackpropCompileParams(const std::string& op_type, const nlohmann::json& op_info,
                                           int32_t& core_num, int32_t& ub_size, int32_t& max_dtype) {
     using namespace nlohmann;
     if (op_info == nullptr) {
-      ge::OpsGetCompileParamsErrReport("LayerNormXBackprop", "op_info");
-      OP_LOGE(op_type.c_str(), "op_info is null");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info is null");
       return false;
     }
     if (op_info.count("CORE_NUM") == 0 || op_info.count("UB_SIZE") == 0 || op_info.count("MAX_DTYPE") == 0)
     {
-      ge::OpsGetCompileParamsErrReport("LayerNormXBackprop", "CORE_NUM_UB_SIZE_MAX_DTYPE");
-      OP_LOGE(op_type.c_str(), "CORE_NUM or UB_SIZE or MAX_DTYPE is null");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CORE_NUM or UB_SIZE or MAX_DTYPE is null");
       return false;
     }
     core_num = op_info["CORE_NUM"].get<std::int32_t>();
@@ -53,7 +52,7 @@ namespace optiling {
 
     bool ret = GetLayerNormXBackpropCompileParams(op_type, op_info, core_num, ub_size, max_dtype);
     if (!ret) {
-      OP_LOGE("op[%s] GetLayerNormXBackpropCompileParams failed.", op_type.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetLayerNormXBackpropCompileParams failed.");
       return false;
     }
     GELOGI("op[%s] GetLayerNormXBackpropCompileParams success.", op_type.c_str());

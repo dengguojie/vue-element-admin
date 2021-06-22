@@ -22,27 +22,28 @@
 #include <sstream>
 #include <cctype>
 #include "vector_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 
 bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                  OpRunInfo& run_info) {
   V_OP_TILING_CHECK((op_info.find("tiling_info") != op_info.end()),
-                    OP_LOGE(op_type.c_str(), "compile info not contain [tiling_info]"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [tiling_info]"),
                     return false);
   const std::vector<int64_t>& tiling_info = op_info["tiling_info"];
 
   V_OP_TILING_CHECK(!op_paras.inputs.empty(),
-                    OP_LOGE(op_type.c_str(), "op_paras.inputs cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
                     return false);
   V_OP_TILING_CHECK(!op_paras.inputs[0].tensor.empty(),
-                    OP_LOGE(op_type.c_str(), "op_paras.inputs[0].tensor cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"),
                     return false);
   std::vector<int64_t> runtime_shape(op_paras.inputs[0].tensor[0].shape);
 
   // use assign init vector
   V_CHECK_GT(tiling_info.size(), 0,
-             OP_LOGE(op_type.c_str(), "tiling_info index out of range"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling_info index out of range"),
              return false);
   size_t shape_size = (tiling_info.size() - tiling_info[0] - 1) / 2;
   std::vector<int64_t> broadcast_input(shape_size);
@@ -63,17 +64,17 @@ bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
   TeOpParas op_paras_tmp = std::move(op_paras);
   // update new shape
   V_OP_TILING_CHECK(!op_paras_tmp.inputs.empty(),
-                    OP_LOGE(op_type.c_str(), "op_paras_tmp.inputs cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.inputs cannot be empty"),
                     return false);
   V_OP_TILING_CHECK(!op_paras_tmp.inputs[0].tensor.empty(),
-                    OP_LOGE(op_type.c_str(), "op_paras_tmp.inputs[0].tensor cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.inputs[0].tensor cannot be empty"),
                     return false);
   op_paras_tmp.inputs[0].tensor[0].shape = std::move(broadcast_input);
 
   // create other input multiples
   TeOpTensorArg multiples_input(op_paras_tmp.inputs[0]);
   V_OP_TILING_CHECK(!multiples_input.tensor.empty(),
-                    OP_LOGE(op_type.c_str(), "multiples_input.tensor cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "multiples_input.tensor cannot be empty"),
 		    return false);
   multiples_input.tensor[0].shape = std::move(broadcast_multiples);
   op_paras_tmp.inputs.push_back(multiples_input);

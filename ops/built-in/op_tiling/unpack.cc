@@ -24,6 +24,7 @@
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 constexpr int32_t kBlockSize{32};
@@ -63,18 +64,18 @@ void SetActualDimsInVars(const std::vector<int64_t>& input_shape, int32_t axis,
 
 bool CheckOpParams(const TeOpParas& op_paras, int32_t input_dims, int32_t& axis) {
   if (op_paras.inputs.size() == 0 || op_paras.inputs[0].tensor.size() == 0) {
-    OP_LOGE("Dynamic UnpackTiling: Check input shape's info is invaild");
+    VECTOR_INNER_ERR_REPORT_TILIING("Dynamic UnpackTiling", "Check input shape's info is invaild");
     return false;
   }
 
   if (op_paras.outputs.size() == 0 || op_paras.outputs[0].tensor.size() == 0) {
-    OP_LOGE("Dynamic UnpackTiling: Check output shape's info is invaild");
+    VECTOR_INNER_ERR_REPORT_TILIING("Dynamic UnpackTiling", "Check output shape's info is invaild");
     return false;
   }
 
   // check axis
   if (axis < -input_dims || axis >= input_dims) {
-    OP_LOGE("Dynamic UnpackTiling: Check axis is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING("Dynamic UnpackTiling", "Check axis is invalid.");
     return false;
   }
 
@@ -93,7 +94,7 @@ bool GetCompileParams(const nlohmann::json& op_info, CompileInfo& compile_info) 
   compile_info.axis = compile_vars["axis"].get<std::int32_t>();
 
   if (compile_vars.count("ub_size") == 0) {
-    OP_LOGE("Dynamic UnpackTiling: GetCompileParams ub_size failed");
+    VECTOR_INNER_ERR_REPORT_TILIING("Dynamic UnpackTiling", "GetCompileParams ub_size failed");
     return false;
   }
   compile_info.ub_size = compile_vars["ub_size"].get<std::int32_t>();
@@ -105,13 +106,13 @@ bool GetCompileParams(const nlohmann::json& op_info, CompileInfo& compile_info) 
   compile_info.output_num = compile_vars["output_num"].get<std::int32_t>();
 
   if (compile_vars.count("core_num") == 0) {
-    OP_LOGE("Dynamic UnpackTiling: GetCompileParams core_num failed");
+    VECTOR_INNER_ERR_REPORT_TILIING("Dynamic UnpackTiling", "GetCompileParams core_num failed");
     return false;
   }
   compile_info.core_num = compile_vars["core_num"].get<std::int32_t>();
 
   if (compile_vars.count("is_special_tiling") == 0) {
-    OP_LOGE("Dynamic UnpackTiling: GetCompileParams is_special_tiling failed");
+    VECTOR_INNER_ERR_REPORT_TILIING("Dynamic UnpackTiling", "GetCompileParams is_special_tiling failed");
     return false;
   }
   compile_info.is_special_tiling = compile_vars["is_special_tiling"].get<bool>();
@@ -268,20 +269,20 @@ bool UnpackTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   std::unordered_map<std::string, int32_t> var_names;
   CompileInfo compile_info;
   if (kDtypeSizeMap.count(op_paras.inputs[0].tensor[0].dtype) == 0) {
-    OP_LOGE("UnpackTiling: Invalid input dtype");
+    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Invalid input dtype");
     return false;
   }
   compile_info.dtype_size = kDtypeSizeMap.at(op_paras.inputs[0].tensor[0].dtype);
   bool ret = GetCompileParams(op_info, compile_info);
   if (!ret) {
-    OP_LOGE("UnpackTiling: Get Compile info failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Get Compile info failed.");
     return ret;
   }
 
   // check op input and output params
   ret = CheckOpParams(op_paras, input_dims, compile_info.axis);
   if (!ret) {
-    OP_LOGE("UnpackTiling: Check op params failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Check op params failed.");
     return ret;
   }
 
@@ -325,7 +326,7 @@ bool UnpackTiling(const std::string& op_type, const TeOpParas& op_paras, const n
 
   for (const auto& var : all_vars) {
     if (var_names.count(var) == 0) {
-      OP_LOGE("Unpack op Tiling: Get Compile var info failed!");
+      VECTOR_INNER_ERR_REPORT_TILIING("UnpackTiling", "Get Compile var info failed!");
       return false;
     }
     ByteBufferPut(run_info.tiling_data, var_names[var]);

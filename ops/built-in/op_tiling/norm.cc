@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include "norm.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -77,7 +78,7 @@ bool Norm::Init() {
     int32_t min_value = -1 * max_value;
     for (std::size_t i = 0; i < reduce_axis_ori.size(); i++) {
       if (reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value) {
-        OP_LOGE(op_type.c_str(), "value of axis is illegal.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of axis is illegal.");
         return false;
       }
       if (reduce_axis_ori[i] < 0) {
@@ -88,7 +89,7 @@ bool Norm::Init() {
     compileInfo.is_const = op_info.count("_reduce_shape_known") > 0 &&
                            op_info.at("_reduce_shape_known").get<bool>();
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "Func of Init error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func of Init error. Error message: %s", e.what());
     return false;
   }
 
@@ -162,10 +163,10 @@ bool Norm::GetCompileInfo() {
     compileInfo.workspace_bytes = op_info.at("_workspace_info").at("_workspace_bytes").get<std::vector<int32_t>>();
     // CHECK VALUE
     V_CHECK_EQ(compileInfo.workspace_type.size(), compileInfo.workspace_bytes.size(),
-               OP_LOGE(op_type.c_str(), "size of workspace_type and workspace_bytes should be equal"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of workspace_type and workspace_bytes should be equal"),
                return false);
     V_CHECK_EQ(common_info.size(), 5,
-               OP_LOGE(op_type.c_str(), "size of common_info should be 5"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of common_info should be 5"),
                return false);
 
     // Get Data
@@ -177,21 +178,21 @@ bool Norm::GetCompileInfo() {
 
     // CHECK VALUE
     V_OP_TILING_CHECK(compileInfo.core_num > 0,
-                      OP_LOGE(op_type.c_str(), "core_num is %d that is illegal", compileInfo.core_num),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal", compileInfo.core_num),
                       return false);
     V_OP_TILING_CHECK(compileInfo.min_block_size > 0,
-                      OP_LOGE(op_type.c_str(), "min_block_size is %d that is illegal", compileInfo.min_block_size),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal", compileInfo.min_block_size),
                       return false);
     V_OP_TILING_CHECK(compileInfo.max_ub_count > 0,
-                      OP_LOGE(op_type.c_str(), "max_ub_count is %d that is illegal", compileInfo.max_ub_count),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_ub_count is %d that is illegal", compileInfo.max_ub_count),
                       return false);
     V_OP_TILING_CHECK(compileInfo.workspace_max_ub_count > 0,
-                      OP_LOGE(op_type.c_str(), "workspace_max_ub_count is %d that is illegal",
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_max_ub_count is %d that is illegal",
                               compileInfo.workspace_max_ub_count),
                       return false);
 
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "Func: GetCompileInfo error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: GetCompileInfo error. Error message: %s", e.what());
     return false;
   }
 
@@ -668,7 +669,7 @@ bool Norm::NeedRefineBlockTiling() {
 bool Norm::ProcessTiling() {
   bool ret = GetBlockTilingInfo();
   if (!ret) {
-    OP_LOGE(op_type.c_str(), "GetBlockTilingInfo error");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetBlockTilingInfo error");
     return false;
   }
   if (NeedRefineBlockTiling()) {
@@ -678,7 +679,7 @@ bool Norm::ProcessTiling() {
   ret = ret && ProcessReorderAxis();
   ret = ret && GetUbTilingInfo();
   if (!ret) {
-    OP_LOGE(op_type.c_str(), "GetUbTilingInfo error");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetUbTilingInfo error");
     return false;
   }
   return ret;
@@ -707,7 +708,7 @@ bool Norm::DoTiling() {
         input_shape = input_shape_ori;
       }
     } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get compile_info error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info error. Error message: %s", e.what());
       return false;
     }
   } else {
@@ -772,7 +773,7 @@ bool Norm::ConstInputProcPost() {
       run_info.workspaces = CalcWorkspace();
     }
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "Func: ConstInputProcPost get error message. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: ConstInputProcPost get error message. Error message: %s", e.what());
     return false;
   }
 
@@ -801,7 +802,7 @@ bool Norm::WriteTilingData() {
   try {
     compileInfo.var_list = op_info.at("_vars").at(std::to_string(tiling_key)).get<std::vector<std::string>>();
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "Func: WriteTilingData error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: WriteTilingData error. Error message: %s", e.what());
     return false;
   }
 

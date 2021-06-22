@@ -25,6 +25,8 @@
 #include <unordered_map>
 
 #include "vector_tiling.h"
+#include "error_log.h"
+
 namespace optiling {
 
 namespace {
@@ -57,17 +59,17 @@ const int64_t GetElementByType(const std::string& dtype) {
 
 bool Eletwise::Init() {
   V_OP_TILING_CHECK((!op_paras.inputs.empty() && !op_paras.inputs[0].tensor.empty()),
-                    OP_LOGE(op_type.c_str(), "input shape cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"),
                     return false);
   in_type = op_paras.inputs[0].tensor[0].dtype;
   V_OP_TILING_CHECK((!op_paras.outputs.empty() && !op_paras.outputs[0].tensor.empty()),
-                    OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
                     return false);
   out_type = op_paras.outputs[0].tensor[0].dtype;
   int64_t type_size = GetElementByType(out_type);
   for (size_t i = 1; i < op_paras.outputs.size(); i++) {
     V_OP_TILING_CHECK(!op_paras.outputs[i].tensor.empty(),
-                      OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
                       return false);
     int64_t cur_type_size = GetElementByType(op_paras.outputs[i].tensor[0].dtype);
     if (cur_type_size > type_size) {
@@ -76,13 +78,13 @@ bool Eletwise::Init() {
     }
   }
   V_CHECK_GE(flag_info.size(), 1,
-             OP_LOGE(op_type.c_str(), "flag info error"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "flag info error"),
              return false);
   only_const_tiling = flag_info[0];
   if (!only_const_tiling) {
     const size_t special_pattern_index = 3;
     V_CHECK_GT(flag_info.size(), special_pattern_index,
-               OP_LOGE(op_type.c_str(),"flag info has no _use_special_pattern"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type,"flag info has no _use_special_pattern"),
                return false);
     use_special_pattern = flag_info[3];
   }
@@ -93,10 +95,10 @@ bool Eletwise::GenerateOutputShape() {
   const std::vector<int64_t>& shapes = op_paras.outputs[0].tensor[0].shape;
   int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1LL, std::multiplies<int64_t>());
   V_CHECK_LE(fused_output, INT32_MAX,
-             OP_LOGE(op_type.c_str(), "The output shape is too large"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The output shape is too large"),
              return false);
   V_CHECK_GT(fused_output, 0,
-             OP_LOGE(op_type.c_str(), "The output shape must be greater than 0"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The output shape must be greater than 0"),
              return false);
   output_shape = {fused_output};
   return true;
@@ -112,18 +114,18 @@ bool Eletwise::CalcTiling() {
     const auto& base_info = op_info.at("_base_info").at(pattern_key);
     const size_t base_info_size = 4;
     V_CHECK_EQ(base_info.size(), base_info_size,
-               OP_LOGE(op_type.c_str(), "base info must be _ub_size, _max_dtype, _coexisting_quantity"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be _ub_size, _max_dtype, _coexisting_quantity"),
                return false);
     core_num = base_info[0];
     max_dtype = base_info[1];
     max_available_ub = base_info[2];
     max_available_ub_db = base_info[3];
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get compile_info[_base_info] error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_base_info] error. Error message: %s", e.what());
     return false;
   }
   V_CHECK_GT(output_shape.size(), 0,
-           OP_LOGE(op_type.c_str(), "output_shape index out of range"),
+           VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output_shape index out of range"),
            return false);
   const int64_t multi_core_threshold = GetElementByType(out_type) * core_num * DOUBLE_BUFFER_SIZE;
   if (output_shape[0] < multi_core_threshold) {
@@ -138,10 +140,10 @@ bool Eletwise::DoBlockTiling() {
   int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
   block_axis = 0;
   V_OP_TILING_CHECK((!output_shape.empty()),
-                    OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
                     return false);
   V_CHECK_GT(core_num, 0,
-             OP_LOGE(op_type.c_str(), "baseInfo core_num error, it is [%d]", core_num),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "baseInfo core_num error, it is [%d]", core_num),
              return false);
   block_factor = std::ceil(output_shape[0] * 1.0 / cur_core);
   block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
@@ -158,7 +160,7 @@ bool Eletwise::DoUbTiling() {
     bool outs_uint1 = op_info.at("_outs_uint1");
     int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
     V_CHECK_GT(limit, 0,
-               OP_LOGE(op_type.c_str(), "ub limit error, it is [%d]",limit),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub limit error, it is [%d]",limit),
                return false);
     int64_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
     int64_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);
@@ -222,12 +224,12 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
     for (const auto& var : all_vars) {
       if (var >= 30000) {
         V_CHECK_GE(ub_axis, 0,
-                   OP_LOGE(op_type.c_str(), "Not cut ub"),
+                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut ub"),
                    return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
       } else if (var >= 20000) {
         V_CHECK_GE(block_axis, 0,
-                   OP_LOGE(op_type.c_str(), "Not cut block"),
+                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut block"),
                    return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
       } else {
@@ -235,13 +237,13 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
         var_value /= 100;
         size_t dim_index = var_value % 100;
         V_CHECK_LT(dim_index, output_shape.size(),
-                   OP_LOGE(op_type.c_str(), "dim_index out of range output_shape index"),
+                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dim_index out of range output_shape index"),
                    return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(output_shape[dim_index]));
       }
     }
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get compile_info[_elewise_vars] error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_elewise_vars] error. Error message: %s", e.what());
     return false;
   }
   if (op_info.contains("_attr_vars")) {
@@ -253,7 +255,7 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
         ByteBufferPut(run_info.tiling_data, attr, attr_size);
       }
     } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get compile_info[_attr_vars] error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_attr_vars] error. Error message: %s", e.what());
       return false;
     }
   }
@@ -269,7 +271,7 @@ bool Eletwise::DoTiling() {
     // cut block
     ret = ret && DoBlockTiling();
     V_OP_TILING_CHECK((SPLIT_FACTORS.find(max_dtype) != SPLIT_FACTORS.end()),
-                      OP_LOGE(op_type.c_str(), "baseInfo max_dtype not in SPLIT_FACTORS"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "baseInfo max_dtype not in SPLIT_FACTORS"),
                       return false);
     if (ret && block_factor > std::min(max_available_ub, SPLIT_FACTORS.at(max_dtype))) {
       need_double_buffer = true;
@@ -293,11 +295,11 @@ bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_
                      const std::string& op_type, const TeOpParas& op_paras) {
   size_t input_num = op_paras.inputs.size();
   V_CHECK_LE(input_num, B_MAX_INPUT_NUMS,
-             OP_LOGE(op_type.c_str(), "more than 70 input are not supported"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 70 input are not supported"),
              return false);
   for (size_t i = 0; i < input_num; i++) {
     V_OP_TILING_CHECK(!op_paras.inputs[i].tensor.empty(),
-                      OP_LOGE(op_type.c_str(), "input tensor cannot be empty"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input tensor cannot be empty"),
                       return false);
     input_shapes[i].fill(1LL);
     if (op_paras.inputs[i].tensor[0].shape.size() > dim_len) {
@@ -305,7 +307,7 @@ bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_
     }
   }
   V_CHECK_LE(dim_len, B_MAX_DIM_LEN,
-             OP_LOGE(op_type.c_str(), "more than 16 dims are not supported"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 16 dims are not supported"),
              return false);
   for (size_t i = 0; i < input_num; i++) {
     size_t cur_dim_len = op_paras.inputs[i].tensor[0].shape.size();
@@ -320,7 +322,7 @@ bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_
       bool verify_broadcast = input_shapes[j][i] != 1 &&
           (input_shapes[j][i] != max_output && max_output != 1);
       V_OP_TILING_CHECK((!verify_broadcast),
-                        OP_LOGE(op_type.c_str(), "input shapes [%s] cannot broadcast to shape [%s]",
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shapes [%s] cannot broadcast to shape [%s]",
                                 std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str()),
                         return false);
       if (input_shapes[j][i] != max_output) {
@@ -343,7 +345,7 @@ bool MatchConstShape(const std::string& op_type,
     for (size_t i = 0; i < compile_const_shapes.size(); i++) {
       bool shape_equal = true;
       V_CHECK_EQ(const_shapes.size(), compile_const_shapes[i].size(),
-                 OP_LOGE(op_type.c_str(), "input shape and const shape not match"),
+                 VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape and const shape not match"),
                  return false);
       for (size_t j = 0; j < compile_const_shapes[i].size(); j++) {
         if (const_shapes[j] != compile_const_shapes[i][j].get<int64_t>()) {
@@ -356,7 +358,7 @@ bool MatchConstShape(const std::string& op_type,
       }
     }
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get compile_info[_const_shapes] error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_const_shapes] error. Error message: %s", e.what());
     return false;
   }
   return true;
@@ -372,7 +374,7 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
     bool verify_input =
             op_paras.inputs.size() == 2 && !op_paras.inputs[0].tensor.empty() && !op_paras.inputs[1].tensor.empty();
     V_OP_TILING_CHECK(verify_input,
-                      OP_LOGE(op_type.c_str(), "input shape cannot be empty"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"),
                       return false);
     std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
     std::vector<int64_t> input_shape_y = op_paras.inputs[1].tensor[0].shape;
@@ -385,7 +387,7 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
       input_shape_y.insert(input_shape_y.begin(), max_len - shape_len_y, 1);
     }
     V_CHECK_EQ(input_shape_x.size(), input_shape_y.size(),
-               OP_LOGE(op_type.c_str(), "input shape must be same"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape must be same"),
                return false);
     std::vector<int64_t> const_shapes(input_shape_x.size(), 0);
     for (size_t i = 0; i < input_shape_x.size(); i++) {
@@ -397,12 +399,12 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
     try {
       const auto& const_block_dims = op_info["_const_block_dims"];
       V_CHECK_GT(const_block_dims.size(), key_index,
-                 OP_LOGE(op_type.c_str(), "const_block_dims index out of range"),
+                 VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_block_dims index out of range"),
                  return false);
       block_dims = const_block_dims[key_index].get<int64_t>();
       key = 100000000 + key_index;
     } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get compile_info[_const_block_dims] error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_const_block_dims] error. Error message: %s", e.what());
       return false;
     }
   }
@@ -418,7 +420,7 @@ bool IsEmptyTensor(const std::string& op_type, const TeOpParas& op_paras) {
       has_zero = true;
     } else {
       V_OP_TILING_CHECK(!has_zero,
-                        OP_LOGE(op_type.c_str(), "multi-output only supports all 0 output"),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "multi-output only supports all 0 output"),
                         return false);
     }
   }
@@ -440,7 +442,7 @@ bool WriteConstTiling(const std::string& op_type, const TeOpParas& op_paras, con
         ByteBufferPut(run_info.tiling_data, attr, attr_size);
       }
     } catch (const std::exception& e) {
-      OP_LOGE(op_type.c_str(), "get compile_info[_attr_vars] error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_attr_vars] error. Error message: %s", e.what());
       return false;
     }
   }
@@ -454,7 +456,7 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
   try {
     flag_info = op_info.at("_flag_info").get<std::vector<bool>>();
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get compile_info[_flag_info] error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_flag_info] error. Error message: %s", e.what());
     return false;
   }
   bool is_const = false;

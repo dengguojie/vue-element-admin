@@ -25,6 +25,7 @@
 
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
+#include "error_log.h"
 
 namespace optiling {
 using namespace ge;
@@ -83,12 +84,12 @@ static bool CheckTensorShape(const std::string& opType, std::vector<int64_t> x_d
   int64_t rois_shape_dims = rois_shape.size();
 
   if (x_diff_shape_dims != 5) {
-    OP_LOGE(opType.c_str(), "op [ROIAlignTiling] : CheckTensorShape, shape of x_diff check failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [ROIAlignTiling] : CheckTensorShape, shape of x_diff check failed.");
     return false;
   }
 
   if (rois_shape_dims != 2) {
-    OP_LOGE(opType.c_str(), "op [ROIAlignTiling] : CheckTensorShape, dims of rois must be 2.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [ROIAlignTiling] : CheckTensorShape, dims of rois must be 2.");
     return false;
   }
 
@@ -101,13 +102,13 @@ static bool GetCompileParams(const std::string& opType, const nlohmann::json& op
 
   const auto& allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(opType.c_str(), "op [ROIAlignTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [ROIAlignTiling] : GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(opType.c_str(), "op [ROIAlignTiling] : GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [ROIAlignTiling] : GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
@@ -137,7 +138,7 @@ bool ROIAlignTiling(const std::string& opType, const TeOpParas& opParas, const n
                     OpRunInfo& runInfo) {
   OP_LOGI("op[%s] ROIAlignTiling running.", opType.c_str());
   if (op_info == nullptr) {
-    OP_LOGE(opType.c_str(), "op ROIAlignTiling: op_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op ROIAlignTiling: op_info json error.");
     return false;
   }
 
@@ -146,7 +147,7 @@ bool ROIAlignTiling(const std::string& opType, const TeOpParas& opParas, const n
   int64_t core_num = 0;
   bool flag = GetCompileParams(opType, op_info, core_num, ub_size);
   if (!flag) {
-    OP_LOGE("op[%s] ROIAlignTiling: GetCompileParams error.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "ROIAlignTiling: GetCompileParams error.");
     return false;
   }
 
@@ -156,7 +157,7 @@ bool ROIAlignTiling(const std::string& opType, const TeOpParas& opParas, const n
   flag = true;
   flag = CheckTensorShape(opType, feature_map_shape, rois_shape);
   if (!flag) {
-    OP_LOGE("op[%s] ROIAlignTiling: params check failed.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "ROIAlignTiling: params check failed.");
     return false;
   }
 

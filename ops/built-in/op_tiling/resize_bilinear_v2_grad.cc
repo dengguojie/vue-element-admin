@@ -24,6 +24,7 @@
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -80,7 +81,7 @@ bool GetCompileInfo(const std::string& op_type, const nlohmann::json& op_compile
     using namespace nlohmann;
     auto all_vars = op_compile_info["vars"];
     if (all_vars.count("core_num") == 0) {
-        OP_LOGE("op [ResizeBilinearV2GradTiling] : GetCompileInfo, get core_num error");
+        VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "GetCompileInfo, get core_num error");
         return false;
     }
     core_num = all_vars["core_num"].get<std::int32_t>();
@@ -256,7 +257,7 @@ bool ResizeBilinearV2GradTiling(const std::string& op_type, const TeOpParas& op_
     int32_t core_num;
     bool get_compile_info = GetCompileInfo(op_type, op_compile_info, core_num);
     if (!get_compile_info) {
-        OP_LOGE("op[%s] ResizeBilinearV2GradTiling: GetCompileInfo error.", op_type.c_str());
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ResizeBilinearV2GradTiling: GetCompileInfo error.");
         return false;
     }
 

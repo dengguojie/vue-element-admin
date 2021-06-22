@@ -40,19 +40,19 @@ bool GetFlattenCompileParams(const nlohmann::json& op_compile_info, int64_t& cor
   auto all_vars = op_compile_info["vars"];
 
   if (all_vars.count("core_num") == 0) {
-    OP_LOGE("op [Flatten]: GetFlattenCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("Flattern", "GetFlattenCompileParams, get core_num error");
     return false;
   }
   core_num = all_vars["core_num"].get<std::int64_t>();
 
   if (all_vars.count("ub_size") == 0) {
-    OP_LOGE("op [Flatten]: GetFlattenCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING("Flattern", "GetFlattenCompileParams, get ub_size error");
     return false;
   }
   ub_size = all_vars["ub_size"].get<std::int64_t>();
 
   if (all_vars.count("block_size") == 0) {
-    OP_LOGE("op [Flatten]: GetFlattenCompileParams, get block_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING("Flattern", "GetFlattenCompileParams, get block_size error");
     return false;
   }
   block_size = all_vars["block_size"].get<std::int64_t>();
@@ -63,7 +63,7 @@ bool GetFlattenCompileParams(const nlohmann::json& op_compile_info, int64_t& cor
 bool FlattenTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                    OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "FlattenTiling running.");
-  OP_TILING_CHECK(op_paras.inputs.empty(), OP_LOGE(op_type.c_str(), "op_paras.inputs cannot be empty."), return false);
+  OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty."), return false);
 
   const std::vector<int64_t> src_shape = op_paras.inputs[0].tensor[0].shape;
   const std::vector<int64_t> dst_shape = op_paras.outputs[0].tensor[0].shape;
@@ -83,7 +83,7 @@ bool FlattenTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   }
 
   if (data_size != data_dst_size) {
-    OP_LOGE(op_type.c_str(), "The size of src and dst is not equal, can not use fuc flatten");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The size of src and dst is not equal, can not use fuc flatten");
     return false;
   }
 

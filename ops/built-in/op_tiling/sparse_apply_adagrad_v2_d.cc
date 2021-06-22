@@ -27,6 +27,7 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include <map>
+#include "error_log.h"
 
 namespace optiling {
 
@@ -37,18 +38,16 @@ bool CheckSparseApplyAdagradV2DTensorShape(const std::string& op_type,
     std::vector<int64_t> grad_shape = op_paras.inputs[2].tensor[0].shape;
     std::vector<int64_t> indices_shape = op_paras.inputs[3].tensor[0].shape;
     if (var_shape.size() == 0 || accum_shape.size() == 0 || grad_shape.size() == 0 || indices_shape.size() == 0) {
-        ge::OpsOneInputShapeErrReport(op_type.c_str(), "indices",
-                                      "Size of var_shape or accum_shape or grad_shape or indices_shape is 0");
-        OP_LOGE(op_type.c_str(), "Size of var_shape, accum_shape, grad_shape, indices_shape is %u, %u, %u, %u",
+
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Size of var_shape, accum_shape, grad_shape, indices_shape is %u, %u, %u, %u",
                                       var_shape.size(), accum_shape.size(), grad_shape.size(), indices_shape.size());
         return false;
     }
     int32_t var_dims = var_shape.size();
 
     if (indices_shape[0] != grad_shape[0]) {
-        ge::OpsOneInputShapeErrReport(op_type.c_str(), "indices",
-                                      "the shape 0 of indices must be equal to the shape 0 of grad");
-        OP_LOGE(op_type.c_str(), "op [SparseApplyAdagradV2DTiling] : grad shape[0] must be equal to indices shape[0]");
+
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [SparseApplyAdagradV2DTiling] : grad shape[0] must be equal to indices shape[0]");
         return false;
     }
     return true;
@@ -66,14 +65,13 @@ bool SparseApplyAdagradV2DTiling(const std::string& op_type, const TeOpParas& op
                             OpRunInfo& run_info) {
     GELOGI("op[%s] tiling running.", op_type.c_str());
     if (op_info == nullptr) {
-        OP_LOGE(op_type.c_str(), "SparseApplyAdagradV2DTiling: op_info json error.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SparseApplyAdagradV2DTiling: op_info json error.");
         return false;
     }
     if (op_paras.inputs.size() < 4 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
     op_paras.inputs[2].tensor.empty() || op_paras.inputs[3].tensor.empty()) {
-        ge::OpsOneInputShapeErrReport(op_type.c_str(), "var or accum",
-                                  "The length of inputs is less than 4 or the inputs is empty");
-        OP_LOGE(op_type.c_str(), "SparseApplyAdagradV2DTiling: input shape error.");
+
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SparseApplyAdagradV2DTiling: input shape error.");
         return false;
     }
 
@@ -81,7 +79,7 @@ bool SparseApplyAdagradV2DTiling(const std::string& op_type, const TeOpParas& op
     // check inputs shape
     bool ret = CheckSparseApplyAdagradV2DTensorShape(op_type, op_paras, var_row_elem);
     if (!ret) {
-        OP_LOGE(op_type.c_str(), "op[parseApplyFtrlTiling] SparseApplyAdagradV2DTiling: inputs shape are invalid.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op[parseApplyFtrlTiling] SparseApplyAdagradV2DTiling: inputs shape are invalid.");
         return ret;
     }
 
@@ -99,15 +97,13 @@ bool SparseApplyAdagradV2DTiling(const std::string& op_type, const TeOpParas& op
 
     const auto& all_vars = op_info["vars"];
     if (all_vars.count("core_num") == 0) {
-        ge::OpsGetCompileParamsErrReport(op_type.c_str(), "core_num");
-        OP_LOGE(op_type.c_str(), "op [SparseApplyAdagradV2DTiling] : GetCompileParams, get %s error", "core_num");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [SparseApplyAdagradV2DTiling] : GetCompileParams, get %s error", "core_num");
         return false;
     }
     int32_t core_num = all_vars["core_num"].get<std::int32_t>();
 
     if (all_vars.count("cache_threshold_col") == 0) {
-        ge::OpsGetCompileParamsErrReport(op_type.c_str(), "cache_threshold_col");
-        OP_LOGE(op_type.c_str(), "op [SparseApplyAdagradV2DTiling] : GetCompileParams, get %s error",
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [SparseApplyAdagradV2DTiling] : GetCompileParams, get %s error",
                 "cache_threshold_col");
         return false;
     }

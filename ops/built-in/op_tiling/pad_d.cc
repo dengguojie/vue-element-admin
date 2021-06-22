@@ -20,6 +20,8 @@
  */
 #include "pad_common.h"
 #include "../op_proto/util/error_util.h"
+#include "error_log.h"
+
 namespace optiling {
 
 bool GetPadDCompileParams(const nlohmann::json& opCompileInfo, std::vector<std::vector<int64_t>>& padding, int& coreNum,
@@ -27,12 +29,12 @@ bool GetPadDCompileParams(const nlohmann::json& opCompileInfo, std::vector<std::
   using namespace nlohmann;
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE("op [PadDTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("PadDTiling", "GetCompileParams, get core_num error");
     return false;
   }
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE("op [PadDTiling] : GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING("PadDTiling", "GetCompileParams, get ub_size error");
     return false;
   }
 
@@ -41,7 +43,7 @@ bool GetPadDCompileParams(const nlohmann::json& opCompileInfo, std::vector<std::
   padding = allVars["padding"].get<std::vector<std::vector<int64_t>>>();
 
   if (int64_t(padding.size()) != length) {
-    OP_LOGE("op [PadDTiling] : GetCompileParams, get padding error");
+    VECTOR_INNER_ERR_REPORT_TILIING("PadDTiling", "GetCompileParams, get padding error");
     return false;
   }
 
@@ -56,16 +58,14 @@ bool PadDTiling(const std::string& opType, const TeOpParas& opParas, const nlohm
   // Get inShape, outShape
   padCommon pad;
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x",
-                                  "The input may be empty");
-    OP_LOGE(opType.c_str(), "op [PadDTiling] : input shape error");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [PadDTiling] : input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "y",
-                                   "The output may be empty");
-    OP_LOGE(opType.c_str(), "op [PadDTiling] : output shape error");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [PadDTiling] : output shape error");
     return false;
   }
 

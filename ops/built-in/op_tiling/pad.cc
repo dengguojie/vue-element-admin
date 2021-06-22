@@ -27,6 +27,7 @@
 #include "../op_proto/util/util.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -146,17 +147,17 @@ static bool GetPadCompileParams(const nlohmann::json& compile_info,
   using namespace nlohmann;
   auto allVars = compile_info["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get core_num error");
     return false;
   }
   compile_params.core_num = allVars["core_num"].get<std::int64_t>();
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get ub_size error");
     return false;
   }
   compile_params.ub_size = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("dtype_rate") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get dtype_rate error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get dtype_rate error");
     return false;
   }
   compile_params.dtype_rate = allVars["dtype_rate"].get<std::int64_t>();
@@ -164,31 +165,31 @@ static bool GetPadCompileParams(const nlohmann::json& compile_info,
   // add for StridedSliceGrad
   if (compile_params.op_type == OP_STRIDED_SLICE_GRAD) {
     if (allVars.count("begin_mask") == 0) {
-      OP_LOGE(compile_params.op_type, "GetCompileParams, get begin_mask error");
+      VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get begin_mask error");
       return false;
     }
     compile_params.begin_mask = allVars["begin_mask"].get<std::uint64_t>();
 
     if (allVars.count("end_mask") == 0) {
-      OP_LOGE(compile_params.op_type, "GetCompileParams, get end_mask error");
+      VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get end_mask error");
       return false;
     }
     compile_params.end_mask = allVars["end_mask"].get<std::uint64_t>();
 
     if (allVars.count("ellipsis_mask") == 0) {
-      OP_LOGE(compile_params.op_type, "GetCompileParams, get ellipsis_mask error");
+      VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get ellipsis_mask error");
       return false;
     }
     compile_params.ellipsis_mask = allVars["ellipsis_mask"].get<std::uint64_t>();
 
     if (allVars.count("new_axis_mask") == 0) {
-      OP_LOGE(compile_params.op_type, "GetCompileParams, get new_axis_mask error");
+      VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get new_axis_mask error");
       return false;
     }
     compile_params.new_axis_mask = allVars["new_axis_mask"].get<std::uint64_t>();
 
     if (allVars.count("shrink_axis_mask") == 0) {
-      OP_LOGE(compile_params.op_type, "GetCompileParams, get shrink_axis_mask error");
+      VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get shrink_axis_mask error");
       return false;
     }
     compile_params.shrink_axis_mask = allVars["shrink_axis_mask"].get<std::uint64_t>();
@@ -279,7 +280,7 @@ static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras,
     int index = item.second.first;
     auto& values = item.second.second;
     if (!GetPaddingsConstValue(op_paras, name, op_paras.inputs[index].tensor[0].dtype, values)) {
-      OP_LOGE(compile_params.op_type, "Get %s values failed", name.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "Get %s values failed", name.c_str());
       return false;
     }
   }
@@ -324,7 +325,7 @@ static bool CalcuPaddingForStridedSliceGrad(const TeOpParas& op_paras,
   vector<pair<int64_t, int64_t>> output_ranges;
 
   if (!StridedSliceCommonInferShape(compile_params.op_type, input_params, output_shape, output_ranges)) {
-    OP_LOGE(compile_params.op_type, "StridedSliceCommonInferShape failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "StridedSliceCommonInferShape failed.");
     return false;
   }
 
@@ -465,22 +466,21 @@ bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nloh
 
   OP_LOGI(op_type, "begin to run tiling.");
   if (op_compile_info == nullptr) {
-    OP_LOGE(op_type, "op [PadTiling] : op_compile_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadTiling] : op_compile_info json error.");
     return false;
   }
 
   if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() ||
       op_paras.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(op_type.c_str(), "input_x or paddings",
-                                  "The input may be empty");
-    OP_LOGE(op_type, "op [PadTiling] : input shape error");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadTiling] : input shape error");
     return false;
   }
   // begin to get compile data
   PadCompileParams compile_params;
   compile_params.op_type = op_type;
   if (!GetPadCompileParams(op_compile_info, compile_params)) {
-    OP_LOGE(op_type, "get compile info from nlohmann json failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
     return false;
   }
   int64_t pad_input_idx = op_type == OP_STRIDED_SLICE_GRAD ? 4 : 0;

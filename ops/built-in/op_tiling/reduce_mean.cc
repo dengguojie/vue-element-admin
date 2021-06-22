@@ -12,6 +12,7 @@
  */
 #include "reduce_tiling.h"
 #include "../fusion_pass/common/fp16_t.hpp"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -41,13 +42,13 @@ bool GetInputShape(const std::string& op_type, const TeOpParas& op_paras,
             op_info.at("_idx_before_reduce").get<int>() : 0;
   // CHECK INPUT
   V_OP_TILING_CHECK(!op_paras.inputs.empty(),
-                    OP_LOGE(op_type.c_str(), "inputs cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "inputs cannot be empty"),
                     return false);
   V_OP_TILING_CHECK(!(op_paras.inputs.size() <= uint(idx) || idx < 0),
-                    OP_LOGE(op_type.c_str(), "idx is invalid index for inputs"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"),
                     return false);
   V_OP_TILING_CHECK(!op_paras.inputs[uint(idx)].tensor.empty(),
-                    OP_LOGE(op_type.c_str(), "tensor cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tensor cannot be empty"),
                     return false);
   input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
   return true;
@@ -72,7 +73,7 @@ bool GetReduceAxis(const std::string& op_type, const TeOpParas& op_paras, const 
     auto size = std::get<1>(reduce_axis_info);
     ge::DataType axis_type = std::get<2>(reduce_axis_info).GetTensorDesc().GetDataType();
     V_OP_TILING_CHECK(!(axis_type != ge::DT_INT32 && axis_type != ge::DT_INT64),
-                      OP_LOGE(op_type.c_str(), "axis_type is not belong to [int32, int64]"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axis_type is not belong to [int32, int64]"),
                       return false);
 
     if (axis_type == ge::DT_INT32) {
@@ -108,7 +109,7 @@ bool GetReduceAxis(const std::string& op_type, const TeOpParas& op_paras, const 
   for (size_t i = 0; i < reduce_axis_ori.size(); i++) {
     bool is_illegal_case = reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value;
     if (is_illegal_case) {
-      OP_LOGE(op_type.c_str(), "value of axis is illegal.");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of axis is illegal.");
       return false;
     }
     if (reduce_axis_ori[i] < 0) {

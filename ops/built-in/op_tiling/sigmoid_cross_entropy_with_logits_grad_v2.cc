@@ -13,6 +13,7 @@
 #include "reduce_tiling.h"
 #include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -33,7 +34,7 @@ bool SigmoidCrossEntropyWithLogitsGradV2Tiling(const std::string& op_type, const
         if (input_shape[i] != 0) {
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         } else {
-          OP_LOGE(op_type.c_str(), "the shape[%d] is 0,do not supported", i);
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the shape[%d] is 0,do not supported", i);
           return false;
         }
       }
@@ -45,7 +46,7 @@ bool SigmoidCrossEntropyWithLogitsGradV2Tiling(const std::string& op_type, const
         if (input_shape[i] != 0) {
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         } else {
-          OP_LOGE(op_type.c_str(), "the shape[%d] is 0,do not supported", i);
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the shape[%d] is 0,do not supported", i);
           return false;
         }
       }

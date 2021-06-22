@@ -4,6 +4,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling{
   struct RnnGenMaskV2TilingParams
@@ -43,13 +44,13 @@ namespace optiling{
     auto all_vars = op_compile_info["vars"];
     if (all_vars.count("available_aicore_num") == 0)
     {
-      OP_LOGE("op [RnnGenMaskV2Tiling] : GetCompileInfoV2, get available_aicore_num  error");
+      VECTOR_INNER_ERR_REPORT_TILIING("RnnGenMaskV2Tiling", "GetCompileInfoV2, get available_aicore_num  error");
       return false;
     }
     aicore_num = all_vars["available_aicore_num"].get<std::int32_t>();
     if (all_vars.count("block") == 0)
     {
-      OP_LOGE("op [RnnGenMaskV2Tiling] : GetCompileInfoV2, get block error");
+      VECTOR_INNER_ERR_REPORT_TILIING("RnnGenMaskV2Tiling", "GetCompileInfoV2, get block error");
       return false;
     }
     block = all_vars["block"].get<std::int32_t>();
@@ -154,7 +155,7 @@ namespace optiling{
     bool get_compile_info = GetCompileInfoV2(op_type, op_compile_info, core_num, block);
     if (!get_compile_info)
     {
-      OP_LOGE("op[%s] RnnGenMaskV2Tiling: GetCompileInfoV2 error.", op_type.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "RnnGenMaskV2Tiling: GetCompileInfoV2 error.");
       return false;
     }
 

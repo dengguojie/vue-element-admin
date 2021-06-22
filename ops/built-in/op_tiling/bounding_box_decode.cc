@@ -23,6 +23,7 @@
 #include <nlohmann/json.hpp>
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 using namespace ge;
@@ -159,7 +160,7 @@ bool GetParam(const TeOpParas& op_paras, TilingInfo& param) {
     }
     int32_t element_number = element_total;
     if (0 == element_number) {
-        OP_LOGE("BoundingBoxDecode", "op[BoundingBoxDecodeTiling]:GetParam fail.element_number is zero");
+        VECTOR_INNER_ERR_REPORT_TILIING("BoundingBoxDecode", "op[BoundingBoxDecodeTiling]:GetParam fail.element_number is zero");
         return false;
     }
 
@@ -197,25 +198,25 @@ bool GetCompileParam(const std::string& opType,
 
     const auto& allVars = opCompileInfoJson["vars"];
     if (allVars.count("core_num") == 0) {
-        OP_LOGE(opType.c_str(), "op[BoundingBoxDecodeTiling]:GetCompileParam, get core_num error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[BoundingBoxDecodeTiling]:GetCompileParam, get core_num error");
         return false;
     }
     param.coreNum = allVars["core_num"].get<std::int32_t>();
 
     if (allVars.count("rois_data_each_block") == 0) {
-        OP_LOGE(opType.c_str(), "op[BoundingBoxDecodeTiling]:GetCompileParam, get rois_data_each_block error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[BoundingBoxDecodeTiling]:GetCompileParam, get rois_data_each_block error");
         return false;
     }
     param.rois_data_each_block = allVars["rois_data_each_block"].get<std::int32_t>();
 
     if (allVars.count("each_repeat_block_number") == 0) {
-        OP_LOGE(opType.c_str(), "op[BoundingBoxDecodeTiling]:GetCompileParam, get each_repeat_block_number error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[BoundingBoxDecodeTiling]:GetCompileParam, get each_repeat_block_number error");
         return false;
     }
     param.each_repeat_block_number = allVars["each_repeat_block_number"].get<std::int32_t>();
 
     if (allVars.count("ub_max_size") == 0) {
-        OP_LOGE(opType.c_str(), "op[BoundingBoxDecodeTiling]:GetCompileParam, get ub_max_size error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[BoundingBoxDecodeTiling]:GetCompileParam, get ub_max_size error");
         return false;
     }
     param.ub_max_size = allVars["ub_max_size"].get<std::int32_t>();
@@ -225,22 +226,22 @@ bool GetCompileParam(const std::string& opType,
 
 bool CheckParam(const std::string& opType, TilingInfo& param) {
     if (0 == param.coreNum) {
-        OP_LOGE(opType.c_str(), "op[BoundingBoxDecodeTiling]:check fail.coreNum is zero");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[BoundingBoxDecodeTiling]:check fail.coreNum is zero");
         return false;
     }
 
     if (0 == param.rois_data_each_block) {
-        OP_LOGE(opType.c_str(), "op[BoundingBoxDecodeTiling]:check fail.rois_data_each_block is zero");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[BoundingBoxDecodeTiling]:check fail.rois_data_each_block is zero");
         return false;
     }
 
     if (0 == param.each_repeat_block_number) {
-        OP_LOGE(opType.c_str(), "op[BoundingBoxDecodeTiling]:check fail.each_repeat_block_number is zero");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[BoundingBoxDecodeTiling]:check fail.each_repeat_block_number is zero");
         return false;
     }
 
     if (0 == param.ub_max_size) {
-        OP_LOGE(opType.c_str(), "op[BoundingBoxDecodeTiling]:check fail.ub_max_size is zero");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "op[BoundingBoxDecodeTiling]:check fail.ub_max_size is zero");
         return false;
     }
 

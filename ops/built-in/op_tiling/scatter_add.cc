@@ -27,6 +27,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -287,7 +288,7 @@ bool CheckScatterAddShape(const std::string& opType, const std::vector<int64_t>&
                           const std::vector<int64_t>& indicesShape, const std::vector<int64_t>& updatesShape,
                           const std::vector<int64_t>& outShape) {
   if (varShape != outShape) {
-    OP_LOGE(opType.c_str(), "the length of var must be same as the length of output.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "the length of var must be same as the length of output.");
     return false;
   }
 
@@ -302,7 +303,7 @@ bool CheckScatterAddShape(const std::string& opType, const std::vector<int64_t>&
     actualUpdatesShape.push_back(varShape[i]);
   }
   if (updatesShape != actualUpdatesShape) {
-    OP_LOGE(opType.c_str(), "updates does not satisfy the relation expression with actualUpdatesShape.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "updates does not satisfy the relation expression with actualUpdatesShape.");
     return false;
   }
   return true;
@@ -314,31 +315,31 @@ bool GetScatterAddCompileParams(const std::string& opType, const nlohmann::json&
   const auto& allVars = opCompileInfo["vars"];
 
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
 
   if (allVars.count("var_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get var_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get var_size error");
     return false;
   }
   varSize = allVars["var_size"].get<std::int64_t>();
 
   if (allVars.count("indices_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get indices_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get indices_size error");
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int64_t>();
 
   if (allVars.count("support_atomic") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get support_atomic error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get support_atomic error");
     return false;
   }
   supportAtomic = allVars["support_atomic"].get<std::int64_t>();
@@ -366,18 +367,18 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
 
   OP_LOGI(opType.c_str(), "ScatterAddTiling running.");
   if (opCompileInfo == nullptr) {
-    OP_LOGE(opType.c_str(), "opCompileInfo json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "opCompileInfo json error.");
     return false;
   }
 
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
       opParas.inputs[2].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "input shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "output shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "output shape error");
     return false;
   }
 
@@ -389,7 +390,7 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
 
   bool is_valid_shape = CheckScatterAddShape(opType, varShape, indicesShape, updatesShape, outShape);
   if (!is_valid_shape) {
-    OP_LOGE(opType.c_str(), "CheckScatterAddShape is failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "CheckScatterAddShape is failed.");
     return false;
   }
 
@@ -401,7 +402,7 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
   bool can_get_params =
       GetScatterAddCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize, supportAtomic);
   if (!can_get_params) {
-    OP_LOGE(opType.c_str(), "GetScatterAddCompileParams error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetScatterAddCompileParams error.");
     return false;
   }
 

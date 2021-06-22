@@ -24,6 +24,7 @@
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
+#include "error_log.h"
 
 // the minest num for one core
 const int64_t CORE_MINEST_NUM = 128;
@@ -34,7 +35,7 @@ bool GetDropOutDoMaskCompileParams(const nlohmann::json& opCompileInfo, int64_t&
   using namespace nlohmann;
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE("op [DropOutDoMaskTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("DropOutDoMaskTiling", "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
@@ -58,7 +59,7 @@ bool DropOutDoMaskTiling(const std::string& op_type,
   using namespace ge;
   if (op_paras.inputs.size() != 3 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
       op_paras.inputs[2].tensor.empty()) {
-      OP_LOGE(op_type.c_str(), "inputs size is not 3 or some input are empty");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "inputs size is not 3 or some input are empty");
       return false;
   }
   const std::vector<int64_t>& var_shape = op_paras.inputs[0].tensor[0].shape;
@@ -69,7 +70,7 @@ bool DropOutDoMaskTiling(const std::string& op_type,
 
   int64_t core_num = 0;
   if (!GetDropOutDoMaskCompileParams(op_info, core_num)) {
-    OP_LOGE("op [DropOutDoMaskTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("DropOutDoMaskTiling", "GetCompileParams, get core_num error");
     return false;
   }
 

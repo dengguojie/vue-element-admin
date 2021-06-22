@@ -24,6 +24,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -521,29 +522,25 @@ bool unsorted_segment_get_compile_params(
 {
     using namespace nlohmann;
     if (op_compile_info_json == nullptr) {
-        ge::OpsGetCompileParamsErrReport("UnsortedSegment", "op_compile_info_json");
-        OP_LOGE(op_type.c_str(), "op_compile_info_json is null");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_compile_info_json is null");
         return false;
     }
     const auto &allVars = op_compile_info_json["vars"];
     // core num
     if (allVars.count("core_num") == 0) {
-        ge::OpsGetCompileParamsErrReport("UnsortedSegment", "core_num");
-        OP_LOGE(op_type.c_str(), "core_num is null");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is null");
         return false;
     }
     core_num = allVars["core_num"].get<std::int32_t>();
     // ub size
     if (allVars.count("ub_size") == 0) {
-        ge::OpsGetCompileParamsErrReport("UnsortedSegment", "ub_size");
-        OP_LOGE(op_type.c_str(), "ub_size is null");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size is null");
         return false;
     }
     ub_size = allVars["ub_size"].get<std::int32_t>();
     // ub tensor num
     if (allVars.count("ub_tensor_num") == 0) {
-        ge::OpsGetCompileParamsErrReport("UnsortedSegment", "ub_tensor_num");
-        OP_LOGE(op_type.c_str(), "ub_tensor_num is null");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_tensor_num is null");
         return false;
     }
     ub_tensor_num = allVars["ub_tensor_num"].get<std::int32_t>();
@@ -572,23 +569,19 @@ bool UnsortedSegmentTiling(const std::string &op_type,
 {
     GELOGI("op[%s] op tiling begin.", op_type.c_str());
     if (op_paras.inputs.empty()) {
-        ge::OpsOneInputShapeErrReport("UnsortedSegment", "op_paras.inputs", "op_paras.inputs is empty.");
-        OP_LOGE(op_type.c_str(), "op_paras.inputs is empty.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs is empty.");
         return false;
     }
     if (op_paras.inputs.size() < 2) {
-        ge::OpsOneInputShapeErrReport("UnsortedSegment", "op_paras.inputs", "op_paras.inputs.size() < 2.");
-        OP_LOGE(op_type.c_str(), "op_paras.inputs.size() < 2.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs.size() < 2.");
         return false;
     }
     if (op_paras.inputs[0].tensor.empty()) {
-        ge::OpsOneInputShapeErrReport("UnsortedSegment", "input_data", "input_data tensor is empty.");
-        OP_LOGE(op_type.c_str(), "input_data tensor is empty.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_data tensor is empty.");
         return false;
     }
     if (op_paras.inputs[1].tensor.empty()) {
-        ge::OpsOneInputShapeErrReport("UnsortedSegment", "ids", "ids tensor is empty.");
-        OP_LOGE(op_type.c_str(), "ids tensor is empty.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ids tensor is empty.");
         return false;
     }
     const std::vector<int64_t> &input_shape = op_paras.inputs[0].tensor[0].shape;
@@ -597,9 +590,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     const int32_t &ids_size = std::accumulate(ids_shape.begin(), ids_shape.end(), 1, std::multiplies<int>());
     GELOGD("op [%s] : input_size=%d, ids_size=%d", op_type.c_str(), input_size, ids_size);
     if (input_shape.size() < ids_shape.size()) {
-        ge::OpsTwoInputShapeErrReport(
-                "UnsortedSegment", "input_data", "ids", "dim of input must be greater than or equal with dim of ids");
-        OP_LOGE(op_type.c_str(), "dim of input must be greater than or equal with dim of ids");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dim of input must be greater than or equal with dim of ids");
         return false;
     }
     for (unsigned i = 0; i < ids_shape.size(); i++) {
@@ -607,7 +598,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
         if (input_shape[i] != ids_shape[i]) {
             ge::OpsTwoInputShapeErrReport(
                     "UnsortedSegment", "input_data", "ids", "front shape of input must be equal with ids shape");
-            OP_LOGE(op_type.c_str(), "front shape of input must be equal with ids shape");
+            VECTOR_INNER_ERR_REPORT_TILIING(op_type, "front shape of input must be equal with ids shape");
             return false;
         }
     }
@@ -620,8 +611,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     EleByte input_ele_byte;
     flag = unsorted_segment_get_ele_dtype(input_dtype, input_ele_byte);
     if (!flag) {
-        ge::OpsOneInputShapeErrReport("UnsortedSegment", "input_data", "get input_ele_byte failed.");
-        OP_LOGE("op[%s] get input_ele_byte failed.", op_type.c_str());
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_ele_byte failed.");
         return false;
     }
 
@@ -632,8 +622,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     EleByte ids_ele_byte;
     flag = unsorted_segment_get_ele_dtype(ids_dtype, ids_ele_byte);
     if (!flag) {
-        ge::OpsOneInputShapeErrReport("UnsortedSegment", "ids", "get ids_ele_byte failed.");
-        OP_LOGE("op[%s] get ids_ele_byte failed.", op_type.c_str());
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get ids_ele_byte failed.");
         return false;
     }
     // get compile info
@@ -642,14 +631,13 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     int32_t ub_tensor_num = 0;
     flag = unsorted_segment_get_compile_params(op_type, op_compile_info_json, core_num, ub_size, ub_tensor_num);
     if (!flag) {
-        OP_LOGE("op[%s] GetCompileParams failed.", op_type.c_str());
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed.");
         return false;
     }
 
     std::string key_num_segments = "num_segments";
     if (op_paras.const_inputs.find(key_num_segments) == op_paras.const_inputs.end()) {
-        ge::OpsOneInputShapeErrReport("UnsortedSegment", "num_segments", "num_segments not exists.");
-        OP_LOGE("op[%s] num_segments not exists.", op_type.c_str());
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments not exists.");
         return false;
     }
     const int32_t *num_segments_ptr = reinterpret_cast<const int32_t *>(

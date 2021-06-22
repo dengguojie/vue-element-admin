@@ -23,8 +23,8 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
-
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -60,19 +60,19 @@ bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compi
 
   auto all_vars = op_compile_info_json["vars"];
   if (all_vars.count("core_num") == 0) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: GetCompileParams, get core_num error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams, get core_num error.");
     return false;
   }
   core_num = all_vars["core_num"].get<std::int64_t>();
 
   if (all_vars.count("ub_size") == 0) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: GetCompileParams, get ub_size error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams, get ub_size error.");
     return false;
   }
   ub_size = all_vars["ub_size"].get<std::int64_t>();
 
   if (all_vars.count("reduction") == 0) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: GetCompileParams, get reduction error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams, get reduction error.");
     return false;
   }
   reduction = all_vars["reduction"].get<std::string>();
@@ -86,12 +86,12 @@ bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compi
 bool CheckTensorShape(const std::string& op_type, const TeOpParas& op_paras) {
   if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
       op_paras.inputs[2].tensor.empty()) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: input shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: input shape error.");
     return false;
   }
 
   if (op_paras.outputs.empty() || op_paras.outputs[0].tensor.empty()) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: output shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: output shape error.");
     return false;
   }
 
@@ -101,27 +101,27 @@ bool CheckTensorShape(const std::string& op_type, const TeOpParas& op_paras) {
   int64_t x_dims = x_shape.size();
 
   if (x_dims <= 0 || x_dims > 2) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: input tensor x should be 1D or 2D.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: input tensor x should be 1D or 2D.");
     return false;
   }
 
   if (target_shape.size() != 1) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: input tensor target should be 1D.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: input tensor target should be 1D.");
     return false;
   }
 
   if (x_shape[0] != target_shape[0]) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: input tensor x[0] should be equal to target[0].");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: input tensor x[0] should be equal to target[0].");
     return false;
   }
 
   if (weight_shape.size() != 1) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: input tensor weight should be 1D.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: input tensor weight should be 1D.");
     return false;
   }
 
   if (x_shape.back() != weight_shape[0]) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: input tensor x[-1] should be equal to weight[0].");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: input tensor x[-1] should be equal to weight[0].");
     return false;
   }
 
@@ -301,12 +301,12 @@ bool NLLLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   bool is_left_data = true;
 
   if (!GetCompileParams(op_type, op_info, core_num, ub_size, reduction)) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: GetCompileParams error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams error.");
     return false;
   }
 
   if (!CheckTensorShape(op_type, op_paras)) {
-    OP_LOGE(op_type.c_str(), "NLLLossTiling: CheckTensorShape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: CheckTensorShape error.");
     return false;
   }
 

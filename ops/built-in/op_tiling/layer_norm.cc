@@ -133,13 +133,13 @@ bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_info,
   compileinfo.atomic = (bool)common_info[3];
 
   V_OP_TILING_CHECK(compileinfo.min_block_size > 0,
-                    OP_LOGE(op_type.c_str(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                             "min_block_size is %d that is illegal",
                             compileinfo.min_block_size),
                     return false);
 
   V_OP_TILING_CHECK(compileinfo.core_num > 0,
-                    OP_LOGE(op_type.c_str(), "core_num is %d that is illegal",
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal",
                             compileinfo.core_num),
                     return false);
 
@@ -651,7 +651,7 @@ bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
                                     input_x, run_info);
 
   if (!compileflag) {
-    OP_LOGE("op[%s] GetCompileInfo failed.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
   }
 
   GetTilingData(input_x, tilingparams, reduce_axis, core_num, max_ub_size,

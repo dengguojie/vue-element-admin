@@ -21,6 +21,7 @@
 #include "eletwise.h"
 #include <algorithm>
 #include "vector_tiling.h"
+#include "error_log.h"
 #include "../fusion_pass/common/fp16_t.hpp"
 
 namespace optiling {
@@ -29,7 +30,7 @@ bool BnTrainingReduceGradTiling(const std::string& op_type, const TeOpParas& op_
 
     bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
     if (!ret) {
-        OP_LOGE(op_type, "bn_training_reduce_grad tiling failed.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad tiling failed.");
         return false;
     }
 
@@ -40,7 +41,7 @@ bool BnTrainingReduceGradTiling(const std::string& op_type, const TeOpParas& op_
     float reduce_mean_cof = 1.0;
     int64_t num = input_x_shapes[0] * input_x_shapes[2] * input_x_shapes[3];
     if (num == 0) {
-        OP_LOGE(op_type, "bn_training_reduce_grad invalid dim value 0. (%lld,%lld,%lld,%lld,%lld)",
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad invalid dim value 0. (%lld,%lld,%lld,%lld,%lld)",
                 input_x_shapes[0], input_x_shapes[1], input_x_shapes[2], input_x_shapes[3], input_x_shapes[4]);
         return false;
     }

@@ -25,7 +25,7 @@ bool PReluTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
     OP_LOGD(op_type, "Enter PReluTiling inputs size:%llu", op_paras.inputs.size());
 
     if (op_info.count("broadcast_weight_shape") <= 0) {
-          OP_LOGE(op_type.c_str(), "compile info not contain [broadcast_weight_shape].");
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [broadcast_weight_shape].");
           return false;
     }
 
@@ -33,14 +33,14 @@ bool PReluTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
 
     if (op_paras.inputs.empty() || op_paras.inputs.size() < 2 ||
         op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty()) {
-        OP_LOGE(op_type.c_str(), "Length of inputs is less than 2 or some inputs are empty.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Length of inputs is less than 2 or some inputs are empty.");
         return false;
     }
 
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
 
     if (broadcast_weight_shape.size() > input_shape_x.size()) {
-        OP_LOGE(op_type.c_str(), "shape of weight is lager than shape of x.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "shape of weight is lager than shape of x.");
         return false;
     }
 

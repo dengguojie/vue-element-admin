@@ -28,6 +28,7 @@
 
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
+#include "error_log.h"
 
 
 // num_split is 1
@@ -116,7 +117,7 @@ static bool GetConstValue(const TeOpParas& paras, const std::string& name, const
                           std::vector<int64_t>& values) {
   values.clear();
   if (paras.const_inputs.count(name) == 0) {
-    OP_LOGE("op[SplitVTiling] : GetConstValue, name is invalid");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetConstValue, name is invalid");
     return false;
   }
 
@@ -126,7 +127,7 @@ static bool GetConstValue(const TeOpParas& paras, const std::string& name, const
     values.resize(count);
     if (EOK != memcpy_s(values.data(), count * sizeof(int64_t), std::get<0>(paras.const_inputs.at(name)),
                         std::get<1>(paras.const_inputs.at(name)))) {
-      OP_LOGE("op[SplitVTiling]: GetConstValue, int64, memcpy_s failed");
+      VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetConstValue, int64, memcpy_s failed");
       return false;
     }
   } else if (dtype == "int32") {
@@ -134,12 +135,12 @@ static bool GetConstValue(const TeOpParas& paras, const std::string& name, const
     std::vector<int32_t> tmp(count, 0);
     if (EOK != memcpy_s(tmp.data(), count * sizeof(int32_t), std::get<0>(paras.const_inputs.at(name)),
                         std::get<1>(paras.const_inputs.at(name)))) {
-      OP_LOGE("op[SplitVTiling]: GetConstValue, int32, memcpy_s failed");
+      VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetConstValue, int32, memcpy_s failed");
       return false;
     }
     values.insert(values.end(), tmp.begin(), tmp.end());
   } else {
-    OP_LOGE("op[SplitVTiling]: GetConstValue, data type is invalid");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetConstValue, data type is invalid");
     return false;
   }
 
@@ -149,7 +150,7 @@ static bool GetConstValue(const TeOpParas& paras, const std::string& name, const
 int64_t CeilDivCal(const int64_t& uValue, const int64_t& dValue) {
   int64_t resValue = 0;
   if (dValue == 0) {
-    OP_LOGE("op [SplitVTiling] : CeilDivCal error, dValue is zero");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "CeilDivCal error, dValue is zero");
     return resValue;
   }
 
@@ -193,9 +194,8 @@ bool CheckSizeSplitsSmall(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock,
 bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> inputShape,
                      std::vector<int64_t> sizeSplitsVec) {
   if (sizeSplitsVec.size() != static_cast<size_t>(numSplit)) {
-    OP_LOGE("op [SplitVTiling] : num_split must be equal to the size_splits size");
-    ge::OpsInputShapeErrReport("SplitVTiling", "The shape dim of size_splits must be equal to num_split",
-                               "size_splits", to_string(sizeSplitsVec.size()));
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "num_split must be equal to the size_splits size");
+
     return false;
   }
 
@@ -206,7 +206,7 @@ bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> in
     GELOGD("op [SplitVTiling] : CheckSplitVAttr  sizeSplitsSum=%ld, splitDim=%ld, inputShape[%ld]=%ld",
            sizeSplitsSum, splitDim, splitDim, dim);
     if (dim != sizeSplitsSum) {
-      OP_LOGE("op [SplitVTiling] : The sum of size_splits must be equal to the x shape[split_dim]");
+      VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "The sum of size_splits must be equal to the x shape[split_dim]");
       return false;
     }
   } else {
@@ -366,7 +366,7 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
   }
   shapeAfter = shapeDim * shapeAfterDim;
   if (shapeBefore == 0 || shapeAfter == 0 || shapeAfterDim == 0 || shapeDim == 0) {
-    OP_LOGE("op [SplitVTiling] : error, shape has zero");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "error, shape has zero");
     return false;
   }
 
@@ -425,7 +425,7 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
 
       int64_t maxSeg = (ubElems / 2) / (TRANSPOSE_SIZE * (2 * numSplit + 2));
       if (maxSeg == 0) {
-        OP_LOGE("op [SplitVTiling] : mode 4 error, maxSeg is zero");
+        VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "mode 4 error, maxSeg is zero");
         return false;
       }
       int64_t segLoopNum = oneCoreSeg / maxSeg;
@@ -579,19 +579,19 @@ bool GetSplitVCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNu
   using namespace nlohmann;
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE("op [SplitVTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_elems") == 0) {
-    OP_LOGE("op [SplitVTiling] : GetCompileParams, get ub_elems error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetCompileParams, get ub_elems error");
     return false;
   }
   ubElems = allVars["ub_elems"].get<std::int64_t>();
 
   if (allVars.count("num_split") == 0) {
-    OP_LOGE("op [SplitVTiling] : GetCompileParams, get num_split error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "GetCompileParams, get num_split error");
     return false;
   }
   numSplit = allVars["num_split"].get<std::int64_t>();
@@ -606,7 +606,7 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   GELOGI("op[%s] SplitVTiling running.", opType.c_str());
   int64_t inputsSize = opParas.inputs.size();
   if (inputsSize < 2) {
-    OP_LOGE("op[%s] SplitVTiling : opParas.inputs.size error", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling : opParas.inputs.size error");
     return false;
   }
   bool isSplitV = false;  // split
@@ -619,12 +619,12 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   }
 
   if (opParas.inputs[0].tensor.size() == 0 || opParas.inputs[1].tensor.size() == 0) {
-    OP_LOGE("op[%s] SplitVTiling : split, opParas.inputs error", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling : split, opParas.inputs error");
     return false;
   }
   if (isSplitV) {
     if (opParas.inputs[2].tensor.size() == 0) {
-      OP_LOGE("op[%s] SplitVTiling : splitv, opParas.inputs error", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling : splitv, opParas.inputs error");
       return false;
     }
   }
@@ -634,7 +634,7 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   std::string inputDType = opParas.inputs[xInputIndex].tensor[0].dtype;
   int64_t dataBlock = GetDataBlockElems(inputDType);
   if (dataBlock == 0) {
-    OP_LOGE("op [SplitVTiling] : get data block elements error, dataBlock is zero");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "get data block elements error, dataBlock is zero");
     return false;
   }
 
@@ -644,7 +644,7 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   int64_t numSplit = 0;
   bool can_get_params = GetSplitVCompileParams(opCompileInfo, coreNum, ubElems, numSplit);
   if (!can_get_params || coreNum == 0 || ubElems == 0 || numSplit == 0) {
-    OP_LOGE("op[%s] SplitVTiling: GetSplitVCompileParams error.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: GetSplitVCompileParams error.");
     return false;
   }
 
@@ -652,14 +652,13 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   std::vector<int64_t> splitDimVec;
   GELOGD("op SplitVTiling : splitDimInputIndex=%d.", splitDimInputIndex);
   if (!GetConstValue(opParas, "split_dim", opParas.inputs[splitDimInputIndex].tensor[0].dtype, splitDimVec)) {
-    OP_LOGE("op[%s] SplitVTiling: Get split_dim value failed.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get split_dim value failed.");
     return false;
   }
   int64_t splitDim = splitDimVec[0];
   if (splitDim < -shapeSize || splitDim >= shapeSize) {
-    OP_LOGE("op [SplitVTiling] : split_dim is invalid");
-    ge::OpsAttrValueErrReport("SplitVTiling", "split_dim",
-                              ConcatString("between ", -shapeSize, " and ", shapeSize - 1), std::to_string(splitDim));
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "split_dim is invalid");
+
     return false;
   }
   if (splitDim < 0) {
@@ -671,20 +670,19 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   std::vector<int64_t> sizeSplitsVec;
   if (isSplitV) {
     if (!GetConstValue(opParas, "size_splits", opParas.inputs[1].tensor[0].dtype, sizeSplitsVec)) {
-      OP_LOGE("op[%s] SplitVTiling: Get size_splits value failed.", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get size_splits value failed.");
       return false;
     }
 
     if (!CheckSplitVAttr(splitDim, numSplit, inputShape, sizeSplitsVec)) {
-      OP_LOGE("op[%s] SplitVTiling: CheckSplitVAttr failed.", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: CheckSplitVAttr failed.");
       return false;
     }
   } else {
     int64_t dim = inputShape[splitDim];
     if (dim % numSplit != 0) {
-      OP_LOGE("op[%s] SplitVTiling: The num_split must be divisible by the x.shape[split_dim]", opType.c_str());
-      ge::OpsInputShapeErrReport("SplitVTiling", "The num_split must be divisible by the x.shape[split_dim]",
-                                 "x", ConcatString(dim));
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: The num_split must be divisible by the x.shape[split_dim]");
+
       return false;
     }
     splitSizeValue = dim / numSplit;
@@ -700,7 +698,7 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
   if (!CalSplitVRunningParams(runParams, inputElems, inputShape, ubElems, coreNum, splitDim, numSplit, dataBlock,
                               sizeSplitsVec, inputDType, isSplitV)) {
-    OP_LOGE("op[%s] SplitVTiling: CalSplitVRunningParams failed.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: CalSplitVRunningParams failed.");
     return false;
   }
 

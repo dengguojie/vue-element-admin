@@ -24,6 +24,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 const std::string MaxPoolGrad_OP_TYPE = "MaxPoolGrad";
@@ -549,59 +550,50 @@ bool GetUssCompileParams(const std::string& op_type, const nlohmann::json& op_co
                          int64_t& l1_size) {
   using namespace nlohmann;
   if (op_compile_info_json == nullptr) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "op_compile_info_json");
-    OP_LOGE(op_type.c_str(), "op_compile_info_json is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_compile_info_json is null");
     return false;
   }
   const auto& allVars = op_compile_info_json["vars"];
   // core num
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "core_num");
-    OP_LOGE(op_type.c_str(), "core_num is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is null");
     return false;
   }
   core_num = allVars["core_num"].get<std::int64_t>();
   // ub size
   if (allVars.count("ub_size") == 0) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "ub_size");
-    OP_LOGE(op_type.c_str(), "ub_size is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size is null");
     return false;
   }
   ub_size = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("kh") == 0) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "kh");
-    OP_LOGE(op_type.c_str(), "kh is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "kh is null");
     return false;
   }
   kh = allVars["kh"].get<std::int64_t>();
   if (allVars.count("kw") == 0) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "kw");
-    OP_LOGE(op_type.c_str(), "kw is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "kw is null");
     return false;
   }
   kw = allVars["kw"].get<std::int64_t>();
   if (allVars.count("sh") == 0) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "sh");
-    OP_LOGE(op_type.c_str(), "sh is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "sh is null");
     return false;
   }
   sh = allVars["sh"].get<std::int64_t>();
   if (allVars.count("sw") == 0) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "sw");
-    OP_LOGE(op_type.c_str(), "sw is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "sw is null");
     return false;
   }
   sw = allVars["sw"].get<std::int64_t>();
   if (allVars.count("padding") == 0) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "padding");
-    OP_LOGE(op_type.c_str(), "padding is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "padding is null");
     return false;
   }
   padding = allVars["padding"].get<std::int64_t>();
 
   if (allVars.count("l1_size") == 0) {
-    ge::OpsGetCompileParamsErrReport("MaxPoolGrad", "l1_size");
-    OP_LOGE(op_type.c_str(), "l1_size is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "l1_size is null");
     return false;
   }
   l1_size = allVars["l1_size"].get<std::int64_t>();
@@ -661,15 +653,15 @@ void VectorDup3(int64_t& ele_num, const std::string& dtype, int64_t& repeat_max_
 bool CheckParam(vector<int64_t>& ori_input_shape, vector<int64_t>& ori_output_shape, vector<int64_t>& grad_shape,
                 vector<int64_t>& ou_shape) {
   if (ori_input_shape.size() != 5 || ori_output_shape.size() != 5) {
-    OP_LOGE("ori_input_shape or ori_output_shape not 5D");
+    VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad", "ori_input_shape or ori_output_shape not 5D");
     return false;
   }
   if (grad_shape != ori_output_shape) {
-    OP_LOGE("grad_shape not equal ori_output_shape");
+    VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad", "grad_shape not equal ori_output_shape");
     return false;
   }
   if (ou_shape != ori_input_shape) {
-    OP_LOGE("ou_shape not equal ori_input_shape");
+    VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad", "ou_shape not equal ori_input_shape");
     return false;
   }
   return true;
@@ -1050,28 +1042,23 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
                        const nlohmann::json& op_compile_info_json, OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "Entering MaxPoolGradTiling.");
   if (op_paras.inputs.empty()) {
-    ge::OpsOneInputShapeErrReport("MaxPoolGrad", "op_paras.inputs", "op_paras.inputs is empty.");
-    OP_LOGE(op_type.c_str(), "op_paras.inputs is empty.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs is empty.");
     return false;
   }
   if (op_paras.inputs.size() < 3) {
-    ge::OpsOneInputShapeErrReport("MaxPoolGrad", "op_paras.inputs", "op_paras.inputs.size() < 3.");
-    OP_LOGE(op_type.c_str(), "op_paras.inputs.size() < 3.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs.size() < 3.");
     return false;
   }
   if (op_paras.inputs[0].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport("MaxPoolGrad", "ori_input", "ori_input tensor is empty.");
-    OP_LOGE(op_type.c_str(), "ori_input tensor is empty.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ori_input tensor is empty.");
     return false;
   }
   if (op_paras.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport("UnsortedSegmentSum", "ori_output", "ori_output tensor is empty.");
-    OP_LOGE(op_type.c_str(), "ori_output tensor is empty.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ori_output tensor is empty.");
     return false;
   }
   if (op_paras.inputs[2].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport("UnsortedSegmentSum", "grad", "grad tensor is empty.");
-    OP_LOGE(op_type.c_str(), "grad tensor is empty.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "grad tensor is empty.");
     return false;
   }
   std::vector<int64_t> forward_in_shape = op_paras.inputs[0].tensor[0].shape;
@@ -1096,12 +1083,12 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
           core_num_ys, ub_size, l1_size, padding_int);
 
   if (!flag) {
-    OP_LOGE(op_type.c_str(), "GetCompileParams failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed.");
     return false;
   }
   flag = CheckParam(forward_in_shape, forward_ou_shape, grad_shape, ou_shape);
   if (!flag) {
-    OP_LOGE(op_type.c_str(), "CheckParam failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CheckParam failed.");
     return false;
   }
   TilingParams params;
@@ -1152,7 +1139,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
           params.w, padding, pad, ub_size, l1_size, params.select_key, params.new_ho, params.new_wo, params_ub,
           support);
   if (!support) {
-    OP_LOGE(op_type.c_str(), "kernel is too larger !!!");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "kernel is too larger !!!");
     return false;
   }
   OP_LOGD(op_type.c_str(), "GetCompileParams, params.select_key is %d", params.select_key);

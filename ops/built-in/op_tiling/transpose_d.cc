@@ -25,6 +25,7 @@
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -114,12 +115,12 @@ int64_t GetMin(const int64_t lValue, const int64_t rValue) {
 
 bool CheckTensorShape(const std::string& opType, const TeOpParas& opParas, std::vector<int64_t>& inPerm) {
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "op [TransposeD] TransposeDTiling: input shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransposeD] TransposeDTiling: input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "op [TransposeD] TransposeDTiling: output shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransposeD] TransposeDTiling: output shape error");
     return false;
   }
 
@@ -130,13 +131,13 @@ bool CheckTensorShape(const std::string& opType, const TeOpParas& opParas, std::
   int64_t permDims = inPerm.size();
 
   if (inDims == 0 || inDims != outDims || inDims != permDims) {
-    OP_LOGE("op[%s] TransposeDTiling: the dim of inputs is invalid.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the dim of inputs is invalid.");
     return false;
   }
 
   for (int32_t i = 0; i < inDims; i++) {
     if (inShape[inPerm[i]] != outShape[i]) {
-      OP_LOGE("op[%s] TransposeDTiling: the dim of inputs or outputs is conflict with perm.", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the dim of inputs or outputs is conflict with perm.");
       return false;
     }
   }
@@ -150,25 +151,25 @@ bool GetCompileParams(const nlohmann::json& opCompileInfoJson, int64_t& coreNum,
 
   auto allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE("op [TransposeDTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransposeDTiling", "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE("op [TransposeDTiling] : GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransposeDTiling", "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
 
   if (allVars.count("perm") == 0) {
-    OP_LOGE("op [TransposeDTiling] : GetCompileParams, get perm error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransposeDTiling", "GetCompileParams, get perm error");
     return false;
   }
   inPerm = allVars["perm"].get<std::vector<int64_t>>();
 
   if (allVars.count("dtype") == 0) {
-    OP_LOGE("op [TransposeDTiling] : GetCompileParams, get dtype error");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransposeDTiling", "GetCompileParams, get dtype error");
     return false;
   }
   dType = allVars["dtype"].get<std::string>();
@@ -394,7 +395,7 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                       OpRunInfo& runInfo) {
   GELOGI("op[%s] tiling running.", opType.c_str());
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "op [TransposeD] TransposeDTiling: input shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [TransposeD] TransposeDTiling: input shape error");
     return false;
   }
 
@@ -425,19 +426,19 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
 
   bool flag = GetCompileParams(op_info, coreNum, ubSize, inPerm, dType);
   if (!flag) {
-    OP_LOGE("op[%s] TransposeDTiling: GetCompileParams error.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: GetCompileParams error.");
     return false;
   }
 
   bool ret = CheckTensorShape(opType, opParas, inPerm);
   if (!ret) {
-    OP_LOGE("op[%s] TransposeDTiling: inputs or outputs shape are invalid.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: inputs or outputs shape are invalid.");
     return false;
   }
 
   if (inPerm == PERM_1_0) {
     if (inShape.size() != 2) {
-      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 2!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the shape dimension should be 2!");
       return false;
     }
     tilingMode = 101;
@@ -448,13 +449,13 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                                 perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
                                 lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
     if (!ret) {
-      OP_LOGE("op[%s] TransposeDTiling: calculate tiling parameters failed!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
     }
 
   } else if (inPerm == PERM_1_2_0) {
     if (inShape.size() != 3) {
-      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the shape dimension should be 3!");
       return false;
     }
     tilingMode = 1201;
@@ -465,13 +466,13 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                                 perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
                                 lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
     if (!ret) {
-      OP_LOGE("op[%s] TransposeDTiling: calculate tiling parameters failed!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
     }
 
   } else if (inPerm == PERM_2_0_1) {
     if (inShape.size() != 3) {
-      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the shape dimension should be 3!");
       return false;
     }
     tilingMode = 2011;
@@ -482,13 +483,13 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                                 perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
                                 lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
     if (!ret) {
-      OP_LOGE("op[%s] TransposeDTiling: calculate tiling parameters failed!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
     }
 
   } else if (inPerm == PERM_0_2_1) {
     if (inShape.size() != 3) {
-      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the shape dimension should be 3!");
       return false;
     }
     tilingMode = 211;
@@ -500,13 +501,13 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                                 perCoreCAxisSize, perCoreCAxisLoopCnt, perCoreCAxisLeftSize, lastCoreCAxisSize,
                                 lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize, bAxisMaxLen, bAxisLoopCnt, bAxisLeftSize);
     if (!ret) {
-      OP_LOGE("op[%s] TransposeDTiling: calculate tiling parameters failed!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
     }
 
   } else if (inPerm == PERM_0_1) {
     if (inShape.size() != 2) {
-      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 2!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the shape dimension should be 2!");
       return false;
     }
     tilingMode = 11;
@@ -518,13 +519,13 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                                        lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize);
 
     if (!ret) {
-      OP_LOGE("op[%s] TransposeDTiling: calculate tiling parameters failed!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
     }
 
   } else if (inPerm == PERM_0_1_2) {
     if (inShape.size() != 3) {
-      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the shape dimension should be 3!");
       return false;
     }
     tilingMode = 121;
@@ -536,13 +537,13 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                                        lastCoreCAxisLoopCnt, lastCoreCAxisLeftSize);
 
     if (!ret) {
-      OP_LOGE("op[%s] TransposeDTiling: calculate tiling parameters failed!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
     }
 
   } else if (inPerm == PERM_1_0_2) {
     if (inShape.size() != 3) {
-      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the shape dimension should be 3!");
       return false;
     }
     aAxis = inShape[0];
@@ -554,13 +555,13 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                                             bAxisLoopCnt, bAxisLeftSize, tilingMode);
 
     if (!ret) {
-      OP_LOGE("op[%s] TransposeDTiling: calculate tiling parameters failed!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
     }
 
   } else if (inPerm == PERM_2_1_0) {
     if (inShape.size() != 3) {
-      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: the shape dimension should be 3!");
       return false;
     }
     tilingMode = 2101;
@@ -571,7 +572,7 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
                                             bAxisLeftSize);
 
     if (!ret) {
-      OP_LOGE("op[%s] TransposeDTiling: calculate tiling parameters failed!", opType.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransposeDTiling: calculate tiling parameters failed!");
       return false;
     }
   }

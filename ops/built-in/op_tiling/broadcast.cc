@@ -25,6 +25,7 @@
 #include <tuple>
 
 #include "vector_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -65,19 +66,19 @@ const int64_t BGetElementByType(const std::string& dtype) {
 
 bool Broadcast::Init() {
   V_OP_TILING_CHECK((!op_paras.inputs.empty() && !op_paras.inputs[0].tensor.empty()),
-                    OP_LOGE(op_type.c_str(), "input shape cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape cannot be empty"),
                     return false);
   in_type = op_paras.inputs[0].tensor[0].dtype;
   input_num = op_paras.inputs.size();
   V_OP_TILING_CHECK((!op_paras.outputs.empty() && !op_paras.outputs[0].tensor.empty()),
-                    OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
                     return false);
   out_type = op_paras.outputs[0].tensor[0].dtype;
   int64_t type_size = BGetElementByType(out_type);
   max_output_shape_size = op_paras.outputs[0].tensor[0].shape.size();
   for (size_t i = 1; i < op_paras.outputs.size(); i++) {
     V_OP_TILING_CHECK(!op_paras.outputs[i].tensor.empty(),
-                      OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
                       return false);
     int64_t cur_type_size = BGetElementByType(op_paras.outputs[i].tensor[0].dtype);
     if (cur_type_size > type_size) {
@@ -92,13 +93,13 @@ bool Broadcast::Init() {
   // "_flag_info": ["_only_const_tiling", "_is_const_shapes", "_is_support_broadcast", "_use_special_pattern",
   // "_is_support_absorbable_broadcast", , "_unknown_rank"]
   V_CHECK_GE(flag_info.size(), 1,
-             OP_LOGE(op_type.c_str(), "flag info error"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "flag info error"),
              return false);
   only_const_tiling = flag_info[0];
   if (!only_const_tiling) {
     const size_t flag_info_size = 7;
     V_CHECK_EQ(flag_info.size(), flag_info_size,
-               OP_LOGE(op_type.c_str(), "flag info must be _only_const_tiling, _is_const_shapes, "
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "flag info must be _only_const_tiling, _is_const_shapes, "
                        "_is_support_broadcast, _use_special_pattern, _is_support_absorbable_broadcast"),
                return false);
     compileInfo.is_support_broadcast = flag_info[2];
@@ -279,12 +280,12 @@ bool Broadcast::GenerateOutputShape() {
         fusion_index.push_back({i});
       }
     } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get compile_info[_broadcast_axis] error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_broadcast_axis] error. Error message: %s", e.what());
       return false;
     }
   } else {
     V_OP_TILING_CHECK(compileInfo.is_support_broadcast,
-                      OP_LOGE(op_type.c_str(), "compile shape and runtime shape not same"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile shape and runtime shape not same"),
                       return false);
     if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
       ret = ret && TrySwitchToPerfPattern();
@@ -333,12 +334,12 @@ bool Broadcast::CalcSplitFactor(std::vector<int64_t>& out_shape, const std::vect
     const auto& base_info = op_info.at("_base_info").at(ALL_UNKNOWN_PATTERN);
     const size_t base_info_size = 4;
     V_CHECK_EQ(base_info.size(), base_info_size,
-               OP_LOGE(op_type.c_str(), "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
                return false);
     cur_core = base_info[0];
     max_ub = base_info[2];
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get all unknown compile_info[_base_info] error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get all unknown compile_info[_base_info] error. Error message: %s", e.what());
     return false;
   }
   int64_t b_axis = 0;
@@ -380,7 +381,7 @@ std::tuple<bool, int64_t> LastFuseOutput(const std::string& op_type,
   int64_t fuse_last = 0;
   for (size_t i = 0; i < fusion_shapes.size(); i++) {
     V_CHECK_GT(fusion_shapes[i].size(), 0,
-               OP_LOGE(op_type.c_str(), "The input shape must be greater than 0"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The input shape must be greater than 0"),
                return std::make_tuple(false, 0));
     fuse_last = fusion_shapes[i].back();
     if (fuse_last != 1) {
@@ -429,7 +430,7 @@ void Broadcast::GenerateAllUnknown(const std::vector<int64_t>& out_shape, const 
 
 bool Broadcast::TryMatchAllUnknown() {
   V_CHECK_GT(fusion_shapes.size(), 0,
-             OP_LOGE(op_type.c_str(), "The input number must be greater than 0"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The input number must be greater than 0"),
              return false);
   size_t shape_len = fusion_shapes[0].size();
   int64_t split_axis = -1;
@@ -465,7 +466,7 @@ bool Broadcast::RefineShapesForBroadcast() {
     try {
       fusion_index = op_info.at("_fusion_index").get<std::vector<std::vector<size_t>>>();
     } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get compile_info[_fusion_index] error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_fusion_index] error. Error message: %s", e.what());
       return false;
     }
   }
@@ -519,22 +520,22 @@ bool Broadcast::CalcTiling() {
     // "_base_info": ["_core_num", "_max_dtype", "_max_available_ub", "_max_available_ub_db"]
     const size_t base_info_size = 4;
     V_CHECK_EQ(base_info.size(), base_info_size,
-               OP_LOGE(op_type.c_str(), "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
                return false);
     compileInfo.core_num = base_info[0];
     compileInfo.max_dtype = base_info[1];
     max_available_ub = base_info[2];
     max_available_ub_db = base_info[3];
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get compile_info[_base_info] error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_base_info] error. Error message: %s", e.what());
     return false;
   }
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
   V_CHECK_LE(output_size, INT32_MAX,
-             OP_LOGE(op_type.c_str(), "The output shape is too large"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The output shape is too large"),
              return false);
   V_CHECK_GT(output_size, 0,
-             OP_LOGE(op_type.c_str(), "The output shape must be greater than 0"),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The output shape must be greater than 0"),
              return false);
   const int64_t multi_core_threshold = BGetElementByType(out_type) * compileInfo.core_num * DOUBLE_BUFFER_SIZE;
   // block factor whole cut when the shape size is less than the cores size
@@ -562,7 +563,7 @@ int64_t CalcAlignCore(const int64_t& shape, const int64_t& core,
 bool Broadcast::DoBlockTiling() {
   int64_t cur_core = compileInfo.core_num;
   V_CHECK_GT(compileInfo.core_num, 0,
-             OP_LOGE(op_type.c_str(), "compileInfo core_num error, it is [%d]", compileInfo.core_num),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compileInfo core_num error, it is [%d]", compileInfo.core_num),
              return false);
   // multi core need more than half of cores
   int64_t half_core = compileInfo.core_num / 2;
@@ -735,7 +736,7 @@ int64_t Broadcast::SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_bl
 bool Broadcast::DoUbTiling() {
   int64_t limit = max_available_ub;
   V_OP_TILING_CHECK((SPLIT_FACTORS.find(compileInfo.max_dtype) != SPLIT_FACTORS.end()),
-                    OP_LOGE(op_type.c_str(), "compileInfo max_dtype not in SPLIT_FACTORS"),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compileInfo max_dtype not in SPLIT_FACTORS"),
                     return false);
   if (output_shape.size() == 1 &&  max_available_ub > SPLIT_FACTORS.at(compileInfo.max_dtype)) {
     limit = SPLIT_FACTORS.at(compileInfo.max_dtype);
@@ -905,7 +906,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
   run_info.tiling_key = static_cast<int32_t>(key);
 
   V_CHECK_GE(key, 0,
-             OP_LOGE(op_type.c_str(), "Tiling key error, it is [%d], please check it", key),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Tiling key error, it is [%d], please check it", key),
              return false);
   int64_t cur_key = key;
   int64_t key_len = cur_key == 0 ? 7 : 8;
@@ -921,12 +922,12 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
     for (const auto& var : all_vars) {
       if (var >= 30000) {
         V_CHECK_GE(ub_axis, 0,
-                   OP_LOGE(op_type.c_str(), "Not cut ub"),
+                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut ub"),
                    return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
       } else if (var >= 20000) {
         V_CHECK_GE(block_axis, 0,
-                   OP_LOGE(op_type.c_str(), "Not cut block"),
+                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut block"),
                    return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
       } else {
@@ -935,16 +936,16 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
         var_value /= 100;
         size_t dim_index = var_value % 100;
         V_CHECK_LT(operator_index, B_MAX_INPUT_NUMS,
-                   OP_LOGE(op_type.c_str(), "more than 70 input are not supported"),
+                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 70 input are not supported"),
                    return false);
         V_CHECK_LT(dim_index, B_MAX_DIM_LEN,
-                   OP_LOGE(op_type.c_str(), "more than 16 dims are not supported"),
+                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than 16 dims are not supported"),
                    return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shapes[operator_index][dim_index]));
       }
     }
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get compile_info[_elewise_vars] error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_elewise_vars] error. Error message: %s", e.what());
     return false;
   }
   if (op_info.contains("_attr_vars")) {
@@ -956,7 +957,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
         ByteBufferPut(run_info.tiling_data, attr, attr_size);
       }
     } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get compile_info[_attr_vars] error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_attr_vars] error. Error message: %s", e.what());
       return false;
     }
   }

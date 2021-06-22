@@ -204,15 +204,13 @@ bool checkGatherTensorShape(const std::string& opType, std::vector<int64_t> para
   int32_t outputDims = outputShape.size();
 
   if (yDims != outputDims) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the dim of y must be equal to the dim of output");
-    OP_LOGE(opType.c_str(), "op [GatherTiling] : checkGatherTensorShape, y Shape is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherTiling] : checkGatherTensorShape, y Shape is invalid.");
     return false;
   }
 
   for (int32_t i = 0; i < yDims; i++) {
     if (yShape[i] != outputShape[i]) {
-      ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the shape of y must be equal to the shape of output");
-      OP_LOGE(opType.c_str(), "op [GatherTiling] : checkGatherTensorShape, y Shpae dim is invalid.");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherTiling] : checkGatherTensorShape, y Shpae dim is invalid.");
       return false;
     }
   }
@@ -226,32 +224,27 @@ bool GetGatherCompileParams(const std::string& opType, const nlohmann::json& opC
 
   const auto& allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherTiling] : GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get ub_size error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherTiling] : GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("l1_size") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get l1_size error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "l1_size");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherTiling] : GetCompileParams, get l1_size error");
     return false;
   }
   l1Size = allVars["l1_size"].get<std::int64_t>();
   if (allVars.count("params_dsize") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get params_dsize error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "params_dsize");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherTiling] : GetCompileParams, get params_dsize error");
     return false;
   }
   paramsDSize = allVars["params_dsize"].get<std::int64_t>();
   if (allVars.count("indices_dsize") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherTiling] : GetCompileParams, get indices_dsize error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_dsize");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherTiling] : GetCompileParams, get indices_dsize error");
     return false;
   }
   indicesDSize = allVars["indices_dsize"].get<std::int64_t>();
@@ -352,19 +345,17 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   GELOGI("op[%s] GatherTiling running.", opType.c_str());
   using namespace ge;
   if (op_info == nullptr) {
-    OP_LOGE(opType.c_str(), "op GatherTiling: op_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherTiling: op_info json error.");
     return false;
   }
   if (opParas.inputs.empty() || opParas.inputs.size() < 2 || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices",
-                                  "The length of inputs is less than 2 or the inputs is empty");
-    OP_LOGE(opType.c_str(), "op GatherTiling: input shape error.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherTiling: input shape error.");
     return false;
   }
   if (opParas.outputs.empty() || opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "y", "The length of outputs is less than 1 or the outputs is empty");
-    OP_LOGE(opType.c_str(), "op GatherTiling: output shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherTiling: output shape error.");
     return false;
   }
 
@@ -379,14 +370,12 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   int32_t paramsDims = paramsShape.size();
   int32_t indicesDims = indicesShape.size();
   if (paramsDims <= 0 || indicesDims <= 0) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices", "the dim of x or indices is less than 1");
-    OP_LOGE("op[%s] GatherTiling: paramsDims or indicesDims is 0.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GatherTiling: paramsDims or indicesDims is 0.");
     return false;
   }
   if (axis < -paramsDims || axis >= paramsDims) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "axis",
-                                  "the dim of axis is less than negative x dim, or greater than x dim");
-    OP_LOGE(opType.c_str(), "op GatherTiling: axis is invalid.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherTiling: axis is invalid.");
     return false;
   }
   if (axis < 0) {
@@ -395,7 +384,7 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
   bool ret = checkGatherTensorShape(opType, paramsShape, indicesShape, yShape, axis);
   if (!ret) {
-    OP_LOGE(opType.c_str(), "op GatherTiling: [checkGatherTensorShape] failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherTiling: [checkGatherTensorShape] failed.");
     return ret;
   }
 
@@ -407,7 +396,7 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   int64_t indicesDSize = 0;
   bool flag = GetGatherCompileParams(opType, op_info, coreNum, ubSize, l1Size, paramsDSize, indicesDSize);
   if (!flag) {
-    OP_LOGE("op[%s] GatherTiling: GetGatherCompileParams error.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GatherTiling: GetGatherCompileParams error.");
     return false;
   }
 

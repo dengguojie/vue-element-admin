@@ -22,6 +22,7 @@
 #include "bn_reduce.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 using namespace ge;
@@ -156,13 +157,13 @@ bool BNReduce::ConstInputProcPost() {
   std::string pattern_str = std::to_string(pattern);
 
   if (op_info.find("_block_dims") == op_info.end() || op_info.find("_atomic_flags") == op_info.end()) {
-    OP_LOGE(op_type, "_block_dims or _atomic_flags not exist in compile info.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "_block_dims or _atomic_flags not exist in compile info.");
     return false;
   }
 
   if (op_info.at("_block_dims").find(pattern_str) == op_info.at("_block_dims").end() ||
       op_info.at("_atomic_flags").find(pattern_str) == op_info.at("_atomic_flags").end()) {
-    OP_LOGE(op_type, "pattern_str:%s not exist in compile info.", pattern_str.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pattern_str:%s not exist in compile info.", pattern_str.c_str());
     return false;
   }
 
@@ -252,14 +253,14 @@ bool BNReduce::FusedReduceAxis() {
 
 bool BNReduce::GetCompileInfo() {
   if (op_info.find("_common_info") == op_info.end()) {
-    OP_LOGE(op_type, "_common_info not exist in compile info.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "_common_info not exist in compile info.");
     return false;
   }
 
   std::vector<int32_t> info = op_info["_common_info"];
   const uint32_t info_item_count = 6;
   if (info.size() < info_item_count) {
-    OP_LOGE(op_type, "common info item count = %d, is not equal to %d.", info.size(), info_item_count);
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "common info item count = %d, is not equal to %d.", info.size(), info_item_count);
     return false;
   }
 
@@ -273,7 +274,7 @@ bool BNReduce::GetCompileInfo() {
   block_size = compileInfo.reduce_block_size;
 
   if (compileInfo.max_ub_count <= 0 || compileInfo.core_num <= 0 || compileInfo.reduce_block_size <= 0) {
-    OP_LOGE(op_type, "invalid compile info: max_ub_count = %lld, core_num = %d, reduce_block_size = %d ",
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "invalid compile info: max_ub_count = %lld, core_num = %d, reduce_block_size = %d ",
           compileInfo.max_ub_count, compileInfo.core_num, compileInfo.reduce_block_size);
     return false;
   }
@@ -518,7 +519,7 @@ bool BNReduce::ProcessAtomicTiling() {
 
 bool BNReduce::Init() {
   if (op_paras.inputs.size() <= 0 || op_paras.inputs[0].tensor.size() <= 0) {
-    OP_LOGE(op_type, "input shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
     return false;
   }
 
@@ -535,7 +536,7 @@ bool BNReduce::Init() {
   int32_t min_value = -1 * max_value;
   for (size_t i = 0; i < reduce_axis_ori.size(); i++) {
     if (reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value) {
-      OP_LOGE(op_type, "value of axis is illegal.");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of axis is illegal.");
       return false;
     }
     if (reduce_axis_ori[i] < 0) {
@@ -596,7 +597,7 @@ bool BNReduce::WriteTilingData() {
   } else {
     std::string str_key = std::to_string(tiling_key);
     if (op_info.find("_vars") == op_info.end()) {
-      OP_LOGE(op_type, "_vars not exist in compile info");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "_vars not exist in compile info");
       return false;
     }
 
@@ -608,7 +609,7 @@ bool BNReduce::WriteTilingData() {
       if (var_str.compare(0, dim_index_pos, dim_flag) == 0) {
         uint32_t dim_index = std::atoi(var_str.substr(dim_index_pos, 1).c_str());
         if (dim_index >= input_shape_ori.size()) {
-          OP_LOGE(op_type, " write tiling data dim index = %d, is out of input shape size[%d]",
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, " write tiling data dim index = %d, is out of input shape size[%d]",
                   dim_index, input_shape_ori.size());
           return false;
         }

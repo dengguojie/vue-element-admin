@@ -32,6 +32,7 @@
 #include "../op_proto/util/error_util.h"
 #include "../op_proto/util/op_common_util.h"
 #include "../op_proto/strided_slice_infer_shape.h"
+#include "error_log.h"
 
 namespace optiling {
 using namespace ge;
@@ -77,50 +78,43 @@ static bool GetStridedSliceSocParams(const std::string& opType, const nlohmann::
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("block_dim") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get block_dim error");
-    ge::OpsGetCompileParamsErrReport(opType, "block_dim");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get block_dim error");
     return false;
   }
   core_num = allVars["block_dim"].get<std::int32_t>();
 
   if (allVars.count("begin_mask") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get begin_mask error");
-    ge::OpsGetCompileParamsErrReport(opType, "begin_mask");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get begin_mask error");
     return false;
   }
   begin_mask = allVars["begin_mask"].get<std::uint32_t>();
 
   if (allVars.count("end_mask") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get end_mask error");
-    ge::OpsGetCompileParamsErrReport(opType, "end_mask");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get end_mask error");
     return false;
   }
   end_mask = allVars["end_mask"].get<std::uint32_t>();
 
   if (allVars.count("ellipsis_mask") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get ellipsis_mask error");
-    ge::OpsGetCompileParamsErrReport(opType, "ellipsis_mask");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ellipsis_mask error");
     return false;
   }
   ellipsis_mask = allVars["ellipsis_mask"].get<std::uint32_t>();
 
   if (allVars.count("new_axis_mask") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get new_axis_mask error");
-    ge::OpsGetCompileParamsErrReport(opType, "new_axis_mask");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get new_axis_mask error");
     return false;
   }
   new_axis_mask = allVars["new_axis_mask"].get<std::uint32_t>();
 
   if (allVars.count("shrink_axis_mask") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get shrink_axis_mask error");
-    ge::OpsGetCompileParamsErrReport(opType, "shrink_axis_mask");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get shrink_axis_mask error");
     return false;
   }
   shrink_axis_mask = allVars["shrink_axis_mask"].get<std::int32_t>();
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
-    ge::OpsGetCompileParamsErrReport(opType, "ub_size");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
     return false;
   }
   ub_size = allVars["ub_size"].get<std::int32_t>();
@@ -250,8 +244,7 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
   OP_LOGD(opType.c_str(), "StridedSliceTiling running.");
 
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "StridedSliceTiling: input shape error.");
-    ge::OpsMissInputErrReport(opType, "x");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: input shape error.");
     return false;
   }
 
@@ -260,9 +253,8 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
 
   const std::vector<int64_t>& input_shape = opParas.inputs[0].tensor[0].shape;
   if (input_shape.size() > MAX_SUPPORTED_DIMS) {
-    OP_LOGE(opType, "StridedSliceTiling: input shape error, max supported dims is %zu, actual is %zu.",
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: input shape error, max supported dims is %zu, actual is %zu.",
             MAX_SUPPORTED_DIMS, input_shape.size());
-    ge::OpsInputShapeSizeErrReport(opType, "x", std::to_string(MAX_SUPPORTED_DIMS), std::to_string(input_shape.size()));
     return false;
   }
 
@@ -277,23 +269,20 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
     int index = item.second.first;
     auto& values = item.second.second;
     if (!GetConstValue(opParas, name, opParas.inputs[index].tensor[0].dtype, values)) {
-      OP_LOGE(opType.c_str(), "Get %s values failed", name.c_str());
-      ge::OpsGetAttrErrReport(opType, name);
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get %s values failed", name.c_str());
       return false;
     }
   }
 
   for (size_t i = 0; i < slice_params.stride_list.size(); i++) {
     if (slice_params.stride_list[i] == 0) {
-      OP_LOGE(opType.c_str(), "StridedSliceTiling: the dim of stride must be non-zero");
-      ge::OpsAttrValueErrReport(opType, "strides", "non-zero", "0");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: the dim of stride must be non-zero");
       return false;
     }
 
     if (slice_params.stride_list[i] != 1) {
-      OP_LOGE(opType.c_str(), "StridedSliceTiling: stride[%zu] must be 1, but it is %lld", i,
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: stride[%zu] must be 1, but it is %lld", i,
               slice_params.stride_list[i]);
-      ge::OpsAttrValueErrReport(opType, "strides", "1", ConcatString(slice_params.stride_list[i]));
       return false;
     }
   }
@@ -305,7 +294,7 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
                                        slice_masks.shrink_axis_mask, ub_size);
   OP_LOGD(opType.c_str(), "param ub_size: %d", ub_size);
   if (!flag) {
-    OP_LOGE(opType.c_str(), "StridedSliceTiling: get soc params error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: get soc params error");
     return false;
   }
 
@@ -329,7 +318,7 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
   vector<pair<int64_t, int64_t>> output_ranges;
 
   if (!StridedSliceCommonInferShape(opType, input_params, output_shape, output_ranges)) {
-    OP_LOGE(opType.c_str(), "StridedSliceCommonInferShape failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceCommonInferShape failed.");
     return false;
   }
 

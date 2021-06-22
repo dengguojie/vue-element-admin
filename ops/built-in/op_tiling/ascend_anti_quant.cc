@@ -25,6 +25,7 @@
 #include "error_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -211,14 +212,14 @@ bool AscendAntiQuantTiling(const std::string &op_type,
   std::vector<int64_t> input_x = op_paras.inputs[0].tensor[0].shape;
   const std::string input_dtype = op_paras.inputs[0].tensor[0].dtype;
   OP_TILING_CHECK(input_format != "NC1HWC0",
-                  OP_LOGE(op_type.c_str(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                           "input format only support NC1HWC0, but got %s.", input_format.c_str()),
                   return false);
 
   CompileInfo compile_info;
   bool compile_flag = GetComInfo(op_type, op_paras, op_info, run_info, compile_info);
   if (!compile_flag) {
-    OP_LOGE("op[%s] GetCompileInfo failed.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
   }
 
   std::vector<int64_t> input_x_new;

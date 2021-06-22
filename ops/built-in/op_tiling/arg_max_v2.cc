@@ -25,6 +25,7 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 using namespace ge;
@@ -321,14 +322,14 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
     const int64_t* axis_ptr = reinterpret_cast<const int64_t*>(std::get<0>(op_paras.const_inputs.at("dimension")));
     axis = *axis_ptr;
   } else {
-    OP_LOGE(op_type.c_str(), "ArgOpsTiling: axis can only support int32, int64, but got %s", axis_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis can only support int32, int64, but got %s", axis_type.c_str());
     return false;
   }
   // check axis value and set to positive value
   vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   int64_t input_dims = input_shape.size();
   if (axis < -input_dims || axis >= input_dims) {
-    OP_LOGE(op_type.c_str(), "ArgOpsTiling: axis is invalid, axis:%d, dims:%d", axis, input_dims);
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis is invalid, axis:%d, dims:%d", axis, input_dims);
     return false;
   }
   axis = (axis + input_dims) % input_dims;

@@ -36,13 +36,13 @@ bool GetAssignCompileParams(const nlohmann::json& op_compile_info, int64_t& core
     using namespace nlohmann;
     auto all_vars = op_compile_info["vars"];
     if (all_vars.count("core_num") == 0) {
-        OP_LOGE("op [Assign]: GetAssignCompileParams, get core_num error");
+        VECTOR_INNER_ERR_REPORT_TILIING("Assign", "GetAssignCompileParams, get core_num error");
         return false;
     }
     core_num = all_vars["core_num"].get<std::int64_t>();
 
     if (all_vars.count("ub_size") == 0) {
-        OP_LOGE("op [Assign]: GetAssignCompileParams, get ub_size error");
+        VECTOR_INNER_ERR_REPORT_TILIING("Assign", "GetAssignCompileParams, get ub_size error");
         return false;
     }
     ub_size = all_vars["ub_size"].get<std::int64_t>();

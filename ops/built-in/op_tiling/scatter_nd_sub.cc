@@ -27,6 +27,7 @@
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 namespace scatterndsub {
@@ -163,7 +164,7 @@ bool CheckScatterNdSubTensorShape(const std::string& opType, std::vector<int64_t
                                   std::vector<int64_t> indicesShape, std::vector<int64_t> subsShape,
                                   std::vector<int64_t> outShape) {
   if (varShape != outShape) {
-    OP_LOGE(opType.c_str(), "the length of var must be same as the length of output.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "the length of var must be same as the length of output.");
     return false;
   }
 
@@ -185,25 +186,25 @@ bool GetScatteSubCompileParams(const std::string& opType, const nlohmann::json& 
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
 
   if (allVars.count("var_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get var_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get var_size error");
     return false;
   }
   varSize = allVars["var_size"].get<std::int64_t>();
 
   if (allVars.count("indices_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get indices_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get indices_size error");
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int64_t>();
@@ -217,18 +218,18 @@ bool ScatterNdSubTiling(const std::string& opType, const TeOpParas& opParas, con
   using namespace scatterndsub;
   OP_LOGI(opType.c_str(), "ScatterNdSubTiling running.");
   if (opCompileInfo == nullptr) {
-    OP_LOGE(opType.c_str(), "opCompileInfo json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "opCompileInfo json error.");
     return false;
   }
 
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
       opParas.inputs[2].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "input shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "output shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "output shape error");
     return false;
   }
 
@@ -240,7 +241,7 @@ bool ScatterNdSubTiling(const std::string& opType, const TeOpParas& opParas, con
 
   bool is_valid_shape = CheckScatterNdSubTensorShape(opType, varShape, indicesShape, subsShape, outShape);
   if (!is_valid_shape) {
-    OP_LOGE(opType.c_str(), "CheckScatterNdSubTensorShape failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "CheckScatterNdSubTensorShape failed.");
     return false;
   }
 
@@ -250,7 +251,7 @@ bool ScatterNdSubTiling(const std::string& opType, const TeOpParas& opParas, con
   int64_t indicesSize = 0;
   bool can_get_params = GetScatteSubCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize);
   if (!can_get_params) {
-    OP_LOGE(opType.c_str(), "GetScatteSubCompileParams error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetScatteSubCompileParams error.");
     return false;
   }
 

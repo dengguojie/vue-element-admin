@@ -23,6 +23,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "op_log.h"
+#include "error_log.h"
 #include "../op_proto/util/error_util.h"
 
 namespace optiling {
@@ -81,27 +82,27 @@ static bool GetReverseV2CompileParams(const nlohmann::json& compile_info, Revers
   using namespace nlohmann;
   auto allVars = compile_info["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get core_num error");
     return false;
   }
   compile_params.core_num = allVars["core_num"].get<std::int64_t>();
   // get max_elements
   if (allVars.count("max_elements") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get max_elements error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get max_elements error");
     return false;
   }
   compile_params.max_elements = allVars["max_elements"].get<std::int64_t>();
 
   // get max_elements_last_large_size
   if (allVars.count("max_elements_last_large_size") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get max_elements_last_large_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get max_elements_last_large_size error");
     return false;
   }
   compile_params.max_elements_last_large_size = allVars["max_elements_last_large_size"].get<std::int64_t>();
 
   // get dtype_rate
   if (allVars.count("dtype_rate") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get dtype_rate error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get dtype_rate error");
     return false;
   }
   compile_params.dtype_rate = allVars["dtype_rate"].get<std::int64_t>();
@@ -227,25 +228,25 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   compile_params.op_type = op_type;
   // get compile data
   if (!GetReverseV2CompileParams(op_info, compile_params)) {
-    OP_LOGE(op_type, "get compile info from nlohmann json failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
     return false;
   }
 
   OP_LOGI(op_type, "tiling run begin.");
 
   if (op_paras.inputs.size() != 2) {
-    OP_LOGE(op_type, "the num of inputs must be 2. but is %d", op_paras.inputs.size());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the num of inputs must be 2. but is %d", op_paras.inputs.size());
     return false;
   }
   if (op_paras.outputs.empty()) {
-    OP_LOGE(op_type, "the num of outputs is 0. return false");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the num of outputs is 0. return false");
     return false;
   }
   const std::vector<int64_t>& input_shape_const = op_paras.inputs[0].tensor[0].shape;
   std::vector<int64_t> input_shape = input_shape_const;
   std::vector<int64_t> axis_vec;
   if (!GetAxesConstValue(op_paras, "axis", op_paras.inputs[1].tensor[0].dtype, axis_vec)) {
-    OP_LOGE(compile_params.op_type, "Get axis values failed");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "Get axis values failed");
     return false;
   }
   if (input_shape.empty()) {

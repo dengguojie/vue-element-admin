@@ -19,6 +19,7 @@
  * \brief
  */
 #include "pad_common.h"
+#include "error_log.h"
 
 // block size (byte)
 const int32_t MINI_UNIT = 32;
@@ -202,7 +203,7 @@ bool padCommon::FusedAxis(std::vector<int64_t>& n_inShape, std::vector<int64_t>&
   std::reverse(n_padding.begin(), n_padding.end());
 
   if (n_inShape.size() != n_outShape.size() or n_inShape.size() != n_padding.size()) {
-    OP_LOGE("op [PadDTiling] : Length of shape after fused error");
+    VECTOR_INNER_ERR_REPORT_TILIING("PadDTiling", "Length of shape after fused error");
     return false;
   }
 
@@ -762,7 +763,7 @@ void padCommon::SetRunningParams(const PadDTilingParams& params, OpRunInfo& runI
 
 bool padCommon::CheckTensor(const std::vector<int64_t>& inShape, const std::vector<int64_t>& outShape) {
   if (inShape.size() != outShape.size()) {
-    OP_LOGE("op [PadDTiling] : CheckTensor Failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING("PadDTiling", "CheckTensor Failed.");
     return false;
   }
   return true;

@@ -27,6 +27,7 @@
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 
 namespace optiling {
@@ -90,37 +91,37 @@ bool GetInplaceIndexAddCompileParams(const std::string& opType, const nlohmann::
   const auto& allVars = opCompileInfo["vars"];
 
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error.");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int32_t>();
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error.");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int32_t>();
 
   if (allVars.count("var_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get var_size error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get var_size error.");
     return false;
   }
   varSize = allVars["var_size"].get<std::int32_t>();
 
   if (allVars.count("indices_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get indices_size error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get indices_size error.");
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int32_t>();
 
   if (allVars.count("vconv_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get vconv_size error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get vconv_size error.");
     return false;
   }
   indicesSize = allVars["vconv_size"].get<std::int32_t>();
 
   if (allVars.count("axis") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get axis error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get axis error.");
     return false;
   }
   axis = allVars["axis"].get<std::int32_t>();
@@ -133,17 +134,17 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
 
   OP_LOGI(opType.c_str(), "InplaceIndexAdd running.");
   if (opCompileInfo == nullptr) {
-    OP_LOGE(opType.c_str(), "opCompileInfo json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "opCompileInfo json error.");
     return false;
   }
 
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() || opParas.inputs[2].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "input shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "input shape error.");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "output shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "output shape error.");
     return false;
   }
 
@@ -160,7 +161,7 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
   int32_t axis = 0;
   bool can_get_params = GetInplaceIndexAddCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize, vconvSize, axis);
   if (!can_get_params) {
-    OP_LOGE(opType.c_str(), "GetInplaceIndexAddCompileParams errors.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetInplaceIndexAddCompileParams errors.");
     return false;
   }
 

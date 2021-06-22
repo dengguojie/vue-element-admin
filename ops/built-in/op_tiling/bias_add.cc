@@ -13,7 +13,7 @@
 #include <iostream>
 #include "error_log.h"
 #include "op_log.h"
-
+#include "error_log.h"
 #include "vector_tiling.h"
 
 namespace optiling {
@@ -26,7 +26,7 @@ bool BiasAddTiling(const std::string& op_type, const TeOpParas& op_paras, const 
     std::vector<int64_t> boardcast_bias_shape = op_info["boardcast_bias_shape"];
 
     if (op_paras.inputs.size() != 2 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty()) {
-        OP_LOGE(op_type.c_str(), "inputs size is not 2 or some input are empty");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "inputs size is not 2 or some input are empty");
         return false;
     }
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;

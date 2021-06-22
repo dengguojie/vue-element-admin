@@ -26,6 +26,7 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "trans_data_common.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -145,14 +146,14 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
                              std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt,
                              int64_t& ubSize, TransDataMode1010Param& params) {
   if ((srcFormat.length() != inShape.size()) || (dstFormat.length() != outShape.size())) {
-    OP_LOGE("op TransDataTiling: TillingPositiveMode1010 Failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TillingPositiveMode1010 Failed.");
     return false;
   }
   int64_t axisCSize = inShape[inShape.size() - 1];
   int64_t c0Len = outShape[outShape.size() - 1];
   bool ret = GetCommonParam(ubSize, blockElemCnt, c0Len, axisCSize, params);
   if (!ret) {
-    OP_LOGE("op TransDataTiling: TillingPositiveMode1010 GetCommonParam Failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TillingPositiveMode1010 GetCommonParam Failed.");
     return ret;
   }
 
@@ -208,7 +209,7 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
 
   ret = GetMcInfoPositive1010(axisDstClSize, cLpCnt, cLeft, dstCrLpCnt, vncRowLeft, llDstCrLeft, coreNum, params);
   if (!ret) {
-    OP_LOGE("op TransDataTiling: GetMcInfoPositive1010 Failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositive1010 Failed.");
     return ret;
   }
   return true;

@@ -207,15 +207,13 @@ bool checkTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
   int64_t outputDims = outputShape.size();
 
   if (yDims != outputDims) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the dim of y must be equal to the dim of output");
-    OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : CheckTensorShape, y Shape is invalid.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherV2Tiling] : CheckTensorShape, y Shape is invalid.");
     return false;
   }
 
   for (int64_t i = 0; i < yDims; i++) {
     if (yShape[i] != outputShape[i]) {
-      ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the shape of y must be equal to the shape of output");
-      OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : CheckTensorShape, y Shpae dim is invalid.");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherV2Tiling] : CheckTensorShape, y Shpae dim is invalid.");
       return false;
     }
   }
@@ -229,32 +227,27 @@ bool GetV2CompileParams(const std::string& opType, const nlohmann::json& opCompi
 
   const auto& allVars = opCompileInfoJson["vars"];
   if (allVars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
-    OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherV2Tiling] : GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : GetCompileParams, get ub_size error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "ub_size");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherV2Tiling] : GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("l1_size") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : GetCompileParams, get l1_size error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "l1_size");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherV2Tiling] : GetCompileParams, get l1_size error");
     return false;
   }
   l1Size = allVars["l1_size"].get<std::int64_t>();
   if (allVars.count("params_dsize") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : GetCompileParams, get params_dsize error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "params_dsize");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherV2Tiling] : GetCompileParams, get params_dsize error");
     return false;
   }
   paramsDSize = allVars["params_dsize"].get<std::int64_t>();
   if (allVars.count("indices_dsize") == 0) {
-    OP_LOGE(opType.c_str(), "op [GatherV2Tiling] : GetCompileParams, get indices_dsize error");
-    ge::OpsGetCompileParamsErrReport(opType.c_str(), "indices_dsize");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherV2Tiling] : GetCompileParams, get indices_dsize error");
     return false;
   }
   indicesDSize = allVars["indices_dsize"].get<std::int64_t>();
@@ -423,19 +416,17 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   GELOGI("op[%s] GatherV2Tiling running.", opType.c_str());
   using namespace ge;
   if (op_info == nullptr) {
-    OP_LOGE(opType.c_str(), "op GatherV2Tiling: op_info json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherV2Tiling: op_info json error.");
     return false;
   }
   if (opParas.inputs.empty() || opParas.inputs.size() < 3 || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty() || opParas.inputs[2].tensor.empty()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices or axis",
-                                  "The length of inputs is less than 3 or the inputs is empty");
-    OP_LOGE(opType.c_str(), "op GatherV2Tiling: input shape error.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherV2Tiling: input shape error.");
     return false;
   }
   if (opParas.outputs.empty() || opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
-    ge::OpsOneOutputShapeErrReport(opType.c_str(), "y", "The length of outputs is less than 1 or the outputs is empty");
-    OP_LOGE(opType.c_str(), "op GatherV2Tiling: output shape error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherV2Tiling: output shape error.");
     return false;
   }
 
@@ -446,8 +437,7 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   std::vector<int64_t> yShape = opParas.outputs[0].tensor[0].shape;
 
   if (opParas.const_inputs.find("axis") == opParas.const_inputs.end()) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "axis", "axis is not exist in const inputs");
-    OP_LOGE(opType.c_str(), "op GatherV2Tiling: axis not exists.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherV2Tiling: axis not exists.");
     return false;
   }
 
@@ -460,7 +450,7 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
     const int32_t* axis_ptr = reinterpret_cast<const int32_t*>(std::get<0>(opParas.const_inputs.at("axis")));
     axis = *axis_ptr;
   } else {
-    OP_LOGE(opType.c_str(), "op GatherV2Tiling: axis can only suppport int32 and int64.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherV2Tiling: axis can only suppport int32 and int64.");
     return false;
   }
   GELOGD("op [GatherV2Tiling] : axis=%ld.", axis);
@@ -469,14 +459,12 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   int64_t paramsDims = paramsShape.size();
   int64_t indicesDims = indicesShape.size();
   if (paramsDims <= 0 || indicesDims <= 0) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices", "the dim of x or indices is less than 1");
-    OP_LOGE("op[%s] GatherV2Tiling: paramsDims or indicesDims is 0.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GatherV2Tiling: paramsDims or indicesDims is 0.");
     return false;
   }
   if (axis < -paramsDims || axis >= paramsDims) {
-    ge::OpsOneInputShapeErrReport(opType.c_str(), "axis",
-                                  "the dim of axis is less than negative x dim, or greater than x dim");
-    OP_LOGE(opType.c_str(), "op GatherV2Tiling: axis is invalid.");
+
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherV2Tiling: axis is invalid.");
     return false;
   }
   if (axis < 0) {
@@ -485,7 +473,7 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
 
   bool ret = checkTensorShape(opType, paramsShape, indicesShape, indicesOriShape, yShape, axis);
   if (!ret) {
-    OP_LOGE(opType.c_str(), "op GatherV2Tiling: [checkTensorShape] failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherV2Tiling: [checkTensorShape] failed.");
     return ret;
   }
 
@@ -497,7 +485,7 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   int64_t indicesDSize = 0;
   bool flag = GetV2CompileParams(opType, op_info, coreNum, ubSize, l1Size, paramsDSize, indicesDSize);
   if (!flag) {
-    OP_LOGE("op[%s] GatherV2Tiling: GetV2CompileParams error.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GatherV2Tiling: GetV2CompileParams error.");
     return false;
   }
 

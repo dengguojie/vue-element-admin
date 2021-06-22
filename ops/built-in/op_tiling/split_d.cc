@@ -26,6 +26,7 @@
 #include "graph/debug/ge_log.h"
 
 #include "op_log.h"
+#include "error_log.h"
 
 const std::string DTYPE_FP32 = "float32";
 const std::string DTYPE_FP16 = "float16";
@@ -110,11 +111,11 @@ int64_t GetDataOneBlock(const std::string& dtype) {
 
 bool CheckAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> inputShape) {
   if (splitDim < 0) {
-    OP_LOGE("op [SplitDTiling] : split_dim is error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "split_dim is error");
     return false;
   }
   if (inputShape[splitDim] % numSplit != 0) {
-    OP_LOGE("op [SplitDTiling] : The num_split must be divisible by the length of inputShape[split_dim]");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "The num_split must be divisible by the length of inputShape[split_dim]");
     return false;
   }
   return true;
@@ -328,22 +329,22 @@ bool GetSplitDCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNu
   using namespace nlohmann;
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE("op [SplitDTiling] : GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE("op [SplitDTiling] : GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
   if (allVars.count("split_dim") <= 0) {
-    OP_LOGE("op [SplitDTiling] : GetCompileParams, get split_dim error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "GetCompileParams, get split_dim error");
     return false;
   }
   splitDim = allVars["split_dim"].get<std::int64_t>();
   if (allVars.count("num_split") <= 0) {
-    OP_LOGE("op [SplitDTiling] : GetCompileParams, get num_split error");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "GetCompileParams, get num_split error");
     return false;
   }
   numSplit = allVars["num_split"].get<std::int64_t>();
@@ -368,7 +369,7 @@ bool SplitDTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   int64_t dataBlock = 0;
   bool can_get_params = GetSplitDCompileParams(opCompileInfo, coreNum, ubSize, splitDim, numSplit, inputShape);
   if (!can_get_params) {
-    OP_LOGE("op[%s] SiplitDTiling: GetSplitDCompileParams error.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SiplitDTiling: GetSplitDCompileParams error.");
     return false;
   }
   if (splitDim < 0) {
@@ -376,7 +377,7 @@ bool SplitDTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   }
   bool ret = CheckAttr(splitDim, numSplit, inputShape);
   if (!ret) {
-    OP_LOGE("op[%s] SplitDTiling: CheckAttr failed.", opType.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitDTiling: CheckAttr failed.");
     return false;
   }
   dataBlock = GetDataOneBlock(input_dtype);

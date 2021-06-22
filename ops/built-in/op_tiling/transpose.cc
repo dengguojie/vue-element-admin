@@ -26,6 +26,7 @@
 #include "op_tiling.h"
 #include "securec.h"
 #include <nlohmann/json.hpp>
+#include "error_log.h"
 
 using namespace std;
 
@@ -310,7 +311,7 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
     OP_LOGD(opType.c_str(), "Entering GetShapePerm.");
 
     if (paras.const_inputs.find("perm") == paras.const_inputs.end()) {
-        OP_LOGE(opType.c_str(), "No perm in const_inputs.");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "No perm in const_inputs.");
         return false;
     }
 
@@ -320,7 +321,7 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
     if (dType == ge::DataType::DT_INT64 || dType == ge::DataType::DT_UINT64) {
         const int64_t* pPerm = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at("perm")));
         if (pPerm == nullptr) {
-            OP_LOGE(opType.c_str(), "Failed to get perm pointer.");
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Failed to get perm pointer.");
             return false;
         }
         int32_t size = std::get<1>(paras.const_inputs.at("perm"));
@@ -330,7 +331,7 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
     } else {
         const int32_t* pPerm = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at("perm")));
         if (pPerm == nullptr) {
-            OP_LOGE(opType.c_str(), "Failed to get perm pointer.");
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Failed to get perm pointer.");
             return false;
         }
         int32_t size = std::get<1>(paras.const_inputs.at("perm"));
@@ -340,11 +341,11 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
     }
 
     if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
-        OP_LOGE(opType.c_str(), "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
         return false;
     } 
     if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
-        OP_LOGE(opType.c_str(), "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
                                                                                   paras.outputs[0].tensor.size());
         return false;
     }
@@ -358,11 +359,11 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
     OP_LOGD(opType.c_str(), "Entering AddShapePerm.");
 
     if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
-        OP_LOGE(opType.c_str(), "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
         return false;
     }
     if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
-        OP_LOGE(opType.c_str(), "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
                                                                                   paras.outputs[0].tensor.size());
         return false;
     }
@@ -373,11 +374,11 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
     if (opType == "DepthToSpace") {
         // check input and block
         if (shapeInfo.inShape.size() != 4) {
-            OP_LOGE(opType.c_str(), "The length of input shape must be 4, but got %u.", shapeInfo.inShape.size());
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "The length of input shape must be 4, but got %u.", shapeInfo.inShape.size());
             return false;
         }
         if (shapeInfo.inShape[3] % (info.blockSize * info.blockSize) != 0) {
-            OP_LOGE(opType.c_str(), "Depth size must be divisible by block size, but got depth[%u], block[%u].",
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Depth size must be divisible by block size, but got depth[%u], block[%u].",
                     shapeInfo.inShape[3], info.blockSize);
             return false;
         }
@@ -405,16 +406,16 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
     if (opType == "SpaceToDepth") {
         // check input and block
         if (shapeInfo.inShape.size() != 4) {
-            OP_LOGE(opType.c_str(), "The length of input shape must be 4, but got %u,", shapeInfo.inShape.size());
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "The length of input shape must be 4, but got %u,", shapeInfo.inShape.size());
             return false;
         }
         if (shapeInfo.inShape[1] % info.blockSize != 0) {
-            OP_LOGE(opType.c_str(), "Height size must be divisible by block size, but got height[%u], block[%u].",
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Height size must be divisible by block size, but got height[%u], block[%u].",
                     shapeInfo.inShape[1], info.blockSize);
             return false;
         }
         if (shapeInfo.inShape[2] % info.blockSize != 0) {
-            OP_LOGE(opType.c_str(), "Width size must be divisible by block size, but got width[%u], block[%u].",
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Width size must be divisible by block size, but got width[%u], block[%u].",
                     shapeInfo.inShape[2], info.blockSize);
             return false;
         }
@@ -456,21 +457,21 @@ static bool CheckTensorShape(const string & opType,
     int64_t permDims = shapeInfo.perm.size();
 
     if (inDims < 1 || inDims != outDims || inDims != permDims) {
-        OP_LOGE(opType.c_str(), "The dim of inputs is invalid, inDims = %ld, outDims = %ld, permDims = %ld",
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim of inputs is invalid, inDims = %ld, outDims = %ld, permDims = %ld",
                                 inDims, outDims, permDims);
         return false;
     }
 
     for (int64_t i = 0; i < inDims; i++) {
         if (shapeInfo.inShape[shapeInfo.perm[i]] != shapeInfo.outShape[i]) {
-            OP_LOGE(opType.c_str(), "The dim of inputs or outputs conflict with perm.", opType.c_str());
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim of inputs or outputs conflict with perm.", opType.c_str());
             return false;
         }
     }
 
     for (int64_t i = 0; i < inDims; i++) {
         if (shapeInfo.inShape[i] <= 0 || shapeInfo.outShape[i] <= 0) {
-            OP_LOGE(opType.c_str(), "Invalid shape, %ld, %ld, %ld", i, shapeInfo.inShape[i], shapeInfo.outShape[i]);
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Invalid shape, %ld, %ld, %ld", i, shapeInfo.inShape[i], shapeInfo.outShape[i]);
             return false;
         }
     }
@@ -2402,15 +2403,15 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
     info.opType = opType;
 
     if (allVars.count("core_num") == 0) {
-        OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error");
         return false;
     }
     if (allVars.count("ub_size") == 0) {
-        OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
         return false;
     }
     if (allVars.count("dtype") == 0) {
-        OP_LOGE(opType.c_str(), "GetCompileParams, get dtype error");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get dtype error");
         return false;
     }
 
@@ -2420,7 +2421,7 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
     info.dType = allVars["dtype"].get<std::string>();
     info.fp16Times = (SizeofDType(info.dType) + 1) / 2; //add 1 for int8
     if (info.coreNum == 0) {
-        OP_LOGE(opType.c_str(), "The core count cannot be zero!");
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "The core count cannot be zero!");
         return false;
     }
 
@@ -2430,7 +2431,7 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
     // for depthtospace and spacetodepth
     if ((opType == "DepthToSpace") || (opType == "SpaceToDepth")) {
         if (allVars.count("block_size") == 0) {
-            OP_LOGE(opType.c_str(), "GetCompileParams, get block_size error");
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get block_size error");
             return false;
         }
         info.blockSize = allVars["block_size"].get<std::int64_t>();

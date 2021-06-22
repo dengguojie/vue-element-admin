@@ -24,6 +24,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 const int32_t BYTE_BLOCK = 32;
@@ -89,22 +90,19 @@ bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compi
   const auto& vars = op_compile_info_json["vars"];
   // core num
   if (vars.count(STR_CORE_NUM) == 0) {
-    ge::OpsGetCompileParamsErrReport("SparseApplyProximalAdagradD", "core_num");
-    OP_LOGE(op_type.c_str(), "op [%s] core_num is null", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [%s] core_num is null", op_type.c_str());
     return false;
   }
   core_num = vars[STR_CORE_NUM].get<std::int32_t>();
   // ub size
   if (vars.count(STR_UB_SIZE) == 0) {
-    ge::OpsGetCompileParamsErrReport("SparseApplyProximalAdagradD", "ub_size");
-    OP_LOGE(op_type.c_str(), "ub_size is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size is null");
     return false;
   }
   ub_size = vars[STR_UB_SIZE].get<std::int32_t>();
   // ub tensor num
   if (vars.count(STR_UB_TENSOR_NUM) == 0) {
-    ge::OpsGetCompileParamsErrReport("SparseApplyProximalAdagradD", "ub_tensor_num");
-    OP_LOGE(op_type.c_str(), "ub_tensor_num is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_tensor_num is null");
     return false;
   }
   ub_tensor_num = vars[STR_UB_TENSOR_NUM].get<std::int32_t>();
@@ -153,19 +151,16 @@ bool SparseApplyProximalAdagradTiling(const std::string& op_type, const TeOpPara
                                       const nlohmann::json& op_compile_info_json, OpRunInfo& run_info) {
   GELOGI("op[%s] op tiling begin.", op_type.c_str());
   if (op_paras.inputs.size() < OP_PARAS_NUM) {
-    ge::OpsOneInputShapeErrReport("SparseApplyProximalAdagradD", "op_paras", "op_paras.size() is less than 7");
-    OP_LOGE(op_type.c_str(), "op_paras.size() is less than 7");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.size() is less than 7");
     return false;
   }
   if (op_paras.inputs[GRAD_IDX].tensor.size() == 0) {
-    ge::OpsOneInputShapeErrReport("SparseApplyProximalAdagradD", "grad", "grad tensor is null");
-    OP_LOGE(op_type.c_str(), "grad tensor is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "grad tensor is null");
     return false;
   }
   const std::vector<int64_t>& grad_shape = op_paras.inputs[GRAD_IDX].tensor[0].shape;
   if (op_paras.inputs[INDICES_IDX].tensor.size() == 0) {
-    ge::OpsOneInputShapeErrReport("SparseApplyProximalAdagradD", "indices", "indices tensor is null");
-    OP_LOGE(op_type.c_str(), "indices tensor is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "indices tensor is null");
     return false;
   }
   // get size
@@ -175,62 +170,45 @@ bool SparseApplyProximalAdagradTiling(const std::string& op_type, const TeOpPara
   int32_t e_size = grad_size / indices_size;
   GELOGD("op [%s] : grad_size=%d, indices_size=%d, e_size=%d", op_type.c_str(), grad_size, indices_size, e_size);
   if (grad_shape.size() < indices_shape.size()) {
-    ge::OpsTwoInputShapeErrReport("SparseApplyProximalAdagradD", "grad", "indices",
-                                  "dim of grad must be greater than or equal with dim of indices");
-    OP_LOGE(op_type.c_str(), "dim of grad must be greater than or equal with dim of indices");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dim of grad must be greater than or equal with dim of indices");
     return false;
   }
   for (unsigned i = 0; i < indices_shape.size(); i++) {
     if (grad_shape[i] != indices_shape[i]) {
-      ge::OpsTwoInputShapeErrReport("SparseApplyProximalAdagradD", "grad", "indices",
-                                    "front shape of grad must be equal with indices shape");
-      OP_LOGE(op_type.c_str(), "front shape of grad must be equal with indices shape");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "front shape of grad must be equal with indices shape");
       return false;
     }
   }
   if (op_paras.inputs[VAR_IDX].tensor.size() == 0) {
-    ge::OpsOneInputShapeErrReport("SparseApplyProximalAdagradD", "var", "var tensor is null");
-    OP_LOGE(op_type.c_str(), "var tensor is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "var tensor is null");
     return false;
   }
   const std::vector<int64_t>& var_shape = op_paras.inputs[VAR_IDX].tensor[0].shape;
   if (op_paras.inputs[ACCUM_IDX].tensor.size() == 0) {
-    ge::OpsOneInputShapeErrReport("SparseApplyProximalAdagradD", "accum", "accum tensor is null");
-    OP_LOGE(op_type.c_str(), "accum tensor is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "accum tensor is null");
     return false;
   }
   const std::vector<int64_t>& accum_shape = op_paras.inputs[ACCUM_IDX].tensor[0].shape;
   if (var_shape.size() != accum_shape.size()) {
-    ge::OpsTwoInputShapeErrReport("SparseApplyProximalAdagradD", "var", "accum",
-                                  "var_shape.size() must be equal with accum_shape.size()");
-    OP_LOGE(op_type.c_str(), "var_shape.size() must be equal with accum_shape.size()");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "var_shape.size() must be equal with accum_shape.size()");
     return false;
   }
   for (unsigned i = 0; i < var_shape.size(); i++) {
     if (var_shape[i] != accum_shape[i]) {
-      ge::OpsTwoInputShapeErrReport("SparseApplyProximalAdagradD", "var", "accum",
-                                    "var_shape must be equal with accum_shape");
-      OP_LOGE(op_type.c_str(), "var_shape must be equal with accum_shape");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "var_shape must be equal with accum_shape");
       return false;
     }
   }
   if (var_shape.size() < grad_shape.size() - indices_shape.size()) {
-    ge::OpsTwoInputShapeErrReport("SparseApplyProximalAdagradD", "var", "grad",
-                                  " dim of var_shape must be greater than or equal with the difference \
-                between dim of grad and dim of indices");
-    OP_LOGE(
-        "op [%s] dim of var_shape must be greater than or equal with \
-             the difference between dim of grad and dim of indices",
-        op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dim of var_shape must be greater than or equal with \
+                                    the difference between dim of grad and dim of indices");
     return false;
   }
   for (uint32_t i = 1; i <= grad_shape.size() - indices_shape.size(); i++) {
     int32_t var_idx = var_shape.size() - i;
     int32_t grad_idx = grad_shape.size() - i;
     if (var_shape[var_idx] != grad_shape[grad_idx]) {
-      ge::OpsTwoInputShapeErrReport("SparseApplyProximalAdagradD", "var", "grad",
-                                    "second dimision in var_shape must be equal with  dimension in grad_shape");
-      OP_LOGE("op [%s] second dimision in var_shape must be equal with  dimension in grad_shape", op_type.c_str());
+      VECTOR_INNER_ERR_REPORT_TILIING( op_type.c_str(), "second dimision in var_shape must be equal with  dimension in grad_shape");
       return false;
     }
   }
@@ -243,7 +221,7 @@ bool SparseApplyProximalAdagradTiling(const std::string& op_type, const TeOpPara
   bool flag = true;
   flag = GetCompileParams(op_type, op_compile_info_json, core_num, ub_size, ub_tesnor_num);
   if (!flag) {
-    OP_LOGE(op_type.c_str(), "get compile info params failed");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info params failed");
     return false;
   }
   if (grad_dtype == DTYPE_FP32) {
@@ -259,7 +237,7 @@ bool SparseApplyProximalAdagradTiling(const std::string& op_type, const TeOpPara
         params.need_core_num = 1;
         params.idx_front_num = ComputeRowsInUb(grad_dtype, ub_size, e_size, ub_tesnor_num);
         if (params.idx_front_num == 0) {
-          OP_LOGE(op_type.c_str(), "op params.idx_front_num == 0");
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op params.idx_front_num == 0");
           return false;
         }
         params.idx_mov_times = SapaCeilDiv(indices_size, params.idx_front_num);

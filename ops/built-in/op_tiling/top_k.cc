@@ -18,6 +18,7 @@
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 const std::string TOPK_OP_TYPE = "Topk";
@@ -75,16 +76,14 @@ bool GetTopkCompileParams(const std::string& op_type, const nlohmann::json& op_c
                           int32_t& k_num, int32_t& batch_cols_padding, int32_t& ub_size, int32_t& max_k) {
   using namespace nlohmann;
   if (op_compile_info_json == nullptr) {
-    ge::OpsGetCompileParamsErrReport("Topk", "op_compile_info_json");
-    OP_LOGE(op_type.c_str(), "op_compile_info_json is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_compile_info_json is null");
     return false;
   }
 
   const auto& all_vars = op_compile_info_json["vars"];
   // core num
   if (all_vars.count("core_num") == 0) {
-    ge::OpsGetCompileParamsErrReport("Topk", "core_num");
-    OP_LOGE(op_type.c_str(), "core_num is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is null");
     return false;
   }
   core_num = all_vars["core_num"].get<std::int32_t>();
@@ -99,16 +98,14 @@ bool GetTopkCompileParams(const std::string& op_type, const nlohmann::json& op_c
 
   // batch_cols_padding num
   if (all_vars.count("batch_cols_padding") == 0) {
-    ge::OpsGetCompileParamsErrReport("Topk", "batch_cols_padding");
-    OP_LOGE(op_type.c_str(), "batch_cols_padding is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "batch_cols_padding is null");
     return false;
   }
   batch_cols_padding = all_vars["batch_cols_padding"].get<std::int32_t>();
 
   // ub size
   if (all_vars.count("ub_size") == 0) {
-    ge::OpsGetCompileParamsErrReport("Topk", "ub_size");
-    OP_LOGE(op_type.c_str(), "ub_size is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size is null");
     return false;
   }
   ub_size = all_vars["ub_size"].get<std::int32_t>();
@@ -163,7 +160,7 @@ bool TopkTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
 
   bool flag = GetTopkCompileParams(op_type, op_compile_info_json, core_max, k_num, batch_cols_padding, ub_size, max_k);
   if (!flag) {
-    OP_LOGE("op[%s] GetTopkCompileParams failed.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetTopkCompileParams failed.");
     return false;
   }
   GELOGI("op[%s] GetTopkCompileParams success.", op_type.c_str());

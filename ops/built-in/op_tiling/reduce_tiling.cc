@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include "reduce_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -199,7 +200,7 @@ bool Reduce::ConstInputProcPost() {
     run_info.clear_atomic = op_info.at("_atomic_flags").at(pattern_str).get<bool>();
     run_info.tiling_key = pattern;
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "Func: ConstInputProcPost get error message. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: ConstInputProcPost get error message. Error message: %s", e.what());
     return false;
   }
 
@@ -298,17 +299,17 @@ bool Reduce::GetCompileInfo() {
 
     // CHECK VALUE
     if (compileInfo.idx >= compileInfo.pattern_info.size()) {
-      OP_LOGE(op_type.c_str(), "pattern is %d that not in pattern_info", pattern);
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pattern is %d that not in pattern_info", pattern);
       return false;
     }
     V_CHECK_EQ(compileInfo.pattern_info.size(), compileInfo.ub_info.size(),
-               OP_LOGE(op_type.c_str(), "pattern_info's size should be as same as ub_info"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pattern_info's size should be as same as ub_info"),
                return false);
     V_CHECK_EQ(compileInfo.pattern_info.size(), compileInfo.ub_info_rf.size(),
-               OP_LOGE(op_type.c_str(), "pattern_info's size should be as same as ub_info_rf"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pattern_info's size should be as same as ub_info_rf"),
                return false);
     V_CHECK_EQ(common_info.size(), 5,
-               OP_LOGE(op_type.c_str(), "size of common_info should be 5"),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of common_info should be 5"),
                return false);
 
     // Get Data
@@ -320,16 +321,16 @@ bool Reduce::GetCompileInfo() {
 
     // CHECK VALUE
     V_OP_TILING_CHECK(!(compileInfo.coef <= 0),
-                      OP_LOGE(op_type.c_str(), "coef is %d that is illegal", compileInfo.coef),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "coef is %d that is illegal", compileInfo.coef),
                       return false);
     V_OP_TILING_CHECK(!(compileInfo.min_block_size <= 0),
-                      OP_LOGE(op_type.c_str(), "min_block_size is %d that is illegal", compileInfo.min_block_size),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal", compileInfo.min_block_size),
                       return false);
     V_OP_TILING_CHECK(!(compileInfo.core_num <= 0),
-                      OP_LOGE(op_type.c_str(), "core_num is %d that is illegal", compileInfo.core_num),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal", compileInfo.core_num),
                       return false);
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "Func: GetCompileInfo error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: GetCompileInfo error. Error message: %s", e.what());
     return false;
   }
 
@@ -705,7 +706,7 @@ bool Reduce::ProcessNormalTiling() {
   // rewrite TilingInfo(block)
   if (!GetBlockTilingInfo()) {
     if (total_output_count > ubSizeA) {
-      OP_LOGE(op_type.c_str(), "GetBlockTilingInfo error");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetBlockTilingInfo error");
       return false;
     }
     tilingInfo.block_dim = 1;
@@ -755,7 +756,7 @@ bool Reduce::FineTuning() {
   }
 
   V_OP_TILING_CHECK(!(ub_factor <= 0 || blk_factor <= 0),
-                    OP_LOGE(op_type.c_str(), "ub_factor and blk_factor must bigger than 0,"
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_factor and blk_factor must bigger than 0,"
                             "while ub_factor is %d, blk_factor is %d", op_type.c_str(), ub_factor, blk_factor),
                     return false);
 
@@ -826,13 +827,13 @@ bool Reduce::Init() {
               op_info.at("_idx_before_reduce").get<int>() : 0;
     // CHECK INPUT
     V_OP_TILING_CHECK(!op_paras.inputs.empty(),
-                      OP_LOGE(op_type.c_str(), "inputs cannot be empty"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "inputs cannot be empty"),
                       return false);
     V_OP_TILING_CHECK(!(op_paras.inputs.size() <= uint(idx) || idx < 0),
-                      OP_LOGE(op_type.c_str(), "idx is invalid index for inputs"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"),
                       return false);
     V_OP_TILING_CHECK(!op_paras.inputs[uint(idx)].tensor.empty(),
-                      OP_LOGE(op_type.c_str(), "tensor cannot be empty"),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tensor cannot be empty"),
                       return false);
     input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
 
@@ -853,7 +854,7 @@ bool Reduce::Init() {
       auto size = std::get<1>(reduce_axis_info);
       ge::DataType axis_type = std::get<2>(reduce_axis_info).GetTensorDesc().GetDataType();
       V_OP_TILING_CHECK(!(axis_type != ge::DT_INT32 && axis_type != ge::DT_INT64),
-                        OP_LOGE(op_type.c_str(), "axis_type is not belong to [int32, int64]"),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axis_type is not belong to [int32, int64]"),
                         return false);
 
       if (axis_type == ge::DT_INT32) {
@@ -888,7 +889,7 @@ bool Reduce::Init() {
     int32_t min_value = -1 * max_value;
     for (size_t i = 0; i < reduce_axis_ori.size(); i++) {
       if (reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value) {
-        OP_LOGE(op_type.c_str(), "value of axis is illegal.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of axis is illegal.");
         return false;
       }
       if (reduce_axis_ori[i] < 0) {
@@ -899,7 +900,7 @@ bool Reduce::Init() {
     compileInfo.is_const = op_info.count("_reduce_shape_known") > 0 &&
                            op_info.at("_reduce_shape_known").get<bool>();
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "Func of Init error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func of Init error. Error message: %s", e.what());
     return false;
   }
 
@@ -936,7 +937,7 @@ bool Reduce::SetAttrVars(int32_t key) {
       }
     }
   } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "SetAttrVars error. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SetAttrVars error. Error message: %s", e.what());
     return false;
   }
   return true;
@@ -1014,7 +1015,7 @@ bool Reduce::DoTiling() {
         tilingInfo.ub_tiling_factor = op_info.at("_zero_ub_factor").get<std::int64_t>();
       }
     } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get zero_ub_factor error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get zero_ub_factor error. Error message: %s", e.what());
       return false;
     }
     return ret;
@@ -1038,7 +1039,7 @@ bool Reduce::DoTiling() {
         input_shape = input_shape_ori;
       }
     } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get compile_info error. Error message: %s", e.what());
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info error. Error message: %s", e.what());
       return false;
     }
   } else {

@@ -26,6 +26,7 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "trans_data_common.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -129,7 +130,7 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
                             int64_t& ubSize, TransDataTc201Param& params) {
   if (srcFormat.length() < 2 || dstFormat.length() < 2) {
-    OP_LOGE("op TransDataTiling: TilingNegativeTc201 Failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeTc201 Failed.");
     return false;
   }
 
@@ -283,7 +284,7 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
 
   bool ret = GetMcInfoNegative201(dstR2ndLpCnt, dstR2ndLeft, srcClLpCnt, srcClLeft, srcLeftLpCnt, srcLeftLeft, coreNum, params);
   if (!ret) {
-    OP_LOGE("op TransDataTiling: GetMcInfoNegative201 Failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoNegative201 Failed.");
     return ret;
   }
   return true;

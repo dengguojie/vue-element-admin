@@ -31,7 +31,7 @@ bool BNInferenceDTiling(const std::string& op_type, const TeOpParas& op_paras, c
 
     if (op_paras.inputs.empty() || op_paras.inputs.size() < 3 ||
         op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty()) {
-        OP_LOGE(op_type.c_str(), "Length of inputs is less than 3 or some inputs are empty.");
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Length of inputs is less than 3 or some inputs are empty.");
         return false;
     }
 

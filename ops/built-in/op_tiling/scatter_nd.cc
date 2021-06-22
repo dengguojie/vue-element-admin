@@ -27,6 +27,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -325,25 +326,25 @@ bool CheckScatterNdTensorShape(const std::string& opType, std::vector<int64_t> i
   int64_t indicesLastDim = indicesShape.back();
 
   if (indicesDims <= 1) {
-    OP_LOGE(opType.c_str(), "the ndim of indices is less than 1 or equal to 1");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "the ndim of indices is less than 1 or equal to 1");
     return false;
   }
 
   if (indicesDims - 1 + outputDims - indicesLastDim != updatesDims) {
-    OP_LOGE(opType.c_str(), "output's shape and updates'shape are not equal in some dimensions");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "output's shape and updates'shape are not equal in some dimensions");
     return false;
   }
 
   for (int64_t i = 0; i < indicesDims - 1; i++) {
     if (indicesShape[i] != updatesShape[i]) {
-      OP_LOGE(opType.c_str(), "indices's shape and updates'shape are not equal in some dimensions");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "indices's shape and updates'shape are not equal in some dimensions");
       return false;
     }
   }
 
   for (int64_t i = 0; i < updatesDims - indicesDims + 1; i++) {
     if (updatesShape[indicesDims - 1 + i] != outputShape[indicesLastDim + i]) {
-      OP_LOGE(opType.c_str(), "output's shape and updates'shape are not equal in some dimensions");
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "output's shape and updates'shape are not equal in some dimensions");
       return false;
     }
   }
@@ -355,31 +356,31 @@ bool GetScatterNdCompileParams(const std::string& opType, const nlohmann::json& 
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error");
     return false;
   }
   coreNum = allVars["core_num"].get<std::int64_t>();
 
   if (allVars.count("ub_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get ub_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
     return false;
   }
   ubSize = allVars["ub_size"].get<std::int64_t>();
 
   if (allVars.count("updates_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get updates_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get updates_size error");
     return false;
   }
   updatesSize = allVars["updates_size"].get<std::int64_t>();
 
   if (allVars.count("indices_size") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get indices_size error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get indices_size error");
     return false;
   }
   indicesSize = allVars["indices_size"].get<std::int64_t>();
 
   if (allVars.count("support_atomic") == 0) {
-    OP_LOGE(opType.c_str(), "GetCompileParams, get support_atomic error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get support_atomic error");
     return false;
   }
   supportAtomic = allVars["support_atomic"].get<std::int64_t>();
@@ -406,22 +407,22 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
 
   OP_LOGI(opType.c_str(), "ScatterNdTiling running.");
   if (opCompileInfo == nullptr) {
-    OP_LOGE(opType.c_str(), "opCompileInfo json error.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "opCompileInfo json error.");
     return false;
   }
 
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "input shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "output shape error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "output shape error");
     return false;
   }
 
   if (opParas.const_inputs.find("shape") == opParas.const_inputs.end()) {
-    OP_LOGE(opType.c_str(), "get const input failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "get const input failed.");
     return false;
   }
 
@@ -432,7 +433,7 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
 
   bool is_valid_shape = CheckScatterNdTensorShape(opType, indicesShape, updatesShape, outShape);
   if (!is_valid_shape) {
-    OP_LOGE(opType.c_str(), "CheckScatterNdTensorShape is failed");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "CheckScatterNdTensorShape is failed");
     return false;
   }
 
@@ -444,7 +445,7 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   bool can_get_params =
       GetScatterNdCompileParams(opType, opCompileInfo, coreNum, ubSize, updatesSize, indicesSize, supportAtomic);
   if (!can_get_params) {
-    OP_LOGE(opType.c_str(), "GetScatterNdCompileParams error");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetScatterNdCompileParams error");
     return false;
   }
 

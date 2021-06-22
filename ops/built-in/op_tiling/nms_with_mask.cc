@@ -18,6 +18,7 @@
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 const std::string NMS_OP_TYPE = "NMSWithMask";
@@ -26,16 +27,14 @@ bool GetNMSWithMaskCompileParams(const std::string& op_type, const nlohmann::jso
                                  int32_t& max_boxes_num) {
   using namespace nlohmann;
   if (op_compile_info_json == nullptr) {
-    ge::OpsGetCompileParamsErrReport("NMSWithMask", "op_compile_info_json");
-    OP_LOGE(op_type.c_str(), "op_compile_info_json is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_compile_info_json is null");
     return false;
   }
 
   const auto& all_vars = op_compile_info_json["vars"];
   // max boxes num
   if (all_vars.count("max_boxes_num") == 0) {
-    ge::OpsGetCompileParamsErrReport("NMSWithMask", "max_boxes_num");
-    OP_LOGE(op_type.c_str(), "max_boxes_num is null");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_boxes_num is null");
     return false;
   }
   max_boxes_num = all_vars["max_boxes_num"].get<std::int32_t>();
@@ -54,13 +53,13 @@ bool NMSWithMaskTiling(const std::string& op_type, const TeOpParas& op_paras, co
 
   bool ret = GetNMSWithMaskCompileParams(op_type, op_compile_info_json, max_boxes_num);
   if (!ret) {
-    OP_LOGE("op[%s] GetNMSWithMaskCompileParams failed.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetNMSWithMaskCompileParams failed.");
     return false;
   }
   GELOGI("op[%s] GetNMSWithMaskCompileParams success.", op_type.c_str());
 
   if (boxes_num > max_boxes_num) {
-    OP_LOGE("op[%s] input boxes number exceeds the maximum value that UB can store.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input boxes number exceeds the maximum value that UB can store.");
     return false;
   }
 

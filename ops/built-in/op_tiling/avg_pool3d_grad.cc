@@ -24,6 +24,7 @@
 #include "cube_tiling.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace {
   constexpr int32_t kAvgPool3DGradDimLimit = 6;
@@ -45,7 +46,7 @@ bool AvgPool3DGradTiling(const std::string& op_type, const TeOpParas& op_paras, 
       op_paras.inputs[kAvgPool3DGradDedyInputIdx].tensor.empty() || op_paras.outputs[0].tensor.empty() ||
       (op_paras.inputs[kAvgPool3DGradDedyInputIdx].tensor[0].shape.size() != kAvgPool3DGradDimLimit) ||
       (op_paras.outputs[0].tensor[0].shape.size() != kAvgPool3DGradDimLimit)) {
-    OP_LOGE(op_type.c_str(), "param check failed");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "param check failed");
     return false;
   }
 

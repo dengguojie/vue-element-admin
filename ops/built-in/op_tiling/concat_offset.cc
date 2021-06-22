@@ -25,6 +25,7 @@
 #include "graph/debug/ge_log.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -34,9 +35,7 @@ bool ConcatOffsetTiling(const std::string& op_type,
                         OpRunInfo& run_info) {
     using namespace ge;
     if (op_paras.inputs.empty() || op_paras.inputs[1].tensor.empty()) {
-      ge::OpsOneInputShapeErrReport(op_type.c_str(), "x",
-                                    "The input may be empty");
-      OP_LOGE(op_type.c_str(), "op [ConcatOffsetTiling] : input shape error");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [ConcatOffsetTiling] : input shape error");
       return false;
     }
     const std::vector<int64_t>& x_shape = op_paras.inputs[1].tensor[0].shape;

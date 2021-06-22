@@ -23,6 +23,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -68,22 +69,22 @@ static bool GetResizeNearestNeighborV2CompileParams(const nlohmann::json& compil
   using namespace nlohmann;
   auto allVars = compile_info["vars"];
   if (allVars.count("core_num") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get core_num error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get core_num error");
     return false;
   }
   compile_params.core_num = allVars["core_num"].get<std::int64_t>();
   if (allVars.count("max_w_len") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get max_w_len error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get max_w_len error");
     return false;
   }
   compile_params.max_w_len = allVars["max_w_len"].get<std::int64_t>();
   if (allVars.count("align_corners") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get align_corners error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get align_corners error");
     return false;
   }
   compile_params.align_corners = allVars["align_corners"].get<std::int64_t>();
   if (allVars.count("half_pixel_centers") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get half_pixel_centers error");
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get half_pixel_centers error");
     return false;
   }
   compile_params.half_pixel_centers = allVars["half_pixel_centers"].get<std::int64_t>();
@@ -347,22 +348,22 @@ static bool ResizeNearestNeighborV2Tiling(const std::string& op_type, const TeOp
   OP_LOGI(op_type, "tiling run begin.");
 
   if (op_paras.inputs.empty()) {
-    OP_LOGE(op_type, "Length of inputs is empty.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Length of inputs is empty.");
     return false;
   }
   if (op_paras.outputs.empty()) {
-    OP_LOGE(op_type, "Length of outputs is empty.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Length of outputs is empty.");
     return false;
   }
   // get input_shape and output_shape
   const std::vector<int64_t>& input_shape = op_paras.inputs[0].tensor[0].shape;
   const std::vector<int64_t>& output_shape = op_paras.outputs[0].tensor[0].shape;
   if (input_shape.size() != 5) {
-    OP_LOGE(op_type, "the input shape size must be 5(NC1HWC0).");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the input shape size must be 5(NC1HWC0).");
     return false;
   }
   if (output_shape.size() != 5) {
-    OP_LOGE(op_type, "the output shape size must be 5(NC1HWC0).");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the output shape size must be 5(NC1HWC0).");
     return false;
   }
 
@@ -376,7 +377,7 @@ static bool ResizeNearestNeighborV2Tiling(const std::string& op_type, const TeOp
   compile_params.op_type = op_type;
   // get compile data
   if (!GetResizeNearestNeighborV2CompileParams(op_info, compile_params)) {
-    OP_LOGE(op_type, "get compile info from nlohmann json failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
     return false;
   }
   // get compile data end
@@ -404,7 +405,7 @@ static bool ResizeNearestNeighborV2Tiling(const std::string& op_type, const TeOp
   }
   if (!get_tiling_result) {
     PrintTilingParams(op_type, tiling_params, compile_params);
-    OP_LOGE(op_type, "get tiling data failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get tiling data failed.");
     return false;
   }
 

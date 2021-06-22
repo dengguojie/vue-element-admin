@@ -4,6 +4,7 @@
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling
 {
@@ -98,7 +99,7 @@ namespace optiling
         bool get_compile_info = GetCompileInfo(op_type, op_compile_info, num_weights, padding_idx, core_num);
         if (!get_compile_info)
         {
-            OP_LOGE(op_type.c_str(), "EmbeddingDenseGradTiling: GetCompileInfo error.");
+            VECTOR_INNER_ERR_REPORT_TILIING(op_type, "EmbeddingDenseGradTiling: GetCompileInfo error.");
             return false;
         }
 

@@ -24,6 +24,7 @@
 #include <nlohmann/json.hpp>
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 using namespace ge;
 using namespace std;
@@ -288,11 +289,11 @@ bool CalCompileInfo(
   using namespace nlohmann;
   auto all_vars = op_info["vars"];
   if (all_vars.count("full_core_num") == 0) {
-    OP_LOGE("op[%s] IouTiling: GetCompileInfo, get full_core_num error.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "IouTiling: GetCompileInfo, get full_core_num error.");
     return false;
   }
   if (all_vars.count("product") == 0) {
-    OP_LOGE("op[%s] IouTiling: GetCompileInfo, get product error.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "IouTiling: GetCompileInfo, get product error.");
     return false;
   }
   full_core_num = all_vars["full_core_num"].get<int32_t>();
@@ -311,7 +312,7 @@ bool IouTiling(const string& op_type, const TeOpParas& op_paras,
   bool product = false;
   bool get_compile_info = CalCompileInfo(op_type, op_info, full_core_num, product);
   if (!get_compile_info) {
-    OP_LOGE("op[%s] IouTiling: GetCompileInfo error.", op_type.c_str());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "IouTiling: GetCompileInfo error.");
     return false;
   }
 

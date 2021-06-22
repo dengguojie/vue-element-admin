@@ -29,7 +29,7 @@
 #include "../op_proto/util/error_util.h"
 #include "../op_proto/util/op_common_util.h"
 #include "op_log.h"
-
+#include "error_log.h"
 #include "strided_slice.h"
 
 namespace optiling {
@@ -55,8 +55,7 @@ bool SliceTiling(const std::string& opType, const TeOpParas& opParas, const nloh
   OP_LOGD(opType.c_str(), "SliceTiling running.");
 
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "SliceTiling: input shape error.");
-    ge::OpsMissInputErrReport(opType, "x");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SliceTiling: input shape error.");
     return false;
   }
 
@@ -72,15 +71,14 @@ bool SliceTiling(const std::string& opType, const TeOpParas& opParas, const nloh
     int index = item.second.first;
     auto& values = item.second.second;
     if (!GetConstValue(opParas, name, opParas.inputs[index].tensor[0].dtype, values)) {
-      OP_LOGE(opType.c_str(), "Get %s values failed", name.c_str());
-      ge::OpsGetAttrErrReport(opType, name);
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get %s values failed", name.c_str());
       return false;
     }
   }
 
   if (slice_params_output.begin_list.size() != slice_params_output.end_list.size() ||
       slice_params_output.begin_list.size() != slice_params_output.input.size()) {
-    OP_LOGE(opType.c_str(), "length of input_shape, offsets and size must be equal.");
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "length of input_shape, offsets and size must be equal.");
     ge::OpsInputShapeErrReport(
         opType, "length of x's shape, offsets and size must be equal.", "[x][offsets][size]",
         ConcatString("[", slice_params_output.input.size(), "]", "[", slice_params_output.begin_list.size(), "]", "[",
@@ -98,7 +96,7 @@ bool SliceTiling(const std::string& opType, const TeOpParas& opParas, const nloh
     if (slice_params_output.begin_list[i] < 0 ||
         slice_params_output.begin_list[i] + slice_params_output.end_list[i] < slice_params_output.begin_list[i] ||
         slice_params_output.begin_list[i] + slice_params_output.end_list[i] > slice_params_output.input[i]) {
-      OP_LOGE(opType.c_str(),
+      VECTOR_INNER_ERR_REPORT_TILIING(opType,
               "Requirements: 0<=offsets[i]<= offsets[i]+size[i]<=input_shape[i], offsets:%s, size:%s, input_shape:%s",
               DebugString(slice_params_output.begin_list).c_str(), DebugString(slice_params_output.end_list).c_str(),
               DebugString(slice_params_output.input).c_str());

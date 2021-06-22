@@ -13,6 +13,7 @@
 #include "reduce_tiling.h"
 #include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
+#include "error_log.h"
 
 #include <iostream>
 namespace optiling {
@@ -27,7 +28,7 @@ bool SmoothL1LossV2Tiling(const std::string& op_type, const TeOpParas& op_paras,
     reduction = op_info.at("reduction").get<std::string>();
     reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
   } else {
-    OP_LOGE(op_type.c_str(), "Compile_info[reduction] or Compile_info[reduce_mean_cof_dtype] not exist.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Compile_info[reduction] or Compile_info[reduce_mean_cof_dtype] not exist.");
     return false;
   }
 
