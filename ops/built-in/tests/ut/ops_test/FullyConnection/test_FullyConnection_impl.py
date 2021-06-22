@@ -102,5 +102,6 @@ ut_case.add_cust_test_func(test_func=test_split_fc_1)
 ut_case.add_cust_test_func(test_func=test_split_fc_2)
 ut_case.add_cust_test_func(test_func=test_split_fc_3)
 
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

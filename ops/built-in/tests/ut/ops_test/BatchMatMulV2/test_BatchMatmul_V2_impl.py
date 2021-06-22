@@ -207,6 +207,7 @@ def test_op_check_supported(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])
     exit(0)

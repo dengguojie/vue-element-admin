@@ -602,6 +602,7 @@ class GEMMCompute(FormatCompute):
         self._set_bias_or_c()
         self._set_info()
         self._set_ori_k()
+        self._check_k_dim()
         self._check_n_align()
         self._check_gevm_and_gemv()
         self._set_mmad_mode()
@@ -1731,29 +1732,35 @@ class GEMMCompute(FormatCompute):
         b_shape = [self._get_value(i) for i in self.tensor_b.shape]
         trans_a = (not self.trans_a) if (self.format_a == "FRACTAL_NZ") else self.trans_a
         trans_b = (not self.trans_b) if (self.format_b == "FRACTAL_NZ") else self.trans_b
-        self.ori_km_shape = a_shape[0] if trans_a else a_shape[1]
-        self.ori_kn_shape = b_shape[1] if trans_b else b_shape[0]
+        offset_a = 0
+        if len(a_shape) in (3, 5):
+            offset_a = 1
+        offset_b = 0
+        if len(b_shape) in (3, 5):
+            offset_b = 1
+        self.ori_km_shape = a_shape[offset_a] if trans_a else a_shape[1+offset_a]
+        self.ori_kn_shape = b_shape[1+offset_b] if trans_b else b_shape[offset_b]
 
     # ----------- check func ---------- #
-    def _check_km_kn(self):
+    def _check_k_dim(self):
         """
         check shape km and kn, should be equal
         Input: None
         ---------------------------------
         Return: None
         """
-        if self.ori_km_shape != self.ori_kn_shape:
-            args_dict = {
-                "errCode": "E60002",
-                "attr_name": "shape",
-                "param1_name": "km_shape",
-                "param1_value": "{}".format(self.ori_km_shape),
-                "param2_name": "kn_shape",
-                "param2_value": "{}".format(self.ori_kn_shape)
-            }
-            raise RuntimeError(
-                args_dict, error_manager_util.get_error_message(args_dict)
-            )
+        if in_dynamic():
+            return
+        km_shape = self.ori_km_shape
+        if self.format_a != "ND":
+            km_shape *= self.block_reduce
+
+        kn_shape = self.ori_kn_shape
+        if self.format_b != "ND":
+            kn_shape *= self.block_reduce
+
+        if km_shape != kn_shape:
+            raise RuntimeError("[E69999] A matrix's k should be equal B matrix's k.")
 
     def _check_n_align(self):
         """

@@ -132,6 +132,7 @@ ut_case.add_case(["Ascend310"], case7)
 ut_case.add_case(["Ascend310"], case8)
 ut_case.add_case(["Ascend310"], case9)
 
+
 def test_split_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "int8", "shape": (1, 1, 16, 32), "ori_shape": (16, 32)}
     x2 = {"format": "FRACTAL_Z","ori_format": "ND", "dtype": "int8", "shape": (1, 1, 16, 32), "ori_shape": (32, 16)}

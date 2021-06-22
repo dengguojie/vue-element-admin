@@ -174,7 +174,6 @@ ut_case.add_cust_test_func(test_func=test_split_fc_compress_1)
 ut_case.add_cust_test_func(test_func=test_split_fc_compress_2)
 ut_case.add_cust_test_func(test_func=test_split_fc_compress_3)
 
-
 if __name__ == "__main__":
     ut_case.run("Ascend910")
     # ut_case.run()

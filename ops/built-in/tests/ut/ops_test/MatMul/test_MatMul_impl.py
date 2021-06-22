@@ -306,4 +306,5 @@ def test_check_support(test_arg):
     _test_fuzzily_supported(case4)
     _test_supported(case1)
 
+
 ut_case.add_cust_test_func(test_func=test_check_support)
