@@ -144,7 +144,8 @@ TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputDynamicNWC) {
     op.UpdateInputDesc("input_size", ori_tensorDesc);
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
     auto input_sizes_desc = op_desc->MutableInputDesc("input_size");
-    ge::AttrUtils::SetListInt(*input_sizes_desc, "_pre_op_in_range", {1, 10, 16, 32, 24, 24, 6, -1});
+    std::vector<std::pair<int64_t, int64_t>> value_range = {{1, 10}, {16, 32}, {24, 24}, {6, -1}};
+    input_sizes_desc->SetValueRange(value_range);
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);

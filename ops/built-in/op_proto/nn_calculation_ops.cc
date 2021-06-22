@@ -65,7 +65,6 @@ namespace {
   const int32_t kDeformKsizeLimit = 2;
   const int64_t kDynamicRangeLowerBound = 1;
   const int64_t kDynamicRangeUpperBound = 4096;
-  const char* const kPreOpInputShapeRange = "_pre_op_in_range";
   const char* const kForceInfershapeWhenRunning = "_force_infershape_when_running";
   const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
   const std::vector<int64_t> BATCH_GEAR = {0, 1, 3, 7, 15, 31, MAX_RANGE};
@@ -1486,13 +1485,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
     std::vector<std::pair<int64_t, int64_t>> dy_range;
     x_desc->GetShapeRange(dy_range);
     std::vector<std::pair<int64_t, int64_t>> dx_range;
-    std::vector<int64_t> pre_op_range;
-    ge::AttrUtils::GetListInt(*input_sizes_desc, kPreOpInputShapeRange, pre_op_range);
-    dx_range.resize(pre_op_range.size()/2);
-    for (int i = 0; i < pre_op_range.size(); i = i + 2) {
-      dx_range[i/2].first = pre_op_range[i];
-      dx_range[i/2].second = pre_op_range[i+1];
-    }
+    input_sizes_desc->GetValueRange(dx_range);
     if (!dx_range.empty() && dx_range.size() == 4 && dy_range.size() == 4) {
       std::string dx_format_str = format2str[input_format];
       int32_t c_input_position = dx_format_str.find("C");
@@ -1501,6 +1494,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
       dx_range[c_input_position].first = filter_c;
       dx_range[c_input_position].second = filter_c;
       y_desc->SetShapeRange(dx_range);
+      OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
     } else {
       int64_t groups = 1;
       stride_h = static_cast<int32_t>(stride_h);
@@ -2909,13 +2903,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
       x_desc->SetShapeRange(dy_range);
     }
     std::vector<std::pair<int64_t, int64_t>> dx_range;
-    std::vector<int64_t> pre_op_range;
-    ge::AttrUtils::GetListInt(*input_sizes_desc, kPreOpInputShapeRange, pre_op_range);
-    dx_range.resize(pre_op_range.size() / 2);
-    for (int i = 0; i < pre_op_range.size(); i = i + 2) {
-      dx_range[i / 2].first = pre_op_range[i];
-      dx_range[i / 2].second = pre_op_range[i + 1];
-    }
+    input_sizes_desc->GetValueRange(dx_range);
     if (!dx_range.empty() && dx_range.size() == 4 && !unknown_rank) {
       std::string dx_format_str = format2str[input_format];
       int32_t c_input_position = dx_format_str.find("C");
@@ -2926,6 +2914,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
       dx_range[c_input_position].first = cin;
       dx_range[c_input_position].second = cin;
       y_desc->SetShapeRange(dx_range);
+      OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
     } else {
       if (!set_conv2d_backprop_input_out_shape_range(op, pad_str, dy_sizes, dy_format, dy_range, filter_sizes,
                                                      filter_format, input_format, dx_range, y_desc,
@@ -7511,17 +7500,11 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
   bool unknown_rank = IsUnknownRankShape(dy_desc->MutableShape().GetDims());
   std::vector<std::pair<int64_t, int64_t>> dy_range;
   dy_desc->GetShapeRange(dy_range);
-  std::vector<int64_t> pre_op_range;
-  ge::AttrUtils::GetListInt(*input_sizes_desc, kPreOpInputShapeRange, pre_op_range);
   std::vector<std::pair<int64_t, int64_t>> dx_range;
-  if ((pre_op_range.size() == kConv3dDimSizeLimit * 2) && (dy_range.size() == kConv3dDimSizeLimit)) {
-    dx_range.resize(kConv3dDimSizeLimit);
-    for (size_t i = 0; i < pre_op_range.size(); i += 2) {
-      dx_range[i / 2].first = pre_op_range[i];
-      dx_range[i / 2].second = pre_op_range[i + 1];
-    }
-
+  input_sizes_desc->GetValueRange(dx_range);
+  if ((dx_range.size() == kConv3dDimSizeLimit) && (dy_range.size() == kConv3dDimSizeLimit)) {
     y_desc->SetShapeRange(dx_range);
+    OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
   } else {
     if (!SetConv3dBpInputOutShapeRange(op, unknown_rank, dy_range, dx_range)) {
       return false;
@@ -9614,13 +9597,7 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
     std::vector<std::pair<int64_t, int64_t>> dyRange;
     xDesc->GetShapeRange(dyRange);
     std::vector<std::pair<int64_t, int64_t>> dxRange;
-    std::vector<int64_t> preOpRange;
-    ge::AttrUtils::GetListInt(*inputSizesDesc, kPreOpInputShapeRange, preOpRange);
-    dxRange.resize(preOpRange.size()/2);
-    for (int i = 0; i < preOpRange.size(); i = i + 2) {
-      dxRange[i/2].first = preOpRange[i];
-      dxRange[i/2].second = preOpRange[i+1];
-    }
+    inputSizesDesc->GetValueRange(dxRange);
     if (!dxRange.empty() && dxRange.size() == 4 && dyRange.size() == 4) {
       std::string dx_format_str = format2str[inputFormat];
       int32_t c_input_position = dx_format_str.find("C");
@@ -9631,6 +9608,7 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
       dxRange[c_input_position].first = cin;
       dxRange[c_input_position].second = cin;
       yDesc->SetShapeRange(dxRange);
+      OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
     } else {
       if (!set_conv2d_backprop_input_out_shape_range(op, padStr, dySizes, xFormat, dyRange, filterSizes,
                         filterFormat, inputFormat, dxRange, yDesc, groups, unknownRank, attrParams)) {
