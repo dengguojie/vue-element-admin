@@ -65,7 +65,7 @@ TEST_F(ReduceTiling, ReduceTiling1) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "REDUCE__COUNTER__";
+  op_compile_info.key = "REDUCE__COUNTER__1";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
@@ -294,7 +294,7 @@ TEST_F(ReduceTiling, ReduceTiling7) {
   tensorDesc1.SetDataType(ge::DT_INT32);
   auto ge_tensor = ge::Tensor(tensorDesc1);
   opParas.const_inputs["axes"] =
-    std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)axis.data(), axis.size() * 4, ge_tensor);
+  std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)axis.data(), axis.size() * 4, ge_tensor);
   opParas.inputs.push_back(tensor_input_axis_arg);
   opParas.outputs.push_back(tensor_arg_out);
   opParas.op_type = op_name;
@@ -305,6 +305,85 @@ TEST_F(ReduceTiling, ReduceTiling7) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }
 
+// FineTuning tune0
+TEST_F(ReduceTiling, ReduceTiling8) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0,
+                                "_zero_ub_factor": 32512, "_common_info": [32,1,16,0,1],
+                                "_pattern_info": [5,4,9], "_ub_info":[21632, 21376, 21632],
+                                "_ub_info_rf": [21632,16000,21632],
+                                "_pattern": "CommReduce",
+                                "_vars": {"1": []}})";
+  std::vector<int64_t> input{10000, 9, 80};
+  std::vector<int64_t> output{1, 9, 80};
+  std::string in_dtype = "float16";
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = in_dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = in_dtype;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_input);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg_out;
+  tensor_arg_out.tensor.push_back(tensor_output);
+  tensor_arg_out.arg_type = TA_SINGLE;
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_arg);
+  opParas.outputs.push_back(tensor_arg_out);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "REDUCE__COUNTER__8";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+// FineTuning tune1
+TEST_F(ReduceTiling, ReduceTiling9) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo = R"({"_ori_axis": [0,2,3,4,5],"_pattern": "CommReduce",
+                                "_common_info": [32,1,8,1,1],
+                                "_pattern_info": [5,4,9], "_ub_info":[32512, 32128, 16128],
+                                "_ub_info_rf": [32512, 21376, 32512],
+                                "_pattern": "CommReduce",
+                                "_vars": {"1": []}})";
+  std::vector<int64_t> input{16, 1, 8, 38, 1, 16, 16};
+  std::vector<int64_t> output{1, 16};
+  std::string in_dtype = "float32";
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = in_dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = in_dtype;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_input);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg_out;
+  tensor_arg_out.tensor.push_back(tensor_output);
+  tensor_arg_out.arg_type = TA_SINGLE;
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_arg);
+  opParas.outputs.push_back(tensor_arg_out);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "REDUCE__COUNTER__9";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+
 namespace optiling {
     class VarAttrHelper {
     public:
@@ -312,7 +391,7 @@ namespace optiling {
     };
 }
 
-TEST_F(ReduceTiling, ReduceTiling8) {
+TEST_F(ReduceTiling, ReduceTiling10) {
   using namespace optiling;
   std::string op_name = "AutoTiling";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
@@ -355,7 +434,7 @@ TEST_F(ReduceTiling, ReduceTiling8) {
   opParas.var_attrs = var_attrs;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "REDUCE__COUNTER__8";
+  op_compile_info.key = "REDUCE__COUNTER__10";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }

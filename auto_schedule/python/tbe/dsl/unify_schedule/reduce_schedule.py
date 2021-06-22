@@ -681,9 +681,15 @@ class ReduceSchedule(VectorSchedule):
                 for axis_idx in range(self.ub_tiling_info.tiling_axis_index,
                                       len(self.reduce_info.shape_before_reduce)):
                     # Simple last two axis
-                    if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
-                                    len(self.reduce_info.shape_before_reduce) - 2):
-                        self.pragma(tensor, axis_idx, "axis_group", 0)
+                    if self.tiling_case.tiling_key == -900:
+                        if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
+                                        len(self.reduce_info.shape_before_reduce) - 2,
+                                        len(self.reduce_info.shape_before_reduce) - 3):
+                            self.pragma(tensor, axis_idx, "axis_group", 0)
+                    else:
+                        if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
+                                        len(self.reduce_info.shape_before_reduce) - 2):
+                            self.pragma(tensor, axis_idx, "axis_group", 0)
 
         # For reduce tensor
         # ub_tiling_axis inner needs to be in the axis_group if it is reduce axis

@@ -737,31 +737,85 @@ bool Reduce::ProcessNormalTiling() {
   return true;
 }
 
-bool Reduce::SpecialUBTiling() {
+bool Reduce::FineTuning() {
+  /* Fine_tuning for some special case
+   * 0. Last Dimensional Segmentation Non-X Alignment, X is 8,16,32...
+   * 1. Tail block of ub_factor is too small
+   * **/
   int32_t ub_factor = tilingInfo.ub_tiling_factor;
   int32_t blk_factor = tilingInfo.block_tiling_factor;
   int32_t ub_axis = tilingInfo.ub_tiling_axis;
   int32_t blk_axis = tilingInfo.block_tiling_axis;
+  int32_t core_num = tilingInfo.block_dim;
+  int32_t shape_len = input_shape.size();
+
+  bool pure_data_move = reduce_axis.size() == 1 && input_shape[reduce_axis[0]] == 1;
+  if (pure_data_move) {
+    return true;
+  }
 
   V_OP_TILING_CHECK(!(ub_factor <= 0 || blk_factor <= 0),
                     OP_LOGE(op_type.c_str(), "ub_factor and blk_factor must bigger than 0,"
                             "while ub_factor is %d, blk_factor is %d", op_type.c_str(), ub_factor, blk_factor),
                     return false);
 
-  if (ub_axis != blk_axis) {
-    return true;
-  }
-  if (blk_factor%ub_factor == 0) {
+  bool split_same_dim = ub_axis == blk_axis;
+  bool block_split_last_dim = blk_axis == shape_len - 1;
+  bool ub_split_last_dim = ub_axis == shape_len - 1;
+  bool align_ub_factor = ub_factor % block_size == 0;
+  bool align_blk_factor = blk_factor % block_size == 0;
+  bool align_last_dim = input_shape[shape_len-1] % block_size == 0;
+
+  // tune_0: branch: split last dim
+  // tune_0_0: ub split last_dim
+  // tune_0_1: block split last_dim and ub not
+  bool tune_0 = (block_split_last_dim || ub_split_last_dim) && align_last_dim;
+  bool tune_0_0 = tune_0 && ub_split_last_dim && (not align_ub_factor);
+  bool tune_0_1 = tune_0 && block_split_last_dim && (not ub_split_last_dim) && (not align_blk_factor);
+
+  if (tune_0_0) {
+    // CoreNum is fixed, ub_factor is maximum
+    ub_factor = ub_factor / block_size * block_size;
+    tilingInfo.block_tiling_factor = ub_factor > 0 ? ub_factor : tilingInfo.block_tiling_factor;
     return true;
   }
 
-  float tailPercent = (float)(blk_factor%ub_factor) / (float)ub_factor;
-  if (tailPercent >= 0.8) {
+  if (tune_0_1) {
+    // blk_factor can be upper or lower to block_size * n
+    // Regulation: upper -> lower -> abandon
+    int32_t upper_value = (blk_factor + block_size - 1) / block_size * block_size;
+    int32_t lower_value = blk_factor / block_size * block_size;
+    int32_t const_value = blk_factor * ub_factor;
+    core_num = core_num / ((input_shape[blk_axis] + blk_factor - 1) / blk_factor);
+
+    if (const_value / upper_value > 0 && upper_value <= input_shape[blk_axis] && upper_value <= ubSizeA) {
+      // core_num = A*B*Blk_outer
+      core_num = core_num * ((input_shape[blk_axis] + upper_value - 1) / upper_value);
+      tilingInfo.block_dim = core_num;
+      tilingInfo.block_tiling_factor = upper_value;
+      tilingInfo.ub_tiling_factor = const_value / upper_value;
+    } else if (lower_value > 0) {
+      core_num = core_num * ((input_shape[blk_axis] + lower_value - 1) / lower_value);
+      tilingInfo.block_dim = core_num;
+      tilingInfo.block_tiling_factor = lower_value;
+      int32_t expect_value = const_value / lower_value;
+      tilingInfo.ub_tiling_factor = expect_value >= input_shape[ub_axis] ? input_shape[ub_axis] : expect_value;
+    }
     return true;
   }
-  int loop = blk_factor / ub_factor + 1;
-  ub_factor = blk_factor % loop ? blk_factor / loop + 1 : blk_factor / loop;
-  tilingInfo.ub_tiling_factor = ub_factor;
+
+  // tune_1
+  bool tune_1 = split_same_dim && (blk_factor % ub_factor != 0);
+  if (tune_1) {
+    float tailPercent = (float)(blk_factor%ub_factor) / (float)ub_factor;
+    if (tailPercent >= 0.8) {
+      return true;
+    }
+    int loop = blk_factor / ub_factor + 1;
+    ub_factor = blk_factor % loop ? blk_factor / loop + 1 : blk_factor / loop;
+    tilingInfo.ub_tiling_factor = ub_factor;
+    return true;
+  }
 
   return true;
 }
@@ -1007,7 +1061,7 @@ bool Reduce::DoTiling() {
     run_info.clear_atomic = false;
     ret = ret && ProcessNormalTiling();
   }
-  ret = ret && SpecialUBTiling();
+  ret = ret && FineTuning();
   return ret;
 }
 

@@ -111,6 +111,20 @@ class UnknownReduceClassifier:
                     f_reduce_axes = [0, ]
                     reduce_axes = []
 
+                def _normalize_const(_shape, _range, _axes):
+                    # make const'inputs as same as dynamic
+                    length = len(_shape)
+                    is_last_reduce = _axes[-1] == length - 1
+                    last_pad_one = is_last_reduce and length % 2 != 0
+                    nlast_pad_one = not is_last_reduce and length % 2 == 0
+                    if last_pad_one or nlast_pad_one:
+                        _shape.insert(0, 1)
+                        _range.insert(0, (1, 1))
+                        _axes = [x + 1 for x in _axes]
+                    return _shape, _range, _axes
+
+                f_shape, f_ranges, f_reduce_axes = _normalize_const(f_shape, f_ranges, f_reduce_axes)
+
                 input_x = {
                     "shape": f_shape,
                     "range": f_ranges,

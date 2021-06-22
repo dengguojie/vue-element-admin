@@ -829,5 +829,5 @@ def _raise_error(message):
 
 def _enable_db(reduce_info, tiling_case):
     if tiling_case.type == ReduceTilingCase.Type.ATOMIC_REDUCE:
-        if len(reduce_info.shape_before_reduce) == 3:
+        if len(reduce_info.shape_before_reduce) in [3, 5]:
             tiling_case.db = True

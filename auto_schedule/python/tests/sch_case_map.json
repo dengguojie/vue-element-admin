@@ -222,7 +222,18 @@
         "vsel/test_vsel_impl.py",
         "vcmpsel/test_vcmpsel_impl.py"
     ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/reduce_tilingcase.py":[
+        "reduce_sum"
+    ],
     "auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier.py":[
+        "reduce_sum",
+        "reduce_classify"
+    ],
+    "auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py":[
+        "reduce_sum",
+        "reduce_classify"
+    ],
+    "auto_schedule/python/tbe/dsl/base/classifier/known_reduce_classifier.py":[
         "reduce_sum",
         "reduce_classify"
     ],

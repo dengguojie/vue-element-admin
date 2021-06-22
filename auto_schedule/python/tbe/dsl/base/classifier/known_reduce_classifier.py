@@ -103,6 +103,20 @@ class KnownReduceClassifier:
 
     def _classify_const(self):
 
+        def _normalize_const():
+            # make const's inputs as same as dynamic
+            if self.f_reduce_axes:
+                length = len(self.f_shape)
+                is_last_reduce = self.f_reduce_axes[-1] == length - 1
+                last_pad_one = is_last_reduce and length % 2 != 0
+                nlast_pad_one = not is_last_reduce and length % 2 == 0
+                if last_pad_one or nlast_pad_one:
+                    self.f_shape.insert(0, 1)
+                    self.f_ranges.insert(0, (1, 1))
+                    self.f_reduce_axes = [x + 1 for x in self.f_reduce_axes]
+
+        _normalize_const()
+
         ins_before_reduce = {
             "shape": self.f_shape,
             "range": self.f_ranges,

@@ -84,7 +84,7 @@ class Reduce {
 
   bool ProcessAtomicTiling();
   bool ProcessNormalTiling();
-  bool SpecialUBTiling();
+  bool FineTuning();
 
   void ProcessReorderAxis(int32_t fused_type);
   bool GetUbTilingInfo();
