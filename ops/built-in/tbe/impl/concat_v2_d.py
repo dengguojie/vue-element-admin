@@ -21,9 +21,13 @@ concat_v2_d: Concatenates tensors along one dimension.
             tf ConcactV2 op
 
 """
+from types import MethodType
+
+import functools
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
+from te import tik
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
@@ -35,6 +39,7 @@ from impl.util import util_common
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.dynamic.concat_v2_d import ConcatV2 as DynamicConcatV2
 
 
 # pylint: disable = unused-argument
@@ -238,6 +243,78 @@ def concat_v2_d_compute(input_values,
     return res
 
 
+def _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name):
+    def cal_tiling(_input_values, _axis):
+        if len(_input_values) == 0:
+            return []
+        input_shape0 = _input_values[0].get("shape")
+        tiling_head_len = 8
+        tiling_data = [0] * (len(_input_values) * 2 + tiling_head_len)
+        tiling_data[0] = 1
+        max_inner_dim = 0
+        min_inner_dim = 2 ** 64 - 1
+        _axis = _axis % len(input_shape0)
+        if _axis == 0:
+            out_dims = 1
+        else:
+            out_dims = functools.reduce(lambda x, y: x * y, input_shape0[0:_axis])
+        tiling_data[1] = out_dims
+        output_inner_len = 0
+        for index, item in enumerate(_input_values):
+            shape = item.get("shape")
+            inner_dim = functools.reduce(lambda x, y: x * y, shape[_axis:])
+            max_inner_dim = max(max_inner_dim, inner_dim)
+            min_inner_dim = min(min_inner_dim, inner_dim)
+            tiling_data[tiling_head_len + index * 2] = inner_dim
+            tiling_data[tiling_head_len + index * 2 + 1] = output_inner_len
+            output_inner_len += inner_dim
+        tiling_data[2] = max_inner_dim
+        tiling_data[3] = min_inner_dim
+        tiling_data[4] = output_inner_len
+        tiling_data[5] = len(_input_values)
+        tiling_data[6] = 0
+        tiling_data[7] = 0
+        return tiling_data
+
+    def init_tiling(tiling_inst:DynamicConcatV2.TilingParam):
+        inst = tiling_inst.tik_instance
+        dtype = tiling_inst.dtype
+        head_count = 8
+        for i, _ in enumerate(tiling_inst.input_values):
+            tiling_inst._dims.append(inst.Scalar(dtype=dtype, name="inner_dim" + str(i)))
+            tiling_inst._dims.append(inst.Scalar(dtype=dtype, name="output_index" + str(i)))
+        with inst.new_stmt_scope():
+            tiling_inst._tiling_ub = cal_tiling(input_values, axis)
+            tiling_inst.axis.set_as(tiling_inst._tiling_ub[0])
+            tiling_inst.out_dim.set_as(tiling_inst._tiling_ub[1])
+            tiling_inst.max_inner_dim.set_as(tiling_inst._tiling_ub[2])
+            tiling_inst.min_inner_dim.set_as(tiling_inst._tiling_ub[3])
+            tiling_inst.output_inner_length.set_as(tiling_inst._tiling_ub[4])
+
+            tiling_inst.all_align.set_as(1)
+            for i, _ in enumerate(tiling_inst.input_values):
+                index = head_count + i * 2
+                tiling_inst._dims[i * 2].set_as(tiling_inst._tiling_ub[index])
+                tiling_inst._dims[i * 2 + 1].set_as(tiling_inst._tiling_ub[index + 1])
+                if i == len(tiling_inst.input_values) - 1:
+                    tiling_inst.only_last_input_not_align.set_as(tiling_inst.all_align)
+                    with inst.if_scope(tiling_inst._dims[i * 2] % tiling_inst.block_element == 0):
+                        tiling_inst.only_last_input_not_align.set_as(0)
+                tiling_inst.all_align.set_as(tiling_inst.all_align + tiling_inst._dims[i * 2] % tiling_inst.block_element)
+
+    concat_instance = DynamicConcatV2(input_values, axis, kernel_name)
+    concat_instance.tiling_param.init = MethodType(init_tiling, concat_instance.tiling_param)
+    concat_instance.concat_compute()
+    inst = concat_instance.tik_instance
+    opt_config = {"out_of_bound_sync_check": True,
+                  "enable_const_fold": True}
+    inst.BuildCCE(kernel_name=kernel_name, inputs=concat_instance.input_tensors,
+                  outputs=(concat_instance.output_tensor,),
+                  config=opt_config,
+                  enable_l2=False)
+    return inst
+
+
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
@@ -331,6 +408,10 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
         concat_s.concat_compute()
         return
     # end to check where user branch concat tik
+
+    dynamic_shape_support_count = 48
+    if len(input_values) <= dynamic_shape_support_count:
+        return _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name)
 
     check_list = ("float32", "int8", "int16", "int32", "int64", "uint8",
                   "uint16", "uint32", "uint64", "float16")

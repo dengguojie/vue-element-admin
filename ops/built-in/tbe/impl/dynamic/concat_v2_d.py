@@ -475,6 +475,8 @@ class ConcatV2:
                     with inst.else_scope():
                         self._concat_large_inner(i)
 
+    def build(self):
+        inst = self.tik_instance
         opt_config = {"out_of_bound_sync_check": True,
                       "enable_const_fold": True}
         inst.BuildCCE(kernel_name=self.kernel_name, inputs=self.input_tensors, outputs=(self.output_tensor,),
@@ -1302,4 +1304,5 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
             break
 
     concat_instance = ConcatV2(input_values, axis, kernel_name)
-    return concat_instance.concat_compute()
+    concat_instance.concat_compute()
+    return concat_instance.build()
