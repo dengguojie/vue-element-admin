@@ -29,24 +29,29 @@ class OpFileGenerator:
     @staticmethod
     def _create_op_file(argument: ArgParser):
         if argument.framework in utils.FMK_MS:
-            if argument.core_type == utils.CoreType.AICORE:
+            if argument.core_type == utils.AICORE:
                 utils.print_info_log(
                     "Start to generator mindspore operator files.")
                 return OpFileMindSpore(argument)
 
-            if argument.core_type == utils.CoreType.AICPU:
+            if argument.core_type == utils.AICPU:
                 return None
 
-        if argument.core_type == utils.CoreType.AICORE:
+        if argument.core_type == utils.AICORE:
             utils.print_info_log(
                 "Start to generator aicore operator files.")
             return OpFileAiCore(argument)
-        else:
-            utils.print_info_log("Start to generator aicpu operator files.")
-            return OpFileAiCpu(argument)
+        utils.print_info_log("Start to generator aicpu operator files.")
+        return OpFileAiCpu(argument)
 
     def generate(self):
         """
         generate op files
         """
         self.op_file.generate()
+
+    def get_op_file(self):
+        """
+        get op files
+        """
+        return self.op_file

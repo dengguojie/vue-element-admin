@@ -37,7 +37,7 @@ class OPFile(metaclass=ABCMeta):
         Function Description:
             generate project or only generator an operator according to mode
         """
-        if self.mode == utils.GenModeType.GEN_OPERATOR:
+        if self.mode == utils.GEN_OPERATOR:
             if os.path.isdir(os.path.join(
                     self.output_path, utils.PROJ_MS_NAME)):
                 utils.print_error_log("Mindspore operator cannot be added to "
@@ -108,7 +108,7 @@ class OPFile(metaclass=ABCMeta):
 
     def _generate_onnx_plugin_cmake_list(self, plugin_dir):
         # create and write
-        if self.mode == utils.GenModeType.GEN_PROJECT:
+        if self.mode == utils.GEN_PROJECT:
             cmake_list_path = os.path.join(plugin_dir, "CMakeLists.txt")
             utils.make_dirs(plugin_dir)
             utils.write_files(cmake_list_path, op_tmpl.ONNX_PLUGIN_CMAKLIST)

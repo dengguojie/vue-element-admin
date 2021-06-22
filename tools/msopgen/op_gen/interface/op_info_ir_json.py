@@ -241,16 +241,16 @@ class JsonIROpInfo(OpInfo):
             param_type = self._init_param_type(input_output_map,
                                                input_output_name)
             self._update_parsed_info(prefix, input_output_name, ir_type_list,
-                                     param_type, op_format)
+                                     [param_type, op_format])
         else:
             utils.print_warn_log(
                 "Every value in \"%s\" list should be dict" % prefix)
 
     def _init_ir_type(self, prefix, input_output_name, types):
         ir_type_list = []
-        for t in types:
+        for ir_type in types:
             converted_type = self._mapping_input_output_type(
-                t.strip(), input_output_name)
+                ir_type.strip(), input_output_name)
             if converted_type:
                 ir_type_list += converted_type.split(",")
         if not ir_type_list:
@@ -301,7 +301,9 @@ class JsonIROpInfo(OpInfo):
         return param_type
 
     def _update_parsed_info(self, prefix, input_output_name, ir_type_list,
-                            param_type, op_format):
+                            type_format):
+        param_type = type_format[0]
+        op_format = type_format[1]
         if prefix == "input_desc":
             if input_output_name in self.parsed_input_info:
                 utils.print_warn_log("The input name \"%s\" is duplicate.  "
@@ -369,5 +371,4 @@ class JsonIROpInfo(OpInfo):
     def _parse_bool_value_for_json(value):
         if value:
             return 'true'
-        else:
-            return "false"
+        return "false"

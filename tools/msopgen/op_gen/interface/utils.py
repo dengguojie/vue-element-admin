@@ -109,6 +109,14 @@ INFO_IR_TYPES_KEY = "ir_type_list"
 INFO_PARAM_TYPE_KEY = "param_type"
 INFO_PARAM_FORMAT_KEY = "format_list"
 
+# GenModeType
+GEN_PROJECT = '0'
+GEN_OPERATOR = '1'
+
+# CoreType
+AICORE = 0
+AICPU = 1
+
 
 class MsOpGenException(Exception):
     """
@@ -118,31 +126,6 @@ class MsOpGenException(Exception):
     def __init__(self, error_info):
         super().__init__(error_info)
         self.error_info = error_info
-
-
-class GenModeType:
-    """
-       CLass for gen mode type
-       """
-    GEN_PROJECT = '0'
-    GEN_OPERATOR = '1'
-
-
-class CoreType:
-    """
-    The index of Core type
-    """
-    AICORE = 0
-    AICPU = 1
-
-
-class PathType:
-    """
-    The enum for path type
-    """
-    All = 0
-    File = 1
-    Directory = 2
 
 
 def _print_log(level, msg):
@@ -226,9 +209,8 @@ class CheckFromConfig:
         @return: value of config json file
         """
         current_path = os.path.abspath(__file__)
-        transform_json_path = os.path.join(os.path.abspath(
-            os.path.dirname(current_path) + os.path.sep + ".."),
-            "config", "transform.json")
+        transform_json_path = os.path.join(
+            os.path.abspath(os.path.dirname(current_path) + os.path.sep + ".."), "config", "transform.json")
         trans_data = read_json_file(transform_json_path)
 
         if trans_data is None:
@@ -252,11 +234,10 @@ class CheckFromConfig:
         """
         if ir_type in self.ms_io_dtype_list:
             return ir_type
-        else:
-            print_warn_log("The %s 'TypeRange' '%s' in the %s file is "
-                           "unsupported. Please check. If you aren't having "
-                           "problems, just ignore the warning."
-                           % (ir_name, ir_type, file_type))
+        print_warn_log("The %s 'TypeRange' '%s' in the %s file is "
+                       "unsupported. Please check. If you aren't having "
+                       "problems, just ignore the warning."
+                       % (ir_name, ir_type, file_type))
         return ""
 
     def trans_io_dtype(self, ir_type, ir_name, file_type):
@@ -269,11 +250,10 @@ class CheckFromConfig:
         """
         if ir_type in self.io_dtype_map:
             return self.io_dtype_map.get(ir_type)
-        else:
-            print_warn_log("The %s 'TypeRange' '%s' in the %s file is "
-                           "unsupported. Please check. If you aren't having "
-                           "problems, just ignore the warning."
-                           % (ir_name, ir_type, file_type))
+        print_warn_log("The %s 'TypeRange' '%s' in the %s file is "
+                       "unsupported. Please check. If you aren't having "
+                       "problems, just ignore the warning."
+                       % (ir_name, ir_type, file_type))
         return ""
 
     def trans_ir_attr_type(self, attr_type, file_type):
@@ -326,11 +306,10 @@ class CheckFromConfig:
         """
         if tf_type in self.ms_tf_io_dtype_map:
             return self.ms_tf_io_dtype_map.get(tf_type)
-        else:
-            print_warn_log("The '%s' type '%s' in the .txt file is "
-                           "unsupported. Please check. If you aren't "
-                           "having problems, just ignore the warning."
-                           % (name, tf_type))
+        print_warn_log("The '%s' type '%s' in the .txt file is "
+                       "unsupported. Please check. If you aren't "
+                       "having problems, just ignore the warning."
+                       % (name, tf_type))
         return ""
 
     def trans_tf_io_dtype(self, tf_type, name):

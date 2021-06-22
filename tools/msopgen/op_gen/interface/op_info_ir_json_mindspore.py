@@ -9,14 +9,13 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
 from . import utils
-from .arg_parser import ArgParser
 from .op_info_ir_json import JsonIROpInfo
 
 
 class JsonMSIROpInfo(JsonIROpInfo):
-
-    def __init__(self, argument: ArgParser):
-        super().__init__(argument)
+    """
+    CLass for IR OP Info from Json for Mindspore.
+    """
 
     @staticmethod
     def _mapping_input_output_type(ir_type, ir_name):
@@ -30,3 +29,15 @@ class JsonMSIROpInfo(JsonIROpInfo):
         op_format = ",".join("ND" for _ in ir_type_list)
         op_format = op_format.split(",")
         return op_format
+
+    def get_op_path(self):
+        """
+        get op path
+        """
+        return self.op_path
+
+    def get_gen_flag(self):
+        """
+        get gen flag
+        """
+        return self.gen_flag

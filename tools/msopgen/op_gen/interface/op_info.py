@@ -29,3 +29,15 @@ class OpInfo:
         self.parsed_input_info = collections.OrderedDict()
         self.parsed_output_info = collections.OrderedDict()
         self.parsed_attr_info = []
+
+    def get_op_type(self):
+        """
+        get op type
+        """
+        return self.op_type
+
+    def get_fix_op_type(self):
+        """
+        get fix op type
+        """
+        return self.fix_op_type

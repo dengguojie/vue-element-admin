@@ -10,14 +10,25 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 
 from . import utils
 from .op_info_tf import TFOpInfo
-from .op_info_parser import ArgParser
 
 
 class MSTFOpInfo(TFOpInfo):
-
-    def __init__(self, argument: ArgParser):
-        super().__init__(argument)
+    """
+    CLass representing operator info for Mindspore.
+    """
 
     @staticmethod
     def _mapping_input_output_type(tf_type, name):
         return utils.CheckFromConfig().trans_ms_tf_io_dtype(tf_type, name)
+
+    def get_op_path(self):
+        """
+        get op path
+        """
+        return self.op_path
+
+    def get_op_type(self):
+        """
+        get op type
+        """
+        return self.op_type

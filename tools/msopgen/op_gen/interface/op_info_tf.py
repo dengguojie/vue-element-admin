@@ -9,7 +9,6 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
 import re
-import sys
 
 from . import utils
 from .op_info import OpInfo
@@ -240,10 +239,7 @@ class TFOpInfo(OpInfo):
 
     @staticmethod
     def _check_dynamic_io_attr_info(name, value):
-        if name is 'N' and ('>' or '<' in value):
-            return True
-        else:
-            return False
+        return bool(name == 'N' and ('>' or '<' in value))
 
     @staticmethod
     def _mapping_attr_type(tf_type):
@@ -253,3 +249,9 @@ class TFOpInfo(OpInfo):
     def _mapping_input_output_type(tf_type, name):
         # mapping from tf type to D enum
         return utils.CheckFromConfig().trans_tf_io_dtype(tf_type, name)
+
+    def get_op_path(self):
+        """
+        get op path
+        """
+        return self.op_path

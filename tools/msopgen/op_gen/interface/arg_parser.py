@@ -87,8 +87,7 @@ class ArgParser:
                                 dest="input",
                                 default="",
                                 help="<Required> the input file, %s file, "
-                                     "which needs to be existed and readable."
-                                     % (utils.GEN_VALID_TYPE,),
+                                     "which needs to be existed and readable." % (utils.GEN_VALID_TYPE,),
                                 required=True)
         gen_parser.add_argument("-f", "--framework",
                                 dest="framework",
@@ -196,11 +195,11 @@ class ArgParser:
             if len(unit_parse_list) == 1:
                 self._init_core_type(unit_parse_list,
                                      utils.AICPU_CORE_TYPE_LIST,
-                                     utils.CoreType.AICPU)
+                                     utils.AICPU)
             elif len(unit_parse_list) == 2:
                 self._init_core_type(unit_parse_list,
                                      utils.AICORE_CORE_TYPE_LIST,
-                                     utils.CoreType.AICORE)
+                                     utils.AICORE)
             else:
                 self._print_compute_unit_invalid_log()
         self.compute_unit = compute_unit_list
@@ -224,3 +223,16 @@ class ArgParser:
                 utils.MS_OP_GEN_CONFIG_UNSUPPORTED_MODE_ERROR)
         self.mode = mode
         return utils.MS_OP_GEN_NONE_ERROR
+
+    def get_gen_flag(self):
+        """
+        get gen flag
+        """
+        return self.gen_flag
+
+    @staticmethod
+    def get_gen_result():
+        """
+        get gen result
+        """
+        return None

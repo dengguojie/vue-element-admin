@@ -8,8 +8,6 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-import sys
-
 from .arg_parser import ArgParser
 from .op_info_ir import IROpInfo
 from .op_info_tf import TFOpInfo
@@ -37,13 +35,24 @@ class OpInfoParser:
                                  "file as input. ")
             if argument.gen_flag and argument.framework in utils.FMK_MS:
                 return MSIROpInfo(argument)
-            else:
-                return IROpInfo(argument)
+            return IROpInfo(argument)
         if argument.input_path.endswith(utils.INPUT_FILE_JSON):
             if argument.gen_flag and argument.framework in utils.FMK_MS:
                 return JsonMSIROpInfo(argument)
-            else:
-                return JsonIROpInfo(argument)
+            return JsonIROpInfo(argument)
         if argument.gen_flag and argument.framework in utils.FMK_MS:
             return MSTFOpInfo(argument)
         return TFOpInfo(argument)
+
+    def get_op_info(self):
+        """
+        get op info
+        """
+        return self.op_info
+
+    @staticmethod
+    def get_gen_flag():
+        """
+        get gen flag
+        """
+        return None

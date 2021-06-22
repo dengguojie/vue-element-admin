@@ -17,8 +17,8 @@ Function:
 This file mainly set up for op_gen whl package.
 """
 
-from setuptools import setup
 import os
+from setuptools import setup
 os.environ['SOURCE_DATE_EPOCH'] = str(int(os.path.getctime(os.path.realpath(__file__))))
 
 __version__ = "0.1"
@@ -35,6 +35,9 @@ setup_kwargs = {
 
 
 def read_txt(file_name):
+    """
+    read from file
+    """
     return open(file_name).read()
 
 

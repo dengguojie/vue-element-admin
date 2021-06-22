@@ -55,6 +55,18 @@ class IrRow:
             utils.print_error_log("The row information is not enough.")
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
 
+    def get_name(self):
+        """
+        get name
+        """
+        return self.name
+
+    def get_op_type(self):
+        """
+        get op type
+        """
+        return self.op_type
+
 
 class IROpInfo(OpInfo):
     """
@@ -292,8 +304,8 @@ class IROpInfo(OpInfo):
         types = ir_type.split(",")
         # init ir type from TypeRange of IR excel
         ir_type_list = []
-        for t in types:
-            converted_type = self._mapping_input_output_type(t.strip(), ir_name)
+        for type_ir in types:
+            converted_type = self._mapping_input_output_type(type_ir.strip(), ir_name)
             if converted_type:
                 ir_type_list += converted_type.split(",")
         if not ir_type_list:
@@ -392,3 +404,9 @@ class IROpInfo(OpInfo):
     def _mapping_attr_type(attr_type):
         file_type = utils.INPUT_FILE_XLSX
         return utils.CheckFromConfig().trans_ir_attr_type(attr_type, file_type)
+
+    def get_op_path(self):
+        """
+        get op path
+        """
+        return self.op_path
