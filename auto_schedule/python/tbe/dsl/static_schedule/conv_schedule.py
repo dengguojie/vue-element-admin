@@ -1374,7 +1374,7 @@ class CceConvOp:
                                "uint4": 1.0 / 2, "int4": 1.0 / 2}
                 input_data_type = in_dtype
                 w_out = ConvParam.w_out
-                if self._dynamic_flag or ConvParam.l0a_dma_flag:
+                if self._dynamic_flag or ConvParam.l0a_dma_flag or c04_v200_flag:
                     tiling_m = 1
                 else:
                     for m_target in range(32, 0, -1):

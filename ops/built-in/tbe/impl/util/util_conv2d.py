@@ -689,7 +689,7 @@ def _get_minimum_load_L1(shape_fm, shape_filter, strides, pads, dilations, data_
     filter_w_dilation = (shape_filter[3] - 1)*dilate_w + 1
     w_out = (shape_fm[3] + (pad_left + pad_right) - filter_w_dilation) // stridew + 1
     h_out_part = _lcm(w_out, 16) // w_out
-    h_part_length = (h_out_part - 1) * strideh + filter_h_dilation - (pad_top + pad_bottom)
+    h_part_length = (h_out_part - 1) * strideh + filter_h_dilation
     minimum_load_L1 = 2 * 1 * 4 * h_part_length * shape_fm[3]
     return minimum_load_L1
 
