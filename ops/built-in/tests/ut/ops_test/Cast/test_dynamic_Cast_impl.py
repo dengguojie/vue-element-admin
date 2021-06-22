@@ -2,6 +2,9 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
+from impl.dynamic.cast import cast
+from te import platform as cce_conf
+import tbe
 
 ut_case = OpUT("Cast", "impl.dynamic.cast", "cast")
 
@@ -111,5 +114,56 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+
+
+def ascend920A_001(test_args):
+    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        cast({"shape": (2, 5), "ori_shape": (2, 5), "range": ((1, None), (1, None)), "format": "NHWC", "ori_format": "NHWC",
+              'dtype': "int64"},
+             {"shape": (2, 5), "ori_shape": (2, 5), "range": ((1, None), (1, None)), "format": "NHWC", "ori_format": "NHWC",
+              'dtype': "float32"},
+             0)
+    cce_conf.cce_conf.te_set_version(test_args)
+
+
+def ascend920A_002(test_args):
+    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        cast({"shape": (2, 5), "ori_shape": (2, 5), "range": ((1, None), (1, None)), "format": "NHWC", "ori_format": "NHWC",
+              'dtype': "float32"},
+             {"shape": (2, 5), "ori_shape": (2, 5), "range": ((1, None), (1, None)), "format": "NHWC", "ori_format": "NHWC",
+              'dtype': "int64"},
+             9)
+    cce_conf.cce_conf.te_set_version(test_args)
+
+
+def ascend920A_003(test_args):
+    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        cast({"shape": (2, 5), "ori_shape": (2, 5), "range": ((1, None), (1, None)), "format": "NHWC", "ori_format": "NHWC",
+              'dtype': "int64"},
+             {"shape": (2, 5), "ori_shape": (2, 5), "range": ((1, None), (1, None)), "format": "NHWC", "ori_format": "NHWC",
+              'dtype': "int32"},
+             3)
+    cce_conf.cce_conf.te_set_version(test_args)
+
+
+def ascend920A_004(test_args):
+    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        cast({"shape": (2, 5), "ori_shape": (2, 5), "range": ((1, None), (1, None)), "format": "NHWC", "ori_format": "NHWC",
+              'dtype': "int32"},
+             {"shape": (2, 5), "ori_shape": (2, 5), "range": ((1, None), (1, None)), "format": "NHWC", "ori_format": "NHWC",
+              'dtype': "int64"},
+             9)
+    cce_conf.cce_conf.te_set_version(test_args)
+
+
+ut_case.add_cust_test_func(test_func=ascend920A_001)
+ut_case.add_cust_test_func(test_func=ascend920A_002)
+ut_case.add_cust_test_func(test_func=ascend920A_003)
+ut_case.add_cust_test_func(test_func=ascend920A_004)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910")

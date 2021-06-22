@@ -59,7 +59,7 @@ def _int32_process(data, dst_type):
     """
     deal with src dtype=int32 case
     """
-    check_list_value = ("bool", "int8", "uint8", "float16", "float32")
+    check_list_value = ("bool", "int8", "uint8", "float16", "float32", "int64")
     para_check.check_dtype(dst_type, check_list_value, param_name="from_int32_to_dsttype")
     if dst_type == "bool":
         const_one = tvm.const(1.0, "float16")
@@ -96,17 +96,22 @@ def _int32_process(data, dst_type):
     if dst_type == "float16":
         return tbe.cast_to(data, "float16")
 
+    if dst_type == "int64":
+        return tbe.cast_to(data, "int64")
+
 
 def _float32_process(data, dst_type):
     """
     deal with src dtype=float32 case
     """
-    check_list_value = ("int32", "float16")
+    check_list_value = ("int32", "float16", "int64")
     para_check.check_dtype(dst_type, check_list_value, param_name="from_fp32_to_dsttype")
     if dst_type == "int32":
         return tbe.cast_to(data, "int32")
     if dst_type == "float16":
         return tbe.cast_to(data, "float16")
+    if dst_type == "int64":
+        return tbe.trunc(data, "int64")
 
 
 def _float16_process(data, dst_type):
@@ -134,6 +139,19 @@ def _float16_process(data, dst_type):
         return tbe.cast_to(result, "uint8", True)
 
 
+def _int64_process(data, dst_type):
+    """
+    deal with src dtype=int64 case
+    """
+    check_list_value = ("int32", "float32")
+    para_check.check_dtype(dst_type, check_list_value, param_name="from_int64_to_dsttype")
+    if dst_type == "float32":
+        return tbe.round(data, "float32")
+
+    if dst_type == "int32":
+        return tbe.cast_to(data, "int32")
+
+
 def _cast_dsttype_conversion(dst_type):
     if dst_type == 0:
         dst_type = "float32"
@@ -145,6 +163,8 @@ def _cast_dsttype_conversion(dst_type):
         dst_type = "int32"
     if dst_type == 4:
         dst_type = "uint8"
+    if dst_type == 9:
+        dst_type = "int64"
     if dst_type == 10:
         dst_type = "uint64"
     if dst_type == 12:
@@ -167,13 +187,15 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     if src_type == "float16":
         check_list = ["float32", "int32", "uint8"]
     elif src_type == "float32":
-        check_list = ["float16", "int32"]
+        check_list = ["float16", "int32", "int64"]
     elif src_type == "int8":
         check_list = ["float32", "float16", "int32", "uint8"]
     elif src_type == "uint8":
         check_list = ["float32", "float16", "int32"]
     elif src_type == "int32":
-        check_list = ["bool", "uint8", "int8", "float32", "float16"]
+        check_list = ["bool", "uint8", "int8", "float32", "float16", "int64"]
+    elif src_type == "int64":
+        check_list = ["float32", "int32"]
 
     if dst_type in check_list:
         return True, ""
@@ -205,6 +227,12 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
                         number in [-1023,1023] get correct result
         int32->float16 // only guarantees
                         number in [-1023,1023] get correct result
+
+        begin from ascend920, support the following type conversion
+        int64->float32
+        float32->int64
+        int64->int32
+        int32->int64
     Parameters
     ----------
     placeholders: list.
@@ -220,7 +248,7 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     """
     src_data_type = data.dtype
     para_check.check_dtype(src_data_type,
-                           ("float16", "float32", "int8", "uint8", "int32"),
+                           ("float16", "float32", "int8", "uint8", "int32", "int64"),
                            param_name="input_x")
 
     if src_data_type in ("int8", "uint8"):
@@ -234,6 +262,9 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
 
     if src_data_type == "int32":
         return _int32_process(data, dst_type)
+
+    if src_data_type == "int64":
+        return _int64_process(data, dst_type)
 
 
 @register_operator("Cast")
@@ -261,6 +292,11 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
         int32->float16 // only guarantees
                         number in [-1023,1023] get correct result
 
+        begin from ascend920, support the following type conversion
+        int64->float32
+        float32->int64
+        int64->int32
+        int32->int64
     Parameters
     ----------
     input_x : dict
