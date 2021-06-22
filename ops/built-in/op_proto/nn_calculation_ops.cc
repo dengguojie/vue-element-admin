@@ -906,13 +906,11 @@ VERIFY_FUNC_REG(DepthwiseConv2D, DepthwiseConv2DVerify);
 
 static graphStatus VerifyDepthwiseConv2DbpPadding(ge::Operator& op) {
   std::string pad;
-  if (GRAPH_SUCCESS == op.GetAttr("padding", pad)) {
-    if (pad.compare("SAME") != 0 && pad.compare("VALID") != 0) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "padding must be SAME or VALID. actual is: %s", pad.c_str());
-      return GRAPH_FAILED;
-    }
-  } else {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get padding failed.");
+  if (op.GetAttr("padding", pad) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  if (pad.compare("SAME") != 0 && pad.compare("VALID") != 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "padding must be SAME or VALID. actual is: %s", pad.c_str());
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -920,18 +918,16 @@ static graphStatus VerifyDepthwiseConv2DbpPadding(ge::Operator& op) {
 
 static graphStatus VerifyDepthwiseConv2DbpPads(ge::Operator& op) {
   std::vector<int64_t> pads;
-  if (GRAPH_SUCCESS == op.GetAttr("pads", pads)) {
-    if (pads.size() < 4) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "op pads's size is illegal,pads.size:%d", pads.size());
-      return GRAPH_FAILED;
-    }
-    OP_LOGI(op.GetName().c_str(), "op pads: top:%d,bottom:%d,left:%d,right:%d", pads[0], pads[1], pads[2], pads[3]);
-    if (pads[0] < 0 || pads[1] < 0 || pads[2] < 0 || pads[3] < 0) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "op get pads is illegal");
-      return GRAPH_FAILED;
-    }
-  } else {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "op get pads failed.");
+  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  if (pads.size() < 4) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "op pads's size is illegal,pads.size:%zu", pads.size());
+    return GRAPH_FAILED;
+  }
+  OP_LOGI(op.GetName().c_str(), "op pads: top:%d,bottom:%d,left:%d,right:%d", pads[0], pads[1], pads[2], pads[3]);
+  if (pads[0] < 0 || pads[1] < 0 || pads[2] < 0 || pads[3] < 0) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "op get pads is illegal");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -974,6 +970,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInputD, DepthwiseConv2DBackpropInputDVer
     }
   }
   if (GRAPH_SUCCESS != VerifyDepthwiseConv2DbpPads(op)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get pads failed.");
     return GRAPH_FAILED;
   }
 
@@ -1361,6 +1358,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerif
   }
 
   if (VerifyDepthwiseConv2DbpPadding(op) != GRAPH_SUCCESS && VerifyDepthwiseConv2DbpPads(op) != GRAPH_SUCCESS) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get padding and pads both failed.");
     return GRAPH_FAILED;
   }
 
@@ -1621,6 +1619,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDV
     }
   }
   if (GRAPH_SUCCESS != VerifyDepthwiseConv2DbpPads(op)) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get pads failed.");
     return GRAPH_FAILED;
   }
 
@@ -1775,9 +1774,8 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVer
       return GRAPH_FAILED;
     }
   }
-  if (GRAPH_SUCCESS == VerifyDepthwiseConv2DbpPadding(op) || GRAPH_SUCCESS == VerifyDepthwiseConv2DbpPads(op)) {
-    return GRAPH_SUCCESS;
-  } else {
+  if (VerifyDepthwiseConv2DbpPadding(op) != GRAPH_SUCCESS && VerifyDepthwiseConv2DbpPads(op) != GRAPH_SUCCESS) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get padding and pads both failed.");
     return GRAPH_FAILED;
   }
 
