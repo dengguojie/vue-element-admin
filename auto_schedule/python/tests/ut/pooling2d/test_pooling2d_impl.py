@@ -618,6 +618,18 @@ case17 = {
                         "impl_mode": "high_performance"}
 }
 
+case18 = {
+    "params": [{"shape": (1, 4, 16, 16, 16), "dtype": "float16"},
+               {"shape": (1, 1, 1, 1, 1), "dtype": "float16"},
+               ],
+    "case_name": "test_pooling2d_gmp_18",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (16, 16), "stride": (2, 2), "pooling_mode": "GAP", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
 compile_case_list = [
     case1,
     case2,
@@ -635,7 +647,8 @@ compile_case_list = [
     case14,
     case15,
     case16,
-    case17
+    case17,
+    case18
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)

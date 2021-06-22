@@ -113,12 +113,55 @@ case5 = {
                         "fusion_params": {}, "impl_mode": "high_performance"}
 }
 
+case6 = {
+    "params": [{"shape": (2, 4, 16, 16, 16), "dtype": "float16"},
+               {"shape": (2, 1, 1, 1, 1), "dtype": "float16"},
+               4
+               ],
+    "case_name": "test_pooling2d_gmp_strided_write1",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (16, 16), "stride": (2, 2), "pooling_mode": "GMP", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case7 = {
+    "params": [{"shape": (2, 4, 16, 16, 16), "dtype": "float16"},
+               {"shape": (2, 1, 1, 1, 1), "dtype": "float16"},
+               4
+               ],
+    "case_name": "test_pooling2d_gmp_strided_write2",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (16, 16), "stride": (2, 2), "pooling_mode": "GMP", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {"l1_fusion_type":0}, "impl_mode": "high_performance"}
+}
+
+case8 = {
+    "params": [{"shape": (48, 4, 16, 16, 16), "dtype": "float16"},
+               {"shape": (48, 1, 1, 1, 1), "dtype": "float16"},
+               4
+               ],
+    "case_name": "test_pooling2d_gmp_strided_write3",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (16, 16), "stride": (2, 2), "pooling_mode": "GMP", "padding_mode": "SAME",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+
 compile_case_list = [
     case1,
     case2,
     case3,
     case4,
     case5,
+    case6,
+    case7,
+    case8,
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)
