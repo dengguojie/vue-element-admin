@@ -198,6 +198,9 @@ class AdvanceIniParser:
         return self.advance_ini_args.atc_singleop_advance_option
 
     def get_performance_mode_flag(self):
+        """
+        get performance mode flag.
+        """
         if self.advance_ini_args.performance_mode not in utils.TRUE_OR_FALSE_LIST or \
                 self.advance_ini_args.performance_mode == utils.TRUE_OR_FALSE_LIST[1]:
             return False

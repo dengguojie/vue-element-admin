@@ -14,9 +14,6 @@ try:
     import importlib
     import functools
     from . import utils
-    from . import st_report
-    from . import op_st_case_info
-    from op_test_frame.common import op_status
     from . import dynamic_handle
 except ImportError as import_error:
     sys.exit(
@@ -157,6 +154,7 @@ class DataGenerator:
             data = data.astype(real_dtype)
         return data
 
+    # pylint: disable=too-many-arguments
     def _gen_input_data(self, input_shape, dtype, range_min, range_max,
                         input_desc, file_path):
         value = input_desc.get('value')
@@ -327,6 +325,3 @@ class DataGenerator:
                                      "data:%s." % expect_data_path)
                 expect_data_paths.append(expect_data_path)
         return expect_data_paths
-
-
-

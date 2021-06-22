@@ -56,8 +56,7 @@ class OpSTCase:
         op_case = OpSTCase(case_name=json_obj["case_name"],
                            op_params=json_obj["op_params"])
         op_case.expect_data_paths = json_obj["expect_data_paths"]
-        op_case.planned_output_data_paths = json_obj[
-                                                "planned_output_data_paths"]
+        op_case.planned_output_data_paths = json_obj["planned_output_data_paths"]
         op_case.input_data_paths = json_obj["input_data_path"]
         return op_case
 

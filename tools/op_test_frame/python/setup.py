@@ -12,21 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""setup.py"""
 
+import os
 from setuptools import setup
 from setuptools import find_packages
 from setuptools.dist import Distribution
-import os
+
 os.environ['SOURCE_DATE_EPOCH'] = str(int(os.path.getctime(os.path.realpath(__file__))))
 
 __version__ = "0.1"
 
 
 class BinaryDistribution(Distribution):
-    def has_ext_modules(self):
+    """
+    The class for binary distribution.
+    """
+
+    @staticmethod
+    def has_ext_modules():
+        """
+        has_ext_modules
+        """
         return True
 
-    def is_pure(self):
+    @staticmethod
+    def is_pure():
+        """
+        is_pure
+        """
         return False
 
 
@@ -41,6 +55,9 @@ setup_kwargs = {
 
 
 def read_txt(file_name):
+    """
+    read_txt
+    """
     return open(file_name).read()
 
 setup(

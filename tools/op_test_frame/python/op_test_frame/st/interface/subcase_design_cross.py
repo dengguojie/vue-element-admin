@@ -73,7 +73,7 @@ class SubCaseDesignCross(SD.SubCaseDesign):
     def __init__(self, current_json_path, json_obj, case_index,
                  total_case_list, report, multi):
         super(SubCaseDesignCross, self).__init__(current_json_path, json_obj, case_index,
-                         total_case_list, report)
+                                                 total_case_list, report)
         self.multi = multi
 
     def _get_data_distribute_list(self, input_desc):

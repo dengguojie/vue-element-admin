@@ -36,12 +36,12 @@ def check_not_dynamic_shape(shape_list):
     for dim in shape_list:
         if isinstance(dim, list):
             for item in dim:
-                if item == utils.SHAPE_DYNAMIC_SCENARIOS_ONE \
-                        or item == utils.SHAPE_DYNAMIC_SCENARIOS_TWO:
+                if item in (utils.SHAPE_DYNAMIC_SCENARIOS_ONE,
+                            utils.SHAPE_DYNAMIC_SCENARIOS_TWO):
                     return True
         elif isinstance(dim, int):
-            if dim == utils.SHAPE_DYNAMIC_SCENARIOS_ONE \
-                    or dim == utils.SHAPE_DYNAMIC_SCENARIOS_TWO:
+            if dim in (utils.SHAPE_DYNAMIC_SCENARIOS_ONE,
+                        utils.SHAPE_DYNAMIC_SCENARIOS_TWO):
                 return True
     return False
 
@@ -56,8 +56,8 @@ def set_typical_shape_in_cur_params(cur_params, tensor, current_json_path):
     """update cur_params dict"""
     shape_list = cur_params.get('shape')
     for dim in shape_list:
-        if dim == utils.SHAPE_DYNAMIC_SCENARIOS_ONE \
-                or dim == utils.SHAPE_DYNAMIC_SCENARIOS_TWO:
+        if dim in (utils.SHAPE_DYNAMIC_SCENARIOS_ONE,
+                   utils.SHAPE_DYNAMIC_SCENARIOS_TWO):
             typical_shape_list = tensor.get(utils.TYPICAL_SHAPE)
             if typical_shape_list is None:
                 utils.print_error_log("Please add \"typical_shape\" filed in "
@@ -66,13 +66,12 @@ def set_typical_shape_in_cur_params(cur_params, tensor, current_json_path):
                                       % current_json_path)
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_NONE_TYPICAL_SHAPE_ERROR)
-            else:
+            if typical_shape_list is not None:
                 cur_params.update({utils.TYPICAL_SHAPE: typical_shape_list[0]})
             # dynamic shape scenarios two, need to remove shape_range.
-            if dim == utils.SHAPE_DYNAMIC_SCENARIOS_TWO\
+            if dim == utils.SHAPE_DYNAMIC_SCENARIOS_TWO \
                     and cur_params.get(utils.SHAPE_RANGE):
                 cur_params.pop(utils.SHAPE_RANGE)
-    return
 
 
 def replace_shape_to_typical_shape(op_desc_dict):

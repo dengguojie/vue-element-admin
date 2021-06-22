@@ -30,6 +30,9 @@ ONLINE_PROF_MAX_PMU_NUM = 8
 
 
 class rtDevBinary_t(ctypes.Structure):
+    """
+    Class rtDevBinary_t
+    """
     _fields_ = [('magic', ctypes.c_uint32),
                 ('version', ctypes.c_uint32),
                 ('data', ctypes.c_char_p),
@@ -37,6 +40,9 @@ class rtDevBinary_t(ctypes.Structure):
 
 
 class rtProfDataInfo_t(ctypes.Structure):
+    """
+    Class rtProfDataInfo_t
+    """
     _fields_ = [('stubfunc', ctypes.c_void_p),
                 ('blockDim', ctypes.c_uint32),
                 ('args', ctypes.c_void_p),
@@ -49,6 +55,9 @@ class rtProfDataInfo_t(ctypes.Structure):
 
 
 class rtDeviceInfo_t(ctypes.Structure):
+    """
+    Class rtDeviceInfo_t
+    """
     _fields_ = [('env_type', ctypes.c_uint8),
                 ('ctrl_cpu_ip', ctypes.c_uint32),
                 ('ctrl_cpu_core_num', ctypes.c_uint32),
@@ -75,6 +84,9 @@ kernel_name_cache = []
 
 
 class AscendRTSApi:
+    """
+    Class AscendRTSApi
+    """
     def __init__(self, simulator_mode: str = None, soc_version: str = None, simulator_lib_path: str = None,
                  simulator_dump_path: str = "./model"):
         """
@@ -160,6 +172,7 @@ class AscendRTSApi:
     def _dll_simulator_so(self, so_path_list, addition_ld_lib_paths, simulator_dump_path):
         os.environ['LD_LIBRARY_PATH'] += ":" + addition_ld_lib_paths
         os.environ['CAMODEL_LOG_PATH'] = simulator_dump_path
+        so_path = ''
         for so_path in so_path_list[:-1]:
             try:
                 so_handler = ctypes.CDLL(so_path, mode=ctypes.RTLD_GLOBAL)
@@ -209,6 +222,9 @@ class AscendRTSApi:
         self.device_id = device_id
 
     def get_device_info(self, device_id: int, module_type: str, info_type: str):
+        """
+        get device info
+        """
         c_info = (ctypes.c_int64 * 8)()
         module_type = rts_info.RT_MODULE_TYPE[module_type]
         info_type = rts_info.RT_INFO_TYPE[info_type]
@@ -495,7 +511,7 @@ class AscendRTSApi:
         else:
             c_buffer = ctypes.string_at(c_buffer_p, data_size)
         return c_buffer, c_buffer_p
-
+    # pylint: disable=unused-argument
     def memcpy(self, c_memory_p: ctypes.c_void_p, memory_size: int,
                data: Union[bytes, ctypes.c_void_p], data_size: int,
                memcpy_kind: str = "RT_MEMCPY_HOST_TO_HOST", retry_count: int = 0) -> None:
@@ -534,7 +550,7 @@ class AscendRTSApi:
                                         rts_info.RT_MEMCPY_KIND[memcpy_kind])
         try:
             self.parse_error(rt_error, "rtMemcpy")
-        except:
+        except Exception as err:
             if retry_count < 3:
                 retry_count += 1
                 time.sleep(1)
@@ -626,11 +642,17 @@ class AscendRTSApi:
         return c_memory_p
 
     def free(self, c_memory_p: ctypes.c_void_p):
+        """
+        free
+        """
         self.rtsdll.rtFree.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtFree(c_memory_p)
         self.parse_error(rt_error, "rtFree")
 
     def host_free(self, c_memory_p: ctypes.c_void_p):
+        """
+        host free
+        """
         self.rtsdll.rtFreeHost.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtFreeHost(c_memory_p)
         self.parse_error(rt_error, "rtFreeHost")
@@ -640,6 +662,9 @@ class AscendRTSApi:
                       block_dim: int,
                       args: tuple, s_args: int,
                       sm_desc: ctypes.c_uint64, stream: ctypes.c_uint64) -> None:
+        """
+        launch kernel
+        """
         c_block_dim = ctypes.c_uint32(block_dim)
         c_args = ctypes.c_uint64 * s_args
         c_args_p = c_args(*args)
@@ -655,11 +680,17 @@ class AscendRTSApi:
         self.parse_error(rt_error, "rtKernelLaunch")
 
     def synchronize_with_stream(self, stream: ctypes.c_uint64) -> None:
+        """
+        synchronize with stream
+        """
         self.rtsdll.rtStreamSynchronize.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtStreamSynchronize(stream)
         self.parse_error(rt_error, "rtStreamSynchronize")
 
     def reset(self, device_id=None):
+        """
+        reset
+        """
         if device_id is None:
             device_id = self.device_id
         self.rtsdll.rtDeviceReset.restype = ctypes.c_uint64
@@ -668,16 +699,25 @@ class AscendRTSApi:
         self._clear_env()
 
     def start_online_profiling(self, stream: ctypes.c_uint64, profiling_count: int):
+        """
+        start online profiling
+        """
         self.rtsdll.rtStartOnlineProf.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtStartOnlineProf(stream, ctypes.c_uint32(profiling_count))
         self.parse_error(rt_error, "rtStartOnlineProf")
 
     def stop_online_profiling(self, stream: ctypes.c_uint64):
+        """
+        stop online profiling
+        """
         self.rtsdll.rtStopOnlineProf.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtStopOnlineProf(stream)
         self.parse_error(rt_error, "rtStopOnlineProf")
 
     def get_online_profiling_data(self, stream: ctypes.c_uint64, profiling_count: int):
+        """
+        get online profiling data
+        """
         c_structs = (rtProfDataInfo_t * profiling_count)()
         c_structs_p = ctypes.cast(c_structs, ctypes.POINTER(rtProfDataInfo_t))
         c_profdata_id = ctypes.c_uint32(profiling_count)
@@ -695,6 +735,9 @@ class AscendRTSApi:
         return rts_info.RT_ERROR_CODE_DICT[error_type][error_code]
 
     def parse_error(self, rt_error: ctypes.c_uint64, rt_api_name: str, extra_info: str = "") -> None:
+        """
+        parse error
+        """
         if isinstance(rt_error, ctypes.c_uint64):
             rt_error = rt_error.value
         elif isinstance(rt_error, int):
@@ -717,6 +760,9 @@ class AscendRTSApi:
                            + self._parse_error_code(rt_error_type, rt_error_code) + extra_info)
 
     def get_memory_info_ex(self, memory_info_type: str):
+        """
+        get memory info ex
+        """
         if memory_info_type not in rts_info.MEMORY_INFO_TYPE:
             raise RuntimeError("Invalid memory info type: %s" % memory_info_type)
         _free = (ctypes.c_size_t * 1)()

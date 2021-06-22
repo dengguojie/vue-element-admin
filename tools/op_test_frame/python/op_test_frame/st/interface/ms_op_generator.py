@@ -18,7 +18,6 @@ try:
     from shutil import copy2
     from shutil import Error
     from op_test_frame.st.interface import utils
-    from op_test_frame.st.interface import st_report
     from op_test_frame.st.interface import op_st_case_info
     from op_test_frame.st.template import code_snippet
     from op_test_frame.common import op_status
@@ -27,6 +26,7 @@ except (ImportError,) as import_error:
         "[ms_op_generator]Unable to import module: %s." % str(import_error))
 
 
+# pylint: disable=too-many-arguments
 def _create_ms_op_json_content(testcase_list):
     content = []
     for testcase_struct in testcase_list:
@@ -64,6 +64,7 @@ def _create_ms_op_json_content(testcase_list):
         return str(json.dumps(content, sort_keys=True, indent=2))
     except TypeError:
         utils.print_error_log("")
+    return None
 
 
 def _write_content_to_file(content, file_path):
@@ -217,12 +218,11 @@ class MsOpGenerator:
         op_name = self.testcase_list[0]['op']
         op_name_lower = utils.fix_name_lower_with_under(op_name)
         ms_param_type_list = self._get_mindspore_input_param_type(op_name_lower)
-        testcase_test_net_content += code_snippet.TESTCASE_IMPORT_CONTENT \
-            .format(
+        testcase_test_net_content += code_snippet. \
+            TESTCASE_IMPORT_CONTENT.format(
             import_op=op_name_lower,
             op_name=op_name,
             device_id=self.device_id)
-
         # generate test_sub_case function
         testcase_test_net_func_content = ''
         for testcase_struct in self.testcase_list:
@@ -254,7 +254,7 @@ class MsOpGenerator:
                 tensor_desc = code_snippet.TESTCASE_TEST_TENSOR.format(
                     input_name=input_name)
                 tensor_list.append(tensor_desc)
-                bin_file = output_abs_paths[count_input-1]
+                bin_file = output_abs_paths[count_input - 1]
                 ms_type = input_desc['type']
                 inputs += code_snippet.TESTCASE_TEST_NET_INPUT.format(
                     input_name=input_name,

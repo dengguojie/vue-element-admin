@@ -1,8 +1,8 @@
 import os
-from . import utils
 import time
 import numpy as np
 from op_test_frame.common import op_status
+from . import utils
 from . import op_st_case_info
 
 
@@ -16,8 +16,7 @@ def _cal_relative_diff(real_data, expect_data, diff_thd, type_str='fp16'):
     if abs(float(real_data) - float(expect_data)) < diff_thd:
         result = diff
     else:
-        result = diff / (
-                float(max(abs(real_data), abs(expect_data))) + 10e-10)
+        result = diff / (float(max(abs(real_data), abs(expect_data))) + 10e-10)
     return result
 
 
@@ -81,9 +80,10 @@ def _display_output(real_data, expect_data, start, end, diff_thd):
                 _cal_relative_diff(expect_data[j], real_data[j], diff_thd)))
 
 
+# pylint: disable=unused-argument
 def _display_error_output(real_data, expect_data, err_idx, relative_diff, start, end, diff_thd):
     utils.print_info_log('Error '
-               'Line-----------------------------------------------------------------------------')
+                         'Line-----------------------------------------------------------------------------')
     utils.print_info_log('Loop \t ExpectOut \t RealOut \t FpDiff \t RateDiff')
     utils.print_info_log('---------------------------------------------------------------------------------------')
     count = 0
@@ -96,7 +96,8 @@ def _display_error_output(real_data, expect_data, err_idx, relative_diff, start,
                 relative_diff[count - 1]))
         elif count == 10:
             dot_3 = '...'
-            utils.print_info_log('%08s \t %07s \t %07s \t %07s \t %07s  \t %07s ' % (dot_3, dot_3, dot_3, dot_3, dot_3, dot_3))
+            utils.print_info_log(
+                '%08s \t %07s \t %07s \t %07s \t %07s  \t %07s ' % (dot_3, dot_3, dot_3, dot_3, dot_3, dot_3))
     utils.print_info_log('---------------------------------------------------------------------------------------')
 
 
@@ -205,10 +206,8 @@ def compare2(result_dir, expect_dir):
                                                          cpu_output)
         result_list.append([result, error_percent, max_error])
 
-    utils.print_info_log(
-        'End to compare result. Duration:%0.2f second.' % (
-                time.time() - start_time))
-    return
+    utils.print_info_log('End to compare result. Duration:%0.2f second.' % (
+            time.time() - start_time))
 
 
 def compare(report, run_dir):
@@ -258,9 +257,8 @@ def compare(report, run_dir):
             _get_run_stage_result(result, case_name, case_report)
     # exist expect func, print compare cost time.
     if is_compare:
-        utils.print_info_log(
-            'End to compare result. Duration:%0.2f second.' % (
-                    time.time() - start_time))
+        utils.print_info_log('End to compare result. Duration:%0.2f second.' % (
+                time.time() - start_time))
 
 
 def _get_run_stage_result(result, case_name, case_report):

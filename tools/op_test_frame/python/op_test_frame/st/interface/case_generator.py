@@ -17,16 +17,16 @@ try:
     import re
     import importlib
     from . import utils
-    from . import dynamic_handle
     from .model_parser import get_model_nodes
     from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
 except ImportError as import_error:
     sys.exit(
         "[case_generator] Unable to import module: %s." % str(import_error))
+# pylint: disable=unused-variable
 
 INI_INPUT = 'input'
 INI_OUTPUT = 'output'
-PY_INPUT_OUTPUT = ['inputs', 'outputs']
+IO_TYPE = ['inputs', 'outputs']
 OP_NAME = 'op_name'
 REQUIRED_OP_INFO_KEYS = ["paramType", "name"]
 PARAM_TYPE_VALID_VALUE = ["dynamic", "optional", "required"]
@@ -81,6 +81,27 @@ class CaseGenerator:
             new_value.append(list(map(int, item.split(','))))
         return new_value
 
+    def _get_attr_type_list_value(self, attr_type, default_value_str):
+        default_value = None
+        if default_value_str[0] != '[' or default_value_str[-1] != ']':
+            raise ValueError
+        if attr_type == 'listListInt':
+            default_value = self._parse_list_list_int_value(
+                default_value_str)
+        if default_value_str == "[]":
+            return []
+        value_list = default_value_str[1:-1].split(',')
+        if attr_type == 'listInt':
+            default_value = list(map(int, value_list))
+        elif attr_type == 'listFloat':
+            default_value = list(map(float, value_list))
+        elif attr_type == 'listStr':
+            default_value = [x.strip() for x in value_list]
+        elif attr_type == 'listBool':
+            default_value = [self._parse_bool_value(x) for x in
+                             value_list]
+        return default_value
+
     def _get_default_attr_value(self, attr_type, default_value_str, attr_name):
         default_value_str = default_value_str.strip()
         default_value = None
@@ -94,23 +115,8 @@ class CaseGenerator:
             elif attr_type == 'str':
                 default_value = default_value_str
             elif attr_type.startswith('list'):
-                if default_value_str[0] != '[' or default_value_str[-1] != ']':
-                    raise ValueError
-                if attr_type == 'listListInt':
-                    default_value = self._parse_list_list_int_value(
-                        default_value_str)
-                if default_value_str == "[]":
-                    return []
-                value_list = default_value_str[1:-1].split(',')
-                if attr_type == 'listInt':
-                    default_value = list(map(int, value_list))
-                elif attr_type == 'listFloat':
-                    default_value = list(map(float, value_list))
-                elif attr_type == 'listStr':
-                    default_value = [x.strip() for x in value_list]
-                elif attr_type == 'listBool':
-                    default_value = [self._parse_bool_value(x) for x in
-                                     value_list]
+                default_value = self._get_attr_type_list_value(
+                    attr_type, default_value_str)
         except ValueError as ex:
             utils.print_warn_log(
                 'The default value(%s) is invalid for type(%s). Please modify '
@@ -185,33 +191,38 @@ class CaseGenerator:
                 ' the reason is %s.' % (module_name, class_name, error))
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-
-        if mindspore_ops_info.get(OP_NAME) is None:
-            utils.print_warn_log("The op_name is null, please modify it.")
-        self.op_type = mindspore_ops_info.get(OP_NAME)
+        self._get_basic_op_info_mindspore(mindspore_ops_info)
+        # update mindspore operation of attr information in op_info
         if mindspore_ops_info.get('attr'):
-            # update mindspore operation of attr information in op_info
             for attr_info in mindspore_ops_info.get('attr'):
                 if attr_info.get('name') is not None:
                     attr_name = 'attr_' + attr_info.get('name')
                     self.op_info[attr_name] = attr_info
+
+    def _get_basic_op_info_mindspore(self, mindspore_ops_info):
+        """
+        get basic operator information, i/o represent input/output.
+        """
+        if mindspore_ops_info.get(OP_NAME) is None:
+            utils.print_warn_log("The op_name is null, please modify it.")
+        self.op_type = mindspore_ops_info.get(OP_NAME)
         count_input = 0
-        for key in PY_INPUT_OUTPUT:
-            op_info = mindspore_ops_info.get(key)
-            for index in op_info:
-                if not index.get('name'):
+        for i_o_type in IO_TYPE:
+            op_info = mindspore_ops_info.get(i_o_type)
+            for i_o_desc in op_info:
+                if not i_o_desc.get('name'):
                     utils.print_error_log(
                         'This %s of this operator is null, '
-                        'please modify it.' % key)
+                        'please modify it.' % i_o_type)
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-                key0 = index.get('name')
-                info = "{}{}".format(key[:-1], count_input)
-                if info not in self.op_info:
-                    self.op_info[info] = {}
-                self.op_info[info]['name'] = key0
-                self.op_info[info]['paramType'] = index.get('param_type')
-                self.op_info[info]['shape'] = index.get('shape')
+                op_name = i_o_desc.get('name')
+                op_key = "{}{}".format(i_o_type[:-1], count_input)
+                if op_key not in self.op_info:
+                    self.op_info[op_key] = {}
+                self.op_info[op_key]['name'] = op_name
+                self.op_info[op_key]['paramType'] = i_o_desc.get('param_type')
+                self.op_info[op_key]['shape'] = i_o_desc.get('shape')
 
                 dtype = []
                 for value in mindspore_ops_info.get('dtype_format'):
@@ -223,7 +234,7 @@ class CaseGenerator:
                             utils.OP_TEST_GEN_INVALID_DATA_ERROR)
                     dtype.append(value[count_input][0])
                 dtypes = ','.join(dtype)
-                self.op_info[info]['dtype'] = dtypes
+                self.op_info[op_key]['dtype'] = dtypes
                 count_input += 1
 
     @staticmethod
@@ -246,6 +257,56 @@ class CaseGenerator:
                     'Only supports %s. Please modify it.' % (
                         value, op_info_key, support_list))
 
+    def _check_basic_filed_vaild(self, dtype_count, op_info, op_info_key):
+        # check paramType valid
+        self._check_op_info_list_valid(
+            [op_info["paramType"]], PARAM_TYPE_VALID_VALUE,
+            op_info_key + '.paramType')
+
+        # check dtype valid
+        current_dtype_count = 0
+        if 'dtype' in op_info:
+            dtype_list = op_info["dtype"].split(",")
+            if self.input_file_path.endswith(".py"):
+                self._check_op_info_list_valid(
+                    dtype_list,
+                    WHITE_LISTS.mindspore_type_list,
+                    op_info_key + '.dtype')
+            else:
+                self._check_op_info_list_valid(
+                    dtype_list, WHITE_LISTS.type_list,
+                    op_info_key + '.dtype')
+            current_dtype_count = len(dtype_list)
+            if dtype_count == 0:
+                dtype_count = current_dtype_count
+
+            if dtype_count != current_dtype_count:
+                utils.print_error_log(
+                    'The number of "dtype" of the inputs must be '
+                    'consistent with the number "dtype" of the outputs '
+                    'in %s. Please modify.' % self.input_file_path)
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+        else:
+            op_info["dtype"] = ''
+        # check format valid
+        if 'format' in op_info:
+            format_list = op_info["format"].split(",")
+            self._check_op_info_list_valid(
+                format_list, list(WHITE_LISTS.format_map.keys()),
+                op_info_key + '.format')
+
+            if current_dtype_count != len(format_list):
+                utils.print_error_log(
+                    'The number(%d) of "%s.dtype" is not equal to the '
+                    'number(%d) of "%s.format". Please modify it.' % (
+                        current_dtype_count, op_info_key,
+                        len(format_list), op_info_key))
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+        else:
+            op_info["format"] = ''
+
     def _check_op_info(self):
         utils.print_info_log('Start to check valid for op info.')
         dtype_count = 0
@@ -264,54 +325,8 @@ class CaseGenerator:
                             op_info_key, missing_keys))
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-
-                # check paramType valid
-                self._check_op_info_list_valid(
-                    [op_info["paramType"]], PARAM_TYPE_VALID_VALUE,
-                    op_info_key + '.paramType')
-
-                # check dtype valid
-                current_dtype_count = 0
-                if 'dtype' in op_info:
-                    dtype_list = op_info["dtype"].split(",")
-                    if self.input_file_path.endswith(".py"):
-                        self._check_op_info_list_valid(
-                            dtype_list,
-                            WHITE_LISTS.mindspore_type_list,
-                            op_info_key + '.dtype')
-                    else:
-                        self._check_op_info_list_valid(
-                            dtype_list, WHITE_LISTS.type_list,
-                            op_info_key + '.dtype')
-                    current_dtype_count = len(dtype_list)
-                    if dtype_count == 0:
-                        dtype_count = current_dtype_count
-
-                    if dtype_count != current_dtype_count:
-                        utils.print_error_log(
-                            'The number of "dtype" of the inputs must be consistent with the number "dtype" '
-                            'of the outputs in %s. Please modify.' % self.input_file_path)
-                        raise utils.OpTestGenException(
-                            utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-                else:
-                    op_info["dtype"] = ''
-                # check format valid
-                if 'format' in op_info:
-                    format_list = op_info["format"].split(",")
-                    self._check_op_info_list_valid(
-                        format_list, list(WHITE_LISTS.format_map.keys()),
-                        op_info_key + '.format')
-
-                    if current_dtype_count != len(format_list):
-                        utils.print_error_log(
-                            'The number(%d) of "%s.dtype" is not equal to the '
-                            'number(%d) of "%s.format". Please modify it.' % (
-                                current_dtype_count, op_info_key,
-                                len(format_list), op_info_key))
-                        raise utils.OpTestGenException(
-                            utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-                else:
-                    op_info["format"] = ''
+                # check paramType/dtype/format vaild.
+                self._check_basic_filed_vaild(dtype_count, op_info, op_info_key)
         utils.print_info_log('Finish to check valid for op info.')
 
     def _make_attr(self, key, value):
@@ -374,7 +389,7 @@ class CaseGenerator:
             utils.print_warn_log(
                 "Can't parse operator information of %s in %s,"
                 "please check." % (op_key, head_file))
-            return
+            return None
 
     def _get_aicpu_op_info_from_ini_file(self):
         """
@@ -508,8 +523,6 @@ class CaseGenerator:
                     # parse op_name and type of attr.
                     self._parse_aicpu_attr(line)
                 return True
-            else:
-                return False
         return False
 
     def _find_aicpu_op_proto_path(self):
@@ -535,8 +548,9 @@ class CaseGenerator:
             utils.print_warn_log("There are unavailable operator information "
                                  "in %s." % op_proto_file_path)
 
-    def _generate_aicpu_op_desc(self, value, base_case, op_key):
-        varible_name = value.get('name')
+    @staticmethod
+    def _generate_aicpu_op_desc(value, base_case, op_key):
+        variable_name = value.get('name')
         if value.get('format') is None or len(value.get('format')) == 0:
             op_format = []
         else:
@@ -565,8 +579,8 @@ class CaseGenerator:
             op_desc = {'format': op_format,
                        'type': op_dtype,
                        'shape': []}
-        if varible_name is not None:
-            op_desc.update({'name': varible_name})
+        if variable_name is not None:
+            op_desc.update({'name': variable_name})
         base_case[op_key].append(op_desc)
 
     def _generate_aicpu_base_case(self):

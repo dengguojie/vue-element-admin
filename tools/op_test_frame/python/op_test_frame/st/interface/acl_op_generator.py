@@ -15,7 +15,6 @@ try:
     from shutil import copy2
     from shutil import Error
     from . import utils
-    from . import st_report
     from . import op_st_case_info
     from ..template import code_snippet
     from op_test_frame.common import op_status
@@ -96,7 +95,7 @@ def _write_content_to_file(content, file_path):
             file_object.write(content)
     except OSError as err:
         utils.print_error_log("Unable to write file(%s): %s." % (file_path,
-                              str(err)))
+                                                                 str(err)))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
     utils.print_info_log("Successfully Generated file %s." % file_path)
 
@@ -107,7 +106,7 @@ def _append_content_to_file(content, file_path):
             file_object.write(content)
     except OSError as err:
         utils.print_error_log("Unable to write file(%s): %s." % (file_path,
-                              str(err)))
+                                                                 str(err)))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
     utils.print_info_log("Successfully appended content to " + file_path)
 
@@ -183,8 +182,8 @@ def _create_exact_testcase_content(testcase_struct, device_id):
 
     output_file_path_list = []
     output_num = 0
-    for _ in testcase_struct['output_desc']:
-        output_data_name = testcase_struct['case_name'] + '_output_' + str(
+    for _ in testcase_struct.get('output_desc'):
+        output_data_name = testcase_struct.get('case_name') + '_output_' + str(
             output_num)
         output_data_path = os.path.join("result_files", output_data_name)
         output_file_path_list.append(output_data_path)
@@ -196,35 +195,35 @@ def _create_exact_testcase_content(testcase_struct, device_id):
     all_attr_code_snippet = ""
     if "attr" in testcase_struct.keys():
         attr_index = 0
-        for attr_dic in testcase_struct['attr']:
+        for attr_dic in testcase_struct.get('attr'):
             attr_code_str = "    OpTestAttr attr" + str(attr_index) \
                             + " = {" \
-                            + utils.OP_ATTR_TYPE_MAP[attr_dic['type']] \
-                            + ", \"" + attr_dic['name'] + "\"};\n"
+                            + utils.OP_ATTR_TYPE_MAP.get(attr_dic.get('type')) \
+                            + ", \"" + attr_dic.get('name') + "\"};\n"
             attr_code_str += "    attr" + str(attr_index) + "." \
-                             + utils.ATTR_MEMBER_VAR_MAP[attr_dic['type']] \
+                             + utils.ATTR_MEMBER_VAR_MAP.get(attr_dic.get('type')) \
                              + " = " \
-                             + utils.create_attr_value_str(attr_dic['value']) \
+                             + utils.create_attr_value_str(attr_dic.get('value')) \
                              + ';\n'
             # deal with the list_list_int attr
-            if attr_dic['type'] == "list_list_int":
-                if isinstance(attr_dic['value'], list):
-                    if isinstance(attr_dic['value'][0], list):
+            if attr_dic.get('type') == "list_list_int":
+                if isinstance(attr_dic.get('value'), list):
+                    if isinstance(attr_dic.get('value')[0], list):
                         number_list = list()
-                        for num_list in attr_dic['value']:
+                        for num_list in attr_dic.get('value'):
                             number_list.append(len(num_list))
                         num_str = str(number_list).replace('[', '{') \
                             .replace(']', '}')
                         attr_code_str += "    attr" + str(attr_index) + \
-                                ".listIntNumValues" +\
-                                " = " + num_str + ";\n"
+                                         ".listIntNumValues" +\
+                                         " = " + num_str + ";\n"
             attr_code_str += "    opTestDesc.opAttrVec.push_back(attr" + \
                              str(attr_index) + ");\n"
             all_attr_code_snippet += attr_code_str
             attr_index = attr_index + 1
 
     testcase_content = code_snippet.TESTCASE_CONTENT.format(
-        op_name=testcase_struct['op'],
+        op_name=testcase_struct.get('op'),
         input_shape_data=input_shape_data,
         input_data_type=input_data_type,
         input_format=input_format,
@@ -235,7 +234,7 @@ def _create_exact_testcase_content(testcase_struct, device_id):
         output_format=output_format,
         all_attr_code_snippet=all_attr_code_snippet,
         device_id=device_id,
-        testcase_name=testcase_struct['case_name'])
+        testcase_name=testcase_struct.get('case_name'))
     return testcase_content, output_file_path_list
 
 

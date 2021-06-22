@@ -69,8 +69,8 @@ class OpSTCaseReport:
         """
         if not json_obj:
             return None
-        return OpSTCaseReport(OpSTCaseTrace.parser_json_obj(json_obj[
-                                                                "trace_detail"]))
+        return OpSTCaseReport(OpSTCaseTrace.parser_json_obj(
+            json_obj["trace_detail"]))
 
 
 class OpSTReport:
@@ -141,7 +141,7 @@ run command: %s
 - error count: %d
 ------------------------------------------------------------------------
 """ % (self.run_cmd, self.total_cnt, self.success_cnt, self.failed_cnt,
-            self.err_cnt)
+       self.err_cnt)
         total_txt += "========================================================================\n"
         return total_txt
 

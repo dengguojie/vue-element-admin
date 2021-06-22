@@ -22,12 +22,11 @@ import sys
 import json
 import ctypes
 import shutil
+import numpy as np
 
 from typing import List
 from typing import Dict
 from typing import Union
-
-import numpy as np
 
 from op_test_frame.runtime import AscendRTSApi
 from op_test_frame.common import dtype_trans
@@ -36,6 +35,9 @@ from op_test_frame.utils import file_util
 
 
 class AscendOpKernel:
+    """
+    Class AscendOpKernel
+    """
     def __init__(self, bin_path: str, json_path: str):
         if not os.path.exists(bin_path):
             raise IOError("bin_path not exist, path: %s" % bin_path)
@@ -53,12 +55,21 @@ class AscendOpKernel:
         self.need_do_tiling = False
 
     def is_registered_to_device(self):
+        """
+        check whether registered to device
+        """
         return self.stub_func_p is not None
 
     def set_stub_func_p(self, stub_func_p):
+        """
+        set_stub_func_p
+        """
         self.stub_func_p = stub_func_p
 
     def _parse_json_file(self, json_path):
+        """
+        parse json file
+        """
         with open(json_path) as json_f:
             json_str = json_f.read()
 
@@ -80,17 +91,29 @@ class AscendOpKernel:
             self.tiling_data_size = op_para_size
 
     def set_input_info(self, input_infos):
+        """
+        set input info
+        """
         self.input_infos = input_infos
 
     def set_output_info(self, output_infos):
+        """
+        set output info
+        """
         self.output_infos = output_infos
 
     def set_compile_info(self, compile_info):
+        """
+        set compile info
+        """
         self.compile_info = compile_info
         self.need_do_tiling = True
 
 
 def calc_op_param_size(shape_size, dtype):
+    """
+    calculate operator parameter size
+    """
     if not isinstance(dtype, str) and dtype not in dtype_trans.get_all_str_dtypes():
         raise TypeError("dtype must be str and in [%s]" % ",".join(dtype_trans.get_all_str_dtypes()))
     dtype_size = dtype_trans.get_dtype_byte(dtype)
@@ -98,6 +121,9 @@ def calc_op_param_size(shape_size, dtype):
 
 
 class AscendOp:
+    """
+    Class AscendOp
+    """
     def __init__(self, op_type, op_module_name, op_intf_name):
         if op_type is None or not isinstance(op_type, str):
             raise TypeError("op_type must be a str")
@@ -188,6 +214,9 @@ class AscendOp:
         return kernel_input_list, kernel_output_list
 
     def compile(self, *args, **kwargs) -> AscendOpKernel:
+        """
+        compile
+        """
         import tbe  # pylint: disable=import-outside-toplevel
         import tbe.common.context.op_info as operator_info  # pylint: disable=import-outside-toplevel
         op_func = self._load_op_func()
@@ -217,6 +246,11 @@ class AscendOp:
 
 
 class AscendOpKernelParam:
+    """
+    Class AscendOpKernelParam
+    """
+
+    # pylint: disable=too-many-arguments
     def __init__(self, np_data=None, shape=None, dtype=None, ascend_device: AscendRTSApi = None,
                  hbm_pointer: ctypes.c_void_p = None):
         if np_data is not None:
@@ -239,10 +273,16 @@ class AscendOpKernelParam:
 
     @staticmethod
     def build_op_param_by_np_data(np_data):
+        """
+        build op param by numpy data
+        """
         return AscendOpKernelParam(np_data=np_data)
 
     @staticmethod
     def build_op_param_by_data_file(data_file_path: str, dtype: str, shape: List[int]):
+        """
+        build op param by data file
+        """
         if not os.path.exists(data_file_path):
             raise IOError("data_file_path is not exist, path: %s" % data_file_path)
         np_dtype = dtype_trans.str_to_np_dtype(dtype)
@@ -258,6 +298,9 @@ class AscendOpKernelParam:
         return AscendOpKernelParam(np_data=np_data)
 
     def sync_from_device(self):
+        """
+        sync from device
+        """
         if self._ascend_device and self._hbm_pointer:
             byte_data, _ = self._ascend_device.get_data_from_hbm(self._hbm_pointer, self.size)
             np_data = np.frombuffer(byte_data, dtype=dtype_trans.str_to_np_dtype(self.dtype))
@@ -265,13 +308,22 @@ class AscendOpKernelParam:
             self._np_data = np.reshape(np_data, self.shape)
 
     def sync_to_device(self, ascend_device: AscendRTSApi):
+        """
+        sync_to_device
+        """
         self._ascend_device = ascend_device
         self._hbm_pointer = self._ascend_device.copy_bin_to_hbm(self._np_data.tobytes())
 
     def is_in_device(self):
+        """
+        check whether in_device
+        """
         return self._hbm_pointer is not None
 
     def release_device(self):
+        """
+        release device
+        """
         if self._ascend_device and self._hbm_pointer:
             self._ascend_device.free(self._hbm_pointer)
             self._hbm_pointer = None
@@ -280,19 +332,32 @@ class AscendOpKernelParam:
             self._ascend_device = None
 
     def concat_into_kernel_args(self, kernel_args: List):
+        """
+        concat into kernel args
+        """
         kernel_args.append(self._hbm_pointer)
 
     def get_data(self):
+        """
+        get data
+        """
         self.sync_from_device()
         return self._np_data
 
     def create_ref(self):
+        """
+        create ref
+        """
         return self
 
 
 class AscendOpKernelRunner:
+    """
+    Class AscendOpKernelRunner
+    """
     _kernel_params: List[AscendOpKernelParam]
 
+    # pylint: disable=unused-argument
     def __init__(self, simulator_mode=None, device_id=0, soc_version=None, simulator_lib_path=None,
                  simulator_dump_path="./model", auto_copy_device_data=False, profiling=False, profiling_times=1):
         if not isinstance(profiling_times, int):
@@ -363,6 +428,9 @@ class AscendOpKernelRunner:
             self._collect_esl_log()
 
     def build_kernel_param(self, data, shape=None, dtype=None) -> AscendOpKernelParam:
+        """
+        build_kernel_param
+        """
         if isinstance(data, str):
             kernel_param = AscendOpKernelParam.build_op_param_by_data_file(data_file_path=data,
                                                                            shape=shape,
@@ -374,6 +442,9 @@ class AscendOpKernelRunner:
         return kernel_param
 
     def cache_kernel_param(self, param):
+        """
+        cache_kernel_param
+        """
         if param not in self._kernel_params:
             self._kernel_params.append(param)
 
@@ -469,6 +540,9 @@ class AscendOpKernelRunner:
     def run(self, kernel: AscendOpKernel, inputs, output_input_ref: List[List[int]] = None,
             tiling=None, block_dim=None, actual_output_info=None) -> Union[
         AscendOpKernelParam, List[AscendOpKernelParam], None]:
+        """
+        run
+        """
 
         if not isinstance(inputs, (list, tuple)):
             inputs = [inputs]

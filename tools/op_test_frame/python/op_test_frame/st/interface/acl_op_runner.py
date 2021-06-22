@@ -108,6 +108,9 @@ class AclOpRunner:
 
     def add_op_st_stage_result(self, status=op_status.FAILED,
                                stage_name=None, result=None, cmd=None):
+        """
+        add op st stage_result
+        """
         stage_result = op_st_case_info.OpSTStageResult(
             status, stage_name, result, cmd)
         for case_report in self.report.report_list:
@@ -137,6 +140,9 @@ class AclOpRunner:
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
     def set_log_level_env(self):
+        """
+        set log level
+        """
         if self.advance_args is not None:
             utils.print_info_log('Set env for ATC & ACL.')
             get_log_level, get_slog_flag = self.advance_args.get_env_value()
@@ -149,7 +155,6 @@ class AclOpRunner:
             os.environ['ASCEND_GLOBAL_LOG_LEVEL'] = get_log_level
             os.environ['ASCEND_SLOG_PRINT_TO_STDOUT'] = get_slog_flag
             utils.print_info_log('Finish to set env for ATC & ACL.')
-        return
 
     def run(self):
         """
@@ -251,7 +256,7 @@ class AclOpRunner:
             row_list = sorted(row_list, key=lambda x: int(x[task_id_column_idx]))
 
             op_idx = 0
-            for row_idx, row in enumerate(row_list):
+            for _, row in enumerate(row_list):
                 if op_idx == len(op_name_list):
                     break
                 if op_name_list[op_idx] in os.path.split(

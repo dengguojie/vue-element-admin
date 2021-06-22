@@ -50,6 +50,9 @@ ONNX_TENSOR_DTYPE = {
 
 
 def get_shape_and_notice(shape, layer_name):
+    """
+    get shape and notice
+    """
     if isinstance(shape, list):
         for dim in shape:
             if not isinstance(dim, int):
@@ -70,6 +73,9 @@ def get_shape_and_notice(shape, layer_name):
 
 
 def check_shape_and_notice(shape):
+    """
+    check shape and notice
+    """
     if isinstance(shape, str):
         shape = shape.split(',')
         for dim in shape:
@@ -300,6 +306,9 @@ class PyTorchModelParse:
         return input_shape_map
 
     def get_input_shape(self):
+        """
+        get input shape
+        """
         utils.check_path_valid(self.model_path)
         utils.check_path_valid(self.output_path, True)
         input_shape_map = self._get_model_inputs()
@@ -311,6 +320,7 @@ class PyTorchModelParse:
         onnx_model = _load_model(real_path)
         onnx.checker.check_model(onnx_model)
         graph = onnx_model.graph
+        op_info = []
         for op_name, op_info in new_shape_map.items():
             for input_tensor in graph.input:
                 if input_tensor.name != op_name:
@@ -344,7 +354,7 @@ class PyTorchModelParse:
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
         utils.print_info_log("The {} input shape has been changed!".format(self.model_path))
-        dir_name, tmp_filename = os.path.split(real_path)
+        _, tmp_filename = os.path.split(real_path)
         prefix, suffix = os.path.splitext(tmp_filename)
         first_new_shape = '_'.join(
             str(i) for i in list(new_shape_map.values())[0].get('new_shape'))
@@ -355,6 +365,9 @@ class PyTorchModelParse:
         return new_model_path
 
     def change_shape(self):
+        """
+        change shape
+        """
         self._check_change_shape_argument_valid()
         new_shape_map = utils.load_json_file(self.input_file)
         new_model_path = self._change_shape_fn(new_shape_map)
@@ -363,6 +376,9 @@ class PyTorchModelParse:
         utils.write_json_file(json_path, {'new_model_path': new_model_path})
 
     def get_model_nodes(self, ini_op_type):
+        """
+        get model nodes
+        """
         utils.check_path_valid(self.model_path)
         utils.check_name_valid(ini_op_type)
         input_shape_map = self._get_model_inputs()
@@ -379,16 +395,26 @@ class PyTorchModelParse:
         return nodes_list
 
 
+# pylint: disable=unused-argument
 def get_shape(args, op_type):
+    """
+    get shape
+    """
     pt_parser = PyTorchModelParse(args)
     return pt_parser.get_input_shape()
 
 
 def change_shape(args, op_type):
+    """
+    change shape
+    """
     pt_parser = PyTorchModelParse(args)
     return pt_parser.change_shape()
 
 
 def get_model_nodes(args, op_type):
+    """
+    get model nodes
+    """
     pt_parser = PyTorchModelParse(args)
     return pt_parser.get_model_nodes(op_type)

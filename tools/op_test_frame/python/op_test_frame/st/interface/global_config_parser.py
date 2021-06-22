@@ -30,6 +30,7 @@ class WhiteLists:
         self.aicpu_ir2ini_type_map = None
 
     def init_white_lists(self):
+        """init white lists"""
         config_dir = os.path.join(os.path.dirname(__file__), "..")
         config_path = os.path.join(config_dir, "config", WHITE_LIST_FILE_NAME)
         config_dict = utils.load_json_file(config_path)
@@ -61,5 +62,3 @@ class GlobalConfig:
             white_lists.init_white_lists()
             cls._instance.white_lists = white_lists
         return cls._instance
-
-
