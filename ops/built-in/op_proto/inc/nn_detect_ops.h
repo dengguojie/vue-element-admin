@@ -459,7 +459,7 @@ REG_OP(FSRDetectionOutput)
 *@brief Returns detection result . \n
 
 *@par Inputs:
-* Four inputs, including:
+* Three inputs, including:
 *@li bbox_delta: An ND tensor of type floa16 or float32, specifying the box loc predictions, used as the input of operator SSDDetectionOutput.
 *@li score: An ND tensor of type floa16 or float32, specifying the box confidences data, used as the input of operator SSDDetectionOutput.
 *@li anchors: An ND tensor of type floa16 or float32, output from operator PriorBoxD, used as the input of operator SSDDetectionOutput.

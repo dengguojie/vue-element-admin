@@ -61,7 +61,7 @@ REG_OP(MatMul)
 *@brief Multiplies matrix "a" by matrix "b", producing "a * b" . \n
 
 *@par Inputs:
-*Two inputs, including:
+*Four inputs, including:
 * @li x1: A matrix Tensor. 2D. Must be one of the following types: float16,
 * float32, int32. Has format [ND, NHWC, FRACTAL_NZ].
 * @li x2: A matrix Tensor. 2D. Must be one of the following types: float16,

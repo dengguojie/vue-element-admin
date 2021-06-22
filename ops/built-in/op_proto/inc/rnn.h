@@ -503,7 +503,7 @@ REG_OP(DynamicLSTMV2)
 
 
 *@par Outputs:
-*eight outputs: \n
+*four outputs: \n
 *@li dx:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dh_prev:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.
 *@li dc_prev:A 4D Tensor. Must be one of the following types: float16, float32. The format must be FRACTAL_NZ.

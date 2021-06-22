@@ -29,7 +29,7 @@ namespace ge {
 /**
 *@brief Performs pooling on the input.
 *@par Inputs:
-*@li x: An NCHW tensor of type float16, float32, int8.
+* x: An NCHW tensor of type float16, float32, int8.
 *@par Attributes:
 *@li mode: An optional int32, specifying the pooling algorithm, either "0" (max pooling) or "1" (avg pooling). Defaults to "0".
 *@li global_pooling: An optional bool. Defaults to "false".
