@@ -391,7 +391,7 @@ class GlobalVarTilingScalar(object):
 
         # indices_per_part is used to avoid Memory trampling
         self.indices_per_part = 1024
-        if SOC_VERSION_1981:
+        if SUPPORT_VBITSORT32:
             # there are 40*batch_cols_padding ub in set_tensor_less_4096
             self.batch_cols_padding = (self.ub_size - 1024) // 40
             # there are 120*cols_per_part ub in set_tensor_more_4096
@@ -745,7 +745,7 @@ class GlobalVarFunction(object):
         self.indices_gm = obj_gm.get_indices_gm()
         self.indices_gm_out = obj_gm.get_indices_gm_out()
         self.indices_ub = obj_ub.get_indices_ub()
-        if not SOC_VERSION_1981:
+        if not SUPPORT_VBITSORT32:
             self.indices_out_fp16_ub = obj_ub.get_indices_out_fp16_ub()
             self.indices_out_int32_ub = obj_ub.get_indices_out_int32_ub()
         self.region_ub = obj_ub.get_region_ub()
@@ -754,7 +754,7 @@ class GlobalVarFunction(object):
         self.region_k2_ub = obj_ub.get_region_k2_ub()
         self.data_tail_block_ub = obj_ub.get_data_tail_block_ub()
         self.indices_tail_block_ub = obj_ub.get_indices_tail_block_ub()
-        if not SOC_VERSION_1981:
+        if not SUPPORT_VBITSORT32:
             self.offset_ub = obj_ub.get_offset_ub()
             self.offset_fp16_ub = obj_ub.get_offset_fp16_ub()
             self.offset_int32_ub = obj_ub.get_offset_int32_ub()
@@ -835,7 +835,7 @@ class GlobalVarFunction(object):
         indices_gm_out = self.indices_gm_out
         indices_ub = self.indices_ub
         region_ub = self.region_ub
-        if SOC_VERSION_1981:
+        if SUPPORT_VBITSORT32:
             region_sorted_ub = self.region_sorted_ub.reinterpret_cast_to(data_ub.dtype)
             region_k_ub = self.region_k_ub.reinterpret_cast_to(data_ub.dtype)
             region_k2_ub = self.region_k2_ub.reinterpret_cast_to(data_ub.dtype)
@@ -868,7 +868,7 @@ class GlobalVarFunction(object):
                                   largest=largest)
 
         vadds_len = tbe_platform.VECTOR_INST_BLOCK_WIDTH // _get_dtype_byte(indices_out_final_ub.dtype)
-        if SOC_VERSION_1981:
+        if SUPPORT_VBITSORT32:
             indices_num = min(indices_per_part, cols_per_part)
             indices_block_num = indices_num * _get_dtype_byte(indices_gm.dtype) // tbe_platform.BLOCK_REDUCE_INT8
             tik_instance.data_move(indices_ub, indices_gm, 0, 1, indices_block_num, 0, 0)
@@ -908,7 +908,7 @@ class GlobalVarFunction(object):
                                       gm_offset=gm_offset,
                                       largest=largest)
 
-            if SOC_VERSION_1981:
+            if SUPPORT_VBITSORT32:
                 tik_instance.vadds(vadds_len, indices_out_final_ub, indices_out_final_ub, cols_per_part,
                                    cols_per_part // vadds_len, 1, 1, 8, 8)
                 self.sort_region_1981(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1, cols_per_part)
@@ -965,7 +965,7 @@ class GlobalVarFunction(object):
                                   gm_offset=gm_offset,
                                   largest=largest)
 
-        if SOC_VERSION_1981:
+        if SUPPORT_VBITSORT32:
             tik_instance.vadds(vadds_len, indices_out_final_ub, indices_out_final_ub, cols_per_part,
                                cols_per_part // vadds_len, 1, 1, 8, 8)
             self.sort_region_1981(tik_instance, region_sorted_ub, data_ub, indices_out_final_ub, 1,
@@ -989,7 +989,7 @@ class GlobalVarFunction(object):
                                      len_region_k=cols_per_part * 4,
                                      len_region_sorted=last_part_cols_padding)
 
-        if SOC_VERSION_1981:
+        if SUPPORT_VBITSORT32:
             tik_instance.vreduce(k_padding * SORT_REGION_BYTE // _get_dtype_byte(data_ub.dtype),
                                  region_k_ub, region_k2_ub,
                                  src1_pattern=3, repeat_times=1, src0_blk_stride=1, src0_rep_stride=8,
@@ -1095,7 +1095,7 @@ class GlobalVarFunction(object):
                              col_start=0,
                              gm_offset=0)
 
-        if SOC_VERSION_1981:
+        if SUPPORT_VBITSORT32:
             indices_per_part = self.func_obj_tiling.indices_per_part
             indices_num = min(indices_per_part, cols)
             self.conv_fp162s32(tik_instance, self.indices_out_final_ub, 0,
@@ -1206,7 +1206,7 @@ class GlobalVarFunction(object):
         """
         merge_two_sorted_region
         """
-        if SOC_VERSION_1981:
+        if SUPPORT_VBITSORT32:
             if len_region_k < 4 * self.func_obj_tiling.cols_per_part:
                 merge_n0 = len_region_k
                 merge_n1_merge_two_reg = tik_instance.Scalar(init_value=len_region_sorted,
@@ -1349,7 +1349,7 @@ class GlobalVarFunction(object):
                 src_ub[region_offset + merge_n0_reg * self.num_per_ele * 2],
                 src_ub[region_offset + merge_n0_reg * self.num_per_ele * 3]
             ]
-            if SOC_VERSION_1981:
+            if SUPPORT_VBITSORT32:
                 tik_instance.vmrgsort(dst_ub[region_offset], src_list,
                                       (merge_n0_reg, merge_n0_reg, merge_n0_reg, merge_n0_reg), False, merge_repeat)
             else:
@@ -1368,7 +1368,7 @@ class GlobalVarFunction(object):
                 src_ub[region_offset + tail_offset + merge_n0_reg * self.num_per_ele * 2],
                 src_ub[region_offset + tail_offset + merge_n0_reg * self.num_per_ele * 3]
             ]
-            if SOC_VERSION_1981:
+            if SUPPORT_VBITSORT32:
                 tik_instance.vmrgsort(dst_ub[region_offset + tail_offset], src_list,
                                       (merge_n0_reg, merge_n0_reg, merge_n0_reg, merge_last), False, 1)
             else:
@@ -1383,7 +1383,7 @@ class GlobalVarFunction(object):
                 src_ub[region_offset + tail_offset + merge_n0_reg * self.num_per_ele],
                 src_ub[region_offset + tail_offset + merge_n0_reg * self.num_per_ele * 2]
             ]
-            if SOC_VERSION_1981:
+            if SUPPORT_VBITSORT32:
                 tik_instance.vmrgsort(dst_ub[region_offset + tail_offset], src_list,
                                       (merge_n0_reg, merge_n0_reg, merge_last), False, 1)
             else:
@@ -1395,7 +1395,7 @@ class GlobalVarFunction(object):
                 src_ub[region_offset + tail_offset],
                 src_ub[region_offset + tail_offset + merge_n0_reg * self.num_per_ele]
             ]
-            if SOC_VERSION_1981:
+            if SUPPORT_VBITSORT32:
                 tik_instance.vmrgsort(dst_ub[region_offset + tail_offset], src_list,
                                       (merge_n0_reg, merge_last), False, 1)
             else:
@@ -1649,7 +1649,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
         with tik_instance.if_scope(block_idx < block_dim):
             with tik_instance.if_scope(cols > obj_tiling.mode_threshold):
                 if (isinstance(cols, int) and cols > obj_tiling.mode_threshold) or not isinstance(cols, int):
-                    if SOC_VERSION_1981:
+                    if SUPPORT_VBITSORT32:
                         set_tensor_more_4096_1981(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype)
                     else:
                         set_tensor_more_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs)
@@ -1657,7 +1657,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
                     obj_func.kernel_ir(tik_instance, largest, True, block_idx, block_dim, k_scalar)
             with tik_instance.else_scope():
                 if (isinstance(cols, int) and cols <= obj_tiling.mode_threshold) or not isinstance(cols, int):
-                    if SOC_VERSION_1981:
+                    if SUPPORT_VBITSORT32:
                         set_tensor_less_4096_1981(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype)
                     else:
                         set_tensor_less_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs)
@@ -1712,9 +1712,9 @@ def top_k_d(input_tensor,
     largest : bool. if is sorted by largest
     kernel_name: kernel name of top_k op
     """
-    global SOC_VERSION_1981, SORT_REGION_BYTE, SORT_ONCE_NUM
-    SOC_VERSION_1981 = tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend920"
-    if SOC_VERSION_1981:
+    global SUPPORT_VBITSORT32, SORT_REGION_BYTE, SORT_ONCE_NUM
+    SUPPORT_VBITSORT32 = tbe_platform.api_check_support("tik.vbitsort32")
+    if SUPPORT_VBITSORT32:
         SORT_REGION_BYTE = 8
     else:
         SORT_REGION_BYTE = 16

@@ -1563,7 +1563,7 @@ def top_k_d(input_tensor,
     None
     """
 
-    if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend920":
+    if tbe_platform.api_check_support("tik.vbitsort32"):
         return top_k_template(input_tensor,
                               indices_tensor,
                               out_tensor,
