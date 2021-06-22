@@ -53,7 +53,30 @@ ut_case.add_precision_case("all", {
     "calc_expect_func": calc_expect_func
 })
 
+ut_case.add_precision_case("all", {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 3, 1), "shape": (3, 3, 1),
+                "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 3), "shape": (3, 3),
+                "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (23, 1), "shape": (23, 1),
+                "param_type": "output"},
+               23, -1, False],
+    "calc_expect_func": calc_expect_func
+})
+
+ut_case.add_precision_case("all", {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7000, 1), "shape": (7000, 1),
+                "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (7000,), "shape": (7000,),
+                "param_type": "input"},
+               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (7000, 1), "shape": (7000, 1),
+                "param_type": "output"},
+               7000, -1, False],
+    "calc_expect_func": calc_expect_func
+})
+
 if __name__ == '__main__':
     user_home_path = os.path.expanduser('~')
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B15/toolkit/tools/simulator")
     ut_case.run(["Ascend910"], simulator_mode='pv', simulator_lib_path=simulator_lib_path)
+
