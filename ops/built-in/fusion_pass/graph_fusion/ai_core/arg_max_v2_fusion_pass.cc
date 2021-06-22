@@ -105,7 +105,15 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
       }
     } else {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "input[0]'s shape is dynamic shape.");
-      x_input_desc.GetShapeRange(range);
+      FUSION_PASS_CHECK(x_input_desc.GetShapeRange(range) != GRAPH_SUCCESS,
+                        OP_LOGW(FUSED_OP_TYPE.c_str(), "Node:%s get shape range failed.",
+                        in_op_desc_ptr->GetName().c_str()),
+                        return NOT_CHANGED);
+      auto range_size = range.size();
+      FUSION_PASS_CHECK(range_size <= aixs_const_val,
+                        OP_LOGW(FUSED_OP_TYPE.c_str(), "Node:%s shape range is invalid.",
+                        in_op_desc_ptr->GetName().c_str()),
+                        return NOT_CHANGED);
       if (range[aixs_const_val].second != -1 && range[aixs_const_val].second < COMP) {
         flag = false;
       }
