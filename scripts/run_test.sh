@@ -30,7 +30,8 @@ OPS_ST_DIR="${CANN_ROOT}/ops/built-in/tests/st"
 
 
 set_ut_env() {
-  local install_path="$1"
+  local get_install_path="$1"
+  local install_path=$(cd ${get_install_path}; pwd)
   export BASE_HOME="$install_path"
   export OP_TEST_FRAME_INSTALL_HOME="${CANN_ROOT}/tools/op_test_frame/python"
   export OPS_SOURCE_PATH="${CANN_ROOT}/ops/built-in/tbe"
@@ -80,7 +81,8 @@ run_ut() {
 }
 
 set_st_env() {
-  local install_path="$1"
+  local get_install_path="$1"
+  local install_path=$(cd ${get_install_path}; pwd)
   # atc
   export PATH=$install_path/atc/ccec_compiler/bin:$install_path/atc/bin:$PATH
   export PYTHONPATH=$install_path/atc/python/site-packages:$install_path/toolkit/python/site-packages:$PYTHONPATH

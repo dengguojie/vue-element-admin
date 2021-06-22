@@ -14,6 +14,7 @@
 # limitations under the License.
 # ============================================================================
 
+set -e
 CUR_PATH=$(dirname $0)
 
 source ${CUR_PATH}/config.ini
@@ -46,7 +47,6 @@ install_stest() {
     echo "[INFO] install testcase: ${op_case}"
     if [[ ! -d "${op_case}" ]]; then
       echo "[ERROR] cannot find testcase ${op_case}"
-      # exit $STATUS_FAILED
     else
       cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
     fi
@@ -63,7 +63,6 @@ install_sch_stest() {
     echo "[INFO] install testcase: ${op_case}"
     if [[ ! -d "${op_case}" ]]; then
       echo "[ERROR] cannot find testcase ${op_case}"
-      # exit $STATUS_FAILED
     else
       cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
     fi
