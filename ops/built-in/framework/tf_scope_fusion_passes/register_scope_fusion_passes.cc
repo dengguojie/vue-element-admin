@@ -37,12 +37,15 @@
 #include "scope_preprocess_keep_ratio_resize_bilinear_pass.h"
 #include "scope_dynamic_rnn_pass.h"
 #include "scope_dynamic_gru_pass.h"
-
+#include "scope_instancenorm_pass.h"
+#include "scope_instancenorm_grad_pass.h"
 
 namespace ge {
 REGISTER_SCOPE_FUSION_PASS("ScopeBasicLSTMCellPass", ScopeBasicLSTMCellPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeLayerNormPass", ScopeLayerNormPass, true);
 REGISTER_SCOPE_FUSION_PASS("ScopeLayerNormGradPass", ScopeLayerNormGradPass, true);
+REGISTER_SCOPE_FUSION_PASS("ScopeInstanceNormPass", ScopeInstanceNormPass, false);
+REGISTER_SCOPE_FUSION_PASS("ScopeInstanceNormGradPass", ScopeInstanceNormGradPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeClipBoxesPass", ScopeClipBoxesPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeROIAlignPass", ScopeROIAlignPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeRpnProposalsPass", ScopeRpnProposalsPass, false);

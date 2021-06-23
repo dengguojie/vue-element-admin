@@ -1,6 +1,5 @@
 [canndev]
 ops/built-in/aicpu/
-ops/built-in/framework/
 ops/built-in/fusion_pass/graph_fusion/
 ops/built-in/fusion_rules/
 ops/built-in/op_proto/

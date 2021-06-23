@@ -307,6 +307,8 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/padv3d_avgpool_fusion_pass.cc
   graph_fusion/ai_core/ascend_dequant_quant_antiquant_maxpool_fusion_pass.cc
   graph_fusion/ai_core/softmax_with_drop_out_do_mask_fusion_pass.cc
+  graph_fusion/ai_core/single_instance_norm_fusion_pass.cc
+  graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

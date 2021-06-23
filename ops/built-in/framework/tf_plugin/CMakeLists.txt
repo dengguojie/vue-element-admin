@@ -444,6 +444,8 @@ set(_tf_scope_fusion_passes
   ../tf_scope_fusion_passes/scope_roi_align_pass.cc
   ../tf_scope_fusion_passes/scope_rpn_proposals_pass.cc
   ../tf_scope_fusion_passes/scope_to_absolute_bbox_pass.cc
+  ../tf_scope_fusion_passes/scope_instancenorm_grad_pass.cc
+  ../tf_scope_fusion_passes/scope_instancenorm_pass.cc
 )
 
 set(_ops_plugin_include
