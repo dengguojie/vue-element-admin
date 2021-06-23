@@ -434,6 +434,8 @@ def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_s
     if max_v_ub > max_v_load3d_limit:
         max_v_ub = 0
     max_v_l1 = SIZE_L1 // (cut_h_row * fmap_w * c_in_align * type_size * DOUBLE_BUFFER)
+    if max_v_l1 * BLOCK_SIZE > fmap_w:
+        max_v_l1 = SIZE_L1 // ((cut_h_row + stride_h - 1) * fmap_w * c_in_align * type_size * DOUBLE_BUFFER)
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
     cut_hw_up_w = (max_v_ub * align_block_size + out_w - 1) // out_w * out_w
@@ -567,7 +569,7 @@ def im2col_schedule(res, sch_list):
         cut_h_col = fmap_h
     # cut_h_col while cut_hw = BLOCK_SIZE
     cut_w_row_s = (BLOCK_SIZE - 1) * stride_w + 1
-    cut_h_row_s = ((cut_w_row_s - 1) // fmap_w + 1) * stride_h + 1
+    cut_h_row_s = (((cut_w_row_s - 1) // fmap_w + 1) - 1) * stride_h + 1
     cut_w_row = cut_w_row_s + dilated_kernel_w - 1
     cut_h_row = cut_h_row_s + dilated_kernel_h - 1
     if lcm_out_w > out_hw_up16:
@@ -754,8 +756,10 @@ def im2col_schedule(res, sch_list):
         else:
             if SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
                 howo_align = BLOCK_SIZE
-            else:
+            elif SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
                 howo_align = lcm_out_w
+            else:
+                howo_align = howo
 
             def _get_core_factor(multi_core_factor, core_n, core_howo):
                 multi_core_factor[0] = max(_ceil_div(out_shape[0], core_n), tiling_factor[0])
