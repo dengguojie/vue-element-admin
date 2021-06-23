@@ -48,12 +48,15 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
-
+ut_case.add_case(["Ascend910A"], case1)
+def test_op_select_format(test_arg):
+    from impl.prelu_grad import op_select_format
+    op_select_format({"shape": (32, 2, 4, 16), "dtype": "float32", "format": "HCHW", "ori_shape": (32, 2, 4, 16),"ori_format": "HCHW"},
+                     {"shape": (32, 2, 4, 16), "dtype": "float32", "format": "HCHW", "ori_shape": (32, 2, 4, 16),"ori_format": "HCHW"},
+                     {"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (32, 2, 4, 16), "dtype": "float32", "format": "HCHW", "ori_shape": (32, 2, 4, 16),"ori_format": "HCHW"},
+                     {"shape": (32, 2, 4, 16), "dtype": "float32", "format": "HCHW", "ori_shape": (32, 2, 4, 16),"ori_format": "HCHW"})
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
     exit(0)

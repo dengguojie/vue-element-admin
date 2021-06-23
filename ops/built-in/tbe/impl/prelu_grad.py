@@ -55,7 +55,7 @@ def op_select_format(grads, features, weights, dx, da, kernel_name="prelu_grad")
     format_weight = ["ND", "ND"]
     dtype_base_out = ["float", "float"]
 
-    if len(weights_shape) == 1:
+    if len(weights_shape) == 1 and weights_shape[0] != 1:
         dtype_base_out = dtype_base_out + dtype_base
         format_grads = format_grads + ["NC1HWC0"] * len(dtype_base)
         format_weight = format_weight + ["NC1HWC0"] * len(dtype_base)
