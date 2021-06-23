@@ -128,16 +128,17 @@ class SubCaseDesign(object):
         utils.check_path_valid(real_bin_path)
         return real_bin_path
 
-    def _check_value_valid(self, one_input_desc, json_obj, tensor):
+    def _check_value_valid(self, one_input_desc, json_obj, tensor, for_fuzz):
         # if have value, case generate by no cross
-        for key in one_input_desc:
-            if one_input_desc[key] is not None and len(one_input_desc[key]) > 1:
-                utils.print_error_log('The "value" field (configured in "%s") is specified, '
-                                      'each of the rest fields can be configured with one '
-                                      'profile only. Please modify it in file %s.' % (tensor,
-                                                                                      self.current_json_path))
-                raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        if not for_fuzz:
+            for key in one_input_desc:
+                if one_input_desc[key] is not None and len(one_input_desc[key]) > 1:
+                    utils.print_error_log('The "value" field (configured in "%s") is specified, '
+                                          'each of the rest fields can be configured with one '
+                                          'profile only. Please modify it in file %s.' % (tensor,
+                                                                                          self.current_json_path))
+                    raise utils.OpTestGenException(
+                        utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         value_list = []
         case_value = json_obj.get(utils.VALUE)
         if isinstance(case_value, (str, list)):
@@ -155,10 +156,13 @@ class SubCaseDesign(object):
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         return value_list
 
-    def _deal_with_value(self, input_desc, one_input_desc):
+    def _deal_with_value(self, input_desc, one_input_desc, for_fuzz=False):
         if input_desc.get(utils.VALUE) is not None:
-            value_list = self._check_value_valid(one_input_desc, input_desc, CD.INPUT_DESC)
-            one_input_desc.update({"value": value_list})
+            value_list = self._check_value_valid(one_input_desc, input_desc, CD.INPUT_DESC, for_fuzz)
+            if for_fuzz:
+                one_input_desc.update({"value": value_list[0]})
+            else:
+                one_input_desc.update({"value": value_list})
 
     def _check_list_list_valid(self, json_obj, key, tensor):
         self._check_key_exist(json_obj, key, tensor)

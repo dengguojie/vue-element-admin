@@ -473,6 +473,7 @@ def check_attr_value_valid(attr):
     else:
         check_value_valid(attr_type, attr['value'], attr['name'])
 
+
 def load_json_file(json_path):
     """
     load json file to json object

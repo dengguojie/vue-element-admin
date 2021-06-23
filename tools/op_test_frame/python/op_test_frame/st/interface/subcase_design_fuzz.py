@@ -187,7 +187,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 # check whether has value.
                 desc_obj = self._replace_fuzz_param(
                     desc_obj, utils.VALUE, desc_type, fuzz_dict)
-                self._deal_with_value(desc_obj, one_desc)
+                self._deal_with_value(desc_obj, one_desc, for_fuzz=True)
             else:
                 one_desc = {'type': type_value,
                             'shape': shape_value}
@@ -263,7 +263,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 # check whether has value.
                 desc_obj = self._replace_fuzz_param(
                     desc_obj, utils.VALUE, desc_type, fuzz_dict)
-                self._deal_with_value(desc_obj, one_desc)
+                self._deal_with_value(desc_obj, one_desc, for_fuzz=True)
             else:
                 one_desc = {'format': format_value, 'type': type_value,
                             'shape': shape_value}
