@@ -37,6 +37,8 @@ approvers:
 - soupkey
 - wu-shengji
 - clinglai
+- ccl_ligang
+- xiaozhedeng
 reviewers:
 - chuqingxi
 - wang-jintang
@@ -80,3 +82,5 @@ reviewers:
 - liujun2014
 - soupkey
 - wu-shengji
+- ccl_ligang
+- xiaozhedeng
