@@ -9,6 +9,7 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 try:
     import sys
     import os
+    import time
     import subprocess
     from . import utils
     from op_test_frame.common import op_status
@@ -96,7 +97,11 @@ class AclOpRunner:
         cmd_str = "cd %s && %s " % (run_out_path, " ".join(atc_cmd))
         utils.print_info_log("ATC command line: %s" % cmd_str)
         try:
+            atc_start_time = time.time()
             self._execute_command(atc_cmd)
+            atc_end_time = time.time()
+            utils.print_info_log('Atc execute time: %f s.'
+                                 % (atc_end_time - atc_start_time))
         except utils.OpTestGenException:
             self.add_op_st_stage_result(op_status.FAILED,
                                         "atc_single_op_convert",
