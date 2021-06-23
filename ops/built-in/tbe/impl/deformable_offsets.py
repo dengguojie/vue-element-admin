@@ -185,6 +185,7 @@ class DeformableOffsets(object):
         self.loop_seg = self.dim_offsets_w // self.ub_seg_size
         self.ub_seg_res = self.dim_offsets_w % self.ub_seg_size
         self.cmp_flag = tbe_platform.api_check_support("tik.vec_cmpv_ge", dtype="float32")
+        self.conv_num = min(self.dim_group_c, CAL_MASK_SIZE)
 
         self.ub_out = None
         self.ub_offsets_ori = None
@@ -892,22 +893,22 @@ class DeformableOffsets(object):
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_ceil_int32,
                                                           ub_offset_x_ceil_f16,
-                                                          CAL_MASK_SIZE,
+                                                          self.conv_num,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_floor_int32,
                                                           ub_offset_x_floor_f16,
-                                                          CAL_MASK_SIZE,
+                                                          self.conv_num,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_ceil_int32,
                                                           ub_offset_y_ceil_f16,
-                                                          CAL_MASK_SIZE,
+                                                          self.conv_num,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_floor_int32,
                                                           ub_offset_y_floor_f16,
-                                                          CAL_MASK_SIZE,
+                                                          self.conv_num,
                                                           mode="ceil")
                     else:
                         ub_offset_x_ceil_f32 = self.tik_instance.Tensor("float32",
@@ -1004,22 +1005,22 @@ class DeformableOffsets(object):
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_ceil_int32,
                                                           ub_offset_x_ceil_f32,
-                                                          CAL_MASK_SIZE,
+                                                          self.conv_num,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_floor_int32,
                                                           ub_offset_x_floor_f32,
-                                                          CAL_MASK_SIZE,
+                                                          self.conv_num,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_ceil_int32,
                                                           ub_offset_y_ceil_f32,
-                                                          CAL_MASK_SIZE,
+                                                          self.conv_num,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_floor_int32,
                                                           ub_offset_y_floor_f32,
-                                                          CAL_MASK_SIZE,
+                                                          self.conv_num,
                                                           mode="ceil")
                     scalar_idx_lth_int.set_as(ub_offsets_y_floor_int32[0])
                     scalar_idx_ltw_int.set_as(ub_offsets_x_floor_int32[0])
