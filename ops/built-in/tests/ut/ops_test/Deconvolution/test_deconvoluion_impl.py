@@ -396,7 +396,6 @@ def test_split_deconvolution(test_arg):
     y = {"ori_shape": (1, 144, 48, 80), "dtype": "int8", "ori_format": "NCHW",  "shape": (1, 5, 48, 80, 32), "format":"NC1HWC0"}
     get_op_support_info(x, weight, bias, None, y, (1, 1), (0, 0, 0, 0))
 
-
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_group_requant)
 ut_case.add_cust_test_func(test_func=test_op_compute_int8)

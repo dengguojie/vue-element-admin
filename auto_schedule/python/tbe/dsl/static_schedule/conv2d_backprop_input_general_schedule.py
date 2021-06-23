@@ -173,10 +173,12 @@ def general_schedule(
         if out_mem == "fuse_flag":
             if c_ddr.op.tag == "conv_virtual_res":
                 for out_member in c_ddr.op.input_tensors:
-                    if "addr_type" in out_member.op.attrs:
-                        res_addr_type = out_member.op.attrs["addr_type"].value
-                    else:
-                        res_addr_type = 0
+                    out_member_addr = out_member
+                    if out_member.dtype == "float16":
+                        out_member_addr = out_member.op.input_tensors[0]
+                    res_addr_type = 0
+                    if "addr_type" in out_member_addr.op.attrs:
+                        res_addr_type = out_member_addr.op.attrs["addr_type"].value
                     output_memory_type = [res_addr_type]
                     if res_addr_type == 1:
                         sch[out_member].set_scope(tbe_platform_info.scope_cbuf_fusion)
