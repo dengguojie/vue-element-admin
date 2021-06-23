@@ -178,7 +178,7 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   // get n_direction_length
   int n_direction_length = 0;
   std::vector<int64_t> b_shape_vector = b_shape.GetDims();
-  FUSION_PASS_CHECK(b_shape_vector.empty() || (b_shape_vector.size() < 2),
+  FUSION_PASS_CHECK(b_shape_vector.size() < 2,
                     ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "b_shape is illegal"),
                     return FAILED);
   if (transpose_b) {

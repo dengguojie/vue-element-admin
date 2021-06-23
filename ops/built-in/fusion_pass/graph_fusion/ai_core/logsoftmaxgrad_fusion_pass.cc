@@ -135,9 +135,9 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
   logsoftmaxGradOp.BreakConnect();
 
   ge::NodePtr logsoftmaxGradNode = graph.AddNode(opDesc);
-  fusionNodes.push_back(logsoftmaxGradNode);
   FUSION_PASS_CHECK(logsoftmaxGradNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "logsoftmaxGrad create node failed"),
                     return FAILED);
+  fusionNodes.push_back(logsoftmaxGradNode);
   if (UpdateAttr(sumNode, logsoftmaxGradNode) == FAILED) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "attr failed");
     return NOT_CHANGED;

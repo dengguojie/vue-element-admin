@@ -141,6 +141,10 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "BNInfer add output failed."), return FAILED);
 
     ge::NodePtr newNode = graph.AddNode(newOpdesc);
+    FUSION_PASS_CHECK(newNode == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(),
+                              "newNode is null,fusion failed"),
+                      return PARAM_INVALID);
     fusionNodes.push_back(newNode);
 
     // copy attr

@@ -79,16 +79,16 @@ Status LayerNormGradFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping
   return PARAM_INVALID);
 
   if (layerNormXDesc->GetOutputsSize() < 3) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc", layerNormXDesc->GetInputsSize());
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%zu] of output desc", layerNormXDesc->GetInputsSize());
     return NOT_CHANGED;
   }
   if (layerNormBetaGammaDesc->GetOutputsSize() < 3) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of output desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%zu] of output desc",
             layerNormBetaGammaDesc->GetInputsSize());
     return NOT_CHANGED;
   }
   if (layerNormBetaGammaDesc->GetInputsSize() < 5) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%d] of input desc",
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Index is beyond the size[%zu] of input desc",
             layerNormBetaGammaDesc->GetInputsSize());
     return NOT_CHANGED;
   }

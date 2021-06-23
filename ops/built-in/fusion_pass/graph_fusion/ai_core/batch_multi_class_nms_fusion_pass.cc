@@ -244,7 +244,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
       FUSION_PASS_CHECK(
           add1Node == nullptr,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "AddsNode fusionNode:%s is null, fusion failed.", add1Node->GetName().c_str()),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "AddsNode fusionNode is null, fusion failed."),
           return PARAM_INVALID);
 
       if (isfindSoftmax) {
@@ -293,7 +293,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
         FUSION_PASS_CHECK(
             cast1Node == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "CastNode fusionNode:%s is null, fusion failed.", cast1Node->GetName().c_str()),
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "CastNode fusionNode is null, fusion failed."),
             return PARAM_INVALID);
 
         // Add the original input side 0 to cast1Node
@@ -343,7 +343,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       newNodes.push_back(mulNode);
       FUSION_PASS_CHECK(
           mulNode == nullptr,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "MulsNode fusionNode:%s is null, fusion failed.", mulNode->GetName().c_str()),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "MulsNode fusionNode is null, fusion failed."),
           return PARAM_INVALID);
 
       // Add the description (input, output, name, attribute) of the add_mul node
@@ -374,7 +374,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       newNodes.push_back(add_mulNode);
       FUSION_PASS_CHECK(
           add_mulNode == nullptr,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "Adds_mul Node fusionNode:%s is null, fusion failed.", add_mulNode->GetName().c_str()),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "Adds_mul Node fusionNode is null, fusion failed."),
           return PARAM_INVALID);
 
 
@@ -408,7 +408,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       newNodes.push_back(divNode);
       FUSION_PASS_CHECK(
           divNode == nullptr,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "DivNode fusionNode:%s is null, fusion failed.", divNode->GetName().c_str()),
+          OP_LOGE(FUSED_OP_TYPE.c_str(), "DivNode fusionNode is null, fusion failed."),
           return PARAM_INVALID);
 
       // Add the original input side 0 to add1node

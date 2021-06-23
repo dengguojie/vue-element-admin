@@ -212,13 +212,13 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   // add SwapCo node to graph
   ge::NodePtr bnhostNodePtr = graph.AddNode(bnhostOpDescPtr);
   ge::NodePtr bninferNodePtr = graph.AddNode(bninferOpDescPtr);
-  newNodes.push_back(bnhostNodePtr);
-  newNodes.push_back(bninferNodePtr);
   FUSION_PASS_CHECK(bnhostNodePtr == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode: bnhostNodePtr is null, fusion failed."), return FAILED);
   FUSION_PASS_CHECK(bninferNodePtr == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode: bninferNodePtr is null, fusion failed."),
                     return FAILED);
+  newNodes.push_back(bnhostNodePtr);
+  newNodes.push_back(bninferNodePtr);
 
   // delete edge of prenode and psroinode
   int32_t index = bnNodePtr->GetInDataAnchor(0)->GetPeerOutAnchor()->GetIdx();
@@ -306,7 +306,7 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add bnhost out data edge failed."), return FAILED);
     }
   }
-  if (bnNodePtr->GetOutControlAnchor()) {
+  if (bnNodePtr->GetOutControlAnchor() != nullptr) {
     for (auto inControlAnchor : bnNodePtr->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(bnNodePtr->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove bnhost out control edge failed."), return FAILED);

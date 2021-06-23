@@ -321,6 +321,8 @@ Status DeformableConv2dPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
   FUSION_PASS_CHECK(!AddOffsetDesc(dfm_conv_node, offset_desc, with_bias),
                     OP_LOGW(fused_op_type_.c_str(), "add new deformable_offset desc failed"), return NOT_CHANGED);
   NodePtr new_offset = graph.AddNode(offset_desc);
+  FUSION_PASS_CHECK(new_offset == nullptr,
+                    OP_LOGW(fused_op_type_.c_str(), "new offset is null,fusion failed"), return NOT_CHANGED);
   new_nodes.push_back(new_offset);
   const std::string new_conv_name = node_name + "_conv2d";
   OpDescPtr conv_desc(new ge::OpDesc(new_conv_name, kConv2DType));

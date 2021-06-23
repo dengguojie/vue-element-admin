@@ -249,7 +249,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         // infershape end
         FUSION_PASS_CHECK(
             concatext2_node == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "concatext2_node:%s is null, fusion failed.", concatext2_node->GetName().c_str()),
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "concatext2_node is null, fusion failed."),
             return PARAM_INVALID);
 
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatext2_node->GetOutDataAnchor(0),
@@ -280,8 +280,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         }
         ge::NodePtr last_concatext2_node = graph.AddNode(LastConcatExt2Desc);
         FUSION_PASS_CHECK(last_concatext2_node == nullptr,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
-                                  last_concatext2_node->GetName().c_str()),
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "last_concatext2_node is null, fusion failed."),
                           return PARAM_INVALID);
         fusionNodes.push_back(last_concatext2_node);
         ge::AttrUtils::SetInt(last_concatext2_node->GetOpDesc(), "N", last_node_inputs_num);

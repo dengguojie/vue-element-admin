@@ -77,7 +77,7 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   auto xShape = mapIndexNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
   FUSION_PASS_CHECK(xShape.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "xShape is empty!"), return PARAM_INVALID);
   int64_t xLength = xShape[0];
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "xLength = %ld", xLength);
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "xLength = %lld", xLength);
 
   auto dataSeqShape = mapIndexNode->GetOpDesc()->GetInputDesc(1).GetShape().GetDims();
   FUSION_PASS_CHECK(dataSeqShape.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "dataSeqShape is empty!"),
