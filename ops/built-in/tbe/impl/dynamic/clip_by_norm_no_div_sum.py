@@ -23,96 +23,20 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tbe_platform
 
 SHAPE_SIZE_LIMIT = 2147483648
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
-def greater_select_compute(x, y, z, out, operation, kernel_name="greater_select"):
-    """
-    if x is greater than y, then return 1, else return 0.
-    Parameters
-    ----------
-    x: TVM tensor
-        the placeholder of input x
-    y: TVM tensor
-        the placeholder of input y
-    z: TVM tensor
-        the placeholder of input z
-    out: dict
-           dict of out
-    operation: str
-        function tbe.vcmpsel(lhs, rhs, operation, slhs, srhs)
-        lt: lhs < rhs  is ture return slhs ,is false return srhs
-        gt: lhs > rhs  is ture return slhs ,is false return srhs
-        le: lhs <= rhs  is ture return slhs ,is false return srhs
-        ge: lhs >= rhs  is ture return slhs ,is false return srhs
-        eq: lhs == rhs  is ture return slhs ,is false return srhs
-        ne: lhs != rhs  is ture return slhs ,is false return srhs
-    kernel_name: str
-        cce kernel name, default value is "select"
-
-    Returns
-    -------
-    res: TVM tensor
-        the result of compute
-    """
-    shape_x = shape_util.shape_to_list(x.shape)
-    shape_y = shape_util.shape_to_list(y.shape)
-    shape_z = shape_util.shape_to_list(z.shape)
-    _, _, broadcast_shape_ = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                         param_name_input1="x", param_name_input2="y")
-
-    _, _, broadcast_shape = shape_util.broadcast_shapes(broadcast_shape_, shape_z,
-                                                        param_name_input1="x", param_name_input2="z")
-    data_x = tbe.broadcast(x, broadcast_shape)
-    data_y = tbe.broadcast(y, broadcast_shape)
-    data_z = tbe.broadcast(z, broadcast_shape)
-
-    res = tbe.vcmpsel(data_x, data_y, operation, data_x, data_z)
-    return res
-
-
-def maximum_compute(input_x, input_y, output_z, kernel_name="maximum"):
-    """
-    calculating data maximum
-
-    Parameters
-    ----------
-    input_data: TVM tensor
-        the placeholder of input data
-    output_data: dict
-        shape and dtype of output, should be same shape and type as input
-    kernel_name: str
-        cce kernel name, default value is sqrt
-
-    Returns
-    -------
-    result: TVM tensor
-        the result of sqrt
-    """
-    shape1 = shape_util.shape_to_list(input_x.shape)
-    shape2 = shape_util.shape_to_list(input_y.shape)
-    shape1 = shape_util.scalar2tensor_one(shape1)
-
-    shape2 = shape_util.scalar2tensor_one(shape2)
-
-    shape1, shape2, shape_max = shape_util.broadcast_shapes(shape1, shape2, param_name_input1="select1_result",
-                                                            param_name_input2="maximum_ones")
-
-    data1_tmp1 = tbe.broadcast(input_x, shape_max)
-    data2_tmp1 = tbe.broadcast(input_y, shape_max)
-    res = tbe.vmax(data1_tmp1, data2_tmp1)
-    return res
-
-
 @register_operator_compute("ClipByNormNoDivSum", op_mode="dynamic", support_fusion=True)
 def clip_by_norm_no_div_sum_compute(data_input_x,
                                     data_greater_zeros,
                                     data_select_ones,
                                     data_maximum_ones,
                                     y,
+                                    dtype,
                                     kernel_name="clip_by_norm_no_div_sum"):
     """
     calculating data
@@ -125,18 +49,34 @@ def clip_by_norm_no_div_sum_compute(data_input_x,
     -------
     output tensor
     """
+    if dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.vmul", "float32"):
+        data_input_x = tbe.cast_to(data_input_x, "float16")
+        data_greater_zeros = tbe.cast_to(data_greater_zeros, "float16")
+        data_select_ones = tbe.cast_to(data_select_ones, "float16")
+        data_maximum_ones = tbe.cast_to(data_maximum_ones, "float16")
+    shape_input_x = shape_util.shape_to_list(data_input_x.shape)
+    shape_greater_zeros = shape_util.shape_to_list(data_greater_zeros.shape)
+    shape_select_ones = shape_util.shape_to_list(data_select_ones.shape)
+    shape_maximum_ones = shape_util.shape_to_list(data_maximum_ones.shape)
 
-    # greater_select1
-    select_result = greater_select_compute(data_input_x, data_greater_zeros, data_select_ones, {}, "gt", kernel_name)
+    shape_brod_list = shape_util.unify_broadcast_shapes(
+        [shape_input_x, shape_greater_zeros, shape_select_ones, shape_maximum_ones]
+    )
 
-    # sqrt
-    sqrt_result = tbe.vsqrt(select_result)
+    broad_input_x = tbe.broadcast(data_input_x, shape_brod_list[-1])
+    broad_greater_zeros = tbe.broadcast(data_greater_zeros, shape_brod_list[-1])
+    broad_select_ones = tbe.broadcast(data_select_ones, shape_brod_list[-1])
+    broad_maximum_ones = tbe.broadcast(data_maximum_ones, shape_brod_list[-1])
 
-    # greater_select2
-    select1_result = greater_select_compute(data_input_x, data_greater_zeros, sqrt_result, {}, "le", kernel_name)
+    greater_select_res = tbe.vcmpsel(broad_input_x, broad_greater_zeros, "gt", broad_input_x, broad_select_ones)
 
-    res = maximum_compute(select1_result, data_maximum_ones, {}, kernel_name)
+    sqrt_res = tbe.vsqrt(greater_select_res)
 
+    less_select_res = tbe.vcmpsel(broad_input_x, broad_greater_zeros, "le", broad_input_x, sqrt_res)
+
+    res = tbe.vmax(less_select_res, broad_maximum_ones)
+    if dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.vmul", "float32"):
+        res = tbe.cast_to(res, "float32")
     return res
 
 
@@ -171,7 +111,8 @@ def clip_by_norm_no_div_sum(x, greater_zeros, select_ones, maximum_ones, y,
             data_greater = tvm.placeholder(shape_greater, dtype=dtype_x, name="data_greater")
             data_zeros = tvm.placeholder(shape_zeros, dtype=dtype_x, name="data_zeros")
             data_maximum = tvm.placeholder(shape_maximum, dtype=dtype_x, name="data_maximum")
-            res = clip_by_norm_no_div_sum_compute(data_x, data_greater, data_zeros, data_maximum, y, kernel_name)
+            res = clip_by_norm_no_div_sum_compute(data_x, data_greater, data_zeros, data_maximum, y, dtype_x,
+                                                  kernel_name)
             tensors.append([data_x, data_greater, data_zeros, data_maximum, res])
 
         with tvm.target.cce():
