@@ -3234,16 +3234,9 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
   }
 
   std::vector<int64_t> output_size; 
-  if (GRAPH_SUCCESS != op.GetAttr("output_size", output_size)) {
-    OP_LOGD(op.GetName().c_str(), "get attr::output_size faild!");
-    return false;
-  }
-
+  op.GetAttr("output_size", output_size);
   std::vector<float> scales; 
-  if (GRAPH_SUCCESS != op.GetAttr("scales", scales)) {
-    OP_LOGD(op.GetName().c_str(), "get attr::scales faild!");
-    return false;
-  }
+  op.GetAttr("scales", scales);
 
   if (!output_size.empty() && scales.empty())
   { 
