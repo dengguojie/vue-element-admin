@@ -514,6 +514,8 @@ def check_support_muti_output(outs):
                 return True
             if "cube_layer_norm" in tag:
                 return True
+            if "tail_block_pretreatment" in tag:
+                return True
             if "elewise" not in tag and "broadcast" not in tag and \
                     "reduce" not in tag and not ConvParam.convbn1_flag and \
                     not ConvParam.conv_deq_req_double_out and \

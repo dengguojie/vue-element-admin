@@ -79,7 +79,7 @@ def get_op_support_info(input_x, input_gamma, input_beta,
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,too-many-statements,too-many-branches
-def _division_sixteen(shape):
+def _division_sixteen(shape, begin_norm_axis):
 
     if len(shape) < 2:
         if shape[-1] == 0:
@@ -93,8 +93,10 @@ def _division_sixteen(shape):
         error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x", \
                                                            error_detail)
 
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
-        return True
+    is_reduce_last = True if begin_norm_axis == -1 or begin_norm_axis == len(shape) - 1 else False
+    if shape[-2] % SIZE_SIXTEEN == 0:
+        if shape[-1] % SIZE_SIXTEEN == 0 or (shape[-1] % SIZE_SIXTEEN != 0 and is_reduce_last):
+            return True
     return False
 
 
@@ -110,10 +112,8 @@ def op_select_format(input_x, input_gamma, input_beta,
     shape_gamma = input_gamma.get("ori_shape")
     shape_gamma = shape_util.scalar2tensor_one(shape_gamma)
 
-    # can not support Nz + ND
-    # while len(shape_gamma) >= 2 and  _division_sixteen(shape_x) = False
     if begin_params_axis == 0:
-        if len(shape_gamma) >= 2 or (not _division_sixteen(shape_x)):
+        if len(shape_gamma) >= 2 or (not _division_sixteen(shape_x, begin_norm_axis)):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float16,float16,"
                                                             "float,float,float,float",
@@ -180,7 +180,7 @@ def op_select_format(input_x, input_gamma, input_beta,
                                                     format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                                            "NHWC,ND")
     else:
-        if len(shape_gamma) >= 2 or (not _division_sixteen(shape_x)):
+        if len(shape_gamma) >= 2 or (not _division_sixteen(shape_x, begin_norm_axis)):
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float16,"
                                                             "float,float,float",
@@ -323,6 +323,86 @@ def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mod
         return True
 
     return (dtype == "float16" and begin_norm_axis == 1 and impl_mode == "high_performance" and _check_shape())
+
+
+def nz_non_aligned(input_x, input_gamma, input_beta,
+                   output_y, output_mean, output_variance,
+                   begin_norm_axis, begin_params_axis,
+                   ori_shape, epsilon, kernel_name="layer_norm",
+                   impl_mode="high_performance"):
+    """
+    DSL description of the layernorm operator's mathematical calculation process for non_aligned scene
+    """
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    dtype = input_x.dtype.lower()
+    cast_dtype = "float16"
+    cast_dtype_precision = dtype
+    if dtype == "float16" and \
+            ((tbe_platform.cce_conf.api_check_support
+                  ("te.lang.cce.vexp", "float32") and
+              impl_mode == "high_performance") or
+             impl_mode == "high_precision"):
+        cast_dtype = "float32"
+        cast_dtype_precision = "float32"
+        input_x = tbe.cast_to(input_x, "float32")
+        input_gamma = tbe.cast_to(input_gamma, "float32")
+        input_beta = tbe.cast_to(input_beta, "float32")
+    else:
+        input_x = tbe.vadds(input_x, 0)
+
+    # Calculate the scaling ratio of the average
+    reduce_elts = 1.0
+    index_list = tuple(index for index, _ in enumerate(ori_shape))
+    reduce_axis = index_list[begin_norm_axis:]
+    for i in reduce_axis:
+        reduce_elts *= ori_shape[i]
+    reduce_axis = to_frac_z_axis(ori_shape, reduce_axis)
+    mean_cof = reduce_elts ** (-1)
+
+    # DSL description of the mean calculation process
+    with tvm.tag_scope("tail_block_pretreatment"):
+        lambda_func = lambda *indice : tvm.const(0, input_x.dtype)
+        temp = tvm.compute(input_x.shape, lambda_func, name="tail_block_pretreatment")
+
+    input_x = tbe.vadd(input_x, temp)
+    mean_muls = tbe.vmuls(input_x, mean_cof)
+    mean = tbe.sum(mean_muls, axis=reduce_axis, keepdims=True)
+
+    mean_square = tbe.vmul(mean, mean)
+    x_square = tbe.vmul(input_x, input_x)
+    x_square = tbe.vmuls(x_square, mean_cof)
+    x_square_mean = tbe.sum(x_square, axis=reduce_axis, keepdims=True)
+    variance = tbe.vsub(x_square_mean, mean_square)
+
+    # DSL description of the normalize calculation process
+    mean_normalize_broadcast = _broadcast_nz(mean, shape_x)
+    normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
+    epsilon = tvm.const(epsilon, dtype=cast_dtype)
+
+    normalize_add = tbe.vadds(variance, epsilon)
+    normalize_log = tbe.vlog(normalize_add)
+    normalize_log_mul = \
+        tbe.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
+    normalize_exp = tbe.vexp(normalize_log_mul)
+    variance_normalize_broadcast = _broadcast_nz(normalize_exp, shape_x)
+    normalize_mul = tbe.vmul(normalize_sub, variance_normalize_broadcast)
+
+    # DSL description of the scale and translate calculation process
+    gamma_broadcast = _broadcast_nz(input_gamma, shape_x)
+    beta_broadcast = _broadcast_nz(input_beta, shape_x)
+    scale_mul = tbe.vmul(gamma_broadcast, normalize_mul)
+    res = tbe.vadd(scale_mul, beta_broadcast)
+
+    if dtype == "float16" and \
+            ((tbe_platform.cce_conf.api_check_support
+                  ("te.lang.cce.vexp", "float32") and
+              impl_mode == "high_performance") or
+             impl_mode == "high_precision"):
+        mean = tbe.cast_to(mean, "float16")
+        variance = tbe.cast_to(variance, "float16")
+        res = tbe.cast_to(res, "float16")
+
+    return mean, variance, res
 
 
 def layer_norm_compute_nz(input_x, input_gamma, input_beta,
@@ -561,6 +641,14 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     return mean, variance, res
 
 
+def is_support_nz_non_aligned(ori_shape_x, begin_params_axis, impl_mode):
+    if ori_shape_x[-1] % SIZE_SIXTEEN != 0:
+        if begin_params_axis != 0 and impl_mode == "high_performance":
+            return True
+
+    return False
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
@@ -705,7 +793,8 @@ def layer_norm(input_x, input_gamma, input_beta,
                 for i in range(begin_params_axis):
                     shape_beta.insert(i, 1)
 
-        data_x = tvm.placeholder(shape_x, name="x", dtype=dtype)
+        attr = {"ori_shape": ori_shape_x}
+        data_x = tvm.placeholder(shape_x, name="x", dtype=dtype, attrs=attr)
         data_gamma = tvm.placeholder(shape_gamma, name="gamma", dtype=dtype)
         data_beta = tvm.placeholder(shape_beta, name="beta", dtype=dtype)
 
@@ -715,6 +804,12 @@ def layer_norm(input_x, input_gamma, input_beta,
                                                "epsilon": epsilon})
                 mean, variance, res = \
                     layer_norm_cube.layer_norm_cube_compute(data_x, data_gamma, data_beta)
+            elif is_support_nz_non_aligned(ori_shape_x, begin_params_axis, impl_mode):
+                mean, variance, res = \
+                    nz_non_aligned(data_x, data_gamma, data_beta,
+                                   output_y, output_mean, output_variance,
+                                   begin_norm_axis, begin_params_axis,
+                                   ori_shape_x, epsilon, kernel_name, impl_mode)
             else: 
                 mean, variance, res = \
                     layer_norm_compute_nz(data_x, data_gamma, data_beta,

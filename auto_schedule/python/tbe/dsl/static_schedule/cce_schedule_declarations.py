@@ -40,6 +40,7 @@ class OpFlags(Enum):
     conv3d_backprop_input_flag = "conv3d_backprop_input"
     conv3d_backprop_filter_flag = "conv3d_backprop_filter"
     cube_layer_norm_flag = "cube_layer_norm"
+    tail_block_pretreatment_flag = "tail_block_pretreatment"
     concat_flag = "concat"
     ascend_quant_flag = "quant"
     ascend_dequant_flag = "dequant"

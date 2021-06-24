@@ -521,7 +521,10 @@ class VectorSchedule(object):
         for stage in self._emit_insn_map:
             scope_iter_var = self._emit_insn_map[stage]["scope"]
             instruction = self._emit_insn_map[stage]["instruction"]
-            self._schedule[stage].emit_insn(scope_iter_var, instruction)
+            if instruction == "vector_dup_with_align":
+                self._schedule[stage].emit_insn(scope_iter_var, "vector_dup", attrs={"vdup_align": 1})
+            else:
+                self._schedule[stage].emit_insn(scope_iter_var, instruction)
         if self.max_last_broadcast_axis_offset:
             cce_emitinsn_params.cceEmitParamsIns.del_param(
                 "broadcast_axis_offset")
@@ -918,7 +921,8 @@ class VectorSchedule(object):
                           "elewise_multiple_maddrelu": "vector_multiple",
                           "elewise_multiple_sel": "vector_select_bool",
                           "elewise_binary_sub": "vector_sub",
-                          "elewise_binary_phony": "elewise_binary_phony"}
+                          "elewise_binary_phony": "elewise_binary_phony",
+                          "tail_block_pretreatment": "vector_dup_with_align"}
 
     def _get_reg_emit_insn_map(self):
         self._reg_insn_map = {
@@ -955,4 +959,5 @@ class VectorSchedule(object):
             "elewise_single_diagonal":
                 "elewise_single_diagonal",
             "read_select": "dma_copy",
-            "write_select": "dma_copy"}
+            "write_select": "dma_copy",
+            "tail_block_pretreatment": "vector_dup_with_align"}
