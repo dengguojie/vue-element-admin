@@ -41,7 +41,7 @@ def check_not_dynamic_shape(shape_list):
                     return True
         elif isinstance(dim, int):
             if dim in (utils.SHAPE_DYNAMIC_SCENARIOS_ONE,
-                        utils.SHAPE_DYNAMIC_SCENARIOS_TWO):
+                       utils.SHAPE_DYNAMIC_SCENARIOS_TWO):
                 return True
     return False
 

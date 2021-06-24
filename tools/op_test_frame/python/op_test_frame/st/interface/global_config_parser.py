@@ -41,6 +41,12 @@ class WhiteLists:
         self.aicpu_ir2ini_type_map = config_dict.get(AICPU_PROTO2INI_TYPE_MAP)
         return config_dict
 
+    def get_aicpu_ir2ini_type_map(self):
+        """
+        get aicpu_ir2ini_type_map
+        """
+        return self.aicpu_ir2ini_type_map
+
 
 class GlobalConfig:
     """
@@ -62,3 +68,7 @@ class GlobalConfig:
             white_lists.init_white_lists()
             cls._instance.white_lists = white_lists
         return cls._instance
+
+    def get_white_lists(self):
+        """get white lists"""
+        return self.white_lists

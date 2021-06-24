@@ -29,6 +29,24 @@ class AdvanceIniArgs:
         self.atc_singleop_advance_option = ""
         self.performance_mode = 'False'
 
+    def get_ascend_global_log_level(self):
+        """
+        Function Description:
+            get ascend_global_log_level
+        :return: ascend_global_log_level
+        """
+
+        return self.ascend_global_log_level
+
+    def get_ascend_slog_print_to_stdout(self):
+        """
+        Function Description:
+            get ascend_slog_print_to_stdout
+        :return: ascend_slog_print_to_stdout
+        """
+
+        return self.ascend_slog_print_to_stdout
+
 
 class AdvanceIniParser:
     """

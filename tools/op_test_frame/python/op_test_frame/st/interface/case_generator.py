@@ -22,7 +22,6 @@ try:
 except ImportError as import_error:
     sys.exit(
         "[case_generator] Unable to import module: %s." % str(import_error))
-# pylint: disable=unused-variable
 
 INI_INPUT = 'input'
 INI_OUTPUT = 'output'
@@ -385,7 +384,7 @@ class CaseGenerator:
         try:
             # parse sample as INPUT(x, TensorType({DT_FLOAT}))
             return re.findall(r'[(](.*?)[,]', start_str)[0]
-        except IndexError as index_error:
+        except IndexError:
             utils.print_warn_log(
                 "Can't parse operator information of %s in %s,"
                 "please check." % (op_key, head_file))
@@ -397,7 +396,7 @@ class CaseGenerator:
         return: count type in .ini file.
         """
         count_ini_with_type = 0
-        for (key, value) in list(self.op_info.items()):
+        for (key, _) in list(self.op_info.items()):
             if key.startswith(INI_INPUT) or key.startswith(INI_OUTPUT):
                 # check and transform type of Tensor.
                 op_tensor = self.op_info.get(key)
@@ -411,7 +410,7 @@ class CaseGenerator:
         return count_ini_with_type
 
     def _parse_aicpu_input_output_info(self, line, input_count, output_count):
-        for op_key in utils.IN_OUT_OP_KEY_MAP.keys():
+        for op_key in iter(utils.IN_OUT_OP_KEY_MAP):
             if line.startswith(op_key):
                 # find keyword.
                 start_str = line[line.find(op_key):]
@@ -472,7 +471,7 @@ class CaseGenerator:
                     try:
                         attr_tensor_type = type_attrs.split(',', 1)[0]
                         defaultvalue = type_attrs.split(',', 1)[1]
-                    except IndexError as index_error:
+                    except IndexError:
                         utils.print_warn_log(
                             "Can't parse operator information of %s, "
                             "please check." % attr_name)

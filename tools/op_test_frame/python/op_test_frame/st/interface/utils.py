@@ -172,6 +172,42 @@ OPTIONAL_TYPE_LIST = ['UNDEFINED', 'RESERVED']
 TRUE_OR_FALSE_LIST = ['True', 'False']
 
 
+def create_attr_list_str(attr_value):
+    """
+    create attribute exact value string based on list type
+    :param attr_value: attr value variable
+    :return: res_str
+    """
+    if not attr_value:
+        return "{}"
+    if isinstance(attr_value[0], list):
+        res_str = "{"
+        num_list_str_list = []
+        for num_list in attr_value:
+            num_list_str_list.append(
+                "new int64_t[" + str(len(num_list)) +
+                "]{" + str(", ".join(str(item) for item in num_list)) + "}")
+        res_str += str(
+            ", ".join(str(item) for item in num_list_str_list)) + "}"
+    elif isinstance(attr_value[0], str):
+        res_str = "{" + str(
+            ", ".join('"' + item + '"' for item in attr_value)) + "}"
+    elif isinstance(attr_value[0], bool):
+        bool_int_list = []
+        for bool_val in attr_value:
+            # 0 for false, others for true
+            if bool_val:
+                bool_int_list.append(1)
+            else:
+                bool_int_list.append(0)
+        res_str = "{" + str(
+            ", ".join(str(item) for item in bool_int_list)) + "}"
+    else:
+        res_str = "{" + str(
+            ", ".join(str(item) for item in attr_value)) + "}"
+    return res_str
+
+
 def create_attr_value_str(attr_value):
     """
     create attribute exact value string based on type
@@ -179,33 +215,7 @@ def create_attr_value_str(attr_value):
     :return: none
     """
     if isinstance(attr_value, list):
-        if not attr_value:
-            return "{}"
-        if isinstance(attr_value[0], list):
-            res_str = "{"
-            num_list_str_list = []
-            for num_list in attr_value:
-                num_list_str_list.append(
-                    "new int64_t[" + str(len(num_list)) +
-                    "]{" + str(", ".join(str(item) for item in num_list)) + "}")
-            res_str += str(
-                ", ".join(str(item) for item in num_list_str_list)) + "}"
-        elif isinstance(attr_value[0], str):
-            res_str = "{" + str(
-                ", ".join('"' + item + '"' for item in attr_value)) + "}"
-        elif isinstance(attr_value[0], bool):
-            bool_int_list = []
-            for bool_val in attr_value:
-                # 0 for false, others for true
-                if bool_val:
-                    bool_int_list.append(1)
-                else:
-                    bool_int_list.append(0)
-            res_str = "{" + str(
-                ", ".join(str(item) for item in bool_int_list)) + "}"
-        else:
-            res_str = "{" + str(
-                ", ".join(str(item) for item in attr_value)) + "}"
+        res_str = create_attr_list_str(attr_value)
     elif isinstance(attr_value, str):
         # string
         res_str = '"' + attr_value + '"'
@@ -480,6 +490,7 @@ def load_json_file(json_path):
     :param json_path: the json path
     :return: the json object
     """
+
     try:
         with open(json_path, 'r') as input_file:
             try:
@@ -575,7 +586,7 @@ def fix_name_lower_with_under(name):
     return fix_name
 
 
-class ScanFile(object):
+class ScanFile:
     """
     The class for scanning path to get subdirectories.
     """

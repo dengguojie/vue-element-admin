@@ -196,7 +196,9 @@ class SubCaseDesignCross(SD.SubCaseDesign):
         for tensor in tensor_list:
             cross_list = []
             case_list = []
-            cross_key_list = [key for key in op_cross_key_list]
+            cross_key_list = []
+            for key in op_cross_key_list:
+                cross_key_list.append(key)
             if tensor.get(utils.SHAPE_RANGE):
                 dynamic_handle.add_key_in_cross_key_list(cross_key_list)
             if tensor.get(utils.VALUE):
@@ -333,6 +335,37 @@ class SubCaseDesignCross(SD.SubCaseDesign):
 
             case[CD.INPUT_DESC].append(input_case[index])
 
+    def _get_sub_test_cases(
+            self, case_dict, count, prefix, attr_list):
+        pyfile, function = self._check_expect_output_param(self.json_obj)
+        for index in range(count):
+            if self.json_obj.get(CD.ST_MODE) == "ms_python_train":
+                case = {CD.OP: self.json_obj[CD.OP],
+                        CD.ST_MODE: self.json_obj[CD.ST_MODE],
+                        CD.INPUT_DESC: [], CD.OUTPUT_DESC: [],
+                        'case_name': prefix + '%d' % self.case_idx}
+            else:
+                case = {CD.OP: self.json_obj[CD.OP],
+                        CD.INPUT_DESC: [], CD.OUTPUT_DESC: [],
+                        'case_name': prefix + '%03d' % self.case_idx}
+            if len(attr_list) > 0:
+                case[CD.ATTR] = attr_list
+            self._append_input_desc_to_case(self.json_obj, index,
+                                            case_dict.get('input'), case)
+            output_index = index
+            if index >= len(case_dict.get('output')[0]):
+                output_index = index % len(case_dict.get('output'))
+            for out_index, output_case in enumerate(case_dict.get('output')):
+                if self.json_obj[CD.OUTPUT_DESC][out_index].get('name'):
+                    output_name = \
+                        self.json_obj[CD.OUTPUT_DESC][out_index].get('name')
+                    output_case[index].update({'name': output_name})
+                case[CD.OUTPUT_DESC].append(output_case[output_index])
+            self.case_idx, self.total_case_list = self._add_case_to_total_case(
+                case, self.case_idx, [pyfile, function], self.total_case_list)
+        utils.print_info_log('Create %d sub test cases for %s.'
+                             % (count, self.json_obj[CD.CASE_NAME]))
+
     def subcase_generate(self):
         """
         generate subcase by cross
@@ -367,31 +400,7 @@ class SubCaseDesignCross(SD.SubCaseDesign):
                 prefix += 'sub_case_'
         else:
             prefix += 'case_'
-        pyfile, function = self._check_expect_output_param(self.json_obj)
-        for index in range(count):
-            if self.json_obj.get(CD.ST_MODE) == "ms_python_train":
-                case = {CD.OP: self.json_obj[CD.OP], CD.ST_MODE: self.json_obj[CD.ST_MODE],
-                        CD.INPUT_DESC: [], CD.OUTPUT_DESC: [],
-                        'case_name': prefix + '%d' % self.case_idx}
-            else:
-                case = {CD.OP: self.json_obj[CD.OP],
-                        CD.INPUT_DESC: [], CD.OUTPUT_DESC: [],
-                        'case_name': prefix + '%03d' % self.case_idx}
-            if len(attr_list) > 0:
-                case[CD.ATTR] = attr_list
-            self._append_input_desc_to_case(self.json_obj, index,
-                                            input_case_list, case)
-            output_index = index
-            if index >= len(output_case_list[0]):
-                output_index = index % len(output_case_list)
-            for out_index, output_case in enumerate(output_case_list):
-                if self.json_obj[CD.OUTPUT_DESC][out_index].get('name'):
-                    output_name = \
-                        self.json_obj[CD.OUTPUT_DESC][out_index].get('name')
-                    output_case[index].update({'name': output_name})
-                case[CD.OUTPUT_DESC].append(output_case[output_index])
-            self.case_idx, self.total_case_list = self._add_case_to_total_case(
-                case, self.case_idx, [pyfile, function], self.total_case_list)
-        utils.print_info_log('Create %d sub test cases for %s.'
-                             % (count, self.json_obj[CD.CASE_NAME]))
+        case_dict = {'input': input_case_list,
+                     'output': output_case_list}
+        self._get_sub_test_cases(case_dict, count, prefix, attr_list)
         return self.total_case_list

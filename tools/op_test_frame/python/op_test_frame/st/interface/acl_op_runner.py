@@ -199,7 +199,7 @@ class AclOpRunner:
             utils.print_error_log("Path of env install_path: "
                                   "%s does not exist" % toolkit_root_path)
             return
-        else:
+        if os.path.exists(toolkit_root_path):
             utils.print_info_log("Env install_path is " + toolkit_root_path)
         run_cmd = [toolkit_root_path + MSPROF_REL_PATH,
                    '--application=./main', '--output=./' + PROF]
@@ -223,7 +223,7 @@ class AclOpRunner:
             return time_result
         csv_task_id_column_name, csv_op_time_column_name, csv_op_name_column_name \
             = "", "", ""
-        for soc_version_base_str in SOC_VERSION_CSV_COLUMN_NAME_MAP.keys():
+        for soc_version_base_str in iter(SOC_VERSION_CSV_COLUMN_NAME_MAP):
             if soc_version_base_str in soc_version:
                 utils.print_info_log("found %s in specified soc version value: %s"
                                      % (soc_version_base_str, soc_version))
@@ -235,40 +235,10 @@ class AclOpRunner:
                                   "csv_op_name_column_name: %s" % (csv_task_id_column_name,
                                                                    csv_op_time_column_name, csv_op_name_column_name))
             return time_result
-
-        with open(csv_file, 'r') as csv_file_obj:
-            try:
-                import csv
-            except import_error:
-                utils.print_error_log("[acl_op_runner] Unable to import csv, please check.")
-                return time_result
-            csv_reader = csv.reader(csv_file_obj)
-            row_list = list(csv_reader)
-            if not row_list:
-                utils.print_error_log("Csv summary file is empty, please check.")
-                return time_result
-            column_line_list = row_list.pop(0)  # remove column line
-            if csv_task_id_column_name not in column_line_list or \
-                    csv_op_time_column_name not in column_line_list or \
-                    csv_op_name_column_name not in column_line_list:
-                utils.print_error_log("%s , %s or %s not found in column line, please check."
-                                      % (csv_task_id_column_name, csv_op_time_column_name,
-                                         csv_op_name_column_name))
-                return time_result
-            task_id_column_idx = column_line_list.index(csv_task_id_column_name)
-            op_time_column_idx = column_line_list.index(csv_op_time_column_name)
-            op_name_column_idx = column_line_list.index(csv_op_name_column_name)
-            row_list = sorted(row_list, key=lambda x: int(x[task_id_column_idx]))
-
-            op_idx = 0
-            for _, row in enumerate(row_list):
-                if op_idx == len(op_name_list):
-                    break
-                if op_name_list[op_idx] in os.path.split(
-                        row[op_name_column_idx])[1]:
-                    op_time = row[op_time_column_idx]
-                    op_idx = op_idx + 1
-                    time_result.append(op_time.strip('"'))
+        csv_name_info = {"task_id": csv_task_id_column_name,
+                         "op_time": csv_op_time_column_name,
+                         "op_name": csv_op_name_column_name}
+        time_result = get_result_time(csv_file, op_name_list, csv_name_info)
         return time_result
 
     def _prof_get_op_name_from_report(self, run_result_list):
@@ -288,6 +258,29 @@ class AclOpRunner:
                 return []
             op_name_list.append(op_name)
         return op_name_list
+
+    def _get_time_result_and_write_report(self, csv_file, op_name_list):
+        # start to get op time from csv summary files
+        time_result = self._prof_get_op_time_from_csv_file(csv_file,
+                                                           op_name_list,
+                                                           self.soc_version)
+        if not time_result:
+            utils.print_error_log(
+                "Failed to get time result from csv files, please check.")
+            return
+        utils.print_info_log(
+            "Get time cost of each case from csv: %s" % ','.join(time_result))
+        # start to write op time into st report
+        for idx, report_obj in enumerate(self.report.report_list):
+            if idx >= len(time_result):
+                utils.print_error_log("Length of report list"
+                                      " exceeds length of time result.")
+                break
+            prof_result = op_st_case_info.OpSTStageResult(
+                op_status.SUCCESS,
+                "profiling_analysis",
+                time_result[idx] + PROF_TIME_UNIT)
+            report_obj.trace_detail.add_stage_result(prof_result)
 
     def prof_analyze(self, prof_base_path, toolkit_root_path):
         """
@@ -348,28 +341,11 @@ class AclOpRunner:
             if not op_name_list:
                 utils.print_error_log("Failed to get op names from st report, please check.")
                 return
-            else:
+            if op_name_list:
                 utils.print_info_log("Get op names from report: %s" % ','.join(op_name_list))
 
-            # start to get op time from csv summary files
-            time_result = self._prof_get_op_time_from_csv_file(csv_file, op_name_list, self.soc_version)
-            if not time_result:
-                utils.print_error_log("Failed to get time result from csv files, please check.")
-                return
-            utils.print_info_log("Get time cost of each case from csv: %s" % ','.join(time_result))
-
-            # start to write op time into st report
-            for idx, report_obj in enumerate(self.report.report_list):
-                if idx >= len(time_result):
-                    utils.print_error_log("Length of report list"
-                                          " exceeds length of time result.")
-                    break
-                prof_result = op_st_case_info.OpSTStageResult(
-                    op_status.SUCCESS,
-                    "profiling_analysis",
-                    time_result[idx] + PROF_TIME_UNIT)
-                report_obj.trace_detail.add_stage_result(prof_result)
-            utils.print_info_log("Finished to analyze profiling data")
+            # start to get op time from csv summary files and save in report
+            self._get_time_result_and_write_report(csv_file, op_name_list)
         except IOError:
             utils.print_error_log("Operate directory of profiling data failed")
 
@@ -379,3 +355,48 @@ class AclOpRunner:
         """
         self.acl_compile()
         self.run()
+
+
+def get_result_time(csv_file, op_name_list, csv_name_info):
+    """
+    get result time
+    """
+    time_result = []
+    with open(csv_file, 'r') as csv_file_obj:
+        try:
+            import csv
+        except import_error:
+            utils.print_error_log(
+                "[acl_op_runner] Unable to import csv, please check.")
+            return time_result
+        row_list = list(csv.reader(csv_file_obj))
+        if not row_list:
+            utils.print_error_log("Csv summary file is empty, please check.")
+            return time_result
+        column_line_list = row_list.pop(0)  # remove column line
+        if csv_name_info.get("task_id") not in column_line_list or \
+                csv_name_info.get("op_time") not in column_line_list or \
+                csv_name_info.get("op_name") not in column_line_list:
+            utils.print_error_log(
+                "%s , %s or %s not found in column line, please check."
+                % (csv_name_info.get("task_id"), csv_name_info.get("op_time"),
+                   csv_name_info.get("op_name")))
+            return time_result
+        task_id_column_idx = column_line_list.index(
+            csv_name_info.get("task_id"))
+        op_time_column_idx = column_line_list.index(
+            csv_name_info.get("op_time"))
+        op_name_column_idx = column_line_list.index(
+            csv_name_info.get("op_name"))
+        row_list = sorted(row_list, key=lambda x: int(x[task_id_column_idx]))
+
+        op_idx = 0
+        for _, row in enumerate(row_list):
+            if op_idx == len(op_name_list):
+                break
+            if op_name_list[op_idx] in os.path.split(
+                    row[op_name_column_idx])[1]:
+                op_time = row[op_time_column_idx]
+                op_idx = op_idx + 1
+                time_result.append(op_time.strip('"'))
+    return time_result

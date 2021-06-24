@@ -1,9 +1,27 @@
+# Copyright 2020-2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+result compare
+"""
+
 import os
 import time
 import numpy as np
 from op_test_frame.common import op_status
-from . import utils
-from . import op_st_case_info
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface import op_st_case_info
 
 
 def _cal_relative_diff(real_data, expect_data, diff_thd, type_str='fp16'):
@@ -80,8 +98,7 @@ def _display_output(real_data, expect_data, start, end, diff_thd):
                 _cal_relative_diff(expect_data[j], real_data[j], diff_thd)))
 
 
-# pylint: disable=unused-argument
-def _display_error_output(real_data, expect_data, err_idx, relative_diff, start, end, diff_thd):
+def _display_error_output(real_data, expect_data, err_idx, relative_diff):
     utils.print_info_log('Error '
                          'Line-----------------------------------------------------------------------------')
     utils.print_info_log('Loop \t ExpectOut \t RealOut \t FpDiff \t RateDiff')
@@ -165,8 +182,7 @@ def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
         utils.print_info_log('Maximum error is: %s. Tolerance threshold is: %s.' % (
             max_error, max_diff_hd))
     if result == "Failed":
-        _display_error_output(real_data, data_compe, err_idx, err_diff, start,
-                              end, diff_thd)
+        _display_error_output(real_data, data_compe, err_idx, err_diff)
     return result, fulfill_percent, max_error
 
 
@@ -206,8 +222,8 @@ def compare2(result_dir, expect_dir):
                                                          cpu_output)
         result_list.append([result, error_percent, max_error])
 
-    utils.print_info_log('End to compare result. Duration:%0.2f second.' % (
-            time.time() - start_time))
+    utils.print_info_log('End to compare result. Duration:%0.2f second.'
+                         % (time.time() - start_time))
 
 
 def compare(report, run_dir):
@@ -257,8 +273,8 @@ def compare(report, run_dir):
             _get_run_stage_result(result, case_name, case_report)
     # exist expect func, print compare cost time.
     if is_compare:
-        utils.print_info_log('End to compare result. Duration:%0.2f second.' % (
-                time.time() - start_time))
+        utils.print_info_log('End to compare result. Duration:%0.2f second.'
+                             % (time.time() - start_time))
 
 
 def _get_run_stage_result(result, case_name, case_report):
@@ -274,6 +290,42 @@ def _get_run_stage_result(result, case_name, case_report):
         utils.print_warn_log("The result in result.txt only support "
                              "'[pass]' and '[fail]', '%s' is "
                              "unsupported." % result)
+
+
+def _get_result_list(result_list, case_info):
+    for idx, expect_file in enumerate(case_info.expect_data_paths):
+        result_file = case_info.planned_output_data_paths[idx]
+        utils.print_info_log(
+            "The result file %s comapre vs expect data %s" % (
+                os.path.basename(result_file),
+                os.path.basename(expect_file)))
+        if not os.path.isfile(result_file):
+            utils.print_warn_log("There is no result file :%s,"
+                                 "skip compare." % result_file)
+            continue
+        if not os.path.isfile(expect_file):
+            utils.print_warn_log("There is no expect output file"
+                                 ":%s,skip compare." % expect_file)
+            continue
+        ouput_configs = case_info.op_params.get("output_desc")
+        if not ouput_configs:
+            utils.print_warn_log("Failed to output data type.")
+            continue
+        str_type = ouput_configs[idx].get("type")
+        np_type = _get_np_dtype(str_type)
+        utils.print_info_log(
+            "The data type is {}, the numpy type is {}".format(
+                str_type, np_type))
+        if not np_type:
+            utils.print_warn_log(
+                "Failed to get numpy data type. Skip compare")
+            continue
+        npu_output = np.fromfile(result_file, np_type)
+        cpu_output = np.fromfile(expect_file, np_type)
+        result, error_percent, max_error = _data_compare(npu_output,
+                                                         cpu_output)
+        result_list.append([result, error_percent, max_error])
+    return result_list
 
 
 def _get_compare_stage_result(result, index, case_name, case_report):
@@ -305,39 +357,7 @@ def _get_compare_stage_result(result, index, case_name, case_report):
             _add_op_st_stage_result(
                 case_report, op_status.FAILED, "compare_data", None)
             return
-        for idx, expect_file in enumerate(case_info.expect_data_paths):
-            result_file = case_info.planned_output_data_paths[idx]
-            utils.print_info_log(
-                "The result file %s comapre vs expect data %s" % (
-                    os.path.basename(result_file),
-                    os.path.basename(expect_file)))
-            if not os.path.isfile(result_file):
-                utils.print_warn_log("There is no result file :%s,"
-                                     "skip compare." % result_file)
-                continue
-            if not os.path.isfile(expect_file):
-                utils.print_warn_log("There is no expect output file"
-                                     ":%s,skip compare." % expect_file)
-                continue
-            ouput_configs = case_info.op_params.get("output_desc")
-            if not ouput_configs:
-                utils.print_warn_log("Failed to output data type.")
-                continue
-            str_type = ouput_configs[idx].get("type")
-            np_type = _get_np_dtype(str_type)
-            utils.print_info_log(
-                "The data type is {}, the numpy type is {}".format(
-                    str_type, np_type))
-            if not np_type:
-                utils.print_warn_log(
-                    "Failed to get numpy data type. Skip compare")
-                continue
-            npu_output = np.fromfile(result_file, np_type)
-            cpu_output = np.fromfile(expect_file, np_type)
-            result, error_percent, max_error = _data_compare(npu_output,
-                                                             cpu_output)
-            result_list.append([result, error_percent, max_error])
-
+        result_list = _get_result_list(result_list, case_info)
         # add compare report
         compare_status = op_status.SUCCESS
         if not result_list:

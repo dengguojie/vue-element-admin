@@ -43,13 +43,14 @@ def _generate_op_project(args, report, machine_type):
     case_list = design.design()
     output_path = os.path.realpath(args.output_path)
     # create op project path and generate op test case code
+    path_and_device_id = (output_path, args.device_id)
     if case_list[0].get('st_mode') == 'ms_python_train':
         ms_op_generator_instance = MsOpGenerator(
-            case_list, output_path, args.device_id, machine_type, report)
+            case_list, path_and_device_id, machine_type, report)
         ms_op_generator_instance.generate()
     else:
         acl_op_generator_instance = AclOpGenerator(
-            case_list, output_path, args.device_id, machine_type, report)
+            case_list, path_and_device_id, machine_type, report)
         acl_op_generator_instance.generate()
 
     # generate data

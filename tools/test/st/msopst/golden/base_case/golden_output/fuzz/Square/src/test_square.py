@@ -12,6 +12,16 @@ context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id=0
 logger = logging.getLogger(__name__)
 
 
+class Net(nn.Cell):
+    """Net definition"""
+
+    def __init__(self):
+        super(Net, self).__init__()
+        self.square = Square()
+
+    def construct(self,input1):
+        return self.square(input1)
+
 def test_Square_001_fuzz_case_001():
     
     input1 = np.fromfile('Square/run/out/test_data/data/Test_Square_001_fuzz_case_001_input_0.bin', np.float32)
@@ -161,13 +171,3 @@ def test_Square_001_fuzz_case_010():
     end = time.time()
     
     print("running time: %.2f s" %(end-start))
-
-class Net(nn.Cell):
-    """Net definition"""
-
-    def __init__(self):
-        super(Net, self).__init__()
-        self.square = Square()
-
-    def construct(self,input1):
-        return self.square(input1)

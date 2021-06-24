@@ -154,9 +154,9 @@ class DataGenerator:
             data = data.astype(real_dtype)
         return data
 
-    # pylint: disable=too-many-arguments
-    def _gen_input_data(self, input_shape, dtype, range_min, range_max,
-                        input_desc, file_path):
+    def _gen_input_data(self, input_shape, input_desc, file_path):
+        range_min, range_max = input_desc.get('value_range')
+        dtype = input_desc.get('type')
         value = input_desc.get('value')
         try:
             if value:
@@ -173,6 +173,70 @@ class DataGenerator:
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_WRITE_FILE_ERROR)
 
+    def _get_input_desc_and_gen_data(
+            self, case, case_name, calc_func_params_tmp, param_info_list):
+        """
+        get input desc info
+        """
+        for index, input_desc in enumerate(case.get('input_desc')):
+            if input_desc.get('type') in utils.OPTIONAL_TYPE_LIST:
+                continue
+            # consider dynamic shape scenario
+            input_shape = dynamic_handle.replace_shape_to_typical_shape(
+                input_desc)
+            file_path = os.path.join(
+                self.output_path,
+                case_name + '_input_' + str(index) + '.bin')
+            if os.path.exists(file_path):
+                utils.print_error_log(
+                    'The file %s already exists, please delete it then'
+                    ' retry.' % file_path)
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+            data = self._gen_input_data(input_shape, input_desc, file_path)
+            try:
+                input_dic = {
+                    'value': data,
+                    'dtype': input_desc.get('type'),
+                    'shape': input_shape,
+                    'format': input_desc.get('format')
+                }
+                data.tofile(file_path)
+                os.chmod(file_path, utils.WRITE_MODES)
+            except OSError as error:
+                utils.print_warn_log(
+                    'Failed to generate data for %s. %s' % (
+                        file_path, error))
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_WRITE_FILE_ERROR)
+            if input_desc.get('name'):
+                input_name = input_desc.get('name')
+                calc_func_params_tmp.update(
+                    {input_name: input_dic})
+                param_info_list.append("{input_name}".format(
+                    input_name=input_name))
+
+    def _generate_params_desc(self, case, case_name):
+        calc_func_params_tmp = {}
+        param_info_list = []
+        self._get_input_desc_and_gen_data(
+            case, case_name, calc_func_params_tmp, param_info_list)
+        for _, output_desc in enumerate(case['output_desc']):
+            output_shape = dynamic_handle.replace_shape_to_typical_shape(
+                output_desc)
+            output_dic = {
+                'dtype': output_desc.get('type'),
+                'shape': output_shape,
+                'format': output_desc.get('format')
+            }
+            if output_desc.get('name'):
+                output_name = output_desc.get('name')
+                calc_func_params_tmp.update(
+                    {output_name: output_dic})
+                param_info_list.append("{output_name}".format(
+                    output_name=output_name))
+        return param_info_list, calc_func_params_tmp
+
     def generate(self):
         """
         generate data by case list
@@ -183,70 +247,16 @@ class DataGenerator:
             if len(case.get('input_desc')) < 1:
                 utils.print_info_log("There is no inputs, skip generate input data.")
                 return
-            case_name = case['case_name']
-            calc_func_params_tmp = {}
+            case_name = case.get('case_name')
             utils.print_info_log(
                 'Start to generate the data for %s.' % case_name)
             param_info = ""
-            param_info_list = []
-            for index, input_desc in enumerate(case['input_desc']):
-                range_min, range_max = input_desc['value_range']
-                if input_desc.get('type') in utils.OPTIONAL_TYPE_LIST:
-                    continue
-                dtype = input_desc.get('type')
-                # consider dynamic shape scenario
-                input_shape = dynamic_handle.replace_shape_to_typical_shape(
-                    input_desc)
-                file_path = os.path.join(
-                    self.output_path,
-                    case_name + '_input_' + str(index) + '.bin')
-                if os.path.exists(file_path):
-                    utils.print_error_log(
-                        'The file %s already exists, please delete it then'
-                        ' retry.' % file_path)
-                    raise utils.OpTestGenException(
-                        utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-                data = self._gen_input_data(input_shape, dtype, range_min,
-                                            range_max, input_desc, file_path)
-                try:
-                    input_dic = {
-                        'value': data,
-                        'dtype': input_desc.get('type'),
-                        'shape': input_shape,
-                        'format': input_desc.get('format')
-                    }
-                    data.tofile(file_path)
-                    os.chmod(file_path, utils.WRITE_MODES)
-                except OSError as error:
-                    utils.print_warn_log(
-                        'Failed to generate data for %s. %s' % (
-                            file_path, error))
-                    raise utils.OpTestGenException(
-                        utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-                if input_desc.get('name'):
-                    input_name = input_desc.get('name')
-                    calc_func_params_tmp.update(
-                        {input_name: input_dic})
-                    param_info_list.append("{input_name}".format(
-                        input_name=input_name))
-            # get output param
-            for index, output_desc in enumerate(case['output_desc']):
-                output_shape = dynamic_handle.replace_shape_to_typical_shape(
-                    output_desc)
-                output_dic = {
-                    'dtype': output_desc.get('type'),
-                    'shape': output_shape,
-                    'format': output_desc.get('format')
-                }
-                if output_desc.get('name'):
-                    output_name = output_desc.get('name')
-                    calc_func_params_tmp.update(
-                        {output_name: output_dic})
-                    param_info_list.append("{output_name}".format(
-                        output_name=output_name))
+            # get intput  and output param
+            param_info_list, calc_func_params_tmp = \
+                self._generate_params_desc(case, case_name)
             # get attr param
             if case.get('attr'):
-                for index, attr in enumerate(case.get('attr')):
+                for _, attr in enumerate(case.get('attr')):
                     attr_name = attr.get('name')
                     param_info_list.append("{attr_name}".format(
                         attr_name=attr_name))
@@ -277,6 +287,29 @@ class DataGenerator:
                     'Finish to generator the expect output data for '
                     '%s.' % case_name)
 
+    @staticmethod
+    def _get_tensors_and_func(case, calc_func_params_tmp):
+        expect_func_file = case.get("calc_expect_func_file")
+        expect_func = case.get("calc_expect_func_file_func")
+        sys.path.append(os.path.dirname(expect_func_file))
+        py_file = os.path.basename(expect_func_file)
+        module_name, _ = os.path.splitext(py_file)
+        utils.print_info_log("Start to import %s in %s." % (module_name,
+                                                            py_file))
+        module = importlib.import_module(module_name)
+        try:
+            func = getattr(module, expect_func)
+            expect_result_tensors = func(**calc_func_params_tmp)
+        except Exception as ex:
+            utils.print_error_log(
+                'Failed to execute function "%s" in %s. %s' % (
+                    expect_func, expect_func_file, str(ex)))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        if not isinstance(expect_result_tensors, (list, tuple)):
+            expect_result_tensors = [expect_result_tensors, ]
+        return expect_result_tensors, expect_func
+
     def _generate_expect_data(self, case, calc_func_params_tmp):
         expect_data_paths = []
         case_name = case.get('case_name')
@@ -287,25 +320,8 @@ class DataGenerator:
             case_name)
         if case.get("calc_expect_func_file") \
                 and case.get("calc_expect_func_file_func"):
-            expect_func_file = case["calc_expect_func_file"]
-            expect_func = case.get("calc_expect_func_file_func")
-            sys.path.append(os.path.dirname(expect_func_file))
-            py_file = os.path.basename(expect_func_file)
-            module_name, _ = os.path.splitext(py_file)
-            utils.print_info_log("Start to import %s in %s." % (module_name,
-                                                                py_file))
-            module = importlib.import_module(module_name)
-            try:
-                func = getattr(module, expect_func)
-                expect_result_tensors = func(**calc_func_params_tmp)
-            except Exception as ex:
-                utils.print_error_log(
-                    'Failed to execute function "%s" in %s. %s' % (
-                        expect_func, expect_func_file, str(ex)))
-                raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
-            if not isinstance(expect_result_tensors, (list, tuple)):
-                expect_result_tensors = [expect_result_tensors, ]
+            expect_result_tensors, expect_func = self._get_tensors_and_func(
+                case, calc_func_params_tmp)
             for idx, expect_result_tensor in enumerate(expect_result_tensors):
                 output_dtype = case['output_desc'][idx]['type']
                 if str(expect_result_tensor.dtype) != output_dtype:
@@ -317,7 +333,7 @@ class DataGenerator:
                                             expect_result_tensor.dtype,
                                             output_dtype, str(idx)))
                 expect_data_name = "%s_expect_output_%s_%s.bin" % (
-                    case_name, str(idx), output_dtype)
+                    case.get('case_name'), str(idx), output_dtype)
                 expect_data_path = os.path.join(expect_data_dir,
                                                 expect_data_name)
                 expect_result_tensor.tofile(expect_data_path)

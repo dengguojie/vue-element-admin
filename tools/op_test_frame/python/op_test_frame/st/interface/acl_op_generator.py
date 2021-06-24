@@ -86,6 +86,7 @@ def _create_acl_op_json_content(testcase_list):
         return str(json.dumps(content, sort_keys=True, indent=2))
     except TypeError:
         utils.print_error_log("")
+    return None
 
 
 def _write_content_to_file(content, file_path):
@@ -121,12 +122,13 @@ def _map_to_acl_format_enum(format_list):
     acl_format_list = []
     for acl_format in format_list:
         acl_format_list.append(
-            "(aclFormat)" + str(GC.instance().white_lists.format_map.get(acl_format)))
+            "(aclFormat)" + str(
+                GC.instance().white_lists.format_map.get(acl_format)))
     result_str += ", ".join(acl_format_list)
     return result_str
 
 
-def _create_exact_testcase_content(testcase_struct, device_id):
+def _get_input_desc(testcase_struct):
     input_shape_list = []
     input_data_type_list = []
     input_format_list = []
@@ -164,7 +166,10 @@ def _create_exact_testcase_content(testcase_struct, device_id):
         input_num = input_num + 1
     input_file_path = str(
         ', '.join('"' + item + '"' for item in input_file_path_list))
+    return input_shape_data, input_data_type, input_format, input_file_path
 
+
+def _get_output_desc(testcase_struct):
     output_shape_list = []
     output_data_type_list = []
     output_format_list = []
@@ -188,10 +193,24 @@ def _create_exact_testcase_content(testcase_struct, device_id):
         output_data_path = os.path.join("result_files", output_data_name)
         output_file_path_list.append(output_data_path)
         output_num = output_num + 1
-    output_file_path = str(
-        ', '.join('"' + item + '"' for item in output_file_path_list))
+    return output_shape_data, output_data_type, output_format, output_file_path_list
 
-    # do acl attr code generation
+
+def _replace_dict_list(attr_dic, attr_code_str, attr_index):
+    if isinstance(attr_dic.get('value'), list):
+        if isinstance(attr_dic.get('value')[0], list):
+            number_list = list()
+            for num_list in attr_dic.get('value'):
+                number_list.append(len(num_list))
+            num_str = str(number_list).replace('[', '{') \
+                .replace(']', '}')
+            attr_code_str += "    attr" + str(attr_index) + \
+                             ".listIntNumValues" + \
+                             " = " + num_str + ";\n"
+    return attr_code_str
+
+
+def _get_attr_desc(testcase_struct):
     all_attr_code_snippet = ""
     if "attr" in testcase_struct.keys():
         attr_index = 0
@@ -201,26 +220,35 @@ def _create_exact_testcase_content(testcase_struct, device_id):
                             + utils.OP_ATTR_TYPE_MAP.get(attr_dic.get('type')) \
                             + ", \"" + attr_dic.get('name') + "\"};\n"
             attr_code_str += "    attr" + str(attr_index) + "." \
-                             + utils.ATTR_MEMBER_VAR_MAP.get(attr_dic.get('type')) \
+                             + utils.ATTR_MEMBER_VAR_MAP.get(
+                attr_dic.get('type')) \
                              + " = " \
-                             + utils.create_attr_value_str(attr_dic.get('value')) \
+                             + utils.create_attr_value_str(
+                attr_dic.get('value')) \
                              + ';\n'
             # deal with the list_list_int attr
             if attr_dic.get('type') == "list_list_int":
                 if isinstance(attr_dic.get('value'), list):
-                    if isinstance(attr_dic.get('value')[0], list):
-                        number_list = list()
-                        for num_list in attr_dic.get('value'):
-                            number_list.append(len(num_list))
-                        num_str = str(number_list).replace('[', '{') \
-                            .replace(']', '}')
-                        attr_code_str += "    attr" + str(attr_index) + \
-                                         ".listIntNumValues" +\
-                                         " = " + num_str + ";\n"
+                    attr_code_str = _replace_dict_list(
+                        attr_dic, attr_code_str, attr_index)
             attr_code_str += "    opTestDesc.opAttrVec.push_back(attr" + \
                              str(attr_index) + ");\n"
             all_attr_code_snippet += attr_code_str
             attr_index = attr_index + 1
+    return all_attr_code_snippet
+
+
+def _create_exact_testcase_content(testcase_struct, device_id):
+    # do acl input op description
+    input_shape_data, input_data_type, input_format, input_file_path = \
+        _get_input_desc(testcase_struct)
+    # do acl output op description
+    output_shape_data, output_data_type, output_format, output_file_path_list = \
+        _get_output_desc(testcase_struct)
+    output_file_path = str(
+        ', '.join('"' + item + '"' for item in output_file_path_list))
+    # do acl attr code generation
+    all_attr_code_snippet = _get_attr_desc(testcase_struct)
 
     testcase_content = code_snippet.TESTCASE_CONTENT.format(
         op_name=testcase_struct.get('op'),
@@ -269,13 +297,13 @@ class AclOpGenerator:
     Class for generating acl op testcode.
     """
 
-    def __init__(self, testcase_list, output_path, device_id, machine_type,
+    def __init__(self, testcase_list, path_and_device_id, machine_type,
                  report):
         self.testcase_list = testcase_list
         self.machine_type = machine_type
-        self._check_output_path(output_path, testcase_list)
+        self._check_output_path(path_and_device_id[0], testcase_list)
         self.report = report
-        self.device_id = device_id
+        self.device_id = path_and_device_id[1]
 
     def _check_output_path(self, output_path, testcase_list):
         formalized_path = os.path.realpath(output_path)
@@ -355,3 +383,11 @@ class AclOpGenerator:
         self._rewrite_files_for_output_dir()
         utils.print_info_log("acl op test code files for specified "
                              "test cases have been successfully generated.")
+
+    def get_device_id(self):
+        """
+        Function Description:
+            get device_id
+        :return: device_id
+        """
+        return self.device_id
