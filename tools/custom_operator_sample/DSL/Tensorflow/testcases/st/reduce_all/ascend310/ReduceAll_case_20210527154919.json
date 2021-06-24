@@ -12,15 +12,7 @@
                     "bool"
                 ],
                 "shape": [
-                    [
                         1
-                    ],
-                    [
-                        2
-                    ],
-                    [
-                        3
-                    ]
                 ],
                 "data_distribute": [
                     "uniform"
@@ -42,15 +34,7 @@
                     "int32"
                 ],
                 "shape": [
-                    [
                         1
-                    ],
-                    [
-                        2
-                    ],
-                    [
-                        3
-                    ]
                 ],
                 "data_distribute": [
                     "uniform"
@@ -74,15 +58,7 @@
                     "bool"
                 ],
                 "shape": [
-                    [
                         1
-                    ],
-                    [
-                        2
-                    ],
-                    [
-                        3
-                    ]
                 ],
                 "name": "y"
             }
