@@ -575,7 +575,7 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
     return res
 
 
-@register_operator("AscendDequant", pattern="AscendDequant")
+@register_operator("AscendDequant", pattern="dequant")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def ascend_dequant(x, deq_scale, y, sqrt_mode=False, relu_mode=False, kernel_name="ascend_dequant"):

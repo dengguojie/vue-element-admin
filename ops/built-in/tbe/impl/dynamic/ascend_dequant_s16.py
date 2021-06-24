@@ -220,7 +220,7 @@ def _check_params(x0, deq_scale, x1, y, relu_flag, kernel_name):
     para_check.check_format(format_deq, ("NC1HWC0",), param_name="deq_scale")
 
 
-@register_operator("AscendDequantS16", pattern="AscendDequantS16")
+@register_operator("AscendDequantS16", pattern="dequant_s16")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def ascend_dequant_s16(x0, deq_scale, x1, y, relu_flag=False, kernel_name="ascend_dequant_s16"):

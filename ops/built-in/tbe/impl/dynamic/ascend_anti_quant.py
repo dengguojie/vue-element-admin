@@ -161,7 +161,7 @@ def ascend_anti_quant_compute(x, y, scale, offset, sqrt_mode=False, kernel_name=
 
 
 # pylint: disable=too-many-arguments,invalid-name,unused-argument
-@register_operator("AscendAntiQuant", pattern="AscendAntiQuant")
+@register_operator("AscendAntiQuant", pattern="anti_quant")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def ascend_anti_quant(x, y, scale, offset, sqrt_mode=False, kernel_name="ascend_anti_quant"):

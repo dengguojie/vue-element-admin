@@ -389,7 +389,7 @@ def _get_variable_shape(x):
     return d_shape, var_index_list
 
 
-@register_operator("AscendQuant", pattern="AscendQuant")
+@register_operator("AscendQuant", pattern="quant")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)

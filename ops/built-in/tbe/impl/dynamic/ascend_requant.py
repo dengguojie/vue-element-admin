@@ -16,10 +16,10 @@
 ascend_requant
 """
 from functools import reduce as function_reduce
-from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
@@ -341,7 +341,7 @@ def _check_params(x, req_scale, y, relu_flag, kernel_name):
     para_check.check_format(format_req, ("NC1HWC0",), param_name="req_scale")
 
 
-@register_operator("AscendRequant", pattern="AscendRequant")
+@register_operator("AscendRequant", pattern="requant")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def ascend_requant(x, req_scale, y, relu_flag=False, kernel_name="ascend_requant"):
