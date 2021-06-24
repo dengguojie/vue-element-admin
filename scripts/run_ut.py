@@ -47,9 +47,10 @@ def main(argv):
         "--simulator_lib_path=": FLAGS.simulator_lib_path,
         "--pr_changed_file=": FLAGS.pr_changed_file,
         "--cov_path=": FLAGS.cov_path,
-        "--process_num=": FLAGS.process_num,
         "--report_path=": FLAGS.report_path
     }
+    if ops_tag:
+        params_dict["--process_num="]=FLAGS.process_num
     params = []
     for input_key in params_dict.keys():
         params.append(input_key + str(params_dict[input_key]))
