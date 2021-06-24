@@ -260,5 +260,8 @@
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/unify_auto_schedule.py":[
         "unify_auto_schedule"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/conv2d_tilingcase.py":[
+        "conv2d"
     ]
 }

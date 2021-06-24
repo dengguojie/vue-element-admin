@@ -122,8 +122,8 @@ def gen_support_info(range_x, para_dict):
     ----------
     range_x: list
          input x range
-    ori_tensors: dict
-        orginal vaild tensors
+    para_dict: dict
+        contains orginal vaild tensors
 
     Returns
     -------
@@ -639,6 +639,8 @@ class Conv2dTiling(CubeTilingOp):
             # other situations need 2 extra lines in case
             extend_h = 2
         l1_ho = al1_m_data // out_w + extend_h
+        # consistent with tiling processing logic
+        l1_ho = min(l1_ho, self.get_output_h(self.tiling_info["a_shape"][2]))
 
         # calculate input lines (hi) from output lines (ho)
         if not strideh_opti_flag:
