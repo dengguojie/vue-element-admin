@@ -37,6 +37,7 @@ flags.DEFINE_string("simulator_lib_path", None, "the path to simulator libs")
 flags.DEFINE_string(
     "pr_changed_file", None,
     "git diff result file by ci, analyse relate ut by this file")
+flags.DEFINE_integer("process_num", None, "process number")
 
 cur_dir = os.path.realpath(__file__)
 repo_root = os.path.sep.join(cur_dir.split(os.path.sep)[:-4])
