@@ -1562,6 +1562,19 @@ REG_OP(SpatialTransformerD)
     .ATTR(use_default_theta, ListBool, {})
     .OP_END_FACTORY_REG(SpatialTransformerD)
 
+REG_OP(SpatialTransformer)
+    .INPUT(x, TensorType({DT_FLOAT,DT_FLOAT16,DT_DOUBLE,DT_UINT8,DT_INT8,DT_UINT16,
+                          DT_INT16,DT_INT32,DT_UINT32,DT_UINT64,DT_INT64}))
+    .OPTIONAL_INPUT(theta, TensorType({DT_FLOAT,DT_FLOAT16,DT_DOUBLE,DT_UINT8,DT_INT8,
+                                       DT_UINT16,DT_INT16,DT_INT32,DT_UINT32,DT_UINT64,DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT,DT_FLOAT16,DT_DOUBLE,DT_UINT8,DT_INT8,DT_UINT16,
+                           DT_INT16,DT_INT32,DT_UINT32,DT_UINT64,DT_INT64}))
+    .ATTR(output_size, ListInt, {-1, -1})
+    .ATTR(default_theta, ListFloat, {})
+    .ATTR(align_corners, Bool, false)
+    .ATTR(use_default_theta, ListInt, {})
+    .OP_END_FACTORY_REG(SpatialTransformer)
+
 /**
 * @brief Resize the input tensor. \n
 currently, only support resize image tensor using nearest neighbor and linear interpolation.

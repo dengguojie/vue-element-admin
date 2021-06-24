@@ -28,6 +28,8 @@ class SpatialTransformerDPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+  Status TbeFusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes);
+  Status AicpuFusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes);
 
  private:
   Status StnPreAddConst(ge::NodePtr& thisNode, ge::OpDescPtr& thisOpDesc);
@@ -36,7 +38,8 @@ class SpatialTransformerDPass : public PatternFusionBasePass {
   Status MakeStnComputeLayer(ge::OpDescPtr& thisOpDesc, const ge::OpDescPtr& bottomOpDesc,
                              const ge::OpDescPtr& formerOpDesc);
   Status MakeStnPreLayer(ge::OpDescPtr& thisOpDesc, const ge::OpDescPtr& formerOpDesc, bool hasInput1);
-  const string FUSED_OP_TYPE = "StnPre_StnCompute";
+  const string TBE_FUSED_OP_TYPE = "StnPre_StnCompute";
+  const string AICPU_FUSED_OP_TYPE = "Aicpu_SpatialTransformer";
 };
 }  // namespace fe
 

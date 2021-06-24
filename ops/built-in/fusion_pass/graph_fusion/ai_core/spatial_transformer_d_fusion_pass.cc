@@ -33,6 +33,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "pattern_fusion_util.h"
+#include "common/util/platform_info.h"
 
 #include "spatial_transformer_d_fusion_pass.h"
 
@@ -70,11 +71,11 @@ Status SpatialTransformerDPass::StnHIndexFP16(const int32_t h, const int32_t w, 
 }
 
 Status SpatialTransformerDPass::StnPreAddConst(ge::NodePtr& thisNode, ge::OpDescPtr& thisOpDesc) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SpatialTransformerD StnPre Add Const layer");
+  OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "Enter SpatialTransformerD StnPre Add Const layer");
   vector<int64_t> size;
   ge::AttrUtils::GetListInt(thisOpDesc, "size", size);
-  FUSION_PASS_CHECK(size.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "StnPre size shape is NULL."), return FAILED);
-  FUSION_PASS_CHECK(size.size() < 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "StnPre size dims must 4."), return FAILED);
+  FUSION_PASS_CHECK(size.empty(), OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "StnPre size shape is NULL."), return FAILED);
+  FUSION_PASS_CHECK(size.size() < 4, OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "StnPre size dims must 4."), return FAILED);
 
   ge::GeTensorPtr assitPtrW = nullptr;
   ge::GeTensorPtr assitPtrH = nullptr;
@@ -84,16 +85,16 @@ Status SpatialTransformerDPass::StnPreAddConst(ge::NodePtr& thisNode, ge::OpDesc
   assitDimInfo.push_back(size[3]);
 
   unique_ptr<uint16_t[]> inputAssitW(new (std::nothrow) uint16_t[assitDimInfo[0] * assitDimInfo[1]]());
-  FUSION_PASS_CHECK(inputAssitW.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitW is NULL"),
+  FUSION_PASS_CHECK(inputAssitW.get() == nullptr, OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "inputAssitW is NULL"),
                     return PARAM_INVALID);
   unique_ptr<uint16_t[]> inputAssitH(new (std::nothrow) uint16_t[assitDimInfo[0] * assitDimInfo[1]]());
-  FUSION_PASS_CHECK(inputAssitH.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitH is NULL"),
+  FUSION_PASS_CHECK(inputAssitH.get() == nullptr, OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "inputAssitH is NULL"),
                     return PARAM_INVALID);
 
   Status ret = StnWIndexFP16(assitDimInfo[0], assitDimInfo[1], inputAssitW.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateWIndex failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "GenerateWIndex failed."), return ret);
   ret = StnHIndexFP16(assitDimInfo[0], assitDimInfo[1], inputAssitH.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateHIndex failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "GenerateHIndex failed."), return ret);
 
   ge::GeShape assitShape(assitDimInfo);
   ge::GeTensorDesc tensorDescW(GeShape(), ge::FORMAT_ND, ge::DT_FLOAT16);
@@ -124,26 +125,26 @@ Status SpatialTransformerDPass::StnPreAddConst(ge::NodePtr& thisNode, ge::OpDesc
   ge::NodePtr constInput1 = constInputNodes[1];
   constInput1->GetOpDesc()->SetType("Const");
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "SpatialTransformerD StnPre Add Const layer success");
+  OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "SpatialTransformerD StnPre Add Const layer success");
   return SUCCESS;
 }
 
 Status SpatialTransformerDPass::MakeStnPreLayer(ge::OpDescPtr& thisOpDesc, const ge::OpDescPtr& formerOpDesc,
                                                 bool hasInput1) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SpatialTransformerD make StnPre layer");
+  OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "Enter SpatialTransformerD make StnPre layer");
 
   ge::GeTensorDesc formerInputDesc0 = formerOpDesc->GetInputDesc(0);
 
   vector<int64_t> shapeDims = formerInputDesc0.GetOriginShape().GetDims();
-  FUSION_PASS_CHECK(shapeDims.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "SpatialTransformerD input shape is NULL."),
-                    return FAILED);
-  FUSION_PASS_CHECK(shapeDims.size() < 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "SpatialTransformerD input 0 format must be NC0HWC1"),
-                  return FAILED);
+  FUSION_PASS_CHECK(shapeDims.empty(), OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), 
+                                               "SpatialTransformerD input shape is NULL."), return FAILED);
+  FUSION_PASS_CHECK(shapeDims.size() < 4, OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), 
+                                                  "SpatialTransformerD input 0 format must be NC0HWC1"), return FAILED);
 
   vector<int64_t> output_size;
   vector<float> default_theta;
   vector<bool> use_default_theta;
-  bool align_corners;
+  bool align_corners = false;
 
   if (!ge::AttrUtils::GetListInt(formerOpDesc, "output_size", output_size)) {
     output_size.push_back(shapeDims[2]);
@@ -213,19 +214,19 @@ Status SpatialTransformerDPass::MakeStnPreLayer(ge::OpDescPtr& thisOpDesc, const
   outputDesc1.SetOriginDataType(ge::DT_INT32);
   thisOpDesc->AddOutputDesc("pos_offset", outputDesc1);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "SpatialTransformerD make StnPre layer success");
+  OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "SpatialTransformerD make StnPre layer success");
   return SUCCESS;
 }
 
 Status SpatialTransformerDPass::MakeStnComputeLayer(ge::OpDescPtr& thisOpDesc, const ge::OpDescPtr& bottomOpDesc,
                                                     const ge::OpDescPtr& formerOpDesc) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SpatialTransformerD make StnCompute layer");
+  OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "Enter SpatialTransformerD make StnCompute layer");
 
   vector<int64_t> size;
-  bool align_corners;
+  bool align_corners = false;
 
   ge::AttrUtils::GetListInt(bottomOpDesc, "size", size);
-  FUSION_PASS_CHECK(size.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "StnPre size shape is NULL."), return FAILED);
+  FUSION_PASS_CHECK(size.empty(), OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "StnPre size shape is NULL."), return FAILED);
   ge::AttrUtils::SetListInt(thisOpDesc, "size", size);
 
   if (!ge::AttrUtils::GetBool(bottomOpDesc, "align_corners", align_corners)) {
@@ -273,7 +274,7 @@ Status SpatialTransformerDPass::MakeStnComputeLayer(ge::OpDescPtr& thisOpDesc, c
   outputDesc.SetOriginDataType(formerOutOpDesc0.GetOriginDataType());
   thisOpDesc->AddOutputDesc("y", outputDesc);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "SpatialTransformerD make StnCompute layer success");
+  OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "SpatialTransformerD make StnCompute layer success");
   return SUCCESS;
 }
 
@@ -281,7 +282,7 @@ vector<FusionPattern*> SpatialTransformerDPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   // define Fusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SpatialTransformerDPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_SPATIAL_TRANSFORMER_D, {SPATIAL_TRANSFORMER_D}).SetOutput(PATTERN_SPATIAL_TRANSFORMER_D);
@@ -291,17 +292,18 @@ vector<FusionPattern*> SpatialTransformerDPass::DefinePatterns() {
   return patterns;
 }
 
-Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into SpatialTransformerDPass");
+Status SpatialTransformerDPass::TbeFusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+  OP_LOGD("Enter SpatialTransformerDPass::TbeFusion.");
+
   // diag node
   ge::NodePtr spatialTransformerDNode = GetNodeFromMapping(PATTERN_SPATIAL_TRANSFORMER_D, mapping);
   FUSION_PASS_CHECK(spatialTransformerDNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "spatialTransformerDsNode is null, fusion failed."),
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "spatialTransformerDsNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr spatialTransformerDOpDesc = spatialTransformerDNode->GetOpDesc();
   FUSION_PASS_CHECK(spatialTransformerDOpDesc == nullptr,
-                  OP_LOGE(FUSED_OP_TYPE.c_str(), "spatialTransformerDOpDesc is null, fusion failed."),
+                  OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "spatialTransformerDOpDesc is null, fusion failed."),
                   return PARAM_INVALID);
 
   // Get Input Node
@@ -342,68 +344,259 @@ Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   ge::OpDescPtr stnPreOp;
   ge::NodePtr stnPreNode;
-  FUSION_PASS_MAKE_SHARED((stnPreOp = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_pre", "StnPre")), return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED((stnPreOp = 
+    std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_pre", "StnPre")), return INTERNAL_ERROR);
 
   FUSION_PASS_CHECK(SUCCESS != MakeStnPreLayer(stnPreOp, spatialTransformerDOpDesc, oriInAnchorPtr1 != nullptr),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "make stn_pre layer failed."), return NOT_CHANGED);
+                    OP_LOGW(TBE_FUSED_OP_TYPE.c_str(), "make stn_pre layer failed."), return NOT_CHANGED);
 
   stnPreNode = graph.AddNode(stnPreOp);
 
   FUSION_PASS_CHECK(SUCCESS != StnPreAddConst(stnPreNode, stnPreOp),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "make stn_compute layer failed."), return FAILED);
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "make stn_compute layer failed."), return FAILED);
 
   if (oriInAnchorPtr1 != nullptr) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Start to  Add StnPre Theta Edge");
+    OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "Start to  Add StnPre Theta Edge");
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr1, stnPreNode->GetInDataAnchor(0)),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
                               inputNode1->GetName().c_str(), stnPreNode->GetName().c_str()),
                       return FAILED);
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "StnPre Add theta Edge success");
+    OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "StnPre Add theta Edge success");
   }
 
   ge::OpDescPtr stnComputeOp;
   ge::NodePtr stnComputeNode;
-  FUSION_PASS_MAKE_SHARED((stnComputeOp = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_compute", "StnCompute")),
-                          return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED((stnComputeOp = 
+    std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_compute", "StnCompute")),
+    return INTERNAL_ERROR);
 
   FUSION_PASS_CHECK(SUCCESS != MakeStnComputeLayer(stnComputeOp, stnPreOp, spatialTransformerDOpDesc),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "make stn_compute layer failed."), return FAILED);
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "make stn_compute layer failed."), return FAILED);
 
   stnComputeNode = graph.AddNode(stnComputeOp);
 
   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, stnComputeNode->GetInDataAnchor(0)),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s]'s out to dst node[%s]'s in1 failed.",
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "add edge from src node[%s]'s out to dst node[%s]'s in1 failed.",
                             inputNode0->GetName().c_str(), stnComputeNode->GetName().c_str()),
                     return FAILED);
 
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(stnPreNode->GetOutDataAnchor(0), stnComputeNode->GetInDataAnchor(1)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s]'s out0 to dst node[%s]'s in1 failed.",
+      OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "add edge from src node[%s]'s out0 to dst node[%s]'s in1 failed.",
               stnPreNode->GetName().c_str(), stnComputeNode->GetName().c_str()),
       return FAILED);
 
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(stnPreNode->GetOutDataAnchor(1), stnComputeNode->GetInDataAnchor(2)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s]'s out1 to dst node[%s]'s in2 failed.",
+      OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "add edge from src node[%s]'s out1 to dst node[%s]'s in2 failed.",
               stnPreNode->GetName().c_str(), stnComputeNode->GetName().c_str()),
       return FAILED);
 
   for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
     FUSION_PASS_CHECK(oriTopPeerAnchorPtri == nullptr,
-                  OP_LOGE(FUSED_OP_TYPE.c_str(), "oriTopPeerAnchorPtri is null, fusion failed."),
+                  OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "oriTopPeerAnchorPtri is null, fusion failed."),
                   return PARAM_INVALID);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(stnComputeNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
                               stnComputeNode->GetName().c_str(), outputNode->GetName().c_str()),
                       return FAILED);
   }
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(spatialTransformerDNode),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove SpatialTransformerD node failed"), return FAILED);
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "remove SpatialTransformerD node failed"), return FAILED);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "SpatialTransformerDPass success!!!!");
+  OP_LOGD("Exit SpatialTransformerDPass::TbeFusion success.");
+  return SUCCESS;
+}
+
+Status SpatialTransformerDPass::AicpuFusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+  OP_LOGD("Enter SpatialTransformerPass AicpuFusion.");
+
+  ge::NodePtr spatialTransformerDNode = GetNodeFromMapping(PATTERN_SPATIAL_TRANSFORMER_D, mapping);
+  FUSION_PASS_CHECK(spatialTransformerDNode == nullptr,
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "spatialTransformerDsNode is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  ge::OpDescPtr spatialTransformerDOpDesc = spatialTransformerDNode->GetOpDesc();
+  FUSION_PASS_CHECK(spatialTransformerDOpDesc == nullptr,
+                  OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "spatialTransformerDOpDesc is null, fusion failed."),
+                  return PARAM_INVALID);
+
+  // get input and output info
+  ge::InDataAnchorPtr oriInAnchorPtr0 = spatialTransformerDNode->GetInDataAnchor(0);
+  ge::OutDataAnchorPtr oriBottomPeerAnchorPtr0 = nullptr;
+  ge::NodePtr inputNode0 = nullptr;
+  if (oriInAnchorPtr0 != nullptr) {
+    oriBottomPeerAnchorPtr0 = oriInAnchorPtr0->GetPeerOutAnchor();
+    inputNode0 = oriBottomPeerAnchorPtr0->GetOwnerNode();
+  } else {
+    OP_LOGD(AICPU_FUSED_OP_TYPE.c_str(), "oriInAnchorPtr0 is null, fusion failed.");
+    return FAILED;
+  }
+
+  ge::InDataAnchorPtr oriInAnchorPtr1 = spatialTransformerDNode->GetInDataAnchor(1);
+  ge::OutDataAnchorPtr oriBottomPeerAnchorPtr1 = nullptr;
+  ge::NodePtr inputNode1 = nullptr;
+  if (oriInAnchorPtr1 != nullptr) {
+    oriBottomPeerAnchorPtr1 = oriInAnchorPtr1->GetPeerOutAnchor();
+    inputNode1 = oriBottomPeerAnchorPtr1->GetOwnerNode();
+  } else {
+    OP_LOGD(AICPU_FUSED_OP_TYPE.c_str(), "oriInAnchorPtr1 is null, fusion failed.");
+    return FAILED;
+  }
+
+  ge::OutDataAnchorPtr oriOutAnchorPtr0 = spatialTransformerDNode->GetOutDataAnchor(0);
+  auto oriTopPeerAnchors = oriOutAnchorPtr0->GetPeerInDataAnchors();
+
+  // unlink all edge
+  for (auto inAnchor : spatialTransformerDNode->GetAllInDataAnchors()) {
+    if (inAnchor != nullptr) {
+      inAnchor->UnlinkAll();
+    }
+  }
+
+  if (spatialTransformerDNode->GetInControlAnchor() != nullptr) {
+    spatialTransformerDNode->GetInControlAnchor()->UnlinkAll();
+  }
+
+  for (auto outAnchor : spatialTransformerDNode->GetAllOutDataAnchors()) {
+    if (outAnchor != nullptr) {
+      outAnchor->UnlinkAll();
+    }
+  }
+  if (spatialTransformerDNode->GetOutControlAnchor() != nullptr) {
+    spatialTransformerDNode->GetOutControlAnchor()->UnlinkAll();
+  }
+
+  // create new aicpu op
+  ge::OpDescPtr stnDesc;
+  ge::NodePtr stnNode;
+  FUSION_PASS_MAKE_SHARED((stnDesc = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_aicpu", "SpatialTransformer")), return INTERNAL_ERROR);
+
+  vector<int32_t> output_size;
+  vector<float> default_theta;
+  vector<bool> use_default_theta_tmp;
+  vector<int32_t> use_default_theta;
+  bool align_corners = false;
+  int32_t stn_ori_channel = 0;
+
+  ge::AttrUtils::GetListInt(spatialTransformerDOpDesc, "output_size", output_size);
+  ge::AttrUtils::SetListInt(stnDesc, "output_size", output_size);
+
+  ge::AttrUtils::GetListFloat(spatialTransformerDOpDesc, "default_theta", default_theta);
+  ge::AttrUtils::SetListFloat(stnDesc, "default_theta", default_theta);
+
+  ge::AttrUtils::GetListBool(spatialTransformerDOpDesc, "use_default_theta", use_default_theta_tmp);
+  for (uint32_t i = 0; i < use_default_theta_tmp.size(); i++) {
+    if (use_default_theta_tmp[i]) {
+      use_default_theta.push_back(1);
+    } else {
+      use_default_theta.push_back(0);
+    }
+  }
+  ge::AttrUtils::SetListInt(stnDesc, "use_default_theta", use_default_theta);
+
+  ge::AttrUtils::GetBool(spatialTransformerDOpDesc, "align_corners", align_corners);
+  ge::AttrUtils::SetBool(stnDesc, "align_corners", align_corners);
+
+  ge::AttrUtils::GetInt(spatialTransformerDOpDesc, "stn_ori_channel", stn_ori_channel);
+  ge::AttrUtils::SetInt(stnDesc, "stn_ori_channel", stn_ori_channel);
+
+  ge::GeTensorDesc formerInputDesc0 = spatialTransformerDOpDesc->GetInputDesc(0);
+  ge::GeTensorDesc opInputDesc0;
+  opInputDesc0.SetShape(formerInputDesc0.GetShape());
+  opInputDesc0.SetFormat(formerInputDesc0.GetFormat());
+  opInputDesc0.SetDataType(ge::DT_FLOAT16);
+  opInputDesc0.SetOriginShape(formerInputDesc0.GetOriginShape());
+  opInputDesc0.SetOriginFormat(formerInputDesc0.GetOriginFormat());
+  opInputDesc0.SetOriginDataType(formerInputDesc0.GetOriginDataType());
+  stnDesc->AddInputDesc("x", opInputDesc0);
+
+  ge::GeTensorDesc formerInputDesc1 = spatialTransformerDOpDesc->GetInputDesc(1);
+  ge::GeTensorDesc opInputDesc1;
+  opInputDesc1.SetShape(formerInputDesc1.GetShape());
+  opInputDesc1.SetFormat(formerInputDesc1.GetFormat());
+  opInputDesc1.SetDataType(ge::DT_FLOAT16);
+  opInputDesc1.SetOriginShape(formerInputDesc1.GetOriginShape());
+  opInputDesc1.SetOriginFormat(formerInputDesc1.GetOriginFormat());
+  opInputDesc1.SetOriginDataType(formerInputDesc1.GetOriginDataType());
+  stnDesc->AddInputDesc("theta", opInputDesc1);
+
+  ge::GeTensorDesc formerOuputDesc0 = spatialTransformerDOpDesc->GetOutputDesc(0);
+  ge::GeTensorDesc opOutputDesc0;
+  opOutputDesc0.SetShape(formerOuputDesc0.GetShape());
+  opOutputDesc0.SetFormat(formerOuputDesc0.GetFormat());
+  opOutputDesc0.SetDataType(ge::DT_FLOAT16);
+  opOutputDesc0.SetOriginShape(formerOuputDesc0.GetOriginShape());
+  opOutputDesc0.SetOriginFormat(formerOuputDesc0.GetOriginFormat());
+  opOutputDesc0.SetOriginDataType(formerOuputDesc0.GetOriginDataType());
+  stnDesc->AddOutputDesc("y", opOutputDesc0);
+
+  stnNode = graph.AddNode(stnDesc);
+
+  // add edge
+  OP_LOGI(AICPU_FUSED_OP_TYPE.c_str(), "Start to add edge between stn and x.");
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, stnNode->GetInDataAnchor(0)),
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                    inputNode0->GetName().c_str(), stnNode->GetName().c_str()),
+                    return FAILED);
+
+  OP_LOGI(AICPU_FUSED_OP_TYPE.c_str(), "Start to add edge between stn and theta.");
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr1, stnNode->GetInDataAnchor(1)),
+                    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                    inputNode1->GetName().c_str(), stnNode->GetName().c_str()),
+                    return FAILED);
+
+  OP_LOGI(AICPU_FUSED_OP_TYPE.c_str(), "Start to add edge between stn and y.");
+  for (uint32_t i = 0; i < oriTopPeerAnchors.size(); i++) {
+    ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
+    if (oriTopPeerAnchorPtri == nullptr) {
+      OP_LOGD(TBE_FUSED_OP_TYPE.c_str(), "oriTopPeerAnchorPtri is null.");
+      continue;
+    }
+    ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(stnNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
+                      OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      stnNode->GetName().c_str(), outputNode->GetName().c_str()),
+                      return FAILED);
+  }
+
+  // remove node
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(spatialTransformerDNode),
+    OP_LOGE(TBE_FUSED_OP_TYPE.c_str(), "remove SpatialTransformerD node failed"), return FAILED);
+
+  OP_LOGD("Exit SpatialTransformerPass AicpuFusion success.");
+  return SUCCESS;
+}
+
+Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+  OP_LOGI(TBE_FUSED_OP_TYPE.c_str(), "enter into SpatialTransformerDPass");
+
+  // tbe op have performance issue on lhisi, use aicpu op
+  PlatformInfo platform_info;
+  OptionalInfo opti_compilation_info;
+  if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(
+    platform_info, opti_compilation_info) != SUCCESS) {
+    OP_LOGW("Fail to get platform info.");
+  }
+  OP_LOGD("SpatialTransformerPass", "Get opti_compilation_info.soc_version[%s].", 
+          opti_compilation_info.soc_version.c_str());
+
+  if (opti_compilation_info.soc_version == "SD3403" || opti_compilation_info.soc_version == "Hi3796CV300CS") {
+    Status ret = AicpuFusion(graph, mapping, newNodes);
+    if (ret != SUCCESS) {
+      return FAILED;
+    }
+  } else {
+    Status ret = TbeFusion(graph, mapping, newNodes);
+    if (ret != SUCCESS) {
+      return FAILED;
+    }
+  }
+
+  OP_LOGI("Exit SpatialTransformerPass success.");
 
   return SUCCESS;
 }

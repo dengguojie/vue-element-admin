@@ -2554,10 +2554,42 @@ IMPLEMT_INFERFUNC(SpatialTransformerD, SpatialTransformerDInferShape) {
   out_desc.SetDataType(ge::DataType(x_dtype));
   (void)op.update_output_desc_y(out_desc);
 
+  // record original channel
+  op.SetAttr("stn_ori_channel", x_shape.GetDim(1));
+
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(SpatialTransformerD, SpatialTransformerDInferShape);
+
+IMPLEMT_INFERFUNC(SpatialTransformer, SpatialTransformerInferShape) {
+  auto x_shape = op.get_input_desc_x().GetShape();
+  auto x_dtype = op.get_input_desc_x().GetDataType();
+
+  std::vector<int64_t> output_size = op.get_attr_output_size();
+  CHECK(output_size.size() == 1,  OP_LOGE(op.GetName().c_str(), "invalid output size in attr."), return GRAPH_FAILED);
+  if (output_size.empty()) {
+    output_size.push_back(x_shape.GetDim(2));
+    output_size.push_back(x_shape.GetDim(3));
+  } else {
+    output_size[0] = (output_size[0] == -1) ? x_shape.GetDim(2) : output_size[0];
+    output_size[1] = (output_size[1] == -1) ? x_shape.GetDim(3) : output_size[1];
+  }
+
+  vector<int64_t> y_shape({x_shape.GetDim(0), x_shape.GetDim(1), output_size[0], output_size[1]});
+
+  auto out_desc = op.GetOutputDesc("y");
+  out_desc.SetShape(Shape(y_shape));
+  out_desc.SetDataType(ge::DataType(x_dtype));
+  (void)op.update_output_desc_y(out_desc);
+
+  // record original channel
+  op.SetAttr("stn_ori_channel", x_shape.GetDim(1));
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(SpatialTransformer, SpatialTransformerInferShape);
 
 // ----------------Resize Begin-------------------
 static bool GetConstValueFloat(const Operator& op, const Tensor& const_tensor,

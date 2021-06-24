@@ -94,6 +94,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/spatial_transformer.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/split_v.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
@@ -195,6 +196,7 @@ set(_cpu_kernels_ut_files
   testcase/round/src/round_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
+  testcase/SpatialTransformer/src/SpatialTransformer_utest.cpp
   testcase/split_v/src/split_v_utest.cpp
   testcase/strided_slice/src/strided_slice_utest.cpp
   testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp

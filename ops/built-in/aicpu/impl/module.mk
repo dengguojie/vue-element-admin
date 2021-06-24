@@ -14,6 +14,7 @@ local_normalized_kernels := kernels/normalized/cast_kernels.cc \
                             kernels/normalized/realdiv.cc \
                             kernels/normalized/round.cc \
                             kernels/normalized/sparse_to_dense_kernels.cc \
+                            kernels/normalized/spatial_transformer.cc \
                             kernels/normalized/strided_slice.cc \
                             kernels/normalized/top_k.cc \
                             utils/bcast.cc \
