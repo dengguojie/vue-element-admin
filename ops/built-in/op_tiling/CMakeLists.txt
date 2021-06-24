@@ -24,6 +24,7 @@ set(_optiling_files
   broadcast_to.cc
   assign.cc
   avg_pool.cc
+  avg_poolv2.cc
   avg_pool_1d.cc
   avg_pool_grad.cc
   avg_pool3d.cc
