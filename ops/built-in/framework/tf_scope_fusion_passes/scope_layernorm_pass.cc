@@ -90,9 +90,14 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
     // the two scope batchnorm and moments in the same layernorm
     for (size_t i = 0; i < fusion_scopes_bn.size(); i++) {
       auto scope_bn = fusion_scopes_bn[i];
+      std::string scope_bn_name = scope_bn->Name();
+      int is_while = scope_bn_name.find("while");
+      if (is_while != -1) {
+        OP_LOGI(kOpType, "break  scope_bn_name is %s.", scope_bn_name.c_str());
+        continue;
+      }
       for (size_t j = 0; j < fusion_scopes_m.size(); j++) {
         auto scope_m = fusion_scopes_m[j];
-        std::string scope_bn_name = scope_bn->Name();
         std::string scope_m_name = scope_m->Name();
         int pos_bn = scope_bn_name.find("batchnorm");
         int pos_m = scope_m_name.find("moments");
