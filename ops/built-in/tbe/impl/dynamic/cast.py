@@ -228,7 +228,6 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
         int32->float16 // only guarantees
                         number in [-1023,1023] get correct result
 
-        begin from ascend920, support the following type conversion
         int64->float32
         float32->int64
         int64->int32
@@ -292,7 +291,6 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
         int32->float16 // only guarantees
                         number in [-1023,1023] get correct result
 
-        begin from ascend920, support the following type conversion
         int64->float32
         float32->int64
         int64->int32
