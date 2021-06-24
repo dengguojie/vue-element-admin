@@ -44,7 +44,7 @@ def _check_dtype(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     grads_type = grads_dict.get('dtype').lower()
     output_type = output_dict.get('dtype').lower()
 
-    para_check.check_dtype(orig_input_type, ("float16", ), "orig_input")
+    para_check.check_dtype(orig_input_type, ("float16",), "orig_input")
 
     def _check_dtype_same_with_input(param, dtype):
         if orig_input_type != dtype:
@@ -90,10 +90,10 @@ def _check_format(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     orig_y_format = orig_y_dict.get('format')
     grads_format = grads_dict.get('format')
     output_format = output_dict.get('format')
-    para_check.check_format(orig_x_format, ("NC1HWC0", ), "orig_x")
-    para_check.check_format(orig_y_format, ("NC1HWC0", ), "orig_y")
-    para_check.check_format(grads_format, ("NC1HWC0", ), "grads")
-    para_check.check_format(output_format, ("NC1HWC0", ), "output")
+    para_check.check_format(orig_x_format, ("NC1HWC0",), "orig_x")
+    para_check.check_format(orig_y_format, ("NC1HWC0",), "orig_y")
+    para_check.check_format(grads_format, ("NC1HWC0",), "grads")
+    para_check.check_format(output_format, ("NC1HWC0",), "output")
 
 
 def _ceil_to(value, ceil_value):
@@ -432,9 +432,9 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
     BUFFER_SIZE_IN_SEL_GRAD = 4
     BUFFER_SIZE_OF_INPUT = 4
     max_valid_ub_for_load3d = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - (
-        (VECTOR_INST_BLOCK_SIZE + kernel_h * kernel_w * fmap_c0 * DOUBLE_BUFFER) + BUFFER_SIZE_IN_SEL_GRAD *
-        (fmap_c0 * fmap_c0 * DOUBLE_BUFFER)) * data_size) * kernel_h * kernel_w // (
-            kernel_h * kernel_w + BUFFER_SIZE_IN_SEL_GRAD + BUFFER_SIZE_OF_INPUT)
+            (VECTOR_INST_BLOCK_SIZE + kernel_h * kernel_w * fmap_c0 * DOUBLE_BUFFER) + BUFFER_SIZE_IN_SEL_GRAD *
+            (fmap_c0 * fmap_c0 * DOUBLE_BUFFER)) * data_size) * kernel_h * kernel_w // (
+                                      kernel_h * kernel_w + BUFFER_SIZE_IN_SEL_GRAD + BUFFER_SIZE_OF_INPUT)
     tiling = _get_load3d_tiling(
         (fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0), (kernel_h, kernel_w), (stride_h, stride_w), padding,
         tbe_platform.get_soc_spec(tbe_platform.L1_SIZE) // 2, max_valid_ub_for_load3d, "float16")
@@ -541,9 +541,12 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
             with tvm_ir.if_scope(wi_max[0] > fmap_w):
                 wi_max[0] = tvm.const(fmap_w, SCALAR_DTYPE)
             burst_length = (wi_max[0] - wi_min[0])
-            offset = (((n * fmap_c1 + c1) * fmap_h + ho_o * stride_h) * fmap_w + wi_min[0]) * fmap_c0
-            repeat_time = tvm.min(kernel_h, fmap_h - ho_o * stride_h)
+            # position of n stride in h direction, avoid negative value
+            pos_n_stride_h = tvm.max(ho_o * stride_h - pad_t, 0)
+            offset = (((n * fmap_c1 + c1) * fmap_h + pos_n_stride_h) * fmap_w + wi_min[0]) * fmap_c0
+            repeat_time = tvm.min(kernel_h, fmap_h - pos_n_stride_h)
             src_repeat_burst_length = fmap_w - burst_length
+            # set fmatrix using updated scalar: actual_pad_top_value and actual_pad_left_value
             _set_cut_w_fmatrix(repeat_time, burst_length, actual_pad_top_value, pad_b, actual_pad_left_value, pad_r)
 
         gm_buffer = [orig_x, grads]
@@ -581,15 +584,16 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         return orig_y_ub
 
     def _set_cut_w_fmatrix(actual_fmap_h, actual_fmap_w, actual_pad_top, pad_b, pad_l, pad_r):
-        config = actual_fmap_w | actual_fmap_h << 16 | tvm.const(pad_l, FMATRIX_DTYPE) << 32 | tvm.const(
-            pad_r, FMATRIX_DTYPE) << 40 | actual_pad_top << 48 | tvm.const(pad_b, FMATRIX_DTYPE) << 56
+        config = actual_fmap_w | actual_fmap_h << 16 | pad_l[0] << 32 | tvm.const(
+            pad_r, FMATRIX_DTYPE) << 40 | actual_pad_top[0] << 48 | tvm.const(pad_b, FMATRIX_DTYPE) << 56
         tvm_ir.emit(tvm.call_extern(orig_x.dtype, "set_fmatrix", config))
         return actual_pad_top, pad_l
 
     def _set_const_fmatrix(fmap_h, pad_t, pad_b, pad_l, pad_r):
         config = fmap_w | fmap_h << 16 | pad_l << 32 | pad_r << 40 | pad_t << 48 | pad_b << 56
         tvm_ir.emit(tvm.call_extern(orig_x.dtype, "set_fmatrix", tvm.const(config, dtype=FMATRIX_DTYPE)))
-        return pad_t, pad_l
+        actual_pad_top_value[0] = tvm.const(pad_t, FMATRIX_DTYPE)
+        actual_pad_left_value[0] = tvm.const(pad_l, FMATRIX_DTYPE)
 
     def _set_padding_value(padding_value):
         tvm_ir.emit(tvm.call_extern("uint16", "set_padding", padding_value))
@@ -598,8 +602,8 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         howo_offset = (howo_o * tiling_ub_howo_i + howo_i) * fmap_c0
         first_ho = howo_offset // out_w
         first_wo = howo_offset - out_w * first_ho
-        first_w = first_wo * stride_w - actual_pad_left_value
-        first_h = first_ho * stride_h - actual_pad_top_value
+        first_w = first_wo * stride_w - actual_pad_left_value[0]
+        first_h = first_ho * stride_h - actual_pad_top_value[0]
         return first_w, first_h
 
     def _img_to_col_horizontal(l1_buffer, ub_buffer, actual_tiling_ub_howo_i, howo_o, howo_i, actual_pad_top_value,
@@ -836,6 +840,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
                      actual_pad_left_value):
         tiling_ub_howo_o = ((actual_tiling_l1_ho_i * out_w + actual_tiling_l1_wo_i + fmap_c0 - 1) // fmap_c0 +
                             tiling_ub_howo_i - 1) // tiling_ub_howo_i
+        # set fmatrix below, which is used for img2col in _orig_x_to_col
         orig_x_l1, grads_l1 = _img_to_cubf(ho_o, wo_o, actual_pad_top_value, actual_pad_left_value)
         l1_howo_pad = (actual_tiling_l1_ho_i * out_w + actual_tiling_l1_wo_i + fmap_c0 - 1) // fmap_c0
         actual_tiling_ub_howo_o = tiling_ub_howo_o
@@ -862,7 +867,8 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         if cut_w_flag:
             cur_pad_top = tvm_ir.allocate(FMATRIX_DTYPE, (1), name='pad_top', scope=tbe_platform.scope_reg)
             cur_pad_top[0] = tvm.const(pad_t, FMATRIX_DTYPE)
-            actual_pad_top_value, actual_pad_left_value = cur_pad_top[0], pad_l
+            actual_pad_top_value[0] = cur_pad_top[0]
+            actual_pad_left_value[0] = tvm.const(pad_l, FMATRIX_DTYPE)
             with tvm_ir.for_range(0, out_h, name="ho_o", dtype=SCALAR_DTYPE) as ho_o:
                 tiling_l1_wo_o = (out_w + tiling_l1_wo_i - 1) // tiling_l1_wo_i
                 actual_tiling_l1_wo_o = tiling_l1_wo_o
@@ -872,37 +878,47 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
                 with tvm_ir.for_range(0, actual_tiling_l1_wo_o, name="wo_o", dtype=SCALAR_DTYPE) as wo_o:
                     _calculation(0, actual_tiling_l1_wo_i, ho_o, wo_o, actual_pad_top_value, actual_pad_left_value)
                     if actual_tiling_l1_wo_o > 1:
-                        actual_pad_left_value = 0
+                        actual_pad_left_value[0] = tvm.const(0, FMATRIX_DTYPE)
                 if actual_tiling_l1_wo_o != tiling_l1_wo_o:
                     wo_o = actual_tiling_l1_wo_o
                     actual_tiling_l1_wo_i = out_w - wo_o * tiling_l1_wo_i
-                    actual_pad_left_value = 0
+                    # in case wo_o is 0 here
+                    if actual_tiling_l1_wo_o == 0:
+                        actual_pad_left_value[0] = tvm.const(pad_l, FMATRIX_DTYPE)
+                    else:
+                        actual_pad_left_value[0] = tvm.const(0, FMATRIX_DTYPE)
                     _calculation(0, actual_tiling_l1_wo_i, ho_o, wo_o, actual_pad_top_value, actual_pad_left_value)
                 if out_h > 1:
                     cur_pad_top[0] = tvm.const(0, FMATRIX_DTYPE)
-                    actual_pad_top_value, actual_pad_left_value = cur_pad_top[0], pad_l
+                    actual_pad_top_value[0] = cur_pad_top[0]
+                    actual_pad_left_value[0] = tvm.const(pad_l, FMATRIX_DTYPE)
         else:
             tiling_l1_ho_o = (out_h + tiling_l1_ho_i - 1) // tiling_l1_ho_i
             actual_tiling_l1_ho_o = tiling_l1_ho_o
             actual_tiling_l1_ho_i = tiling_l1_ho_i
             if out_h % tiling_l1_ho_i != 0:
                 actual_tiling_l1_ho_o -= 1
-            actual_pad_top_value, actual_pad_left_value = _set_const_fmatrix(l1_hi, pad_t, pad_b, pad_l, pad_r)
+            _set_const_fmatrix(l1_hi, pad_t, pad_b, pad_l, pad_r)
             with tvm_ir.for_range(0, actual_tiling_l1_ho_o, name="ho_o", dtype=SCALAR_DTYPE) as ho_o:
                 _calculation(actual_tiling_l1_ho_i, 0, ho_o, None, actual_pad_top_value, actual_pad_left_value)
                 if actual_tiling_l1_ho_o > 1:
-                    actual_pad_top_value, actual_pad_left_value = _set_const_fmatrix(l1_hi, 0, 0, pad_l, pad_r)
+                    _set_const_fmatrix(l1_hi, 0, 0, pad_l, pad_r)
             if actual_tiling_l1_ho_o != tiling_l1_ho_o:
                 ho_o = actual_tiling_l1_ho_o
                 actual_tiling_l1_ho_i = out_h - ho_o * tiling_l1_ho_i
                 last_hi = fmap_h + pad_t - ho_o * tiling_l1_ho_i * stride_h
-                actual_pad_top_value, actual_pad_left_value = _set_const_fmatrix(last_hi, 0, pad_b, pad_l, pad_r)
+                _set_const_fmatrix(last_hi, 0, pad_b, pad_l, pad_r)
                 _calculation(actual_tiling_l1_ho_i, 0, ho_o, None, actual_pad_top_value, actual_pad_left_value)
 
     block_index = tvm.thread_axis("blockIdx.x")
     tvm_ir.scope_attr(block_index, "thread_extent", block_tiling["block_dim"])
 
     const_0_ub = _dup_const_0()
+    # def scalars, which would be used and updated on device, set in _set_const_fmatrix
+    actual_pad_top_value = tvm_ir.allocate(FMATRIX_DTYPE, (1), name='actual_pad_top_value',
+                                           scope=tbe_platform.scope_reg)
+    actual_pad_left_value = tvm_ir.allocate(FMATRIX_DTYPE, (1), name='actual_pad_left_value',
+                                            scope=tbe_platform.scope_reg)
     if block_tiling["type"] == BlockTilingType.DIVISIBLE:
         with tvm_ir.for_range(0, block_tiling["shape"]["n"], name="n_i", dtype=SCALAR_DTYPE) as n_i:  # tiling for batch
             with tvm_ir.for_range(0, block_tiling["shape"]["c1"], name="c1_i",

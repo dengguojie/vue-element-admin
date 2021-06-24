@@ -16,32 +16,98 @@ MaxPoolGradGrad ut case
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
+
 ut_case = OpUT("MaxPoolGradGrad", None, None)
-ori_x_input = {
-    "shape": (1, 1, 5, 5, 16),
-    "dtype": "float16",
-    "ori_shape": (1, 5, 5, 16),
-    "format": "NC1HWC0",
-    "ori_format": "NHWC"
-}
-ori_y_input = {
-    "shape": (1, 1, 5, 5, 16),
-    "dtype": "float16",
-    "ori_shape": (1, 5, 5, 16),
-    "format": "NC1HWC0",
-    "ori_format": "NHWC"
-}
-grads = ori_x_input
-output = ori_y_input
+
+
+def gen_case(inp, out):
+    (N, C1, H, W, C0) = inp
+    (Nout, C1out, Hout, Wout, C0out) = out
+    C = C1 * C0
+    Cout = C1out * C0out
+    ori_x_input = {
+        "shape": (N, C1, H, W, C0),
+        "dtype": "float16",
+        "ori_shape": (N, H, W, C),
+        "format": "NC1HWC0",
+        "ori_format": "NHWC"
+    }
+    ori_y_input = {
+        "shape": (Nout, C1out, Hout, Wout, C0),
+        "dtype": "float16",
+        "ori_shape": (Nout, Hout, Wout, Cout),
+        "format": "NC1HWC0",
+        "ori_format": "NHWC"
+    }
+    grads = ori_x_input
+    output = ori_y_input
+
+    return ori_x_input, ori_y_input, grads, output
+
+
+ksize = (1, 3, 3, 1)
+strides = (1, 1, 1, 1)
+ori_x_input, ori_y_input, grads, output = gen_case((1, 1, 5, 5, 16), (1, 1, 5, 5, 16))
 case1 = {
-    "params": [ori_x_input, ori_y_input, grads, output, (1, 3, 3, 1), (1, 1, 1, 1)],
+    "params": [ori_x_input, ori_y_input, grads, output, ksize, strides],
     "case_name": "max_pool_grad_grad_1",
     "expect": "success",
     "format_expect": [],
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ksize = (1, 2, 3, 1)
+strides = (1, 11, 4, 1)
+ori_x_input, ori_y_input, grads, output = gen_case((627, 5, 56, 301, 16), (627, 5, 6, 76, 16))
+case2 = {
+    "params": [ori_x_input, ori_y_input, grads, output, ksize, strides],
+    "case_name": "max_pool_grad_grad_2",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+
+ksize = (1, 12, 2, 1)
+strides = (1, 58, 33, 1)
+ori_x_input, ori_y_input, grads, output = gen_case((37, 3, 120, 44, 16), (37, 3, 3, 2, 16))
+case3 = {
+    "params": [ori_x_input, ori_y_input, grads, output, ksize, strides],
+    "case_name": "max_pool_grad_grad_3",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+
+ksize = (1, 13, 6, 1)
+strides = (1, 6, 29, 1)
+ori_x_input, ori_y_input, grads, output = gen_case((89, 5, 93, 151, 16), (89, 5, 16, 6, 16))
+case4 = {
+    "params": [ori_x_input, ori_y_input, grads, output, ksize, strides],
+    "case_name": "max_pool_grad_grad_4",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+
+ksize = (1, 14, 16, 1)
+strides = (1, 63, 40, 1)
+ori_x_input, ori_y_input, grads, output = gen_case((21, 13, 48, 89, 16), (21, 13, 1, 3, 16))
+case5 = {
+    "params": [ori_x_input, ori_y_input, grads, output, ksize, strides],
+    "case_name": "max_pool_grad_grad_5",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+
 
 def tf_get_windowed_output_size_verbose_V2(input_size, filter_size,
                                            stride, padding_type, dilation_rate=1):
@@ -74,7 +140,7 @@ def tf_get_windowed_output_size_verbose_V2(input_size, filter_size,
     if dilation_rate < 1:
         raise RuntimeError("Dilation rate must be >= 1, but got", dilation_rate)
 
-    effective_filter_size = (filter_size - 1)*dilation_rate + 1
+    effective_filter_size = (filter_size - 1) * dilation_rate + 1
     if padding_type == "VALID":
         output_size = (input_size - effective_filter_size + stride) // stride
         padding_before = 0
@@ -82,7 +148,7 @@ def tf_get_windowed_output_size_verbose_V2(input_size, filter_size,
     elif padding_type == "SAME":
         output_size = (input_size + stride - 1) // stride
         padding_needed = max(
-            0, (output_size - 1)*stride + effective_filter_size - input_size)
+            0, (output_size - 1) * stride + effective_filter_size - input_size)
         padding_before = padding_needed // 2
         padding_after = padding_needed - padding_before
     else:
@@ -102,8 +168,8 @@ def img2col(input_img, col_shape, pad, stride, tag=None):
         for wo in range(col_wo):
             for hw in range(col_hw):
                 for ww in range(col_ww):
-                    hi = ho*stride_h + hw - pad_top
-                    wi = wo*stride_w + ww - pad_left
+                    hi = ho * stride_h + hw - pad_top
+                    wi = wo * stride_w + ww - pad_left
                     if hi < 0 or wi < 0 or hi >= fmap_h or wi >= fmap_w:
                         col[:, ho, wo, hw, ww, :] = -65500.0
                         continue
@@ -141,7 +207,7 @@ def check_shape_vailded(ori_input, ori_output, grad, ksize, strides, padding):
 
 def maxpool(ori_input, ksize, strides, padding, dtype):
     n, c1, h, w, c0 = ori_input.shape
-    ori_input = ori_input.transpose((0,2,3,1,4)).reshape((n, h, w, c1*c0))
+    ori_input = ori_input.transpose((0, 2, 3, 1, 4)).reshape((n, h, w, c1 * c0))
     _, kernel_h, kernel_w, _ = ksize
     _, stride_h, stride_w, _ = strides
     fmap_n, fmap_h, fmap_w, fmap_c = ori_input.shape
@@ -158,6 +224,7 @@ def maxpool(ori_input, ksize, strides, padding, dtype):
 
     res = np.max(fmap_x_col, axis=(3, 4))
     return res.reshape((n, h, w, c1, c0)).transpose((0, 3, 1, 2, 4)).astype(dtype)
+
 
 # NHWC
 def maxpoolgradgrad_nhwc(ori_input, ori_output, grad, ksize, strides, pad):
@@ -184,7 +251,7 @@ def maxpoolgradgrad_nhwc(ori_input, ori_output, grad, ksize, strides, pad):
             mask[:, :, :, h, w, :] = cur_mask
 
     grad_col = img2col(grad, col_shape, pad, (stride_h, stride_w))
-    grad_col_mask = grad_col*mask
+    grad_col_mask = grad_col * mask
 
     output = np.zeros(global_mask.shape, dtype)
     for h in range(kernel_h):
@@ -192,24 +259,30 @@ def maxpoolgradgrad_nhwc(ori_input, ori_output, grad, ksize, strides, pad):
             output += grad_col_mask[:, :, :, h, w, :]
     return output
 
-def calc_expect_func(orig_x_dict, orig_y_dict, grads_dict, output_dict, ksize, strides,padding):
 
+def calc_expect_func(orig_x_dict, orig_y_dict, grads_dict, output_dict, ksize, strides, padding):
     n, c1, h, w, c0 = orig_x_dict["shape"]
-    ori_x = orig_x_dict["value"].transpose((0,2,3,1,4)).reshape((n, h, w, c1*c0)).astype(np.float32)
-    ori_y = orig_y_dict["value"].transpose((0,2,3,1,4)).reshape((n, h, w, c1*c0)).astype(np.float32)
+    ori_x = orig_x_dict["value"].transpose((0, 2, 3, 1, 4)).reshape((n, h, w, c1 * c0)).astype(np.float32)
+    ori_y = orig_y_dict["value"].transpose((0, 2, 3, 1, 4)).reshape((n, h, w, c1 * c0)).astype(np.float32)
 
-    pad_list = check_shape_vailded(orig_x_dict["ori_shape"], orig_y_dict["ori_shape"], grads_dict["ori_shape"], ksize, strides, padding)
-    grads = grads_dict["value"].transpose((0,2,3,1,4)).reshape((n, h, w, c1*c0)).astype(np.float32)
+    pad_list = check_shape_vailded(orig_x_dict["ori_shape"], orig_y_dict["ori_shape"], grads_dict["ori_shape"], ksize,
+                                   strides, padding)
+    grads = grads_dict["value"].transpose((0, 2, 3, 1, 4)).reshape((n, h, w, c1 * c0)).astype(np.float32)
     output = maxpoolgradgrad_nhwc(ori_x, ori_y, grads, ksize, strides, pad_list)
     return output.reshape((n, h, w, c1, c0)).transpose((0, 3, 1, 2, 4)).astype(output_dict["dtype"])
 
 
 ori_x = np.random.uniform(1.0, 2.0, (1, 1, 5, 5, 16)).astype("float16")
 ut_case.add_precision_case("all", {
-    "params": [{"shape": (1, 1, 5, 5, 16), "dtype": "float16", "ori_shape": (1, 5, 5, 16), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input", "value":ori_x},
-               {"shape": (1, 1, 5, 5, 16), "dtype": "float16", "ori_shape": (1, 5, 5, 16), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input", "value":maxpool(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME","float16")},
-               {"shape": (1, 1, 5, 5, 16), "dtype": "float16", "ori_shape": (1, 5, 5, 16), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input"},
-               {"shape": (1, 1, 5, 5, 16), "dtype": "float16", "ori_shape": (1, 5, 5, 16), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "output"},
+    "params": [{"shape": (1, 1, 5, 5, 16), "dtype": "float16", "ori_shape": (1, 5, 5, 16), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input", "value": ori_x},
+               {"shape": (1, 1, 5, 5, 16), "dtype": "float16", "ori_shape": (1, 5, 5, 16), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input",
+                "value": maxpool(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME", "float16")},
+               {"shape": (1, 1, 5, 5, 16), "dtype": "float16", "ori_shape": (1, 5, 5, 16), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input"},
+               {"shape": (1, 1, 5, 5, 16), "dtype": "float16", "ori_shape": (1, 5, 5, 16), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "output"},
                (1, 3, 3, 1), (1, 1, 1, 1), "SAME"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
@@ -217,10 +290,15 @@ ut_case.add_precision_case("all", {
 
 ori_x = np.random.uniform(1.0, 2.0, (2, 2, 5, 5, 16)).astype("float16")
 ut_case.add_precision_case("all", {
-    "params": [{"shape": (2, 2, 5, 5, 16), "dtype": "float16", "ori_shape": (2, 5, 5, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input", "value":ori_x},
-               {"shape": (2, 2, 5, 5, 16), "dtype": "float16", "ori_shape": (2, 5, 5, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input", "value":maxpool(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME","float16")},
-               {"shape": (2, 2, 5, 5, 16), "dtype": "float16", "ori_shape": (2, 5, 5, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input"},
-               {"shape": (2, 2, 5, 5, 16), "dtype": "float16", "ori_shape": (2, 5, 5, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "output"},
+    "params": [{"shape": (2, 2, 5, 5, 16), "dtype": "float16", "ori_shape": (2, 5, 5, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input", "value": ori_x},
+               {"shape": (2, 2, 5, 5, 16), "dtype": "float16", "ori_shape": (2, 5, 5, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input",
+                "value": maxpool(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME", "float16")},
+               {"shape": (2, 2, 5, 5, 16), "dtype": "float16", "ori_shape": (2, 5, 5, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input"},
+               {"shape": (2, 2, 5, 5, 16), "dtype": "float16", "ori_shape": (2, 5, 5, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "output"},
                (1, 3, 3, 1), (1, 1, 1, 1), "SAME"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
@@ -228,10 +306,15 @@ ut_case.add_precision_case("all", {
 
 ori_x = np.random.uniform(1.0, 2.0, (2, 2, 5, 13, 16)).astype("float16")
 ut_case.add_precision_case("all", {
-    "params": [{"shape": (2, 2, 5, 13, 16), "dtype": "float16", "ori_shape": (2, 5, 13, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input", "value":ori_x},
-               {"shape": (2, 2, 5, 13, 16), "dtype": "float16", "ori_shape": (2, 5, 13, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input", "value":maxpool(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME","float16")},
-               {"shape": (2, 2, 5, 13, 16), "dtype": "float16", "ori_shape": (2, 5, 13, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input"},
-               {"shape": (2, 2, 5, 13, 16), "dtype": "float16", "ori_shape": (2, 5, 13, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "output"},
+    "params": [{"shape": (2, 2, 5, 13, 16), "dtype": "float16", "ori_shape": (2, 5, 13, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input", "value": ori_x},
+               {"shape": (2, 2, 5, 13, 16), "dtype": "float16", "ori_shape": (2, 5, 13, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input",
+                "value": maxpool(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME", "float16")},
+               {"shape": (2, 2, 5, 13, 16), "dtype": "float16", "ori_shape": (2, 5, 13, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input"},
+               {"shape": (2, 2, 5, 13, 16), "dtype": "float16", "ori_shape": (2, 5, 13, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "output"},
                (1, 3, 3, 1), (1, 1, 1, 1), "SAME"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
@@ -239,15 +322,20 @@ ut_case.add_precision_case("all", {
 
 ori_x = np.random.uniform(1.0, 2.0, (2, 2, 17, 13, 16)).astype("float16")
 ut_case.add_precision_case("all", {
-    "params": [{"shape": (2, 2, 17, 13, 16), "dtype": "float16", "ori_shape": (2, 17, 13, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input", "value":ori_x},
-               {"shape": (2, 2, 17, 13, 16), "dtype": "float16", "ori_shape": (2, 17, 13, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input", "value":maxpool(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME","float16")},
-               {"shape": (2, 2, 17, 13, 16), "dtype": "float16", "ori_shape": (2, 17, 13, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "input"},
-               {"shape": (2, 2, 17, 13, 16), "dtype": "float16", "ori_shape": (2, 17, 13, 32), "format": "NC1HWC0", "ori_format": "NHWC", "param_type": "output"},
+    "params": [{"shape": (2, 2, 17, 13, 16), "dtype": "float16", "ori_shape": (2, 17, 13, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input", "value": ori_x},
+               {"shape": (2, 2, 17, 13, 16), "dtype": "float16", "ori_shape": (2, 17, 13, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input",
+                "value": maxpool(ori_x, (1, 3, 3, 1), (1, 1, 1, 1), "SAME", "float16")},
+               {"shape": (2, 2, 17, 13, 16), "dtype": "float16", "ori_shape": (2, 17, 13, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "input"},
+               {"shape": (2, 2, 17, 13, 16), "dtype": "float16", "ori_shape": (2, 17, 13, 32), "format": "NC1HWC0",
+                "ori_format": "NHWC", "param_type": "output"},
                (1, 5, 5, 1), (1, 1, 1, 1), "SAME"],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
 if __name__ == '__main__':
-    ut_case.run()
-    # ut_case.run("Ascend910")
+    ut_case.run('Ascend310')
+    ut_case.run('Ascend910')
