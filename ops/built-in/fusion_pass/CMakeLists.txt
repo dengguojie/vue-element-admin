@@ -130,7 +130,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_fusion_pass.cc
   graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
-  graph_fusion/ai_core/batch_to_space_nd_fusion_pass.cc
   graph_fusion/ai_core/einsum_fusion_pass.cc
   graph_fusion/ai_core/biasadd_conv_fusion_pass.cc
   graph_fusion/ai_core/combined_non_max_suppression_fusion_pass.cc
@@ -246,7 +245,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/softmax_grad_ext_v2_fusion_pass.cc
   graph_fusion/ai_core/softmax_transpose_fusion_pass.cc
   graph_fusion/ai_core/softplus_tanh_mul_fusion.cc
-  graph_fusion/ai_core/space_to_batch_nd_fusion_pass.cc
   graph_fusion/ai_core/space_to_depth_fusion_pass.cc
   graph_fusion/ai_core/sparse_softmax_cross_entropy_with_logits_fusion_pass.cc
   graph_fusion/ai_core/spatial_transformer_d_fusion_pass.cc

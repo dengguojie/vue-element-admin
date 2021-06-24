@@ -203,16 +203,6 @@ REGISTER_CONST2ATTR("CropAndResizeD")
     .NeedCheckSupported(true)
     .SetConstToAttr(3, "crop_size", "SetListInt");
 
-REGISTER_CONST2ATTR("BatchToSpaceD")
-    .OriginOpType("BatchToSpace")
-    .NeedCheckSupported(true)
-    .SetConstToAttr(1, "crops", "SetListInt");
-
-REGISTER_CONST2ATTR("SpaceToBatchD")
-    .OriginOpType("SpaceToBatch")
-    .NeedCheckSupported(true)
-    .SetConstToAttr(1, "paddings", "SetListInt");
-
 REGISTER_CONST2ATTR("BroadcastToD")
     .OriginOpType("BroadcastTo")
     .NeedCheckSupported(true)

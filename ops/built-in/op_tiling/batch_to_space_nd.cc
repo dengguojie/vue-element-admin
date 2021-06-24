@@ -163,6 +163,12 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   } else {
     CalCoreNum(param, param.input_d, core_num);
   }
+
+  // when slect branch 2 or 3, calc core at input_h
+  if ((param.tiling_mode == 2 || param.tiling_mode == 3) && (param.input_h > param.output_b * param.channel_one)) {
+    param.tiling_mode = param.tiling_mode == 2 ? 12 : 13;
+    CalCoreNum(param, param.input_h, core_num);
+  }
 }
 
 static void GetConstDataBs(const uint8_t*& const_data, const string& dtype, size_t size, vector<int64_t>& const_vec) {
@@ -363,6 +369,14 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
               input_shape[0], block_vec[0], block_vec[1], block_vec[2]);
       return false;
     }
+  }
+
+  // if input_h and block_h is one, can swap h and w
+  if (input_format == "NC1HWC0" && input_shape[2] == 1 && block_vec[0] == 1) {
+    std::swap(input_shape[2], input_shape[3]);
+    std::swap(block_vec[0], block_vec[1]);
+    std::swap(crops_vec[0], crops_vec[2]);
+    std::swap(crops_vec[1], crops_vec[3]);
   }
 
   // calc tiling params, set tiling params, print tiling params

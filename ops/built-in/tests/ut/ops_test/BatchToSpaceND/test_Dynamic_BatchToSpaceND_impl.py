@@ -15,6 +15,63 @@ def gen_dynamic_batchtospacend_case(shape_x, shape_y, ori_shape_x, ori_shape_y, 
             "format_expect": [],
             "support_expect": True}
 
+
+def test_op_check_supported_0(test_arg):
+    from impl.dynamic.batch_to_space_nd import check_supported
+    x = {'ori_shape': (1, 1, 1, 1), 'shape': (1, 1, 1, 1), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    block_shape = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    crops = {'ori_shape': (2, 2), 'shape': (2, 2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    y = {'ori_shape': (1, 1, 1, 1), 'shape': (1, 1, 1, 1), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    if check_supported(x, block_shape, crops, y) == False:
+        raise Exception("Failed to call check_supported in Batch_to_space_nd.")
+
+
+def test_op_check_supported_1(test_arg):
+    from impl.dynamic.batch_to_space_nd import check_supported
+    x = {'ori_shape': (1, 1, 1, 1), 'shape': (1, 1, 1, 1), 'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
+    block_shape = {'ori_shape': (3,), 'shape': (3,), 'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
+    crops = {'ori_shape': (2, 2), 'shape': (2, 2), 'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
+    y = {'ori_shape': (1, 1, 1, 1), 'shape': (1, 1, 1, 1), 'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
+    if check_supported(x, block_shape, crops, y) == False:
+        raise Exception("Failed to call check_supported in Batch_to_space_nd.")
+
+
+def test_op_check_supported_2(test_arg):
+    from impl.dynamic.batch_to_space_nd import check_supported
+    x = {'ori_shape': (1, 1, 1), 'shape': (1, 1, 1), 'ori_format': 'NCHW', 'format': 'NCHW', 'dtype': 'float16'}
+    block_shape = {'ori_shape': (3,), 'shape': (3,), 'ori_format': 'NCHW', 'format': 'NCHW', 'dtype': 'float16'}
+    crops = {'ori_shape': (2, 2), 'shape': (2, 2), 'ori_format': 'NCHW', 'format': 'NCHW', 'dtype': 'float16'}
+    y = {'ori_shape': (1, 1, 1), 'shape': (1, 1, 1), 'ori_format': 'NCHW', 'format': 'NCHW', 'dtype': 'float16'}
+    if check_supported(x, block_shape, crops, y) == False:
+        raise Exception("Failed to call check_supported in Batch_to_space_nd.")
+
+
+def test_op_check_supported_3(test_arg):
+    from impl.dynamic.batch_to_space_nd import check_supported
+    x = {'ori_shape': (1, 1, 1), 'shape': (1, 1, 1), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    block_shape = {'ori_shape': (2,), 'shape': (2,), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    crops = {'ori_shape': (2, 2), 'shape': (2, 2), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    y = {'ori_shape': (1, 1, 1), 'shape': (1, 1, 1), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
+    if check_supported(x, block_shape, crops, y) == False:
+        raise Exception("Failed to call check_supported in Batch_to_space_nd.")
+
+
+def test_op_select_format(test_arg):
+    from impl.dynamic.batch_to_space_nd import op_select_format
+    op_select_format({"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),"ori_format": "NHWC", "param_type": "input"},
+                    {"shape": (2,), "dtype": "float16", "format": "ND", "ori_shape": (2,),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),"ori_format": "NHWC", "param_type": "input"},
+                    )
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
+
+
+ut_case.add_cust_test_func(test_func=test_op_check_supported_0)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_1)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_2)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_3)
+
 ut_case.add_case("all",
                  gen_dynamic_batchtospacend_case((-1,-1,-1,-1,-1),(-1,-1,-1,-1,-1),(-1,-1,-1,-1),(-1,-1,-1,-1),
                                            ((1, None),(1, None),(1, None),(1, None),(1, None)),((1, None),(1, None),(1, None),(1, None),(1, None)),

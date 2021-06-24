@@ -21,9 +21,11 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 # max int32
-MAX_INT32 = 2 ** 31 - 1
+MAX_INT32 = 2**31 - 1
 # tiling param num
 TILING_ARG_NUM = 32
 # reserved ub size
@@ -34,6 +36,114 @@ EIGHT_BIT = 8
 BLOCK_BYTES = 32
 # repeat limit
 REPEAT_LIMIT = 255
+
+
+# pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements
+def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
+    """
+    check supported dynamiclly. \n
+    only spported ori_format NHWC,NCHW,NDHWC,NCDHW \n
+    ori_format:NHWC \n
+        ori shape must be 4([-1,-1,-1,-1]), block_shape must be 1([2]), paddings must be 2([2,2]) \n
+        ori shape must be 3([-1,-1,-1]), block_shape must be 1([1]), paddings must be 2([1,2]) \n
+    ori format:NCHW \n
+        ori shape must be 4([-1,-1,-1,-1]), block_shape must be 1([3]), paddings must be 2([3,2]) \n
+    ori format:NDHWC \n
+        ori shape must be 5([-1,-1,-1,-1,-1]), block_shape must be 1([3]), paddings must be 2([3,2]) \n
+    ori format:NCDHW \n
+        ori shape must be 5([-1,-1,-1,-1,-1]), block_shape must be 1([4]), paddings must be 2([4,2]) \n
+    """
+    ori_format = x.get("ori_format")
+    ori_shape = x.get("ori_shape")
+    block_s = block_shape.get("shape")
+    pad_s = paddings.get("shape")
+    if ori_format not in ("NHWC", "NCHW", "NDHWC", "NCDHW"):
+        reason = 'ori_format[%s] is not in ("NHWC", "NCHW", "NDHWC", "NCDHW")' % ori_format
+        return False, reason
+    if len(block_s) != 1 or len(pad_s) != 2 or pad_s[1] != 2:
+        reason = "shape of input is not supported, block_s is [%s], pad_s is [%s]" % (str(block_s), str(pad_s))
+        return False, reason
+    reason = "when ori_format is [%s], shape of input is not supported," \
+             "ori_shape is [%s], block_s is [%s], pad_s is [%s]" %(ori_format, str(ori_shape), str(block_s), str(pad_s))
+    if ori_format in ("NHWC",):
+        if len(ori_shape) != 4 or block_s[0] != 2 or pad_s[0] != 2:
+            if len(ori_shape) != 3 or block_s[0] != 1 or pad_s[0] != 1:
+                return False, reason
+    elif ori_format in ("NCHW",):
+        if len(ori_shape) != 4 or block_s[0] != 3 or pad_s[0] != 3:
+            return False, reason
+    elif ori_format in ("NDHWC",):
+        if len(ori_shape) != 5 or block_s[0] != 3 or pad_s[0] != 3:
+            return False, reason
+    elif ori_format in ("NCDHW",):
+        if len(ori_shape) != 5 or block_s[0] != 4 or pad_s[0] != 4:
+            return False, reason
+
+    return True, ""
+
+
+def op_select_format(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
+    """
+    select format dynamiclly. \n
+    op_select_format support desc: \n
+        1. when ori_format is 'NHWC' or 'NCHW', input_format is 'NC1HWC0' \n
+            for example: \n
+                ori: \n
+                    x              shape = [16,16,16,16]           format = 'NHWC' \n
+                    block_shape    shape = [2,]                    format = 'ND' \n
+                    pads           shape = [2,2]                   format = 'ND' \n
+                    y              shape = [None,None,None,16]     format = 'NHWC' \n
+                format transformer: \n
+                    x              shape = [16,1,16,16,16]         format = 'NC1HWC0' \n
+                    block_shape    shape = [2,]                    format = 'ND' \n
+                    pads           shape = [2,2]                   format = 'ND' \n
+                    y              shape = [None,1,None,None,16]   format = 'NC1HWC0' \n
+        2. when ori_format is 'NDHWC' or 'NCDHW', input_format is 'NDC1HWC0' \n
+            for example: \n
+                ori: \n
+                    x              shape = [16,16,16,16,16]              format = 'NDHWC' \n
+                    block_shape    shape = [3,]                          format = 'ND' \n
+                    pads           shape = [3,2]                         format = 'ND' \n
+                    y              shape = [None,None,None,None,16]      format = 'NDHWC' \n
+                format transformer: \n
+                    x              shape = [16,16,1,16,16,16]            format = 'NDC1HWC0' \n
+                    block_shape    shape = [3,]                          format = 'ND' \n
+                    pads           shape = [3,2]                         format = 'ND' \n
+                    y              shape = [None,None,1,None,None,16]    format = 'NDC1HWC0' \n
+    """
+    input_dtype = "float16, float, float16, float"
+    input_format = "NC1HWC0, NC1HWC0, NC1HWC0, NC1HWC0"
+    ori_format = x.get("ori_format")
+    if ori_format in ("NDHWC", "NCDHW"):
+        input_dtype = "float16, float, float16, float"
+        input_format = "NDC1HWC0, NDC1HWC0, NDC1HWC0, NDC1HWC0"
+
+    attr_dtype = "int32, int32, int64, int64"
+    attr_format = "ND, ND, ND, ND"
+    input0 = gen_param(classify="input0",
+                       name="x",
+                       datatype=input_dtype,
+                       format=input_format,
+                       unknownshape_format=input_format)
+    input1 = gen_param(classify="input1",
+                       name="block_shape",
+                       datatype=attr_dtype,
+                       format=attr_format,
+                       unknownshape_format=attr_format)
+    input2 = gen_param(classify="input2",
+                       name="paddings",
+                       datatype=attr_dtype,
+                       format=attr_format,
+                       unknownshape_format=attr_format)
+    output0 = gen_param(classify="output0",
+                        name="y",
+                        datatype=input_dtype,
+                        format=input_format,
+                        unknownshape_format=input_format)
+
+    param_list = [input0, input1, input2, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 # pylint: disable=invalid-name,unused-argument,too-many-instance-attributes,unexpected-keyword-arg,too-many-function-args
@@ -125,8 +235,8 @@ class SpaceToBatchND:
         """
         self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.input_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="input_gm", scope=tik.scope_gm)
-        self.block_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="block_gm", scope=tik.scope_gm)
-        self.paddings_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="paddings_gm", scope=tik.scope_gm)
+        self.block_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="block_shape", scope=tik.scope_gm)
+        self.paddings_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="paddings", scope=tik.scope_gm)
         self.output_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="output_gm", scope=tik.scope_gm)
 
     def vector_dup_continuous(self, src, size):
@@ -327,6 +437,89 @@ class SpaceToBatchND:
                     ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,), name="ub_b", scope=tik.scope_ubuf)
                     with self.tik_instance.for_range(0, core_ele) as ele_idx:
                         self.run_output_h_5hd(ub_a, ub_b, core_idx, ele_idx, idx_oh, idx_bh)
+
+    def split_output_h_5hd(self, ub_a, ub_b, idx_bh, idx_ib, idx_c1, core_idx, ele_idx):
+        """run output height for 5hd function.
+        """
+        # vector dup and move in
+        flag_h = (core_idx * self.one_core_ele + ele_idx) * self.block_h + idx_bh
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.if_scope(tik.all(flag_h >= self.pads_t, flag_h < self.pads_t + self.input_h)):
+                offset_gm_in = (idx_ib * self.channel_one + idx_c1) * self.input_h * self.input_w * self.channel_zero + \
+                               ((core_idx * self.one_core_ele + ele_idx) * self.block_h + idx_bh - self.pads_t) * self.input_w * \
+                               self.channel_zero
+                offset_ub_in = self.pads_l * self.channel_zero
+                # move in
+                self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
+                                            self.input_w * self.channel_zero // self.blk_ele, 0, 0)
+                # vector dup
+                self.vector_dup_continuous(ub_a, offset_ub_in)
+                offset_3 = (self.pad_w - self.pads_r) * self.channel_zero
+                size_3 = self.pads_r * self.channel_zero
+                self.vector_dup_continuous(ub_a[offset_3:], size_3)
+            with self.tik_instance.else_scope():
+                self.vector_dup_continuous(ub_a, self.output_w * self.block_w * self.channel_zero)
+
+        # permute ane move out
+        src_stride_pt = (self.block_w - 1) * self.channel_zero // self.blk_ele
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                # permute
+                offset_ub_pt = idx_bw * self.channel_zero
+                offset_ub_out = idx_bw * self.output_w * self.channel_zero
+                self.tik_instance.data_move(ub_b[offset_ub_out], ub_a[offset_ub_pt], 0, self.output_w,
+                                            self.channel_zero // self.blk_ele, src_stride_pt, 0)
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                # move out
+                offset_ub_out = idx_bw * self.output_w * self.channel_zero
+                offset_gm_out = (idx_bh * self.block_w + idx_bw) * self.input_b * self.channel_one * self.output_h * \
+                                self.output_w * self.channel_zero + (idx_ib * self.channel_one + idx_c1) * \
+                                self.output_h * self.output_w * self.channel_zero + (core_idx * self.one_core_ele + ele_idx) * self.output_w * \
+                                self.channel_zero
+                self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_b[offset_ub_out], 0, 1,
+                                            self.output_w * self.channel_zero // self.blk_ele, 0, 0)
+
+    def split_output_h_open_db_5hd(self, core_idx, core_ele):
+        """run output height for 5hd function, open double buffer.
+        """
+        with self.tik_instance.new_stmt_scope():
+            with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                with self.tik_instance.for_range(0, self.input_b) as idx_ib:
+                    with self.tik_instance.for_range(0, self.channel_one) as idx_c1:
+                        ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                        name="ub_a",
+                                                        scope=tik.scope_ubuf)
+                        ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                        name="ub_b",
+                                                        scope=tik.scope_ubuf)
+                        ub_c = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                        name="ub_c",
+                                                        scope=tik.scope_ubuf)
+                        ub_d = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                        name="ub_d",
+                                                        scope=tik.scope_ubuf)
+                        with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
+                            self.split_output_h_5hd(ub_a, ub_b, idx_bh, idx_ib, idx_c1, core_idx, ele_idx * 2)
+                            self.split_output_h_5hd(ub_c, ub_d, idx_bh, idx_ib, idx_c1, core_idx, ele_idx * 2 + 1)
+                        with self.tik_instance.if_scope(core_ele % 2 == 1):
+                            self.split_output_h_5hd(ub_a, ub_b, idx_bh, idx_ib, idx_c1, core_idx, core_ele - 1)
+
+    def split_output_h_close_db_5hd(self, core_idx, core_ele):
+        """run output height for 5hd function, close double buffer.
+        """
+        with self.tik_instance.new_stmt_scope():
+            with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                with self.tik_instance.for_range(0, self.input_b) as idx_ib:
+                    with self.tik_instance.for_range(0, self.channel_one) as idx_c1:
+                        ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
+                                                        name="ub_a",
+                                                        scope=tik.scope_ubuf)
+                        ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
+                                                        name="ub_b",
+                                                        scope=tik.scope_ubuf)
+                        with self.tik_instance.for_range(0, core_ele) as ele_idx:
+                            self.split_output_h_5hd(ub_a, ub_b, idx_bh, idx_ib, idx_c1, core_idx, ele_idx)
 
     def run_block_w_5hd(self, core_idx, core_ele):
         """run block width for 5hd function, close double buffer.
@@ -747,23 +940,29 @@ class SpaceToBatchND:
                 # when format is NHC1HWC0, can copy c0, no double buffer
                 with self.tik_instance.if_scope(self.tiling_mode == 11):
                     self.run_output_w_6hd(core_idx, core_ele)
+                # when format is NC1HWC0, can copy input_w * block_w * c0, open double buffer, core at input_h
+                with self.tik_instance.if_scope(self.tiling_mode == 12):
+                    self.split_output_h_open_db_5hd(core_idx, core_ele)
+                # when format is NC1HWC0, can copy input_w * block_w * c0, close double buffer, core at input_h
+                with self.tik_instance.if_scope(self.tiling_mode == 13):
+                    self.split_output_h_close_db_5hd(core_idx, core_ele)
 
     def space_to_batch_nd_operator(self):
         """SpaceToBatchND operator
         """
         self.space_to_batch_nd_compute_tiling()
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.input_gm, self.block_gm, self.paddings_gm],
-                                   outputs=[self.output_gm],
-                                   flowtable=[self.tiling_gm],
-                                   config=opt_config)
 
         tbe_context.get_context().add_compile_info("vars", {
             "ub_ele": self.ub_ele,
             "core_num": self.core_num,
             "block_size": self.block_size,
         })
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.input_gm, self.block_gm, self.paddings_gm],
+                                   outputs=[self.output_gm],
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
 
         return self.tik_instance
 

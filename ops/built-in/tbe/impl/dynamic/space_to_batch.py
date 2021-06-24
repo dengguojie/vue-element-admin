@@ -61,16 +61,16 @@ def space_to_batch(x, paddings, y, block_size, kernel_name="space_to_batch"):
     obj = SpaceToBatchND(input_dtype, block_size, kernel_name)
     obj.space_to_batch_nd_compute_tiling()
     opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-    obj.tik_instance.BuildCCE(kernel_name=obj.kernel_name,
-                              inputs=[obj.input_gm, obj.paddings_gm],
-                              outputs=[obj.output_gm],
-                              flowtable=[obj.tiling_gm],
-                              config=opt_config)
 
     tbe_context.get_context().add_compile_info("vars", {
         "ub_ele": obj.ub_ele,
         "core_num": obj.core_num,
         "block_size": obj.block_size,
     })
+    obj.tik_instance.BuildCCE(kernel_name=obj.kernel_name,
+                              inputs=[obj.input_gm, obj.paddings_gm],
+                              outputs=[obj.output_gm],
+                              flowtable=[obj.tiling_gm],
+                              config=opt_config)
 
     return obj.tik_instance
