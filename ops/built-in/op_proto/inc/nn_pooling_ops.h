@@ -432,6 +432,47 @@ REG_OP(MaxPool3D)
     .OP_END_FACTORY_REG(MaxPool3D)
 
 /**
+* @brief Performs max pooling3d on both max values and indices.
+* 
+* @par Inputs:
+*  One input:
+*  x: An 6D tensor. Supported type: float16. Format as NDC1HWC0.
+* @par Attributes:
+*  @li ksize: A required list of int32 values,
+*   specifying the size of the window for each dimension of the input tensor.
+*   No default value.
+*  @li strides: A required list of int32 values,
+*   specifying the stride of the sliding window for each dimension of
+*   the input tensor. No default value.
+*  @li pads: A required 3*2-dimension-list of int32 values.
+*   specifying the pad of three dimension of input, implement with 0.
+*  @li dilation: dilation of kernel. default value is {1,1,1,1,1}.
+*  @li ceil_mode: default value is false.
+*  @li data_format: the format of torch input, default value is "NCDHW".
+*  @li argmax_type: the function of this field is to determine the type of
+*   output argmax, "bitmask" is the default value, the argmax will return
+*   a img2col bitmask. "index_int32" and "index_int64" represent the torch 
+*   output indices.
+* @par Outputs:
+*  y: An 6D tensor. the maxpool3d output(max value), format as NDoC1HoWoC0.
+* @par Outputs:
+*  argmax: A 5D uint16 tensor. the indice output.
+*  format as NC1HWC0, actually it represent N, Do, C1*ksize, Ho*Wo//16, 16.
+*/
+REG_OP(MaxPool3DWithArgmax)
+    .INPUT(x, TensorType::RealNumberType())
+    .OUTPUT(y, TensorType::RealNumberType())
+    .OUTPUT(argmax, TensorType::IndexNumberType())
+    .REQUIRED_ATTR(ksize, ListInt)
+    .REQUIRED_ATTR(strides, ListInt)
+    .REQUIRED_ATTR(pads, ListInt)
+    .ATTR(dilation, ListInt, {1, 1, 1, 1, 1})
+    .ATTR(ceil_mode, Bool, false)
+    .ATTR(data_format, String, "NCDHW")
+    .ATTR(argmax_type, String, "bitmask")
+    .OP_END_FACTORY_REG(MaxPool3DWithArgmax)
+
+/**
 *@brief Applies a 2D adaptive max pooling over an input signal conposed of several input planes. \n
 * The output is of size H x W, for any input size. 
 

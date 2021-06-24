@@ -170,6 +170,7 @@ from .add_mat_mat_elements import add_mat_mat_elements
 from .select_v2 import select_v2
 from .leaky_relu import leaky_relu
 from .leaky_relu_grad import leaky_relu_grad
+from .max_pool3d_with_argmax import max_pool3d_with_argmax
 
 # resnet50
 from .pooling import pooling

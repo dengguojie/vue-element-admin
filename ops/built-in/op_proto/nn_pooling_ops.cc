@@ -3964,6 +3964,49 @@ INFER_FUNC_REG(MaxPool3D, MaxPool3DInferShape);
 VERIFY_FUNC_REG(MaxPool3D, MaxPool3DVerify);
 // ----------------MaxPool3D-------------------
 
+//-------------------MaxPool3DWithArgmax---------------------
+IMPLEMT_INFERFUNC(MaxPool3DWithArgmax, MaxPool3DWithArgmaxInferShape){
+  TensorDesc inputDesc = op.GetInputDesc("x");
+  auto inputShape = inputDesc.GetShape().GetDims();
+  DataType inputDtype = inputDesc.GetDataType();
+  TensorDesc argmaxDesc = op.GetOutputDesc("argmax");
+  TensorDesc outputDesc = op.GetOutputDesc("y");
+  std::vector<int64_t> stridesList;
+  op.GetAttr("strides", stridesList);
+  std::vector<int64_t> kernelList;
+  op.GetAttr("ksize", kernelList);
+  int64_t dOut = (inputShape[1] - kernelList[2]) / stridesList[2] + 1;
+  int64_t hOut = (inputShape[3] - kernelList[3]) / stridesList[3] + 1;
+  int64_t wOut = (inputShape[4] - kernelList[4]) / stridesList[4] + 1;
+  int64_t alignedBmLine;
+  alignedBmLine = (wOut * hOut % 16 == 0) ? (wOut * hOut) : (((int64_t)(wOut * hOut / 16) + 1) * 16);
+  std::vector<int64_t> argShapeVec;
+  argShapeVec.push_back(inputShape[0]);
+  argShapeVec.push_back(dOut);
+  argShapeVec.push_back(inputShape[2] * kernelList[2] * kernelList[3] * kernelList[4]);
+  argShapeVec.push_back((int64_t)(alignedBmLine / 16));
+  argShapeVec.push_back(inputShape[5]);
+  Shape argmaxShape(argShapeVec);
+  argmaxDesc.SetShape(argmaxShape);
+  argmaxDesc.SetDataType(DT_UINT16);
+  (void)op.UpdateOutputDesc("argmax", argmaxDesc);
+  std::vector<int64_t> outShapeVec {inputShape[0], dOut, inputShape[2], hOut, wOut, inputShape[5]};
+  Shape outputShape(outShapeVec);
+  outputDesc.SetShape(outputShape);
+  outputDesc.SetDataType(inputDtype);
+  (void)op.UpdateOutputDesc("y", outputDesc);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(MaxPool3DWithArgmax, MaxPool3DWithArgmaxVerify) {
+  // verify in infer func
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(MaxPool3DWithArgmax, MaxPool3DWithArgmaxInferShape);
+VERIFY_FUNC_REG(MaxPool3DWithArgmax, MaxPool3DWithArgmaxVerify);
+//-------------------MaxPool3DWithArgmax---------------------
+
 // ---------------------MaxPool3DGradGrad---------------------
 static bool GetAttrsMaxPool3DGradGrad(ge::Operator& op, Format refer, int32_t& strd, int32_t& strh, int32_t& strw,
                                       int32_t& kd, int32_t& kh, int32_t& kw) {
