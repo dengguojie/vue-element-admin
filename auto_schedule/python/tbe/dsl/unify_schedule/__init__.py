@@ -31,8 +31,6 @@ from .constants import Pattern, INSN_MAPPING, SUPPORT_SCALAR_INSNS, BROADCAST_IN
 from .unify_auto_schedule import build
 from .unify_auto_schedule import schedule_cce
 
-from . import bn_update_schedule
-from . import bn_update_tilingcase
 from . import layer_norm_tilingcase, layer_norm_normal_schedule, layer_norm_workspace_schedule
 from . import bn_update_grad_schedule, bn_training_update_grad_tilingcase
 from . import confusion_softmax_grad_schedule, confusion_softmax_grad_tilingcase

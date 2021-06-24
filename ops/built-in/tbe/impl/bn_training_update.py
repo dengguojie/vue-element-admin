@@ -25,6 +25,9 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
+from impl.util.platform_adapter import tbe_context
+import impl.dynamic as dimpl
+
 
 # pylint: disable = unused-argument,invalid-name
 # pylint: disable = too-many-arguments,too-many-locals,redefined-builtin
@@ -278,26 +281,21 @@ def bn_training_update_compute(x,
     return res
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
-def bn_training_update(x,
-                       sum,
-                       square_sum,
-                       scale,
-                       offset,
-                       mean,
-                       variance,
-                       y,
-                       mean_out,
-                       variance_out,
-                       batch_mean,
-                       batch_variance,
-                       factor,
-                       epsilon,
-                       kernel_name="bn_training_update"):
+def bn_training_update_prebuild(x,
+                                sum,
+                                square_sum,
+                                scale,
+                                offset,
+                                mean,
+                                variance,
+                                y,
+                                mean_out,
+                                variance_out,
+                                batch_mean,
+                                batch_variance,
+                                factor,
+                                epsilon,
+                                kernel_name="bn_training_update"):
     """
     algorithm: fused_batch_norm_v2
     Batch normalization.
@@ -407,7 +405,111 @@ def bn_training_update(x,
         sch = tbe.auto_schedule(res)
 
     tensor_list = [x_input, sum_input, square_sum_input, scale_input, offset_input, mean_input, variance_input
-                  ] + list(res)
+                   ] + list(res)
 
     config = {"name": kernel_name, "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
+
+
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+def bn_training_update(x,
+                       sum,
+                       square_sum,
+                       scale,
+                       offset,
+                       mean,
+                       variance,
+                       y,
+                       mean_out,
+                       variance_out,
+                       batch_mean,
+                       batch_variance,
+                       factor,
+                       epsilon,
+                       kernel_name="bn_training_update"):
+    """
+    algorithm: fused_batch_norm_v2
+    Batch normalization.
+
+    Parameters
+    ----------
+    x: dict
+        dict of input, A 5HD Tensor for input data.
+    sum: dict
+        dict of sum, A 5HD Tensor for sum.
+        The output of batch_normalization_forward_training_reduce.
+    square_sum: dict
+        dict of square_sum, A 5HD Tensor for square_sum.
+        The output of batch_normalization_forward_training_reduce.
+    scale: dict
+        dict of scale, A 5HD Tensor for mean.
+    offset: dict
+        dict of offset, A 5HD Tensor for variance.
+    mean: dict
+        dict of mean, A 5HD Tensor for mean.
+    variance: dict
+        dict of variance, A 5HD Tensor for variance.
+    y: dict
+        dict of output, A `Tensor`. Has the same type as `x`.
+    mean_out: dict
+        dict of mean, A `Tensor`. The update mean of save mean and running mean.
+    variance_out: dict
+        dict of variance, A `Tensor`.
+        The update variance of save variance and running variance.
+    batch_mean: dict
+        dict of batch_mean, A `Tensor`.
+        One of the result which is called save mean.
+    batch_variance: dict
+        dict of batch_variance, A `Tensor`.
+        Has the same type as `batch_mean`.
+    factor: float
+        A retio to caculate the update mean or variance.
+    epsilon: float
+        A small float number added to the variance of x.
+    kernel_name: str
+        kernel name, default value is "bn_training_update"
+
+    Returns
+    -------
+    None
+    """
+
+    from tbe.common.buildcfg import get_current_build_config
+    if get_current_build_config("enable_op_prebuild"):
+        bn_training_update_prebuild(x,
+                                    sum,
+                                    square_sum,
+                                    scale,
+                                    offset,
+                                    mean,
+                                    variance,
+                                    y,
+                                    mean_out,
+                                    variance_out,
+                                    batch_mean,
+                                    batch_variance,
+                                    factor,
+                                    epsilon,
+                                    kernel_name)
+    else:
+        with tbe_context.op_context.OpContext("static"):
+            dimpl.bn_training_update(x,
+                                     sum,
+                                     square_sum,
+                                     scale,
+                                     offset,
+                                     mean,
+                                     variance,
+                                     y,
+                                     mean_out,
+                                     variance_out,
+                                     batch_mean,
+                                     batch_variance,
+                                     factor,
+                                     epsilon,
+                                     kernel_name)
+

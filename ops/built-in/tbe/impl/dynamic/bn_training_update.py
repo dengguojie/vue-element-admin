@@ -24,6 +24,8 @@ from tbe.dsl.base.operation import get_context, add_compile_info, var
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from tbe.dsl.base.operation import var
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 
 def get_op_support_info(x,
@@ -62,7 +64,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
     Function to check if the shape is in line with norms.
 
     Parameters
-    -----------
+    ----------
     shape_x: list or tuple
         x's data shape
     shape_sum: list or tuple
@@ -77,7 +79,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
         mean's data shape
     shape_variance: list or tuple
         variance's data shape
-    
+
     Returns
     -------
     None
@@ -90,13 +92,12 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
     para_check.check_shape(shape_mean, param_name="mean")
     para_check.check_shape(shape_variance, param_name="variance")
 
-    if len(shape_x) != 5 or len(shape_sum) != 5 or len(shape_square_sum) != 5 or \
-            len(shape_scale) != 5:
-        error_reson = "This operator can only support 5D, but some input's shape length is not 5"
+    if len(shape_x) not in (5, 6) or len(shape_sum) not in (5, 6) or len(shape_square_sum) not in (5, 6) or \
+            len(shape_scale) not in (5, 6):
+        error_reson = "This operator can only support 5D or 6D, but some input's shape length is not 5 or 6"
         error_manager_vector.raise_err_specific_reson("bn_training_update", error_reson)
-    if len(shape_offset) != 5 or len(shape_mean) != 5 or len(shape_variance) != 5 or \
-            len(shape_scale) != 5:
-        error_reson = "This operator can only support 5D, but some input's shape length is not 5"
+    if len(shape_offset) not in (5, 6) or len(shape_mean) not in (5, 6) or len(shape_variance) not in (5, 6):
+        error_reson = "This operator can only support 5D or 6, but some input's shape length is not 5 or 6"
         error_manager_vector.raise_err_specific_reson("bn_training_update", error_reson)
     dim_c1 = 0
     dim_c0 = 0
@@ -107,10 +108,15 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
         dim_c0 = shape_x[4]
         i = 1
         j = 4
+    else:
+        dim_c1 = shape_x[2]
+        dim_c0 = shape_x[5]
+        i = 2
+        j = 5
     if shape_sum[i] != dim_c1 or shape_sum[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and sum must be equal")
     if shape_square_sum[i] != dim_c1 or shape_square_sum[j] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update", \
+        error_manager_vector.raise_err_specific_reson("bn_training_update",
                                                       "Dimension C of x and square_sum must be equal")
     if shape_scale[i] != dim_c1 or shape_scale[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and scale must be equal")
@@ -119,8 +125,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
     if shape_mean[i] != dim_c1 or shape_mean[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
     if shape_variance[i] != dim_c1 or shape_variance[j] != dim_c0:
-        error_manager_vector.raise_err_specific_reson("bn_training_update", \
-                                                      "Dimension C of x and variance must be equal")
+        error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
 
 
 def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset, dtype_mean, dtype_variance):
@@ -143,7 +148,7 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset
         mean's data type
     dtype_variance: str
         variance's data type
-    
+
     Returns
     -------
     None
@@ -157,7 +162,7 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset
     para_check.check_dtype(dtype_variance, ("float32",), param_name="variance")
 
 
-@register_operator_compute("BNTrainingUpdate", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BnTrainingUpdate", op_mode="dynamic", support_fusion=False)
 def bn_training_update_compute(x,
                                sum,
                                square_sum,
@@ -175,7 +180,7 @@ def bn_training_update_compute(x,
                                kernel_name="bn_training_update"):
     """
     algorithm: fused_batch_norm_v2
-    Batch normalization
+    Batch normalization.
 
     Parameters
     ----------
@@ -183,26 +188,27 @@ def bn_training_update_compute(x,
         contains x data
     sum: TVM tensor
         contains sum data
-    square_sum:TVM tensor
+    square_sum: TVM tensor
         contains square_sum data
-    scale:TVM tensor
+    scale: TVM tensor
         contains scale data
-    offset:TVM tensor
+    offset: TVM tensor
         contains offset data
-    mean:TVM tensor
+    mean: TVM tensor
         contains mean data
-    variance:TVM tensor
+    variance: TVM tensor
         contains variance data
     y: dict
-        dict of output, A 'Tensor'. Has the same tyupe as 'x'.
+        dict of output, A 'Tensor'. Has the same type as 'x'.
     mean_out: dict
         dict of mean, A 'Tensor'. The update mean of save mean and running mean.
     variance_out: dict
-        dict of variance, A 'Tensor'. The update variance of save variance and running variance.
-    batch_mean: dict 
+        dict of variance, A 'Tensor'.
+        The update variance of save variance and running variance.
+    batch_mean: dict
         dict of batch_mean, A 'Tensor'.
         One of the result which is called save mean.
-    batch_variance: dict 
+    batch_variance: dict
         dict of batch_variance, A 'Tensor'.
         Has the same type as 'batch_mean'.
     factor: float
@@ -211,17 +217,19 @@ def bn_training_update_compute(x,
         A small float number added to the variance of x.
     kernel_name: str
         kernel name, default value is "bn_training_update"
-    
+
     Returns
     -------
     res: TVM tensor list
         the result of bn_training_update_compute
     """
     shape_x = shape_util.shape_to_list(x.shape)
-    num = shape_x[0] * shape_x[2] * shape_x[3]
+    num = 1
+    for dim in shape_x[:1] + shape_x[2:-1]:
+        num *= dim
 
     if isinstance(num, int):
-        num_rec = num ** (-1)
+        num_rec = 1.0 / num
         num_rec = tvm.const(num_rec, dtype="float32")
         if num == 1:
             batch_var_scaler = 0.0
@@ -232,12 +240,15 @@ def bn_training_update_compute(x,
         batch_var_scaler = var("batch_var_scaler", dtype="float32")
         add_compile_info("bn_update_num_rec_dtype", "float32")
         add_compile_info("bn_update_batch_var_scaler_dtype", "float32")
-
+    # compute the saved mean of x
     save_mean_reduce = tbe.vmuls(sum, num_rec)
+
+    # compute the saved variance of x
     variance_div = tbe.vmuls(square_sum, num_rec)
     variance_square = tbe.vmul(save_mean_reduce, save_mean_reduce)
     save_variance_reduce = tbe.vsub(variance_div, variance_square)
 
+    # compute the oefficient of y
     multiplier_add = tbe.vadds(save_variance_reduce, epsilon)
     multiplier_sqrt = tbe.vsqrt(multiplier_add)
     multiplier_div = tbe.vdiv(scale, multiplier_sqrt)
@@ -247,16 +258,17 @@ def bn_training_update_compute(x,
     addend_sub = tbe.vsub(offset, addend_mul)
     addend = tbe.broadcast(addend_sub, shape_x)
 
+    # compute the batch normalization of x
     is_cast = False
     if x.dtype == "float16":
         is_cast = True
         x = tbe.cast_to(x, "float32")
 
     res_y = tbe.vadd(tbe.vmul(multiplier, x), addend)
-
     if is_cast:
         res_y = tbe.cast_to(res_y, "float16")
     batch_variance = tbe.vmuls(save_variance_reduce, batch_var_scaler)
+
     factor_reverse = 1.0 - factor
     mean_mul = tbe.vmuls(save_mean_reduce, factor)
     mean_mul_rev = tbe.vmuls(mean, factor_reverse)
@@ -271,7 +283,25 @@ def bn_training_update_compute(x,
     return res
 
 
-@register_operator("BNTrainingUpdate", "BNTrainingUpdate")
+def _refine_ins_list(ins_list):
+    for i in range(len(ins_list)):
+        shape_range = []
+        for dim, dim_val in enumerate(ins_list[i]["shape"]):
+            if dim_val == -1:
+                if "range" in ins_list[i]:
+                    range_bottom, range_top = ins_list[i]["range"][dim]
+                    if range_bottom <= 1:
+                        if range_top is not None and range_top <= 1:
+                            range_top = 2
+                        shape_range.append((2, range_top))
+                else:
+                    shape_range.append((2, None))
+            else:
+                shape_range.append((dim_val, dim_val))
+        ins_list[i]["range"] = tuple(shape_range)
+    return ins_list
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
@@ -358,40 +388,49 @@ def bn_training_update(x,
 
     _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
     _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset, shape_mean, shape_variance, format)
+    if format == "NDC1HWC0":
+        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
+        shape_sum = [shape_sum[0] * shape_sum[1], shape_sum[2], shape_sum[3], shape_sum[4], shape_sum[5]]
+        shape_square_sum = [
+            shape_square_sum[0] * shape_square_sum[1], shape_square_sum[2], shape_square_sum[3], shape_square_sum[4],
+            shape_square_sum[5]
+        ]
+        shape_scale = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]
+        shape_offset = [
+            shape_offset[0] * shape_offset[1], shape_offset[2], shape_offset[3], shape_offset[4], shape_offset[5]
+        ]
+        shape_mean = [shape_mean[0] * shape_mean[1], shape_mean[2], shape_mean[3], shape_mean[4], shape_mean[5]]
+        shape_variance = [
+            shape_variance[0] * shape_variance[1], shape_variance[2], shape_variance[3], shape_variance[4],
+            shape_variance[5]
+        ]
 
-    ins = []
+    x["shape"] = shape_x
+    sum["shape"] = [1, shape_sum[1], 1, 1, shape_sum[4]]
+    square_sum["shape"] = [1, shape_square_sum[1], 1, 1, shape_square_sum[4]]
+    scale["shape"] = [1, shape_scale[1], 1, 1, shape_scale[4]]
+    offset["shape"] = [1, shape_offset[1], 1, 1, shape_offset[4]]
+    mean["shape"] = [1, shape_mean[1], 1, 1, shape_mean[4]]
+    variance["shape"] = [1, shape_variance[1], 1, 1, shape_variance[4]]
+
     ins_list = [x, sum, square_sum, scale, offset, mean, variance]
-    for i in range(len(ins_list)):
-        ins.append({'shape': ins_list[i]["shape"], 'ori_shape': ins_list[i]["shape"], 'mode': 'original'})
-        shape_range = []
-        for shape in ins_list[i]["shape"]:
-            if shape == -1:
-                shape_range.append((1, None))
-            else:
-                shape_range.append((shape, shape))
-        ins[i]['range'] = tuple(shape_range)
-    ins = [ins]
+    ins = classify(_refine_ins_list(ins_list), OpPatternMode.ELEWISE_WITH_BROADCAST,
+                   extra_params={"disable_optimization": True})
 
     schedule_list, tensor_list = [], []
 
     for (x, sum, square_sum, scale, offset, mean, variance) in ins:
-        get_context().add("_support_broadcast", True)
         with tbe.compute():
-            dim0_0 = var("dim0_0")
-            dim0_1 = var("dim0_1")
-            dim0_2 = var("dim0_2")
-            dim0_3 = var("dim0_3")
-
-            shape_x = [dim0_0, dim0_1, dim0_2, dim0_3, 16]
-            shape_sum = [1, dim0_1, 1, 1, 16]
+            shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset, shape_mean, shape_variance = \
+                shape_util.variable_shape([x, sum, square_sum, scale, offset, mean, variance])
 
             x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x)
             sum_input = tvm.placeholder(shape_sum, name="sum_input", dtype=dtype_sum)
-            square_sum_input = tvm.placeholder(shape_sum, name="square_sum_input", dtype=dtype_square_sum)
-            scale_input = tvm.placeholder(shape_sum, name="scale_input", dtype=dtype_scale)
-            offset_input = tvm.placeholder(shape_sum, name="offset_input", dtype=dtype_offset)
-            mean_input = tvm.placeholder(shape_sum, name="mean_input", dtype=dtype_mean)
-            variance_input = tvm.placeholder(shape_sum, name="variance_input", dtype=dtype_variance)
+            square_sum_input = tvm.placeholder(shape_square_sum, name="square_sum_input", dtype=dtype_square_sum)
+            scale_input = tvm.placeholder(shape_scale, name="scale_input", dtype=dtype_scale)
+            offset_input = tvm.placeholder(shape_offset, name="offset_input", dtype=dtype_offset)
+            mean_input = tvm.placeholder(shape_mean, name="mean_input", dtype=dtype_mean)
+            variance_input = tvm.placeholder(shape_variance, name="variance_input", dtype=dtype_variance)
 
             res = bn_training_update_compute(x_input,
                                              sum_input,
