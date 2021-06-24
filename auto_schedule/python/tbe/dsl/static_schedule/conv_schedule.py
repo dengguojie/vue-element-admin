@@ -1752,6 +1752,20 @@ class CceConvOp:
             fuse_flag = ("convolution" not in lop["op"]) or (self._fused_flag and (lop["op"] == "convolution_C"))
             return fuse_flag
 
+        def get_operator_cast_num(lop):
+            """
+            get memory num for cast op
+            """
+            operator_cast_num = 0
+            if lop["op"] == "elewise_single_cast":
+                cur_type = lop["dst_buffer"].dtype
+                pre_type = lop["prev_op"][0]["dst_buffer"].dtype
+                if cur_type == "float16" and pre_type == "int32":
+                    # calculates memory num based on float16 dtype
+                    operator_cast_num = 2
+
+            return operator_cast_num
+
         def analyze_data_dependence():
             """
             analyze data dependence in conv fusion.
@@ -1760,8 +1774,10 @@ class CceConvOp:
             -------
             """
             canot_reuse_map = {}
+            operator_cast_num = 0
             for lop in self._op_graph.body_ops:
                 if conv_c_fuse_flag(lop):
+                    operator_cast_num += get_operator_cast_num(lop)
                     if len(lop["prev_op"]) > 1:
                         for tensor_list in lop["prev_op"]:
                             tensor = tensor_list["dst_buffer"]
@@ -1795,7 +1811,7 @@ class CceConvOp:
             if self._convbn1_flag:
                 self._fused_double_operand_num = len(buffer_reuse_set_list)
             else:
-                self._fused_double_operand_num = len(buffer_reuse_set_list) + 1
+                self._fused_double_operand_num = len(buffer_reuse_set_list) + 1 + operator_cast_num
             if self._conv_quant_fused_flag:
                 self._fused_double_operand_num += 1.5
 
@@ -2605,6 +2621,8 @@ class CceConvOp:
                 """
                 if not self._v200_data_flow_type and self._lhisi_data_flow_type is None:
                     sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
+                    if "mean_matrix_avgv2" in tensor_map.keys():
+                        sch[mean_matrix_avgv2].emit_insn(mean_matrix_avgv2.op.axis[-1], "vector_dup")
                     if "c_ub_avg" in tensor_map:
                         sch[c_ub_avg].emit_insn(c_ub_avg.op.axis[0], "dma_copy")
                         if "mean_matrix" in tensor_map:
@@ -3188,7 +3206,7 @@ class CceConvOp:
 
             for lop in self._op_graph.input_ops:
                 # mean_matrix do not need to cache_read
-                if _cache_read_continue(lop) or lop["op"] == "mean_matrix":
+                if _cache_read_continue(lop) or lop["op"] == "mean_matrix" or lop["op"] == "mean_matrix_avgv2":
                     continue
 
                 fm2_flag = False
@@ -4505,6 +4523,8 @@ class CceConvOp:
 
         if "c_ub" in tensor_map.keys():
             c_ub = tensor_map["c_ub"]
+        if "mean_matrix_avgv2" in tensor_map.keys():
+            mean_matrix_avgv2 = tensor_map["mean_matrix_avgv2"]
         if "c_ub_avg" in tensor_map.keys():
             c_ub_avg = tensor_map["c_ub_avg"]
             if "mean_matrix" in tensor_map:
@@ -4699,6 +4719,8 @@ class CceConvOp:
         sch[c_col].set_scope(cce.scope_cc)
         if not is_support_v220():
             sch[c_ub].set_scope(cce.scope_ubuf)
+        if "mean_matrix_avgv2" in tensor_map.keys():
+            sch[mean_matrix_avgv2].set_scope(cce.scope_ubuf)
         if "c_ub_avg" in tensor_map:
             sch[c_ub_avg].set_scope(cce.scope_ubuf)
             if "mean_matrix" in tensor_map:
@@ -5238,6 +5260,8 @@ class CceConvOp:
                 sch[c_ub].reorder(c_ub.op.axis[1], c_ub.op.axis[0],
                                   c_ub.op.axis[2], c_ub.op.axis[3])
             sch[c_ub].compute_at(sch[res_c], m_outer_inner_outer)  # k.inner.outer
+            if "mean_matrix_avgv2" in tensor_map.keys():
+                sch[mean_matrix_avgv2].compute_at(sch[res_c], m_outer_inner_outer)
             if "c_ub_avg" in tensor_map:
                 if self._v200_width_out_1_flag:
                     remove_padded_column = tensor_map["remove_padded_column"]

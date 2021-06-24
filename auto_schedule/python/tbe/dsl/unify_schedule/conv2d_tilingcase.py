@@ -706,7 +706,8 @@ class Conv2dTiling(CubeTilingOp):
 
         self.pad_mode = "FIX"
         # currently, in dynamic_hw, when padding is SAME, pad_mode is "VAR"
-        if isinstance(self.tiling_info["pad"][0], Expr) or isinstance(self.tiling_info["pad"][2], Expr):
+        if isinstance(self.tiling_info["pad"][0], Expr) or isinstance(self.tiling_info["pad"][1], Expr) or \
+            isinstance(self.tiling_info["pad"][2], Expr) or isinstance(self.tiling_info["pad"][3], Expr):
             self.pad_mode = "VAR"
             self.tiling_info["pad"] = [-1, -1, -1, -1]
         self.cur_pads = self.tiling_info["pad"]
