@@ -70,11 +70,11 @@ class SubCaseDesignCross(SD.SubCaseDesign):
     the class for design test subcase by cross.
     """
 
-    def __init__(self, current_json_path, json_obj, case_index,
-                 total_case_list, report, multi):
-        super(SubCaseDesignCross, self).__init__(current_json_path, json_obj, case_index,
+    def __init__(self, current_json_path, json_obj,
+                 total_case_list, report):
+        super(SubCaseDesignCross, self).__init__(current_json_path, json_obj,
                                                  total_case_list, report)
-        self.multi = multi
+        self.multi = False
 
     def _get_data_distribute_list(self, input_desc):
         if 'data_distribute' in input_desc and utils.VALUE not in input_desc:
@@ -390,8 +390,8 @@ class SubCaseDesignCross(SD.SubCaseDesign):
                         self.json_obj[CD.OUTPUT_DESC][out_index].get('name')
                     output_case[index].update({'name': output_name})
                 case[CD.OUTPUT_DESC].append(output_case[output_index])
-            self.case_idx, self.total_case_list, _ = self._add_case_to_total_case(
-                case, self.case_idx, pyfile, function, self.total_case_list)
+            self.case_idx, self.total_case_list = self._add_case_to_total_case(
+                case, self.case_idx, [pyfile, function], self.total_case_list)
         utils.print_info_log('Create %d sub test cases for %s.'
                              % (count, self.json_obj[CD.CASE_NAME]))
         return self.total_case_list

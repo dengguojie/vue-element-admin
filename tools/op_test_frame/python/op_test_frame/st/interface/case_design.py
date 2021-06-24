@@ -63,7 +63,6 @@ class CaseDesign:
             self.case_name_list = case_name_list.split(',')
         self.current_json_path = ''
         self.case_name_to_json_file_map = {}
-        self.multi = False
         self.report = report
 
     def check_argument_valid(self):
@@ -88,7 +87,6 @@ class CaseDesign:
         Generate test case by json file
         :return: the list of test case
         """
-        case_idx = 1
         total_case_in_file = []
         for json_path in self.json_path_list:
             utils.print_info_log('Start to create sub test cases for %s.'
@@ -98,7 +96,6 @@ class CaseDesign:
             json_object = utils.load_json_file(json_path)
             # parse json object
             for json_obj in json_object:
-                self.multi = False
                 check_required_key_valid(json_obj, REQUIRED_KEYS, 'case',
                                          self.current_json_path)
                 # skip the case name not in case_name_list
@@ -116,14 +113,14 @@ class CaseDesign:
 
                 if json_obj.get(FUZZ_IMPL):
                     subcase_parse = SubCaseDesignFuzz(self.current_json_path,
-                                                      json_obj, case_idx,
+                                                      json_obj,
                                                       total_case_in_file,
                                                       self.report)
                 else:
                     subcase_parse = SubCaseDesignCross(self.current_json_path,
-                                                       json_obj, case_idx,
+                                                       json_obj,
                                                        total_case_in_file,
-                                                       self.report, self.multi)
+                                                       self.report)
                 total_case_in_file = subcase_parse.subcase_generate()
         return total_case_in_file
 

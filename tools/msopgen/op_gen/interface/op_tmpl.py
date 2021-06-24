@@ -317,7 +317,8 @@ def {name}({input_name}, {output}, {attr}, kernel_name="{name}"):
            TBE Operator Development Guide.
     \"""
 """
-PY_PLACEHOLDER = """    data_{name} = tvm.placeholder({name}.get(\"shape\"), dtype={name}.get(\"dtype\"), name=\"data_{name}\")
+PY_PLACEHOLDER = \
+    """    data_{name} = tvm.placeholder({name}.get(\"shape\"), dtype={name}.get(\"dtype\"), name=\"data_{name}\")
 """
 
 PY_RES_WITHOUT_ATTR = """
@@ -391,7 +392,8 @@ PY_MS_OP_WITH_ATTR_INFO = """
     .get_op_info()
 
 """
-PY_MS_OP_INFO_REGISTER_TVM = """data{data_count} = tvm.placeholder(shape, name="data{data_count}", dtype=dtype.lower())"""
+PY_MS_OP_INFO_REGISTER_TVM = \
+    """data{data_count} = tvm.placeholder(shape, name="data{data_count}", dtype=dtype.lower())"""
 PY_MS_OP_INFO_REGISTER = """
 # Binding kernel info with the kernel implementation.
 @op_info_register({name}_op_info)

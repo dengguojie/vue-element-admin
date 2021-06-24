@@ -25,16 +25,16 @@ SUPPORT_TYPE_LIST = list(utils.ATTR_TYPE_MAP.values())
 WHITE_LISTS = GC.instance().white_lists
 
 
-class SubCaseDesign(object):
+class SubCaseDesign:
     """
     the class for design test subcase.
     """
 
-    def __init__(self, current_json_path, json_obj, case_index,
+    def __init__(self, current_json_path, json_obj,
                  total_case_list, report):
         self.current_json_path = current_json_path
         self.json_obj = json_obj
-        self.case_idx = case_index
+        self.case_idx = 1
         self.total_case_list = total_case_list
         self.report = report
 
@@ -285,12 +285,11 @@ class SubCaseDesign(object):
             case.update({"calc_expect_func_file_func": function})
         return
 
-    def _add_case_to_total_case(self, case, case_idx, pyfile, function,
-                                case_list, repeat_num=0):
-        self._parse_expect_output_param(case, pyfile, function)
-        if case in case_list:
-            repeat_num += 1
-            return case_idx, case_list, repeat_num
+    def _add_case_to_total_case(self, case, case_idx, py_file_and_function,
+                                case_list):
+        py_file = py_file_and_function[0]
+        function = py_file_and_function[1]
+        self._parse_expect_output_param(case, py_file, function)
         case_idx += 1
         case_list.append(case)
         # deal with report
@@ -299,7 +298,7 @@ class SubCaseDesign(object):
         st_case_trace = op_st_case_info.OpSTCaseTrace(case_info)
         case_rpt = st_report.OpSTCaseReport(st_case_trace)
         self.report.add_case_report(case_rpt)
-        return case_idx, case_list, repeat_num
+        return case_idx, case_list
 
     def _check_list_str_valid(self, json_obj, key, support_list, tensor):
         self._check_key_exist(json_obj, key, tensor)

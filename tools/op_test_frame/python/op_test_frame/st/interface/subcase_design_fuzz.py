@@ -313,16 +313,10 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 case[CD.ST_MODE] = "ms_python_train"
             if len(attr_list) > 0:
                 case[CD.ATTR] = attr_list
-            self.case_idx, self.total_case_list, repeat_case_num = \
-                self._add_case_to_total_case(case, self.case_idx, pyfile,
-                                             function, self.total_case_list,
-                                             repeat_case_num)
+            self.case_idx, self.total_case_list = \
+                self._add_case_to_total_case(case, self.case_idx,
+                                             [pyfile, function], self.total_case_list)
             self.json_obj = ori_json
-        if repeat_case_num > 0:
-            utils.print_info_log(
-                '%d fuzz test cases is repeated in %s, will '
-                'not generate testcase.' % (repeat_case_num,
-                                            self.json_obj[CD.CASE_NAME]))
         utils.print_info_log('Create %d fuzz test cases for %s.'
                              % (loop_num - repeat_case_num,
                                 self.json_obj[CD.CASE_NAME]))

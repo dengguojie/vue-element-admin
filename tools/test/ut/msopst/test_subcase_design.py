@@ -8,7 +8,7 @@ from op_test_frame.st.interface.subcase_design import SubCaseDesign
 from op_test_frame.st.interface.st_report import OpSTReport
 
 report = OpSTReport()
-case_design = SubCaseDesign("test.json", {"name": "add"}, 1,[], report)
+case_design = SubCaseDesign("test.json", {"name": "add"}, [], report)
 
 class TestUtilsMethods(unittest.TestCase):
     def test_check_key_exist_error(self):

@@ -72,12 +72,10 @@ def parse_ini_to_obj(ini_file, tbe_ops_info):
 
 def check_op_info(tbe_ops):
     """
-    Check info
-    Parameters:
-    ----------------
-    tbe_ops
-    return:is_valid
-    ----------------
+    Function Description:
+        Check info.
+    Parameter: tbe_ops
+    Return Value: is_valid
     """
     print("\n\n==============check valid for ops info start==============")
     required_op_input_info_keys = ["paramType", "name"]
