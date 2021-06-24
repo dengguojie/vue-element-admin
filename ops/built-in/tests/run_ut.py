@@ -15,6 +15,7 @@ flags.DEFINE_string("report_path", None, "which directory to save ut test report
 flags.DEFINE_string("cov_path", None, "which dirctory to save coverage report")
 flags.DEFINE_string("simulator_lib_path", None, "the path to simulator libs")
 flags.DEFINE_string("pr_changed_file", None, "git diff result file by ci, analyse relate ut by this file")
+flags.DEFINE_integer("process_num", None, "process number")
 
 cur_dir = os.path.realpath(__file__)
 repo_root = os.path.sep.join(cur_dir.split(os.path.sep)[:-4])
@@ -385,6 +386,7 @@ def main(argv):
     cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"
     report_path = FLAGS.report_path if FLAGS.report_path else "./report/ops/python_report"
     simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
+    process_num = FLAGS.process_num
     res = op_ut_runner.run_ut(case_dir,
                               soc_version=soc_version,
                               test_report="json",
@@ -392,7 +394,8 @@ def main(argv):
                               cov_report="html",
                               cov_report_path=cov_report_path,
                               simulator_mode="pv",
-                              simulator_lib_path=simulator_lib_path)
+                              simulator_lib_path=simulator_lib_path,
+                              process_num=process_num)
     if res == op_status.SUCCESS:
         exit(0)
     else:

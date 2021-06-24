@@ -18,6 +18,7 @@ flags.DEFINE_string("simulator_lib_path", None, "the path to simulator libs")
 flags.DEFINE_string(
     "pr_changed_file", None,
     "git diff result file by ci, analyse relate ut by this file")
+flags.DEFINE_integer("process_num", None, "process number")
 
 cur_dir = os.path.realpath(__file__)
 
@@ -41,12 +42,12 @@ def main(argv):
                 sch_tag = 1
             else:
                 ops_tag = 1
-
     params_dict = {
         "--soc_version=": FLAGS.soc_version,
         "--simulator_lib_path=": FLAGS.simulator_lib_path,
         "--pr_changed_file=": FLAGS.pr_changed_file,
         "--cov_path=": FLAGS.cov_path,
+        "--process_num=": FLAGS.process_num,
         "--report_path=": FLAGS.report_path
     }
     params = []
@@ -92,7 +93,7 @@ def main(argv):
         run_file_path = os.path.join(root_path, "ops", "built-in", "tests",
                                      "run_ut.py")
         cmd = ["python3", run_file_path] + params
-        print("[INFO]cmd is ", str(cmd))
+        print("[INFO]cmd is ", " ".join(cmd))
         res_msg = os.system(" ".join(cmd))
         if res_msg != 0:
             exit(-1)

@@ -43,8 +43,13 @@ set_ut_env() {
 
 run_ut() {
   local pr_file="$1"
+  local process_num=0 #0 means use cpu_count
   local supported_soc="Ascend910A,Ascend310"
-  
+  if [[ "x$pr_file" == "xall" ]]; then
+    process_num=1
+    pr_file=""
+  fi
+
   python3.7 "${CANN_ROOT}/ops/built-in/tests/common/ci/run_op_cfg_ut.py"                     
   if [[ $? -ne 0 ]]; then
     echo "run ops cfg utest failed."
@@ -58,7 +63,8 @@ run_ut() {
                 --simulator_lib_path="${BASE_HOME}/toolkit/tools/simulator" \
                 --pr_changed_file="${pr_file}"                              \
                 --cov_path="${OPS_UT_COV_REPORT}/python_utest"              \
-                --report_path="${OPS_UT_COV_REPORT}/report"
+                --report_path="${OPS_UT_COV_REPORT}/report"                 \
+                --process_num="${process_num}"
   if [[ $? -ne 0 ]]; then
     echo "run ops python utest failed."
     exit $STATUS_FAILED
