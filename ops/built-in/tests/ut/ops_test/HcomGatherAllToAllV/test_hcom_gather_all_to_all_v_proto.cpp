@@ -23,6 +23,7 @@
 #include "op_proto_test_util.h"
 #include "hcom_ops.h"
 #include "array_ops.h"
+#include "../../../op_proto/util/util.h"
 
 class HcomGatherAllToAllVTest : public testing::Test {
 protected:
@@ -107,6 +108,23 @@ TEST_F(HcomGatherAllToAllVTest, hcom_gather_all_to_all_v_infershape_test_const) 
     auto desc = op.GetInputDesc("recv_displacements");
     desc.SetDataType(ge::DT_INT64);
     op.UpdateInputDesc("recv_displacements", desc);
+  }
+
+  {
+    ge::Tensor constTensor;
+    ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT64);
+    constDesc.SetSize(2 * sizeof(int64_t));
+    constTensor.SetTensorDesc(constDesc);
+    int64_t constData[2] = {0, 1};
+    constTensor.SetData((uint8_t*)constData, 2* sizeof(int64_t));
+    auto recv_displacements = ge::op::Constant().set_attr_value(constTensor);
+    op.set_input_recv_displacements(recv_displacements);
+    auto desc = op.GetInputDesc("recv_displacements");
+    desc.SetDataType(ge::DT_INT64);
+    op.UpdateInputDesc("recv_displacements", desc);
+
+    vector<uint64_t> addrinfo;
+    bool ret = GetConstValue(op, constTensor, ge::DT_UINT64, addrinfo);
   }
 
   op.SetAttr("group", "hccl_world_group");

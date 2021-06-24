@@ -196,6 +196,8 @@ bool GetConstIntData(const Tensor& data, DataType data_type, std::vector<int64_t
 
 bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
                    std::vector<int64_t>& const_data);
+bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+                   std::vector<uint64_t>& const_data);
 bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor, const DataType& dtype,
                    std::vector<int64_t>& const_data);
 bool GetScalerValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype, std::int64_t& const_data);

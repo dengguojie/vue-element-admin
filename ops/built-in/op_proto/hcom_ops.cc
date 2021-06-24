@@ -534,7 +534,7 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
             return GRAPH_FAILED;
         } else if (addrLenAttr < 0) {
             DataType addrInfoDtype = op.GetInputDesc("addrinfo").GetDataType();
-            vector<int64_t> addrinfo;
+            vector<uint64_t> addrinfo;
             GetConstValue(op, addrinfoTensor, addrInfoDtype, addrinfo);
             if ((addrinfo.size() % dataLenPerAddrinfo) || (addrinfo.size() == 0)) {
                 OP_LOGE(op.GetName().c_str(), "Input addrinfo is invalid, size is %zu.", addrinfo.size());

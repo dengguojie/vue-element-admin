@@ -846,6 +846,21 @@ bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataTyp
   return true;
 }
 
+bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+                   std::vector<uint64_t>& const_data) {
+  size_t size = 0;
+  CHECK(dtype != ge::DT_UINT64,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("not support this type")),
+        return false);
+  uint64_t *const_data_ptr = (uint64_t *)const_tensor.GetData();
+  size = const_tensor.GetSize() / sizeof(uint64_t);
+  for (size_t i = 0; i < size; ++i) {
+    const_data.push_back((uint64_t)(*(const_data_ptr + i)));
+    OP_LOGD(op.GetName().c_str(), "const data uint64 fusion pass, const_data[%llu]", (uint64_t)(*(const_data_ptr + i)));
+  }
+  return true;
+}
+
 bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
                           const DataType& dtype, std::vector<int64_t>& const_data) {
   size_t size = const_tensor->GetData().GetSize();
