@@ -19,12 +19,35 @@ from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # Tiling Arg size for int64
 TILING_ARG_NUM = 4
 # the input num for one input
 MAX_INPUT_RANK = 64
+
+
+def get_op_support_info(concat_dim, x, y, kernel_name="concat_offset_d"):
+    """
+    get_op_support_info
+    """
+    axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
+
+# pylint: disable=locally-disabled,unused-argument,invalid-name
+def check_supported(concat_dim, x, y, kernel_name="concat_offset"):
+    """
+    the ori_shape of concat_dim doesnot support -2
+    """
+    shapex = concat_dim.get("ori_shape")
+    for i in range(len(shapex)):
+        if shapex[i] == -2:
+            return False
+    return True
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -135,12 +158,12 @@ class ConcatOffsetCompute(object):
         run_build_cce
         """
         self.run_compute()
-        opt_config = {"out_of_bound_sync_check": True}
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        tbe_context.get_context().add_compile_info("vars", {"core_num": 1})
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.concat_dim_gm] + self.gm_input_list,
                                    outputs=self.gm_output_list,
                                    flowtable=(self.tiling_gm,), config=opt_config)
-        tbe_context.get_context().add_compile_info("vars", {"core_num": 1})
 
 
 @register_operator("ConcatOffset")

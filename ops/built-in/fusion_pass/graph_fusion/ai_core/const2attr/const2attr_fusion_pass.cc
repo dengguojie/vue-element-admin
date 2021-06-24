@@ -212,11 +212,6 @@ REGISTER_CONST2ATTR("BroadcastToD")
 //  .OriginOpType("BNInference")
 //  .SetConstToAttr(3, "momentum", "SetFloat");
 
-REGISTER_CONST2ATTR("ConcatOffsetD")
-    .OriginOpType("ConcatOffset")
-    .NeedCheckSupported(true)
-    .SetConstToAttr(0, "concat_dim", "SetInt");
-
 REGISTER_CONST2ATTR("Conv2DBackpropFilterD")
     .OriginOpType("Conv2DBackpropFilter")
     .NeedCheckSupported(true)
