@@ -20,7 +20,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
+
 
 # data type of int32
 INT32 = "int32"
@@ -1193,7 +1194,7 @@ class GatherNd():
         -------
         None
         """
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Ascend920", "Ascend920A"):
+        if tbe_platform.api_check_support("tik.vgatherb"):
             self.compute_mode_32b_aligned(half_ub_size, block_id, self.x)
         else:
             tik_instance = self.tik_instance

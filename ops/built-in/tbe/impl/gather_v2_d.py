@@ -18,8 +18,8 @@ gather_v2_d
 # pylint: disable=locally-disabled,too-many-lines
 import functools
 
+import te.lang.cce as tbe
 from te import tvm
-from te import platform as tbe_platform
 from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
@@ -28,14 +28,16 @@ from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_platform
 
 
 # available soc resources
 UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-if tbe_platform.get_soc_spec("SOC_VERSION") not in ("Ascend920"):
-    L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
-else:
+if tbe_platform.api_check_support("tik.vgatherb"):
     L1_SIZE = 0
+else:
+    L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 TOTAL_PARAMS = 255000
 INDICES_LINE = 64
@@ -1117,7 +1119,7 @@ def _kernel_ir(output, tensor_params, tensor_indices, axis):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@tbe_platform.fusion_manager.fusion_manager.register("gather_v2_d")
+@register_operator("gather_v2_d")
 def gather_v2_compute(tensor_params,
                       tensor_indices,
                       params_shape,
@@ -1223,8 +1225,7 @@ def op_select_format(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     base_data_type = \
         ["float", "float16", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "bool"]
     other_data_type = ["float", "float16", "int16", "int32", "uint16", "uint32"]
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+    if not tbe_platform.api_check_support("tik.vadd", "float32"):
         base_data_type.remove("float")
         other_data_type.remove("float")
 
@@ -1360,9 +1361,11 @@ def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
                             need_build=True,
                             need_print=False)
 
-    sch = tvm.create_schedule(res.op)
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(res)
 
-    with tbe_platform.build_config:
-        tvm.build(sch, [tensor_params, tensor_indices, res],
-                  "cce",
-                  name=kernel_name)
+    config = {"print_ir": False,
+              "name": kernel_name,
+              "tensor_list": [tensor_params, tensor_indices, res]}
+
+    tbe.cce_build_code(sch, config)
