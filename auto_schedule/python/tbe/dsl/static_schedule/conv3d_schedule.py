@@ -149,9 +149,6 @@ class CceConv3dOp:
                 if c_factor[0] % tiling["BL1_shape"][1] != 0:
                     cube_err.raise_err_one_para('E62301', 'conv3d', str(tiling["BL1_shape"][1]))
 
-                if tiling["BL1_shape"][1] > 1 and tiling["BL1_shape"][1] % 2 != 0:
-                    cube_err.raise_err_one_para('E62302', 'conv3d', str(tiling["BL1_shape"][1]))
-
             if len(tiling["BL1_shape"]) == 1:
                 tiling["BL1_shape"] = tiling["BL1_shape"] + [1]
             bl1_factor = [
