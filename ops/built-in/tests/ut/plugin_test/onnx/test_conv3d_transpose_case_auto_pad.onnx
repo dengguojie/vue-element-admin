@@ -1,0 +1,32 @@
+onnx-parser_test:ý
+„
+x
+wy"ConvTranspose*
+auto_pad"
+SAME_LOWER *
+	dilations@@@ *
+group *
+kernel_shape@@@ *
+strides@@@ ConvTransposeZ 
+x
+
+
+À
+
+
+Z!
+w
+
+À
+À
+
+
+b 
+y
+
+
+À
+
+
+
+B	

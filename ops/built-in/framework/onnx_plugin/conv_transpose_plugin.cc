@@ -1,248 +1,361 @@
-/* Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+/**
+ * Copyright 2020 Huawei Technologies Co., Ltd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the Apache License Version 2.0.You may not use this
- * file except in compliance with the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * Apache License for more details at
- * http:// www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#include "common/util/error_manager/error_manager.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
+/*!
+ *convTranspose_plugin.cc
+ *
+ */
+#include <string>
+#include <vector>
+
 #include "register/register.h"
+#include "graph/operator.h"
+#include "proto/onnx/ge_onnx.pb.h"
+#include "graph/utils/op_desc_utils.h"
+
+#include "graph.h"
+#include "all_ops.h"
+#include "op_log.h"
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
 
-static bool CheckOnnxAttr(const ge::onnx::NodeProto *p_node) {
-  for (const auto &attr : p_node->attribute()) {
-    if (attr.name() == "strides" || attr.name() == "dilations" ||
-        attr.name() == "kernel_shape" || attr.name() == "output_padding") {
-      const bool b_valide = (attr.type() == ge::onnx::AttributeProto::INTS &&
-                             attr.ints_size() == 2);
-      if (!b_valide) {
-        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTransPose", "only ConvTransPose2D is supported now.");
-        return false;
+using OpDesc = std::shared_ptr<ge::OpDesc>;
+using namespace ge;
+static const int INPUT_4D = 4;
+static const int INPUT_5D = 5;
+static const int INPUT_NUM_2 = 2;
+static const int INPUT_NUM_3 = 3;
+
+struct ConvTransposeAttr {
+  std::vector<int64_t> dilations = {1, 1, 1, 1};
+  std::vector<int64_t> strides = {1, 1, 1, 1};
+  std::vector<int64_t> pads = {0, 0, 0, 0};
+  int64_t groups = 1;
+  std::string data_format = "NCHW";
+  std::vector<int64_t> input_size = {0, 0, 0, 0};
+  std::string auto_pad = "NOTSET";
+  int dim_size = 4;
+  int input_num = 2;
+};
+
+Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto* node, ge::Operator& op) {
+  // if attr is set in model, receive them with these var
+  std::vector<int32_t> strides_list = {1, 1};
+  std::vector<int32_t> dilations_list = {1, 1};
+  std::vector<int32_t> pad_list;
+
+  // update attrs with model value
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "strides" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      for (auto i = 0; i < attr.ints_size(); ++i) {
+        strides_list.push_back(attr.ints(i));
       }
-    } else if (attr.name() == "pads") {
-      const bool b_valide = (attr.type() == ge::onnx::AttributeProto::INTS &&
-                             attr.ints_size() == 4);
-      if (!b_valide) {
-        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTransPose", "only ConvTransPose2D is supported now.");
-        return false;
+      op.SetAttr("strides", strides_list);
+    } else if (attr.name() == "dilations" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      for (auto i = 0; i < attr.ints_size(); ++i) {
+        dilations_list.push_back(attr.ints(i));
       }
+      op.SetAttr("dilations", dilations_list);
+    } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      // in onnx pads=[top, left, bottomm, right] -> [top, bottom, left, right]
+      // in onnx pads=[head, top, left, tail, bottomm, right] -> [head, tail, top, bottom, left, right]
+      int len = attr.ints_size();
+      if (len & 1) {
+        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "The value lenth of pads is odd, transform failed.");
+        return FAILED;
+      }
+      for (int i = 0; i < len / 2; i++) {
+        pad_list.push_back(attr.ints(i));
+        pad_list.push_back(attr.ints(i + len / 2));
+      }
+
+      op.SetAttr("pads", pad_list);
+    } else if (attr.name() == "group" && attr.type() == ge::onnx::AttributeProto::INT) {
+      op.SetAttr("groups", attr.i());
+    } else if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      op.SetAttr("auto_pad", attr.s());
     }
   }
-  return true;
+
+  // kernel_shape属性暂时在TBE算子上没有相应的属性接收，所以没有设置它们
+  // aicore算子暂时不支持auto_pad参数，接收后对其进行判断拦截处理
+
+  int dim_size = (strides_list.size() == 5 || pad_list.size() == 6 || dilations_list.size() == 5) ? 5 : 4;
+  op.SetAttr("dim_size", dim_size);
+
+  return SUCCESS;
 }
 
-static bool CheckOnnxAttrValue(const ge::onnx::NodeProto *p_node) {
-  for (const auto &attr : p_node->attribute()) {
-    if (attr.name() == "dilations") {
-      const bool b_valide = (attr.ints(0) == 1 && attr.ints(1) == 1);
-      if (!b_valide) {
-        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTransPose", "only dilations == 1 is supported now.");
-        return false;
-      }
-    } else {
+Status ChangeFormatConvTranspose(OpDesc& op_dsc, const int idx, ge::Format format, bool is_input) {
+  if (is_input) {
+    ge::GeTensorDesc org_tensor = op_dsc->GetInputDesc(idx);
+    org_tensor.SetOriginFormat(format);
+    org_tensor.SetFormat(format);
+    auto ret = op_dsc->UpdateInputDesc(idx, org_tensor);
+    if (ret != ge::GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "change input format failed.");
+      return FAILED;
+    }
+  } else {
+    ge::GeTensorDesc org_tensor_y = op_dsc->GetOutputDesc(idx);
+    org_tensor_y.SetOriginFormat(format);
+    org_tensor_y.SetFormat(format);
+    auto ret_y = op_dsc->UpdateOutputDesc(idx, org_tensor_y);
+    if (ret_y != ge::GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "change output format failed.");
+      return FAILED;
     }
   }
-  return true;
+  return SUCCESS;
 }
 
-static bool SetOpOriginFmt(ge::Operator &op_dst) {
-  ge::TensorDesc x_t_d = op_dst.GetInputDesc("x");
-  ge::TensorDesc w_t_d = op_dst.GetInputDesc("filter");
-  ge::TensorDesc out_t_d = op_dst.GetOutputDesc("y");
-  x_t_d.SetOriginFormat(ge::FORMAT_NCHW);
-  x_t_d.SetFormat(ge::FORMAT_NCHW);
-  w_t_d.SetOriginFormat(ge::FORMAT_NCHW);
-  w_t_d.SetFormat(ge::FORMAT_NCHW);
-  out_t_d.SetFormat(ge::FORMAT_NCHW);
-  out_t_d.SetFormat(ge::FORMAT_NCHW);
-  const ge::graphStatus x_res = op_dst.UpdateInputDesc("x", x_t_d);
-  const ge::graphStatus w_res = op_dst.UpdateInputDesc("filter", w_t_d);
-  const ge::graphStatus out_res = op_dst.UpdateOutputDesc("y", out_t_d);
-  if (x_res != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(), "update x fmt failed.");
-    return false;
-  }
-  if (w_res != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(), "update w fmt failed.");
-    return false;
-  }
-  if (out_res != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(), "update y fmt failed.");
-    return false;
-  }
-  return true;
-}
-
-static bool SetDefaultAttr(ge::Operator &op_dst) {
-  const std::vector<int32_t> strides_default = {1, 1, 1, 1};
-  const std::vector<int32_t> dilations_default = {1, 1, 1, 1};
-  const std::vector<int32_t> pads_default = {0, 0, 0, 0};
-  const std::vector<int32_t> out_pads_default = {0, 0, 0, 0};
-  const std::vector<int32_t> out_shape_default = {0, 0, 0, 0};
-  const int32_t group_default = 1;
-  const string fmt_default = "NCHW";
-  const string auto_pad_default = "NOTSET";
-  op_dst.SetAttr("strides", strides_default);
-  op_dst.SetAttr("dilations", dilations_default);
-  op_dst.SetAttr("pads", pads_default);
-  op_dst.SetAttr("groups", group_default);
-  op_dst.SetAttr("output_padding", out_pads_default);
-  op_dst.SetAttr("input_size", out_shape_default);
-  op_dst.SetAttr("data_format", fmt_default);
-  op_dst.SetAttr("auto_pad", auto_pad_default);
-  return true;
-}
-
-static void SetStrides(const ge::onnx::AttributeProto &src_attr,
-                       ge::Operator &op_dst) {
-  std::vector<int32_t> strides_list;
-  if (src_attr.name() == "strides" &&
-      src_attr.type() == ge::onnx::AttributeProto::INTS) {
-    strides_list.push_back(1);
-    strides_list.push_back(1);
-    strides_list.push_back(src_attr.ints(0));
-    strides_list.push_back(src_attr.ints(1));
-    op_dst.SetAttr("strides", strides_list);
-  }
-}
-
-static void SetDilations(const ge::onnx::AttributeProto &src_attr,
-                         ge::Operator &op_dst) {
-  std::vector<int32_t> dilations_list;
-  if (src_attr.name() == "dilations" &&
-      src_attr.type() == ge::onnx::AttributeProto::INTS) {
-    dilations_list.push_back(1);
-    dilations_list.push_back(1);
-    dilations_list.push_back(src_attr.ints(0));
-    dilations_list.push_back(src_attr.ints(1));
-    op_dst.SetAttr("dilations", dilations_list);
-  }
-}
-
-static void SetGroup(const ge::onnx::AttributeProto &src_attr,
-                     ge::Operator &op_dst) {
-  if (src_attr.name() == "group" &&
-      src_attr.type() == ge::onnx::AttributeProto::INT) {
-    op_dst.SetAttr("groups", src_attr.i());
-  }
-}
-
-static void SetOutputPading(const ge::onnx::AttributeProto &src_attr,
-                            ge::Operator &op_dst) {
-  std::vector<int32_t> out_pads_list;
-  if (src_attr.name() == "output_padding" &&
-      src_attr.type() == ge::onnx::AttributeProto::INTS) {
-    out_pads_list.push_back(0);
-    out_pads_list.push_back(0);
-    out_pads_list.push_back(src_attr.ints(0));
-    out_pads_list.push_back(src_attr.ints(1));
-    op_dst.SetAttr("output_padding", out_pads_list);
-  }
-}
-
-static void SetPads(const ge::onnx::AttributeProto &src_attr, ge::Operator &op_dst) {
-  static const int32_t onnx_y_begin = 0;
-  static const int32_t onnx_x_begin = 1;
-  static const int32_t onnx_y_end = 2;
-  static const int32_t onnx_x_end = 3;
-  std::vector<int32_t> pads_list;
-  if (src_attr.name() == "pads" &&
-      src_attr.type() == ge::onnx::AttributeProto::INTS) {
-    // in onnx pads=[top, left, bottomm, right]
-    // -> [top, bottom, left, right]
-    pads_list.push_back(src_attr.ints(onnx_y_begin));
-    pads_list.push_back(src_attr.ints(onnx_y_end));
-    pads_list.push_back(src_attr.ints(onnx_x_begin));
-    pads_list.push_back(src_attr.ints(onnx_x_end));
-    op_dst.SetAttr("pads", pads_list);
-  }
-}
-
-static void SetAutoPad(const ge::onnx::AttributeProto &src_attr, 
-                       ge::Operator &op_dst, bool &is_set_auto_pad) {
-  if (src_attr.name() == "auto_pad" &&
-      src_attr.type() == ge::onnx::AttributeProto::STRING) {
-    std::string auto_pad = src_attr.s();
-    op_dst.SetAttr("auto_pad", auto_pad);
-    is_set_auto_pad = true;
-  }
-}
-
-static void SetOutputShape(const ge::onnx::AttributeProto &src_attr, 
-                           ge::Operator &op_dst, bool &is_set_output_shape) {
-  std::vector<int32_t> output_shape_list;
-  if (src_attr.name() == "output_shape" &&
-      src_attr.type() == ge::onnx::AttributeProto::INTS) {
-    output_shape_list.push_back(src_attr.ints(0));
-    output_shape_list.push_back(src_attr.ints(1));
-    op_dst.SetAttr("output_shape", output_shape_list);
-    is_set_output_shape = true;
-  }
-}
-
-Status ParseParamsConv2DTranspose(const Message *op_src, ge::Operator &op_dst) {
-  OP_LOGD(op_dst.GetName().c_str(), "Enter ParseParamsConv2DTranspose.");
-  const ge::onnx::NodeProto *p_node =
-      reinterpret_cast<const ge::onnx::NodeProto *>(op_src);
-  if (p_node == nullptr) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Dynamic cast op_src to NodeProto failed.");
+/*!
+ * @brief Replace GE ParseParams fuction to process graph ConvTranspose node attrs
+ * @param op_src the source op info from onnx.
+ * @param op the dest GE op.
+ * @return status whether this operation success.
+ */
+Status ParseParamsConvTranspose(const Message* op_src, ge::Operator& op) {
+  // Convert original onnx graph ConvTranspose attrs to GE graph attrs
+  const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
+  if (nullptr == node) {
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
-  if (!CheckOnnxAttr(p_node)) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Check onnx attr failed.");
+
+  int n = node->input_size();
+  op.SetAttr("input_num", n);
+  OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->AddDynamicInputDesc("args", n);
+  op_desc->AddDynamicOutputDesc("output", 1);
+  op.SetAttr("original_type", "ai.onnx::11::ConvTranspose");
+
+  if (SetAttrToOpConvTranspose(node, op) != SUCCESS) {
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "set attr to operator failed.");
     return FAILED;
-  }
-  if (!CheckOnnxAttrValue(p_node)) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Check onnx attr value failed.");
-    return FAILED;
-  }
-  if (!SetOpOriginFmt(op_dst)) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Update op format failed.");
-    return FAILED;
-  }
-  if (!SetDefaultAttr(op_dst)) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op_dst.GetName().c_str(),  "Set op default attr failed.");
-    return FAILED;
-  }
-  
-  bool is_set_auto_pad = false;
-  bool is_set_output_shape = false;
-  for (const auto &attr : p_node->attribute()) {
-    SetDilations(attr, op_dst);
-    SetStrides(attr, op_dst);
-    SetGroup(attr, op_dst);
-    SetOutputPading(attr, op_dst);
-    SetPads(attr, op_dst);
-    SetAutoPad(attr, op_dst, is_set_auto_pad);
-    SetOutputShape(attr, op_dst, is_set_output_shape);
-  }
-  
-  // when have output_shape and not have auto_pad, need set auto_pad as SAME_LOWER
-  if (is_set_output_shape && !is_set_auto_pad) {
-    op_dst.SetAttr("auto_pad", "SAME_LOWER");
   }
 
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("Conv2DTransposeD")
-  .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::8::ConvTranspose",
-                 "ai.onnx::9::ConvTranspose",
-                 "ai.onnx::10::ConvTranspose",
-                 "ai.onnx::11::ConvTranspose",
-                 "ai.onnx::12::ConvTranspose",
-                 "ai.onnx::13::ConvTranspose"})
-  .ParseParamsFn(ParseParamsConv2DTranspose)
-  .ImplyType(ImplyType::TVM);
+Status SetFormatConvTranspose(ge::Operator& op, const int& dims) {
+  OpDesc op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  if (op_dsc == nullptr) {
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get op desc failed.");
+    return FAILED;
+  }
+  if (dims == INPUT_4D) {
+    // The fmap should be NCHW
+    auto ret_x = ChangeFormatConvTranspose(op_dsc, 0, ge::FORMAT_NCHW, true);
+    if (ret_x != ge::GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update fmap format failed.");
+      return FAILED;
+    }
+    // The filter should be NCHW
+    auto ret_w = ChangeFormatConvTranspose(op_dsc, 1, ge::FORMAT_NCHW, true);
+    if (ret_w != ge::GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update filter format failed.");
+      return FAILED;
+    }
+    // The output should be NCHW
+    auto ret_y = ChangeFormatConvTranspose(op_dsc, 0, ge::FORMAT_NCHW, false);
+    if (ret_y != ge::GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update output format failed.");
+      return FAILED;
+    }
+  } else if (dims == INPUT_5D) {
+    // The fmap should be NCDHW
+    auto ret_x = ChangeFormatConvTranspose(op_dsc, 0, ge::FORMAT_NCDHW, true);
+    if (ret_x != ge::GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update fmap format failed.");
+      return FAILED;
+    }
+    // The filter should be NCDHW
+    auto ret_w = ChangeFormatConvTranspose(op_dsc, 1, ge::FORMAT_NCDHW, true);
+    if (ret_w != ge::GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update filter format failed.");
+      return FAILED;
+    }
+    // The output should be NCDHW
+    auto ret_y = ChangeFormatConvTranspose(op_dsc, 0, ge::FORMAT_NCDHW, false);
+    if (ret_y != ge::GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update output format failed.");
+      return FAILED;
+    }
+  } else {
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "The input tensor is not 4D/5D, set format failed.");
+    return FAILED;
+  }
+  return SUCCESS;
+}
+
+Status GetConvTransposeAttr(const ge::Operator& op, ConvTransposeAttr& convTransposeAttr) {
+  // check attr value, if value is null, then set default value here
+  std::string pad_mode = "NOTSET";
+  auto ret_strides = op.GetAttr("strides", convTransposeAttr.strides);
+  auto ret_pads = op.GetAttr("pads", convTransposeAttr.pads);
+  auto ret_dilations = op.GetAttr("dilations", convTransposeAttr.dilations);
+  op.GetAttr("auto_pad", pad_mode);
+
+  if (ret_strides != SUCCESS && ret_pads != SUCCESS && ret_dilations != SUCCESS) {
+    CUBE_INNER_ERR_REPORT_PLUGIN(
+        "ConvTranspose",
+        "get attr of strides or pads or dilations from op failed, can not distinguish 2D/3D, use default 2D,"
+        " please set one of them obviously.");
+  }
+  if (op.GetAttr("dim_size", convTransposeAttr.dim_size) != SUCCESS) {
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get dim size from op failed");
+    return FAILED;
+  }
+  if (op.GetAttr("input_num", convTransposeAttr.input_num) != SUCCESS) {
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get number of input from op failed.");
+    return FAILED;
+  }
+  if (op.GetAttr("groups", convTransposeAttr.groups) != SUCCESS)
+    convTransposeAttr.groups = 1;
+
+  if (op.GetAttr("data_format", convTransposeAttr.data_format) != SUCCESS) {
+    // set data_format
+    std::string data_format = (convTransposeAttr.strides.size() == 5 || convTransposeAttr.pads.size() == 6 ||
+                               convTransposeAttr.dilations.size() == 5)
+                                  ? "NCDHW"
+                                  : "NCHW";
+    convTransposeAttr.data_format = data_format;
+  }
+
+  std::vector<int64_t> strides_list_default = {1, 1, 1, 1};
+  std::vector<int64_t> dilations_list_default = {1, 1, 1, 1};
+  std::vector<int64_t> pad_list_default = {0, 0, 0, 0};
+  std::vector<int64_t> input_size = {0, 0, 0, 0};
+  if (convTransposeAttr.dim_size == INPUT_5D) {
+    strides_list_default.push_back(1);
+    dilations_list_default.push_back(1);
+    pad_list_default.push_back(0);
+    input_size.push_back(0);
+  }
+  convTransposeAttr.input_size = input_size;
+  if (convTransposeAttr.strides.size() == 2)
+    convTransposeAttr.strides = strides_list_default;
+  if (convTransposeAttr.dilations.size() == 2)
+    convTransposeAttr.dilations = dilations_list_default;
+  if (convTransposeAttr.pads.size() == 0)
+    convTransposeAttr.pads = pad_list_default;
+  return SUCCESS;
+}
+
+static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) {
+  ConvTransposeAttr tbeAttr;
+  if (GetConvTransposeAttr(op, tbeAttr) != SUCCESS) {
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get attr value failed.");
+    return FAILED;
+  }
+
+  ge::Operator dataX = op::Data("dataX").set_attr_index(0);
+  ge::Operator dataW = op::Data("dataW").set_attr_index(1);
+  std::vector<Operator> inputs{dataX, dataW};
+  std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
+  ge::Operator convTranspose;
+  ge::Operator dataB;
+  if (tbeAttr.dim_size == INPUT_4D) {
+    switch (tbeAttr.input_num) {
+      case INPUT_NUM_2:
+        convTranspose = op::Conv2DTransposeD()
+                            .set_input_x(dataX)
+                            .set_input_filter(dataW)
+                            .set_attr_strides(tbeAttr.strides)
+                            .set_attr_pads(tbeAttr.pads)
+                            .set_attr_dilations(tbeAttr.dilations)
+                            .set_attr_input_size(tbeAttr.input_size)
+                            .set_attr_groups(tbeAttr.groups)
+                            .set_attr_data_format(tbeAttr.data_format);
+        break;
+      case INPUT_NUM_3:
+        dataB = op::Data("dataB").set_attr_index(2);
+        inputs.push_back(dataB);
+        convTranspose = op::Conv2DTransposeD()
+                            .set_input_x(dataX)
+                            .set_input_filter(dataW)
+                            .set_input_bias(dataB)
+                            .set_attr_strides(tbeAttr.strides)
+                            .set_attr_pads(tbeAttr.pads)
+                            .set_attr_dilations(tbeAttr.dilations)
+                            .set_attr_input_size(tbeAttr.input_size)
+                            .set_attr_groups(tbeAttr.groups)
+                            .set_attr_data_format(tbeAttr.data_format);
+        break;
+      default:
+        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "the num of inputs is incorrect.");
+        return FAILED;
+    }
+    if (SetFormatConvTranspose(convTranspose, tbeAttr.dim_size) != SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "set format for input and output failed.");
+      return FAILED;
+    }
+
+  } else if (tbeAttr.dim_size == INPUT_5D) {
+    switch (tbeAttr.input_num) {
+      case INPUT_NUM_2:
+        convTranspose = op::Conv3DTransposeD()
+                            .set_input_x(dataX)
+                            .set_input_filter(dataW)
+                            .set_attr_strides(tbeAttr.strides)
+                            .set_attr_pads(tbeAttr.pads)
+                            .set_attr_dilations(tbeAttr.dilations)
+                            .set_attr_input_size(tbeAttr.input_size)
+                            .set_attr_groups(tbeAttr.groups)
+                            .set_attr_data_format(tbeAttr.data_format);
+        break;
+      case INPUT_NUM_3:
+        dataB = op::Data("dataB").set_attr_index(2);
+        inputs.push_back(dataB);
+        convTranspose = op::Conv3DTransposeD()
+                            .set_input_x(dataX)
+                            .set_input_filter(dataW)
+                            .set_input_bias(dataB)
+                            .set_attr_strides(tbeAttr.strides)
+                            .set_attr_pads(tbeAttr.pads)
+                            .set_attr_dilations(tbeAttr.dilations)
+                            .set_attr_input_size(tbeAttr.input_size)
+                            .set_attr_groups(tbeAttr.groups)
+                            .set_attr_data_format(tbeAttr.data_format);
+        break;
+      default:
+        CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "the num of inputs is incorrect.");
+        return FAILED;
+    }
+    if (SetFormatConvTranspose(convTranspose, tbeAttr.dim_size) != SUCCESS) {
+      CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "set format for input and output failed.");
+      return FAILED;
+    }
+  } else {
+    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "just support 4D or 5D input, transform failed.");
+    return FAILED;
+  }
+
+  outputs.emplace_back(convTranspose, std::vector<std::size_t>{0});
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  return SUCCESS;
+}
+
+REGISTER_CUSTOM_OP("PartitionedCall")
+    .FrameworkType(ONNX)
+    .OriginOpType({"ai.onnx::8::ConvTranspose", "ai.onnx::9::ConvTranspose", "ai.onnx::10::ConvTranspose",
+                   "ai.onnx::11::ConvTranspose", "ai.onnx::12::ConvTranspose", "ai.onnx::13::ConvTranspose"})
+    .ParseParamsFn(ParseParamsConvTranspose)
+    .ParseOpToGraphFn(ParseOpToGraphConvTranspose)
+    .ImplyType(ImplyType::TVM);
 }  // namespace domi
