@@ -62,8 +62,7 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(argmaxv2_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Argmaxv2 node is null"),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(in_op_desc_ptr == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                    in_op_desc_ptr->GetName().c_str()), return PARAM_INVALID);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "ArgMaxv2 OpDesc is null, fusion failed."), return PARAM_INVALID);
   // get operator
   Operator op_argmaxv2 = ge::OpDescUtils::CreateOperatorFromNode(argmaxv2_node);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node %s begin fusion.", in_op_desc_ptr->GetName().c_str());
