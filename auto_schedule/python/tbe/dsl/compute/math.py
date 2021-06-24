@@ -18,6 +18,7 @@ math
 import tbe.dsl
 from decorator import decorator
 from tbe import tvm
+from tbe.tvm import expr
 from tbe.common.platform import ASCEND_310
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform import intrinsic_check_support
@@ -1910,6 +1911,12 @@ def _check_elewise_binary_shape(lhs, rhs):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     for _l, _r in zip(lhs.shape, rhs.shape):
+
+        # fix cube fusion new vars problem
+        skip_judge_type = (expr.Var, expr.Max, expr.Mul)
+        if isinstance(_l, skip_judge_type) or isinstance(_r, skip_judge_type):
+            continue
+
         if not equal(_l, _r):
             dict_args = dict()
             dict_args["errCode"] = "E90001"
