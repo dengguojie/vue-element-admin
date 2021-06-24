@@ -23,6 +23,9 @@
 #include "pattern_fusion_util.h"
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
+#include "lx_fusion_func.h"
 
 namespace fe {
 
@@ -59,6 +62,48 @@ vector<BufferFusionPattern*> TbeConv3dElemwisePass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name.c_str());
 
   return patterns;
+}
+
+void TbeConv3dElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> conv3d_nodes = GetMatchedNodesByDescName(PATTERN_CONV3D, mapping);
+  FUSION_PASS_CHECK(conv3d_nodes.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv3d node not matched"), return);
+
+  vector<ge::NodePtr> elemwise_node = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
+  FUSION_PASS_CHECK(elemwise_node.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "elemwise node not matched"), return);
+
+  vector<int64_t> split_flag = {-1};
+
+  int inpre = conv3d_nodes[0]->GetInDataNodes().size() - 1;
+  int fusion_inpre = inpre + 1;
+
+  OpCalcInfo op_calc_info;
+  vector<AxisSplitMap> split_maps;
+  string op_slice_info_str = "";
+  ge::AttrUtils::GetStr(conv3d_nodes[0]->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+
+  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
+  FUSION_PASS_CHECK(op_slice_info_str.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "op_slice_info_str is empty"), return);
+  split_maps = op_calc_info.GetAxisSplitMapVec();
+  FUSION_PASS_CHECK(split_maps.empty(), OP_LOGD(FUSED_OP_TYPE.c_str(), "axis split map vector is empty"), return);
+
+  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+    auto output_split_infos = (*it).GetOutputSplitInfoVec();
+    auto input_split_infos = (*it).GetInputSplitInfoVec();
+    if (output_split_infos.empty() || input_split_infos.empty()) {
+      continue;
+    }
+    vector<int64_t> axis = input_split_infos[0].GetAxis();
+    InputSplitInfo input_split_info;
+    input_split_info.Initialize();
+    input_split_info.SetIndex(fusion_inpre);
+    input_split_info.SetAxis(axis);
+    input_split_info.SetHeadOverLap(split_flag);
+    input_split_info.SetTailOverLap(split_flag);
+    (*it).AddInputSplitInfo(input_split_info);
+  }
+
+  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
 }
 
 /*
@@ -122,7 +167,7 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
   }
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do conv3d_elemwise!");
-
+  SetSplitInfo(mapping, fusion_nodes);
   return SUCCESS;
 }
 
