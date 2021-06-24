@@ -287,7 +287,7 @@ def get_max_element_in_ub(in_dtype, ub_part):
         return CORE_UB_SIZE
 
     byte_len = get_dtype_len(in_dtype)
-    ub_upper_limit = 248 * 1024 // ub_part if CORE_UB_SIZE > 248 * 1024 else CORE_UB_SIZE // ub_part  # the unit is Byte
+    ub_upper_limit = 255 * 1024 // ub_part if CORE_UB_SIZE > 255 * 1024 else (CORE_UB_SIZE - 1024) // ub_part  # the unit is Byte
     element_size = ub_upper_limit // byte_len
 
     return element_size

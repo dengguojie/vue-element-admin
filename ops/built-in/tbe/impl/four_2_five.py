@@ -1216,7 +1216,8 @@ def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
     if src_format.upper() == "NHWC" and shape_input == [8, 640, 640, 3] and dtype_input == "float16":
         trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
         return
-    if src_format.upper() == "NCHW" and shape_input in [[16, 240, 7, 7], [16, 120, 14, 14]] and dtype_input == "float16":
+    if src_format.upper() == "NCHW" and shape_input in [[16, 240, 7, 7], [16, 120, 14, 14],
+                                                        [1, 1, 480, 720]] and dtype_input == "float16":
         trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
         return
     if _check_move_full(shape_input, src_format, dtype):
