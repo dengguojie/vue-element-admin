@@ -464,7 +464,7 @@ class MaxPool3DWithArgmax():
                             burst=math.ceil(ubtail_bm_cut_ub * self.each_elem_bytes / self.block_size),
                             src_stride=(bm_line_cut_ub - ubtail_bm_cut_ub) *
                                        self.each_elem_bytes // self.block_size,
-                            dst_stride=0
+                            dst_stride=self.aligned_bitmask_line // 16 - math.ceil(ubtail_bm_cut_ub / 16)
                         )
         output_gm_T = output_gm_T.reshape(self.output_shape)
         tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[input_gm_T],
