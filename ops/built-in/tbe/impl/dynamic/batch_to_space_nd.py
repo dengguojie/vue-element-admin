@@ -358,7 +358,7 @@ class BatchToSpaceND:
         """run input height for 5hd function, core at input_h
         """
 
-        flag_h = core_idx * self.block_h + idx_bh
+        flag_h = (core_idx * self.one_core_ele + ele_idx) * self.block_h + idx_bh
         with self.tik_instance.if_scope(tik.all(flag_h >= self.crops_t, flag_h < self.crops_t + self.output_h)):
             # move in and permute
             dst_stride_pt = (self.block_w - 1) * self.channel_zero // self.blk_ele
@@ -367,7 +367,7 @@ class BatchToSpaceND:
                     # move in
                     offset_gm_in = (idx_bh * self.block_w + idx_bw) * self.output_b * self.channel_one * \
                                    self.input_h * self.input_w * self.channel_zero + \
-                                   (idx_ob * self.channel_zero + idx_c1) * self.input_h * self.input_w * self.channel_zero +\
+                                   (idx_ob * self.channel_one + idx_c1) * self.input_h * self.input_w * self.channel_zero +\
                                    (core_idx * self.one_core_ele + ele_idx) * self.input_w * self.channel_zero
                     offset_ub_in = idx_bw * self.input_w * self.channel_zero
                     self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
@@ -381,7 +381,7 @@ class BatchToSpaceND:
                                                 self.channel_zero // self.blk_ele, 0, dst_stride_pt)
 
             # move out
-            offset_gm_out = (idx_ob * self.channel_zero + idx_c1) * self.output_h * self.output_w * self.channel_zero +\
+            offset_gm_out = (idx_ob * self.channel_one + idx_c1) * self.output_h * self.output_w * self.channel_zero +\
                             ((core_idx * self.one_core_ele + ele_idx) * self.block_h + idx_bh - self.crops_t) * self.output_w * self.channel_zero
 
             offset_ub_out = self.crops_l * self.channel_zero
@@ -393,7 +393,7 @@ class BatchToSpaceND:
         """
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, self.output_b) as idx_ob:
-                with self.tik_instance.for_range(0, self.channel_zero) as idx_c1:
+                with self.tik_instance.for_range(0, self.channel_one) as idx_c1:
                     with self.tik_instance.for_range(0, self.block_h) as idx_bh:
                         ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
                                                         name="ub_a",
@@ -418,7 +418,7 @@ class BatchToSpaceND:
         """
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, self.output_b) as idx_ob:
-                with self.tik_instance.for_range(0, self.channel_zero) as idx_c1:
+                with self.tik_instance.for_range(0, self.channel_one) as idx_c1:
                     with self.tik_instance.for_range(0, self.block_h) as idx_bh:
                         ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
                                                         name="ub_a",
