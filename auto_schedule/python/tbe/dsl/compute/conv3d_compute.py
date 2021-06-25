@@ -702,13 +702,14 @@ def _bias_add(in_tensor0, in_tensor1, attrs={}):
     with tvm.tag_scope('conv_vector_bias_add'):
         c_add_vector = tvm.compute(
             dim_map["out_img_shape"],
-            lambda *indice: in_tensor0(*indice)
-                            + in_tensor1(indice[1]
-                            * tbe_platform.CUBE_MKN[in_tensor0.dtype]['mac'][2]
-                            +indice[3]),
+            lambda ub_batch_dout, ub_cout_1, ub_howo, ub_cout_0:
+            in_tensor0(ub_batch_dout, ub_cout_1, ub_howo, ub_cout_0)
+            + in_tensor1(ub_cout_1
+            * tbe_platform.CUBE_MKN[in_tensor0.dtype]['mac'][2]
+            + ub_cout_0),
             name='bias_add_vector' + "_cc_" + str(_NAME_INDEX[0]),
             attrs=attrs)
-
+    _TENSOR_MAP['bias_add_tensor'] = c_add_vector
     return c_add_vector
 
 

@@ -222,6 +222,18 @@ bias = {'ori_shape': (64,), 'shape': (64,),
         'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16', 'range':[(64, 64),]}
 case27 = _run_api_end_with_d(bias=bias)
 
+# test_conv3d_with_bias and double buffer (UB reused success)
+fmap = {'ori_shape': (-1, 4, 224, -1, 3), 'shape': (-1, 4, 1, 224, -1, 16),
+        'ori_format': 'NDHWC', 'format': 'NDC1HWC0', 'dtype': 'float16',
+        "range": [(1, 66), (4, 4), (1, 1), (224, 224),(224, 537), (16, 16)]}
+weight = {'ori_shape': (4, 7, 7, 3, 64), 'shape': (4, 7, 7, 3, 64),
+        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+bias = {'ori_shape': (64,), 'shape': (64,),
+        'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16', 'range':[(64, 64),]}
+strides = (1, 2, 2, 2, 1)
+pads=[-1, -1, -1, -1, -1, -1]
+case28 = _run_api_end_with_d(fmap=fmap, weight=weight, strides=strides, pads=pads)
+
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A", "Ascend310"],
@@ -304,6 +316,9 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case27, "success", "dynamic_case27", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case28, "success", "dynamic_case28_test_bias_reused", True))
 
 # test_conv3d_fuzzy_build_generalization
 print("adding conv3d test_conv3d_fuzzy_build_generalization testcase")

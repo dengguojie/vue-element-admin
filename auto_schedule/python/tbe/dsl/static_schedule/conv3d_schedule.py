@@ -788,6 +788,8 @@ class CceConv3dOp:
         # CUB
         if double_buffer_flag["CUB_pbuffer"] == 2:
             sch[buffer_dict["c_ub"]].double_buffer()
+            if conv3d_compute.Conv3DParam.tiling_info_dict['bias_flag']:
+                sch[self._tensor_map['bias_add_tensor']].double_buffer()
 
     def _condition_cycle_buffer_dynamic(self, cyclebuffer_flag,
                                         al1, c_col, c_ub, tiling, cin1_g):
@@ -1778,8 +1780,12 @@ class CceConv3dOp:
                 sch[bl1].mem_unique()
             sch[bl0].mem_unique()
             sch[c_col].mem_unique()
-            sch[c_ub].mem_unique()
-        if self.var_map:
+
+            # Reused UB memory
+            if bias_flag:
+                bias_add_tensor = tensor_map['bias_add_tensor']
+                sch[c_ub].reused_by(bias_add_tensor)
+
             return True
         tensor_map.clear()
         dim_map.clear()
