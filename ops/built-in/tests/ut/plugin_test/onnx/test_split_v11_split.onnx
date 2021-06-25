@@ -1,26 +1,26 @@
-onnx:ù
-T
+onnx:ş
+V
 inputoutput_0output_1output_2	split_v11"Split*
-axis *
-split@@ split_v11_no_defaultZ
+axis *
+split@@@ split_v11_default_splitZ
 input
 
 
 
 
-b"
+b"
 output_0
 
 
 
 
-b"
+b"
 output_1
 
 
 
 
-b"
+b"
 output_2
 
 

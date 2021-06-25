@@ -12,6 +12,9 @@ rights reserved.
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
+#ifndef OPS_BUILT_IN_FRAMEWORK_ONNX_PLUGIN_ONNX_COMMON_H_
+#define OPS_BUILT_IN_FRAMEWORK_ONNX_PLUGIN_ONNX_COMMON_H_
+
 #include <string>
 #include <vector>
 #include <map>
@@ -20,39 +23,24 @@ rights reserved.
 #include "graph/utils/op_desc_utils.h"
 #include "common/util/error_manager/error_manager.h"
 #include "graph/operator.h"
-#include "all_ops.h"
 #include "graph.h"
+#include "all_ops.h"
 
 namespace domi {
-std::string ONNX_PARSER_MODULE = "onnx_plugin";
-std::string ONNX_PLUGIN_ERR_CODE = "E79999";
-std::string ONNX_PLUGIN_WARNING_CODE = "W79999";
-std::string ONNX_PLUGIN_INFO_CODE = "I79999";
+#define ONNX_PLUGIN_LOGE(op_name, err_msg, ...) \
+  do { \
+      REPORT_INNER_ERROR("E79999", "onnx_plugin op_name[%s], " err_msg, op_name, ##__VA_ARGS__); \
+  } while(0)
 
-void OnnxPluginLogE(const std::string& op_name, const std::string& err_detail) {
-  map<string, string> errMap;
-  errMap["report_module"] = ONNX_PARSER_MODULE;
-  errMap["op_name"] = op_name;
-  errMap["description"] = err_detail;
-  std::string reportErrorCode = ONNX_PLUGIN_ERR_CODE;
-  ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, errMap);
-}
+#define ONNX_PLUGIN_LOGW(op_name, err_msg, ...) \
+  do { \
+      REPORT_INNER_ERROR("W79999", "onnx_plugin op_name[%s], " err_msg, op_name, ##__VA_ARGS__); \
+  } while(0)
 
-void OnnxPluginLogW(const std::string& op_name, const std::string& warn_detail) {
-  map<string, string> warnMap;
-  warnMap["report_module"] = ONNX_PARSER_MODULE;
-  warnMap["op_name"] = op_name;
-  warnMap["description"] = warn_detail;
-  std::string reportErrorCode = ONNX_PLUGIN_WARNING_CODE;
-  ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, warnMap);
-}
-
-void OnnxPluginLogI(const std::string& op_name, const std::string& info_detail) {
-  map<string, string> infoMap;
-  infoMap["report_module"] = ONNX_PARSER_MODULE;
-  infoMap["op_name"] = op_name;
-  infoMap["description"] = info_detail;
-  std::string reportErrorCode = ONNX_PLUGIN_INFO_CODE;
-  ErrorManager::GetInstance().ReportErrMessage(reportErrorCode, infoMap);
-}
+#define ONNX_PLUGIN_LOGI(op_name, err_msg, ...) \
+  do { \
+      REPORT_INNER_ERROR("I79999", "onnx_plugin op_name[%s], " err_msg, op_name, ##__VA_ARGS__); \
+  } while(0)
 }  // namespace domi
+
+#endif  //  OPS_BUILT_IN_FRAMEWORK_ONNX_PLUGIN_ONNX_COMMON_H_

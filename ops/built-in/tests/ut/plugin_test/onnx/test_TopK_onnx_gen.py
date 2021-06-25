@@ -75,8 +75,35 @@ def top_k(version_t):
     onnx.checker.check_model(model_def)
     onnx.save(model_def, "./TopK_V11_case.onnx")
 
+def top_k_fail_v9():
+    # Create one input (ValueInfoProto)
+    x = helper.make_tensor_value_info('X', TensorProto.FLOAT, [3, 4])
+    # k = helper.make_tensor('k', TensorProto.FLOAT, [1, ], [3])
+    # Create one output (ValueInfoProto)
+    values_ref = helper.make_tensor_value_info('values', TensorProto.INT32, [3, 3])
+    indices_ref = helper.make_tensor_value_info('indices', TensorProto.INT32, [3, 3])
+
+    node = onnx.helper.make_node(
+        'TopK',
+        inputs=['X'],
+        outputs=['values', 'indices'],
+        k=-1)
+
+    graph_def = helper.make_graph(
+        [node],
+        'test-model',
+        [x],
+        [values_ref, indices_ref])
+
+    # Create the model (ModelProto)
+    model_def = helper.make_model(graph_def, producer_name='HJ-TopK-onnx')
+    model_def.opset_import[0].version = 9
+
+    onnx.checker.check_model(model_def)
+    onnx.save(model_def, "./TopK_V9__fail_case.onnx")
 
 if __name__ == "__main__":
     version_t = 11
     # export_top_k(version_t)
     top_k(version_t)
+    top_k_fail_v9()

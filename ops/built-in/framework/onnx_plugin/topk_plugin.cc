@@ -21,7 +21,7 @@ namespace domi {
 Status ParseParamsTopK(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OnnxPluginLogE("TopK", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("TopK", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -48,7 +48,7 @@ Status ParseParamsTopK(const Message* op_src, ge::Operator& op_dest) {
 Status ParseParamsTopKV9(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OnnxPluginLogE("TopK", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("TopK", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -74,7 +74,7 @@ Status ParseParamsTopKV9(const Message* op_src, ge::Operator& op_dest) {
     }
   }
   if (data == -1) {
-    OnnxPluginLogE("TopK", "onnx TopK has no K attr.");
+    ONNX_PLUGIN_LOGE("TopK", "onnx TopK has no K attr.");
     return PARAM_INVALID;
   }
   const ge::Tensor valueTensor(tensorDesc, reinterpret_cast<uint8_t*>(&data), sizeof(int32_t));
@@ -87,7 +87,7 @@ static Status ParseOpToGraphTopKV9(const ge::Operator& op, ge::Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
   ge::Tensor k_value;
   if (op.GetAttr("k", k_value) != SUCCESS) {
-    OnnxPluginLogE("TopK", "get value from op failed");
+    ONNX_PLUGIN_LOGE("TopK", "get value from op failed");
     return FAILED;
   }
   auto data1 = op::Const("data1").set_attr_value(k_value);
