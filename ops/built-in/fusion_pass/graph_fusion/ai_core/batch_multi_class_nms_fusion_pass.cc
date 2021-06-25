@@ -240,12 +240,12 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       // add node add1 to graph
       ge::NodePtr add1Node = graph.AddNode(Adds);
 
-      newNodes.push_back(add1Node);
-
       FUSION_PASS_CHECK(
           add1Node == nullptr,
           OP_LOGE(FUSED_OP_TYPE.c_str(), "AddsNode fusionNode is null, fusion failed."),
           return PARAM_INVALID);
+
+      newNodes.push_back(add1Node);
 
       if (isfindSoftmax) {
         auto ExpandDims_5_node = fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
@@ -289,12 +289,11 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
         // add node cast1 to graph
         ge::NodePtr cast1Node = graph.AddNode(Cast);
 
-        newNodes.push_back(cast1Node);
+        FUSION_PASS_CHECK(cast1Node == nullptr,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "CastNode fusionNode is null, fusion failed."),
+                          return PARAM_INVALID);
 
-        FUSION_PASS_CHECK(
-            cast1Node == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "CastNode fusionNode is null, fusion failed."),
-            return PARAM_INVALID);
+        newNodes.push_back(cast1Node);
 
         // Add the original input side 0 to cast1Node
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(Softmax_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
@@ -340,11 +339,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
       // add node mul to graph
       ge::NodePtr mulNode = graph.AddNode(Muls);
+      FUSION_PASS_CHECK(mulNode == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "MulsNode fusionNode is null, fusion failed."),
+                        return PARAM_INVALID);
       newNodes.push_back(mulNode);
-      FUSION_PASS_CHECK(
-          mulNode == nullptr,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "MulsNode fusionNode is null, fusion failed."),
-          return PARAM_INVALID);
 
       // Add the description (input, output, name, attribute) of the add_mul node
       ge::OpDescPtr Adds_mul;
@@ -371,11 +369,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
       // add node add_mul to graph
       ge::NodePtr add_mulNode = graph.AddNode(Adds_mul);
+      FUSION_PASS_CHECK(add_mulNode == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Adds_mul Node fusionNode is null, fusion failed."),
+                        return PARAM_INVALID);
       newNodes.push_back(add_mulNode);
-      FUSION_PASS_CHECK(
-          add_mulNode == nullptr,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "Adds_mul Node fusionNode is null, fusion failed."),
-          return PARAM_INVALID);
 
 
       // Add the description (input, output, name, attribute) of the div node
@@ -405,11 +402,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
       // add node div to graph
       ge::NodePtr divNode = graph.AddNode(Div);
+      FUSION_PASS_CHECK(divNode == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "DivNode fusionNode is null, fusion failed."),
+                        return PARAM_INVALID);
       newNodes.push_back(divNode);
-      FUSION_PASS_CHECK(
-          divNode == nullptr,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "DivNode fusionNode is null, fusion failed."),
-          return PARAM_INVALID);
 
       // Add the original input side 0 to add1node
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(),

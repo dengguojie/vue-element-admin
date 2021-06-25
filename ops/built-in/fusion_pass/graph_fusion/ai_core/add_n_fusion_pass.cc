@@ -87,12 +87,12 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
       OpDescUtils::ClearInputDesc(addNBaseDesc, c);
     }
     ge::NodePtr add_n_base_node = graph.AddNode(addNBaseDesc);
+    FUSION_PASS_CHECK(add_n_base_node == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add_n_base_node is null, fusion failed."),
+                      return PARAM_INVALID);
+
     fusionNodes.push_back(add_n_base_node);
     ge::AttrUtils::SetInt(add_n_base_node->GetOpDesc(), "N", nodes_num);
-    FUSION_PASS_CHECK(add_n_base_node == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add_n_base_node:%s is null, fusion failed.",
-                              add_n_base_node->GetName().c_str()),
-                      return PARAM_INVALID);
     for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(0), inAnchorPtr),
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
@@ -110,11 +110,11 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
           OpDescUtils::ClearInputDesc(addNDesc, a);
         }
         ge::NodePtr add_n_node = graph.AddNode(addNDesc);
+        FUSION_PASS_CHECK(add_n_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add_n_node is null, fusion failed."),
+                          return PARAM_INVALID);
+
         fusionNodes.push_back(add_n_node);
         ge::AttrUtils::SetInt(add_n_node->GetOpDesc(), "N", 62);
-        FUSION_PASS_CHECK(add_n_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add_n_node:%s is null, fusion failed.",
-                                                         add_n_node->GetName().c_str()),
-                          return PARAM_INVALID);
 
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(add_n_node->GetOutDataAnchor(0), add_n_base_node->GetInDataAnchor(i)),
@@ -144,12 +144,11 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
           OpDescUtils::ClearInputDesc(LastAddNDesc, b);
         }
         ge::NodePtr last_add_n_node = graph.AddNode(LastAddNDesc);
+        FUSION_PASS_CHECK(last_add_n_node == nullptr,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "last_add_n_node is null, fusion failed."),
+                          return PARAM_INVALID);
         fusionNodes.push_back(last_add_n_node);
         ge::AttrUtils::SetInt(last_add_n_node->GetOpDesc(), "N", last_node_inputs_num);
-        FUSION_PASS_CHECK(
-            last_add_n_node == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", last_add_n_node->GetName().c_str()),
-            return PARAM_INVALID);
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(last_add_n_node->GetOutDataAnchor(0),
                                                              add_n_base_node->GetInDataAnchor(i)),
                           OP_LOGE(FUSED_OP_TYPE.c_str(),

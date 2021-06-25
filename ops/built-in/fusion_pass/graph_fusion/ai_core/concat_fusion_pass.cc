@@ -187,6 +187,10 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
           }
         }
         ge::NodePtr concatd_node = graph.AddNode(ConcatdDesc);
+        FUSION_PASS_CHECK(concatd_node == nullptr,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "concatd_node is null, fusion failed."),
+                          return PARAM_INVALID);
+
         newNodes.push_back(concatd_node);
         ge::AttrUtils::SetInt(concatd_node->GetOpDesc(), "N", max_inputs);
         // infershape begin
@@ -226,10 +230,6 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
         UpdateInputName(ConcatdDesc);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_1);
         // infershape end
-        FUSION_PASS_CHECK(
-            concatd_node == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "concatd_node is null, fusion failed."),
-            return PARAM_INVALID);
 
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatd_node->GetOutDataAnchor(0),
                                                              concatd_base_node->GetInDataAnchor(i)),

@@ -69,11 +69,11 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   std::vector<PassAttrInfo> concatv2AttrInfo;
   ge::NodePtr fused_node = nullptr;
   ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+  FUSION_PASS_CHECK(fused_node1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
+                    return PARAM_INVALID);
   int32_t inputsize = fused_node1->GetAllInDataAnchors().size();
   PassAttrInfo axis = {inputsize - 1, "concat_dim", "SetInt"};
   concatv2AttrInfo.push_back(axis);
-  FUSION_PASS_CHECK(fused_node1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
-                    return PARAM_INVALID);
 
   Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fused_node1, fusionOpType, concatv2AttrInfo, fused_node);
   if (ret != SUCCESS) {
@@ -193,6 +193,9 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
           }
         }
         ge::NodePtr concatext2_node = graph.AddNode(ConcatExt2Desc);
+        FUSION_PASS_CHECK(concatext2_node == nullptr,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "concatext2_node is null, fusion failed."),
+                          return PARAM_INVALID);
         fusionNodes.push_back(concatext2_node);
         ge::AttrUtils::SetInt(concatext2_node->GetOpDesc(), "N", max_inputs);
         // infershape begin
@@ -247,10 +250,6 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
         ConcatExt2Desc->UpdateOutputDesc(0, ConcatExt2OutputTensor_1);
         ConcatExt2BaseDesc->UpdateInputDesc(i, ConcatExt2OutputTensor_1);
         // infershape end
-        FUSION_PASS_CHECK(
-            concatext2_node == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "concatext2_node is null, fusion failed."),
-            return PARAM_INVALID);
 
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatext2_node->GetOutDataAnchor(0),
                                                              concatext2_base_node->GetInDataAnchor(i)),
