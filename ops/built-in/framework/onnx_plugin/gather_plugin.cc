@@ -18,44 +18,70 @@
  * \file gather_plugin.cpp
  * \brief
  */
-#include <string>
 
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
+#include "onnx_common.h"
 
-#include "op_log.h"
-
+using namespace ge;
 namespace domi {
 
 static const int DEFAULT_AXIS = 0;
 
 Status ParseParamsGather(const Message* op_src, ge::Operator& op_dest) {
-  OP_LOGI("Gather", "[PLUGIN_GATHER]---------ParseParams Gather start----------");
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("Gather", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
-  int axis_val = 0;
-  bool set_axis_flag = false;
+  op_dest.SetAttr("original_type", "ai.onnx::11::Gather");
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  op_desc->AddDynamicInputDesc("x", 2);
+  op_desc->AddDynamicOutputDesc("y", 1);
+  
+  int32_t axis_val = DEFAULT_AXIS;
+
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "axis" && attr.type() == ge::onnx::AttributeProto::INT) {
       axis_val = attr.i();
-      set_axis_flag = true;
-      break;
     }
   }
-  if (!set_axis_flag) {
-    OP_LOGI("Gather", "onnx Gather op has no axis attr.");
-    axis_val = DEFAULT_AXIS;
-  }
-  op_dest.SetAttr("axis", axis_val);
+
+  ge::TensorDesc tensorDesc1;
+  std::vector<int64_t> value_dims = {1};
+  ge::Shape value_shape(value_dims);
+  tensorDesc1.SetShape(value_shape);
+  tensorDesc1.SetDataType(DT_INT32);
+  tensorDesc1.SetFormat(ge::FORMAT_ND);
+
+  ge::Tensor tensor1(tensorDesc1, reinterpret_cast<uint8_t*>(&axis_val), sizeof(int32_t));
+  op_dest.SetAttr("constant_values", tensor1);
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("GatherV2D")
+static Status ParseOpToGraphGather(const ge::Operator& op, Graph& graph) {
+  auto data0 = op::Data("data0").set_attr_index(0);
+  auto data1 = op::Data("data1").set_attr_index(1);
+
+  ge::Tensor const_value;
+  if (op.GetAttr("constant_values", const_value) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get const_value from op failed");
+    return FAILED;
+  }
+
+  auto const_op = op::Const("const_data").set_attr_value(const_value);
+  
+  auto gather2v_op = op::GatherV2("gatherv2").set_input_x(data0)
+                                             .set_input_indices(data1)
+                                             .set_input_axis(const_op);
+
+  std::vector<ge::Operator> inputs = {data0, data1, const_op};
+  std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
+  output_indexs.emplace_back(gather2v_op, std::vector<size_t>{0});
+  graph.SetInputs(inputs).SetOutputs(output_indexs);
+  return SUCCESS;
+}
+
+REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::8::Gather",
                    "ai.onnx::9::Gather",
@@ -64,5 +90,7 @@ REGISTER_CUSTOM_OP("GatherV2D")
                    "ai.onnx::12::Gather",
                    "ai.onnx::13::Gather"})
     .ParseParamsFn(ParseParamsGather)
+    .ParseOpToGraphFn(ParseOpToGraphGather)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
+
