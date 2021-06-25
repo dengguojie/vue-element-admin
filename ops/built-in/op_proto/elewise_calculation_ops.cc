@@ -5286,5 +5286,26 @@ IMPLEMT_COMMON_INFERFUNC(CosineSimilarityInferShape)
 COMMON_INFER_FUNC_REG(CosineSimilarity, CosineSimilarityInferShape);
 VERIFY_FUNC_REG(CosineSimilarity, CosineSimilarityVerify);
 // ------------------CosineSimilarity END---------------------
+// ----------------------ApplyAdamV2----------------------
+IMPLEMT_COMMON_INFERFUNC(ApplyAdamV2InferShape) {
+  TensorDesc tensordesc_output_0 = op.GetOutputDesc("var");
+  TensorDesc tensordesc_output_1 = op.GetOutputDesc("m");
+  TensorDesc tensordesc_output_2 = op.GetOutputDesc("v");
+  TensorDesc tensordesc_input = op.GetInputDesc("var");
+  auto result_shape = tensordesc_input.GetShape();
+  auto result_type = tensordesc_input.GetDataType();
+  tensordesc_output_0.SetShape(result_shape);
+  tensordesc_output_0.SetDataType(result_type);
+  tensordesc_output_1.SetShape(result_shape);
+  tensordesc_output_1.SetDataType(result_type);
+  tensordesc_output_2.SetShape(result_shape);
+  tensordesc_output_2.SetDataType(result_type);
+  (void)op.UpdateOutputDesc("var", tensordesc_output_0);
+  (void)op.UpdateOutputDesc("m", tensordesc_output_1);
+  (void)op.UpdateOutputDesc("v", tensordesc_output_2);
+  return GRAPH_SUCCESS;
+}
 
+COMMON_INFER_FUNC_REG(ApplyAdamV2, ApplyAdamV2InferShape);
+//-----------------------ApplyAdamV2 END---------------------
 }  // namespace ge

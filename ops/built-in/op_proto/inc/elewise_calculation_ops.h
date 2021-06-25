@@ -3824,6 +3824,45 @@ REG_OP(CosineSimilarity)
     .ATTR(eps, Float, 1e-8)
     .OP_END_FACTORY_REG(CosineSimilarity)
 
+/**
+*@brief count adam result. \n
+
+*@par Inputs:
+*eleven inputs, including:
+* @li var: A Tensor. Support float16/float32.\n
+* @li m: A Tensor. Datatype and shape are same as exp_avg.\n
+* @li v: A Tensor. Datatype and shape are same as exp_avg.\n
+* @li lr: A Tensor. Datatype is same as exp_avg. Shape (1, ).\n
+* @li beta1: A Tensor. Datatype is same as exp_avg. Shape (1, ).\n
+* @li beta2: A Tensor. Datatype is same as exp_avg. Shape (1, ).\n
+* @li epsilon: A Tensor. Datatype is same as exp_avg. Shape (1, ).\n
+* @li grad: A Tensor. Datatype and shape are same as exp_avg.\n
+* @li max_grad_norm: A Tensor. Datatype is same as exp_avg. Shape (1, ).\n
+* @li global_grad_norm: A Tensor. Datatype is same as exp_avg. Shape (1, ).\n
+* @li weight_decay: A Tensor. Datatype is same as exp_avg. Shape (1, ).\n
+
+*@par Outputs:
+*three inputs, including:
+* @li var: A Tensor. Datatype and shape are same as exp_avg.\n
+* @li m: A Tensor. Datatype and shape are same as exp_avg.\n
+* @li v: A Tensor. Datatype and shape are same as exp_avg.\n
+*/
+REG_OP(ApplyAdamV2)
+    .INPUT(var, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(m, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(v, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(lr, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(beta1, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(beta2, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(epsilon, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(grad, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(max_grad_norm, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(global_grad_norm, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .INPUT(weight_decay, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .OUTPUT(var, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .OUTPUT(m, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .OUTPUT(v, TensorType({ DT_FLOAT, DT_FLOAT16 }))
+    .OP_END_FACTORY_REG(ApplyAdamV2)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ELEWISE_CALCULATION_OPS_H_
