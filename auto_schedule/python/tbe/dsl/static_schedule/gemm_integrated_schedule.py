@@ -220,6 +220,7 @@ class GemmSchedule(object):
         self.get_a_matrix_mode, self.get_b_matrix_mode = "none", "none"
         self.compress_flag = False
         self.int8_not_double_m = False
+        self.multi_output_flag = False
 
     @staticmethod
     def _get_all_tags(res):
@@ -1138,7 +1139,7 @@ class GemmSchedule(object):
             res_ub = self.sch.cache_write(self.res, tbe_platform_info.scope_ubuf)
             self.elemwise_tensors.append(res_ub)
 
-        if self.res != TENSOR_MAP.get("c_gm"):
+        if self.res != TENSOR_MAP.get("c_gm") and not self.multi_output_flag:
             self.compute_inline_list.append(TENSOR_MAP.get("c_gm"))
         compute_inline_c_ub = self.quantify_fusion
         if compute_inline_c_ub:
@@ -2921,7 +2922,7 @@ class GemmSchedule(object):
                 sch[bias_ub].preload()
                 sch[bias_ub].double_buffer()
             for tensor in self.tensors_in_cub:
-                if tensor == self.res:
+                if tensor in (self.res, self.TENSOR_MAP.get("c_gm")):
                     continue
                 sch[tensor].double_buffer()
 
@@ -3041,11 +3042,31 @@ class GemmSchedule(object):
             self._emit_insn_func(ten_in, 0, insn)
 
         if self.gm_ub is not None:
-            self._emit_insn_func(self.TENSOR_MAP.get("c_gm"), 0, "dma_copy", mode=1)
+            if not self.multi_output_flag:
+                self._emit_insn_func(self.TENSOR_MAP.get("c_gm"), 0, "dma_copy", mode=1)
+            else:
+                self._emit_insn_for_multi_output()
             self._emit_insn_func(self.gm_ub, 0, "phony_insn", mode=1)
 
         if self.reduce_fusion:
             self._emit_insn_func(self.TENSOR_MAP.get("res_atomic_add_ub"), 0, "dma_copy", mode=1)
+
+    def _emit_insn_for_multi_output(self):
+        sch_agent = self.sch_agent
+        if len(self.TENSOR_MAP.get("c_gm").shape) in (4, 5):
+            gm_n_outer, gm_n_inner = sch_agent[self.TENSOR_MAP.get("c_gm")].split(
+                self.TENSOR_MAP.get("c_gm").op.axis[-4], nparts=1)
+            gm_m_outer, gm_m_inner = sch_agent[self.TENSOR_MAP.get("c_gm")].split(
+                self.TENSOR_MAP.get("c_gm").op.axis[-3], nparts=1)
+            sch_agent[self.TENSOR_MAP.get("c_gm")].reorder(gm_n_outer, gm_m_outer, gm_n_inner, gm_m_inner)
+            sch_agent[self.TENSOR_MAP.get("c_gm")].emit_insn(gm_n_inner, "dma_copy")
+        else:
+            gm_n_outer, gm_n_inner = sch_agent[self.TENSOR_MAP.get("c_gm")].split(
+                self.TENSOR_MAP.get("c_gm").op.axis[-1], nparts=1)
+            gm_m_outer, gm_m_inner = sch_agent[self.TENSOR_MAP.get("c_gm")].split(
+                self.TENSOR_MAP.get("c_gm").op.axis[-2], nparts=1)
+            sch_agent[self.TENSOR_MAP.get("c_gm")].reorder(gm_m_outer, gm_n_outer, gm_m_inner, gm_n_inner)
+            sch_agent[self.TENSOR_MAP.get("c_gm")].emit_insn(gm_m_inner, "dma_copy")
 
     def _do_emit_insn_aub(self):
         sch_agent = self.sch_agent
@@ -3053,7 +3074,7 @@ class GemmSchedule(object):
 
         # only in |gemm matmul|nd|all| or |matmul|nz|int82fp32| etc
         self._emit_insn_func(self.TENSOR_MAP.get("a_ub"), 0, "dma_copy", mode=1)
- 
+
         a_cast_and_reshape = (self.ops_data_flow_mode == "int82fp32") and (self.format_a == "FRACTAL_NZ")
         a_only_reshape = (self.mmad_mode in ("gevm", "gemv")) or (self.get_a_matrix_mode == "nd2Zz_int8")
         if a_cast_and_reshape:
@@ -3715,9 +3736,13 @@ class GemmSchedule(object):
         # multi output fusion with elementwise
         multi_output_flag = isinstance(self.res_ori, list)
         multi_output_flag = multi_output_flag and self.fusion_ele and tensor_c_gm in self.res_ori
+        self.multi_output_flag = multi_output_flag
         if multi_output_flag:
             gm_ub = sch.cache_read(tensor_c_gm, tbe_platform_info.scope_ubuf,
                                    in_out_tensor_map[tensor_c_gm])
+            self.fusion_tensor_cub.append(gm_ub)
+            self.fusion_tensor_cub.append(tensor_c_gm)
+            self.sch[tensor_c_gm.op.input_tensors[0]].reused_by(gm_ub)
 
         tensor_ele_ub = list()
         header_tensors = list(set(header_tensors))

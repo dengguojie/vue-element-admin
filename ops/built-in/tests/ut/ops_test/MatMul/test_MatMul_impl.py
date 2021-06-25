@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from te import tvm
+from te.lang.cce import vadds
 from te.lang.cce import cce_build_code
 from te.tvm.target import cce
 from topi.generic import auto_schedule
@@ -9,6 +10,7 @@ from op_test_frame.common import precision_info
 import numpy as np
 from impl.mat_mul import get_op_support_info
 from impl.mat_mul import mat_mul_compute
+from impl.leaky_relu import leaky_relu_compute
 from impl.mat_mul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
 from te.platform.cce_conf import te_set_version
@@ -308,3 +310,24 @@ def test_check_support(test_arg):
 
 
 ut_case.add_cust_test_func(test_func=test_check_support)
+
+
+def test_matmul_multi_output(test_arg):
+    with cce():
+        x1 = tvm.placeholder((48, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 768)}, dtype="float16")
+        x2 = tvm.placeholder((48, 48, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (768, 768)}, dtype="float16")
+        output_y = {"shape": (48, 64, 16, 16), "dtype": "float16", "ori_shape": (1024, 768), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y)
+        relu_out = leaky_relu_compute(matmul_out, None)
+        add_out = vadds(relu_out, 1)
+        tensor_list = [x1, x2, matmul_out, add_out]
+        out = [matmul_out, add_out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_multi_output",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+ut_case.add_cust_test_func(test_func=test_matmul_multi_output)
