@@ -19,15 +19,9 @@
  * \brief
  */
 #include "where.h"
-#include <climits>
-#include <unordered_set>
-#include <utility>
 
 #include "op_log.h"
 #include "common_shape_fns.h"
-#include "array_ops_shape_fns.h"
-#include "graph/utils/tensor_adapter.h"
-#include "graph/utils/node_utils.h"
 #include "./util/error_util.h"
 #include "util/util.h"
 

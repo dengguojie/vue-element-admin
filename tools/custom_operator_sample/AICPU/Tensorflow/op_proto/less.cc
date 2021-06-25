@@ -24,9 +24,6 @@
 #include "util/util.h"
 #include "op_log.h"
 #include "./util/error_util.h"
-#include "graph/utils/node_utils.h"
-#include "register/infer_data_slice_registry.h"
-#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 // --------------------Less--------------------
@@ -41,15 +38,16 @@ IMPLEMT_COMMON_INFERFUNC(LessInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
     return GRAPH_FAILED;
   }
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
+  auto vec_y = op.GetInputDesc("y").GetShape().GetDims();
   if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
     if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
       return GRAPH_FAILED;
     }
   }
 
-  op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetDataType(DT_BOOL);
+  op.UpdateOutputDesc("y", y_desc);
   return GRAPH_SUCCESS;
 }
 

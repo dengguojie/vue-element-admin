@@ -20,28 +20,15 @@
  */
 #include "top_k.h"
 
-#include <cmath>
-#include <string>
-#include <vector>
-
 #include "util/util.h"
-#include "util/error_util.h"
-#include "op_log.h"
-#include "strided_slice_infer_shape.h"
-#include "graph/utils/op_desc_utils.h"
-#include "register/infer_data_slice_registry.h"
-#include "graph/common_error_codes.h"
-#include "graph/debug/ge_attr_define.h"
-#include "axis_util.h"
 
 namespace ge {
 static bool TopKInferCommon(Operator &op, int64_t k) {
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto output_v_desc = op_info->MutableOutputDesc("values");
-  auto output_i_desc = op_info->MutableOutputDesc("indices");
+  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc output_v_desc = op.GetOutputDesc("values");
+  TensorDesc output_i_desc = op.GetOutputDesc("indices");
 
-  std::vector<int64_t> dims_in = input_desc->MutableShape().GetDims();
+  std::vector<int64_t> dims_in = input_desc.GetShape().GetDims();
   int32_t dim_size = dims_in.size();
   if (dim_size <= 0) {
     OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
@@ -61,7 +48,7 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
     }
   }
   std::vector<std::pair<int64_t, int64_t>> shape_range;
-  input_desc->GetShapeRange(shape_range);
+  input_desc.GetShapeRange(shape_range);
   if (shape_range.size() > 0) {
     if (k > 0 && sorted_axis < shape_range.size()) {
       shape_range[sorted_axis].first = k;
@@ -80,22 +67,24 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
 
   bool unknown_rank = IsUnknownRankShape(dims_in);
   if (unknown_rank) {
-    output_v_desc->SetShape(GeShape(UNKNOWN_RANK));
-    output_v_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+    output_v_desc.SetShape(Shape(UNKNOWN_RANK));
+    output_v_desc.SetOriginShape(Shape(UNKNOWN_RANK));
 
-    output_i_desc->SetShape(GeShape(UNKNOWN_RANK));
-    output_i_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+    output_i_desc.SetShape(Shape(UNKNOWN_RANK));
+    output_i_desc.SetOriginShape(Shape(UNKNOWN_RANK));
   } else {
     dims_in[sorted_axis] = k;
 
-    output_v_desc->SetShape(GeShape(dims_in));
-    output_v_desc->SetShapeRange(shape_range);
+    output_v_desc.SetShape(Shape(dims_in));
+    output_v_desc.SetShapeRange(shape_range);
 
-    output_i_desc->SetShape(GeShape(dims_in));
-    output_i_desc->SetShapeRange(shape_range);
+    output_i_desc.SetShape(Shape(dims_in));
+    output_i_desc.SetShapeRange(shape_range);
   }
-  output_v_desc->SetDataType(input_desc->GetDataType());
-  output_i_desc->SetDataType(DT_INT32);
+  output_v_desc.SetDataType(input_desc.GetDataType());
+  output_i_desc.SetDataType(DT_INT32);
+  op.UpdateOutputDesc("values", output_v_desc);
+  op.UpdateOutputDesc("indices", output_i_desc);
   return true;
 }
 // ----------------TopK Op-------------------

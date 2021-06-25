@@ -20,20 +20,7 @@
  */
 /* reslove the complexity of pooling fuction. */
 #include "adaptive_max_pool_2d.h"
-#include <string.h>
-#include <cmath>
-#include <string>
-#include <vector>
-#include <algorithm>
-#include "graph/operator.h"
 #include "op_log.h"
-#include "common/util/error_manager/error_manager.h"
-#include "util/common_shape_fns.h"
-#include "util/error_util.h"
-#include "util/util.h"
-#include "register/infer_data_slice_registry.h"
-#include "graph/common_error_codes.h"
-#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 // ------------AdaptiveMaxPool2d Op Begin----------------
