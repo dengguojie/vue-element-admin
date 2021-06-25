@@ -201,11 +201,6 @@ class ResizeBilinearV2(OpBase):
                    ---> 16 <= core_idx < 24  core_nc_start = 16
                    ---> 24 <= core_idx < 32  core_nc_start = 24
         """
-        self.core_nc_start.set_as(core_idx // (self.tiling_height_cut_num * self.tiling_width_cut_num))
-        self.core_height_start.set_as(
-            (core_idx % (self.tiling_height_cut_num * self.tiling_width_cut_num)) // self.tiling_width_cut_num)
-        self.core_width_start.set_as(
-            (core_idx % (self.tiling_height_cut_num * self.tiling_width_cut_num)) % self.tiling_width_cut_num)
         # h process len for per core
         self.cut_height_num = self.tik_instance.Scalar("int64", name="cut_height_num")
         # w process len for per core
@@ -218,6 +213,23 @@ class ResizeBilinearV2(OpBase):
             self.cut_width_num.set_as(self.tiling_in_width)
         with self.tik_instance.if_scope(self.tiling_key == 101000):
             self.cut_width_num.set_as(self.tiling_in_width)
+
+        # fix the core cut num
+        # fix for height_cut_num
+        self.tiling_height_cut_num.set_as(
+            (self.cut_height_num + self.tiling_height_cut_num - 1) // self.tiling_height_cut_num)
+        self.tiling_height_cut_num.set_as(
+            (self.cut_height_num + self.tiling_height_cut_num - 1) // self.tiling_height_cut_num)
+        # fix for width_cut_num
+        self.tiling_width_cut_num.set_as(
+            (self.cut_width_num + self.tiling_width_cut_num - 1) // self.tiling_width_cut_num)
+        self.tiling_width_cut_num.set_as(
+            (self.cut_width_num + self.tiling_width_cut_num - 1) // self.tiling_width_cut_num)
+        # fix for nc_cut_num
+        self.tiling_bc1_cut_num.set_as(
+            (self.tiling_batch * self.tiling_c1 + self.tiling_bc1_cut_num - 1) // self.tiling_bc1_cut_num)
+        self.tiling_bc1_cut_num.set_as(
+            (self.tiling_batch * self.tiling_c1 + self.tiling_bc1_cut_num - 1) // self.tiling_bc1_cut_num)
 
         nc_sigment = (self.tiling_batch * self.tiling_c1 + self.tiling_bc1_cut_num - 1) // self.tiling_bc1_cut_num
         h_sigment = (self.cut_height_num + self.tiling_height_cut_num - 1) // self.tiling_height_cut_num

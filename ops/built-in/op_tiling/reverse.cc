@@ -75,6 +75,7 @@ struct ReverseV2CompileParams {
   int64_t max_elements;
   int64_t max_elements_last_large_size;
   int64_t dtype_rate;
+  int64_t topk_threshold;
   std::string op_type;
 };
 
@@ -106,6 +107,13 @@ static bool GetReverseV2CompileParams(const nlohmann::json& compile_info, Revers
     return false;
   }
   compile_params.dtype_rate = allVars["dtype_rate"].get<std::int64_t>();
+
+  // get topk_threshold
+  if (allVars.count("topk_threshold") == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "GetCompileParams, get topk_threshold error");
+    return false;
+  }
+  compile_params.topk_threshold = allVars["topk_threshold"].get<std::int64_t>();
   return true;
 }
 
@@ -328,7 +336,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   // split dim base on aicore num
   if (merged_shape.size() < 7 && merged_shape.size() > 0) {
     int64_t split_dim = 1;
-    for (int64_t i = 0; i < compile_params.core_num; i++) {
+    for (int64_t i = 0; i < compile_params.core_num / 2; i++) {
       int64_t cu_split_core_dim = compile_params.core_num - i;
       if (merged_shape[0] % cu_split_core_dim == 0) {
         split_dim = cu_split_core_dim;
@@ -341,6 +349,17 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
       auto axis_status = merged_axis[0];
       merged_axis.insert(merged_axis.begin(), axis_status);
     }
+  }
+
+  // after split the core dim, when first is big, will split again
+  int64_t total_num = std::accumulate(merged_shape.begin(), merged_shape.end(), 1, std::multiplies<int64_t>());
+  if (merged_shape.size() < 7 && total_num / merged_shape[0] < 512 &&
+      merged_shape[0] > modified_input[0] && modified_input[0] > compile_params.core_num) {
+    int64_t split_dim = modified_input[0];
+    merged_shape.insert(merged_shape.begin(), split_dim);
+    merged_shape[1] = merged_shape[1] / split_dim;
+    auto axis_status = merged_axis[0];
+    merged_axis.insert(merged_axis.begin(), axis_status);
   }
 
   int64_t max_len = compile_params.max_elements;
@@ -377,6 +396,11 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
     }
   }
 
+  // topk tiling charge
+  if (merged_shape[merged_shape.size() - 1] < compile_params.topk_threshold && total_num > 128) {
+    tiling_params.tiling_key = 11;
+  }
+
   int64_t count = 0;
   int64_t inner_real_count = 0;
   int64_t inner_first_dim = 0;
@@ -398,6 +422,13 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
         && tiling_params.tiling_key == 4) {
       inner_first_dim = i + 1;
       break;
+    }
+    // when tiling_key = 11, use topk to reverse, need tatol num of inner_shape[1:] < 2048
+    if (tiling_params.tiling_key == 11) {
+      if (inner_real_count > 2048) {
+        inner_first_dim = i + 1;
+        break;
+      }
     }
     if (count > max_len) {
       inner_first_dim = i + 1;
@@ -511,3 +542,4 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
 }
 REGISTER_OP_TILING_FUNC_BUFFERED(ReverseV2, ReverseV2Tiling);
 }  // namespace optiling
+

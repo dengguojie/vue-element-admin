@@ -37,6 +37,7 @@ MAX_REPEAT_NUM = 255
 MAX_INT64 = 2 ** 64 - 1
 
 
+# pylint: disable=too-many-instance-attributes
 class OpBase:
     """
     Class: class that OpBase
@@ -244,6 +245,125 @@ def tik_func_vector(tik_instance, _ub, value, dup_len):
         tik_instance.vector_dup(repeat_tail, _ub[offset], value, 1, 1, 8)
 
 
+def tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=2, block_num=16,
+                        vrec_blk=1, origin_blk=1, vrec_rep=8, origin_rep=8):
+    """
+    only do newton for vrec result
+
+    Parameters
+    ----------
+    tik_instance: class
+        tik_instance
+    vrec_ub: ub
+        the result of vrec
+    origin_ub: ub
+        the origin input for vrec
+    do_len: int
+        vrec num
+    newton_iteration: int
+        do newton iteration, default: 2
+    block_num: int
+        num in one block, default: 16
+    vrec_blk: int
+        the block stride of vrec_ub, default: 1
+    origin_blk: int
+        the block stride of origin_ub, default: 1
+    vrec_rep: int
+        the repeat stride of vrec_ub, default: 8
+    origin_rep: int
+        the repeat stride of origin_ub, default: 8
+
+    Returns
+    -------
+    None
+    """
+    with tik_instance.new_stmt_scope():
+        vrec_newton_1 = tik_instance.Tensor(
+            vrec_ub.dtype, (((do_len + block_num - 1) // block_num) * block_num,),
+            name="vrec_newton_1", scope=tik.scope_ubuf)
+        vrec_newton_2 = tik_instance.Tensor(
+            vrec_ub.dtype, (((do_len + block_num - 1) // block_num) * block_num,),
+            name="vrec_newton_2", scope=tik.scope_ubuf)
+
+        def _one_newton():
+            tik_func_vcomple(tik_instance, "vmul", vrec_newton_1, vrec_ub, origin_ub, do_len,
+                             src0_blk=vrec_blk, src0_rep=vrec_rep,
+                             src1_blk=origin_blk, src1_rep=origin_rep)
+            tik_func_vmuls(tik_instance, vrec_newton_2, vrec_newton_1, -1, do_len)
+            tik_func_vadds(tik_instance, vrec_newton_1, vrec_newton_2, 2, do_len)
+            tik_func_vcomple(tik_instance, "vmul", vrec_ub, vrec_newton_1, vrec_ub, do_len,
+                             dst_blk=vrec_blk, dst_rep=vrec_rep,
+                             src1_blk=vrec_blk, src1_rep=vrec_rep)
+
+        for _ in range(newton_iteration):
+            _one_newton()
+
+
+def tik_func_vrec(tik_instance, dst_ub, src_ub, do_len, newton_iteration=2,
+                  dst_blk=1, src_blk=1, dst_rep=8, src_rep=8):
+    """
+    do vrce for input src_ub
+    and will do newton_iteration with para newton_iteration
+
+    Parameters
+    ----------
+    tik_instance: class
+        tik_instance
+    dst_ub: ub
+        the result of vrec
+    src_ub: ub
+        the origin input for vrec
+    do_len: int
+        vrec num
+    newton_iteration: int
+        do newton iteration, default: 2
+    dst_blk: int
+        the block stride of dst_ub, default: 1
+    src_blk: int
+        the block stride of src_ub, default: 1
+    dst_rep: int
+        the repeat stride of dst_ub, default: 8
+    src_rep: int
+        the repeat stride of src_ub, default: 8
+
+    Returns
+    -------
+    None
+    """
+    vmuls_type = dst_ub.dtype
+    byte_num_one = common_util.get_data_size(vmuls_type)
+    block_num = constant_util.BLOCK_SIZE // byte_num_one
+    vector_num = block_num * constant_util.REPEAT_STRIDE_EIGHT
+    repeat = do_len // vector_num
+    repeat_tail = do_len % vector_num
+    dst_offset = ub_offset(dst_ub)
+    src_offset = ub_offset(src_ub)
+    tik_api = tik_instance.vrec
+    while repeat > MAX_REPEAT_NUM:
+        tik_api(vector_num, dst_ub[dst_offset], src_ub[src_offset],
+                MAX_REPEAT_NUM, dst_blk, src_blk, dst_rep, src_rep)
+        tik_fuc_vrec_newton(tik_instance, dst_ub[dst_offset], src_ub[src_offset], MAX_REPEAT_NUM * vector_num,
+                            newton_iteration=newton_iteration, block_num=block_num,
+                            vrec_blk=dst_blk, origin_blk=src_blk, vrec_rep=dst_rep, origin_rep=src_rep)
+        repeat = repeat - MAX_REPEAT_NUM
+        dst_offset = dst_offset + block_num * MAX_REPEAT_NUM * dst_rep
+        src_offset = src_offset + block_num * MAX_REPEAT_NUM * src_rep
+    if repeat > 0:
+        tik_api(vector_num, dst_ub[dst_offset], src_ub[src_offset],
+                repeat, dst_blk, src_blk, dst_rep, src_rep)
+        tik_fuc_vrec_newton(tik_instance, dst_ub[dst_offset], src_ub[src_offset], repeat * vector_num,
+                            newton_iteration=newton_iteration, block_num=block_num,
+                            vrec_blk=dst_blk, origin_blk=src_blk, vrec_rep=dst_rep, origin_rep=src_rep)
+        dst_offset = dst_offset + block_num * repeat * dst_rep
+        src_offset = src_offset + block_num * repeat * src_rep
+    if repeat_tail > 0:
+        tik_api(repeat_tail, dst_ub[dst_offset], src_ub[src_offset],
+                1, dst_blk, src_blk, dst_rep, src_rep)
+        tik_fuc_vrec_newton(tik_instance, dst_ub[dst_offset], src_ub[src_offset], repeat_tail,
+                            newton_iteration=newton_iteration, block_num=block_num,
+                            vrec_blk=dst_blk, origin_blk=src_blk, vrec_rep=dst_rep, origin_rep=src_rep)
+
+
 def tik_func_vcomple(tik_instance, function, out_dst, src0, src1, copy_num,
                      dst_blk=1, src0_blk=1, src1_blk=1, dst_rep=8, src0_rep=8,
                      src1_rep=8):
@@ -270,40 +390,53 @@ def tik_func_vcomple(tik_instance, function, out_dst, src0, src1, copy_num,
         tik_fun = tik_instance.vadd
     elif function == "vsub":
         tik_fun = tik_instance.vsub
+    elif function == "vdiv":
+        tik_fun = tik_instance.vdiv
 
-    while repeat_time > MAX_REPEAT_NUM:
-        tik_fun(vector_num,
-                out_dst[ori_offset_dst],
-                src0[ori_offset_src0],
-                src1[ori_offset_src1],
-                255,
-                dst_blk, src0_blk, src1_blk,
-                dst_rep, src0_rep, src1_rep)
-        repeat_time = repeat_time - MAX_REPEAT_NUM
-        ori_offset_dst = ori_offset_dst + MAX_REPEAT_NUM * block_num * dst_rep
-        ori_offset_src0 = ori_offset_src0 + MAX_REPEAT_NUM * block_num * src0_rep
-        ori_offset_src1 = ori_offset_src1 + MAX_REPEAT_NUM * block_num * src1_rep
+    if function != "vdiv" or tbe_platform.api_check_support("tik.vdiv"):
+        while repeat_time > MAX_REPEAT_NUM:
+            tik_fun(vector_num,
+                    out_dst[ori_offset_dst],
+                    src0[ori_offset_src0],
+                    src1[ori_offset_src1],
+                    255,
+                    dst_blk, src0_blk, src1_blk,
+                    dst_rep, src0_rep, src1_rep)
+            repeat_time = repeat_time - MAX_REPEAT_NUM
+            ori_offset_dst = ori_offset_dst + MAX_REPEAT_NUM * block_num * dst_rep
+            ori_offset_src0 = ori_offset_src0 + MAX_REPEAT_NUM * block_num * src0_rep
+            ori_offset_src1 = ori_offset_src1 + MAX_REPEAT_NUM * block_num * src1_rep
 
-    if repeat_time > 0:
-        tik_fun(vector_num,
-                out_dst[ori_offset_dst],
-                src0[ori_offset_src0],
-                src1[ori_offset_src1],
-                repeat_time,
-                dst_blk, src0_blk, src1_blk,
-                dst_rep, src0_rep, src1_rep)
-        ori_offset_dst = ori_offset_dst + repeat_time * block_num * dst_rep
-        ori_offset_src0 = ori_offset_src0 + repeat_time * block_num * src0_rep
-        ori_offset_src1 = ori_offset_src1 + repeat_time * block_num * src1_rep
+        if repeat_time > 0:
+            tik_fun(vector_num,
+                    out_dst[ori_offset_dst],
+                    src0[ori_offset_src0],
+                    src1[ori_offset_src1],
+                    repeat_time,
+                    dst_blk, src0_blk, src1_blk,
+                    dst_rep, src0_rep, src1_rep)
+            ori_offset_dst = ori_offset_dst + repeat_time * block_num * dst_rep
+            ori_offset_src0 = ori_offset_src0 + repeat_time * block_num * src0_rep
+            ori_offset_src1 = ori_offset_src1 + repeat_time * block_num * src1_rep
 
-    if repeat_tail > 0:
-        tik_fun(repeat_tail,
-                out_dst[ori_offset_dst],
-                src0[ori_offset_src0],
-                src1[ori_offset_src1],
-                1,
-                dst_blk, src0_blk, src1_blk,
-                dst_rep, src0_rep, src1_rep)
+        if repeat_tail > 0:
+            tik_fun(repeat_tail,
+                    out_dst[ori_offset_dst],
+                    src0[ori_offset_src0],
+                    src1[ori_offset_src1],
+                    1,
+                    dst_blk, src0_blk, src1_blk,
+                    dst_rep, src0_rep, src1_rep)
+    else:
+        # div func and do not support vdiv, will use src0 * vrec(src1) to do div
+        with tik_instance.new_stmt_scope():
+            vrec_data = tik_instance.Tensor(src0.dtype, (((copy_num + block_num - 1) // block_num) * block_num,),
+                                            name="vrec_data", scope=tik.scope_ubuf)
+            tik_func_vrec(tik_instance, vrec_data, src1, copy_num,
+                          src_blk=src1_blk, src_rep=src1_rep)
+            tik_func_vcomple(tik_instance, "vmul", out_dst, src0, vrec_data, copy_num,
+                             dst_blk=dst_blk, src0_blk=src0_blk,
+                             dst_rep=dst_rep, src0_rep=src0_rep)
 
 
 def _tik_func_single_input_with_scalar(tik_api, dst_ub, src_ub, value, do_len,

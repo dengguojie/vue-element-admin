@@ -1,0 +1,34 @@
+[
+    {
+        "op": "ReverseV2",
+        "case_name": "test_reverse_v2_001",
+        "calc_expect_func_file": "test_test_reverse_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, 16, 16, 15],
+                "typical_shape": [4, 16, 16, 15],
+                "shape_range": [[1, 2240]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [0, 2],
+                "name": "axis"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [4, 16, 16, 15],
+                "type": "float16",
+                "name": "y"
+            }
+        ]
+    }
+]

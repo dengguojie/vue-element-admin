@@ -16,13 +16,15 @@
 reverse_v2.py
 """
 import functools
+from impl import constant_util as constant
+from impl.batch_multi_class_nms_topk import sort_within_ub
+from impl.util import util_tik_comm_func
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_common import div_align_scalar as div_align
 from impl.util.util_common import ceil_div_scalar as ceil_div
-from impl import constant_util as constant
 
 
 # max int64
@@ -66,12 +68,13 @@ class ReverseExt2:
         self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB
         self.shape_x = list(shape_x)
-        self.inner_dtype = "int16"
+        self.inner_dtype = "float16"
         self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // EIGHT_BIT
         self.input_bytes_size = tbe_platform.get_bit_len(dtype_x) // EIGHT_BIT
         self.ub_element_number = self.ub_size_bytes // self.inner_bytes_size
         self.avaliable_ub = self.ub_element_number // 2
         self.block_num = constant.BLOCK_SIZE // self.inner_bytes_size
+        self.vector_num = self.block_num * 8
         self.process_num = 0
 
         self.axis = axis
@@ -83,6 +86,11 @@ class ReverseExt2:
         self.output_data = self.tik_instance.Tensor(self.inner_dtype, (MAX_INT64,), name="output_data",
                                                     scope=tik.scope_gm)
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_NUM,), name="tiling_gm", scope=tik.scope_gm)
+
+        # assist data for topk (1023, 1022, 1021 ......  2, 1, 0)
+        assist_data = list(range(2048))
+        self.assist_num_gm = self.tik_instance.Tensor(self.inner_dtype, (2048,), name="assist_num_gm",
+                                                      scope=tik.scope_gm, init_value=assist_data)
 
         self.kernel_name = kernel_name
         self.inner_shape_0 = self.tik_instance.Scalar(dtype="int64", name="tiling_inner_shape_0")
@@ -289,6 +297,7 @@ class ReverseExt2:
         tiling_4: do reverse with last dim, and last dim < 128
         tiling_5: do reverse with last dim, and last dim > 128 and < 512
         tiling_6: do reverse with last dim, and last dim > 512
+        tiling_11: do reverse with topk, when last dim is less
         """
         # apply for scalar array
         self.inner_loop = self.tik_instance.ScalarArray(dtype="int64", length=7, name="inner_loop",
@@ -303,6 +312,24 @@ class ReverseExt2:
         with self.tik_instance.for_range(0, self.inner_real_dims) as real_idx:
             self.inner_loop[real_idx].set_as(self.inner_loop[7 - self.inner_real_dims + real_idx])
             self.inner_axis[real_idx].set_as(self.inner_axis[7 - self.inner_real_dims + real_idx])
+
+        # add new performance case: use proposal topk to reverse
+        self.axis_tmp_scalar.set_as(1)
+        with self.tik_instance.for_range(0, self.inner_real_dims) as real_idx:
+            dividends_idx = self.inner_real_dims - 1 - real_idx
+            self.inner_dividends[dividends_idx].set_as(self.axis_tmp_scalar)
+            self.axis_tmp_scalar.set_as(self.axis_tmp_scalar * self.inner_loop[dividends_idx])
+
+        # if inner is less 512 change to tiling 4 or 0
+        with self.tik_instance.if_scope(self.outer_real_dims != 0):
+            with self.tik_instance.if_scope(tik.all(self.tiling_key == 11, self.axis_tmp_scalar < 512)):
+                self.tiling_key.set_as(0)
+                with self.tik_instance.if_scope(self.inner_axis_6 == 1):
+                    self.tiling_key.set_as(4)
+
+        with self.tik_instance.if_scope(self.tiling_key == 11):
+            with self.tik_instance.new_stmt_scope():
+                self.tiling_topk_compute()
 
         # update inner_dividends for case than last dim do not reverse
         self.axis_tmp_scalar.set_as(1)
@@ -351,14 +378,7 @@ class ReverseExt2:
                     self.reverse_non_last_axis(index, move_out_index)
         with self.tik_instance.if_scope(self.tiling_key == 3):
             with self.tik_instance.new_stmt_scope():
-                with self.tik_instance.for_range(self.core_outer_start,
-                                                 self.core_outer_num + self.core_outer_start) as index:
-                    current_index = self.tik_instance.Scalar(dtype="int64", name="current_index")
-                    move_out_index = self.tik_instance.Scalar(dtype="int64", name="move_out_index")
-                    self.axis_compute_with_scalar_array(
-                        index, current_index, move_out_index, self.outer_shape, self.outer_axis,
-                        self.outer_dividends, self.outer_real_dims)
-                    self.reverse_non_last_axis_large(index, move_out_index)
+                self.tiling_reverse_non_last_axis_large_compute()
 
         # update inner_dividends for case than last dim do reverse
         self.axis_tmp_scalar.set_as(1)
@@ -420,6 +440,7 @@ class ReverseExt2:
             self.tiling_rules()
 
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        tbe_context.get_context().add_compile_info("global_variable_link", True)
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.input_data, self.input_axis),
                                    outputs=[self.output_data],
@@ -434,7 +455,8 @@ class ReverseExt2:
             "core_num": self.aicore_num,
             "max_elements": self.max_vnchw_block_num * 16,
             "max_elements_last_large_size": 512,
-            "dtype_rate": dtype_rate
+            "dtype_rate": dtype_rate,
+            "topk_threshold": 16
         })
 
         return self.tik_instance
@@ -784,11 +806,38 @@ class ReverseExt2:
                 self.tik_instance.data_move(self.output_data[outer_move_out * total_num + bias], input_data_ub, 0, 1,
                                             1, 0, 0)
 
-    def reverse_non_last_axis_large(self, outer_move_in=0, outer_move_out=0):
+    def tiling_reverse_non_last_axis_large_compute(self):
+        """
+        tiling_reverse_non_last_axis_large_compute
+        base last dim size, run diff staged
+        """
+        staged_list = (4, 2, 1)
+        for i, current_staged in enumerate(staged_list):
+            if i == 0:
+                pre_staged = self.inner_shape[-1] + 1
+            else:
+                pre_staged = staged_list[i - 1] * 3200 * 2
+            min_staged = 3200 * current_staged * 2
+            if i == len(staged_list) - 1:
+                min_staged = 0
+            # outer loop
+            with self.tik_instance.if_scope(tik.all(self.inner_shape[-1] >= min_staged,
+                                                    self.inner_shape[-1] < pre_staged)):
+                with self.tik_instance.for_range(self.core_outer_start,
+                                                 self.core_outer_num + self.core_outer_start) as index:
+                    current_index = self.tik_instance.Scalar(dtype="int64", name="current_index")
+                    move_out_index = self.tik_instance.Scalar(dtype="int64", name="move_out_index")
+                    self.axis_compute_with_scalar_array(
+                        index, current_index, move_out_index, self.outer_shape, self.outer_axis,
+                        self.outer_dividends, self.outer_real_dims)
+                    # inner compute
+                    self.reverse_non_last_axis_large(index, move_out_index, 3200 * current_staged)
+
+    def reverse_non_last_axis_large(self, outer_move_in=0, outer_move_out=0, process_num=3200):
         """
         reverse_non_last_axis_large for tiling 3
         """
-        self.process_num = 3200
+        self.process_num = process_num
         offset_after_first_copy = self.tik_instance.Scalar("int32",
                                                            name="offset_after_first_copy",
                                                            init_value=self.block_num)
@@ -1261,6 +1310,303 @@ class ReverseExt2:
                                             (move_out_num + 15) // 16, 0, 0)
 
         return self.tik_instance
+
+    def gen_assist_data(self, assist_ub, max_topk_size=1024):
+        """
+        gen_assist_data
+        """
+        with self.tik_instance.new_stmt_scope():
+            inner_loop_tmp = self.tik_instance.ScalarArray(dtype="int64", length=7, name="inner_loop_tmp")
+            with self.tik_instance.for_range(0, self.inner_real_dims) as real_idx:
+                inner_loop_tmp[real_idx].set_as(self.inner_loop[real_idx])
+            inner_loop_tmp[0].set_as(max_topk_size // self.inner_dividends[0])
+
+            assist_ub_copy = self.tik_instance.Tensor(assist_ub.dtype, (max_topk_size,),
+                                                      name="assist_ub_copy", scope=tik.scope_ubuf)
+            self.tik_instance.data_move(assist_ub_copy, self.assist_num_gm, 0, 1, ceil_div(max_topk_size, 16), 0, 0)
+
+            # self.inner_dividends to ub int32
+            inner_dividends_ub_int = self.tik_instance.Tensor("int32", (self.block_num * self.block_num,),
+                                                              name="inner_dividends_ub_int", scope=tik.scope_ubuf)
+            inner_dividends_ub_fp16 = self.tik_instance.Tensor(assist_ub.dtype, (self.block_num * self.block_num,),
+                                                               name="inner_dividends_ub_int", scope=tik.scope_ubuf)
+            inner_shape_ub_int = self.tik_instance.Tensor("int32", (self.block_num * self.block_num,),
+                                                          name="inner_shape_ub_int", scope=tik.scope_ubuf)
+            inner_axis_ub_int = self.tik_instance.Tensor("int32", (self.block_num * self.block_num,),
+                                                         name="inner_axis_ub_int", scope=tik.scope_ubuf)
+
+            with self.tik_instance.for_range(0, self.inner_real_dims) as real_idx:
+                gen_assist_scalar_32 = self.tik_instance.Scalar("int32", name="gen_assist_scalar_32")
+                gen_assist_scalar_32.set_as(inner_loop_tmp[real_idx] - 1)
+                util_tik_comm_func.tik_func_vector(self.tik_instance, inner_shape_ub_int[real_idx * self.block_num],
+                                                   gen_assist_scalar_32, self.block_num)
+                gen_assist_scalar_32.set_as(self.inner_dividends[real_idx])
+                util_tik_comm_func.tik_func_vector(self.tik_instance,
+                                                   inner_dividends_ub_int[real_idx * self.block_num],
+                                                   gen_assist_scalar_32, self.block_num)
+                gen_assist_scalar_32.set_as(self.inner_axis[real_idx])
+                util_tik_comm_func.tik_func_vector(self.tik_instance,
+                                                   inner_axis_ub_int[real_idx * self.block_num],
+                                                   gen_assist_scalar_32, self.block_num)
+
+            util_tik_comm_func.tik_func_vconv(self.tik_instance, inner_dividends_ub_fp16, inner_dividends_ub_int,
+                                              self.block_num * self.block_num)
+            assist_ub_tmp1 = self.tik_instance.Tensor(assist_ub.dtype, (max_topk_size,),
+                                                      name="assist_ub_tmp1", scope=tik.scope_ubuf)
+            assist_ub_int32 = self.tik_instance.Tensor("int32", (max_topk_size,),
+                                                       name="assist_ub_int32", scope=tik.scope_ubuf)
+            assist_ub_int32_tmp1 = self.tik_instance.Tensor("int32", (max_topk_size,),
+                                                            name="assist_ub_int32_tmp1", scope=tik.scope_ubuf)
+            assist_ub_int32_tmp2 = self.tik_instance.Tensor("int32", (self.block_num,),
+                                                            name="assist_ub_int32_tmp2", scope=tik.scope_ubuf)
+
+            util_tik_comm_func.tik_func_vector(self.tik_instance, assist_ub_int32, 0, max_topk_size)
+            with self.tik_instance.for_range(0, self.inner_real_dims) as real_idx:
+                util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vdiv",
+                                                    assist_ub_tmp1,
+                                                    assist_ub_copy,
+                                                    inner_dividends_ub_fp16[real_idx * self.block_num],
+                                                    max_topk_size,
+                                                    src1_blk=0, src1_rep=0)
+                util_tik_comm_func.tik_func_vconv(self.tik_instance, assist_ub_int32_tmp1, assist_ub_tmp1,
+                                                  max_topk_size, mode="floor")
+                util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vmul",
+                                                    assist_ub_int32_tmp1,
+                                                    assist_ub_int32_tmp1,
+                                                    inner_dividends_ub_int[real_idx * self.block_num],
+                                                    max_topk_size,
+                                                    src1_blk=0, src1_rep=0)
+                util_tik_comm_func.tik_func_vconv(self.tik_instance, assist_ub_tmp1, assist_ub_int32_tmp1,
+                                                  max_topk_size)
+                with self.tik_instance.if_scope(self.inner_axis[real_idx] == 1):
+                    util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vmul",
+                                                        assist_ub_int32_tmp2,
+                                                        inner_shape_ub_int[real_idx * self.block_num],
+                                                        inner_dividends_ub_int[real_idx * self.block_num],
+                                                        self.block_num)
+                    util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vsub",
+                                                        assist_ub_int32_tmp1,
+                                                        assist_ub_int32_tmp2,
+                                                        assist_ub_int32_tmp1,
+                                                        max_topk_size, src0_blk=0, src0_rep=0)
+                util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vsub",
+                                                    assist_ub_copy,
+                                                    assist_ub_copy,
+                                                    assist_ub_tmp1,
+                                                    max_topk_size)
+                util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vadd",
+                                                    assist_ub_int32,
+                                                    assist_ub_int32,
+                                                    assist_ub_int32_tmp1,
+                                                    max_topk_size)
+            util_tik_comm_func.tik_func_vector(self.tik_instance, assist_ub_int32_tmp2, max_topk_size, self.block_num)
+            util_tik_comm_func.tik_func_vcomple(self.tik_instance, "vsub",
+                                                assist_ub_int32,
+                                                assist_ub_int32_tmp2,
+                                                assist_ub_int32,
+                                                max_topk_size, src0_blk=0, src0_rep=0)
+            util_tik_comm_func.tik_func_vconv(self.tik_instance, assist_ub, assist_ub_int32,
+                                              max_topk_size)
+
+    def reverse_with_topk(self, max_topk_size=1024, align_num=16):
+        """
+        reverse_with_topk
+        use topi to do reverse
+        ex:
+            input = [[1,2,3,4,5,6],[11,12,13,14,15,16]] axis = -1
+            output = [[6,5,4,3,2,1],[16,15,14,13,12,11]]
+
+            process as follows:
+               gen assist score ub  [7,8,9,10,11,12,1,2,3,4,5,6]
+               topk input with score ub will get the output
+        """
+        assist_ub = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size,),
+                                             name="assist_ub", scope=tik.scope_ubuf)
+        assist_ub_tail = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size,),
+                                                  name="assist_ub_tail", scope=tik.scope_ubuf)
+        util_tik_comm_func.tik_func_vector(self.tik_instance, assist_ub, -1.0, max_topk_size)
+        util_tik_comm_func.tik_func_vector(self.tik_instance, assist_ub_tail, -1.0, max_topk_size)
+        # split num in inner loop
+        inner_first_dim_cut_num = self.tik_instance.Scalar("int64", name="inner_first_dim_cut_num")
+        inner_first_dim_cut_num.set_as(max_topk_size // self.inner_dividends[0])
+        inner_first_dim_cut_num.set_as(inner_first_dim_cut_num // align_num * align_num)
+        self.tik_instance.scalar_min(inner_first_dim_cut_num, inner_first_dim_cut_num, self.inner_loop[0])
+        # gen assist data
+        with self.tik_instance.new_stmt_scope():
+            assist_ub_tmp = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size,),
+                                                     name="assist_ub_tmp", scope=tik.scope_ubuf)
+            self.gen_assist_data(assist_ub_tmp, max_topk_size=max_topk_size)
+            one_topk_num = inner_first_dim_cut_num * self.inner_dividends[0]
+            with self.tik_instance.if_scope(one_topk_num >= self.vector_num):
+                self.tik_instance.vmuls(self.vector_num, assist_ub, assist_ub_tmp, 1.0,
+                                        one_topk_num // self.vector_num,
+                                        1, 1, 8, 8)
+            with self.tik_instance.if_scope(one_topk_num % self.vector_num != 0):
+                ub_offset = (one_topk_num // self.vector_num) * self.vector_num
+                self.tik_instance.vmuls(one_topk_num % self.vector_num,
+                                        assist_ub[ub_offset], assist_ub_tmp[ub_offset], 1.0,
+                                        1,
+                                        1, 1, 8, 8)
+
+        inner_first_dim_cut_last_num = self.tik_instance.Scalar("int64", name="inner_first_dim_cut_last_num")
+        inner_first_dim_cut_last_num.set_as(
+            ceil_div(self.inner_loop[0] % inner_first_dim_cut_num, align_num) * align_num)
+        inner_first_dim_cut_last_offset = self.tik_instance.Scalar("int64", name="inner_first_dim_cut_last_offset")
+        inner_first_dim_cut_last_offset.set_as(self.inner_loop[0] - inner_first_dim_cut_last_num)
+        # gen tail assist data
+        one_topk_num = inner_first_dim_cut_last_num * self.inner_dividends[0]
+        with self.tik_instance.if_scope(one_topk_num >= self.vector_num):
+            self.tik_instance.vmuls(self.vector_num, assist_ub_tail, assist_ub, 1.0,
+                                    one_topk_num // self.vector_num,
+                                    1, 1, 8, 8)
+        with self.tik_instance.if_scope(one_topk_num % self.vector_num != 0):
+            ub_offset = (one_topk_num // self.vector_num) * self.vector_num
+            self.tik_instance.vmuls(one_topk_num % self.vector_num,
+                                    assist_ub_tail[ub_offset], assist_ub[ub_offset], 1.0,
+                                    1,
+                                    1, 1, 8, 8)
+
+        inner_first_dim_cut_full_size = self.inner_loop[0] // inner_first_dim_cut_num
+
+        inner_first_dim_cut_full_floor_loop = inner_first_dim_cut_full_size // 4
+        inner_first_dim_cut_full_ceil_loop = ceil_div(inner_first_dim_cut_full_size, 4)
+        inner_first_dim_cut_full_ceil_tail_size = inner_first_dim_cut_full_size % 4
+
+        def _run_inner_reverse(in_offset, out_offset, reverse_num, do_inner_first_num, ub_list):
+            input_ub, topk_ub_1, output_ub, assist_score_ub = ub_list
+            # step 1 copy 4 line in ub
+            with self.tik_instance.if_scope(self.inner_axis[0] == 0):
+                with self.tik_instance.new_stmt_scope(disable_sync=True):
+                    with self.tik_instance.for_range(0, do_inner_first_num) as _copy_idx:
+                        burst_len = (reverse_num + self.block_num - 1) // self.block_num
+                        src_offset = in_offset + _copy_idx * reverse_num
+                        self.tik_instance.data_move(input_ub[_copy_idx * max_topk_size],
+                                                    self.input_data[src_offset],
+                                                    0, 1, burst_len, 0, 0)
+            with self.tik_instance.if_scope(self.inner_axis[0] == 1):
+                with self.tik_instance.new_stmt_scope(disable_sync=True):
+                    with self.tik_instance.for_range(0, do_inner_first_num) as _copy_idx:
+                        burst_len = (reverse_num + self.block_num - 1) // self.block_num
+                        src_offset = in_offset + _copy_idx * reverse_num
+                        input_ub_offset = do_inner_first_num - 1 - _copy_idx
+                        self.tik_instance.data_move(input_ub[input_ub_offset * max_topk_size],
+                                                    self.input_data[src_offset],
+                                                    0, 1, burst_len, 0, 0)
+            # step 2 trans to proposal format
+            for i in range(4):
+                self.tik_instance.vconcat(topk_ub_1, input_ub[max_topk_size * i:], max_topk_size // 16, i)
+            self.tik_instance.vconcat(topk_ub_1, assist_score_ub, max_topk_size // 16, 4)
+            # step 3 sort proposal ub to a ordered queue
+            sort_within_ub(self.tik_instance, topk_ub_1, ceil_div(max_topk_size, 16) * 16)
+            # step 4 extract the proposal ub to 4 ub
+            for i in range(4):
+                self.tik_instance.vextract(output_ub[max_topk_size * i:], topk_ub_1, max_topk_size // 16, i)
+            # step 5 copy output to gm
+            with self.tik_instance.if_scope(reverse_num % self.block_num == 0):
+                with self.tik_instance.new_stmt_scope(disable_sync=True):
+                    with self.tik_instance.for_range(0, do_inner_first_num) as _copy_idx:
+                        burst_len = reverse_num // self.block_num
+                        gm_out_offset = out_offset + _copy_idx * reverse_num
+                        self.tik_instance.data_move(self.output_data[gm_out_offset],
+                                                    output_ub[_copy_idx * max_topk_size],
+                                                    0, 1, burst_len, 0, 0)
+            with self.tik_instance.if_scope(reverse_num % self.block_num != 0):
+                with self.tik_instance.for_range(0, do_inner_first_num) as _copy_idx:
+                    burst_len = reverse_num // self.block_num
+                    gm_out_offset = out_offset + _copy_idx * reverse_num
+                    self.tik_instance.data_move(self.output_data[gm_out_offset],
+                                                output_ub[_copy_idx * max_topk_size],
+                                                0, 1, burst_len, 0, 0)
+                    tail_block_num = self.tik_instance.Tensor(self.input_data.dtype, (self.block_num,),
+                                                              name="tail_block_num", scope=tik.scope_ubuf)
+                    with self.tik_instance.for_range(0, self.block_num) as block_idx:
+                        tail_block_num[block_idx].set_as(
+                            output_ub[_copy_idx * max_topk_size + reverse_num - self.block_num + block_idx])
+                    self.tik_instance.data_move(self.output_data[gm_out_offset + reverse_num - self.block_num],
+                                                tail_block_num,
+                                                0, 1, 1, 0, 0)
+
+        # outer loop
+        with self.tik_instance.for_range(self.core_outer_start,
+                                         self.core_outer_num + self.core_outer_start) as outer_idx:
+            outer_current_index = self.tik_instance.Scalar(dtype="int64", name="current_index")
+            outer_move_out_index = self.tik_instance.Scalar(dtype="int64", name="outer_move_out_index")
+            self.axis_compute_with_scalar_array(
+                outer_idx, outer_current_index, outer_move_out_index, self.outer_shape, self.outer_axis,
+                self.outer_dividends, self.outer_real_dims)
+            # inner first loop
+            with self.tik_instance.for_range(0, inner_first_dim_cut_full_ceil_loop) as inner_first_dim_idx:
+                inner_first_in_idx = self.tik_instance.Scalar(dtype="int64", name="inner_first_in_idx")
+                inner_first_num = self.tik_instance.Scalar(dtype="int64", name="inner_first_num", init_value=4)
+                inner_first_in_idx.set_as(inner_first_dim_idx * inner_first_dim_cut_num * 4)
+                inner_first_out_index = self.tik_instance.Scalar(dtype="int64", name="inner_first_out_index")
+                inner_first_out_index.set_as(inner_first_in_idx)
+                with self.tik_instance.if_scope(inner_first_dim_cut_full_floor_loop == inner_first_dim_idx):
+                    inner_first_num.set_as(inner_first_dim_cut_full_ceil_tail_size)
+                with self.tik_instance.if_scope(self.inner_axis[0] == 1):
+                    inner_first_out_index.set_as(
+                        self.inner_loop[0] - (inner_first_in_idx + inner_first_num * inner_first_dim_cut_num))
+                    self.tik_instance.scalar_max(inner_first_out_index, inner_first_out_index, 0)
+                input_offset = \
+                    outer_idx * self.inner_total_num_list[-1] + inner_first_in_idx * self.inner_dividends[0]
+                output_offset = \
+                    outer_move_out_index * self.inner_total_num_list[-1] \
+                    + inner_first_out_index * self.inner_dividends[0]
+                process_num = inner_first_dim_cut_num * self.inner_dividends[0]
+                input_ub_ping = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size * 4,),
+                                                         name="input_ub_ping", scope=tik.scope_ubuf)
+                topk_ub_1_ping = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size * 8,),
+                                                          name="topk_ub_1_ping", scope=tik.scope_ubuf)
+                output_ub_ping = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size * 4,),
+                                                          name="output_ub_ping", scope=tik.scope_ubuf)
+                ping_ub_list = [input_ub_ping, topk_ub_1_ping, output_ub_ping, assist_ub]
+                _run_inner_reverse(input_offset, output_offset, process_num, inner_first_num, ping_ub_list)
+
+            with self.tik_instance.if_scope(inner_first_dim_cut_last_num != 0):
+                inner_first_in_idx = inner_first_dim_cut_last_offset
+                inner_first_out_index = self.tik_instance.Scalar(dtype="int64", name="inner_first_out_index")
+                inner_first_out_index.set_as(inner_first_in_idx)
+                with self.tik_instance.if_scope(self.inner_axis[0] == 1):
+                    inner_first_out_index.set_as(0)
+                input_offset = \
+                    outer_idx * self.inner_total_num_list[-1] + inner_first_in_idx * self.inner_dividends[0]
+                output_offset = \
+                    outer_move_out_index * self.inner_total_num_list[-1] \
+                    + inner_first_out_index * self.inner_dividends[0]
+                process_num = inner_first_dim_cut_last_num * self.inner_dividends[0]
+                input_ub_ping = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size * 4,),
+                                                         name="input_ub_ping", scope=tik.scope_ubuf)
+                topk_ub_1_ping = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size * 8,),
+                                                          name="topk_ub_1_ping", scope=tik.scope_ubuf)
+                output_ub_ping = self.tik_instance.Tensor(self.input_data.dtype, (max_topk_size * 4,),
+                                                          name="output_ub_ping", scope=tik.scope_ubuf)
+                ping_ub_list = [input_ub_ping, topk_ub_1_ping, output_ub_ping, assist_ub_tail]
+                _run_inner_reverse(input_offset, output_offset, process_num, 1, ping_ub_list)
+
+    def tiling_topk_compute(self):
+        """
+        tiling_topk_compute
+        """
+        align_num = self.tik_instance.Scalar(dtype="int32", name="align_num")
+        with self.tik_instance.for_range(0, self.block_num) as _idx:
+            align_idx = self.block_num - _idx
+            with self.tik_instance.if_scope((self.inner_dividends[0] * align_idx) % self.block_num == 0):
+                align_num.set_as(align_idx)
+
+        with self.tik_instance.if_scope(self.inner_dividends[0] * align_num > 1024):
+            with self.tik_instance.if_scope(align_num > (2048 // self.inner_dividends[0])):
+                align_num.set_as(2048 // self.inner_dividends[0])
+            with self.tik_instance.if_scope(align_num > self.inner_loop[0]):
+                align_num.set_as(self.inner_loop[0])
+            with self.tik_instance.new_stmt_scope():
+                self.reverse_with_topk(max_topk_size=2048, align_num=align_num)
+        with self.tik_instance.if_scope(self.inner_dividends[0] * align_num <= 1024):
+            with self.tik_instance.if_scope(align_num > (1024 // self.inner_dividends[0])):
+                align_num.set_as(1024 // self.inner_dividends[0])
+            with self.tik_instance.if_scope(align_num > self.inner_loop[0]):
+                align_num.set_as(self.inner_loop[0])
+            with self.tik_instance.new_stmt_scope():
+                self.reverse_with_topk(max_topk_size=1024, align_num=align_num)
 
 
 # pylint: disable=unused-argument,invalid-name

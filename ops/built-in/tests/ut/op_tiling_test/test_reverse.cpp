@@ -37,7 +37,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_0) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "2}}";
 
   std::vector<int64_t> input{200, 200, 200, 4};
@@ -78,7 +79,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_0) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 1 1 1 1 1250 200 8 0 0 0 0 0 1 0 1 1 1 1 1 1 32 0 0 0 0 0 0 0 0 19 1250 3 1 ");
+            "11 1 1 1 1 1250 200 8 0 0 0 0 0 1 0 1 1 1 1 1 1 32 0 0 0 0 0 0 0 0 19 1250 3 1 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_1) {
@@ -88,7 +89,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_1) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "2}}";
 
   std::vector<int64_t> input{200, 200, 200, 200};
@@ -139,7 +141,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_2) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "2}}";
 
   std::vector<int64_t> input{200, 200, 200, 23};
@@ -190,7 +193,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_3) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "2}}";
 
   std::vector<int64_t> input{200, 200, 200, 6400};
@@ -241,7 +245,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_4) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "1}}";
 
   std::vector<int64_t> input{64, 64, 64, 4};
@@ -282,7 +287,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_4) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "4 1 1 1 1 128 64 4 0 0 0 0 1 0 1 1 1 1 1 1 1 32 0 0 0 0 0 0 1 1 60 128 3 1 ");
+            "11 1 1 1 1 128 64 4 0 0 0 0 1 0 1 1 1 1 1 1 1 32 0 0 0 0 0 0 1 1 60 128 3 1 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_5) {
@@ -292,7 +297,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_5) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "1}}";
 
   std::vector<int64_t> input{64, 64, 64, 129};
@@ -343,7 +349,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_6) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "1}}";
 
   std::vector<int64_t> input{64, 64, 64, 6400};
@@ -394,7 +401,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "1}}";
 
   std::vector<int64_t> input{2};
@@ -434,8 +442,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim) {
   op_compile_info.key = "01234561";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
-            "4 1 1 1 1 1 1 2 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 2 2 1 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1 1 1 2 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 2 2 1 0 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_1) {
@@ -445,7 +452,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_1) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "1}}";
 
   std::vector<int64_t> input{1};
@@ -485,8 +493,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_1) {
   op_compile_info.key = "11234561";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
 }
 TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_scalar) {
   using namespace optiling;
@@ -495,7 +502,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_scalar) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "1}}";
 
   std::vector<int64_t> input;
@@ -535,8 +543,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_scalar) {
   op_compile_info.key = "111234561";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
 }
 TEST_F(ReverseV2Tiling, rReverseV2_test_1) {
   using namespace optiling;
@@ -545,7 +552,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_1) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   std::string compileInfo =
-      "{\"vars\": {\"max_elements\": 61440, \"max_elements_last_large_size\": 512, \"core_num\": 32, \"dtype_rate\": "
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
       "1}}";
 
   std::vector<int64_t> input{1, 1, 31, 36};
@@ -585,6 +593,57 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_1) {
   op_compile_info.key = "111234561";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
-            "4 1 1 1 1 31 1 36 0 0 0 0 1 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 31 31 3 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1 31 1 36 0 0 0 0 1 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 31 31 3 0 ");
 }
+
+TEST_F(ReverseV2Tiling, rReverseV2_test_big_first) {
+  using namespace optiling;
+  std::string op_name = "ReverseV2";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo =
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
+      "2}}";
+
+  std::vector<int64_t> input{1, 79, 79, 3};
+  std::vector<int64_t> reverse_axes_shape{1};
+  std::vector<int32_t> reverse_axes_value{3};
+  std::vector<int64_t> output{1, 79, 79, 3};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float32";
+  TeOpTensor tensor_reverse_axes;
+  tensor_reverse_axes.shape = reverse_axes_shape;
+  tensor_reverse_axes.dtype = "int32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_reverse_axes_arg;
+  tensor_reverse_axes_arg.tensor.push_back(tensor_reverse_axes);
+  tensor_reverse_axes_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.const_inputs["axis"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
+      (const uint8_t*)reverse_axes_value.data(), reverse_axes_value.size() * 4, ge::Tensor());
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.inputs.push_back(tensor_reverse_axes_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "11123456333";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "11 1 1 1 1 79 3 2 0 0 0 0 0 1 0 1 1 1 1 1 1 79 0 0 0 0 0 0 0 0 79 79 3 1 ");
+}
+
