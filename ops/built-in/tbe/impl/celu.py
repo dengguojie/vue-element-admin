@@ -41,23 +41,33 @@ def celu_compute(x, y, a1, a2, a3, kernel_name="celu"):
 
     """
 
-    data = x
-    dtype = data.dtype
+    dtype = x.dtype
 
-    rec_a2 = tvm.const(-1/a2, "float32")
-    negative_x = tbe.vmuls(data, tvm.const(-1, "float32"))
-    vmax_x = tbe.vmaxs(negative_x, tvm.const(0,"float32"))
+    vexp_support = False
+    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+        vexp_support = True
+
+    if dtype.lower() == "float16" and vexp_support:
+        x = tbe.cast_to(x, "float32")
+        compute_dtype = "float32"
+    else:
+        compute_dtype = dtype
+
+    rec_a2 = tvm.const(-1/a2, compute_dtype)
+    negative_x = tbe.vmuls(x, tvm.const(-1, compute_dtype))
+    vmax_x = tbe.vmaxs(negative_x, tvm.const(0, compute_dtype))
     div_a2x = tbe.vmuls(vmax_x, rec_a2)
     exp_a2x = tbe.vexp(div_a2x)
-    neg_part = tbe.vadds(exp_a2x, tvm.const(-1,"float32"))
+    neg_part = tbe.vadds(exp_a2x, tvm.const(-1, compute_dtype))
     
-    pos_part = tbe.vmaxs(x, tvm.const(0,"float32"))
+    pos_part = tbe.vmaxs(x, tvm.const(0, compute_dtype))
 
-    mul_a1 = tbe.vmuls(neg_part, tvm.const(a1, "float32"))
-    mul_a3 = tbe.vmuls(pos_part, tvm.const(a3, "float32"))
+    mul_a1 = tbe.vmuls(neg_part, tvm.const(a1, compute_dtype))
+    mul_a3 = tbe.vmuls(pos_part, tvm.const(a3, compute_dtype))
 
     res = tbe.vadd(mul_a1,mul_a3)
-    res = tbe.cast_to(res, dtype)
+    if dtype.lower() == "float16" and vexp_support:
+        res = tbe.cast_to(res, dtype)
 
     return res
 
