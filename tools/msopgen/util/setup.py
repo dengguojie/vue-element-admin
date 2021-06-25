@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding=utf-8
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +40,8 @@ def read_txt(file_name):
     """
     read from file
     """
-    return open(file_name).read()
+    with open(file_name) as file_object:
+        return file_object.read()
 
 
 setup(

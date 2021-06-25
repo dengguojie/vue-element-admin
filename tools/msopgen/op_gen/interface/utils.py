@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 # coding=utf-8
 """
 Function:
@@ -412,8 +412,7 @@ def copy_template(src, dst, is_skip_exist=False):
                 if os.path.isdir(dstname) and len(os.listdir(dstname)) != 0:
                     if is_skip_exist:
                         continue
-                    print_error_log(
-                        dstname + " is not empty,please check.")
+                    print_error_log("{} is not empty,please check.".format(dstname))
                     sys.exit(MS_OP_GEN_INVALID_PATH_ERROR)
                 copytree(srcname, dstname)
             else:
@@ -534,7 +533,7 @@ def fix_name_lower_with_under(name):
                 # If a capital letter is surrounded by lowercase letters, convert to "_" + lowercase letter
                 # In addition, all are converted to lowercase letters
                 # eg: "Abc2DEf"  ->   "abc2d_ef"
-                fix_name += "_" + name_str.lower()
+                fix_name += "_{}".format(name_str.lower())
             else:
                 fix_name += name_str.lower()
         else:

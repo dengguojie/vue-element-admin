@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 # coding=utf-8
 """
 Function:
@@ -16,6 +16,7 @@ except (ImportError,) as import_error:
         import_error))
 
 
+# pylint: disable=too-many-instance-attributes
 class ArgParser:
     """
     CLass for parsing input arguments

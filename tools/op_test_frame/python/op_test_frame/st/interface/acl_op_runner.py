@@ -364,7 +364,7 @@ def get_result_time(csv_file, op_name_list, csv_name_info):
     time_result = []
     with open(csv_file, 'r') as csv_file_obj:
         try:
-            import csv
+            import csv  # pylint: disable=import-outside-toplevel
         except import_error:
             utils.print_error_log(
                 "[acl_op_runner] Unable to import csv, please check.")
