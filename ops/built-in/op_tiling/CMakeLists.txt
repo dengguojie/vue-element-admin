@@ -63,6 +63,7 @@ set(_optiling_files
   gather.cc
   gather_nd.cc
   gather_v2.cc
+  gather_elements.cc
   ger.cc
   layer_norm_x_backprop.cc
   lock.cc

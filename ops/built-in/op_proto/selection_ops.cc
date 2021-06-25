@@ -1179,12 +1179,25 @@ COMMON_INFER_FUNC_REG(Gather, GatherInferShape);
 
 // --------------------------GatherElements-------------------------
 IMPLEMT_COMMON_INFERFUNC(GatherElementsInferShape) {
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_info == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "op_info should not be nullptr");
+    return GRAPH_FAILED;
+  }
+  auto outputTensordesc = op_info->MutableOutputDesc("y");
+  auto x_desc = op_info->MutableInputDesc("x");
+  auto indices_desc = op_info->MutableInputDesc("index");
 
-    tensordesc_output.SetShape(op.GetInputDesc("index").GetShape());
-    tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-    (void)op.UpdateOutputDesc("y", tensordesc_output);
-    return GRAPH_SUCCESS;
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  DataType x_dtype = x_desc->GetDataType();
+  vector<int64_t> indices_shape = indices_desc->MutableShape().GetDims();
+  indices_desc->GetShapeRange(out_range);
+  
+  outputTensordesc->SetShape(GeShape(indices_shape));
+  outputTensordesc->SetShapeRange(out_range);
+  outputTensordesc->SetDataType(x_dtype);
+  return GRAPH_SUCCESS;
+  
 }
 
 COMMON_INFER_FUNC_REG(GatherElements, GatherElementsInferShape);

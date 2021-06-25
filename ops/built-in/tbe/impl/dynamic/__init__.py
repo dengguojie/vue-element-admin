@@ -46,6 +46,7 @@ from .gather_nd import gather_nd
 from .apply_adagrad_da_d import apply_adagrad_da_d
 from .gather import gather
 from .gather_v2 import gather_v2
+from .gather_elements import gather_elements
 from .max_pool_grad import max_pool_grad
 from .kl_div import kl_div
 from .add_mat_mat_elements import add_mat_mat_elements
