@@ -72,8 +72,9 @@ def col2im_compute(
             )
             dup_rpt = (output_w * output_c0) // mask
             dup_rmd = (output_w * output_c0) % mask
-
-            tik_instance.vec_dup(mask, zeors_ub, 0, dup_rpt, constant.REPEAT_STRIDE_EIGHT)
+            
+            if (dup_rpt):
+                tik_instance.vec_dup(mask, zeors_ub, 0, dup_rpt, constant.REPEAT_STRIDE_EIGHT)
             if (dup_rmd):
                 tik_instance.vec_dup(dup_rmd, zeors_ub[dup_rpt * mask], 0, constant.REPEAT_TIME_ONCE, constant.REPEAT_STRIDE_EIGHT)
             
@@ -116,11 +117,12 @@ def col2im_compute(
                 
                 kernel_w_offset = width * constant.SIZE_SIXTEEN
 
-                tik_instance.vadd(
-                    mask, output_ub[kernel_w_offset], output_ub[kernel_w_offset], input_ub,
-                    add_rpt, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE,
-                    constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT
-                )
+                if (add_rpt):
+                    tik_instance.vadd(
+                        mask, output_ub[kernel_w_offset], output_ub[kernel_w_offset], input_ub,
+                        add_rpt, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE,
+                        constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT
+                    )
 
                 if (add_rmd):
                     add_rpt_offset = add_rpt * mask
