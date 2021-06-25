@@ -109,7 +109,7 @@ def _append_content_to_file(content, file_path):
         utils.print_error_log("Unable to write file(%s): %s." % (file_path,
                                                                  str(err)))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-    utils.print_info_log("Successfully appended content to " + file_path)
+    utils.print_info_log("Successfully appended content to  %s." % file_path)
 
 
 def _map_to_acl_format_enum(format_list):
@@ -122,8 +122,8 @@ def _map_to_acl_format_enum(format_list):
     acl_format_list = []
     for acl_format in format_list:
         acl_format_list.append(
-            "(aclFormat)" + str(
-                GC.instance().white_lists.format_map.get(acl_format)))
+            "(aclFormat){}".format(str(
+                GC.instance().white_lists.format_map.get(acl_format))))
     result_str += ", ".join(acl_format_list)
     return result_str
 
@@ -159,13 +159,13 @@ def _get_input_desc(testcase_struct):
             input_data_path = ""
             input_file_path_list.append(input_data_path)
             continue
-        input_data_name = testcase_struct['case_name'] + '_input_' + str(
-            input_num)
+        input_data_name = "{}_input_{}".format(testcase_struct['case_name'],
+                                               str(input_num))
         input_data_path = os.path.join("test_data", "data", input_data_name)
         input_file_path_list.append(input_data_path)
         input_num = input_num + 1
     input_file_path = str(
-        ', '.join('"' + item + '"' for item in input_file_path_list))
+        ', '.join('"{}"'.format(item) for item in input_file_path_list))
     return input_shape_data, input_data_type, input_format, input_file_path
 
 
@@ -188,8 +188,8 @@ def _get_output_desc(testcase_struct):
     output_file_path_list = []
     output_num = 0
     for _ in testcase_struct.get('output_desc'):
-        output_data_name = testcase_struct.get('case_name') + '_output_' + str(
-            output_num)
+        output_data_name = "{}_output_{}".format(testcase_struct['case_name'],
+                                                 str(output_num))
         output_data_path = os.path.join("result_files", output_data_name)
         output_file_path_list.append(output_data_path)
         output_num = output_num + 1
@@ -204,9 +204,8 @@ def _replace_dict_list(attr_dic, attr_code_str, attr_index):
                 number_list.append(len(num_list))
             num_str = str(number_list).replace('[', '{') \
                 .replace(']', '}')
-            attr_code_str += "    attr" + str(attr_index) + \
-                             ".listIntNumValues" + \
-                             " = " + num_str + ";\n"
+            attr_code_str += "    attr{}.listIntNumValues = {} ;\n".format(
+                str(attr_index), num_str)
     return attr_code_str
 
 
@@ -215,24 +214,25 @@ def _get_attr_desc(testcase_struct):
     if "attr" in testcase_struct.keys():
         attr_index = 0
         for attr_dic in testcase_struct.get('attr'):
-            attr_code_str = "    OpTestAttr attr" + str(attr_index) \
-                            + " = {" \
-                            + utils.OP_ATTR_TYPE_MAP.get(attr_dic.get('type')) \
-                            + ", \"" + attr_dic.get('name') + "\"};\n"
-            attr_code_str += "    attr" + str(attr_index) + "." \
-                             + utils.ATTR_MEMBER_VAR_MAP.get(
-                attr_dic.get('type')) \
-                             + " = " \
-                             + utils.create_attr_value_str(
-                attr_dic.get('value')) \
-                             + ';\n'
+            attr_code_str = "    OpTestAttr attr{attr_index} = " \
+                            "{{{type}, \"{name}\"}};\n".format(
+                attr_index=str(attr_index),
+                type=utils.OP_ATTR_TYPE_MAP.get(attr_dic.get('type')),
+                name=attr_dic.get('name'))
+            attr_code_str += "    attr{attr_index}.{type} = {value};\n"\
+                .format(
+                attr_index=str(attr_index),
+                type=utils.ATTR_MEMBER_VAR_MAP.get(attr_dic.get('type')),
+                value=utils.create_attr_value_str(attr_dic.get('value')))
+
             # deal with the list_list_int attr
             if attr_dic.get('type') == "list_list_int":
                 if isinstance(attr_dic.get('value'), list):
                     attr_code_str = _replace_dict_list(
                         attr_dic, attr_code_str, attr_index)
-            attr_code_str += "    opTestDesc.opAttrVec.push_back(attr" + \
-                             str(attr_index) + ");\n"
+            attr_code_str += "    opTestDesc.opAttrVec.push_back(" \
+                             "attr{attr_index});\n".format(
+                attr_index=str(attr_index))
             all_attr_code_snippet += attr_code_str
             attr_index = attr_index + 1
     return all_attr_code_snippet
@@ -246,7 +246,7 @@ def _create_exact_testcase_content(testcase_struct, device_id):
     output_shape_data, output_data_type, output_format, output_file_path_list = \
         _get_output_desc(testcase_struct)
     output_file_path = str(
-        ', '.join('"' + item + '"' for item in output_file_path_list))
+        ', '.join('"{}"'.format(item) for item in output_file_path_list))
     # do acl attr code generation
     all_attr_code_snippet = _get_attr_desc(testcase_struct)
 
@@ -280,8 +280,8 @@ def copy_template(src, dst):
         try:
             if os.path.isdir(srcname):
                 if os.path.isdir(dstname) and os.listdir(dstname):
-                    utils.print_error_log(
-                        dstname + " is not empty,please settle it and retry .")
+                    utils.print_error_log("%s is not empty,please settle it "
+                                          "and retry ." % dstname)
                     sys.exit()
                 copytree(srcname, dstname)
             else:
@@ -317,14 +317,12 @@ class AclOpGenerator:
                     os.makedirs(op_name_path, mode=0o750)
                 except OSError as err:
                     utils.print_error_log(
-                        "Failed to create \"" + op_name_path + "\". " + str(
-                            err))
+                        "Failed to create %s. %s" % (op_name_path, str(err)))
                     sys.exit(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
             else:
-                utils.print_error_log(
-                    "Specified output path already has \"" + testcase_list[0][
-                        'op'] +
-                    "\" directory, please delete or move it and retry.")
+                utils.print_error_log("Specified output path already has \"%s\""
+                                      " directory, please delete or move it "
+                                      "and retry." % testcase_list[0]['op'])
             self.output_path = op_name_path
 
     def _copy_entire_template_dir(self):

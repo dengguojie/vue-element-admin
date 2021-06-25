@@ -86,7 +86,6 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
 
-    # pylint: disable=too-many-arguments
     def _check_fuzz_value_valid(self, json_obj, key, support_list, param_type,
                                 fuzz_dict, required=True):
         if required:

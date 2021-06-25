@@ -1,4 +1,4 @@
-# !/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Function:
@@ -147,6 +147,36 @@ def _tf_utils_write_graph(graph_def, dir_name, new_graph_path):
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
 
 
+def _get_node_lists_match_ini_op(i, op_type, node_info, ops):
+    nodes_list = list()
+    op_infos = {"op_type": op_type, "layer": node_info.name,
+                "input_dtype": [],
+                "output_dtype": [], "input_shape": [],
+                "output_shape": [], "attr": []}
+    # input_shape
+    input_shape = _tensor_shape_list(ops[i]['input_shape'])
+    op_infos["input_shape"] = input_shape
+    # input_dtype
+    input_dtype = [_map_tf_input_output_dtype(x.name) for x in
+                   ops[i]['input_dtype']]
+    op_infos["input_dtype"] = input_dtype
+    # output_shape
+    output_shape = _tensor_shape_list(ops[i]['output_shape'])
+    op_infos["output_shape"] = output_shape
+    # output_dtype
+    output_dtype = [_map_tf_input_output_dtype(x.name) for x in
+                    ops[i]['output_dtype']]
+    op_infos["output_dtype"] = output_dtype
+
+    # attr
+    for attr_key in node_info.attr.keys():
+        value_data = node_info.attr[attr_key]
+        attr = _parse_attr(attr_key, value_data)
+        op_infos["attr"].append(attr)
+    nodes_list.append(op_infos)
+    return nodes_list
+
+
 def _get_nodes_list(model_path, ini_op_type):
     nodes_list = list()
     graph_def = _tf_utils_load_graph_def(os.path.realpath(model_path))
@@ -166,31 +196,8 @@ def _get_nodes_list(model_path, ini_op_type):
     for i, node_info in enumerate(graph_def.node):
         op_type = node_info.op
         if op_type == ini_op_type:
-            op_infos = {"op_type": op_type, "layer": node_info.name,
-                        "input_dtype": [],
-                        "output_dtype": [], "input_shape": [],
-                        "output_shape": [], "attr": []}
-            # input_shape
-            input_shape = _tensor_shape_list(ops[i]['input_shape'])
-            op_infos["input_shape"] = input_shape
-            # input_dtype
-            input_dtype = [_map_tf_input_output_dtype(x.name) for x in
-                           ops[i]['input_dtype']]
-            op_infos["input_dtype"] = input_dtype
-            # output_shape
-            output_shape = _tensor_shape_list(ops[i]['output_shape'])
-            op_infos["output_shape"] = output_shape
-            # output_dtype
-            output_dtype = [_map_tf_input_output_dtype(x.name) for x in
-                            ops[i]['output_dtype']]
-            op_infos["output_dtype"] = output_dtype
-
-            # attr
-            for attr_key in node_info.attr.keys():
-                value_data = node_info.attr[attr_key]
-                attr = _parse_attr(attr_key, value_data)
-                op_infos["attr"].append(attr)
-            nodes_list.append(op_infos)
+            nodes_list = _get_node_lists_match_ini_op(
+                i, op_type, node_info, ops)
     return nodes_list
 
 
@@ -213,9 +220,8 @@ class TFModelParse:
     def _change_shape_fn(self, file_path, new_shape_map):
         real_path = os.path.realpath(file_path)
         graph_def = _tf_utils_load_graph_def(real_path)
-        nodes = graph_def.node
         node_shape = ""
-        for node in nodes:
+        for node in graph_def.node:
             if node.op == "Placeholder" and node.name in new_shape_map \
                     and 'new_shape' in new_shape_map[node.name] \
                     and new_shape_map[node.name]['new_shape']:
@@ -237,9 +243,8 @@ class TFModelParse:
         prefix, _ = os.path.splitext(tmp_filename)
         first_new_shape = '_'.join(
             str(i) for i in list(new_shape_map.values())[0]['new_shape'])
-        new_graph_name = prefix + "_%s.pb" % first_new_shape
         new_graph_path = os.path.realpath(
-            os.path.join(self.output_path, new_graph_name))
+            os.path.join(self.output_path, prefix + "_%s.pb" % first_new_shape))
         _tf_utils_write_graph(graph_def, dir_name, new_graph_path)
         return node_shape, new_graph_path
 
@@ -281,7 +286,7 @@ class TFModelParse:
                     utils.print_info_log("Skip change shape.")
                     value["new_shape"] = node_shape
                     break
-                elif self._check_new_shape_and_notice(new_placeholder_shape):
+                if self._check_new_shape_and_notice(new_placeholder_shape):
                     value["new_shape"] = new_placeholder_shape.split(',')
                     result = True
                     break

@@ -1,3 +1,4 @@
+#!/bin/bash
 python_cmd=$1
 whl_path=$2
 

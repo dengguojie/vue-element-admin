@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Function:
+ PytorchModelParse class. This class mainly get case info from onnx model.
+Copyright Information:
+Huawei Technologies Co., Ltd. All Rights Reserved © 2020
+Change History: 2020-07-11 file Created
+"""
 import google
 
 try:
@@ -206,14 +215,33 @@ def _get_input_shape_from_user(new_shape_map):
                 utils.print_info_log("Skip change shape.")
                 value["new_shape"] = node_shape
                 break
-            elif check_shape_and_notice(new_input_shape):
+            if check_shape_and_notice(new_input_shape):
                 value["new_shape"] = new_input_shape.split(',')
                 result = True
                 break
-            else:
-                utils.print_warn_log(
-                    "The input shape above is invalid, please retype!")
+
+            utils.print_warn_log(
+                "The input shape above is invalid, please retype!")
     return result
+
+
+def _get_op_attr(node):
+    op_attr = []
+    for attr in node.attribute:
+        attr_info = {
+            'name': attr.name,
+            'type': ONNX_DTYPE_MAP.get(attr.type)
+        }
+        try:
+            attr_value = helper.get_attribute_value(attr)
+        except ValueError:
+            utils.print_warn_log("Unsupported ONNX attribute: {}, cannot "
+                                 "parse the attribute value".format(attr))
+            attr_value = []
+        finally:
+            attr_info['value'] = attr_value
+        op_attr.append(attr_info)
+    return op_attr
 
 
 def _get_node_list(model_path, ini_op_type, input_nums=None):
@@ -241,23 +269,8 @@ def _get_node_list(model_path, ini_op_type, input_nums=None):
         output_dtype, output_shape = _get_tensor_shape(node.output, all_tensors)
         op_info['output_dtype'] = output_dtype
         op_info['output_shape'] = output_shape
-
-        op_attr = []
-        for attr in node.attribute:
-            attr_info = {
-                'name': attr.name,
-                'type': ONNX_DTYPE_MAP.get(attr.type)
-            }
-            try:
-                attr_value = helper.get_attribute_value(attr)
-            except ValueError:
-                utils.print_warn_log("Unsupported ONNX attribute: {}, "
-                                     "cannot parse the attribute value".format(attr))
-                attr_value = []
-            finally:
-                attr_info['value'] = attr_value
-            op_attr.append(attr_info)
-        op_info['attr'] = op_attr
+        # get attr
+        op_info['attr'] = _get_op_attr(node)
         node_list.append(op_info)
     return node_list
 
@@ -315,10 +328,8 @@ class PyTorchModelParse:
         json_path = os.path.join(self.output_path, TMP_SHAPE_FILE)
         utils.write_json_file(json_path, input_shape_map)
 
-    def _change_shape_fn(self, new_shape_map):
-        real_path = os.path.realpath(self.model_path)
-        onnx_model = _load_model(real_path)
-        onnx.checker.check_model(onnx_model)
+    @staticmethod
+    def _insert_new_shape(onnx_model, new_shape_map):
         graph = onnx_model.graph
         op_info = []
         for op_name, op_info in new_shape_map.items():
@@ -326,8 +337,9 @@ class PyTorchModelParse:
                 if input_tensor.name != op_name:
                     continue
                 if not op_info.get("new_shape"):
-                    utils.print_warn_log("The input layer {} new shape is null, "
-                                         "please check the new shape.".format(op_name))
+                    utils.print_warn_log("The input layer {} new shape is "
+                                         "null, please check the new shape."
+                                         .format(op_name))
                     continue
                 try:
                     new_input_tensor = onnx.helper.make_tensor_value_info(
@@ -342,6 +354,13 @@ class PyTorchModelParse:
                         utils.OP_TEST_GEN_INVALID_DATA_ERROR)
                 graph.input.remove(input_tensor)
                 graph.input.insert(0, new_input_tensor)
+        return op_info
+
+    def _change_shape_fn(self, new_shape_map):
+        real_path = os.path.realpath(self.model_path)
+        onnx_model = _load_model(real_path)
+        onnx.checker.check_model(onnx_model)
+        op_info = self._insert_new_shape(onnx_model, new_shape_map)
 
         try:
             onnx.checker.check_model(onnx_model)
@@ -395,8 +414,7 @@ class PyTorchModelParse:
         return nodes_list
 
 
-# pylint: disable=unused-argument
-def get_shape(args, op_type):
+def get_shape(args):
     """
     get shape
     """
@@ -404,7 +422,7 @@ def get_shape(args, op_type):
     return pt_parser.get_input_shape()
 
 
-def change_shape(args, op_type):
+def change_shape(args):
     """
     change shape
     """

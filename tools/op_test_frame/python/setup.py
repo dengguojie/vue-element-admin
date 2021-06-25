@@ -19,7 +19,8 @@ from setuptools import setup
 from setuptools import find_packages
 from setuptools.dist import Distribution
 
-os.environ['SOURCE_DATE_EPOCH'] = str(int(os.path.getctime(os.path.realpath(__file__))))
+os.environ['SOURCE_DATE_EPOCH'] = str(
+    int(os.path.getctime(os.path.realpath(__file__))))
 
 __version__ = "0.1"
 
@@ -58,7 +59,11 @@ def read_txt(file_name):
     """
     read_txt
     """
-    return open(file_name).read()
+    with open(file_name) as file_obj:
+        file_txt = file_obj.read()
+
+    return file_txt
+
 
 setup(
     name="op_test_frame",
@@ -72,7 +77,7 @@ setup(
     install_requires=[],
     distclass=BinaryDistribution,
     license=read_txt("LICENSE"),
-    ** {
+    **{
         "include_package_data": True
     }
 )

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 # coding=utf-8
 """
 Function:
@@ -86,7 +86,7 @@ def _append_content_to_file(content, file_path):
         utils.print_error_log("Unable to write file(%s): %s." % file_path
                               % str(err))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-    utils.print_info_log("Successfully appended content to " + file_path)
+    utils.print_info_log("Successfully appended content to %s." % file_path)
 
 
 def copy_template(src, dst):
@@ -103,8 +103,8 @@ def copy_template(src, dst):
         try:
             if os.path.isdir(srcname):
                 if os.path.isdir(dstname) and os.listdir(dstname):
-                    utils.print_error_log(
-                        dstname + " is not empty,please settle it and retry .")
+                    utils.print_error_log(" %s is not empty,please settle it "
+                                          "and retry ." % dstname)
                     sys.exit()
                 copytree(srcname, dstname)
             else:
@@ -140,14 +140,12 @@ class MsOpGenerator:
                     os.makedirs(op_name_path, mode=0o750)
                 except OSError as err:
                     utils.print_error_log(
-                        "Failed to create \"" + op_name_path + "\". " + str(
-                            err))
+                        "Failed to create %s. %s" % (op_name_path, str(err)))
                     sys.exit(utils.OP_TEST_GEN_INVALID_PATH_ERROR)
             else:
-                utils.print_error_log(
-                    "Specified output path already has \"" + testcase_list[0][
-                        'op'] +
-                    "\" directory, please delete or move it and retry.")
+                utils.print_error_log("Specified output path already has %s "
+                                      "directory, please delete or move it and "
+                                      "retry." % testcase_list[0]['op'])
             self.output_path = op_name_path
 
     def _mkdir_output_dir(self):
@@ -218,8 +216,8 @@ class MsOpGenerator:
         testcase_name = testcase_struct['case_name']
         input_count = 0
         for _ in testcase_struct['input_desc']:
-            input_data_name = testcase_struct['case_name'] + '_input_' \
-                              + str(input_count)
+            input_data_name = '{}_input_{}'.format(
+                testcase_struct['case_name'], str(input_count))
             input_data_path = os.path.join("test_data/data/",
                                            input_data_name)
             input_paths.append(input_data_path)

@@ -612,5 +612,6 @@ class ScanFile:
                     else:
                         files_list.append(dir_info[1])
         else:
-            print_error_log("scanned directory does not exist:" + self.directory)
+            print_error_log("scanned directory does not exist: %s"
+                            % self.directory)
         return files_list
