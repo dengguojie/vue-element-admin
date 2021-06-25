@@ -10,15 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "all_ops.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -30,7 +22,7 @@ using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ParseParamsRoiAlign(const Message *op_src, ge::Operator &op_dest) {
   const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
-    OP_LOGE("RoiAlign", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -81,15 +73,23 @@ Status ParseOpToGraphRoiAlign(const ge::Operator& op, Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
   auto data1 = op::Data("data1").set_attr_index(1);
   auto data2 = op::Data("data2").set_attr_index(2);
-  
+
+  int32_t concat_dim = 1;
+  std::vector<int64_t> dims;
+  ge::Shape shape(dims);
+  TensorDesc tensor_desc(shape, ge::FORMAT_ND, ge::DT_INT32);
+  ge::Tensor dim_tensor(tensor_desc, reinterpret_cast<uint8_t*>(&concat_dim), sizeof(int32_t));
+  auto dim_const_op = op::Const("concat_dim").set_attr_value(dim_tensor);
+
   std::vector<int64_t> axes = {-1};
   auto unsqueeze_op = op::Unsqueeze("unsqueeze").set_input_x(data2).set_attr_axes(axes);
   auto cast_op = op::Cast("cast").set_input_x(unsqueeze_op).set_attr_dst_type(DT_FLOAT16);
-  auto concat_op = op::ConcatD("concatd").create_dynamic_input_x(2)
+  auto concat_op = op::Concat("concat").create_dynamic_input_x(2)
                                          .set_dynamic_input_x(0, cast_op)
                                          .set_dynamic_input_x(1, data1)
-                                         .set_attr_concat_dim(1)
+                                         .set_input_concat_dim(dim_const_op)
                                          .set_attr_N(2);
+  
   auto roli_op = op::ROIAlign("roialign").set_input_features(data0)
                                          .set_input_rois(concat_op)
                                          .set_attr_spatial_scale(spatial_scale)

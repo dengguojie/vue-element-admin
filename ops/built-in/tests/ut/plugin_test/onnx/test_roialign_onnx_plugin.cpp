@@ -31,7 +31,7 @@ TEST_F(roialign_onnx_plugin_test, test_roi_case_1) {
 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 7);
+  EXPECT_EQ(nodes.size(), 8);
 }
 
 TEST_F(roialign_onnx_plugin_test, test_roi_case_2) {
@@ -48,7 +48,7 @@ TEST_F(roialign_onnx_plugin_test, test_roi_case_2) {
 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 7);
+  EXPECT_EQ(nodes.size(), 8);
 }
 
 TEST_F(roialign_onnx_plugin_test, test_roi_case_3) {
@@ -65,7 +65,7 @@ TEST_F(roialign_onnx_plugin_test, test_roi_case_3) {
 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 7);
+  EXPECT_EQ(nodes.size(), 8);
 }
 
 TEST_F(roialign_onnx_plugin_test, test_roi_case_4) {
@@ -82,5 +82,5 @@ TEST_F(roialign_onnx_plugin_test, test_roi_case_4) {
 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 7);
+  EXPECT_EQ(nodes.size(), 8);
 }
