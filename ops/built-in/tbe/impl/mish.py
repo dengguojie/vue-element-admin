@@ -25,7 +25,7 @@ from te.utils import para_check
 
 # pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("mish")
-def mish_compute(input_x, output_y, kernel_name="mish"):
+def mish_compute(input_x, output_y, kernel_name="mish", impl_mode="high_performance"):
     """
     algorithm: mish
     calculating data's mish,y= x*(1 - 2/(1+(1+exp(x))^2))
@@ -49,7 +49,10 @@ def mish_compute(input_x, output_y, kernel_name="mish"):
     add_exp_val = tbe.vadds(exp_val, tvm.const(1, dtype))
     pow_var = tbe.vmul(add_exp_val, add_exp_val)
     add_val = tbe.vadds(pow_var, tvm.const(1, dtype))
-    rec_val = tbe.vrec(add_val, priority_flag=0)
+    if impl_mode == "high_performance":
+        rec_val = tbe.vrec(add_val, priority_flag=0)
+    else:
+        rec_val = tbe.vrec(add_val, priority_flag=1)
     mul_val = tbe.vmuls(rec_val, tvm.const(-2, dtype=dtype))
     add_val2 = tbe.vadds(mul_val, tvm.const(1, dtype=dtype))
     res = tbe.vmul(input_x, add_val2)
@@ -57,7 +60,7 @@ def mish_compute(input_x, output_y, kernel_name="mish"):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def mish(input_x, output_y, kernel_name="mish"):
+def mish(input_x, output_y, kernel_name="mish", impl_mode="high_performance"):
     """
     algorithm: mish
     calculating data's mish,y= x*(1 - 2/(1+(1+exp(x))^2))
@@ -89,8 +92,7 @@ def mish(input_x, output_y, kernel_name="mish"):
     fuseshape[0] = functools.reduce(lambda x, y: x * y, input_shape)
 
     data_x = tvm.placeholder(fuseshape, dtype=input_dtype, name="data_x")
-    res = mish_compute(data_x, output_y, kernel_name)
-
+    res = mish_compute(data_x, output_y, kernel_name, impl_mode)
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
 
