@@ -65,9 +65,9 @@ case3 = {"params": [{"shape": (1,4,4,16,16), "dtype": "float16", "format": "FRAC
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910","Ascend310"], case1)
+ut_case.add_case(["Ascend910","Ascend310"], case2)
+ut_case.add_case(["Ascend910","Ascend310"], case3)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])
