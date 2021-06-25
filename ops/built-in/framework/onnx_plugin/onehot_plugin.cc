@@ -19,14 +19,7 @@
  * \brief
  */
 
-#include <vector>
-#include <string>
-#include "graph.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "all_ops.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -39,7 +32,7 @@ using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ParseParamsOnehotCall(const Message* op_src, ge::Operator& op_dest) {
    const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("ParseParamsOnehotCall", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -54,7 +47,7 @@ Status ParseParamsOnehotCall(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("axis", axis);
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
-    OP_LOGE("ParseParamsOnehotCall", "op_desc is null");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "op_desc is null");
     return FAILED;
   }
   op_desc->AddDynamicInputDesc("x", 3);
@@ -71,11 +64,17 @@ Status ParseOpToGraphOnehot(const ge::Operator& op, Graph& graph) {
   auto data2 = op::Data("depth").set_attr_index(1);
   auto data3 = op::Data("values").set_attr_index(2);
   
-  //In order to solve the problem that the input is negative insert add and mod,because In the  onnx example
-  auto split_d_op = op::SplitD("SplitD").create_dynamic_output_y(2)
-                                        .set_input_x(data3)
-                                        .set_attr_split_dim(0)
-                                        .set_attr_num_split(2);
+  int32_t split_dim = 0;
+  std::vector<int64_t> dims;
+  ge::Shape shape(dims);
+  TensorDesc tensor_desc(shape, ge::FORMAT_ND, ge::DT_INT32);
+  ge::Tensor split_dim_tensor(tensor_desc, reinterpret_cast<uint8_t*>(&split_dim), sizeof(ge::DT_INT32));
+  auto split_const_op = op::Const("split_dim").set_attr_value(split_dim_tensor);
+  //In order to solve the problem that the input is negative insert add and mod, becase tbe onehot not support but onnx support
+  auto split_d_op = op::Split("Split").create_dynamic_output_y(2)
+                                      .set_input_x(data3)
+                                      .set_input_split_dim(split_const_op)
+                                      .set_attr_num_split(2);
 
   auto cast_op = op::Cast("Cast").set_input_x(data1).set_attr_dst_type(3);
   auto cast_op1 = op::Cast("Cast1").set_input_x(data2).set_attr_dst_type(3);
