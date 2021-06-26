@@ -208,34 +208,34 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                                    offset=indice_row * ele_num_per_indice_ub + row1 * burst_length +
                                                    rows_per_ub * half_ele + block_index * data_num_per_core),
                                     half_data_ub.access_ptr("r"), 0, 1, burst_len, 0, 0))
-
-                        ir_build.emit(
-                            tvm.call_extern(
-                                data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
-                                data.access_ptr('r',
-                                                offset=gm_offset + ub_tiling_times * half_ele +
-                                                block_index * data_num_per_core), 0, 1, burst_len_last, 0, 0))
-
-                        with ir_build.for_range(0, ele_per_block, name='block_row') as block_row:
+                        with ir_build.if_scope(burst_len_last > 0):
                             ir_build.emit(
-                                tvm.call_extern(data.dtype, "reg_mov", block_ub.access_ptr('w', offset=block_row),
-                                                half_data_ub.access_ptr('r', offset=block_offset + block_row)))
+                                tvm.call_extern(
+                                    data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
+                                    data.access_ptr('r',
+                                                    offset=gm_offset + ub_tiling_times * half_ele +
+                                                    block_index * data_num_per_core), 0, 1, burst_len_last, 0, 0))
 
-                        ir_build.emit(
-                            tvm.call_extern(
-                                dst.dtype, "copy_ubuf_to_gm",
-                                dst.access_ptr('w',
-                                               offset=indice_row * ele_num_per_indice_ub + row1 * burst_length +
-                                               ub_tiling_times * half_ele + block_index * data_num_per_core),
-                                half_data_ub.access_ptr("r"), 0, 1, burst_len_last - 1, 0, 0))
-                        ir_build.emit(
-                            tvm.call_extern(
-                                dst.dtype, "copy_ubuf_to_gm",
-                                dst.access_ptr('w',
-                                               offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
-                                               block_index * data_num_per_core + ub_tiling_times * half_ele +
-                                               (burst_len_last - 1) * ele_per_block - block_last),
-                                block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
+                            with ir_build.for_range(0, ele_per_block, name='block_row') as block_row:
+                                ir_build.emit(
+                                    tvm.call_extern(data.dtype, "reg_mov", block_ub.access_ptr('w', offset=block_row),
+                                                    half_data_ub.access_ptr('r', offset=block_offset + block_row)))
+
+                            ir_build.emit(
+                                tvm.call_extern(
+                                    dst.dtype, "copy_ubuf_to_gm",
+                                    dst.access_ptr('w',
+                                                offset=indice_row * ele_num_per_indice_ub + row1 * burst_length +
+                                                ub_tiling_times * half_ele + block_index * data_num_per_core),
+                                    half_data_ub.access_ptr("r"), 0, 1, burst_len_last - 1, 0, 0))
+                            ir_build.emit(
+                                tvm.call_extern(
+                                    dst.dtype, "copy_ubuf_to_gm",
+                                    dst.access_ptr('w',
+                                                offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
+                                                block_index * data_num_per_core + ub_tiling_times * half_ele +
+                                                (burst_len_last - 1) * ele_per_block - block_last),
+                                    block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
 
                     # 1 means the last core number
                     with ir_build.else_scope():
@@ -257,41 +257,41 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                                    offset=indice_row * ele_num_per_indice_ub + row1 * burst_length +
                                                    rows_per_ub_last_core * half_ele + (block - 1) * data_num_per_core),
                                     half_data_ub.access_ptr("r"), 0, 1, burst_len_last_core, 0, 0))
-
-                        # deal with remain data
-                        ir_build.emit(
-                            tvm.call_extern(
-                                data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
-                                data.access_ptr('r',
-                                                offset=gm_offset + (block - 1) * data_num_per_core +
-                                                ub_tiling_times_last_core * half_ele), 0, 1, burst_len_last_last_core,
-                                0, 0))
-                        # calculate offset to move last 32B number to independent ub space
-                        block_last = ub_tiling_remain_last_core % ele_per_block
-                        if int(block_last) != 0:
-                            block_last = ele_per_block - block_last
-                        block_offset = (burst_len_last_last_core - 1) * ele_per_block - block_last
-
-                        with ir_build.for_range(0, ele_per_block, name='block_row1') as block_row1:
+                        with ir_build.if_scope(burst_len_last_last_core > 0):
+                            # deal with remain data
                             ir_build.emit(
-                                tvm.call_extern(data.dtype, "reg_mov", block_ub.access_ptr('w', offset=block_row1),
-                                                half_data_ub.access_ptr('r', offset=block_offset + block_row1)))
+                                tvm.call_extern(
+                                    data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
+                                    data.access_ptr('r',
+                                                    offset=gm_offset + (block - 1) * data_num_per_core +
+                                                    ub_tiling_times_last_core * half_ele), 0, 1, burst_len_last_last_core,
+                                    0, 0))
+                            # calculate offset to move last 32B number to independent ub space
+                            block_last = ub_tiling_remain_last_core % ele_per_block
+                            if int(block_last) != 0:
+                                block_last = ele_per_block - block_last
+                            block_offset = (burst_len_last_last_core - 1) * ele_per_block - block_last
 
-                        ir_build.emit(
-                            tvm.call_extern(
-                                dst.dtype, "copy_ubuf_to_gm",
-                                dst.access_ptr('w',
-                                               offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
-                                               (block - 1) * data_num_per_core + ub_tiling_times_last_core * half_ele),
-                                half_data_ub.access_ptr("r"), 0, 1, burst_len_last_last_core - 1, 0, 0))
-                        ir_build.emit(
-                            tvm.call_extern(
-                                dst.dtype, "copy_ubuf_to_gm",
-                                dst.access_ptr('w',
-                                               offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
-                                               block_index * data_num_per_core + ub_tiling_times_last_core * half_ele +
-                                               (burst_len_last_last_core - 1) * ele_per_block - block_last),
-                                block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
+                            with ir_build.for_range(0, ele_per_block, name='block_row1') as block_row1:
+                                ir_build.emit(
+                                    tvm.call_extern(data.dtype, "reg_mov", block_ub.access_ptr('w', offset=block_row1),
+                                                    half_data_ub.access_ptr('r', offset=block_offset + block_row1)))
+
+                            ir_build.emit(
+                                tvm.call_extern(
+                                    dst.dtype, "copy_ubuf_to_gm",
+                                    dst.access_ptr('w',
+                                                offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
+                                                (block - 1) * data_num_per_core + ub_tiling_times_last_core * half_ele),
+                                    half_data_ub.access_ptr("r"), 0, 1, burst_len_last_last_core - 1, 0, 0))
+                            ir_build.emit(
+                                tvm.call_extern(
+                                    dst.dtype, "copy_ubuf_to_gm",
+                                    dst.access_ptr('w',
+                                                offset=row1 * burst_length + indice_row * ele_num_per_indice_ub +
+                                                block_index * data_num_per_core + ub_tiling_times_last_core * half_ele +
+                                                (burst_len_last_last_core - 1) * ele_per_block - block_last),
+                                    block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
                 else:
                     half_param, half_param_ub_shape = _calculate_ele_num_by_dtype(data, burst_len_last)
                     buf_param_var = ir_build.allocate(data.dtype,
@@ -367,33 +367,34 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                                                offset=tiling_times * ele_num_per_indice_ub + row1 * burst_length +
                                                rows_per_ub * half_ele + block_index * data_num_per_core),
                                 half_data_ub.access_ptr("r"), 0, 1, burst_len, 0, 0))
-
-                    ir_build.emit(
-                        tvm.call_extern(
-                            data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
-                            data.access_ptr('r',
-                                            offset=gm_offset + ub_tiling_times * half_ele +
-                                            block_index * data_num_per_core), 0, 1, burst_len_last, 0, 0))
-
-                    with ir_build.for_range(0, ele_per_block, name='block_row') as block_row:
+                    with ir_build.if_scope(burst_len_last > 0):
                         ir_build.emit(
-                            tvm.call_extern(data.dtype, "reg_mov", block_ub.access_ptr('w', offset=block_row),
-                                            half_data_ub.access_ptr('r', offset=block_offset + block_row)))
+                            tvm.call_extern(
+                                data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
+                                data.access_ptr('r',
+                                                offset=gm_offset + ub_tiling_times * half_ele +
+                                                block_index * data_num_per_core), 0, 1, burst_len_last, 0, 0))
 
-                    ir_build.emit(
-                        tvm.call_extern(
-                            dst.dtype, "copy_ubuf_to_gm",
-                            dst.access_ptr('w',
-                                           offset=row1 * burst_length +
-                                           ub_tiling_times * half_ele + block_index * data_num_per_core),
-                            half_data_ub.access_ptr("r"), 0, 1, burst_len_last - 1, 0, 0))
-                    ir_build.emit(
-                        tvm.call_extern(
-                            dst.dtype, "copy_ubuf_to_gm",
-                            dst.access_ptr('w',
-                                           offset=row1 * burst_length + block_index * data_num_per_core +
-                                           ub_tiling_times * half_ele + (burst_len_last - 1) * ele_per_block -
-                                           block_last), block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
+                        with ir_build.for_range(0, ele_per_block, name='block_row') as block_row:
+                            ir_build.emit(
+                                tvm.call_extern(data.dtype, "reg_mov", block_ub.access_ptr('w', offset=block_row),
+                                                half_data_ub.access_ptr('r', offset=block_offset + block_row)))
+
+                        ir_build.emit(
+                            tvm.call_extern(
+                                dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w',
+                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                            ub_tiling_times * half_ele + block_index * data_num_per_core),
+                                half_data_ub.access_ptr("r"), 0, 1, burst_len_last - 1, 0, 0))
+                        ir_build.emit(
+                            tvm.call_extern(
+                                dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w',
+                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                            block_index * data_num_per_core +
+                                            ub_tiling_times * half_ele + (burst_len_last - 1) * ele_per_block -
+                                            block_last), block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
 
                 # 1 means the last core number
                 with ir_build.else_scope():
@@ -411,44 +412,45 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                             tvm.call_extern(
                                 dst.dtype, "copy_ubuf_to_gm",
                                 dst.access_ptr('w',
-                                               offset=row1 * burst_length +
+                                               offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
                                                rows_per_ub_last_core * half_ele + (block - 1) * data_num_per_core),
                                 half_data_ub.access_ptr("r"), 0, 1, burst_len_last_core, 0, 0))
-
-                    # deal with remain data
-                    ir_build.emit(
-                        tvm.call_extern(
-                            data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
-                            data.access_ptr('r',
-                                            offset=gm_offset + (block - 1) * data_num_per_core +
-                                            ub_tiling_times_last_core * half_ele), 0, 1, burst_len_last_last_core, 0,
-                            0))
-                    # calculate offset to move last 32B number to independent ub space
-                    block_last = ub_tiling_remain_last_core % ele_per_block
-                    if int(block_last) != 0:
-                        block_last = ele_per_block - block_last
-                    block_offset = (burst_len_last_last_core - 1) * ele_per_block - block_last
-
-                    with ir_build.for_range(0, ele_per_block, name='block_row') as block_row:
+                    with ir_build.if_scope(burst_len_last_last_core > 0):
+                        # deal with remain data
                         ir_build.emit(
-                            tvm.call_extern(data.dtype, "reg_mov", block_ub.access_ptr('w', offset=block_row),
-                                            half_data_ub.access_ptr('r', offset=block_offset + block_row)))
+                            tvm.call_extern(
+                                data.dtype, "copy_gm_to_ubuf", half_data_ub.access_ptr("w"),
+                                data.access_ptr('r',
+                                                offset=gm_offset + (block - 1) * data_num_per_core +
+                                                ub_tiling_times_last_core * half_ele), 0, 1, burst_len_last_last_core, 0,
+                                0))
+                        # calculate offset to move last 32B number to independent ub space
+                        block_last = ub_tiling_remain_last_core % ele_per_block
+                        if int(block_last) != 0:
+                            block_last = ele_per_block - block_last
+                        block_offset = (burst_len_last_last_core - 1) * ele_per_block - block_last
 
-                    ir_build.emit(
-                        tvm.call_extern(
-                            dst.dtype, "copy_ubuf_to_gm",
-                            dst.access_ptr('w',
-                                           offset=row1 * burst_length +
-                                           block_index * data_num_per_core + ub_tiling_times_last_core * half_ele),
-                            half_data_ub.access_ptr("r"), 0, 1, burst_len_last_last_core - 1, 0, 0))
-                    ir_build.emit(
-                        tvm.call_extern(
-                            dst.dtype, "copy_ubuf_to_gm",
-                            dst.access_ptr('w',
-                                           offset=row1 * burst_length + block_index * data_num_per_core +
-                                           ub_tiling_times_last_core * half_ele +
-                                           (burst_len_last_last_core - 1) * ele_per_block - block_last),
-                            block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
+                        with ir_build.for_range(0, ele_per_block, name='block_row') as block_row:
+                            ir_build.emit(
+                                tvm.call_extern(data.dtype, "reg_mov", block_ub.access_ptr('w', offset=block_row),
+                                                half_data_ub.access_ptr('r', offset=block_offset + block_row)))
+
+                        ir_build.emit(
+                            tvm.call_extern(
+                                dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w',
+                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                            block_index * data_num_per_core + ub_tiling_times_last_core * half_ele),
+                                half_data_ub.access_ptr("r"), 0, 1, burst_len_last_last_core - 1, 0, 0))
+                        ir_build.emit(
+                            tvm.call_extern(
+                                dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w',
+                                            offset=row1 * burst_length + tiling_times * ele_num_per_indice_ub +
+                                            block_index * data_num_per_core +
+                                            ub_tiling_times_last_core * half_ele +
+                                            (burst_len_last_last_core - 1) * ele_per_block - block_last),
+                                block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
             else:
                 half_param, half_param_ub_shape = _calculate_ele_num_by_dtype(data, burst_len_last)
                 buf_param_var = ir_build.allocate(data.dtype,
@@ -625,7 +627,7 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
             aglined_offset = aglined_ele_num - (ele_per_block - last_ele)
             reg_tmp = ir_build.allocate(data.dtype, (4, ), name='reg_tmp', scope=tbe_platform.scope_reg)
             compile_plat = tbe_platform.get_soc_spec("SOC_VERSION")
-            if compile_plat in ("Ascend310", ):
+            if compile_plat in ("Ascend310", "Ascend710"):
                 with ir_build.for_range(0, ele_per_core, name='core_row') as core_row:
                     reg_gm[0] = tvm.const(0, dtype=indices.dtype)
                     reg_mul[0] = tvm.const(params_total_size, dtype=indices.dtype)
