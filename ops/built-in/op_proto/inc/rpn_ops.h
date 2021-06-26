@@ -28,7 +28,7 @@ namespace ge {
 * iou_threshold with higher scoring box according to their
 * intersection-over-union (IoU) . \n
 
-* @par Input:
+* @par Inputs:
 * box_scores: 2-D tensor with shape of [N, 8], including proposal boxes and
 * corresponding confidence scores . \n
 

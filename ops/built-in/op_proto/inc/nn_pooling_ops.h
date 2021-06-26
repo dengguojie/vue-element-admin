@@ -610,7 +610,7 @@ REG_OP(MaxPoolGrad)
 * @li Other dimensions of ksize and strides is 1 . \n
 
 * @par Outputs:
-* @li y: Has the same type and format as input "x1" . \n
+* y: Has the same type and format as input "x1" . \n
 
 * @par Third-party framework compatibility
 * @li Compatible with the TensorFlow operator MaxPoolGradGrad.
