@@ -17,6 +17,7 @@ cast
 """
 import functools
 
+from tbe import dsl
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -119,7 +120,12 @@ def _int32_process(data, dst_type):
         return tbe.cast_to(y_abs, "int8", True)
 
     if dst_type == "int8":
-        data_fp16 = tbe.cast_to(data, "float16")
+        const_ff = tvm.const(255, "int32")
+        shape_data = shape_util.shape_to_list(data.shape)
+        const_broad = tbe.broadcast(const_ff, shape_data)
+        data_and = dsl.vand(data, const_broad)
+
+        data_fp16 = tbe.cast_to(data_and, "float16")
         tensor_0 = tbe.vmuls(data_fp16, 0)
         tensor_256 = tbe.vadds(tensor_0, 256)
         result = tbe.vadds(data_fp16, 128)
@@ -129,7 +135,12 @@ def _int32_process(data, dst_type):
         return tbe.cast_to(result, "int8", True)
 
     if dst_type == "uint8":
-        data_fp16 = tbe.cast_to(data, "float16")
+        const_ff = tvm.const(255, "int32")
+        shape_data = shape_util.shape_to_list(data.shape)
+        const_broad = tbe.broadcast(const_ff, shape_data)
+        data_and = dsl.vand(data, const_broad)
+
+        data_fp16 = tbe.cast_to(data_and, "float16")
         tensor_0 = tbe.vmuls(data_fp16, 0)
         tensor_256 = tbe.vadds(tensor_0, 256)
         result = tbe.vmod(data_fp16, tensor_256)
