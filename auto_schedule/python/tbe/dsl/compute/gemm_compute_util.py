@@ -15,6 +15,8 @@
 """
 gemm compute util
 """
+from functools import reduce as functools_reduce
+from tbe.common.utils import broadcast_shapes
 from tbe.tvm import api as tvm
 
 class FormatCompute(object):
@@ -161,7 +163,8 @@ class FormatCompute(object):
         n_shape = tensor_b_shape[-3] if mad_mode != "gemv" else tensor_a_shape[-3]
         shapes = [n_shape, m_shape, block_in, block_out]
         batch_flags = [both_with_batch, a_with_batch, b_with_batch]
-        self._get_shape_by_batch(shapes, tensor_a_shape, tensor_b_shape, batch_flags)
+        batch_max, _, _ = self._batch_broadcast(tensor_a, tensor_b)
+        self._get_shape_by_batch(shapes, tensor_a_shape, tensor_b_shape, batch_max, batch_flags)
         reduce_axis = [reduce_kb, reduce_kp]
 
         mad_compute_func = self._choose_mmad_compute_func(batch_flags)
@@ -172,11 +175,14 @@ class FormatCompute(object):
 
         return tensor_c
 
-    def _get_shape_by_batch(self, shapes, tensor_a_shape, tensor_b_shape, batch_flags):
+    def _get_shape_by_batch(self, shapes, tensor_a_shape, tensor_b_shape, batch_max, batch_flags):
         both_with_batch = batch_flags[0]
         a_with_batch = batch_flags[1]
         b_with_batch = batch_flags[2]
-        if both_with_batch or a_with_batch:
+        if batch_max:
+            batch_shape = functools_reduce(lambda x, y: x * y, batch_max)
+            shapes.insert(0, batch_shape)
+        elif both_with_batch or a_with_batch:
             batch_shape = tensor_a_shape[0]
             shapes.insert(0, batch_shape)
         elif b_with_batch:
@@ -197,15 +203,97 @@ class FormatCompute(object):
             mad_compute_func = self._mad_none_batch
         return mad_compute_func
 
+    def _batch_broadcast(self, tensor_a, tensor_b):
+        """
+        broadcast batch_a and batch_b
+
+        Parameters:
+            tensor_a: tvm tensor, fp16
+            tensor_b: tvm tensor, fp16
+
+        Returns:
+            batch_max: the result of broadcast, list
+            batch_a: unsqueezed batch of tensor_a, list
+            batch_b: unsqueezed batch of tensor_b, list
+        """
+        batch_max = None
+        batch_a = []
+        batch_b = []
+        if "ori_batch_shape" in tensor_a.op.attrs and "ori_batch_shape" in tensor_b.op.attrs:
+            ori_batch_a = tensor_a.op.attrs["ori_batch_shape"]
+            ori_batch_b = tensor_b.op.attrs["ori_batch_shape"]
+            if ori_batch_a != "none":
+                batch_a = [self._get_value(i) for i in ori_batch_a]
+            if ori_batch_b != "none":
+                batch_b = [self._get_value(i) for i in ori_batch_b]
+        batch_a_dim = len(batch_a)
+        batch_b_dim = len(batch_b)
+        is_batch_broadcast = (batch_a_dim > 0 and batch_b_dim > 0 and batch_a != batch_b)
+
+        if is_batch_broadcast:
+            batch_a, batch_b, batch_max = broadcast_shapes(batch_a, batch_b)
+
+        return batch_max, batch_a, batch_b
+
+    def _mapping_batch_a_or_b(self, batch_reduce, batch_max, batch_ori):
+        """
+        map batch_reduce into batch_a or batch_b
+        e.g. A x B = C
+            A = [B1,1,1,B4, K//16,M//16,16,16]
+            B = [B2,B3,1, N//16,K//16,16,16]
+            C = [B1,B2,B3,B4, N//16,M//16,16,16]
+
+            batch_reduce is in range of 0 to B1*B2*B3*B4-1,
+            b1 = batch_reduce // (B2*B3*B4),
+            b2 = batch_reduce // (B3*B4) % B2,
+            b3 = batch_reduce // B4 % B3,
+            b4 = batch_reduce % B4
+
+            batch_a = B4*b1 + b4,
+            batch_b = B3*b2 + b3
+
+        Parameters:
+            batch_reduce: reduce shape of batch_max, number
+            batch_max: broadcast batch, list
+            batch_ori: original batch_a or batch_b, list
+
+        Returns:
+            batch_mapping: the right batch in batch_a or batch_b
+                corresponding to batch_reduce
+        """
+        batch_mapping = 0
+        for i in range(len(batch_ori)):
+            if batch_ori[i] != 1:
+                if i == len(batch_ori) - 1:
+                    batch_tmp = batch_reduce % batch_max[i]
+                elif i == 0:
+                    batch_tmp = batch_reduce // functools_reduce(lambda x, y: x * y, batch_max[i+1:])
+                else:
+                    batch_tmp = batch_reduce // functools_reduce(lambda x, y: x * y, batch_max[i+1:]) % batch_max[i]
+                if i == len(batch_ori) - 1:
+                    batch_mapping += batch_tmp
+                else:
+                    batch_mapping += batch_tmp * functools_reduce(lambda x, y: x * y, batch_ori[i+1:])
+        return batch_mapping
+
     def _mad_both_batch(self, tensor_a, tensor_b, reduce_axis,
         matrix_type, offset_x, block_out, need_add_bias_in_fb, bias_fb=None):
         reduce_kb = reduce_axis[0]
         reduce_kp = reduce_axis[1]
+        batch_max, batch_a, batch_b = self._batch_broadcast(tensor_a, tensor_b)
         if not need_add_bias_in_fb:
-            lambda_expression = lambda batch, nb, mb, mp, np: tvm.sum(
-                ((tensor_a[batch, mb, reduce_kb, mp, reduce_kp] - offset_x)
-                    * tensor_b[batch, reduce_kb, nb, np, reduce_kp]).astype(matrix_type),
-                axis=[reduce_kb, reduce_kp])
+            if batch_max:
+                lambda_expression = lambda batch, nb, mb, mp, np: tvm.sum(
+                    ((tensor_a[self._mapping_batch_a_or_b(batch, batch_max, batch_a),
+                        mb, reduce_kb, mp, reduce_kp] - offset_x) *
+                    tensor_b[self._mapping_batch_a_or_b(batch, batch_max, batch_b),
+                        reduce_kb, nb, np, reduce_kp]).astype(matrix_type),
+                    axis=[reduce_kb, reduce_kp])
+            else:
+                lambda_expression = lambda batch, nb, mb, mp, np: tvm.sum(
+                    ((tensor_a[batch, mb, reduce_kb, mp, reduce_kp] - offset_x)
+                        * tensor_b[batch, reduce_kb, nb, np, reduce_kp]).astype(matrix_type),
+                    axis=[reduce_kb, reduce_kp])
         else:
             lambda_expression = lambda batch, nb, mb, mp, np: tvm.sum(
                 tvm.select(tvm.all(reduce_kb.var == 0, reduce_kp.var == 0),
@@ -296,6 +384,7 @@ class FormatCompute(object):
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
+        ori_batch_shape = compute_params.get("ori_batch_shape", "none")
         if trans:
             compute_params["trans"] = False
             res = self.fract_change_inner_axis(ori_tensor, compute_params)
@@ -321,7 +410,7 @@ class FormatCompute(object):
             lambda_expression = lambda i, j, k, l: ori_tensor[j, i, k, l]
 
         res = tvm.compute(shapes, lambda_expression, name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info})
+            attrs={"mode": mode_info, "format_info": format_info, "ori_batch_shape": ori_batch_shape})
         return res
 
     def fract_change_inner_axis(self, ori_tensor, compute_params):
@@ -337,6 +426,7 @@ class FormatCompute(object):
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
+        ori_batch_shape = compute_params.get("ori_batch_shape", "none")
         if trans:
             compute_params["trans"] = False
             res = self.fract_change_outer_axis(ori_tensor, compute_params)
@@ -361,8 +451,7 @@ class FormatCompute(object):
             lambda_expression = lambda i, j, k, l: ori_tensor[i, j, l, k]
 
         res = tvm.compute(shapes, lambda_expression, name=tensor_name,
-            attrs={"mode": mode_info, "format_info": mode_info}
-        )
+            attrs={"mode": mode_info, "format_info": format_info, "ori_batch_shape": ori_batch_shape})
         return res
 
     def fract_change_both_axis(self, ori_tensor, compute_params):
@@ -378,6 +467,7 @@ class FormatCompute(object):
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
+        ori_batch_shape = compute_params.get("ori_batch_shape", "none")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         if trans:
             shapes = ori_tensor_shape
@@ -406,11 +496,10 @@ class FormatCompute(object):
                 shapes,
                 lambda_expression,
                 name=tensor_name,
-                attrs={"mode": mode_info, "format_info": format_info}
-            )
+                attrs={"mode": mode_info, "format_info": format_info, "ori_batch_shape": ori_batch_shape})
         else:
-            res = tvm.compute(shapes, lambda_expression, name=tensor_name)
-        
+            res = tvm.compute(shapes, lambda_expression, name=tensor_name,
+                attrs={"ori_batch_shape": ori_batch_shape})
         return res
 
     def compute_nd2Zz_vnchwconv(self, ori_tensor, compute_params):

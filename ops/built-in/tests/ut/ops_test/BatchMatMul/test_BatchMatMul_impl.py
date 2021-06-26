@@ -14,6 +14,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 BatchMatmul ut case
 """
 from op_test_frame.ut import OpUT
+from op_test_frame.common import precision_info
+import numpy as np
 import sys
 import time
 import unittest
@@ -303,6 +305,57 @@ ut_case.add_cust_test_func(test_func=test_batchmatmul_confusion_transpose_710)
 #ut_case.add_cust_test_func(test_func=test_batchmatmul_add_relu)
 #ut_case.add_cust_test_func(test_func=test_batchmatmul_div_fused_mul_add)
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+
+
+def reshape_nd_to_nz(tensor1, shape):
+    if len(tensor1.shape) < 2:
+        return
+    j_outer, i_outer, i_inner, j_inner = shape[-4:]
+    batch_shapes = shape[:-4]
+    batch_len = len(batch_shapes)
+
+    reshape_tensor1_size = list(batch_shapes) + [i_outer, i_inner, j_outer, j_inner]
+    transpose_idx = [x for x in range(batch_len)] + \
+                    [batch_len+2, batch_len+0, batch_len+1, batch_len+3]
+    tensor1 = np.reshape(tensor1, reshape_tensor1_size).transpose(transpose_idx)
+    return tensor1
+
+
+def reshape_nz_to_nd(tensor1):
+    shape = tensor1.shape
+    if len(shape) < 4:
+        return
+    batch_shapes = shape[:-4]
+    batch_len = len(batch_shapes)
+    j_outer, i_outer, i_inner, j_inner = shape[-4:]
+
+    transpose_idx = [x for x in range(batch_len)] + \
+                    [batch_len+1, batch_len+2, batch_len+0, batch_len+3]
+    reshape_tensor1_size = list(batch_shapes) + [i_outer*i_inner, j_outer*j_inner]
+    tensor1 = np.transpose(tensor1, transpose_idx).reshape(reshape_tensor1_size)
+    return tensor1
+
+def calc_expect_func(input_x, input_y, bias, output_z, trans_a, trans_b):
+    a = reshape_nz_to_nd(input_x["value"])
+    b = reshape_nz_to_nd(input_y["value"])
+    if bias:
+        res = np.matmul(a, b) + bias["value"]
+    else:
+        res = np.matmul(a, b)
+    res = reshape_nd_to_nz(res, output_z["shape"]).astype(output_z["dtype"])
+    return res
+
+precision_case1 = {"params": [{"shape": (16,1,1,16, 2,1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16,1,1,16, 16,32), "ori_format": "ND", "param_type": "input"},
+                              {"shape": (4,6,1, 1,2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4,6,1, 32,16), "ori_format": "ND", "param_type": "input"},
+                              None,
+                              {"shape": (16,4,6,16, 1,1,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16,4,6,16, 16,16), "ori_format": "ND", "param_type": "output"},
+                              False, False],
+                              "expect": "success",
+                              "calc_expect_func": calc_expect_func,
+                              "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+
+ut_case.add_precision_case("Ascend910", precision_case1)
+
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

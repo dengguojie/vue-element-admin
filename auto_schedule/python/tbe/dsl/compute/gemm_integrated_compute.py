@@ -916,6 +916,8 @@ class GEMMCompute(FormatCompute):
                     "format_in_a_l1": "Nz",
                     "format_in_a_ub": "none"
                 }
+                if "ori_batch_shape" in tensor_a_normalize.op.attrs:
+                    compute_params_fractal["ori_batch_shape"] = tensor_a_normalize.op.attrs["ori_batch_shape"]
                 tensor_a_matrix = self.fract_change_outer_axis(tensor_a_normalize, compute_params_fractal)
             return tensor_a_matrix
 
@@ -1053,6 +1055,8 @@ class GEMMCompute(FormatCompute):
                 "format_in_b_l1": "Nz",
                 "format_in_b_ub": "none"
             }
+            if "ori_batch_shape" in tensor_b_normalize.op.attrs:
+                compute_params_fractal["ori_batch_shape"] = tensor_b_normalize.op.attrs["ori_batch_shape"]
             tensor_b_matrix = self.fract_change_both_axis(tensor_b_normalize, compute_params_fractal)
 
             return tensor_b_matrix
