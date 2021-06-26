@@ -777,6 +777,7 @@ REG_OP(Conv2DBackpropFilterD)
 *\n
 * The following are the supported data types and data formats:
 *\n
+*\n
 | Tensor    | x       | filter  | bias    | y       |\n
 | :-------: | :-----: | :-----: | :-----: | :-----: |\n
 | Data Type | float16 | float16 | float16 | float16 |\n
@@ -784,6 +785,7 @@ REG_OP(Conv2DBackpropFilterD)
 |           | int8    | int8    | int32   | int32   |\n
 | Format    | NCHW    | NCHW    | ND      | NCHW    |\n
 |           | NHWC    | HWCN    |         | NHWC    |\n
+*\n
 * For float32 type, the actual calculation on the chip is based on
 * float16.
 *\n
@@ -808,6 +810,7 @@ REG_OP(Conv2DBackpropFilterD)
 *\n
 * The following value range restrictions must be met:
 *\n
+*\n
 | Name             | Field    | Scope       |\n
 | :--------------: | :------: | :---------: |\n
 | Input Image Size | H        | [1, 100000] |\n
@@ -823,6 +826,7 @@ REG_OP(Conv2DBackpropFilterD)
 | Dilation         | H        | [1, 255]    |\n
 |                  | W        | [1, 255]    |\n
 | Offset_x         | -        | [-128, 127] |\n
+*\n
 * The W dimension of the input image supports cases exceeding 4096, but it may
 * cause compilation errors.
 *\n
@@ -944,12 +948,14 @@ REG_OP(Conv2DCompress)
 *\n
 * The following are the supported data types and data formats:
 *\n
+*\n
 | Tensor    | x       | filter  | offsets | bias    | y       |\n
 | :-------: | :-----: | :-----: | :-----: | :-----: | :-----: |\n
 | Data Type | float16 | float16 | float16 | float16 | float16 |\n
 |           | float32 | float32 | float32 | float32 | float32 |\n
 | Format    | NCHW    | NCHW    | NCHW    | ND      | NCHW    |\n
 |           | NHWC    | HWCN    | NCHW    |         | NHWC    |\n
+*\n
 * For float32 type, the actual convolution calculation part on the chip is
 * based on float16.
 *\n
@@ -976,6 +982,7 @@ REG_OP(Conv2DCompress)
 *\n
 *\n
 * The following value range restrictions must be met:
+*\n
 *\n
 | Name             | Field    | Scope                       |\n
 | :--------------: | :------: | :-------------------------: |\n
