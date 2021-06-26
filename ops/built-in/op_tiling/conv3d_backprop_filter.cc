@@ -40,31 +40,34 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool Conv3DBpFilterTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& compile_info,
-                        OpRunInfo& run_info) {
-  bool invalid_input = (op_paras.inputs.size() < kConv3dBpInputsNum || op_paras.outputs.empty() ||
-      op_paras.inputs[0].tensor.empty() || op_paras.inputs[2].tensor.empty() ||
-      (op_paras.inputs[0].tensor[0].shape.size() != kConv3dDimSizeLimit) ||
-      (op_paras.inputs[2].tensor[0].shape.size() != kConv3dDimSizeLimit));
+bool Conv3DBpFilterTiling(const std::string& op_type,
+                          const ge::Operator& op_paras,
+                          const nlohmann::json& compile_info,
+                          utils::OpRunInfo& run_info) {
+  bool invalid_input = (op_paras.GetInputsSize() < kConv3dBpInputsNum ||
+      (op_paras.GetInputDesc(0).GetShape().GetDimNum() != kConv3dDimSizeLimit) ||
+      (op_paras.GetInputDesc(2).GetShape().GetDimNum() != kConv3dDimSizeLimit));
   if (invalid_input) {
     OP_LOGE(op_type.c_str(), "Input paramters check failed");
     return false;
   }
 
-  if (compile_info.contains("fmap_c1") && op_paras.inputs[0].tensor[0].shape[2] != compile_info["fmap_c1"]) {
+  if (compile_info.contains("fmap_c1") && op_paras.GetInputDesc(0).GetShape().GetDim(2) != compile_info["fmap_c1"]) {
     OP_LOGE(op_type.c_str(), "not support, input x channel should be equal to filter * groups");
     return false;
   }
 
-  if (compile_info.contains("dedy_c1") && op_paras.inputs[2].tensor[0].shape[2] != compile_info["dedy_c1"]) {
+  if (compile_info.contains("dedy_c1") && op_paras.GetInputDesc(2).GetShape().GetDim(2) != compile_info["dedy_c1"]) {
     OP_LOGE(op_type.c_str(), "not support, input dedy channel should be equal to filter");
     return false;
   }
 
-  return Conv3DCommonTiling("Conv3DBackpropFilter", op_paras.inputs[0].tensor[0].shape,
-                            op_paras.inputs[2].tensor[0].shape,
-                            compile_info, run_info);
+  return Conv3DCommonTiling("Conv3DBackpropFilter",
+                            op_paras.GetInputDesc(0).GetShape().GetDims(),
+                            op_paras.GetInputDesc(2).GetShape().GetDims(),
+                            compile_info,
+                            run_info);
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(Conv3DBackpropFilter, Conv3DBpFilterTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(Conv3DBackpropFilter, Conv3DBpFilterTiling);
 }  // namespace optiling

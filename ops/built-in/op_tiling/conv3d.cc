@@ -39,11 +39,14 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool Conv3DTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                  OpRunInfo& runInfo) {
-  if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.outputs[0].tensor.empty() || (opParas.inputs[0].tensor[0].shape.size() < SHAPE_SIZE_6HD) ||
-      (opParas.outputs[0].tensor[0].shape.size() < SHAPE_SIZE_6HD)) {
+bool Conv3DTiling(const std::string& opType,
+                  const ge::Operator& opParas,
+                  const nlohmann::json& opCompileInfo,
+                  utils::OpRunInfo& runInfo) {
+  if (opParas.GetInputsSize() == 0 ||
+      opParas.GetOutputsSize() == 0 ||
+      (opParas.GetInputDesc(0).GetShape().GetDimNum() < SHAPE_SIZE_6HD) ||
+      (opParas.GetOutputDesc(0).GetShape().GetDimNum() < SHAPE_SIZE_6HD)) {
     return false;
   }
 
@@ -52,7 +55,7 @@ bool Conv3DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     return false;
   }
 
-  if (opCompileInfo.contains("fmap_c1") && opParas.inputs[0].tensor[0].shape[2] != opCompileInfo["fmap_c1"]) {
+  if (opCompileInfo.contains("fmap_c1") && opParas.GetInputDesc(0).GetShape().GetDim(2) != opCompileInfo["fmap_c1"]) {
     CUBE_INNER_ERR_REPORT(opType.c_str(), "not support, input x channel should be equal to filter * groups");
     return false;
   }
@@ -60,11 +63,13 @@ bool Conv3DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   nlohmann::json opInfo;
   deal_with_compile_info(opCompileInfo, opInfo);
 
-  return Conv3DCommonTiling("Conv3D", opParas.inputs[0].tensor[0].shape,
-                            opParas.outputs[0].tensor[0].shape,
-                            opInfo, runInfo);
+  return Conv3DCommonTiling("Conv3D",
+                            opParas.GetInputDesc(0).GetShape().GetDims(),
+                            opParas.GetOutputDesc(0).GetShape().GetDims(),
+                            opInfo,
+                            runInfo);
 }
 
 // register tiling interface of the conv3d
-REGISTER_OP_TILING_FUNC_BUFFERED(Conv3D, Conv3DTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(Conv3D, Conv3DTiling);
 }  // namespace optiling

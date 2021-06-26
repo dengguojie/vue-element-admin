@@ -40,20 +40,23 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool AvgPool3DGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& compile_info,
-                         OpRunInfo& run_info) {
-  if ((op_paras.inputs.size() <= kAvgPool3DGradDedyInputIdx) || op_paras.outputs.empty() ||
-      op_paras.inputs[kAvgPool3DGradDedyInputIdx].tensor.empty() || op_paras.outputs[0].tensor.empty() ||
-      (op_paras.inputs[kAvgPool3DGradDedyInputIdx].tensor[0].shape.size() != kAvgPool3DGradDimLimit) ||
-      (op_paras.outputs[0].tensor[0].shape.size() != kAvgPool3DGradDimLimit)) {
+bool AvgPool3DGradTiling(const std::string& op_type,
+                         const ge::Operator& op_paras,
+                         const nlohmann::json& compile_info,
+                         utils::OpRunInfo& run_info) {
+  if ((op_paras.GetInputsSize() <= kAvgPool3DGradDedyInputIdx) ||
+      (op_paras.GetInputDesc(kAvgPool3DGradDedyInputIdx).GetShape().GetDimNum() != kAvgPool3DGradDimLimit) ||
+      (op_paras.GetOutputDesc(0).GetShape().GetDimNum() != kAvgPool3DGradDimLimit)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "param check failed");
     return false;
   }
 
-  return Conv3DCommonTiling("AvgPool3DGrad", op_paras.outputs[0].tensor[0].shape,
-                            op_paras.inputs[kAvgPool3DGradDedyInputIdx].tensor[0].shape,
-                            compile_info, run_info);
+  return Conv3DCommonTiling("AvgPool3DGrad",
+                            op_paras.GetOutputDesc(0).GetShape().GetDims(),
+                            op_paras.GetInputDesc(kAvgPool3DGradDedyInputIdx).GetShape().GetDims(),
+                            compile_info,
+                            run_info);
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(AvgPool3DGrad, AvgPool3DGradTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(AvgPool3DGrad, AvgPool3DGradTiling);
 }  // namespace optiling

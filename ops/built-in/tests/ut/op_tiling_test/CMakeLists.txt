@@ -20,6 +20,7 @@ add_executable(ops_cpp_op_tiling_utest
         ${OP_TEST_PLUFIN_AND_PROTO_SOURCE}
         )
 target_include_directories(ops_cpp_op_tiling_utest PRIVATE
+        ${OPS_DIR}/built-in/op_proto/inc
         ${GTEST_INCLUDE}
         ${OP_TEST_PLUFIN_AND_PROTO_INCLUDE}
         )

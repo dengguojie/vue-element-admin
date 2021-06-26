@@ -26,6 +26,7 @@
 
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
+#include "external/graph/operator.h"
 #include "op_tiling.h"
 
 namespace optiling {
@@ -65,7 +66,7 @@ bool Conv3DCommonTiling(const std::string& op_type,
                         const std::vector<int64_t>& input_shape,
                         const std::vector<int64_t>& output_shape,
                         const nlohmann::json& compile_info,
-                        OpRunInfo& run_info);
+                        utils::OpRunInfo& run_info);
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_CUBE_TILING_H_

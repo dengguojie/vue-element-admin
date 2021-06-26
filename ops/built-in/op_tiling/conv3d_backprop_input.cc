@@ -41,12 +41,13 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool Conv3DBackpropInputTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& compile_info,
-                               OpRunInfo& run_info) {
-  if ((op_paras.inputs.size() <= kConv3dBpInputDedyInputIndex) || op_paras.outputs.empty() ||
-      op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor.empty() || op_paras.outputs[0].tensor.empty() ||
-      (op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape.size() != kConv3dBpInputDimSizeLimit) ||
-      (op_paras.outputs[0].tensor[0].shape.size() != kConv3dBpInputDimSizeLimit)) {
+bool Conv3DBackpropInputTiling(const std::string& op_type,
+                               const ge::Operator& op_paras,
+                               const nlohmann::json& compile_info,
+                               utils::OpRunInfo& run_info) {
+  if ((op_paras.GetInputsSize() <= kConv3dBpInputDedyInputIndex) ||
+      (op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDimNum() != kConv3dBpInputDimSizeLimit) ||
+      (op_paras.GetOutputDesc(0).GetShape().GetDimNum() != kConv3dBpInputDimSizeLimit)) {
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "param check failed");
     return false;
   }
@@ -57,7 +58,7 @@ bool Conv3DBackpropInputTiling(const std::string& op_type, const TeOpParas& op_p
   }
 
   if (compile_info.contains("dedy_c1") &&
-      op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape[2] != compile_info["dedy_c1"]) {
+      op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDim(2) != compile_info["dedy_c1"]) {
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "not support, input dedy channel should be equal to filter");
     return false;
   }
@@ -65,10 +66,12 @@ bool Conv3DBackpropInputTiling(const std::string& op_type, const TeOpParas& op_p
   nlohmann::json opInfo;
   deal_with_compile_info(compile_info, opInfo);
 
-  return Conv3DCommonTiling("Conv3DBackpropInput", op_paras.outputs[0].tensor[0].shape,
-                            op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape,
-                            opInfo, run_info);
+  return Conv3DCommonTiling("Conv3DBackpropInput",
+                            op_paras.GetOutputDesc(0).GetShape().GetDims(),
+                            op_paras.GetInputDesc(kConv3dBpInputDedyInputIndex).GetShape().GetDims(),
+                            opInfo,
+                            run_info);
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(Conv3DBackpropInput, Conv3DBackpropInputTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(Conv3DBackpropInput, Conv3DBackpropInputTiling);
 }  // namespace optiling

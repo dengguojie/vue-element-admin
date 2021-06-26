@@ -169,15 +169,15 @@ namespace {
   }
 
   void update_run_info(const std::vector<bool>& dynamic_mode,
-                      const std::vector<int64_t>& input_shape,
-                      const std::vector<int64_t>& output_shape,
-                      optiling::OpRunInfo& run_info) {
+                       const std::vector<int64_t>& input_shape,
+                       const std::vector<int64_t>& output_shape,
+                       optiling::utils::OpRunInfo& run_info) {
     for (int32_t i = 0; i < kConv3dVarDimSizeLimit; ++i) {
       if (dynamic_mode[i]) {
         int32_t shape_index = kConv3DDynamicShapeDims[i];
-        optiling::ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shape[shape_index]));
+        run_info.AddTilingData(static_cast<int32_t>(input_shape[shape_index]));
         if (i != 0) {
-          optiling::ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(output_shape[shape_index]));
+          run_info.AddTilingData(static_cast<int32_t>(output_shape[shape_index]));
         }
       }
     }
@@ -361,7 +361,7 @@ namespace optiling {
                           const std::vector<int64_t>& input_shape,
                           const std::vector<int64_t>& output_shape,
                           const nlohmann::json& compile_info,
-                          OpRunInfo& run_info) {
+                          utils::OpRunInfo& run_info) {
     std::vector<std::string> all_vars;
     get_var_names(op_type, all_vars);
     if (all_vars.size() != kConv3dVarDimSizeLimit) {
@@ -409,8 +409,8 @@ namespace optiling {
       }
 
       OP_LOGD(op_type.c_str(), "get tiling_id: %s", tiling_id.c_str());
-      run_info.block_dim = static_cast<uint32_t>(compile_info["block_dim"][tiling_id]);
-      run_info.tiling_key = std::stoi(tiling_id);
+      run_info.SetBlockDim(static_cast<uint32_t>(compile_info["block_dim"][tiling_id]));
+      run_info.SetTilingKey(std::stoi(tiling_id));
 
       update_run_info(dynamic_mode, input_shape, output_shape, run_info);
       return true;

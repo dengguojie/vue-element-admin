@@ -4,8 +4,16 @@
 
 #include <gtest/gtest.h>
 #include "register/op_tiling_registry.h"
+#include "array_ops.h"
+#include "nn_pooling_ops.h"
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/op_desc_utils.h"
 
 using namespace std;
+using namespace ge;
+using namespace op;
 
 class AvgPool3DGradTiling : public testing::Test {
  protected:
@@ -31,95 +39,92 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-TEST_F(AvgPool3DGradTiling, Avg_Pool3D_Grad_tiling_invalid_test_A) {
+TEST_F(AvgPool3DGradTiling, Avg_Pool3D_Grad_tiling_invalid_test_A)
+{
   using namespace optiling;
   std::string op_name = "AvgPool3DGrad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_pattern": "Avg_pool3d_grad","tiling_type": "default_tiling","default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Avg_pool3d_grad","tiling_type": "default_tiling","default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
 
-  std::vector<std::vector<int64_t>> inputs {
-    {1, 24, 2, 92, 128, 16},
-    {3, 3, 3, 32, 64},
-    {1, 24, 4, 92, 128, 16},
-  };
-  std::vector<int64_t> output {3, 3, 3, 32, 64};
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::string output_dtype = "float16";
-  std::vector<std::string> input_formats{"NDHWC", "NDHWC", "NDHWC"};
-  std::string output_format = "NDHWC";
+  ge::Graph graph("Avg_Pool3D_Grad_tiling_invalid_test_A");
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = input_formats[i];
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = output_dtype;
-  tensor_output.format = output_format;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "Avg_Pool3D_Grad_tiling_invalid_test_A";
-  OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  auto orig_input_shape = std::vector<int64_t>({1, 24, 2, 92, 128, 16});
+  ge::TensorDesc orig_input_shape_desc(ge::Shape(orig_input_shape), ge::FORMAT_NDC1HWC0, ge::DT_FLOAT16);
+  auto orig_input_shape_size = op::Data("orig_input_shape");
+  orig_input_shape_size.update_input_desc_x(orig_input_shape_desc);
+  orig_input_shape_size.update_output_desc_y(orig_input_shape_desc);
+
+  auto grads_shape = std::vector<int64_t>({3, 3, 3, 32, 64});
+  ge::TensorDesc grads_desc(ge::Shape(grads_shape), ge::FORMAT_DHWCN, ge::DT_FLOAT16);
+  auto grads = op::Data("grads");
+  grads.update_input_desc_x(grads_desc);
+  grads.update_output_desc_y(grads_desc);
+
+  auto avgPool3DGrad = op::AvgPool3DGrad(op_name.c_str())
+    .set_input_orig_input_shape(orig_input_shape_size)
+    .set_input_grads(grads);
+
+  auto output_shape = std::vector<int64_t>({3, 3, 3, 32, 64});
+  ge::TensorDesc output_desc(ge::Shape(output_shape), ge::FORMAT_DHWCN, ge::DT_FLOAT16);
+
+  avgPool3DGrad.update_input_desc_orig_input_shape(orig_input_shape_desc);
+  avgPool3DGrad.update_input_desc_grads(grads_desc);
+  avgPool3DGrad.update_output_desc_output(output_desc);
+
+  std::vector<ge::Operator> inputs{orig_input_shape_size, grads};
+  std::vector<ge::Operator> outputs{avgPool3DGrad};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  optiling::utils::OpCompileInfo op_compile_info("Avg_Pool3D_Grad_tiling_invalid_test_A", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+
+  ASSERT_FALSE(iter->second(avgPool3DGrad, op_compile_info, runInfo));
 }
 
-TEST_F(AvgPool3DGradTiling, Avg_Pool3D_Grad_tiling_invalid_test_B) {
+TEST_F(AvgPool3DGradTiling, Avg_Pool3D_Grad_tiling_invalid_test_B)
+{
   using namespace optiling;
   std::string op_name = "AvgPool3DGrad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_pattern": "Avg_pool3d_grad","tiling_type": "default_tiling","default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Avg_pool3d_grad","tiling_type": "default_tiling","default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
 
-  std::vector<std::vector<int64_t>> inputs {
-    {1, 24, 2, 92, 128, 16},
-    {3, 3, 3, 32, 64, 1},
-    {1, 24, 4, 92, 128, 16},
-  };
-  std::vector<int64_t> output {3, 3, 3, 32, 64, 1};
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::string output_dtype = "float16";
-  std::vector<std::string> input_formats{"NDHWC", "NDHWC", "NDHWC"};
-  std::string output_format = "NDHWC";
+  ge::Graph graph("Avg_Pool3D_Grad_tiling_invalid_test_A");
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = input_formats[i];
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = output_dtype;
-  tensor_output.format = output_format;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "Avg_Pool3D_Grad_tiling_invalid_test_B";
-  OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  auto orig_input_shape = std::vector<int64_t>({1, 24, 2, 92, 128, 16});
+  ge::TensorDesc orig_input_shape_desc(ge::Shape(orig_input_shape), ge::FORMAT_NDC1HWC0, ge::DT_FLOAT16);
+  auto orig_input_shape_size = op::Data("orig_input_shape");
+  orig_input_shape_size.update_input_desc_x(orig_input_shape_desc);
+  orig_input_shape_size.update_output_desc_y(orig_input_shape_desc);
+
+  auto grads_shape = std::vector<int64_t>({3, 3, 3, 32, 64, 1});
+  ge::TensorDesc grads_desc(ge::Shape(grads_shape), ge::FORMAT_DHWCN, ge::DT_FLOAT16);
+  auto grads = op::Data("grads");
+  grads.update_input_desc_x(grads_desc);
+  grads.update_output_desc_y(grads_desc);
+
+  auto avgPool3DGrad = op::AvgPool3DGrad(op_name.c_str())
+    .set_input_orig_input_shape(orig_input_shape_size)
+    .set_input_grads(grads);
+
+  auto output_shape = std::vector<int64_t>({3, 3, 3, 32, 64, 1});
+  ge::TensorDesc output_desc(ge::Shape(output_shape), ge::FORMAT_DHWCN, ge::DT_FLOAT16);
+
+  avgPool3DGrad.update_input_desc_orig_input_shape(orig_input_shape_desc);
+  avgPool3DGrad.update_input_desc_grads(grads_desc);
+  avgPool3DGrad.update_output_desc_output(output_desc);
+
+  std::vector<ge::Operator> inputs{orig_input_shape_size, grads};
+  std::vector<ge::Operator> outputs{avgPool3DGrad};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  optiling::utils::OpCompileInfo op_compile_info("Avg_Pool3D_Grad_tiling_invalid_test_A", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+
+  ASSERT_FALSE(iter->second(avgPool3DGrad, op_compile_info, runInfo));
 }
-

@@ -38,18 +38,25 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool AvgPool3DTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& compile_info,
-                     OpRunInfo& run_info) {
-  if (op_paras.inputs.empty() || op_paras.outputs.empty() || op_paras.inputs[0].tensor.empty() ||
-      op_paras.outputs[0].tensor.empty() || (op_paras.inputs[0].tensor[0].shape.size() < SHAPE_SIZE_6D) ||
-      op_paras.outputs[0].tensor[0].shape.size() < SHAPE_SIZE_6D) {
-    CUBE_INNER_ERR_REPORT(op_type.c_str(), "invalid inputs' shape dims.");
-    return false;
-  }
-  return Conv3DCommonTiling("AvgPool3D", op_paras.inputs[0].tensor[0].shape,
-                            op_paras.outputs[0].tensor[0].shape,
-                            compile_info, run_info);
+bool AvgPool3DTiling(const std::string& op_type,
+                     const ge::Operator& op_paras,
+                     const nlohmann::json& compile_info,
+                     utils::OpRunInfo& run_info)
+{
+  if (op_paras.GetInputsSize() == 0 ||
+      op_paras.GetOutputsSize() == 0 ||
+      (op_paras.GetInputDesc(0).GetShape().GetDimNum() < SHAPE_SIZE_6D) ||
+      (op_paras.GetOutputDesc(0).GetShape().GetDimNum() < SHAPE_SIZE_6D)) {
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "invalid inputs' shape dims.");
+        return false;
+      }
+
+  return Conv3DCommonTiling("AvgPool3D",
+                            op_paras.GetInputDesc(0).GetShape().GetDims(),
+                            op_paras.GetOutputDesc(0).GetShape().GetDims(),
+                            compile_info,
+                            run_info);
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(AvgPool3D, AvgPool3DTiling);
-}  // namespace optiling
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(AvgPool3D, AvgPool3DTiling);
+} // namespace optiling
