@@ -127,9 +127,7 @@ REG_OP(DynamicLSTM)
 *@li cell_clip:An float identifying the cell clip in the op. Default to -1.
 *@li num_proj:An integer identifying the num projection in the op. Default to 0.
 *@li time_major:An bool identifying the time major in the op. Default to false.
-*@li activation:An string identifying the type of activation function in the op. Default to "tanh". Only tanh is currently supported.
 *@li forget_bias:An float identifying the forget bias in the op. Default to 0.
-*@li is_training:An bool identifying is training in the op. Default to true.
 
 *@par Outputs:
 *eight outputs: \n
