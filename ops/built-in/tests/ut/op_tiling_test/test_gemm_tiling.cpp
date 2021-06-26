@@ -3,9 +3,17 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "array_ops.h"
+#include "matrix_calculation_ops.h"
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/op_desc_utils.h"
 #include "register/op_tiling_registry.h"
 
 using namespace std;
+using namespace ge;
+using namespace op;
 
 class GEMMTiling : public testing::Test {
  protected:
@@ -34,113 +42,89 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(GEMMTiling, GEMM_op_tiling_obj) {
   using namespace optiling;
   std::string op_name = "MatMul";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}})";
 
-  std::vector<std::vector<int64_t>> ori_inputs {
-    {2, 3},
-    {3, 4}
-  };
-  std::vector<std::vector<int64_t>> inputs {
-    {1, 1, 16, 16},
-    {1, 1, 16, 16}
-  };
-  std::vector<int64_t> ori_output {2, 4};
-  std::vector<int64_t> output {1, 1, 16, 16};
-  std::vector<std::string> input_types{"float16", "float16"};
-  std::string output_dtype = "float16";
-  std::vector<std::string> input_formats{"FRACTAL_NZ", "FRACTAL_NZ"};
-  std::string origin_format = "ND";
+  ge::Graph graph("matmul_op_tiling_test_0");
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = input_formats[i];
-    tensor_input.ori_shape = ori_inputs[i];
-    tensor_input.ori_format = origin_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = output_dtype;
-  tensor_output.ori_shape = ori_output;
-  tensor_output.format = "FRACTAL_NZ";
-  tensor_output.ori_format = "ND";
+  auto x1_shape = vector<int64_t>({2, 3});
+  ge::TensorDesc desc_x1(ge::Shape(x1_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x1.SetOriginShape(ge::Shape(x1_shape));
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(desc_x1);
+  x1.update_output_desc_y(desc_x1);
 
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "Matmul";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 2);
-  EXPECT_EQ(runInfo.tiling_key, 10000);
+  auto x2_shape = vector<int64_t>({3, 4});
+  ge::TensorDesc desc_x2(ge::Shape(x2_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x2.SetOriginShape(ge::Shape(x2_shape));
+  auto x2 = op::Data("x2");
+  x2.update_input_desc_x(desc_x2);
+  x2.update_output_desc_y(desc_x2);
+
+  auto matmul = op::MatMul(op_name)
+      .set_input_x1(x1)
+      .set_input_x2(x2);
+
+  auto y_shape = vector<int64_t>({2, 4});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  matmul.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x1, x2};
+  std::vector<Operator> outputs{matmul};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Matmul", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(matmul, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 2);
+  EXPECT_EQ(runInfo.GetTilingKey(), 10000);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_arr) {
   using namespace optiling;
   std::string op_name = "MatMul";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"([{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}},{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10001": [1, 3, 1, 3, 4, 7]}, "block_dim": {"10001": 2}, "attrs":{"transpose_a": false, "transpose_b": false}}])";
+  const ge::AscendString compileInfo = R"([{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}},{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10001": [1, 3, 1, 3, 4, 7]}, "block_dim": {"10001": 2}, "attrs":{"transpose_a": false, "transpose_b": false}}])";
 
-  std::vector<std::vector<int64_t>> ori_inputs {
-    {2, 3},
-    {3, 4}
-  };
-  std::vector<std::vector<int64_t>> inputs {
-    {1, 1, 16, 16},
-    {1, 1, 16, 16}
-  };
-  std::vector<int64_t> ori_output {2, 4};
-  std::vector<int64_t> output {1, 1, 16, 16};
-  std::vector<std::string> input_types{"float16", "float16"};
-  std::string output_dtype = "float16";
-  std::vector<std::string> input_formats{"FRACTAL_NZ", "FRACTAL_NZ"};
-  std::string origin_format = "ND";
+  ge::Graph graph("matmul_op_tiling_test_1");
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = input_formats[i];
-    tensor_input.ori_shape = ori_inputs[i];
-    tensor_input.ori_format = origin_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = output_dtype;
-  tensor_output.ori_shape = ori_output;
-  tensor_output.format = "FRACTAL_NZ";
-  tensor_output.ori_format = "ND";
+  auto x1_shape = vector<int64_t>({2, 3});
+  ge::TensorDesc desc_x1(ge::Shape(x1_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x1.SetOriginShape(ge::Shape(x1_shape));
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(desc_x1);
+  x1.update_output_desc_y(desc_x1);
 
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "GEMM_op_tiling_arr";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 2);
-  EXPECT_EQ(runInfo.tiling_key, 10000);
+  auto x2_shape = vector<int64_t>({3, 4});
+  ge::TensorDesc desc_x2(ge::Shape(x2_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x2.SetOriginShape(ge::Shape(x2_shape));
+  auto x2 = op::Data("x2");
+  x2.update_input_desc_x(desc_x2);
+  x2.update_output_desc_y(desc_x2);
+
+  auto matmul = op::MatMul(op_name)
+      .set_input_x1(x1)
+      .set_input_x2(x2);
+
+  auto y_shape = vector<int64_t>({2, 4});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  matmul.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x1, x2};
+  std::vector<Operator> outputs{matmul};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("GEMM_op_tiling_arr", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(matmul, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 2);
+  EXPECT_EQ(runInfo.GetTilingKey(), 10000);
 }

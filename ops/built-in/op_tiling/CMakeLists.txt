@@ -54,6 +54,7 @@ set(_optiling_files
   mse_loss_grad.cc
   conv3d_backprop_filter.cc
   cube_tiling.cc
+  cube_tiling_new.cc
   dynamic_lstm_grad_cell.cc
   deconvolution.cc
   dynamic_atomic_addr_clean.cc

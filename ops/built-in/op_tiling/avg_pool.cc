@@ -23,7 +23,8 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
-#include "cube_tiling.h"
+#include "graph/utils/type_utils.h"
+#include "cube_tiling_new.h"
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
 #include "error_log.h"
@@ -89,29 +90,29 @@ void PrintTilingParam(const TilingParam& param)
   OP_LOGD("AvgPoolTiling", "last_core_loop_num=%d.", param.last_core_loop_num);
   OP_LOGD("AvgPoolTiling", "last_core_loop_left=%d.", param.last_core_loop_left);
 }
-void SetTilingParam(const TilingParam& param, OpRunInfo& run_info)
+void SetTilingParam(const TilingParam& param, utils::OpRunInfo& runInfo)
 {
-  ByteBufferPut(run_info.tiling_data, param.tiling_mode);
-  ByteBufferPut(run_info.tiling_data, param.act_core_num);
-  ByteBufferPut(run_info.tiling_data, param.one_core_ele);
-  ByteBufferPut(run_info.tiling_data, param.last_core_ele);
-  ByteBufferPut(run_info.tiling_data, param.input_h);
-  ByteBufferPut(run_info.tiling_data, param.input_w);
-  ByteBufferPut(run_info.tiling_data, param.output_h);
-  ByteBufferPut(run_info.tiling_data, param.output_w);
-  ByteBufferPut(run_info.tiling_data, param.pad_h);
-  ByteBufferPut(run_info.tiling_data, param.pad_w);
-  ByteBufferPut(run_info.tiling_data, param.pad_t);
-  ByteBufferPut(run_info.tiling_data, param.pad_b);
-  ByteBufferPut(run_info.tiling_data, param.pad_l);
-  ByteBufferPut(run_info.tiling_data, param.pad_r);
-  ByteBufferPut(run_info.tiling_data, param.c_factor);
-  ByteBufferPut(run_info.tiling_data, param.h_factor);
-  ByteBufferPut(run_info.tiling_data, param.w_factor);
-  ByteBufferPut(run_info.tiling_data, param.one_core_loop_num);
-  ByteBufferPut(run_info.tiling_data, param.one_core_loop_left);
-  ByteBufferPut(run_info.tiling_data, param.last_core_loop_num);
-  ByteBufferPut(run_info.tiling_data, param.last_core_loop_left);
+  runInfo.AddTilingData(param.tiling_mode);
+  runInfo.AddTilingData(param.act_core_num);
+  runInfo.AddTilingData(param.one_core_ele);
+  runInfo.AddTilingData(param.last_core_ele);
+  runInfo.AddTilingData(param.input_h);
+  runInfo.AddTilingData(param.input_w);
+  runInfo.AddTilingData(param.output_h);
+  runInfo.AddTilingData(param.output_w);
+  runInfo.AddTilingData(param.pad_h);
+  runInfo.AddTilingData(param.pad_w);
+  runInfo.AddTilingData(param.pad_t);
+  runInfo.AddTilingData(param.pad_b);
+  runInfo.AddTilingData(param.pad_l);
+  runInfo.AddTilingData(param.pad_r);
+  runInfo.AddTilingData(param.c_factor);
+  runInfo.AddTilingData(param.h_factor);
+  runInfo.AddTilingData(param.w_factor);
+  runInfo.AddTilingData(param.one_core_loop_num);
+  runInfo.AddTilingData(param.one_core_loop_left);
+  runInfo.AddTilingData(param.last_core_loop_num);
+  runInfo.AddTilingData(param.last_core_loop_left);
 }
 
 static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num)
@@ -187,23 +188,24 @@ static bool GetCompileInfo (const nlohmann::json& op_info, const string& name, T
   return true;
 }
 
-bool AvgPoolTilingVector(const string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                  OpRunInfo& run_info) 
+bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                         utils::OpRunInfo& run_info) 
 {
   OP_LOGI(op_type.c_str(), "AvgPoolTilingVector running.");
-  if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() || op_paras.inputs[0].tensor[0].shape.empty()) {
+  if (op_paras.GetInputsSize() == 0 || op_paras.GetInputDesc(0).GetShape().GetDimNum() == 0) {
     return false;
   }
-  string input_format = op_paras.inputs[0].tensor[0].format;
+  ge::Format input_format = op_paras.GetInputDesc(0).GetFormat();
   OP_TILING_CHECK(
-    input_format != "NC1HWC0",
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input format failed, only support NC1HWC0, but got %s", input_format.c_str()),
+    input_format != ge::FORMAT_NC1HWC0,
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input format failed, only support NC1HWC0, but got %s", 
+                                    ge::TypeUtils::FormatToSerialString(input_format).c_str()),
     return false);
-  vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
+  vector<int64_t> input_shape = op_paras.GetInputDesc(0).GetShape().GetDims();
   OP_TILING_CHECK(
     input_shape.size() != 5,
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, the length of input shape must be 5, but got %d",
-            input_shape.size()),
+            op_paras.GetInputDesc(0).GetShape().GetDimNum()),
     return false);
 
   int32_t ub_ele = 0;
@@ -242,23 +244,22 @@ bool AvgPoolTilingVector(const string& op_type, const TeOpParas& op_paras, const
   CalTilingParam(param, input_shape, ub_ele, core_num, ksize_h, ksize_w, strides_h, strides_w, padding);
   SetTilingParam(param, run_info);
   PrintTilingParam(param);
-  run_info.block_dim = param.act_core_num;
+  run_info.SetBlockDim(param.act_core_num);
   vector<int64_t> workspace;
-  run_info.workspaces = workspace;
-
+  for (auto i : workspace){
+    run_info.AddWorkspace(i);
+  }
   OP_LOGI(op_type.c_str(), "AvgPoolTiling run success.");
   return true;
 }
 
-bool AvgPoolTilingCube(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                  OpRunInfo& runInfo) {
+bool AvgPoolTilingCube(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+                  utils::OpRunInfo& runInfo) {
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
-
-  if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.outputs[0].tensor.empty() || opParas.inputs[0].tensor[0].shape.empty() ||
-      opParas.outputs[0].tensor[0].shape.empty()) {
+  if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 ||
+      opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0){
     return false;
   }
 
@@ -275,22 +276,22 @@ bool AvgPoolTilingCube(const std::string& opType, const TeOpParas& opParas, cons
 
   std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[nDim]);
+    var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(nDim));
   }
   if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[hDim]);
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[hDim]);
+    var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(hDim));
+    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(hDim));
   }
   if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[0].tensor[0].shape[wDim]);
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[wDim]);
+    var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(wDim));
+    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(wDim));
   }
 
-  return cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opCompileInfo, runInfo);
+  return cube_tiling(opType, opParas.GetInputDesc(0).GetShape().GetDims(), var_value, opCompileInfo, runInfo);
 }
 // register tiling interface of the avgpool
-bool AvgPoolTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                  OpRunInfo& runInfo)
+bool AvgPoolTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+                  utils::OpRunInfo& runInfo) 
 {
   int32_t strides_h = opCompileInfo.at("strides_h");
   int32_t strides_w = opCompileInfo.at("strides_w");
@@ -303,5 +304,5 @@ bool AvgPoolTiling(const std::string& opType, const TeOpParas& opParas, const nl
   }
   return result;
 }
-REGISTER_OP_TILING_FUNC_BUFFERED(AvgPool, AvgPoolTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(AvgPool, AvgPoolTiling);
 }  // namespace optiling

@@ -26,6 +26,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "external/graph/operator.h"
 #include "graph/types.h"
 #include "graph/utils/type_utils.h"
 #include "op_log.h"
@@ -81,10 +82,10 @@ bool GetGEMMBatch(const string &op_type, const vector<int64_t> &shape_a, const v
 }
 
 bool CalcGEMMMknb(const string &op_type, const json &compile_info,
-                  const TeOpTensor &tensor_a, const TeOpTensor &tensor_b,
+                  const ge::TensorDesc &tensor_a, const ge::TensorDesc &tensor_b,
                   int64_t *m, int64_t *k, int64_t *n, int64_t *batch) {
     int32_t block_reduce = kBlockReduce, block_in = kBlockIn, block_out = kBlockOut;
-    if (tensor_a.dtype == "int8" || tensor_a.dtype == "uint8") {
+    if (tensor_a.GetDataType() == ge::DT_INT8 || tensor_a.GetDataType() == ge::DT_UINT8) {
       block_reduce = kBlockReduceS8;
     }
 
@@ -104,61 +105,60 @@ bool CalcGEMMMknb(const string &op_type, const json &compile_info,
       idx_n_of_b = -2;
     }
 
-    idx_m_of_a += tensor_a.ori_shape.size();
-    idx_k_of_a += tensor_a.ori_shape.size();
-    idx_k_of_b += tensor_b.ori_shape.size();
-    idx_n_of_b += tensor_b.ori_shape.size();
+    auto tansor_a_ori_shape = tensor_a.GetOriginShape().GetDims();
+    auto tansor_b_ori_shape = tensor_b.GetOriginShape().GetDims();
 
-    if (tensor_a.ori_shape[idx_k_of_a] != tensor_b.ori_shape[idx_k_of_b]) {
+    idx_m_of_a += tansor_a_ori_shape.size();
+    idx_k_of_a += tansor_a_ori_shape.size();
+    idx_k_of_b += tansor_b_ori_shape.size();
+    idx_n_of_b += tansor_b_ori_shape.size();
+
+    if (tansor_a_ori_shape[idx_k_of_a] != tansor_b_ori_shape[idx_k_of_b]) {
       CUBE_INNER_ERR_REPORT(op_type.c_str(), "The k-axis of a and b tensors must be the same");
       return false;
     }
+    
+    *m = std::ceil(static_cast<double>(tansor_a_ori_shape[idx_m_of_a]) / block_in);
+    *k = std::ceil(static_cast<double>(tansor_a_ori_shape[idx_k_of_a]) / block_reduce);
+    *n = std::ceil(static_cast<double>(tansor_b_ori_shape[idx_n_of_b]) / block_out);
 
-    *m = std::ceil(static_cast<double>(tensor_a.ori_shape[idx_m_of_a]) / block_in);
-    *k = std::ceil(static_cast<double>(tensor_a.ori_shape[idx_k_of_a]) / block_reduce);
-    *n = std::ceil(static_cast<double>(tensor_b.ori_shape[idx_n_of_b]) / block_out);
-
-    return GetGEMMBatch(op_type, tensor_a.ori_shape, tensor_b.ori_shape, batch);
+    return GetGEMMBatch(op_type, tansor_a_ori_shape, tansor_b_ori_shape, batch);
 }
 
-string StringTeOperator(const TeOpTensor &tensor) {
+string StringTeOperator(const ge::TensorDesc &tensor) {
     std::ostringstream oss;
     oss << "\t\tori_shape: (";
-    for (auto dim : tensor.ori_shape) {
+    for (auto dim : tensor.GetOriginShape().GetDims()) {
       oss << dim << ", ";
     }
     oss << ")" << endl;
 
     oss << "\t\tshape: (";
-    for (auto dim : tensor.shape) {
+    for (auto dim : tensor.GetShape().GetDims()) {
       oss << dim << ", ";
     }
     oss << ")" << endl;
-
-    oss << "\t\tdtype: " << tensor.dtype << endl;
-    oss << "\t\tformat: " << tensor.format << endl;
-    oss << "\t\tori_format: " << tensor.ori_format << endl;
+    oss << "\t\tdtype: " << ge::TypeUtils::DataTypeToSerialString(tensor.GetDataType()) << endl;
+    oss << "\t\tformat: " << ge::TypeUtils::FormatToSerialString(tensor.GetFormat()) << endl;
+    oss << "\t\tori_format: " << ge::TypeUtils::FormatToSerialString(tensor.GetOriginFormat()) << endl;
+    
     return oss.str();
 }
 
-string DebugInfoGEMM(const TeOpParas &op_paras, const json &compile_info) {
+string DebugInfoGEMM(const ge::Operator &op_paras, const json &compile_info) {
   std::ostringstream oss;
   oss << "inputs:" << endl;
-  for (uint32_t i = 0; i < op_paras.inputs.size(); ++i) {
+  for (size_t i = 0; i < op_paras.GetInputsSize(); ++i) {
     oss << "\tinput " << i << endl;
-    if (!op_paras.inputs[i].tensor.empty()) {
-      auto tensor = op_paras.inputs[i].tensor[0];
-      oss << StringTeOperator(tensor);
-    }
+    auto tensor = op_paras.GetInputDesc(i);
+    oss << StringTeOperator(tensor);
   }
 
   oss << "outputs:" << endl;
-  for (uint32_t i = 0; i < op_paras.outputs.size(); ++i) {
+  for (size_t i = 0; i < op_paras.GetOutputsSize(); ++i) {
     oss << "\toutput " << i << endl;
-    if (!op_paras.outputs[i].tensor.empty()) {
-      auto tensor = op_paras.outputs[i].tensor[0];
-      oss << StringTeOperator(tensor);
-    }
+    auto tensor = op_paras.GetOutputDesc(i);
+    oss << StringTeOperator(tensor);
   }
 
   oss << "compile_info:" << endl;
@@ -166,16 +166,16 @@ string DebugInfoGEMM(const TeOpParas &op_paras, const json &compile_info) {
   return oss.str();
 }
 
-std::string GEMMTilingSelect(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
-                             OpRunInfo& run_info) {
+std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_paras, const json &compile_info,
+                             utils::OpRunInfo& run_info) {
   string tiling_id("-1");
   auto dynamic_mode = compile_info["dynamic_mode"].get<std::string>();
   if (dynamic_mode != "dynamic_mkn" && dynamic_mode != "dynamic_mknb") {
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb");
     return tiling_id;
   }
-  auto tensor_a = op_paras.inputs[0].tensor[0];
-  auto tensor_b = op_paras.inputs[1].tensor[0];
+  auto tensor_a = op_paras.GetInputDesc(0);
+  auto tensor_b = op_paras.GetInputDesc(1);
   int64_t m, k, n, batch;
   if (!CalcGEMMMknb(op_type, compile_info, tensor_a, tensor_b, &m, &k, &n, &batch)) {
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to calculate m, k, n, batch");
@@ -209,7 +209,6 @@ std::string GEMMTilingSelect(const std::string &op_type, const TeOpParas &op_par
   if (tiling_id == "-1") {
     for (auto &element : compile_info["cost_range"].items()) {
       auto range = element.value().get<std::vector<int64_t>>();
-
       auto in_range = range[kIdxMLow] <= m && m <= range[kIdxMHigh] &&
                       range[kIdxKLow] <= k && k <= range[kIdxKHigh] &&
                       range[kIdxNLow] <= n && n <= range[kIdxNHigh];
@@ -227,13 +226,13 @@ std::string GEMMTilingSelect(const std::string &op_type, const TeOpParas &op_par
   }
 
   if (tiling_id != "-1") {
-    run_info.block_dim = static_cast<int32_t>(compile_info["block_dim"][tiling_id]);
-    run_info.tiling_key = stoi(tiling_id);
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(m));
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(k));
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(n));
+    run_info.SetBlockDim(static_cast<int32_t>(compile_info["block_dim"][tiling_id]));
+    run_info.SetTilingKey(stoi(tiling_id));
+    run_info.AddTilingData(static_cast<int32_t>(m));
+    run_info.AddTilingData(static_cast<int32_t>(k));
+    run_info.AddTilingData(static_cast<int32_t>(n));
     if (dynamic_mode == "dynamic_mknb") {
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(batch));
+      run_info.AddTilingData(static_cast<int32_t>(batch));
     }
   }
   return tiling_id;
@@ -248,8 +247,8 @@ std::string GEMMTilingSelect(const std::string &op_type, const TeOpParas &op_par
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
-                OpRunInfo& run_info) {
+bool GEMMTiling(const std::string &op_type, const ge::Operator &op_paras, const json &compile_info,
+                utils::OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "%s", DebugInfoGEMM(op_paras, compile_info).c_str());
   std::string tiling_id("-1");
   if (compile_info.type() == json::value_t::object) {
@@ -273,8 +272,8 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
 }
 
 // register tiling interface of the gemm
-REGISTER_OP_TILING_FUNC_BUFFERED(MatMul, GEMMTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(MatMulV2, GEMMTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(BatchMatMul, GEMMTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(BatchMatMulV2, GEMMTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(MatMul, GEMMTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(MatMulV2, GEMMTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(BatchMatMul, GEMMTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(BatchMatMulV2, GEMMTiling);
 }  // namespace optiling

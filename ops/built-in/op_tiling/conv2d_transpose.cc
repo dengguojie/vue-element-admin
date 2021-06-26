@@ -21,9 +21,11 @@
 #include <vector>
 #include <string>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "cube_tiling_new.h"
+#include "external/graph/operator.h"
 #include "graph/debug/ge_log.h"
-#include "cube_tiling.h"
+#include "graph/utils/type_utils.h"
+#include "op_tiling.h"
 #include "op_log.h"
 
 namespace optiling {
@@ -35,21 +37,19 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool Conv2DTransposeTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                         OpRunInfo& runInfo) {
+bool Conv2DTransposeTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+                         utils::OpRunInfo& runInfo) {
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
 
-  if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs.size() < 2 ||
-      opParas.inputs[1].tensor.empty() ||  opParas.outputs[0].tensor.empty() ||
-      opParas.inputs[1].tensor[0].shape.empty() || opParas.inputs[1].tensor[0].shape.size() < 4 ||
-      opParas.outputs[0].tensor[0].shape.empty() || opParas.outputs[0].tensor[0].shape.size() < 4) {
+  if (opParas.GetInputsSize() < 2 || opParas.GetOutputsSize() == 0 ||
+      opParas.GetInputDesc(1).GetShape().GetDimNum() < 4 || opParas.GetOutputDesc(0).GetShape().GetDimNum() < 4){
     return false;
   }
-
-  GELOGD("Current format is %s, Ori format is %s", opParas.outputs[0].tensor[0].format.c_str(),
-         opParas.outputs[0].tensor[0].ori_format.c_str());
+  auto output_format = ge::TypeUtils::FormatToSerialString(opParas.GetOutputDesc(0).GetFormat()).c_str();
+  auto output_ori_format = ge::TypeUtils::FormatToSerialString(opParas.GetOutputDesc(0).GetOriginFormat()).c_str();
+  GELOGD("Current format is %s, Ori format is %s", output_format, output_ori_format);
 
   if(opCompileInfo.empty()) {
     GELOGD("op compile info is empty");
@@ -91,20 +91,20 @@ bool Conv2DTransposeTiling(const std::string& opType, const TeOpParas& opParas, 
 
   std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[nDim]);
+    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(nDim));
   }
   if (std::find(varMap.begin(), varMap.end(), "dx_h") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[1].tensor[0].shape[hDim]);
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[hDim]);
+    var_value.insert(var_value.end(), opParas.GetInputDesc(1).GetShape().GetDim(hDim));
+    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(hDim));
   }
   if (std::find(varMap.begin(), varMap.end(), "dx_w") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.inputs[1].tensor[0].shape[wDim]);
-    var_value.insert(var_value.end(), opParas.outputs[0].tensor[0].shape[wDim]);
+    var_value.insert(var_value.end(), opParas.GetInputDesc(1).GetShape().GetDim(wDim));
+    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(wDim));
   }
 
-  return cube_tiling(opType, opParas.outputs[0].tensor[0].shape, var_value, opInfo, runInfo);
+  return cube_tiling(opType, opParas.GetOutputDesc(0).GetShape().GetDims(), var_value, opInfo, runInfo);
 }
 
 // register tiling interface of the conv2d_transpose
-REGISTER_OP_TILING_FUNC_BUFFERED(Conv2DTranspose, Conv2DTransposeTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(Conv2DTranspose, Conv2DTransposeTiling);
 }  // namespace optiling
