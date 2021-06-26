@@ -55,6 +55,12 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
                             vector<ge::NodePtr> &newNodes, std::string nodeName, int nodeIndex);
   ge::OpDescPtr CreateSplitDesc(ge::OpDescPtr splitDesc, ge::OpDescPtr fusedDesc,
                                 string tensorName, int64_t splitDim);
+  Status SetOutputTensorDescAttr(uint16_t originOutputIndex, uint16_t fuseOutputIndex,
+                                 ge::NodePtr originNode, ge::NodePtr fuseNode);
+  Status ProcessLSTMInitH(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, bool hasInitH,
+                          vector<ge::GeTensorPtr> &tensorPtr);
+  Status ProcessLSTMInitC(ge::NodePtr fusedNode, const InputIndexInfo &inputIndexInfo, bool hasInitC,
+                          vector<ge::GeTensorPtr> &tensorPtr);
   const string FUSED_OP_TYPE = "CommonLSTM";
 };
 }  // namespace fe
