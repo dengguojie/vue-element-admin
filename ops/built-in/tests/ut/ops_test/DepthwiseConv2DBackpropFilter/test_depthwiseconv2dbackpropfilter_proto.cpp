@@ -3,6 +3,11 @@
 #include "op_proto_test_util.h"
 #include "array_ops.h"
 #include "nn_calculation_ops.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph/utils/graph_utils.h"
+#include "op_desc.h"
+#include "utils/op_desc_utils.h"
+#include "utils/attr_utils.h"
 
 // ---------------DepthwiseConv2DBackpropFilter-------------------
 class DepthwiseConv2DBackpropFilterProtoTest : public testing::Test {
@@ -554,4 +559,36 @@ TEST_F(DepthwiseConv2DBackpropFilterProtoTest, DepthwiseConv2DBackpropFilterVeri
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+// fuzzy compile
+TEST_F(DepthwiseConv2DBackpropFilterProtoTest, DepthwiseConv2dBackpropFilterFuzzyCompile) {
+    ge::op::DepthwiseConv2DBackpropFilter op;
+    op.SetAttr("_fuzz_build", true);
+    op.UpdateInputDesc("input", create_desc_with_ori({128, 256, 14, 14},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({128, 512, 7, 7},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 512, 7, 7}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("filter_grad", create_desc_with_ori({2, 256, 1, 1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {2, 256, 1, 1}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NCHW");
+    std::string padding = "SAME";
+    op.SetAttr("padding", padding);
+
+    auto filter_ori_shape_data = ge::op::Data("filter_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    filter_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    filter_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_filter_size(filter_ori_shape_data);
+    op.UpdateInputDesc("filter_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

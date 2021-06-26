@@ -137,7 +137,10 @@ def gen_support_info(range_x, ori_tensors):
     # >>> start: generate input shape and range
     inputs = []
     indexes = [0, 2]
-    input_tensores = ["x", "out_backprop"]
+    if DynamicParams.op_type in ["Conv2DBackpropFilter"]:
+        input_tensores = ["x", "out_backprop"]
+    elif DynamicParams.op_type in ["DepthwiseConv2DBackpropFilter"]:
+        input_tensores = ["input_fm", "out_backprop"]
     for index, input_tensor in zip(indexes, input_tensores):
         item = {}
         item["index"] = index
@@ -300,12 +303,17 @@ def calc_conv2dbp_filter(outs, option=None):
     if fuzz_build: # parse input range
         # generate tgt_area by format
         ori_tensors = DynamicParams.ori_tensors
+        op_type = DynamicParams.op_type
+        if op_type == "DepthwiseConv2DBackpropFilter":
+            dedx_index = "input_fm"
+        else:
+            dedx_index = "x"
         invalid = (not isinstance(ori_tensors, dict)) \
-                  or (not isinstance(ori_tensors.get("x"), dict)) \
+                  or (not isinstance(ori_tensors.get(dedx_index), dict)) \
                   or (not isinstance(ori_tensors.get("out_backprop"), dict))
         if invalid:
             raise RuntimeError("can't get input from para_dict")
-        input_format = ori_tensors["x"]["ori_format"]
+        input_format = ori_tensors[dedx_index]["ori_format"]
         pos_list = [input_format.find("N"),
                     input_format.find("H"),
                     input_format.find("W")]

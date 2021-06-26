@@ -17,6 +17,7 @@ tiling case utils
 """
 
 from __future__ import absolute_import
+from tbe.tvm.expr import Expr
 import warnings
 import math
 import copy
@@ -170,14 +171,22 @@ class Conv2dBackpropParaProcess():
         def _get_output(x_in, k_size, pads, stride, dilation):
             if not x_in:
                 return x_in
-            if DYNAMIC_FLAG in pads:
+            dynamic_flag = False
+            for pad in pads:
+                if isinstance(pad, Expr):
+                    dynamic_flag = True
+            if dynamic_flag:
                 return ceil_div(x_in, stride)
             else:
                 return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
         correct_range_flag = False
         new_dy_range = copy.deepcopy(dy_range)
-        if DYNAMIC_FLAG in self.pads:
+        dynamic_flag = False
+        for pad in self.pads:
+            if isinstance(pad, Expr):
+                dynamic_flag = True
+        if dynamic_flag:
             dx_h_lower = (dy_range[H_DIM][0] - 1) * self.strides[H_DIM] + 1
             if not dy_range[H_DIM][1]:
                 dx_h_upper = dy_range[H_DIM][1]
@@ -298,7 +307,11 @@ class Conv2dBackpropParaProcess():
 
         correct_range_flag = False
         new_in_range = copy.deepcopy(in_range)
-        if DYNAMIC_FLAG in self.pads:
+        dynamic_flag = False
+        for pad in self.pads:
+            if isinstance(pad, Expr):
+                dynamic_flag = True
+        if dynamic_flag:
             out_h_lower = ceil_div(in_range[H_DIM][0], self.strides[H_DIM])
             out_h_upper = ceil_div(in_range[H_DIM][1], self.strides[H_DIM])
             out_w_lower = ceil_div(in_range[W_DIM][0], self.strides[W_DIM])

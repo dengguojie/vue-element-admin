@@ -548,6 +548,59 @@ static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
   return true;
 }
 
+/*!
+  * Make sure that output shape is larger than 0
+  */
+bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
+                             std::vector<std::pair<int64_t, int64_t>>& input_range,
+                             int32_t kh_dilate, int32_t kw_dilate) {
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  // only support 4D shape
+  auto x_format = x_tensor->GetFormat();
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+  } else {
+    idx_h = 2;
+    idx_w = 3;
+  }
+  std::vector<int32_t> pads_list;
+  op.GetAttr("pads", pads_list);
+  if (pads_list.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "size of pads list(%zu) is not 4", pads_list.size());
+    return false;
+  }
+
+  int64_t low_h = kh_dilate;
+  int64_t low_w = kw_dilate;
+  // get the smallest shape value allowed
+  if (pads_list[0] == -1) {
+    // pad is dynamic, get value from shape or range
+    if (x_shape[idx_h] != -1) {
+      // shape is static
+      low_h = x_shape[idx_h] < low_h ? x_shape[idx_h] : low_h;
+    } else {
+      // shape is dynamic
+      low_h = input_range[idx_h].first < low_h ? input_range[idx_h].first : low_h;
+    }
+    if (x_shape[idx_w] != -1) {
+      low_w = x_shape[idx_w] < low_w ? x_shape[idx_w] : low_w;
+    } else {
+      low_w = input_range[idx_w].first < low_w ? input_range[idx_w].first : low_w;
+    }
+  } else {
+    // pad is static, get value from kernel
+    low_h = low_h - pads_list[0] - pads_list[1];
+    low_w = low_w - pads_list[2] - pads_list[3];
+  }
+  // get larger one for left range
+  input_range[idx_h].first = input_range[idx_h].first > low_h ? input_range[idx_h].first : low_h;
+  input_range[idx_w].first = input_range[idx_w].first > low_w ? input_range[idx_w].first : low_w;
+  return true;
+}
+
 static bool modify_dy_w_max(ge::Operator& op, const std::vector<int64_t>& dy_sizes,
                             Format& dy_format, int64_t& stride_h, int64_t& stride_w,
                             std::vector<std::pair<int64_t, int64_t>>& dx_range) {
@@ -1827,8 +1880,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
 
   DataType output_dtype = out_backprop_desc->GetDataType();
   tensordesc_output->SetShape(GeShape(filter_size));
-  tensordesc_output->SetDataType(output_dtype);
-
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
   if (!CheckListEmpty(op.GetName(), strides, "strides")) {
@@ -1927,6 +1978,32 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
       OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
     }
   }
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  // fuzz build allow shape dim -1 with range
+  if ((!unknown_rank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // generate range
+    std::vector<std::pair<int64_t, int64_t>> x_range;
+    if (!GenConv2dShapeRange(op, input_desc, x_range)){
+      return GRAPH_FAILED;
+    }
+    std::vector<std::pair<int64_t, int64_t>> out_backprop_range;
+    if (!GenConv2dShapeRange(op, out_backprop_desc, out_backprop_range)){
+      return GRAPH_FAILED;
+    }
+    int32_t kh_dilate = dilation_h * (filter_h - 1) + 1;
+    int32_t kw_dilate = dilation_w * (filter_w - 1) + 1;
+    // left range should ensure output >= 1
+    if (!CorrectConv2DRangeStart(op, input_desc, x_range, kh_dilate, kw_dilate)){
+      return GRAPH_FAILED;
+    }
+    // only need to set input fuzz build range
+    input_desc->SetShapeRange(x_range);
+    out_backprop_desc->SetShapeRange(out_backprop_range);
+  }
+  OP_LOGD(op.GetName().c_str(), "Leaving DepthwiseConv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
 }
 
@@ -2348,59 +2425,6 @@ static graphStatus VerifyConv2dbpPads(ge::Operator& op) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
-}
-
-/*!
-  * Make sure that output shape is larger than 0
-  */
-bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
-                             std::vector<std::pair<int64_t, int64_t>>& input_range,
-                             int32_t kh_dilate, int32_t kw_dilate) {
-  auto x_shape = x_tensor->MutableShape().GetDims();
-  // only support 4D shape
-  auto x_format = x_tensor->GetFormat();
-  size_t idx_h = 0;
-  size_t idx_w = 0;
-  if (x_format == FORMAT_NHWC) {
-    idx_h = 1;
-    idx_w = 2;
-  } else {
-    idx_h = 2;
-    idx_w = 3;
-  }
-  std::vector<int32_t> pads_list;
-  op.GetAttr("pads", pads_list);
-  if (pads_list.size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "size of pads list(%zu) is not 4", pads_list.size());
-    return false;
-  }
-
-  int64_t low_h = kh_dilate;
-  int64_t low_w = kw_dilate;
-  // get the smallest shape value allowed
-  if (pads_list[0] == -1) {
-    // pad is dynamic, get value from shape or range
-    if (x_shape[idx_h] != -1) {
-      // shape is static
-      low_h = x_shape[idx_h] < low_h ? x_shape[idx_h] : low_h;
-    } else {
-      // shape is dynamic
-      low_h = input_range[idx_h].first < low_h ? input_range[idx_h].first : low_h;
-    }
-    if (x_shape[idx_w] != -1) {
-      low_w = x_shape[idx_w] < low_w ? x_shape[idx_w] : low_w;
-    } else {
-      low_w = input_range[idx_w].first < low_w ? input_range[idx_w].first : low_w;
-    }
-  } else {
-    // pad is static, get value from kernel
-    low_h = low_h - pads_list[0] - pads_list[1];
-    low_w = low_w - pads_list[2] - pads_list[3];
-  }
-  // get larger one for left range
-  input_range[idx_h].first = input_range[idx_h].first > low_h ? input_range[idx_h].first : low_h;
-  input_range[idx_w].first = input_range[idx_w].first > low_w ? input_range[idx_w].first : low_w;
-  return true;
 }
 
 // ----------------Conv2DBackpropInput-------------------
@@ -3513,6 +3537,8 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   std::string filter_format_str = format2str[filter_format];
   int32_t filter_co_position = filter_format_str.find("N");
   int32_t filter_ci_position = filter_format_str.find("C");
+  int32_t filter_h_position = filter_format_str.find("H");
+  int32_t filter_w_position = filter_format_str.find("W");
   bool is_filter_size_const = false;
   Tensor filter_sizes_tensor;
   if (GRAPH_SUCCESS == op.GetInputConstData("filter_size", filter_sizes_tensor)) {
@@ -3577,7 +3603,13 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-
+  int32_t stride_h;
+  int32_t stride_w;
+  int32_t dilation_h;
+  int32_t dilation_w;
+  if (false == getStrideDilationHW(op, stride_h, stride_w, dilation_h, dilation_w)) {
+    return GRAPH_FAILED;
+  }
   if (!is_dynamic) {
     // update pads list by padding[SAME,VALID]
     if (false == SetPadListByPaddingConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
@@ -3589,13 +3621,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
       err_map["param_value"] = "failed";
       std::string report_error_code = "E50012";
       (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-      return GRAPH_FAILED;
-    }
-    int32_t stride_h;
-    int32_t stride_w;
-    int32_t dilation_h;
-    int32_t dilation_w;
-    if (false == getStrideDilationHW(op, stride_h, stride_w, dilation_h, dilation_w)) {
       return GRAPH_FAILED;
     }
     stride_h = static_cast<int64_t>(stride_h);
@@ -3632,6 +3657,15 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     }
     std::vector<std::pair<int64_t, int64_t>> out_backprop_range;
     if (!GenConv2dShapeRange(op, dy_desc, out_backprop_range)){
+      return GRAPH_FAILED;
+    }
+    std::vector<int64_t> filter_sizes = y_desc->MutableShape().GetDims();
+    int32_t filter_h = static_cast<int32_t>(filter_sizes[filter_h_position]);
+    int32_t filter_w = static_cast<int32_t>(filter_sizes[filter_w_position]);
+    int32_t kh_dilate = dilation_h * (filter_h - 1) + 1;
+    int32_t kw_dilate = dilation_w * (filter_w - 1) + 1;
+    // left range should ensure output >= 1
+    if (!CorrectConv2DRangeStart(op, x_desc, x_range, kh_dilate, kw_dilate)) {
       return GRAPH_FAILED;
     }
     // only need to set input fuzz build range
