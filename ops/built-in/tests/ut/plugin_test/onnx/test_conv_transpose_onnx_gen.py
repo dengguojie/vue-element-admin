@@ -376,6 +376,62 @@ def make_conv2d_Transpose_3_inputs():
     model.opset_import[0].version = 11
     onnx.save(model, "./test_conv2d_transpose_case_3_input.onnx")
 
+def make_conv_transpose_output_padding():
+    """v11 group"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT16, [1, 32, 270, 480])
+    w = helper.make_tensor_value_info('w', TensorProto.FLOAT16, [32, 16, 3, 3])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT16, [16,])
+    node_def = helper.make_node(
+        'ConvTranspose',
+        inputs=['x', 'w'],
+        outputs=['y'],
+        strides=[2, 2],
+        kernel_shape=[3, 3],
+        dilations=[1, 1],
+        group=1,
+        output_padding=[1, 1]
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'ConvTranspose',
+        [x, w],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 11
+    onnx.save(model, "./test_conv_transpose_case_output_padding.onnx")
+    onnx.checker.check_model(model)
+
+def make_conv3d_transpose_output_padding():
+    """v9"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 320, 7, 7, 5])
+    w = helper.make_tensor_value_info('w', TensorProto.FLOAT, [320, 320, 2, 2, 2])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 320, 14, 14, 10])
+    node_def = helper.make_node(
+        'ConvTranspose',
+        inputs=['x', 'w'],
+        outputs=['y'],
+        dilations=[1, 1, 1],
+        group=1,
+        kernel_shape=[2, 2, 2],
+        output_padding=[0,0,0],
+        strides=[2, 2, 2]
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'ConvTranspose',
+        [x, w],
+        [y],
+
+    )
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 9
+    onnx.save(model, "./test_conv3d_transpose_case_output_padding.onnx")
+    onnx.checker.check_model(model)
+
 
 if __name__ == '__main__':
     make_conv_transpose_v8()
@@ -392,3 +448,5 @@ if __name__ == '__main__':
     make_conv_transpose_auto_pad()
     make_conv3d_transpose_auto_pad()
     make_conv2d_Transpose_3_inputs()
+    make_conv_transpose_output_padding()
+    make_conv3d_transpose_output_padding()
