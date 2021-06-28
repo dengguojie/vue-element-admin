@@ -85,7 +85,9 @@ Status BatchNormGradBnInferGradFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
 
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> newOpdesc = nullptr;
-  newOpdesc = std::make_shared<ge::OpDesc>(batchNormGradNode->GetName(), BNINFERGRAD);
+  FUSION_PASS_MAKE_SHARED(
+      (newOpdesc = std::make_shared<ge::OpDesc>(batchNormGradNode->GetName(), BNINFERGRAD)),
+      return FAILED);
 
   FUSION_PASS_CHECK(newOpdesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "newOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
@@ -118,6 +120,9 @@ Status BatchNormGradBnInferGradFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
                     return FAILED);
 
   ge::NodePtr newNode = graph.AddNode(newOpdesc);
+  FUSION_PASS_CHECK(newNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "newNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // copy attr
   float epsilon;

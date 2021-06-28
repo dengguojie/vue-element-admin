@@ -151,6 +151,9 @@ Status MulGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   confusion_mul_grad_op->AddOutputDesc("output0", output_desc1);
   confusion_mul_grad_op->AddOutputDesc("output1", output_desc2);
   ge::NodePtr confusion_mul_grad_node = graph.AddNode(confusion_mul_grad_op);
+  FUSION_PASS_CHECK(confusion_mul_grad_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "confusion_mul_grad_node is null, fusion failed."),
+                    return NOT_CHANGED);
   newNodes.push_back(confusion_mul_grad_node);
 
   ge::OutDataAnchorPtr new_in_anchor_ptr0 = mul_node->GetInDataAnchor(0)->GetPeerOutAnchor();

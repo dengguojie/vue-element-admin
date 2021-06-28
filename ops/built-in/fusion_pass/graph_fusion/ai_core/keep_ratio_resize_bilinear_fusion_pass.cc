@@ -57,7 +57,9 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   // fusion KeepRatioResizeBilinear to ResizeBilinear
   std::shared_ptr<ge::OpDesc> resizeBilinearDesc = nullptr;
   std::string resizeBilinearName = fusedNode->GetName() + "_fused_to_resize_bilinear";
-  resizeBilinearDesc = std::make_shared<ge::OpDesc>(resizeBilinearName, "ResizeBilinearV2");
+  FUSION_PASS_MAKE_SHARED(
+      (resizeBilinearDesc = std::make_shared<ge::OpDesc>(resizeBilinearName, "ResizeBilinearV2")),
+      return FAILED);
   FUSION_PASS_CHECK(resizeBilinearDesc == nullptr,
                     OP_LOGE(fuseNodeType.c_str(), "resizeBilinearDesc is null, fusion failed."), return FAILED);
 

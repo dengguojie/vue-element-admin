@@ -392,6 +392,9 @@ Status BatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   (void)AddTensorDescForBn(bnOpdesc, inputTensor, scaleTensor, offsetTensor, meanTensor, varianceTensor, bnOutTensor);
   /* 5. Add Node into graph */
   ge::NodePtr bnNode = graph.AddNode(bnOpdesc);
+  FUSION_PASS_CHECK(bnNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "bnNode is null, fusion failed."),
+                    return PARAM_INVALID);
   newNodes.push_back(bnNode);
 
   /* 6. remove old edges and add new edges */

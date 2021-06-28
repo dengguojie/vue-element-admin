@@ -176,7 +176,9 @@ Status GeluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
 
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> gelu_desc = nullptr;
-  gelu_desc = std::make_shared<ge::OpDesc>(pow0_node->GetName() + "/" + GELU, GELU);
+  FUSION_PASS_MAKE_SHARED(
+      (gelu_desc = std::make_shared<ge::OpDesc>(pow0_node->GetName() + "/" + GELU, GELU)),
+      return FAILED);
   FUSION_PASS_CHECK(gelu_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "gelu_desc is null, fusion failed."),
                     return PARAM_INVALID);
 

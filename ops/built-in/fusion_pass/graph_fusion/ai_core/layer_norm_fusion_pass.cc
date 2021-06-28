@@ -301,7 +301,9 @@ Status LayerNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> layer_desc = nullptr;
-  layer_desc = std::make_shared<ge::OpDesc>(add1_node->GetName() + "/" + LAYERNORM, LAYERNORM);
+  FUSION_PASS_MAKE_SHARED(
+      (layer_desc = std::make_shared<ge::OpDesc>(add1_node->GetName() + "/" + LAYERNORM, LAYERNORM)),
+      return FAILED);
   FUSION_PASS_CHECK(layer_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "layer_desc is null, fusion failed."),
                     return PARAM_INVALID);
 

@@ -174,6 +174,9 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   vector<int64_t> sliced_offsets(output_shape_dims.size(), 0);
   ge::AttrUtils::SetListInt(slice_d_desc, "offsets", sliced_offsets);
   ge::NodePtr slice_d_node = graph.AddNode(slice_d_desc);
+  FUSION_PASS_CHECK(slice_d_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "slice_d_node is null, fusion failed."),
+                    return PARAM_INVALID);
   fusion_nodes.push_back(slice_d_node);
 
   // connect edge

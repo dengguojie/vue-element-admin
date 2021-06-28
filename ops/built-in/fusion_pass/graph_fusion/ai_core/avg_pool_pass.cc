@@ -192,6 +192,9 @@ NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolN
 
   // add node
   mulNode = graph.AddNode(mulDesc);
+  FUSION_PASS_CHECK(mulNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
+                    return nullptr);
 
   for (auto postAnchorPtr0 : avgPoolAnchorPtr1->GetPeerInDataAnchors()) {
     postNode = postAnchorPtr0->GetOwnerNode();
