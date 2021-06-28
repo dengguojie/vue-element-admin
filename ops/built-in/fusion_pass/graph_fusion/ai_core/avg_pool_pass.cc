@@ -572,8 +572,6 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   vector<int64_t> dimInfo = avgPoolInputShape.GetDims();
   vector<int64_t> out_dimInfo = avgPooloutputhape.GetDims();
   int64_t inputC = 0;
-  int64_t inputH = 0;
-  int64_t inputW = 0;
   int64_t output_w = 0;
   bool isDynamic = false;
   // when static op or dynamic op phase_running, is_dynamic = false
@@ -583,13 +581,9 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   if (dimInfo.size() == 4) {
     if (inputOriginFormat == FORMAT_NHWC) {
       inputC = dimInfo[3];
-      inputH = dimInfo[1];
-      inputW = dimInfo[2];
       output_w = out_dimInfo[2];
     } else if (inputOriginFormat == FORMAT_NCHW) {
       inputC = dimInfo[1];
-      inputH = dimInfo[2];
-      inputW = dimInfo[3];
       output_w = out_dimInfo[3];
     }
     if (PatternFusionUtil::IsUnknownShape(inputC)) {

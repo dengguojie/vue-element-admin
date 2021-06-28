@@ -34,6 +34,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeReduceProd";
@@ -102,7 +103,7 @@ Status AReduceProdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     if (const_data[i] < 0) {
       const_data[i] = tensor_size + const_data[i];
     }
-    if (const_data[i] > tensor_size && tensor_info[0] != -2) {
+    if (const_data[i] > (static_cast<int64_t>(tensor_size)) && (!IsUnknownRankShape(tensor_info))) {
         OP_LOGE("const_data is not right");
         return FAILED;
     }

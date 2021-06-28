@@ -99,6 +99,14 @@ void ClearOpInferDepends(const ge::NodePtr &node_ptr) {
   op_desc->SetOpInferDepends(dummyVec);
 }
 
+bool IsUnknownRankShape(const std::vector<int64_t>& shape) {
+  if (shape == ge::UNKNOWN_RANK) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool IsUnknownShape(const std::vector<int64_t>& shape) {
   if (shape == ge::UNKNOWN_RANK) {
     return true;

@@ -620,14 +620,47 @@ def _do_operation(tvm_ib,
         'each_repeat_num'] = _get_dup_repeat_num(
             (args_dict.get('ub_row_num_once'), args_dict.get('depth')),
             output.dtype)
+    if output.dtype in ("float32", "int32"):
+        each_repeat_num = 64
+    else:
+        each_repeat_num = 128
 
     # all elements of output are set to off_value
     # for the vector_dup directive, the maximum number of iterations per execution
     # is 255.
     if var_dict.get('dup_repeat_num') > 0 and var_dict.get(
             'dup_repeat_num') <= 255:
-        _set_off_value(tvm_ib, output, args_dict,
-                       var_dict.get('dup_repeat_num'))
+        if args_dict.get('ub_row_num_once') * args_dict.get('depth') % each_repeat_num == 0:
+            _set_off_value(tvm_ib, output, args_dict,
+                           var_dict.get('dup_repeat_num'))
+        elif var_dict.get('dup_repeat_num') == 1:
+            mask1, mask2 = _set_mask(
+                args_dict.get('ub_row_num_once') * args_dict.get('depth') % each_repeat_num)
+            tvm_ib.emit(
+                tvm.call_extern("float16", "set_vector_mask", tvm.const(mask1, dtype="uint64"),
+                                tvm.const(mask2, dtype="uint64")))
+            _set_off_value(tvm_ib, output, args_dict, var_dict.get('dup_repeat_num'))
+            mask1, mask2 = _set_mask(each_repeat_num)
+            tvm_ib.emit(
+                tvm.call_extern("float16", "set_vector_mask",
+                                tvm.const(mask1, dtype="uint64"),
+                                tvm.const(mask2, dtype="uint64")))
+        else:
+            _set_off_value(tvm_ib, output, args_dict, var_dict.get('dup_repeat_num') - 1)
+            mask1, mask2 = _set_mask(
+                args_dict.get('ub_row_num_once') * args_dict.get('depth') % each_repeat_num)
+            tvm_ib.emit(
+                tvm.call_extern("float16", "set_vector_mask", tvm.const(mask1, dtype="uint64"),
+                                tvm.const(mask2, dtype="uint64")))
+            offset = each_repeat_num * (var_dict.get('dup_repeat_num') - 1)
+            _set_off_value(tvm_ib, output, args_dict, 1, offset)
+            mask1, mask2 = _set_mask(each_repeat_num)
+            tvm_ib.emit(
+                tvm.call_extern("float16", "set_vector_mask",
+                                tvm.const(mask1, dtype="uint64"),
+                                tvm.const(mask2, dtype="uint64")))
+
+
     elif var_dict.get('dup_repeat_num') > 255:
         rest_repeat_num = var_dict.get('dup_repeat_num')
         count = 0
@@ -657,8 +690,25 @@ def _do_operation(tvm_ib,
                                 tvm.const(mask1, dtype="uint64"),
                                 tvm.const(mask2, dtype="uint64")))
         else:
-            _set_off_value(tvm_ib, output, args_dict, rest_repeat_num,
-                           dup_offset)
+            if is_32b_align is True:
+                _set_off_value(tvm_ib, output, args_dict, rest_repeat_num,
+                               dup_offset)
+            else:
+                mask1, mask2 = _set_mask(
+                    args_dict.get('ub_row_num_once') * args_dict.get('depth') % each_repeat_num)
+                _set_off_value(tvm_ib, output, args_dict, rest_repeat_num - 1, dup_offset)
+                tvm_ib.emit(
+                    tvm.call_extern("float16", "set_vector_mask",
+                                    tvm.const(mask1, dtype="uint64"),
+                                    tvm.const(mask2, dtype="uint64")))
+                _set_off_value(tvm_ib, output, args_dict, 1,
+                               dup_offset + (rest_repeat_num - 1) * each_repeat_num)
+                mask1, mask2 = _set_mask(each_repeat_num)
+                tvm_ib.emit(
+                    tvm.call_extern("float16", "set_vector_mask",
+                                    tvm.const(mask1, dtype="uint64"),
+                                    tvm.const(mask2, dtype="uint64")))
+
 
     if output.dtype == "int8" or output.dtype == "uint8":
         output_ub = args_dict.get('cast_ub')

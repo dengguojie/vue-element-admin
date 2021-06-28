@@ -19,6 +19,7 @@
  * \brief reducemean fusion pass
  */
 #include "a_reduce_mean_fusion_pass.h"
+#include "tbe_ops_pass_util.h"
 
 namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeReduceMean";
@@ -100,7 +101,7 @@ Status AReduceMeanFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     if (const_data[i] < 0) {
       const_data[i] = tensor_size + const_data[i];
     }
-    if (const_data[i] > tensor_size && tensor_info[0] != -2) {
+    if (const_data[i] > (static_cast<int64_t>(tensor_size)) && (!IsUnknownRankShape(tensor_info))) {
         OP_LOGE("const_data is not right");
         return FAILED;
     }

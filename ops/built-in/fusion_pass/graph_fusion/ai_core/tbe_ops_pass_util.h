@@ -41,6 +41,7 @@ bool HasUnKnowShape(const ge::NodePtr &node_ptr);
 void ClearOpInferDepends(const ge::NodePtr& node_ptr);
 bool IsUnknownShape(const std::vector<int64_t>& shape);
 void RemoveInputDesc(ge::OpDescPtr op_desc, uint32_t index);
+bool IsUnknownRankShape(const std::vector<int64_t>& shape);
 
 /**
 * Get int type const value from one node
