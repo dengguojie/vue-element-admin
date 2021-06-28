@@ -598,7 +598,9 @@ class Conv3dBackpropFilter:
                             >= pad_front,
                             ((n_dout % grads_depth) * stride_depth
                             + (g_dk_cing // fmap_channel1_g) % kernel_depth)
-                            < pad_front + fmap_depth),
+                            < pad_front + fmap_depth,
+                            g_dk_cing // (kernel_depth * fmap_channel1_g)
+                            * fmap_channel1_g + g_dk_cing % fmap_channel1_g < fmap_channel_1),
                     self.fmap(n_dout // grads_depth,
                               (n_dout % grads_depth * stride_depth
                               + (g_dk_cing // fmap_channel1_g) % kernel_depth - pad_front),
