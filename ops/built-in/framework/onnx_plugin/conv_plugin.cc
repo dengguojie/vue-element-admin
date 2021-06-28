@@ -62,21 +62,21 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
   // update attrs with model value
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "strides" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      if (attr.ints_size() == ONNX_1D_ATTR_LEN) {
+        strides_list.push_back(1);
+        is_trans_2d = true;
+      }
       for (auto i = 0; i < attr.ints_size(); ++i) {
         strides_list.push_back(attr.ints(i));
       }
-      if (attr.ints_size() == ONNX_1D_ATTR_LEN) {
-        strides_list.push_back(attr.ints(0));
-        is_trans_2d = true;
-      }
       op.SetAttr("strides", strides_list);
     } else if (attr.name() == "dilations" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      if (attr.ints_size() == ONNX_1D_ATTR_LEN) {
+        dilations_list.push_back(1);
+        is_trans_2d = true;
+      }
       for (auto i = 0; i < attr.ints_size(); ++i) {
         dilations_list.push_back(attr.ints(i));
-      }
-      if (attr.ints_size() == ONNX_1D_ATTR_LEN) {
-        dilations_list.push_back(attr.ints(0));
-        is_trans_2d = true;
       }
       op.SetAttr("dilations", dilations_list);
     } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
@@ -87,14 +87,14 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
         OP_LOGE("Conv", "The value lenth of pads is odd, transform failed.");
         return FAILED;
       }
-      for (int i = 0; i < len / 2; i++) {
-        pad_list.push_back(attr.ints(i));
-        pad_list.push_back(attr.ints(i + len / 2));
-      }
       if (attr.ints_size() == ONNX_1D_ATTR_PAD_LEN) {
         pad_list.push_back(0);
         pad_list.push_back(0);
         is_trans_2d = true;
+      }
+      for (int i = 0; i < len / 2; i++) {
+        pad_list.push_back(attr.ints(i));
+        pad_list.push_back(attr.ints(i + len / 2));
       }
       op.SetAttr("pads", pad_list);
     } else if (attr.name() == "group" && attr.type() == ge::onnx::AttributeProto::INT) {
@@ -290,7 +290,7 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
   ge::Operator dataB;
   if (tbeAttr.dim_size == INPUT_4D) {
     if (tbeAttr.trans_2d) {
-      ge::Operator::OpListInt axes = {3};
+      ge::Operator::OpListInt axes = {2};
       dataX = op::Unsqueeze("UnsqueezeX").set_input_x(dataX).set_attr_axes(axes);
       dataW = op::Unsqueeze("UnsqueezeW").set_input_x(dataW).set_attr_axes(axes);
     }
@@ -327,7 +327,7 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
       return FAILED;
     }
     if (tbeAttr.trans_2d) {
-      ge::Operator::OpListInt axis = {3};
+      ge::Operator::OpListInt axis = {2};
       conv = op::Squeeze("SqueezeY").set_input_x(conv).set_attr_axis(axis);
     }
   } else if (tbeAttr.dim_size == INPUT_5D) {
