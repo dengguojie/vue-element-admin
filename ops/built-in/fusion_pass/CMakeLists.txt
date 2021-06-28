@@ -194,6 +194,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/lstm_fusion_pass.cc
   graph_fusion/ai_core/map_index_pass.cc
   graph_fusion/ai_core/matmul_biasadd_fusion_pass.cc
+  graph_fusion/ai_core/matmul_reshape_biasadd_fusion_pass.cc
   graph_fusion/ai_core/matmul_cast_fusion_pass.cc
   graph_fusion/ai_core/matmulv2_fusion_pass.cc
   graph_fusion/ai_core/matrix_diag_fusion_pass.cc
