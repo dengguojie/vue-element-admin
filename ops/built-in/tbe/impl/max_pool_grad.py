@@ -1083,6 +1083,24 @@ class MaxpoolGrad:
 
         return grad_sel_ub
 
+    def _vsel_grad_col_global(self, mask_ub, grad_ub, grad_sel_ub, loop_ub_offset):
+        temp_zero = self.tik_instance.Tensor("float16", (MASK128_VALUE, ), name="temp_zero", scope=tik.scope_ubuf)
+        self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, "float16")
+
+        # vsel
+        with self.tik_instance.for_range(0, grad_ub.shape[0]) as mask_index:
+            fractal_repeat = C0 * C0 // VECTOR_FP16_SIZE
+            with self.tik_instance.for_range(0, fractal_repeat) as fractal_index:
+                mask_type_bit_size = tbe_platform.get_bit_len("uint16")
+                mask_offset = (mask_index * fractal_repeat + fractal_index) * MASK128_VALUE // mask_type_bit_size
+
+                cmpmask = self.tik_instance.mov_tensor_to_cmpmask(mask_ub[mask_offset])
+                grad_ub_offset = (mask_index * fractal_repeat + fractal_index) * MASK128_VALUE
+                self.tik_instance.vsel(MASK128_VALUE, 0, grad_sel_ub[grad_ub_offset + loop_ub_offset], cmpmask,
+                                       grad_ub[grad_ub_offset], temp_zero, 1, 1, 1, 1, 8, 8, 8)
+
+        return grad_sel_ub
+
     def _load3d(self, index_h, index_w, start_h, end_h, ori_input_col_ub, ori_input_l1, start_pos_h, each_process_hi,
                 each_process_wi, repeat_times, pad, pad_value, wo_offset, each_process_hi_block):
         """
@@ -1710,13 +1728,13 @@ class MaxpoolGrad:
                                                 each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
 
     def _global_mode(self, n_index, c1_index, mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, shape):
+        fp16_data_size = tbe_platform.get_bit_len("float16") // 8
         shape_ho, shape_wo, shape_hi, _ = shape
 
         howo_ceil16 = _ceil_div(shape_ho * shape_wo, 16)
 
         wi = self.wi + self.pad_left + self.pad_right
         hi = shape_hi + self.pad_top + self.pad_bottom
-
         # define col res
         grad_ub_shape = (hi, wi, C0)
         ori_input_shape = (hi, self.wi, C0)
@@ -1729,27 +1747,60 @@ class MaxpoolGrad:
 
         _, ori_output_ub, grad_ub = self._data_move_ub(ori_input_shape, ori_output_shape, input_data_nums,
                                                        output_data_nums, src_input_offset, src_output_offset)
-        ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
-                                                    ori_output_shape,
-                                                    name='ori_input_col_ub',
-                                                    scope=tik.scope_ubuf)
         mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
         mask_not = self.tik_instance.Tensor("uint16", mask_shape, name='mask_not', scope=tik.scope_ubuf)
         mask_or = self.tik_instance.Tensor("uint16", mask_shape, name='mask_or', scope=tik.scope_ubuf)
 
-        with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
-            with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
-                loop_input_offset = src_input_offset + (index_h * wi + index_w) * C0
-                self.tik_instance.data_move(ori_input_col_ub[0], self.ori_input_gm[loop_input_offset], 0, 1,
-                                            _cal_shape_ele(ori_output_ub.shape[:2]) // 16, 0, 0)
-                # calculate mask here
-                mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
-                mask_ub = self._calc_mask(index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub, mask_or,
-                                          mask_not)
-                # update grad according to mask
-                grad_sel_ub = self._vsel_grad_col(mask_ub, grad_ub)
-                loop_gm_offset = (index_h * self.kw + index_w) * C0
-                self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_sel_ub[0], 0, 1, 1, 0, 0)
+        # 3072 is fixed used ub space，2 means 2 tensor(ori_input_col_ub and grad_sel_ub)
+        ub_for_main_tensor = (SIZE_UB - 3072) // 2
+        max_hw = ub_for_main_tensor // (16 * C0 * fp16_data_size)
+        if wi > max_hw:
+            h_num = hi
+            each_h = 1
+            w_num = _ceil_div(wi, max_hw)
+            each_w = max_hw
+        elif hi * wi > max_hw:
+            each_h = max_hw // wi
+            h_num = _ceil_div(hi, each_h)
+            w_num = 1
+            each_w = wi
+        else:
+            h_num = 1
+            each_h = hi
+            w_num = 1
+            each_w = wi
+
+        ori_input_col_ub = self.tik_instance.Tensor(self.dtype,
+                                                    (each_h * each_w, 16, C0),
+                                                    name='ori_input_col_ub',
+                                                    scope=tik.scope_ubuf)
+        grad_sel_ub = self.tik_instance.Tensor("float16",
+                                               (each_h * each_w, 16, C0),
+                                               name='col2img_fp16_ub',
+                                               scope=tik.scope_ubuf)
+        with self.tik_instance.for_range(0, h_num, thread_num=1) as index_ho:
+            with self.tik_instance.for_range(0, w_num, thread_num=1) as index_wo:
+                loop_input_offset = src_input_offset + index_ho * each_h * wi * C0 + index_wo * each_w * C0
+                self.tik_instance.data_move(ori_input_col_ub, self.ori_input_gm[loop_input_offset], 0, 1,
+                                            (each_h * each_w), 0, 0)
+                with self.tik_instance.for_range(0, each_h, thread_num=1) as index_hi:
+                    index_h = index_ho * each_h + index_hi
+                    with self.tik_instance.if_scope(index_h < self.kh):
+                        with self.tik_instance.for_range(0, each_w, thread_num=1) as index_wi:
+                            index_w = index_wo * each_w + index_wi
+                            with self.tik_instance.if_scope(index_w < self.kw):
+                                ub_loop_input_offset = (index_hi * each_w + index_wi) * C0
+                                # calculate mask here
+                                mask_shape = (
+                                _ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE,)
+                                mask_ub = self._calc_mask(index_h, index_w, mask_shape, ori_output_ub,
+                                                          ori_input_col_ub[ub_loop_input_offset], mask_or, mask_not)
+                                # update grad according to mask
+                                loop_ub_offset = (index_hi * each_w + index_wi) * C0
+                                grad_sel_ub = self._vsel_grad_col_global(mask_ub, grad_ub, grad_sel_ub, loop_ub_offset)
+                loop_gm_offset = index_ho * each_h * wi * C0 + index_wo * each_w * C0
+                self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_sel_ub, 0, 1,
+                                            each_h * each_w, 0, 0)
 
     # pylint: disable=too-many-statements
     def _tilling_ho_only(self, each_process_ho, n_index, c1_index, each_process_ho_block, each_process_hi_block,
