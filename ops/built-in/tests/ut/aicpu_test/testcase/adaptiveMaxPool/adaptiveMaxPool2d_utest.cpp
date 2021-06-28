@@ -19,7 +19,15 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
   auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
   NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
       .Attr("output_size", list_out)           \
-      .Input({"x", data_types[0], shapes[0], input})           \
+      .Input({"x", data_types[0], shapes[0], input, FORMAT_NCHW})           \
+      .Output({"y", data_types[1], shapes[1], output0})           \
+      .Output({"argmax", data_types[2], shapes[1], output1});
+
+#define CREATE_NODEDEF_NHWC(shapes, data_types, input, output0, output1, list_out)                  \
+  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
+  NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
+      .Attr("output_size", list_out)           \
+      .Input({"x", data_types[0], shapes[0], input, FORMAT_NHWC})           \
       .Output({"y", data_types[1], shapes[1], output0})           \
       .Output({"argmax", data_types[2], shapes[1], output1});
 
@@ -27,9 +35,17 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
   auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
   NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
       .Attr("output_size", list_out)           \
-      .Input({"x", data_types[0], shapes[0], input})           \
+      .Input({"x", data_types[0], shapes[0], input, FORMAT_NCHW})           \
       .Output({"y", data_types[1], shapes[1], output0})           \
       .Output({"argmax", data_types[2], shapes[2], output1});
+
+#define CREATE_NODEDEF3(shapes, data_types, input, output0, output1, list_out, format)                  \
+  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
+  NodeDefBuilder(node_def.get(), "AdaptiveMaxPool2d", "AdaptiveMaxPool2d")                     \
+      .Attr("output_size", list_out)           \
+      .Input({"x", data_types[0], shapes[0], input, format})           \
+      .Output({"y", data_types[1], shapes[1], output0})           \
+      .Output({"argmax", data_types[2], shapes[1], output1});
 
 #define ADPOOL2D_CASE_WITH_SHAPE(case_name, base_type, aicpu_type, out_base_type, out_aicpu_type, shapes, input, expect_output0, expect_output1, list_out)      \
   TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_##case_name) {                                  \
@@ -38,6 +54,18 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
     base_type output0[out_data_num] = {(base_type)0};                                \
     out_base_type output1[out_data_num] = {(out_base_type)0};                                          \
     CREATE_NODEDEF(shapes, data_types, input, output0, output1, list_out);                                 \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
+    EXPECT_EQ(CompareResult<base_type>(output0, expect_output0, out_data_num), true);                 \
+    EXPECT_EQ(CompareResult<out_base_type>(output1, expect_output1, out_data_num), true);                 \
+  }
+
+#define ADPOOL2D_CASE_WITH_SHAPE_NHWC(case_name, base_type, aicpu_type, out_base_type, out_aicpu_type, shapes, input, expect_output0, expect_output1, list_out)      \
+  TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_##case_name) {                                  \
+    int32_t out_data_num = sizeof(expect_output0)/sizeof(expect_output0[0]);           \
+    vector<DataType> data_types = {aicpu_type, aicpu_type, out_aicpu_type};        \
+    base_type output0[out_data_num] = {(base_type)0};                                \
+    out_base_type output1[out_data_num] = {(out_base_type)0};                                          \
+    CREATE_NODEDEF_NHWC(shapes, data_types, input, output0, output1, list_out);                                 \
     RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
     EXPECT_EQ(CompareResult<base_type>(output0, expect_output0, out_data_num), true);                 \
     EXPECT_EQ(CompareResult<out_base_type>(output1, expect_output1, out_data_num), true);                 \
@@ -63,6 +91,15 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
     RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);                              \
   }
 
+#define ADPOOL2D_CASE_WITH_SHAPE_DISMATCH3(case_name, base_type, aicpu_type, out_base_type, out_aicpu_type, shapes, input, expect_output0, expect_output1, list_out, format)      \
+  TEST_F(TEST_ADAPTER_MAX_POOL2D_UT, TestAdaptiveMaxPool2d_##case_name) {                                  \
+    int32_t out_data_num = sizeof(expect_output0)/sizeof(expect_output0[0]);           \
+    vector<DataType> data_types = {aicpu_type, aicpu_type, out_aicpu_type};        \
+    base_type output0[out_data_num] = {(base_type)0};                                \
+    out_base_type output1[out_data_num] = {(out_base_type)0};                                          \
+    CREATE_NODEDEF3(shapes, data_types, input, output0, output1, list_out, format);                                 \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);                              \
+  }
 
 
 vector<int64_t> list_out_1 = {1, 2};
@@ -73,6 +110,13 @@ int32_t expect_output1_1[] = {4, 5, 4, 5};
 ADPOOL2D_CASE_WITH_SHAPE(dapter_max_pool2d_float_succ_1, float_t, DT_FLOAT, int32_t, DT_INT32, shapes_1, input_1, expect_output0_1,
                           expect_output1_1, list_out_1)
 
+vector<int64_t> list_out_nhwc_1 = {1, 2};
+vector<vector<int64_t>> shapes_nhwc_1 = {{2, 3, 2}, {1, 2, 2}};
+float_t input_nhwc_1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+float_t expect_output0_nhwc_1[] = {5, 6, 11, 12};
+int32_t expect_output1_nhwc_1[] = {4, 5, 4, 5};
+ADPOOL2D_CASE_WITH_SHAPE_NHWC(dapter_max_pool2d_float_succ_NHWC_1, float_t, DT_FLOAT, int32_t, DT_INT32, shapes_nhwc_1, input_nhwc_1, expect_output0_nhwc_1,
+                          expect_output1_nhwc_1, list_out_nhwc_1)
 
 vector<int64_t> list_out_2 = {2, 2};
 vector<vector<int64_t>> shapes_2 = {{1, 4, 4}, {1, 2, 2}};
@@ -123,6 +167,14 @@ int32_t expect_output1_7[] = {5, 7, 5, 7};
 ADPOOL2D_CASE_WITH_SHAPE(dapter_max_pool2d_float_succ_7, float_t, DT_FLOAT, int32_t, DT_INT32, shapes_7, input_7, expect_output0_7,
                           expect_output1_7, list_out_7)
 
+vector<int64_t> list_out_nhwc_7 = {1,2};
+vector<vector<int64_t>> shapes_nhwc_7 = {{2,2,4,1}, {2,1,2,1}};
+float_t input_nhwc_7[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+float_t expect_output0_nhwc_7[] = {6, 8, 14, 16};
+int32_t expect_output1_nhwc_7[] = {5, 7, 5, 7};
+ADPOOL2D_CASE_WITH_SHAPE_NHWC(dapter_max_pool2d_float_succ_nhwc_7, float_t, DT_FLOAT, int32_t, DT_INT32, shapes_nhwc_7, input_nhwc_7, expect_output0_nhwc_7,
+                          expect_output1_nhwc_7, list_out_nhwc_7)
+
 vector<int64_t> list_out_8 = {2};
 vector<vector<int64_t>> shapes_8 = {{1, 4, 4}, {1, 2, 2}};
 float_t input_8[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
@@ -168,5 +220,13 @@ float_t expect_output0_13[] = {1,2,3,4,1,2,3,4,1,2,3,4};
 int64_t expect_output1_13[] = {0,1,2,3,0,1,2,3,0,1,2,3};
 ADPOOL2D_CASE_WITH_SHAPE_DISMATCH2(dapter_max_pool2d_float_shape_failed_2, float_t, DT_FLOAT, int64_t, DT_INT64, shapes_13, input_13, expect_output0_13,
                           expect_output1_13, list_out_13)
+
+vector<int64_t> list_out_14 = {1, 2};
+vector<vector<int64_t>> shapes_14 = {{2, 2, 3}, {2, 1, 2}};
+float_t input_14[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+float_t expect_output0_14[] = {5, 6, 11, 12};
+int32_t expect_output1_14[] = {4, 5, 4, 5};
+ADPOOL2D_CASE_WITH_SHAPE_DISMATCH3(dapter_max_pool2d_float_shape_formart_failed_1, float_t, DT_FLOAT, int32_t, DT_INT32, shapes_14, input_14, expect_output0_14,
+                          expect_output1_14, list_out_14, FORMAT_NC1HWC0)
 
 

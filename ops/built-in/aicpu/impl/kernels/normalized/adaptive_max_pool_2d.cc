@@ -184,17 +184,46 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  int dim_w = 2;
-  int dim_h = 1;
-  // if user input dims is 4d, w and h dim value should add 1
-  if (input_dims == 4) {
-    args.in_size_b = input_shape_ptr->GetDimSize(0);
-    dim_w++;
-    dim_h++;
+  int dim_b = 0;
+  int dim_d = 0;
+  int dim_w = 0;
+  int dim_h = 0;
+  auto input_format = input_shape_ptr->GetFormat();
+  if ((input_format == FORMAT_NCHW)) {
+    if (input_dims == 4) {
+      dim_b = kFormatNCHWIndexN;
+      dim_d = kFormatNCHWIndexC;
+      dim_h = kFormatNCHWIndexH;
+      dim_w = kFormatNCHWIndexW;
+    } else {
+      dim_d = kFormatCHWIndexC;
+      dim_h = kFormatCHWIndexH;
+      dim_w = kFormatCHWIndexW;
+    }
+  } else if (input_format == FORMAT_NHWC) {
+    if (input_dims == 4) {
+      dim_b = kFormatNHWCIndexN;
+      dim_h = kFormatNHWCIndexH;
+      dim_w = kFormatNHWCIndexW;
+      dim_d = kFormatNHWCIndexC;
+    } else {
+      dim_h = kFormatHWCIndexH;
+      dim_w = kFormatHWCIndexW;
+      dim_d = kFormatHWCIndexC;
+    }
+  } else {
+    KERNEL_LOG_ERROR(
+        "Format is not in [FORMAT_NHWC or FORMAT_NCHW],"
+        "current input format is [%d].",
+        input_format);
+    return KERNEL_STATUS_PARAM_INVALID;
   }
 
   // sizes 
-  args.in_size_d = input_shape_ptr->GetDimSize(dim_h - 1);
+  if (input_dims == 4) {
+    args.in_size_b = input_shape_ptr->GetDimSize(dim_b);
+  }
+  args.in_size_d = input_shape_ptr->GetDimSize(dim_d);
   args.in_size_h = input_shape_ptr->GetDimSize(dim_h);
   args.in_size_w = input_shape_ptr->GetDimSize(dim_w);
 

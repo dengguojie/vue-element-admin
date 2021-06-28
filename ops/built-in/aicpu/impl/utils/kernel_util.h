@@ -37,6 +37,24 @@ const uint32_t kDynamicInput = -1;
 const uint32_t kDynamicOutput = -2;
 const uint64_t kEigenAlignmentBytes = 16;
 
+const uint64_t kFormatNCHWIndexN = 0;
+const uint64_t kFormatNCHWIndexC = 1;
+const uint64_t kFormatNCHWIndexH = 2;
+const uint64_t kFormatNCHWIndexW = 3;
+
+const uint64_t kFormatCHWIndexC = 0;
+const uint64_t kFormatCHWIndexH = 1;
+const uint64_t kFormatCHWIndexW = 2;
+
+const uint64_t kFormatNHWCIndexN = 0;
+const uint64_t kFormatNHWCIndexH = 1;
+const uint64_t kFormatNHWCIndexW = 2;
+const uint64_t kFormatNHWCIndexC = 3;
+
+const uint64_t kFormatHWCIndexH = 0;
+const uint64_t kFormatHWCIndexW = 1;
+const uint64_t kFormatHWCIndexC = 2;
+
 /*
  * str cat util function
  * param[in] params need concat to string
