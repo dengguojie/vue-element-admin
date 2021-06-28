@@ -8,7 +8,9 @@ import numpy as np
 import tensorflow as tf
 
 
-def calc_expect_func(out_backprop, weight, y, strides, pads, dilations, groups=1, data_format='NCHW', offset_x=0):
+def calc_expect_func(out_backprop, weight, y, strides, pads,
+                     dilations=None, groups=1, data_format='NCHW',
+                     offset_x=0):
     filter_data = weight.get('value')
     filter_shape = filter_data.shape
     # filter_shape = weight.get('shape')
@@ -22,7 +24,8 @@ def calc_expect_func(out_backprop, weight, y, strides, pads, dilations, groups=1
     y_format = y.get('format')
     print('------------params:', filter_shape, dy_shape,
           y, strides, pads, groups, data_format)
-
+    if dilations is None:
+        dilations = (1, 1, 1, 1)
     h_index = data_format.index('H')
     w_index = data_format.index('W')
     strideh, stridew = strides

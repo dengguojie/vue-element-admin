@@ -8,7 +8,9 @@ import numpy as np
 import tensorflow as tf
 
 
-def calc_expect_func(input_size, weight, out_backprop, y, strides, pads, dilations, groups=1, data_format='NCHW'):
+def calc_expect_func(input_size, weight, out_backprop, y, strides, pads=None,
+                     dilations=None, groups=1, data_format='NCHW',
+                     padding=None):
     filter_data = weight.get('value')
     filter_shape = filter_data.shape
     # filter_shape = weight.get('shape')
@@ -26,8 +28,9 @@ def calc_expect_func(input_size, weight, out_backprop, y, strides, pads, dilatio
     h_index = data_format.index('H')
     w_index = data_format.index('W')
     strideh, stridew = strides[h_index], strides[w_index]
+    if dilations is None:
+        dilations = (1, 1, 1, 1)
     dilationh, dilationw = dilations[h_index], dilations[w_index]
-    pad_top, pad_bottom, pad_left, pad_right = pads
 
     if filter_dtype == 'float16':
         filter_dtype = 'float32'
@@ -44,6 +47,10 @@ def calc_expect_func(input_size, weight, out_backprop, y, strides, pads, dilatio
         Ni, Ci, Hi, Wi = input_size_shape
     else:
         Ni, Hi, Wi, Ci = input_size_shape
+    if pads is None:
+        pads = _getPads(padding, [Ni, Hi, Wi, Ci], w.shape, dy.shape,
+                    (strideh, stridew), (dilationh, dilationw))
+    pad_top, pad_bottom, pad_left, pad_right = pads
 
     if groups == 1:
         tensor_filter = tf.compat.v1.placeholder(w.dtype, shape=w.shape)
@@ -63,8 +70,9 @@ def calc_expect_func(input_size, weight, out_backprop, y, strides, pads, dilatio
             sess.run(init_op)
             out = sess.run(tf_dx, feed_dict=feed_dict)
     elif groups == Ci and strideh == stridew:
-        padding = _getPadding(pads, [Ni, Hi, Wi, Ci], w.shape, dy.shape,
-                              (strideh, stridew), [dilationh, dilationw])
+        if padding is None:
+            padding = _getPadding(pads, [Ni, Hi, Wi, Ci], w.shape, dy.shape,
+                                  (strideh, stridew), [dilationh, dilationw])
         w = w.transpose(0, 1, 3, 2)
         tensor_filter = tf.compat.v1.placeholder(w.dtype, shape=w.shape)
         tensor_dy = tf.compat.v1.placeholder(dy.dtype, shape=dy.shape)
@@ -91,6 +99,30 @@ def calc_expect_func(input_size, weight, out_backprop, y, strides, pads, dilatio
     print('------golden:', out.shape)
     res = out.astype(y_dtype)
     return [res]
+
+
+def _getPads(padding, x_shape, w_shape, dy_shape, strides, dilations):
+    _, H, W, _ = x_shape
+    kh, kw, _, _ = w_shape
+    strideh, stridew = strides
+    dilationh, dilationw = dilations
+    He = (kh - 1) * dilationh + 1
+    We = (kw - 1) * dilationw + 1
+    if padding == 'VALID':
+        pads = [0, 0, 0, 0]
+    elif padding == 'SAME':
+        if dy_shape is None:
+            Ho = (H + strideh - 1) // strideh
+            Wo = (W + stridew - 1) // stridew
+        else:
+            _, Ho, Wo, _ = dy_shape
+        padh = max(0, (Ho - 1) * strideh + He - H)
+        padw = max(0, (Wo - 1) * stridew + We - W)
+        pads = [padh // 2, padh - padh // 2, padw // 2, padw - padw // 2]
+    else:
+        raise RuntimeError('not support this padding yet')
+
+    return pads
 
 
 def _getPadding(pads, x_shape, w_shape, dy_shape, strides, dilations):

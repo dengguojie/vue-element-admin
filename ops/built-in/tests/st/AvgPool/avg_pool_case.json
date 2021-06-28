@@ -114,5 +114,179 @@
         "type": "int"
       }
     ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_005",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,-1,-1],
+        "ori_shape": [-1,7,-1,-1],
+        "typical_shape": [4,7,1,1],
+        "shape_range": [[1,10],[1,120],[1,120]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,-1,-1],
+        "ori_shape": [-1,7,-1,-1],
+        "typical_shape": [4,7,1,1],
+        "shape_range": [[1,10],[1,127],[1,127]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_006",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,-1,-1],
+        "ori_shape": [-1,7,-1,-1],
+        "typical_shape": [4,7,6,7],
+        "shape_range": [[1,-1], [1,127], [1,127]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,7,-1,-1],
+        "ori_shape": [-1,7,-1,-1],
+        "typical_shape": [4,7,6,4],
+        "shape_range": [[1,-1], [1,127], [1,127]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,1,2],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_007",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [-1,4,2,7],
+        "ori_shape": [-1,4,2,7],
+        "typical_shape": [4,4,2,7],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "value_range": [[0, 0.001]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [-1,2,1,7],
+        "ori_shape": [-1,2,1,7],
+        "typical_shape": [4,2,1,7],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,1,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,2,2,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NHWC",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
   }
 ]

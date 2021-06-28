@@ -8,7 +8,9 @@ import numpy as np
 import tensorflow as tf
 
 
-def calc_expect_func(x, filter_size, out_backprop, filter_grad, strides, pads, dilations, data_format='NCHW'):
+def calc_expect_func(x, filter_size, out_backprop, filter_grad, strides,
+                     pads=None, dilations=None, data_format='NCHW',
+                     padding=None):
     fmap_data = x.get('value')
     fmap_shape = fmap_data.shape
     # fmap_shape = x.get('shape')
@@ -26,8 +28,9 @@ def calc_expect_func(x, filter_size, out_backprop, filter_grad, strides, pads, d
     h_index = data_format.index('H')
     w_index = data_format.index('W')
     strideh, stridew = strides[h_index], strides[w_index]
+    if dilations is None:
+        dilations = (1, 1, 1, 1)
     dilationh, dilationw = dilations[h_index], dilations[w_index]
-    pad_top, pad_bottom, pad_left, pad_right = pads
 
     if fmap_dtype == 'float16':
         fmap_dtype = 'float32'
@@ -47,8 +50,9 @@ def calc_expect_func(x, filter_size, out_backprop, filter_grad, strides, pads, d
         kh, kw, Ci, k = filter_shape
 
     if strideh == stridew:
-        padding = _getPadding(pads, x.shape, [kh, kw, Ci, k], dy.shape,
-                              (strideh, stridew), [dilationh, dilationw])
+        if padding is None:
+            padding = _getPadding(pads, x.shape, [kh, kw, Ci, k], dy.shape,
+                                  (strideh, stridew), [dilationh, dilationw])
         tensor_x = tf.compat.v1.placeholder(x.dtype, shape=x.shape)
         tensor_dy = tf.compat.v1.placeholder(dy.dtype, shape=dy.shape)
         tf_dw_result = tf.nn.depthwise_conv2d_backprop_filter(tensor_x,
@@ -65,6 +69,10 @@ def calc_expect_func(x, filter_size, out_backprop, filter_grad, strides, pads, d
             sess.run(init_op)
             out = sess.run(tf_dw_result, feed_dict=feed_dict)
     else:
+        if pads is None:
+            pads = _getPads(padding, x.shape, [kh, kw, Ci, k], dy.shape,
+                        (strideh, stridew), (dilationh, dilationw))
+        # pad_top, pad_bottom, pad_left, pad_right = pads
         out = _depthwise_conv2d_native_backprop_filter(
             x, [kh, kw, Ci, k], dy, [1, strideh, stridew, 1], pads)
 
@@ -75,6 +83,30 @@ def calc_expect_func(x, filter_size, out_backprop, filter_grad, strides, pads, d
     print('------golden:', out.shape)
     res = out.astype('float32')
     return [res]
+
+
+def _getPads(padding, x_shape, w_shape, dy_shape, strides, dilations):
+    _, H, W, _ = x_shape
+    kh, kw, _, _ = w_shape
+    strideh, stridew = strides
+    dilationh, dilationw = dilations
+    He = (kh - 1) * dilationh + 1
+    We = (kw - 1) * dilationw + 1
+    if padding == 'VALID':
+        pads = [0, 0, 0, 0]
+    elif padding == 'SAME':
+        if dy_shape is None:
+            Ho = (H + strideh - 1) // strideh
+            Wo = (W + stridew - 1) // stridew
+        else:
+            _, Ho, Wo, _ = dy_shape
+        padh = max(0, (Ho - 1) * strideh + He - H)
+        padw = max(0, (Wo - 1) * stridew + We - W)
+        pads = [padh // 2, padh - padh // 2, padw // 2, padw - padw // 2]
+    else:
+        raise RuntimeError('not support this padding yet')
+
+    return pads
 
 
 def _getPadding(pads, x_shape, w_shape, dy_shape, strides, dilations):
