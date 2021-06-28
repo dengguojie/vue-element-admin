@@ -154,7 +154,7 @@ bool g_##optype##_TilingEntry_V2(const ge::Operator& para, const optiling::utils
         after_tiling = std::chrono::steady_clock::now();                                                              \
         uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count();     \
         uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();    \
-        GEEVENT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.GetOpType(), t0, t1);            \
+        GEEVENT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.GetOpType().c_str(), t0, t1);            \
     }                                                                                                                 \
     return result;                                                                                                    \
 }                                                                                                                     \
