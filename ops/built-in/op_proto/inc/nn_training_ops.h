@@ -289,7 +289,8 @@ REG_OP(SparseApplyAdagradV2D)
 *     Should be from a Variable().
 *@li lr: A scalar. Has the same type as "var".
 *@li grad: A tensor for the gradient. Has the same type as "var".
-*
+*@li momentum: Momentum. Must be a scalar.
+
 *@par Attributes:
 *@li use_nesterov: An optional bool. Defaults to "False".
 *     If "True", the tensor passed to compute grad will be

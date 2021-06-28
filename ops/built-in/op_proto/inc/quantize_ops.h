@@ -63,11 +63,11 @@ REG_OP(Dequantize)
 /**
 *@brief Quantizes the input . \n
 *@par Inputs:
-*x:  shape and dtype of input_x. \n
-*scales: shape and dtype of input_scales. \n
-*zero_points: shape and dtype of input_zero_points \n
+*@li x: shape and dtype of input_x. \n
+*@li scales: shape and dtype of input_scales. \n
+*@li zero_points: shape and dtype of input_zero_points \n
 *@par Attributes:
-*@li axis: the processed dim. \n
+*axis: the processed dim. \n
 *@par Outputs:
 *y: shape and dtype of output_y, should be same shape as input, dtype is same as the quantified type . \n
 */

@@ -1085,7 +1085,6 @@ REG_OP(InTopKD)
 * @brief Says whether the targets are in the top "k" predictions . \n
 
 * @par Inputs:
-* Two inputs, including:
 * @li x1: A 2D Tensor of type float32. A "batch_size * classes" tensor.
 * @li x2: A 1D Tensor of type IndexNumberType. A batch_size tensor of class ids.
 * @li k: A 1D Tensor of the same type as "x2".

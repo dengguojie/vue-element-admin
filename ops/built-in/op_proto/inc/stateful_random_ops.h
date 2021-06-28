@@ -32,7 +32,7 @@ namespace ge {
 *@par Inputs:
 *This op may use some OS-provided source of non-determinism (e.g. an RNG),
 *so each execution will give different results. Inputs included:
-*@li shape: The shape of the output tensor . \n
+*shape: The shape of the output tensor . \n
 
 *@par Outputs:
 *y:A Returns Non-deterministic integer values with specified shape . \n

@@ -337,7 +337,6 @@ target_compile_options(cpu_kernels_host PRIVATE
 )
 
 set(INSTALL_LIBRARY_DIR lib)
-
 install(TARGETS cpu_kernels OPTIONAL
     EXPORT cpu_kernels-targets
     LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}

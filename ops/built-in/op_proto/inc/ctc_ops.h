@@ -74,7 +74,7 @@ REG_OP(CTCLoss)
 *@li sequence_length: A vector containing sequence lengths, size `(batch_size)`. \n
 
 *@par Attributes:
-*@li merge_repeated: If True, merge repeated classes in output. \n
+* merge_repeated: If True, merge repeated classes in output. \n
 
 *@par Outputs:
 *@li decoded_indices: Indices matrix, size `(total_decoded_outputs x 2)`,
@@ -108,6 +108,8 @@ REG_OP(CTCGreedyDecoder)
 
 *@par Attributes:
 *@li merge_repeated: If True, merge repeated classes in output. \n
+*@li beam_width:A scalar >= 0 (beam search beam width).
+*@li top_paths:A scalar >= 0, <= beam_width (controls output size).
 
 *@par Outputs:
 *@li decoded_indices: A list (length: top_paths) of indices matrices.  Matrix j,

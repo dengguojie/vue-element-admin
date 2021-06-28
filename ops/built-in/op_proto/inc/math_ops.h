@@ -365,6 +365,7 @@ REG_OP(InitData)
 component of an element of this dataset.
 *@li output_shapes: A nested structure of TensorShape objects corresponding
 to each component of an element of this dataset.
+*@li output_num:output of nums.
 *@li channel_name: A string. Default "" . \n
 
 *@par Outputs:
@@ -560,10 +561,10 @@ REG_OP(Pdist)
  *@brief Compute element-wise finiteness, return a boolean tensor.
 
  *@par Inputs:
- *x:A Tensor.
+ *x:A Tensor of type float16, float32, double.
 
  *@par Outputs:
- *y:A Tensor. Has the same shape as x.
+ *y:A Tensor. Returns which elements of x are finite
 
  *@par Third-party framework compatibility.
  *Compatible with tensorflow IsFinite operator.
@@ -577,10 +578,10 @@ REG_OP(IsFinite)
  *@brief Compute element-wise infiniteness, return a boolean tensor.
 
  *@par Inputs:
- *x:A Tensor.
+ *x:A Tensor of type float16, float32, double.
 
  *@par Outputs:
- *y:A Tensor. Has the same shape as x.
+ *y:A Tensor. Has the same shape as x. Returns which elements of x are isinf.
 
  *@par Third-party framework compatibility.
  *Compatible with tensorflow IsInf operator.
@@ -594,7 +595,11 @@ REG_OP(IsInf)
  *@brief Computes the complex absolute value of a tensor.
 
  *@par Inputs:
- *x:A Tensor.
+ *x: x of complex numbers, this operation returns a tensor of type 
+ float or double that is the absolute value of each element in x .
+
+* @par Attributes:
+* Tout: representing the output of type. 
 
  *@par Outputs:
  *y:A tensor of type `float` or `double` that is the absolute value of each element in `x`.
@@ -612,10 +617,10 @@ REG_OP(ComplexAbs)
  *@brief Returns which elements of x are NaN.
 
  *@par Inputs:
- *x:A Tensor.
+ *x:A Tensor of type float16, float32, double.
 
  *@par Outputs:
- *y:A Tensor. Has the same shape as x.
+ *y:A Tensor. Has the same shape as x. Returns which elements of x are isnan
 
  *@par Third-party framework compatibility.
  *Compatible with tensorflow IsNan operator.
@@ -934,9 +939,11 @@ REG_OP(LpNorm)
 * @brief get complex.
 
 * @par Inputs:
-* @li real: An ND tensor of type  float32. double
-* @li imag: An ND tensor of type  float32. double \n
+* @li real: An ND tensor of type  float32 double, representing the real part of a complex number.
+* @li imag: An ND tensor of type  float32 double, representing the imaginary part of a complex number. \n
 *
+* @par Attributes:
+* Tout: representing the output of type. 
 * @par Outputs:
 * @li out: An ND tensor of type complex64, complex128 \n
 */
@@ -951,10 +958,10 @@ REG_OP(Complex)
 * @brief  deal complex.
 
 * @par Inputs:
-* @li input: An ND tensor of type complex64, complex128 \n
+*input: An ND tensor of type complex64, complex128 \n
 *
 * @par Outputs:
-* @li output: An ND tensor of type float32. double \n
+*output: An ND tensor of type float32. double \n
 */
 REG_OP(Imag)
     .INPUT(input, TensorType({DT_COMPLEX64, DT_COMPLEX128}))

@@ -3175,7 +3175,7 @@ REG_OP(FusedMulAddNL2loss)
 *@brief Returns the index number corresponding to the maximum value entered. \n
 
 *@par Inputs:
-*@li x: A tensor. Must be one of the following types: float16, float32. \n
+*x: A tensor. Must be one of the following types: float16, float32. \n
 
 *@par Attributes:
 *@li axis: An optional int. Specify the axis to be cut at the input tensor. If this parameter is not provided, find the topk for each batch. Defaults to 10000

@@ -1201,6 +1201,8 @@ REG_OP(TensorArraySize)
 *@brief A queue implementation that dequeues elements in a random order. \n
 
 *@par Attributes:
+*@li component_types:A list of fully-defined Tensortype objects with
+the same length as shapes, or None.
 *@li shapes: (Optional.) A list of fully-defined TensorShape objects with
 the same length as dtypes, or None.
 *@li capacity: An integer. The upper bound on the number of elements that may
@@ -1281,6 +1283,7 @@ The length of this attr must be either 0 or the same as the length of
 elements are not constrained, and only one element may be dequeued at a time.
 *@li container: An optional string. Defaults to "". If non-empty, this queue
 is placed in the given container. Otherwise, a default container is used.
+*@li capacity:An integer. The upper bound on the number of elements that may be stored in this queue.
 *@li shared_name: An optional string. Defaults to "". If non-empty, this
 queue will be shared under the given name across multiple sessions. \n
 

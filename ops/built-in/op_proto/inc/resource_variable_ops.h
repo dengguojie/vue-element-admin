@@ -53,8 +53,8 @@ REG_OP(VarHandleOp)
 *@brief Assigns a new value to a variable. \n
 
 *@par Inputs:
-*resource:Handle to the resource in which to store the variable.
-*value:The value to set the new tensor to use. \n
+*@li resource:Handle to the resource in which to store the variable.
+*@li value:The value to set the new tensor to use. \n
 
 *@par Attributes:
 * @li dtype: required, type. \n

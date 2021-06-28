@@ -28,7 +28,7 @@ namespace ge {
 *@brief Decode the frame(s) of a GIF-encoded image to a uint8 tensor . \n
 
 *@par Inputs:
-*@li contents:A Tensor of type string. 0-D. The GIF-encoded image. \n
+*contents:A Tensor of type string. 0-D. The GIF-encoded image. \n
 
 *@par Outputs:
 *image:A Tensor of type uint8. \n
@@ -128,8 +128,8 @@ crops from the input image tensor and resizes them using bilinear sampling or
 nearest neighbor sampling to a common output size specified by crop_size . \n
 
 *@par Inputs:
-*Input images must be a 4-D tensor. Inputs include:
-*@li images:A Tensor. Must be one of the following types:uint8, uint16, int8,
+*Input x must be a 4-D tensor. Inputs include:
+*@li x:A Tensor. Must be one of the following types:uint8, uint16, int8,
 int16, int32, int64, float16, float, double. A 4-D tensor of shape
 [batch, image_height, image_width, depth]. The format must be NHWC.
 *@li boxes: A Tensor of type float. A 2-D tensor of shape [num_boxes, 4].
@@ -266,8 +266,9 @@ depth] containing the original image size. Both image_height and image_width
 need to be positive . \n
 
 *@par Attributes:
-method: A string specifying the interpolation method. Only 'bilinear' is
-supported for now . \n
+*@li method: A string specifying the interpolation method. Only 'bilinear' is
+supported for now .
+*@li T: output of type  \n
 
 *@par Outputs:
 *y:A 4-D tensor of shape [batch, image_height, image_width, depth]. The format
@@ -686,6 +687,9 @@ be non-negative. In the case of 0, the cropped area does not need to overlap
 any of the bounding boxes supplied .
 *@li aspect_ratio_range: The cropped area of the image must have an aspect
 ratio = width / height within this range.
+*@li area_range: An optional list of `floats`. Defaults to `[0.05, 1]`. The
+cropped area of the image must contain a fraction of the supplied image
+within this range.
 *@li max_attempts: Number of attempts at generating a cropped region of the
 image of the specified constraints. After max_attempts failures, return the
 entire image.
@@ -1002,10 +1006,6 @@ deciding whether boxes overlap too.
 *@li score_threshold: A 0-D float tensor representing the threshold for
 deciding when to remove boxes based on score . \n
 
-*@par Attributes:
-*pad_to_max_output_size: If true, the output selected_indices is padded
-to be of length max_output_size. Defaults to false . \n
-
 *@par Outputs:
 *selected_indices: A 1-D integer tensor of shape [M] representing the
 selected indices from the boxes tensor, where M <= max_output_size . \n
@@ -1097,8 +1097,8 @@ REG_OP(EncodePng)
 *contents: 0-D. PNG-decoded image .
 
 *@par Attributes:
-*channels: graph channels \n
-*dtype: type of image
+*@li channels: graph channels \n
+*@li dtype: type of image
 
 *@par Outputs:
 *image: is a 3-D uint8 or uint16 Tensor of shape [height, width, channels]
@@ -1119,10 +1119,10 @@ REG_OP(DecodePng)
 *@brief Bmp-decode an image. \n
 
 *@par Inputs:
-*@li contents: A Tensor of type string. 0-D. The BMP-encoded image. \n
+*contents: A Tensor of type string. 0-D. The BMP-encoded image. \n
 
 *@par Attributes:
-*@li channels: Decode the desired number of color channels of the image. \n
+*channels: Decode the desired number of color channels of the image. \n
 
 *@par Outputs:
 *image: A Tensor dtype of uint8.
@@ -1640,7 +1640,7 @@ REG_OP(Resize)
 *@brief Function parse image from string to int. \n
 
 *@par Inputs:
-*@li contents: A Tensor of type string. 0-D. The JPEG-encoded image. \n
+* contents: A Tensor of type string. 0-D. The JPEG-encoded image. \n
 
 *@par Attributes:
 *@li channels: An optional int. Defaults to 0. Number of color channels for the decoded image.
@@ -1779,8 +1779,8 @@ REG_OP(ResizeGradD)
 *@li flow: 4-D Tensor with shape `[batch, height, width, 2]`. \n
 
 *@par Outputs:
-*grad_image: Returns 4-D with the same shape and dtype as `image`.
-*grad_flow: Returns 4-D with the same shape and dtype as `flow`. \n
+*@li grad_image: Returns 4-D with the same shape and dtype as `image`.
+*@li grad_flow: Returns 4-D with the same shape and dtype as `flow`. \n
 */
 REG_OP(DenseImageWarpGrad)
     .INPUT(grad, TensorType({DT_FLOAT, DT_FLOAT16}))

@@ -196,7 +196,6 @@ target_link_libraries(cpu_kernels_context_static PRIVATE
     -ldl
     -shared
 )
-
 set(INSTALL_LIBRARY_DIR lib)
 
 install(TARGETS cpu_kernels_context OPTIONAL

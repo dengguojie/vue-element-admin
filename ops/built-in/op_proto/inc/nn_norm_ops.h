@@ -1011,7 +1011,7 @@ REG_OP(LRNGrad)
  *@li grads: A Tensor. Has the same type as acts.
 
  *@par Attributes:
- *@li blank_label: An optional attribute. Defaults to 0.
+ *blank_label: An optional attribute. Defaults to 0.
 
  *@par Third-party framework compatibility
  * Compatible with TensorFlow RNNTLoss operator.

@@ -427,6 +427,9 @@ denotes the lower triangular factor `L` with unit diagonal.
 *@li p: upper triangular part denotes the upper triangular factor `U`.Permutation
 of the rows encoded as a list of indices in `0..M-1`. Shape is `[..., M]` . \n
 
+*@par Attributes:
+*output_idx_type: An optional DType from: int32, int64.
+
 *@par Third-party framework compatibility
 * Compatible with TensorFlow Lu operator.
 */

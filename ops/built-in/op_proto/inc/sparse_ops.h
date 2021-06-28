@@ -989,8 +989,7 @@ REG_OP(SerializeManySparse)
 *@brief Deserializes SparseTensor objects . \n
 
 *@par Inputs:
-*Two inputs, including:
-* serialized_sparse: A Tensor. The serialized SparseTensor objects.
+*serialized_sparse: A Tensor. The serialized SparseTensor objects.
 *The last dimension must have 3 columns . \n
 
 *@par Attributes:
