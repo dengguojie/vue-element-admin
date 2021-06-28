@@ -49,7 +49,7 @@ bool SoftmaxFusionPass::CheckISUsePattern(int64_t inputH, int64_t inputW, int64_
 
   for (int64_t i = 0; i < (int64_t)SHAPE.size(); i++) {
     if (SHAPE[i][0] == inputW && SHAPE[i][1] == inputC) {
-      if (i == 1 && (inputH < 8 || core_num <= 2)) {
+      if (i == 1 && (inputH < 8 || core_num <= 2 || core_num  > 10)) {
         return false;
       }
       return true;
@@ -100,15 +100,15 @@ Status SoftmaxFusionPass::UpdateFormat(ge::NodePtr& inNodePtr) {
 }
 
 Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SoftmaxFusionPass");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SoftmaxFusionPass.");
   ge::NodePtr softmaxNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   
-  FUSION_PASS_CHECK(softmaxNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmax node is null"),
+  FUSION_PASS_CHECK(softmaxNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmax node is null."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(UpdateFormat(softmaxNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "update format fail"),
                     return NOT_CHANGED);               
   ge::OpDescPtr softmaxOpDesc = softmaxNode->GetOpDesc();
-  FUSION_PASS_CHECK(softmaxOpDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmax is null"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(softmaxOpDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "softmax is null."), return PARAM_INVALID);
 
   ge::GeTensorDesc softmaxInputOpDesc = softmaxOpDesc->GetInputDesc(0);
   ge::GeTensorDesc softmaxOutputOpDesc = softmaxOpDesc->GetOutputDesc(0);
