@@ -121,8 +121,7 @@ void GetUbTilingParam(TilingParams &param,
     }
     ub_factor = block_factor % ub_outer == 0 ? block_factor / ub_outer : (block_factor + ub_outer - 1) / ub_outer;
   }
-  ub_factor = 1;
-  ub_tiling_axis = 0;
+
   param.ub_tiling_axis = ub_tiling_axis;
   param.ub_factor = ub_factor;
 }
@@ -134,7 +133,7 @@ void GetTilingData(TilingParams& param,
   int64_t core_limit = out_shape.size() - 3;
   int32_t block_tiling_axis = core_limit - 1;
   int64_t block_factor = 1;
-  int32_t n_parts = out_shape[core_limit - 1];
+  int64_t n_parts = out_shape[core_limit - 1];
   int64_t core_size = 1;
   int32_t core_num = compile_info.core_num;
   int32_t is_fuse_block = 1;
@@ -211,6 +210,7 @@ bool AscendAntiQuantTiling(const std::string &op_type,
   string input_format = op_paras.inputs[0].tensor[0].format;
   std::vector<int64_t> input_x = op_paras.inputs[0].tensor[0].shape;
   const std::string input_dtype = op_paras.inputs[0].tensor[0].dtype;
+  const std::string output_dtype = op_paras.outputs[0].tensor[0].dtype;
   OP_TILING_CHECK(input_format != "NC1HWC0",
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                           "input format only support NC1HWC0, but got %s.", input_format.c_str()),
@@ -223,7 +223,14 @@ bool AscendAntiQuantTiling(const std::string &op_type,
   }
 
   std::vector<int64_t> input_x_new;
+  std::vector<int64_t> input_y;
+  int64_t c1 = input_x[1] * 2;
   int64_t hw = input_x[2] * input_x[3];
+
+  input_y.push_back(input_x[0]);
+  input_y.push_back(c1);
+  input_y.push_back(hw);
+  input_y.push_back(16);
 
   input_x_new.push_back(input_x[0]);
   input_x_new.push_back(input_x[1]);
@@ -231,10 +238,10 @@ bool AscendAntiQuantTiling(const std::string &op_type,
   input_x_new.push_back(input_x[4]);
 
   TilingParams tiling_params;
-  GetTilingData(tiling_params, input_x_new, compile_info, input_dtype);
+  GetTilingData(tiling_params, input_y, compile_info, output_dtype);
 
   // tiling_key
-  int32_t tiling_key = CalcTilingKey(input_x_new, tiling_params);
+  int32_t tiling_key = CalcTilingKey(input_y, tiling_params);
   std::vector<int64_t> workspaces;
   run_info.workspaces = workspaces;
   run_info.block_dim = tiling_params.block_dim;

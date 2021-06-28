@@ -126,7 +126,7 @@ def _get_pattern_key(shape, block_tiling_axis=0, ub_tiling_axis=0):
 
 
 def _init_max_ub_count():
-    soc_ub_size = get_soc_spec("UB_SIZE") // 2
+    soc_ub_size = get_soc_spec("UB_SIZE")
     total_width = 2
     max_bound = total_width * 128
     max_ub_count = int(soc_ub_size // max_bound * 128)
@@ -143,8 +143,6 @@ def calc_tiling_case(outs, option=None):
     out = outs[0]
     # dtype = out.dtype
     shape = util.shape_to_list(out.shape)
-    shape[1] = shape[1] // 2
-    shape[-1] = shape[-1] * 2
 
     tiling_case_list = []
     tiling_case_list += _gen_tiling_case(0, len(shape) - 1, len(shape) - 1, True)

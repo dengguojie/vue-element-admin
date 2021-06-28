@@ -63,9 +63,9 @@ def _reform_compute_generate(tensor, in_shape, out_shape, scale_val):
 
     def lambda_func(*indice):
         new_indice = [indice[0],
-                      (indice[1] * out_shape[n_dim - 1] + indice[n_dim - 1]) // in_shape[n_dim - 1]] \
+                      (indice[1] * out_shape[n_dim - 1]) // in_shape[n_dim - 1]] \
                      + list(indice[2:n_dim - 1]) \
-                     + [(indice[1] * out_shape[n_dim - 1] + indice[n_dim - 1]) % in_shape[n_dim - 1]]
+                     + [(indice[1] * out_shape[n_dim - 1]) % in_shape[n_dim - 1] + indice[n_dim - 1]]
 
         return tensor(*new_indice) * scale_val
 

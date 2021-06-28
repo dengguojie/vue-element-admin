@@ -101,7 +101,7 @@ class AscendAntiQuantSchedule:
             self._schedule[value].set_scope(self._scope)
 
     def _do_storage_bound(self):
-        ub_size = get_soc_spec("UB_SIZE") // 2
+        ub_size = get_soc_spec("UB_SIZE")
         total_width = 2
         max_bound = total_width * 128
         self._max_ub_size = int(ub_size // max_bound * 128)
@@ -195,7 +195,11 @@ class AscendAntiQuantSchedule:
         self._schedule[self._tensor_map.get(INPUT_NAME)].buffer_align((1, 1),
                                                                       (1, 1),
                                                                       (1, 1),
-                                                                      (1, 32))
+                                                                      (32, 32))
+        self._schedule[self._tensor_map.get(CAST_F16_NAME)].buffer_align((1, 1),
+                                                                         (1, 1),
+                                                                         (1, 1),
+                                                                         (32, 32))
 
         self._set_buffer_scope()
 
