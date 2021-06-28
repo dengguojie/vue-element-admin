@@ -1992,6 +1992,9 @@ def pooling2d_schedule(res, sch_list):
         cce_params.cceEmitParamsIns.insert_param("impl_mode", impl_mode)
         fp32_ability = _check_fp32_ability(pooling_mode, impl_mode)
         # get tiling params
+        pooling_params["in_size_h"] = pooling_params["window_h"]
+        pooling_params["in_size_w"] = pooling_params["window_w"]
+
         tiling_params = pooling2d_global_tiling(pooling_params, fusion_params, impl_mode)
         is_fused_antiquant_quant = (fused_anti_quant or fused_ascend_quant)
         if is_fused_antiquant_quant:

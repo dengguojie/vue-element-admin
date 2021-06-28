@@ -161,6 +161,11 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     if data_mode == 1:
         pooling_mode = _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
                                                            window_h, window_w, stride)
+                                                           
+    if pooling_mode == "GAP" and window_h > in_size_h and window_w > in_size_w:
+        window_h = in_size_h
+        window_w = in_size_w
+                    
     # avg or max pooling
     if pooling_mode in ["AVG", "MAX"]:
         # only in AVG pooling related, img2col instrin nRepeat in [1,255]
@@ -347,7 +352,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
         res = _pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w,
                              pooling_params, setfmatrix_dict, fusion_params, impl_mode)
     elif pooling_mode == "GAP":
-        res = _pooling2d_gap(tensor_in_ub, res_output_shape, in_size_h, in_size_w,
+        res = _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w,
                              pooling_params, setfmatrix_dict, fusion_params, impl_mode)
 
     return res
