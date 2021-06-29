@@ -43,6 +43,7 @@ class Pattern:
     LayerNorm = "LayerNorm"
     BN_TRAINING_UPDATE_GRAD = "BNTrainingUpdateGrad"
     LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"
+    LAYER_NORM_X_BACKPROP_V2 = "Layer_norm_x_backprop_v2"
 
 
 class ElewisePattern:

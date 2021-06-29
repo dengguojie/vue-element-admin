@@ -67,6 +67,7 @@ set(_optiling_files
   gather_elements.cc
   ger.cc
   layer_norm_x_backprop.cc
+  layer_norm_x_backprop_v2.cc
   lock.cc
   layer_norm_beta_gamma_backprop.cc
   l1_loss_grad.cc

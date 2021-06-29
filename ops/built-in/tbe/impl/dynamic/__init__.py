@@ -295,6 +295,7 @@ from .bn_training_reduce_grad import bn_training_reduce_grad
 from .log_softmax_v2 import log_softmax_v2
 from .log_softmax_grad import log_softmax_grad
 from .layer_norm_x_backprop import layer_norm_x_backprop
+from .layer_norm_x_backprop_v2 import layer_norm_x_backprop_v2
 from .masked_fill import masked_fill
 from .resize_bilinear_v2 import resize_bilinear_v2
 from .resize_bilinear_v2_grad import resize_bilinear_v2_grad
