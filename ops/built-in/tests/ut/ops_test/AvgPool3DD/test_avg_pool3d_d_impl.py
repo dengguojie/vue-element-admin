@@ -79,6 +79,21 @@ ut_case.add_case(["Ascend910A"], {"params":[
     "expect": "success",
     "case_name":"test_avg_pool3d_d_004"})
 
+# Test Case In Conv3D
+ut_case.add_case(["Ascend910A"], {"params":[
+    {"shape": (23,19,71,88,2,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (23,19,88,2,1124), "ori_format":"NDHWC"},
+    {"shape": (12496,1,16,16), "format": "FRACTAL_Z_3D", "dtype": "float16", "ori_shape": (1,88,2,1124,1), "ori_format":"DHWCN"},
+    {"shape": (23,2,71,1,1,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (23,2,71,1,1,16), "ori_format":"NDHWC"},
+    {"shape": (23,2,71,1,1,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (), "ori_format":"NDHWC"},
+    (1,1,88,2,1),
+    (1,17,18,2,1),
+    (0,0,0,0,0,0),
+    False,
+    True,
+    0,
+    "NDHWC"],
+    "expect": "success",
+    "case_name":"test_avg_pool3d_d_005"})
 
 def calc_expect_func(x, y, ksize, strides):
     data = x["value"].transpose((0, 1, 3, 4, 2, 5)).reshape(x["ori_shape"])
