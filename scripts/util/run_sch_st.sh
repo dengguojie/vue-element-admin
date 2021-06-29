@@ -45,7 +45,7 @@ set_st_env() {
 run_st() {
   local op_type="$1"
   local sch_run_py="${CANN_ROOT}/sch_run_st.py"
-  local supported_soc="Ascend310"
+  local supported_soc="$2"
 
   if [[ -d "$CANN_ST_OUT" ]]; then
     rm -rf "$CANN_ST_OUT" >/dev/null 2>&1
@@ -91,12 +91,19 @@ get_results() {
 main() {
   local base_path="$1"
   local op_type="$2"
+  local soc_version="$3"
+
   if [[ -z "${op_type}" ]]; then
     op_type="all"
   fi
+
+  if [[ -z "${soc_version}" ]]; then
+     soc_version="Ascend310"
+  fi
+
   gen_all_cases
   set_st_env "${base_path}"
-  run_st "${op_type}"
+  run_st "${op_type}" "${soc_version}"
   get_results
 }
 

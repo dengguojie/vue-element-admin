@@ -3992,11 +3992,8 @@ class CceOp:
         tensorize for reduce_nlast single_op
         """
         if self._need_enable_muticore:
-            if lop["op"] == "reduce_prod":
-                self._schedule[lop["cache_buffer"]].emit_insn(
-                    lop["tensorize_axis"], "vector_mul")
             # for dichotomy add optimize
-            elif self._check_dich_add_emit_insn(lop):
+            if self._check_dich_add_emit_insn(lop):
                 self._schedule[lop["cache_buffer"]].emit_insn(
                     lop["tensorize_axis"], "vector_dichotomy_add")
             else:

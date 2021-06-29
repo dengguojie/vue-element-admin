@@ -263,5 +263,12 @@
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/conv2d_tilingcase.py":[
         "conv2d"
+    ],
+    "auto_schedule/python/tbe/dsl/static_schedule/elewise_schedule.py":[
+        "reduce_sum",
+        "reduce_max",
+        "reduce_min",
+        "reduce_prod"
     ]
+
 }
