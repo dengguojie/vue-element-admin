@@ -18,6 +18,7 @@ data_generator module
 import numpy as np
 
 
+# pylint: disable=too-many-branches
 def gen_data(data_shape, min_value, max_value, dtype, distribution='uniform'):
     """
     generate data

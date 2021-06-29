@@ -216,14 +216,14 @@ def _get_attr_desc(testcase_struct):
         for attr_dic in testcase_struct.get('attr'):
             attr_code_str = "    OpTestAttr attr{attr_index} = " \
                             "{{{type}, \"{name}\"}};\n".format(
-                attr_index=str(attr_index),
-                type=utils.OP_ATTR_TYPE_MAP.get(attr_dic.get('type')),
-                name=attr_dic.get('name'))
+                                attr_index=str(attr_index),
+                                type=utils.OP_ATTR_TYPE_MAP.get(attr_dic.get('type')),
+                                name=attr_dic.get('name'))
             attr_code_str += "    attr{attr_index}.{type} = {value};\n"\
                 .format(
-                attr_index=str(attr_index),
-                type=utils.ATTR_MEMBER_VAR_MAP.get(attr_dic.get('type')),
-                value=utils.create_attr_value_str(attr_dic.get('value')))
+                    attr_index=str(attr_index),
+                    type=utils.ATTR_MEMBER_VAR_MAP.get(attr_dic.get('type')),
+                    value=utils.create_attr_value_str(attr_dic.get('value')))
 
             # deal with the list_list_int attr
             if attr_dic.get('type') == "list_list_int":
@@ -232,7 +232,7 @@ def _get_attr_desc(testcase_struct):
                         attr_dic, attr_code_str, attr_index)
             attr_code_str += "    opTestDesc.opAttrVec.push_back(" \
                              "attr{attr_index});\n".format(
-                attr_index=str(attr_index))
+                                 attr_index=str(attr_index))
             all_attr_code_snippet += attr_code_str
             attr_index = attr_index + 1
     return all_attr_code_snippet

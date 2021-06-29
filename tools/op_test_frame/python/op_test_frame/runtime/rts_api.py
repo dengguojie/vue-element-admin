@@ -22,13 +22,15 @@ import math
 import ctypes
 from typing import Union
 
-from . import rts_info
 from op_test_frame.utils import file_util
 from op_test_frame.common import logger
+from . import rts_info
 
 ONLINE_PROF_MAX_PMU_NUM = 8
 
 
+# pylint: disable=too-few-public-methods,too-many-instance-attributes
+# pylint: disable=invalid-name,unused-variable,no-self-use
 class rtDevBinary_t(ctypes.Structure):
     """
     Class rtDevBinary_t
@@ -556,7 +558,7 @@ class AscendRTSApi:
                 time.sleep(1)
                 self.memcpy(c_memory_p, memory_size, data, data_size, memcpy_kind, retry_count)
             else:
-                raise
+                raise RuntimeError("After three retrys,memcpy still fails")
 
     def memset(self,
                c_memory_p: ctypes.c_void_p, memory_size: int,
