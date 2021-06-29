@@ -15,6 +15,8 @@
 """
 util_conv3d
 """
+from impl.util.platform_adapter import error_manager_util
+
 
 def transform_shape_with_exception(src_format, to_format, ori_shape,
                                    format_white_list, attr_name):

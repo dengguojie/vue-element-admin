@@ -310,14 +310,15 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   unique_ptr<uint16_t> filter_mem(new (nothrow) uint16_t[filter_size]());
   FUSION_PASS_CHECK(filter_mem.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "Filter is NULL"), return PARAM_INVALID);
 
-  float val = 1.0 / (kd * kh * kw);
-
-  if (!is_dynamic && divisor_override) {
+  float val = 1.0;
+  if (divisor_override) {
     val = 1.0 / divisor_override;
-  } else if (is_dynamic || !IsZeroPads(pads)) {
-    // need multiplier and filter is all one in diagnoal
-    val = 1.0;
+  } else if (!is_dynamic) {
+    val = (!IsZeroPads(pads)) ? 1.0 : (1.0 / (kd * kh * kw));
+  } else {
+    val = count_include_pad ? 1.0 / (kd * kh * kw) : 1.0;
   }
+
   FUSION_PASS_CHECK(GenFilter(filter_size, filter_mem.get(), val) != SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "GenFilter failed"), return FAILED);
 
@@ -340,6 +341,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   vector<GeTensorPtr> weights = {filter_ptr};
 
   if (!is_dynamic && !IsZeroPads(pads) && !divisor_override) {
+    OP_LOGD(kFusedOpType.c_str(), "create multiplier data.");
     GeTensorPtr multiplier_ptr{nullptr};
     int64_t multiplier_size = fmap_n * fmap_c1 * kC0 * dout * ho * wo;
     unique_ptr<uint16_t> multiplier_mem(new (nothrow) uint16_t[multiplier_size]());

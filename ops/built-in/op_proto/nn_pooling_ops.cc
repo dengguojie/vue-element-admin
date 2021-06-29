@@ -2063,9 +2063,10 @@ bool IsAllVal(const vector<int64_t>& vec, int64_t val) {
 }
 
 IMPLEMT_VERIFIER(AvgPool3D, AvgPool3DVerify) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_shape = op_desc->MutableInputDesc("x")->MutableShape().GetDims();
   auto ksize = op.get_attr_ksize();
   auto strides = op.get_attr_strides();
-  auto x_shape = op.get_input_desc_x().GetShape().GetDims();
   bool invalid_param = x_shape.size() != 5;
   bool invalid_ksize = ksize.size() != 1 && ksize.size() != 3 && ksize.size() != 5;
   bool invalid_strides = strides.size() != 1 && strides.size() !=3 && strides.size() != 5;

@@ -65,7 +65,7 @@ def _check_inputs(grads, filter, output, output_range, ksize, strides, pads, cei
                 'errCode': 'E62002',
                 'param_name': format_name,
                 'expected_format_list': ",".join(excepted_format_list),
-                'format': data_format
+                'format': checked_format
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
