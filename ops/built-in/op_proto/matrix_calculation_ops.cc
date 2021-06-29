@@ -2964,7 +2964,8 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
     return GRAPH_PARAM_INVALID;
   }
 
-  if (num_rows != min_num_rows && num_cols != min_num_cols) {
+  if (num_rows != min_num_rows && num_cols != min_num_cols &&
+      min_num_rows != ge::UNKNOWN_DIM && min_num_cols != ge::UNKNOWN_DIM) {
     std::string err_msg = ConcatString(
       "input[num_rows] value[", num_rows, "] and ",
       "input[num_cols] value[", num_cols, "] ",
