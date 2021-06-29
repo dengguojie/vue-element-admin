@@ -203,7 +203,7 @@ class CaseGenerator:
         get basic operator information, i/o represent input/output.
         """
         if mindspore_ops_info.get(OP_NAME) is None:
-            utils.print_warn_log("The op_name is null, please modify it.")
+            utils.print_warn_log("Op_name is null. Please modify it.")
         self.op_type = mindspore_ops_info.get(OP_NAME)
         count_input = 0
         for i_o_type in IO_TYPE:
@@ -537,12 +537,12 @@ class CaseGenerator:
 
         is_parse_success = False
         if is_file_exist:
-            utils.print_info_log("Start parse %s to obtain operator "
+            utils.print_info_log("Start parsing %s to obtain operator "
                                  "information." % op_proto_file_path)
             # parse aicpu op_name.h file to obtain op_name and type.
             is_parse_success = self._parse_aicpu_op_proto(op_proto_file_path)
             if is_parse_success:
-                utils.print_info_log("Finish parse %s." % op_proto_file_path)
+                utils.print_info_log("%s parsing completed." % op_proto_file_path)
         if not is_file_exist or not is_parse_success:
             utils.print_warn_log("There are unavailable operator information "
                                  "in %s." % op_proto_file_path)

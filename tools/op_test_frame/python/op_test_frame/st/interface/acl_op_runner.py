@@ -213,25 +213,25 @@ class AclOpRunner:
     def _prof_get_op_time_from_csv_file(csv_file, op_name_list, soc_version):
         time_result = []
         if not csv_file:
-            utils.print_error_log("Csv file is empty, please check.")
+            utils.print_error_log("The CSV file is empty. Please check.")
             return time_result
         if not op_name_list:
-            utils.print_error_log("Op name list is empty, please check.")
+            utils.print_error_log("The op name list is empty. Please check.")
             return time_result
         if not soc_version:
-            utils.print_error_log("soc version is empty, please check.")
+            utils.print_error_log("The SoC version is empty. Please check.")
             return time_result
         csv_task_id_column_name, csv_op_time_column_name, csv_op_name_column_name \
             = "", "", ""
         for soc_version_base_str in iter(SOC_VERSION_CSV_COLUMN_NAME_MAP):
             if soc_version_base_str in soc_version:
-                utils.print_info_log("found %s in specified soc version value: %s"
+                utils.print_info_log("%s found in specified SoC version value: %s"
                                      % (soc_version_base_str, soc_version))
                 csv_task_id_column_name, csv_op_time_column_name, csv_op_name_column_name \
                     = SOC_VERSION_CSV_COLUMN_NAME_MAP.get(soc_version_base_str)
                 break
         if not all([csv_task_id_column_name, csv_op_time_column_name, csv_op_name_column_name]):
-            utils.print_error_log("empty string found in csv_task_id_column_name: %s, csv_op_time_column_name: %s,"
+            utils.print_error_log("An empty string found in csv_task_id_column_name: %s, csv_op_time_column_name: %s,"
                                   "csv_op_name_column_name: %s" % (csv_task_id_column_name,
                                                                    csv_op_time_column_name, csv_op_name_column_name))
             return time_result
@@ -254,7 +254,7 @@ class AclOpRunner:
                 return []
             op_name = case_report.trace_detail.st_case_info.op_params.get(OP)
             if not op_name:
-                utils.print_error_log("Op name got from st_report.json is empty, please check")
+                utils.print_error_log("The op name got from st_report.json is empty. Please check")
                 return []
             op_name_list.append(op_name)
         return op_name_list
@@ -266,7 +266,7 @@ class AclOpRunner:
                                                            self.soc_version)
         if not time_result:
             utils.print_error_log(
-                "Failed to get time result from csv files, please check.")
+                "Failed to get the time result from CSV files. Please check.")
             return
         utils.print_info_log(
             "Get time cost of each case from csv: %s" % ','.join(time_result))
@@ -310,7 +310,7 @@ class AclOpRunner:
                                       'result.txt')
             if not os.path.exists(result_txt) or \
                     not os.access(result_txt, os.R_OK):
-                utils.print_error_log("Failed to get %s, please check "
+                utils.print_error_log("Failed to get %s. Please check "
                                       "run result." % result_txt)
                 return
 
@@ -333,13 +333,13 @@ class AclOpRunner:
             csv_file = os.path.join(job_path, SUMMARY_REL_PATH, TASK_TIME_CSV)
             if not os.path.exists(csv_file) or \
                     not os.access(csv_file, os.R_OK):
-                utils.print_error_log("Failed to get %s, please check "
-                                      "summary csv file." % csv_file)
+                utils.print_error_log("Failed to get %s. Please check the CSV "
+                                      "summary file." % csv_file)
                 return
             # start to get op names from report
             op_name_list = self._prof_get_op_name_from_report(run_result_list)
             if not op_name_list:
-                utils.print_error_log("Failed to get op names from st report, please check.")
+                utils.print_error_log("Failed to get the op name from the st report. Please check.")
                 return
             if op_name_list:
                 utils.print_info_log("Get op names from report: %s" % ','.join(op_name_list))
@@ -367,18 +367,18 @@ def get_result_time(csv_file, op_name_list, csv_name_info):
             import csv  # pylint: disable=import-outside-toplevel
         except import_error:
             utils.print_error_log(
-                "[acl_op_runner] Unable to import csv, please check.")
+                "[acl_op_runner] Unable to import the CSV file. Please check.")
             return time_result
         row_list = list(csv.reader(csv_file_obj))
         if not row_list:
-            utils.print_error_log("Csv summary file is empty, please check.")
+            utils.print_error_log("The CSV summary file is empty. Please check.")
             return time_result
         column_line_list = row_list.pop(0)  # remove column line
         if csv_name_info.get("task_id") not in column_line_list or \
                 csv_name_info.get("op_time") not in column_line_list or \
                 csv_name_info.get("op_name") not in column_line_list:
             utils.print_error_log(
-                "%s , %s or %s not found in column line, please check."
+                "%s , %s or %s not found in the column line. Please check."
                 % (csv_name_info.get("task_id"), csv_name_info.get("op_time"),
                    csv_name_info.get("op_name")))
             return time_result

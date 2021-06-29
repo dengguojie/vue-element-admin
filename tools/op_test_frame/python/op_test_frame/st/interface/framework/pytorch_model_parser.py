@@ -108,8 +108,8 @@ def _load_model(model_path):
     try:
         model = onnx.load(model_path)
     except google.protobuf.message.DecodeError:
-        utils.print_error_log("{} is not a valid model file, "
-                              "please check the model.".format(model_path))
+        utils.print_error_log("{} is not a valid model file. "
+                              "Please check the model.".format(model_path))
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_INVALID_DATA_ERROR)
     return model
@@ -372,7 +372,7 @@ class PyTorchModelParse:
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
-        utils.print_info_log("The {} input shape has been changed!".format(self.model_path))
+        utils.print_info_log("The {} input shape has been changed.".format(self.model_path))
         _, tmp_filename = os.path.split(real_path)
         prefix, suffix = os.path.splitext(tmp_filename)
         first_new_shape = '_'.join(
@@ -406,7 +406,7 @@ class PyTorchModelParse:
                 model_path = self._change_shape_fn(input_shape_map)
             else:
                 model_path = self.model_path
-            utils.print_info_log("Begin to get the \"%s\" operator in the "
+            utils.print_info_log("Start to get the \"%s\" operator in the "
                                  "model %s." % (ini_op_type, model_path))
             nodes_list = _get_node_list(model_path, ini_op_type, input_nums=len(input_shape_map))
         else:

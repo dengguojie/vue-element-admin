@@ -346,7 +346,7 @@ def check_path_valid(path, isdir=False):
         isdir: the path is dir or file
     """
     if path == "":
-        print_error_log("The path is null. Please check the argument valid.")
+        print_error_log("The path is null. Please check whether the argument is valid.")
         raise OpTestGenException(OP_TEST_GEN_INVALID_PARAM_ERROR)
     path = os.path.realpath(path)
     if isdir and not os.path.exists(path):
@@ -416,7 +416,7 @@ def get_content_from_double_quotes(line):
     match = pattern.findall(line)
     if match:
         return match
-    print_error_log("(\" \") format error , please check!")
+    print_error_log("(\" \") format error. Please check.")
     sys.exit(OP_TEST_GEN_CONFIG_OP_DEFINE_ERROR)
 
 
@@ -613,6 +613,6 @@ class ScanFile:
                     else:
                         files_list.append(dir_info[1])
         else:
-            print_error_log("scanned directory does not exist: %s"
+            print_error_log("The scanned directory does not exist: %s"
                             % self.directory)
         return files_list

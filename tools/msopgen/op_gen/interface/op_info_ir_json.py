@@ -57,30 +57,30 @@ class JsonIROpInfo(OpInfo):
         if input_list is not None:
             self._add_input_output_from_json("input_desc", input_list)
         else:
-            utils.print_warn_log("\"input_desc\" value is invalid or "
-                                 "no \"input_desc\" in map.")
+            utils.print_warn_log("The \"input_desc\" value is invalid or "
+                                 "no \"input_desc\" exists in the map.")
         if output_list is not None:
             self._add_input_output_from_json("output_desc", output_list)
         else:
-            utils.print_warn_log("\"output_desc\" value is invalid or "
-                                 "no \"output_desc\" in map.")
+            utils.print_warn_log("The \"output_desc\" value is invalid or "
+                                 "no \"output_desc\" exists in the map.")
         if attr_list is not None:
             self._add_attr_from_json(attr_list)
         else:
-            utils.print_warn_log("\"attr\" value is invalid or no \"attr\" "
-                                 "in map.")
+            utils.print_warn_log("The \"attr\" value is invalid or no \"attr\" "
+                                 "exists in the map.")
 
     def _check_input_output_info(self):
         if not self.parsed_input_info:
-            utils.print_warn_log("There is no input in ir json. Please "
+            utils.print_warn_log("There is no input in the IR json. Please "
                                  "check the input or output type. If you "
-                                 "aren't having problems, just ignore the "
+                                 "do not have this problem, ignore the "
                                  "warning.")
             return
         if not self.parsed_output_info:
-            utils.print_warn_log("There is no output in ir json. Please "
+            utils.print_warn_log("There is no output in the IR json. Please "
                                  "check the input or output type. If you "
-                                 "aren't having problems, just ignore the "
+                                 "aren't having problems, ignore the "
                                  "warning.")
             return
         # check input ir type and format
@@ -131,8 +131,8 @@ class JsonIROpInfo(OpInfo):
                                   % self.op_path)
             raise utils.MsOpGenException(utils.MS_OP_GEN_JSON_DATA_ERROR)
         if isinstance(json_data, list) and len(json_data) < 1:
-            utils.print_error_log("There is operator define map in %s. "
-                                  "Please check!" % self.op_path)
+            utils.print_error_log("There is an operator definition map in %s. "
+                                  "Please check." % self.op_path)
             raise utils.MsOpGenException(utils.MS_OP_GEN_JSON_DATA_ERROR)
 
     def _read_json_data(self, json_data):
@@ -140,8 +140,8 @@ class JsonIROpInfo(OpInfo):
         for json_map in json_data:
             op_map = {}
             if json_map.get("op") is None:
-                utils.print_warn_log("The map in %s has no \"op\" key."
-                                     "Please check!" % self.op_path)
+                utils.print_warn_log("The map in %s does not have the \"op\" key."
+                                     "Please check." % self.op_path)
             else:
                 op_name = json_map.get("op")
                 if utils.check_name_valid(
@@ -150,10 +150,10 @@ class JsonIROpInfo(OpInfo):
                     op_map["output_list"] = json_map.get("output_desc")
                     op_map["attr_list"] = json_map.get("attr")
                     if op_name in ir_map.keys():
-                        utils.print_warn_log("The are some maps with "
+                        utils.print_warn_log("There are some maps with "
                                              "duplicate \"op\" : \"%s\" "
                                              "in %s. The last one is to be "
-                                             "used!" % (op_name, self.op_path))
+                                             "used." % (op_name, self.op_path))
                     ir_map[op_name] = op_map
         return ir_map
 
@@ -161,11 +161,11 @@ class JsonIROpInfo(OpInfo):
         op_names = list(ir_map.keys())
         op_name = self._choose_op(op_names)
         if not op_name:
-            utils.print_error_log("Failed to get op type.")
+            utils.print_error_log("Failed to obtain the op type.")
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_info = ir_map.get(op_name)
         if not ir_info:
-            utils.print_error_log("Failed to get op info for '%s'. Please "
+            utils.print_error_log("Failed to obtain op info for '%s'. Please "
                                   "check the json." % op_name)
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         self.op_type = op_name
@@ -191,12 +191,12 @@ class JsonIROpInfo(OpInfo):
                 print(i, op_name)
                 i += 1
             while True:
-                op_number = input('Input the number of the op:')
+                op_number = input('Input the number of the ops:')
                 if op_number.isdigit():
                     op_number = int(op_number)
                     if op_number < 1 or op_number > len(op_names):
                         utils.print_warn_log(
-                            "The input is out of range, please retype!")
+                            "The input is out of range, please retype one.")
                     else:
                         op_name = op_names[op_number - 1]
                         utils.print_info_log("You have chosen: " + op_name)
@@ -216,7 +216,7 @@ class JsonIROpInfo(OpInfo):
             for input_output_map in input_output_list:
                 self._update_input_output_info(prefix, input_output_map)
         else:
-            utils.print_warn_log("\"%s\" in map should be list" % prefix)
+            utils.print_warn_log("\"%s\" in the map should be list" % prefix)
 
     def _update_input_output_info(self, prefix, input_output_map):
         if isinstance(input_output_map, dict):
@@ -224,14 +224,13 @@ class JsonIROpInfo(OpInfo):
             if input_output_name is None or \
                     not isinstance(input_output_name, str):
                 utils.print_warn_log("The input or output name is "
-                                     "None or invalid, please check!")
+                                     "None or invalid. please check.")
                 return
             input_output_name = input_output_name.strip()
             types = input_output_map.get("type")
             if types is None or not isinstance(types, (list, str)):
                 utils.print_warn_log("The input or output type is "
-                                     "None or invalid, please check!")
-
+                                     "None or invalid. please check.")
                 return
             if isinstance(types, str):
                 types = [types]
@@ -244,7 +243,7 @@ class JsonIROpInfo(OpInfo):
                                      [param_type, op_format])
         else:
             utils.print_warn_log(
-                "Every value in \"%s\" list should be dict" % prefix)
+                "Every value in the \"%s\" list should be dict" % prefix)
 
     def _init_ir_type(self, prefix, input_output_name, types):
         ir_type_list = []
@@ -256,9 +255,9 @@ class JsonIROpInfo(OpInfo):
         if not ir_type_list:
             utils.print_warn_log("The %s ir type is invalid: %s" %
                                  (prefix, types))
-            utils.print_error_log("The input or output types in the json "
-                                  "file are unsupported. Please check the "
-                                  "input or output types.")
+            utils.print_error_log("The input or output type in the json "
+                                  "file is not supported. Please check the "
+                                  "input or output type.")
             raise utils.MsOpGenException(
                 utils.MS_OP_GEN_INVALID_PARAM_ERROR)
         return ir_type_list
@@ -278,14 +277,14 @@ class JsonIROpInfo(OpInfo):
         if isinstance(op_format, str):
             op_format = [op_format]
         if op_format is None or len(op_format) == 0:
-            utils.print_warn_log("Format value is None or invalid, will "
-                                 "automatically fill in ND according to the "
-                                 "number of type")
+            utils.print_warn_log("The format value is None or invalid, which will "
+                                 "be automatically filled with ND according to the "
+                                 "number of types")
             op_format = ",".join("ND" for _ in ir_type_list)
             op_format = op_format.split(",")
         if len(op_format) != len(ir_type_list):
-            utils.print_warn_log("The number of type and the number of "
-                                 "format not match. please check!")
+            utils.print_warn_log("The number of types does not match that of "
+                                 "formats. please check.")
         utils.print_info_log("One %s is handled: %s" %
                              (prefix, input_output_name))
         return op_format
@@ -296,7 +295,7 @@ class JsonIROpInfo(OpInfo):
         if param_type not in utils.INPUT_OUTPUT_PARAM_TYPE:
             param_type = utils.PARAM_TYPE_REQUIRED
             utils.print_warn_log("The param_type of %s is invalid or None, "
-                                 "give it the default value \"required\"" %
+                                 "Assign it the default value \"required\"" %
                                  input_output_name)
         return param_type
 
@@ -328,19 +327,19 @@ class JsonIROpInfo(OpInfo):
             for attr_map in attr_list:
                 self._update_attr_info(attr_map)
         else:
-            utils.print_warn_log("attr in map should be list")
+            utils.print_warn_log("Attr in the map should be a list.")
 
     def _update_attr_info(self, attr_map):
         attr_name = attr_map.get("name")
         if attr_name is None or not isinstance(attr_name, str):
-            utils.print_warn_log("The attr_name name is None or invalid, "
-                                 "please check!")
+            utils.print_warn_log("The attr_name name is None or invalid. "
+                                 "Please check!")
             return
         attr_name = attr_name.strip()
         op_type = attr_map.get("type")
         if op_type is None or not isinstance(op_type, str):
-            utils.print_warn_log("The op_type name is None or invalid, "
-                                 "please check!")
+            utils.print_warn_log("The op_type name is None or invalid. "
+                                 "Please check!")
             return
         op_type = op_type.strip()
         attr_type = self._mapping_attr_type(op_type)
@@ -355,8 +354,8 @@ class JsonIROpInfo(OpInfo):
         param_type = attr_map.get("param_type")
         if param_type not in utils.ATTR_PARAM_TYPE:
             param_type = utils.PARAM_TYPE_REQUIRED
-            utils.print_warn_log("The param_type of %s is invalid or None, "
-                                 "give it the default value \"required\"" %
+            utils.print_warn_log("The param_type of %s is invalid or None. "
+                                 "Assign it the default value \"required\"" %
                                  attr_name)
         self.parsed_attr_info.append([attr_name, attr_type, default_value,
                                       param_type])

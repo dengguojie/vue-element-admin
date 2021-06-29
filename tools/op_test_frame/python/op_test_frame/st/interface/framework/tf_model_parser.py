@@ -235,8 +235,8 @@ class TFModelParse:
                 utils.print_info_log("The %s shape has been changed "
                                      "to %s " % (node.name, node_shape))
         if not node_shape:
-            utils.print_error_log("Change shape failed, maybe there is no "
-                                  "match layer. Please check the input shape.")
+            utils.print_error_log("Failed to change the shape. Maybe there is no "
+                                  "matched layer. Please check the input shape.")
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
         dir_name, tmp_filename = os.path.split(real_path)
@@ -332,7 +332,7 @@ class TFModelParse:
                     placeholder_shape_map.update(
                         {layer_name: {'ori_shape': value, 'new_shape': []}})
         if not placeholder_shape_map:
-            utils.print_error_log("There is no \"placeholder\" operator !"
+            utils.print_error_log("There is no \"placeholder\" operator."
                                   "Please check the model.")
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_TF_GET_PLACEHOLDER_ERROR)

@@ -56,7 +56,7 @@ class OpFileAiCore(OPFile):
         """
         self._generate_cmake_lists()
         if not self.op_info.fix_op_type:
-            utils.print_warn_log("The op type is empty, failed to generate "
+            utils.print_warn_log("The op type is empty. Failed to generate "
                                  "impl files. Please check.")
             return
         # 1.make head string
@@ -127,8 +127,8 @@ class OpFileAiCore(OPFile):
         Return Value:
         """
         if not self.op_info.fix_op_type:
-            utils.print_warn_log("The op type is empty, failed to generate "
-                                 "info config file. Please check.")
+            utils.print_warn_log("The op type is empty. Failed to generate "
+                                 "the info config file. Please check.")
             return
         # 1.make [OpType], eg:[Add]
         new_str = op_tmpl.INI_OP.format(op_type=self.op_info.op_type)
@@ -230,8 +230,8 @@ class OpFileAiCore(OPFile):
         if op_type in CFG_INFO_TYPE_MAP:
             return CFG_INFO_TYPE_MAP[op_type]
         utils.print_warn_log("The input/output type '%s' "
-                             "is unsupported for .ini file. "
-                             "Please check the input or output type. If "
-                             "you aren't having problems, just ignore "
+                             "is not supported by the .ini file. "
+                             "Please check. If "
+                             "you do not have this problem, ignore "
                              "the warning." % op_type)
         return ""

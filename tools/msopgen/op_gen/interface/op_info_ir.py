@@ -52,7 +52,7 @@ class IrRow:
             self.attr_default = row[IR_TEMPLATE_ATTR_DEFAULT_CLO]
             self.op_format = row[IR_TEMPLATE_FORMAT_CLO]
         else:
-            utils.print_error_log("The row information is not enough.")
+            utils.print_error_log("The row information is insufficient.")
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
 
     def get_name(self):
@@ -95,18 +95,18 @@ class IROpInfo(OpInfo):
                 self._parse_xls_to_json()
 
     def _parse_xls_to_info(self):
-        utils.print_info_log("Start to parse the ir template:%s" %
+        utils.print_info_log("Start to parse the ir template:%s." %
                              self.op_path)
         sheet_data = self._get_sheet_data(self.op_path)
         ir_map = self._get_ir_map(sheet_data)
         op_names = list(ir_map.keys())
         op_name = self._choose_op(op_names)
         if not op_name:
-            utils.print_error_log("Failed to get op type.")
+            utils.print_error_log("Failed to obtain the op type.")
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_info = ir_map.get(op_name)
         if not ir_info:
-            utils.print_error_log("Failed to get op info for '%s'. Please "
+            utils.print_error_log("Failed to obtain the op info for '%s'. Please "
                                   "check the excel." % op_name)
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         self.op_type = op_name
@@ -118,8 +118,8 @@ class IROpInfo(OpInfo):
                 input_map = self._add_input_output('input', ir_row, param_type)
                 if input_map is None:
                     utils.print_error_log("The attr types in the .xlsx file "
-                                          "are unsupported. Please check the "
-                                          "input or output types.")
+                                          "are not supported. Please check the "
+                                          "input or output type.")
                     raise utils.MsOpGenException(
                         utils.MS_OP_GEN_INVALID_PARAM_ERROR)
                 self.parsed_input_info.update(input_map)
@@ -160,10 +160,10 @@ class IROpInfo(OpInfo):
 
     def _get_ir_map(self, sheet_data):
         if sheet_data is None:
-            utils.print_error_log("Get sheet data fails.")
+            utils.print_error_log("Failed to obtain the sheet data.")
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         if not self._check_sheet_data(sheet_data):
-            utils.print_error_log("Check sheet format failed.")
+            utils.print_error_log("Failed to obtain the sheet format.")
             sys.exit(utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_map = self._read_sheet_data(sheet_data)
         return ir_map
@@ -171,7 +171,7 @@ class IROpInfo(OpInfo):
     def _get_sheet_data(self, ir_file):
         ir_template, sheet_names = self._get_sheets(ir_file)
         if IR_DEFAULT_SHEET_NAME not in sheet_names:
-            utils.print_error_log(" There is no sheet named \"Op\" in IR "
+            utils.print_error_log("No sheet named \"Op\" exists in the IR "
                                   "Excel. Please check!")
             raise utils.MsOpGenException(
                 utils.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
@@ -184,7 +184,7 @@ class IROpInfo(OpInfo):
             ir_template = xlrd.open_workbook(ir_file)
             sheet_names = ir_template.sheet_names()
         except OSError as err:
-            utils.print_error_log("Load excel failed ,%s " % str(err.args[0]))
+            utils.print_error_log("Failed to load the excel, %s " % str(err.args[0]))
             raise utils.MsOpGenException(utils.MS_OP_GEN_READ_FILE_ERROR)
         return ir_template, sheet_names
 
@@ -193,24 +193,24 @@ class IROpInfo(OpInfo):
         # The second row is header, a valid sheet has at least 2 rows
         if sheet_data.nrows < IR_TEMPLATE_FIRST_ROW:
             utils.print_warn_log(
-                "The sheet '%s' data is invalid, at least %s rows "
-                "needed" % (sheet_data.name, IR_TEMPLATE_FIRST_ROW))
+                "Data in the sheet '%s' is invalid. At least %s rows are "
+                "required." % (sheet_data.name, IR_TEMPLATE_FIRST_ROW))
             return False
         if sheet_data.nrows == IR_TEMPLATE_FIRST_ROW:
             utils.print_warn_log(
-                "There is no content in the sheet '%s'" % sheet_data.name)
+                "There is no content in the sheet '%s'." % sheet_data.name)
             return False
         headers = sheet_data.row_values(1)
         if len(headers) < IR_TEMPLATE_VALID_NCLOS:
-            utils.print_warn_log("The '%s' number of headers is invalid: '%s'"
+            utils.print_warn_log("The '%s' number of headers is invalid: '%s'."
                                  % (sheet_data.name, str(len(headers))))
             return False
         for i in range(0, IR_TEMPLATE_VALID_NCLOS):
             header = str(headers[i]).strip()
             if header != IR_TEMPLATE_HEADER[i]:
                 utils.print_warn_log(
-                    "The header of the sheet '%s' is invalid: %s,"
-                    "should be like %s " % (
+                    "The header of the sheet '%s' is invalid: %s."
+                    "It should be like %s." % (
                         sheet_data.name, header, IR_TEMPLATE_HEADER))
                 return False
         return True
@@ -272,25 +272,25 @@ class IROpInfo(OpInfo):
                 sys.exit(utils.MS_OP_GEN_INVALID_PARAM_ERROR)
             return self.choose_op
         if len(op_names) > 1:
-            utils.print_info_log("There is more than one operator in sheet:")
+            utils.print_info_log("There is more than one operator in the sheet:")
             i = 1
             for op_name in op_names:
                 print(i, op_name)
                 i += 1
             while True:
-                op_number = input('Input the number of the op:')
+                op_number = input('Input the number of the ops:')
                 if op_number.isdigit():
                     op_number = int(op_number)
                     if op_number < 1 or op_number > len(op_names):
                         utils.print_warn_log(
-                            "The input is out of range, please retype!")
+                            "The input is out of range. Please retype one.")
                     else:
                         op_name = op_names[op_number - 1]
                         utils.print_info_log("You have chosen: " + op_name)
                         return op_name
                 else:
                     utils.print_warn_log(
-                        "The input is not a number, please retype!")
+                        "The input is not a number. Please retype!")
         elif len(op_names) == 0:
             utils.print_error_log("There is no op info to read.")
             return None
@@ -327,15 +327,15 @@ class IROpInfo(OpInfo):
 
     def _check_input_output_info(self):
         if not self.parsed_input_info:
-            utils.print_warn_log("There is no input in ir excel. Please "
+            utils.print_warn_log("There is no input in the IR Excel. Please "
                                  "check the input or output type. If you "
-                                 "aren't having problems, just ignore the "
+                                 "do not have this problem, ignore the "
                                  "warning.")
             return
         if not self.parsed_output_info:
-            utils.print_warn_log("There is no output in ir excel. Please "
+            utils.print_warn_log("There is no output in the IR Excel. Please "
                                  "check the input or output type. If you "
-                                 "aren't having problems, just ignore the "
+                                 "do not have this problem, ignore the "
                                  "warning.")
             return
         # check input ir type and format
@@ -351,14 +351,14 @@ class IROpInfo(OpInfo):
                 first_name = name
             else:
                 if ir_type_count != first_count:
-                    utils.print_warn_log("The number(%d) of %s type range is "
-                                         "different from that(%d) of %s. "
+                    utils.print_warn_log("The number(%d) of %s types is inconsistent"
+                                         "with that(%d) of %s. "
                                          "Please check the input numbers in "
                                          "'TypeRange'."
                                          % (ir_type_count, name,
                                             first_count, first_name))
                 if format_count != first_count:
-                    utils.print_warn_log("The number(%d) of %s format is "
+                    utils.print_warn_log("The number(%d) of %s formats is inconsistent"
                                          "different from that(%d) of %s. "
                                          "Please check the input numbers in "
                                          "'Format'." % (format_count, name,
@@ -374,7 +374,7 @@ class IROpInfo(OpInfo):
             return
         self.parsed_attr_info.append([name, attr_type, self._parse_bool_value(
             default_value)])
-        utils.print_info_log("One attr is handled: " + name)
+        utils.print_info_log("One attr has been handled: " + name)
 
     @staticmethod
     def _parse_bool_value(value):
@@ -390,7 +390,7 @@ class IROpInfo(OpInfo):
         if param_type in utils.PARAM_TYPE_MAP_INI:
             # the return wont't be none
             return utils.PARAM_TYPE_MAP_INI.get(param_type)
-        utils.print_error_log("The '%s' config in ir excel is "
+        utils.print_error_log("The '%s' config in the IR Excel is "
                               "invalid." % param_type)
         sys.exit(utils.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
 

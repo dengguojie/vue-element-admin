@@ -40,14 +40,14 @@ class OPFile(metaclass=ABCMeta):
         if self.mode == utils.GEN_OPERATOR:
             if os.path.isdir(os.path.join(
                     self.output_path, utils.PROJ_MS_NAME)):
-                utils.print_error_log("Mindspore operator cannot be added to "
-                                      "a non-mindspore operator project!")
+                utils.print_error_log("MindSpore operators cannot be added to "
+                                      "a non-MindSpore operator project.")
                 raise utils.MsOpGenException(
                     utils.MS_OP_GEN_INVALID_PARAM_ERROR)
             utils.print_info_log("Start to add a new operator.")
             self._new_operator()
         else:
-            utils.print_info_log("Start to generator a new project.")
+            utils.print_info_log("Start to generate a new project.")
             self._generate_project()
 
     def _generate_project(self):
@@ -65,7 +65,7 @@ class OPFile(metaclass=ABCMeta):
 
     def _generate_plugin(self):
         if not self.op_info.fix_op_type:
-            utils.print_warn_log("The op type is empty, failed to generate "
+            utils.print_warn_log("The op type is empty. Failed to generate "
                                  "plugin files. Please check.")
             return
         if self.fmk_type == "caffe":
@@ -148,7 +148,7 @@ class OPFile(metaclass=ABCMeta):
 
     def _generate_op_proto(self):
         if not self.op_info.fix_op_type:
-            utils.print_warn_log("The op type is empty, failed to generate "
+            utils.print_warn_log("The op type is empty. Failed to generate "
                                  "op proto files. Please check.")
             return
         self._generate_ir_h()

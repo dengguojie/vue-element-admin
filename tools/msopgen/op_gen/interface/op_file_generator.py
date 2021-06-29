@@ -31,7 +31,7 @@ class OpFileGenerator:
         if argument.framework in utils.FMK_MS:
             if argument.core_type == utils.AICORE:
                 utils.print_info_log(
-                    "Start to generator mindspore operator files.")
+                    "Start to generate MindSpore operator files.")
                 return OpFileMindSpore(argument)
 
             if argument.core_type == utils.AICPU:
@@ -39,9 +39,9 @@ class OpFileGenerator:
 
         if argument.core_type == utils.AICORE:
             utils.print_info_log(
-                "Start to generator aicore operator files.")
+                "Start to generate AI Core operator files.")
             return OpFileAiCore(argument)
-        utils.print_info_log("Start to generator aicpu operator files.")
+        utils.print_info_log("Start to generate AI CPU operator files.")
         return OpFileAiCpu(argument)
 
     def generate(self):

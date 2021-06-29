@@ -30,9 +30,9 @@ class OpInfoParser:
     @staticmethod
     def _create_op_info(argument: ArgParser):
         if argument.input_path.endswith(utils.INPUT_FILE_EXCEL):
-            utils.print_warn_log("Excel as input will be removed in future "
-                                 "version, it is recommended to use json "
-                                 "file as input. ")
+            utils.print_warn_log("Excel cannot be used as inputs in future "
+                                 "versions. It is recommended that json "
+                                 "files be used as inputs.")
             if argument.gen_flag and argument.framework in utils.FMK_MS:
                 return MSIROpInfo(argument)
             return IROpInfo(argument)

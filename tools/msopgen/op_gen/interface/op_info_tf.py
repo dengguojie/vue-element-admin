@@ -33,7 +33,7 @@ class TFOpInfo(OpInfo):
     def _parse_name_info(line):
         if ":" not in line:
             utils.print_warn_log(
-                " The name info \"" + line + "\" error ,can not find \":\".")
+                "Name info \"" + line + "\" error ,Failed to find \":\".")
             return '', ''
         return line.split(":", 1)
 
@@ -74,7 +74,7 @@ class TFOpInfo(OpInfo):
                     or info_str.startswith("Attr"):
                 match_list = utils.get_content_from_double_quotes(info_str)
                 if not match_list:
-                    utils.print_warn_log("Parsing by (\"key:value\") error, "
+                    utils.print_warn_log("An error occurs during parsing by (\"key:value\"), "
                                          "continue.")
                     continue
                 if info_str.startswith("Input"):
@@ -92,24 +92,23 @@ class TFOpInfo(OpInfo):
                       attr_info_lines):
         if not op_name:
             utils.print_warn_log(
-                "Cannot parse the op type, please check the op type.")
+                "Failed to parse the op type. Please check.")
         if not input_info_lines and not output_info_lines:
             utils.print_warn_log(
-                "There is no input and output information, please check the "
-                "input and output.")
+                "There is no input and output information. Please check.")
         self.op_type = op_name
         self.fix_op_type = utils.fix_name_lower_with_under(op_name)
         for input_line in input_info_lines:
-            utils.print_info_log("One input line is handled: %s" % input_line)
+            utils.print_info_log("One input line has been handled: %s" % input_line)
             name, info = self._parse_name_info(input_line)
             self._add_input(name, info)
         for output_line in output_info_lines:
-            utils.print_info_log("One output line is handled: %s" %
+            utils.print_info_log("One output line has been handled: %s" %
                                  output_line)
             name, info = self._parse_name_info(output_line)
             self._add_output(name, info)
         for attr_line in attr_info_lines:
-            utils.print_info_log("One attribute line is handled: %s" %
+            utils.print_info_log("One attribute line has been handled: %s" %
                                  attr_line)
             name, info = self._parse_name_info(attr_line)
             self._add_attr(name, info)
@@ -155,7 +154,7 @@ class TFOpInfo(OpInfo):
         if types.startswith("{"):
             if "}" not in types:
                 utils.print_error_log(
-                    "The attr type '%s' error ,can not find '}'." % types)
+                    "The attr type '%s' error. Failed to find '}'." % types)
                 return ""
             type_info = types[1:types.index("}")]
             types = type_info.split(",")
@@ -222,8 +221,8 @@ class TFOpInfo(OpInfo):
     def _generate_attr_info(self):
         for name, value in self.attr_info:
             if self._check_dynamic_io_attr_info(name, value):
-                utils.print_info_log("The attr '%s:%s' is belong to dynamic "
-                                     "input/output, do not parse."
+                utils.print_info_log("The attr '%s:%s' belongs to dynamic "
+                                     "input/output. Do not parse it."
                                      % (name, value))
                 return
             attr_name = utils.fix_name_lower_with_under(name)

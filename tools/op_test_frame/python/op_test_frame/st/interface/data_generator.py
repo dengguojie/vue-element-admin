@@ -58,7 +58,7 @@ class DataGenerator:
         data = np.array(value, dtype=dtype)
         if list(data.shape) == input_shape:
             return data
-        utils.print_error_log("The value shape not equal to input shape.")
+        utils.print_error_log("The value shape is not equal to the input shape.")
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_WRITE_FILE_ERROR)
 
@@ -245,7 +245,7 @@ class DataGenerator:
         for case in self.case_list:
             # support no input scene
             if len(case.get('input_desc')) < 1:
-                utils.print_info_log("There is no inputs, skip generate input data.")
+                utils.print_info_log("There are no inputs. Skip generating input data.")
                 return
             case_name = case.get('case_name')
             utils.print_info_log(

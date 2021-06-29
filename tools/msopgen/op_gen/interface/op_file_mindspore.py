@@ -19,30 +19,30 @@ except (ImportError,) as import_error:
 
 class OpFileMindSpore(OPFile):
     """
-    CLass for generate mindspore op files
+    CLass for generate MindSpore op files
     """
 
     def generate(self):
         """
         Function Description:
-            generate mindspore project or only generator an mindspore operator
+            generate MindSpore project or only generator an MindSpore operator
             according to mode
         """
         if self.mode == utils.GEN_OPERATOR:
             if self.fmk_type in utils.FMK_MS:
                 if os.path.isdir(os.path.join(self.output_path,
                                               utils.PROJ_MS_NAME)):
-                    utils.print_info_log("Start to add a new mindspore "
+                    utils.print_info_log("Start to add a new MindSpore "
                                          "operator.")
 
                 if not os.path.isdir(os.path.join(self.output_path,
                                                   utils.PROJ_MS_NAME)):
-                    utils.print_error_log("A new mindspore operators cannot be"
-                                          " added to other operator project!")
+                    utils.print_error_log("The new MindSpore operator cannot be"
+                                          " added to another operator project.")
                     raise utils.MsOpGenException(
                         utils.MS_OP_GEN_INVALID_PARAM_ERROR)
         else:
-            utils.print_info_log("Start to generator a new mindspore project.")
+            utils.print_info_log("Start to generate a new MindSpore project.")
         # generate mindspore operator
         self._new_operator()
 
@@ -75,7 +75,7 @@ class OpFileMindSpore(OPFile):
                 if len(attr_info) > 0:
                     attr_name = attr_info[0]
                     utils.print_warn_log(
-                        "The attr:'%s' in the .txt file can't parse."
+                        "The attr:'%s' in the .txt file cannot be parsed."
                         % attr_name)
             attr_list.append(attr_str)
         return attr_list
@@ -147,7 +147,7 @@ class OpFileMindSpore(OPFile):
         """
         self._generate_mindspore_path()
         if not self.op_info.fix_op_type:
-            utils.print_warn_log("The op type is empty, failed to generate "
+            utils.print_warn_log("The op type is empty. Failed to generate "
                                  "impl files. Please check.")
             return
         # 1.make head string
@@ -193,7 +193,7 @@ class OpFileMindSpore(OPFile):
 
     def _generate_op_proto(self):
         if not self.op_info.fix_op_type:
-            utils.print_warn_log("The op type is empty, failed to generate "
+            utils.print_warn_log("The op type is empty. Failed to generate "
                                  "op proto files. Please check.")
             return
         template_path = os.path.join(self.output_path, utils.MS_PROTO_PATH)

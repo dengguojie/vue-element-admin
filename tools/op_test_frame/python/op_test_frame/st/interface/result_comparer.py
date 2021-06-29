@@ -244,7 +244,7 @@ def compare(report, run_dir):
                               'result.txt')
     if not os.path.exists(result_txt) or \
             not os.access(result_txt, os.R_OK):
-        utils.print_error_log("Failed to get %s, please check "
+        utils.print_error_log("Failed to get %s. Please check the "
                               "run result." % result_txt)
         # add run failed stage result to report
         run_acl_result = op_st_case_info.OpSTStageResult(
@@ -282,11 +282,11 @@ def compare(report, run_dir):
 
 def _get_run_stage_result(result, case_name, case_report):
     if result == "[fail]":
-        utils.print_info_log("There case '%s' run failed." % case_name)
+        utils.print_info_log("Failed to run case '%s'." % case_name)
         _add_op_st_stage_result(
             case_report, op_status.FAILED, "run_acl_code", None)
     elif result == "[pass]":
-        utils.print_info_log("There case '%s' run success." % case_name)
+        utils.print_info_log("Case '%s' run successfully." % case_name)
         _add_op_st_stage_result(
             case_report, op_status.SUCCESS, "run_acl_code", None)
     else:
@@ -299,7 +299,7 @@ def _get_result_list(result_list, case_info):
     for idx, expect_file in enumerate(case_info.expect_data_paths):
         result_file = case_info.planned_output_data_paths[idx]
         utils.print_info_log(
-            "The result file %s comapre vs expect data %s" % (
+            "The result file %s compares with the expected data %s" % (
                 os.path.basename(result_file),
                 os.path.basename(expect_file)))
         if not os.path.isfile(result_file):
@@ -333,9 +333,9 @@ def _get_result_list(result_list, case_info):
 
 def _get_compare_stage_result(result, index, case_name, case_report):
     if result == "[fail]":
-        utils.print_info_log("There case '%s' run failed. "
-                             "no result data for compare, "
-                             "compare skip." % case_name)
+        utils.print_info_log("Failed to run case '%s'. There is"
+                             "no result data for comparison. "
+                             "Skip the comparison." % case_name)
         _add_op_st_stage_result(
             case_report, op_status.FAILED, "run_acl_code", None)
     elif result == "[pass]":

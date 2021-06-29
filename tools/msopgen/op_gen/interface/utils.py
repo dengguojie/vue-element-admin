@@ -214,12 +214,12 @@ class CheckFromConfig:
         trans_data = read_json_file(transform_json_path)
 
         if trans_data is None:
-            print_error_log("Config file is empty or invalid, please check!")
+            print_error_log("The Config file is empty or invalid. Please check.")
             raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
         trans_data_value = trans_data.get(key)
         if trans_data_value is None:
             print_error_log(
-                "%s in Config file is None or invalid, please check!"
+                "%s in Config file is None or invalid. Please check."
                 % key)
             raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
         return trans_data_value
@@ -235,8 +235,8 @@ class CheckFromConfig:
         if ir_type in self.ms_io_dtype_list:
             return ir_type
         print_warn_log("The %s 'TypeRange' '%s' in the %s file is "
-                       "unsupported. Please check. If you aren't having "
-                       "problems, just ignore the warning."
+                       "not supported. Please check. If you do not have "
+                       "this problems, ignore the warning."
                        % (ir_name, ir_type, file_type))
         return ""
 
@@ -251,8 +251,8 @@ class CheckFromConfig:
         if ir_type in self.io_dtype_map:
             return self.io_dtype_map.get(ir_type)
         print_warn_log("The %s 'TypeRange' '%s' in the %s file is "
-                       "unsupported. Please check. If you aren't having "
-                       "problems, just ignore the warning."
+                       "not supported. Please check. If you do not have "
+                       "this problems, ignore the warning."
                        % (ir_name, ir_type, file_type))
         return ""
 
@@ -266,8 +266,8 @@ class CheckFromConfig:
         if attr_type in self.ir_attr_type_map:
             return self.ir_attr_type_map.get(attr_type)
         print_warn_log("The attr type '%s' specified in the %s file is "
-                       "unsupported. Please check the input or output type. "
-                       "If you aren't having problems, just ignore the "
+                       "not supported. Please check the input or output type. "
+                       "If you not have this problem, ignore the "
                        "warning." % (attr_type, file_type))
         return ""
 
@@ -279,9 +279,9 @@ class CheckFromConfig:
         """
         if attr_type in self.ini_attr_type_map:
             return self.ini_attr_type_map.get(attr_type)
-        print_warn_log("The attr type '%s' is unsupported for .ini file. "
-                       "Please check the attr type. If you aren't having "
-                       "problems, just ignore the warning." % attr_type)
+        print_warn_log("The attr type '%s' is not supported in the .ini file. "
+                       "Please check the attr type. If you do not have this "
+                       "problem, ignore the warning." % attr_type)
         return ""
 
     def trans_tf_attr_type(self, tf_type):
@@ -292,9 +292,9 @@ class CheckFromConfig:
         """
         if tf_type in self.tf_attr_type_map:
             return self.tf_attr_type_map.get(tf_type)
-        print_warn_log("The attr type '%s'  in the .txt file is unsupported. "
-                       "Please check the input or output type. If you aren't "
-                       "having problems, just ignore the warning." % tf_type)
+        print_warn_log("The attr type '%s' in the .txt file is not supported. "
+                       "Please check the input or output type. If you do not "
+                       "have this problem, ignore the warning." % tf_type)
         return ""
 
     def trans_ms_tf_io_dtype(self, tf_type, name):
@@ -307,8 +307,8 @@ class CheckFromConfig:
         if tf_type in self.ms_tf_io_dtype_map:
             return self.ms_tf_io_dtype_map.get(tf_type)
         print_warn_log("The '%s' type '%s' in the .txt file is "
-                       "unsupported. Please check. If you aren't "
-                       "having problems, just ignore the warning."
+                       "not supported. Please check. If you do not "
+                       "have this problem, ignore the warning."
                        % (name, tf_type))
         return ""
 
@@ -321,8 +321,8 @@ class CheckFromConfig:
         """
         if tf_type in self.tf_io_dtype_map:
             return self.tf_io_dtype_map.get(tf_type)
-        print_warn_log("The '%s' type '%s' in the .txt file is unsupported. "
-                       "Please check. If you aren't having problems, just "
+        print_warn_log("The '%s' type '%s' in the .txt file is not supported. "
+                       "Please check. If you do not have this problems, just "
                        "ignore the warning." % (name, tf_type))
         return ""
 
@@ -356,7 +356,7 @@ def check_path_valid(path, isdir=False):
         isdir: the path is dir or file
     """
     if path == "":
-        print_error_log("The path is null. Please check the argument valid.")
+        print_error_log("The path is null. Please check whether the argument is valid.")
         raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
     path = os.path.realpath(path)
     if isdir and not os.path.exists(path):
@@ -373,13 +373,13 @@ def check_path_valid(path, isdir=False):
         raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
 
     if not os.access(path, os.R_OK):
-        print_error_log('The path {} does not have permission to read.'
-                        ' Please check the path permission.'.format(path))
+        print_error_log('You do not have the read permission on the path {} .'
+                        'Please check.'.format(path))
         raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
 
     if isdir and not os.access(path, os.W_OK):
-        print_error_log('The path {} does not have permission to write.'
-                        ' Please check the path permission.'.format(path))
+        print_error_log('You do not have the write permission on the path {} .'
+                        'Please check.'.format(path))
         raise MsOpGenException(MS_OP_GEN_INVALID_PATH_ERROR)
 
     if isdir:
@@ -412,7 +412,7 @@ def copy_template(src, dst, is_skip_exist=False):
                 if os.path.isdir(dstname) and len(os.listdir(dstname)) != 0:
                     if is_skip_exist:
                         continue
-                    print_error_log("{} is not empty,please check.".format(dstname))
+                    print_error_log("{} is not empty. Please check.".format(dstname))
                     sys.exit(MS_OP_GEN_INVALID_PATH_ERROR)
                 copytree(srcname, dstname)
             else:
@@ -437,7 +437,7 @@ def get_content_from_double_quotes(line):
     pattern = re.compile('"(.*)"')
     match = pattern.findall(line)
     if not match:
-        print_warn_log("line = %s, (\"key:value\") format error , please "
+        print_warn_log("line = %s, (\"key:value\") format error. Please "
                        "check the .txt file! " % line)
     return match
 
@@ -488,7 +488,7 @@ def write_files(op_file, new_str):
     except OSError as err:
         print_error_log("Unable to write file(%s): %s." % op_file % str(err))
         raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
-    print_info_log("Generate file %s successfully." % op_file)
+    print_info_log("File %s generated successfully." % op_file)
 
 
 def write_json_file(json_path, content):

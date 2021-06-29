@@ -73,10 +73,10 @@ def _write_content_to_file(content, file_path):
                                utils.WRITE_MODES), 'w+') as file_object:
             file_object.write(content)
     except OSError as err:
-        utils.print_error_log("Unable to write file(%s): %s." % file_path
+        utils.print_error_log("Unable to write content into file(%s): %s." % file_path
                               % str(err))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-    utils.print_info_log("Successfully Generated file %s." % file_path)
+    utils.print_info_log("File %s generated successfully." % file_path)
 
 
 def _append_content_to_file(content, file_path):
@@ -87,7 +87,7 @@ def _append_content_to_file(content, file_path):
         utils.print_error_log("Unable to write file(%s): %s." % file_path
                               % str(err))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-    utils.print_info_log("Successfully appended content to %s." % file_path)
+    utils.print_info_log("Content appended to %s successfully." % file_path)
 
 
 def copy_template(src, dst):
@@ -375,8 +375,8 @@ class MsOpGenerator:
         """
         self._mkdir_output_dir()
         self._rewrite_files_for_output_dir()
-        utils.print_info_log("mindspore operator test code files for specified"
-                             " test cases have been successfully generated.")
+        utils.print_info_log("MindSpore operator test code files for specified"
+                             " test cases generated successfully.")
 
     def get_device_id(self):
         """
