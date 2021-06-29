@@ -28,6 +28,7 @@
 #include "pattern_fusion_util.h"
 
 namespace fe {
+static const int32_t INT_NUM_FIVE = 5;
 static const string PATTERN_BATCHNORMGRAD = "batchNormGrad";
 static const string PATTERN_INPUTS1 = "input1";
 static const string PATTERN_INPUTS2 = "input2";
@@ -76,6 +77,10 @@ Status BatchNormGradBnInferGradFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
 
   FUSION_PASS_CHECK(isTraing, OP_LOGI(FUSED_OP_TYPE.c_str(), "is_traing is true, no need fusion."), return NOT_CHANGED);
 
+  auto out_anchors_size = batchNormGradNode->GetAllOutDataAnchorsSize();
+  if (out_anchors_size < INT_NUM_FIVE) {
+    return FAILED;
+  }
   FUSION_PASS_CHECK(batchNormGradNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() != 0 ||
                         batchNormGradNode->GetOutDataAnchor(2)->GetPeerInDataAnchors().size() != 0 ||
                         batchNormGradNode->GetOutDataAnchor(3)->GetPeerInDataAnchors().size() != 0 ||
@@ -151,6 +156,10 @@ Status BatchNormGradBnInferGradFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   }
 
   // copy BatchNormGrad inputs to BNInferGrad nodes
+  auto peer_out_data_anchor = batchNormGradNode->GetInDataAnchor(0)->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(peer_out_data_anchor == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "concatd_node is null, fusion failed."),
+                    return PARAM_INVALID);
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(batchNormGradNode->GetInDataAnchor(0)->GetPeerOutAnchor(), newNode->GetInDataAnchor(0)) !=
           SUCCESS,

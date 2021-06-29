@@ -301,6 +301,12 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
   ge::NodePtr filterHostNode = graph.AddNode(filterHostOpdesc);
   ge::NodePtr biasHostNode = graph.AddNode(biasHostOpdesc);
+  FUSION_PASS_CHECK(filterHostNode == nullptr,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "filterHostNode is null, fusion failed."),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(biasHostNode == nullptr,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "biasHostNode is null, fusion failed."),
+                    return NOT_CHANGED);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(filterHostNode->GetOutDataAnchor(0),
                                             convNode->GetInDataAnchor(filterInputIndex)) != SUCCESS,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",

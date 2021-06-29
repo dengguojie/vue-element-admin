@@ -38,6 +38,8 @@
 #include "tbe_fusion_pass_util.h"
 
 namespace fe {
+static const int32_t INT_NUM_THREE = 3;
+static const int32_t INT_NUM_TWO = 2;
 static const string PATTERN_FUSEDNODE = "FusedNodeBatchMultiClassNonMaxSuppression";
 static const string FUSED_NODE = "BatchMultiClassNonMaxSuppression";
 
@@ -97,6 +99,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
   // get the input 1 peer node op type
   vector<int64_t> permScoreList = {0, 2, 1};
+  auto in_anchor_size = fusedNode->GetAllInDataAnchorsSize();
+  if (in_anchor_size < INT_NUM_TWO) {
+    return FAILED;
+  }
   auto peerNode = fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
   auto peerOpType = peerNode->GetType();
   bool isNeedTransposeBeforeSlice = false;
@@ -187,6 +193,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
     opSliceOutputDesc.SetOriginShape(outputSliceShape);
     peerNode->GetOpDesc()->UpdateOutputDesc(0, opSliceOutputDesc);
     // update BatchMultiClassNonMaxSuppression input 1 desc
+    auto in_anchors_size = fusedNode->GetAllInDataAnchorsSize();
+    if (in_anchors_size < INT_NUM_TWO) {
+      return FAILED;
+    }
     auto inputDesc = fusedNode->GetOpDesc()->GetInputDesc(1);
     inputDesc.SetShape(outputSliceShape);
     inputDesc.SetOriginShape(outputSliceShape);
@@ -525,9 +535,13 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
   // add node to graph
   ge::NodePtr reduceNode = graph.AddNode(reduceDesc);
+  auto out_data_anchor = fusedNode->GetOutDataAnchor(INT_NUM_THREE);
+  FUSION_PASS_CHECK(out_data_anchor == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "out_data_anchor is null, fusion failed."),
+                    return FAILED);
   // add edge GraphUtils node output with other node input
-  for (auto inDataAnchor : fusedNode->GetOutDataAnchor(3)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(3), inDataAnchor) != SUCCESS,
+  for (auto inDataAnchor : fusedNode->GetOutDataAnchor(INT_NUM_THREE)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(INT_NUM_THREE), inDataAnchor) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(reduceNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge failed."), return FAILED);

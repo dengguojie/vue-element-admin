@@ -98,6 +98,10 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                       return PARAM_INVALID);
     fusionNodes.push_back(concatd_base_node);
     ge::AttrUtils::SetInt(concatd_base_node->GetOpDesc(), "N", nodes_num);
+    auto out_data_anchor = fused_node->GetOutDataAnchor(0);
+    FUSION_PASS_CHECK(out_data_anchor == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "out_data_anchor is null, fusion failed."),
+                      return PARAM_INVALID);
     for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(0), inAnchorPtr),
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);

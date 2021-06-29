@@ -209,6 +209,9 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
   dilation = {1, 1};
 
   ge::OpDescPtr mulOp = mulNode->GetOpDesc();
+  FUSION_PASS_CHECK(mulOp == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "mulOp is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::GeTensorDesc inputDesc0 = mulOp->GetInputDesc(0);
   ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
   ge::GeShape outputShape = inputDesc0.GetOriginShape();

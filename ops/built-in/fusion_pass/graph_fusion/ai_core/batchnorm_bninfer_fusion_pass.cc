@@ -104,7 +104,9 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
 
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> newOpdesc = nullptr;
-  newOpdesc = std::make_shared<ge::OpDesc>(batchNormNode->GetName(), BNINFER);
+  FUSION_PASS_MAKE_SHARED(
+      (newOpdesc = std::make_shared<ge::OpDesc>(batchNormNode->GetName(), BNINFER)),
+      return FAILED);
 
   FUSION_PASS_CHECK(newOpdesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "newOpdesc is null, fusion failed."),
                     return PARAM_INVALID);
@@ -269,6 +271,9 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::AttrUtils::SetTensor(newConstantOp, "value", momentumPtr);
   (void)newConstantOp->AddOutputDesc(momentumPtr->GetTensorDesc());
   ge::NodePtr momentumNode = graph.AddNode(newConstantOp);
+  FUSION_PASS_CHECK(momentumNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "momentumNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
   (void)newOpdesc->AddInputDesc("momentum", newConstantOp->GetOutputDesc(0));
 
@@ -293,6 +298,9 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     return FAILED;
   }
   ge::NodePtr newNode = graph.AddNode(newOpdesc);
+  FUSION_PASS_CHECK(newNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "concatd_node is null, fusion failed."),
+                    return FAILED);
   fusionNodes.push_back(newNode);
 
   // copy attr

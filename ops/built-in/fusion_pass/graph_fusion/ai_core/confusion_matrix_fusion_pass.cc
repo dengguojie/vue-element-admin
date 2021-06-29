@@ -112,6 +112,9 @@ Status ConfusionMatrixFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   confusionMatrixOp->AddInputDesc("z", inputDesc3);
   confusionMatrixOp->AddOutputDesc("output", outputDesc);
   ge::NodePtr confusionMatrixNode = graph.AddNode(confusionMatrixOp);
+  FUSION_PASS_CHECK(confusionMatrixNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "confusionMatrixNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
   ge::OutDataAnchorPtr newInAnchorPtr0 = cast1Node->GetInDataAnchor(0)->GetPeerOutAnchor();
   ge::OutDataAnchorPtr newInAnchorPtr1 = castNode->GetInDataAnchor(0)->GetPeerOutAnchor();
