@@ -31,7 +31,7 @@ case1 = {"params": [{"shape": (-1, -1), "dtype": "float16", "ori_shape": (880, 4
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710", "Ascend920A"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710", "Ascend920A"], case1)
 
 
 def test_1981(test_arg):
@@ -47,5 +47,5 @@ def test_1981(test_arg):
 ut_case.add_cust_test_func(test_func=test_1981)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710", "Ascend920A"])
+    ut_case.run(["Ascend910A","Ascend310","Ascend710", "Ascend920A"])
     exit(0)
