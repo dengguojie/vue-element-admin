@@ -1381,7 +1381,7 @@ REG_OP(BatchMultiClassNonMaxSuppression)
 * @li shape_hw: A 1D Tensor of type int32 . \n
 
 * @par Attributes:
-* @li reversed_box: An optional bool, specifying the last two dims is "4,num" or
+* reversed_box: An optional bool, specifying the last two dims is "4,num" or
 * "num,4", "true" for "4,num", "false" for "num,4". Defaults to "false" . \n
 
 * @par Outputs:

@@ -54,15 +54,16 @@ REG_OP(LogSoftmaxGrad)
 *@par Inputs:
 *Two inputs, including:
 * @li features: A Tensor. Must be one of the following types: half, float32, double.
-*    A "batch_size * num_classes" matrix.
+*A "batch_size * num_classes" matrix.
 * @li labels: A Tensor. Must be one of the following types: 'int32', 'int64'.
-*             batch_size vector with values in [0, num_classes).
-*             This is the label for the given minibatch entry.
+*batch_size vector with values in [0, num_classes).
+*This is the label for the given minibatch entry. \n
 
 
 *@par Outputs:
-*loss: A Tensor for per example loss (a "batch_size" vector). Has the same type as "features".
-*backprop: A Tensor for the backpropagated gradients (a batch_size * num_classes matrix). Has the same type as "features" . \n
+*@li loss: A Tensor for per example loss (a "batch_size" vector). Has the same type as "features".
+*@li backprop: A Tensor for the backpropagated gradients (a batch_size * num_classes matrix). 
+Has the same type as "features" . \n
 
 *@par Third-party framework compatibility
 *Compatible with the TensorFlow operator SparseSoftmaxCrossEntropyWithLogits.

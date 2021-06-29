@@ -3521,7 +3521,7 @@ REG_OP(StrideAdd)
 * @li input_y: A Tensor. the second tensor. \n
 
 * @par Outputs:
-* @li output_z: A Tensor. Bool type, compare result of the two inputs. \n
+*output_z: A Tensor. Bool type, compare result of the two inputs. \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch equal operator. \n

@@ -295,7 +295,7 @@ REG_OP(StringSplit)
 
 *@par Inputs:
 include:
-*@li input:A Tensor of type string. The text to be processed. \n
+*input:A Tensor of type string. The text to be processed. \n
 
 *@par Attributes:
 *@li pattern:A string. The regular expression to match the input.
@@ -304,7 +304,7 @@ include:
 otherwise the replacement is done only on the first match.
 
 *@par output:
-*@li output::A Tensor of type string.
+*output::A Tensor of type string.
 */
 REG_OP(StaticRegexReplace)
     .INPUT(input, TensorType({DT_STRING}))
@@ -322,13 +322,13 @@ REG_OP(StaticRegexReplace)
 
 *@par Inputs:
 include:
-*@li input:A Tensor of type string. The text to be processed. \n
+*input:A Tensor of type string. The text to be processed. \n
 
 *@par Attributes:
-*@li pattern:A string. The regular expression to match the input.
+*pattern:A string. The regular expression to match the input.
 
 *@par output:
-*@li output::A bool tensor with the same shape as `input`.
+*output::A bool tensor with the same shape as `input`.
 */
 REG_OP(StaticRegexFullMatch)
     .INPUT(input, TensorType({DT_STRING}))
@@ -347,10 +347,10 @@ include:
 *@li num_segments:A Tensor. Must be one of the following types: int32, int64. A scalar. 
 
 *@par Attributes:
-*@li separator:An optional string. Defaults to "". The separator to use when joining.
+*separator:An optional string. Defaults to "". The separator to use when joining.
 
-*@par output:
-*@li output::A Tensor of type string..
+*@par OutPut:
+*output::A Tensor of type string..
 */
 REG_OP(UnsortedSegmentJoin)
     .INPUT(input, TensorType({DT_STRING}))
@@ -366,13 +366,13 @@ REG_OP(UnsortedSegmentJoin)
 
 *@par Inputs:
 include:
-*@li input:A Tensor of type string. The text to be processed. 
+*input:A Tensor of type string. The text to be processed. 
 
 *@par Attributes:
-*@li encoding:An optional string. Defaults to "". 
+*encoding:An optional string. Defaults to "". 
 
 *@par output:
-*@li output::A Tensor of type string..
+*output::A Tensor of type string..
 */
 REG_OP(StringLower)
     .INPUT(input, TensorType({DT_STRING}))
@@ -386,13 +386,13 @@ REG_OP(StringLower)
 
 *@par Inputs:
 include:
-*@li input:A Tensor of type string. The text to be processed. 
+*input:A Tensor of type string. The text to be processed. 
 
 *@par Attributes:
-*@li encoding:An optional string. Defaults to "". 
+*encoding:An optional string. Defaults to "". 
 
 *@par output:
-*@li output::A Tensor of type string..
+*output::A Tensor of type string..
 */
 REG_OP(StringUpper)
     .INPUT(input, TensorType({DT_STRING}))

@@ -227,10 +227,10 @@ REG_OP(Bucketize)
 
 *@par Inputs:
 *One inputs, including:
-*   @li input_x: A tensor. Must be one of the following types: float16, float32, int8, uint8, int32. \n
+*input_x: A tensor. Must be one of the following types: float16, float32, int8, uint8, int32. \n
 
 *@par Outputs:
-*y: A tensor with the same type and shape of input_x \n
+*output_y: A tensor with the same type and shape of input_x \n
 
 *@par Third-party framework compatibility
 *Compatible with the Pytorch operator Trunc. \n
@@ -298,7 +298,7 @@ REG_OP(SparseSegmentMean)
 
 *@par Inputs:
 *The input grad must have be type float or double. Inputs include:
-*@li grad: A Tensor. Must be one of the following types: float, double.
+*@li x: A Tensor. Must be one of the following types: float, double.
 gradient propagated to the SparseSegmentMean op.
 *@li indices: A Tensor. Must be one of the following types: int32, int64.
 indices passed to the corresponding SparseSegmentMean op.
@@ -634,7 +634,7 @@ REG_OP(IsNan)
  *@brief Returns the real part of a complex number.
 
  *@par Inputs:
- *input:A Tensor.
+ *input:A Tensor. Must have numeric type.
 
  *@par Outputs:
  *output:A Tensor. Has the same shape as input.

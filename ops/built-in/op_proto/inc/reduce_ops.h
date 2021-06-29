@@ -1219,7 +1219,7 @@ include:
 *@li separator:string.
 
 *@par output:
-*output::A Tensor of type string..
+*output:A Tensor of type string.
 */
 REG_OP(ReduceJoin)
     .INPUT(input, TensorType({DT_STRING}))

@@ -157,11 +157,12 @@ REG_OP(RandomGamma)
 
 *@par Attributes:
 *@li dtype: An optional type from: half, float32, float64, int32, int64. Defaults to int64.
-*@li seed: An optional int. Defaults to 0.
-*@li seed2: An optional int. Defaults to 0 . \n
+*@li seed: An optional int. Defaults to 0. If either seed or seed2 are set to be non-zero, 
+the random number generator is seeded by the given seed. Otherwise, it is seeded by a random seed.
+*@li seed2: An optional int. Defaults to 0 . A second seed to avoid seed collision. \n
 
 *@par Outputs:
-*y: A Tensor of type dtype . \n
+*y: A Tensor of type dtype float16, float, double, int32, int64. \n
 
 *@attention Constraints:
 *The implementation for RandomPoisson on Ascend uses AICPU, with bad performance.
@@ -188,11 +189,13 @@ REG_OP(RandomPoisson)
 *x: A Tensor. The tensor to be shuffled . \n
 
 *@par Attributes:
-*@li seed: An optional int. Defaults to 0.
-*@li seed2: An optional int. Defaults to 0 . \n
+*@li seed: An optional int. Defaults to 0. If either seed or seed2 are set to be non-zero, 
+the random number generator is seeded by the given seed. Otherwise, it is seeded by a random seed.
+*@li seed2: An optional int. Defaults to 0 . A second seed to avoid seed collision. \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as x . \n
+*y: A Tensor. Has the same type as x . A Tensor of type float16, float, 
+*double, int32, int64, int16, uint16, int8, uint8, int32,int64. \n
 
 *@attention Constraints:
 *The implementation for RandomShuffle on Ascend uses AICPU, with bad performance.
@@ -220,11 +223,12 @@ REG_OP(RandomShuffle)
 
 *@par Attributes:
 *@li dtype: A type from: half, float16, float32, float64. The type of the output.
-*@li seed: An optional int. Defaults to 0.
-*@li seed2: An optional int. Defaults to 0 . \n
+*@li seed: An optional int. Defaults to 0. If either seed or seed2 are set to be non-zero, 
+the random number generator is seeded by the given seed. Otherwise, it is seeded by a random seed.
+*@li seed2: An optional int. Defaults to 0 . A second seed to avoid seed collision. \n
 
 *@par Outputs:
-*y: A Tensor of type dtype . \n
+*y: A Tensor of type float32, float16, double. \n
 
 *@attention Constraints:
 *The implementation for RandomStandardNormal on Ascend uses AICPU, with bad performance.
@@ -250,8 +254,9 @@ REG_OP(RandomStandardNormal)
 * @li max: A Tensor. Must have the same type as minval. 0-D . \n
 
 *@par Attributes:
-*@li seed: An optional int. Defaults to 0.
-*@li seed2: An optional int. Defaults to 0 . \n
+*@li seed: An optional int. Defaults to 0. If either seed or seed2 are set to be non-zero, 
+the random number generator is seeded by the given seed. Otherwise, it is seeded by a random seed.
+*@li seed2: An optional int. Defaults to 0 . A second seed to avoid seed collision. \n
 
 *@par Outputs:
 *y: A Tensor. Has the same type as min . \n
@@ -280,8 +285,9 @@ REG_OP(RandomUniformInt)
 
 *@par Attributes:
 *@li dtype: A type from: half, float16, float32, float64. The type of the output.
-*@li seed: An optional int. Defaults to 0.
-*@li seed2: An optional int. Defaults to 0 . \n
+*@li seed: An optional int. Defaults to 0. If either seed or seed2 are set to be non-zero, 
+the random number generator is seeded by the given seed. Otherwise, it is seeded by a random seed.
+*@li seed2: An optional int. Defaults to 0 . A second seed to avoid seed collision. \n
 
 *@par Outputs:
 *y: A Tensor of type dtype . \n
@@ -308,11 +314,14 @@ REG_OP(RandomUniform)
 *shape: A Tensor. Must be one of the following types: int32, int64 . \n
 
 *@par Attributes:
-*@li seed: An optional int. Defaults to 0.
-*@li seed2: An optional int. Defaults to 0 . \n
+*@li seed: An optional int. Defaults to 0.If either `seed` or `seed2` 
+are set to be non-zero, the random number generator is seeded by the given 
+seed. Otherwise, it is seeded by a random seed.
+*@li seed2: An optional int. Defaults to 0 . A second seed to avoid seed collision. \n
 
 *@par Outputs:
-*size: A Tensor of types: float16, float32, double . \n
+*y: A Tensor of types: float16, float32, double . A tensor of the specified shape
+filled with random truncated normal values. \n
 
 *@attention Constraints:
 *The implementation for TruncatedNormal on Ascend uses AICPU, with bad performance.

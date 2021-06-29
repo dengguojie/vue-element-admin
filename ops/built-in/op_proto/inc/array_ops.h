@@ -755,10 +755,10 @@ REG_OP(Squeeze)
 *@brief Returns an integer representing the rank of input tensor. The rank of a tensor is the number of indices required to uniquely select each element of the tensor, that is, the dimension size of the tensor. \n
 
 *@par Inputs:
-*x: A tensor. \n
+*x: A Tensor of type float32, float16, int8, int16, uint16, uint8, int32, int64, uint32, uint64, bool, double. \n
 
 *@par Outputs:
-*y: A tensor. The rank of input tensor. \n
+*y: A tensor. The rank of input tensor. Type is int32. \n
 
 *@par Third-party framework compatibility
 *Compatible with the TensorFlow operator Rank.
@@ -867,13 +867,13 @@ REG_OP(PlaceholderWithDefault)
 *@brief Reads and returns the value of the input variable tensor. \n
 
 *@par Inputs:
-*x: A tensor. \n
+*x: A tensor must have numeric type. \n
 
 *@par Attributes:
 *dtype: An optional int32 or int64. The output data type. Defaults to int32. \n
 
 *@par Outputs:
-*y: A tensor. \n
+*y: A tensor must have numeric type. \n
 
 *@par Third-party framework compatibility
 *Compatible with the TensorFlow operator ReadVariableOp.

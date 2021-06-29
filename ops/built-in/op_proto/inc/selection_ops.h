@@ -973,7 +973,9 @@ REG_OP(TopKV2)
 * @li sorted: An optional bool. Defaults to true.
 * If true, the resulting "k" elements will be sorted by the values in descending
 * order.
-* @li T: Indicator of indices type . \n
+* @li largest:If true the resulting `k` elements will be sorted by the values in descending order.
+* @li sorted:If true the resulting `k` elements will be sorted by the values in descending order.
+* @li dim:0-D. Number of top elements to look for along the last dimension (along each row for matrices). \n
 
 * @par Outputs:
 * @li values: A Tensor, specifying the sorted data. Has the same type as
@@ -2193,39 +2195,39 @@ REG_OP(SliceLastDim)
     .OP_END_FACTORY_REG(SliceLastDim)
 
 /**
-* @brief Extracts a strided slice of a tensor. Roughly speaking, this op \n
-*   extracts a slice of size (end-begin)/stride from the given input tensor. \n
-*   Starting at the location specified by begin the slice continues by \n
+* @brief Extracts a strided slice of a tensor. Roughly speaking, this op 
+*   extracts a slice of size (end-begin)/stride from the given input tensor. 
+*   Starting at the location specified by begin the slice continues by 
 *   adding stride to the index until all dimensions are not less than end. \n
 *
 * @par Inputs:
 * Four inputs, including:
-* @li x: A Tensor. Must be one of the following types: float32, float64, int32, uint8, int16, int8, \n
-*     complex64, int64, qint8, quint8, qint32, qint16, quint16, uint16, \n
-*     complex128, float16, uint32, uint64, complex64, complex128. \n
+* @li x: A Tensor. Must be one of the following types: float32, float64, int32, uint8, int16, int8, 
+*     complex64, int64, qint8, quint8, qint32, qint16, quint16, uint16,
+*     complex128, float16, uint32, uint64, complex64, complex128. 
 * @li begin: A Tensor of type int32 or int64, for the index of the first value to select.
 *
 * @li end: A Tensor of type int32 or int64, for the index of the last value to select.
 *
 * @li axes: A Tensor of type int32 or int64, indicate axis to be select.
 *
-* @li strides: A Tensor of type int32 or int64, for the increment.
+* @li strides: A Tensor of type int32 or int64, for the increment. \n
 *
 * @par Attributes:
-* @li begin_mask: A Tensor of type int32. \n
-*     A bitmask where a bit "i" being "1" means to ignore the begin \n
+* @li begin_mask: A Tensor of type int32.
+*     A bitmask where a bit "i" being "1" means to ignore the begin 
 *     value and instead use the largest interval possible.
-* @li end_mask: A Tensor of type int32. \n
+* @li end_mask: A Tensor of type int32. 
 *     Analogous to "begin_mask".
-* @li ellipsis_mask: A Tensor of type int32. \n
-*     A bitmask where bit "i" being "1" means the "i"th position \n
+* @li ellipsis_mask: A Tensor of type int32. 
+*     A bitmask where bit "i" being "1" means the "i"th position
 *     is actually an ellipsis.
-* @li new_axis_mask: A Tensor of type int32. \n
-*     A bitmask where bit "i" being "1" means the "i"th \n
+* @li new_axis_mask: A Tensor of type int32.
+*     A bitmask where bit "i" being "1" means the "i"th 
 *     specification creates a new shape 1 dimension.
-* @li shrink_axis_mask: A Tensor of type int32. \n
-*     A bitmask where bit "i" implies that the "i"th \n
-*     specification should shrink the dimensionality.
+* @li shrink_axis_mask: A Tensor of type int32. 
+*     A bitmask where bit "i" implies that the "i"th
+*     specification should shrink the dimensionality. \n
 *
 * @par Outputs:
 * y: A Tensor. Has the same type as "x".

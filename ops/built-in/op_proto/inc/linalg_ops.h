@@ -382,9 +382,10 @@ REG_OP(Slogdet)
 *x:Tensor of shape [..., M, N]. Let P be the minimum of M and N . \n
 
 *@par Attributes:
-*compute_uv:If True then left and right singular vectors will be computed and
+*@li compute_uv:If True then left and right singular vectors will be computed and
 returned in u and v, respectively. Otherwise, only the singular values will
-be computed, which can be significantly faster . \n
+be computed, which can be significantly faster .
+*@li full_matrices:the param effect u,v.  \n
 
 *@par Outputs:
 *@li sigma:Singular values. Shape is [..., P]. The values are sorted in
@@ -469,6 +470,12 @@ left-hand side . \n
 
 *@par Outputs:
 y: Tensor of shape `[..., M, K]` containing the solutions \n
+
+*@par Attributes:
+*partial_pivoting: Whether to perform partial pivoting. `True` by default.
+Partial pivoting makes the procedure more stable, but slower. Partial
+pivoting is unnecessary in some cases, including diagonally dominant and
+symmetric positive definite matrices
 
 *@par Third-party framework compatibility
 * Compatible with TensorFlow TridiagonalSolve operator.

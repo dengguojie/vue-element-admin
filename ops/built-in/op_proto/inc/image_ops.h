@@ -746,6 +746,9 @@ generator is seeded by the given seed. Otherwise, it is seeded by a random seed.
 *@li seed2: A second seed to avoid seed collision.
 *@li aspect_ratio_range: The cropped area of the image must have an aspect
 ratio = width / height within this range.
+*@li area_range: An optional list of `floats`. Defaults to `[0.05, 1]`. The
+cropped area of the image must contain a fraction of the supplied image
+within this range.
 *@li max_attempts: Number of attempts at generating a cropped region of the
 image of the specified constraints. After max_attempts failures, return the
 entire image.
@@ -1385,6 +1388,7 @@ REG_OP(NonMaxSuppressionV5)
 *@li scale: A `Tensor` of type `float32`.
 *@li translation: A `Tensor` of type `float32` . \n
 
+*@par Attributes:
 *@li kernel_type: type is string, default  lanczos3
 *@li antialias: type is bool, default true \n
 
@@ -1415,6 +1419,7 @@ REG_OP(ScaleAndTranslate)
 *@li scale: A `Tensor` of type `float32`.
 *@li translation: A `Tensor` of type `float32` . \n
 
+*@par Attributes:
 *@li kernel_type: type is string, default  lanczos3
 *@li antialias: type is bool, default true
 

@@ -33,10 +33,12 @@ namespace ge {
 *y:A Tensor of type resource. \n
 
 *@par Attributes:
-* @li container: optional, string.
-* @li shared_name: optional, string.
-* @li dtype: required, type.
-* @li shape: optional, ListInt. \n
+* @li container: optional, string. the container this 
+variable is placed in.
+* @li shared_name: optional, string.the name by which
+ this variable is referred to.
+* @li dtype: required, type. the output of type.
+* @li shape: optional, ListInt. the output of shape. \n
 
 *@see VarHandleOp.
 */
