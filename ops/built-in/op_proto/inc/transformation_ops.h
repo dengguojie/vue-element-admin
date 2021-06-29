@@ -723,11 +723,12 @@ REG_OP(CompressFcOp)
 *@brief Performs Col2im for each batch entry. \n
 
 *@par Inputs:
-*@li input_x: The Col Tensor. 5-D, shape: `(n, c1, kernel_h*kernel_w, ho*wo, c0)`. 
-where ho/wo is do = (output_d + 2*padding_d - dilation_d*(kernel_d - 1) - 1)//stride_d + 1     \n
+*@li x: The Col Tensor. 4-D, shape: `(n, c, kernel_h*kernel_w, ho*wo)`. 
+where ho/wo is do = (output_d + 2*padding_d - dilation_d*(kernel_d - 1) - 1)//stride_d + 1.
+*@li output_size: The img shape Tensor. 1-D, shape:`(2)`, value: (output_h, output_w).  \n
 
 *@par Outputs:
-*@li output_y: The img Tensor. 5-D, shape: `(n, c1, output_h, output_w, c0)`. \n
+*y: The img Tensor. 4-D, shape: `(n, c, output_h, output_w)`. \n
 
 *@par Attributes:
 *@li kernel_shape: ListInt, value: `(kernel_h, kernel_w)`, the shape of kernel in convolution.

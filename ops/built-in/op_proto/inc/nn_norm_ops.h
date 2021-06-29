@@ -1612,18 +1612,16 @@ REG_OP(RnnGenMask)
 * @par Inputs:
 * Two inputs, including:
 * @li x: A tensor. Must be one of the following types:
-*     float16, float32. \n
-* 
-* @par Inputs:
+*     float16, float32.
 * @li target: A tensor. Must be the following types:
 *     int32. \n
 
 * @par Attributes:
-* @li reduction: An optional string. Defaults to "mean" \n
+* reduction: An optional string. Defaults to "mean" \n
 
 * @par Outputs:
-* y: A Tensor has same element type as input x. \n
-* is_target: A Tensor has same element type as input target. \n
+* @li y: A Tensor has same element type as input x. \n
+* @li is_target: A Tensor has same element type as input target. \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator MultiLabelMarginLoss. \n

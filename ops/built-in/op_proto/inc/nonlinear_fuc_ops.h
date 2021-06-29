@@ -543,13 +543,9 @@ REG_OP(Elu)
 *x: A float16, float32, for the input data type . \n
 
 *@par Attributes:
-*alpha1: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" . \n
-
-*@par Attributes:
-*alpha2: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" . \n
-
-*@par Attributes:
-*alpha3: A float32. Defines at which positive value the ELU saturates. Defaults to "1.0" . \n
+*@li alpha1: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" .
+*@li alpha2: A float32. Defines at which negative value the ELU saturates. Defaults to "1.0" .
+*@li alpha3: A float32. Defines at which positive value the ELU saturates. Defaults to "1.0" . \n
 
 *@par Outputs:
 *y: A float16, float32, for the normalized result . \n
