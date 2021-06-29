@@ -179,6 +179,10 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
   auto x_format = x_tensor.GetOriginFormat();
   auto w_format = w_tensor.GetOriginFormat();
 
+  CHECK(IsUnknownRankShape(x_shape), 
+        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x shape [-2] do not support split."),
+        return GRAPH_FAILED);
+
   std::vector<int32_t> stride_list;
   std::vector<int32_t> dilation_list;
   std::vector<int32_t> pad_list;
@@ -239,14 +243,14 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
     return GRAPH_FAILED;
   }
   bool have_slice = false;
-  vector<int> new_pad_lists;
-  if (GRAPH_SUCCESS != op.GetAttr("pads", new_pad_lists)) {
-    return GRAPH_FAILED;
-  }
+  vector<int> new_pad_lists = pad_list;
   for(int i=0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {
+        CHECK(ih == -1,
+              CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x dynamic h do not support split."),
+              return GRAPH_FAILED);
         vector<int64_t> ih_slice;
         bool top_add_pad = false;
         bool bom_add_pad = false;
@@ -261,6 +265,9 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
         }
         x_data_slice[i] = ih_slice;
       } else if (i == 3) {
+        CHECK(iw == -1,
+              CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x dynamic w do not support split."),
+              return GRAPH_FAILED);
         vector<int64_t> iw_slice;
         bool left_add_pad = false;
         bool right_add_pad = false;
@@ -275,7 +282,9 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
         }
         x_data_slice[i] = iw_slice;
       } else {
-        x_data_slice[i] = y_data_slice[i];
+        bool is_dyn = (i == 0) && (x_shape[0] == -1);
+        vector<int64_t> dyn_slice = {-1, -1};
+        x_data_slice[i] = is_dyn ? dyn_slice : y_data_slice[i];
       }
     }
   }
@@ -4635,6 +4644,10 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   auto x_format = x_tensor.GetOriginFormat();
   auto w_format = w_tensor.GetOriginFormat();
 
+  CHECK(IsUnknownRankShape(x_shape),
+        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x shape [-2] do not support split."),
+        return GRAPH_FAILED);
+
   std::vector<int32_t> stride_list;
   std::vector<int32_t> dilation_list;
   std::vector<int32_t> pad_list;
@@ -4701,14 +4714,14 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
     return GRAPH_FAILED;
   }
   bool have_slice = false;
-  vector<int> new_pad_lists;
-  if (GRAPH_SUCCESS != op.GetAttr("pads", new_pad_lists)) {
-    return GRAPH_FAILED;
-  }
+  vector<int> new_pad_lists = pad_list;
   for(int i=0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {
+        CHECK(ih == -1,
+              CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x dynamic h do not support split."),
+              return GRAPH_FAILED);
         vector<int64_t> ih_slice;
         bool top_add_pad = false;
         bool bom_add_pad = false;
@@ -4723,6 +4736,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
         }
         x_data_slice[i] = ih_slice;
       } else if (i == 3) {
+        CHECK(iw == -1,
+              CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x dynamic w do not support split."),
+              return GRAPH_FAILED);
         vector<int64_t> iw_slice;
         bool left_add_pad = false;
         bool right_add_pad = false;
@@ -4737,7 +4753,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
         }
         x_data_slice[i] = iw_slice;
       } else {
-        x_data_slice[i] = y_data_slice[i];
+        bool is_dyn = (i == 0) && (x_shape[0] == -1);
+        vector<int64_t> dyn_slice = {-1, -1};
+        x_data_slice[i] = is_dyn ? dyn_slice : y_data_slice[i];
       }
     }
   }

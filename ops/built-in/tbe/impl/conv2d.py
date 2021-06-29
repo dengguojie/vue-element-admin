@@ -18,7 +18,6 @@ conv2d
 from __future__ import absolute_import
 import math
 import json
-import traceback
 from tbe import tvm
 from tbe.dsl import auto_schedule
 from tbe.dsl import build
@@ -81,11 +80,10 @@ def check_supported(inputs, weights, bias, offset_w, outputs, strides,
         check_list = [*return_list[:6], inputs["dtype"], weights["dtype"], outputs["dtype"],
                       offset_w_dtype, (bias is None), kernel_name, *return_list[6:9], groups]
         return_list = util_conv2d.conv_layer_cce_para_check(*check_list)
-        return True
-    except (RuntimeError, ValueError, TypeError):
-        msg = traceback.format_exc()
-        print(msg)
-        return False
+    except RuntimeError as e:
+        reason = e.args[1]
+        return False, reason
+    return True, ""
 
 
 def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
@@ -601,13 +599,13 @@ def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads,
     None
     """
     slice_info = {"_op_slice_info":
-                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}],
+                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],
                                   "outputList": [{"idx": 0, "axis": [0]}]},
                                  {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],
                                   "outputList": [{"idx": 0, "axis": [2]}]},
                                  {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],
                                   "outputList": [{"idx": 0, "axis": [3]}]},
-                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [0], "tailOverLap": [0]}],
+                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],
                                   "outputList": [{"idx": 0, "axis": [1]}]}],
                    "reduceMaps": [],
                    "l1FusionEnable": 2,
@@ -615,5 +613,17 @@ def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads,
     if bias:
         bias_input = [{"idx": 2, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}]
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
+
+    # >>> start: process for dynamic shape
+    shape_x = inputs.get("ori_shape")
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    # shape is [-2], all axes do not support split
+    if list(shape_x) == [-2]:
+        slice_info["_op_slice_info"]["splitMaps"].clear()
+    # shape has -1, only N/c_out support split
+    elif -1 in shape_x:
+        slice_info['_op_slice_info']["splitMaps"].pop(1)
+        slice_info['_op_slice_info']["splitMaps"].pop(1)
+    # <<< end: process for dynamic shape
 
     return json.dumps(slice_info)

@@ -458,8 +458,8 @@ def get_op_support_info(x,
                 "inputList": [{
                     "idx": 0,
                     "axis": [0],
-                    "headOverLap": [0],
-                    "tailOverLap": [0]
+                    "headOverLap": [-1],
+                    "tailOverLap": [-1]
                 }],
                 "outputList": [{
                     "idx": 0,
@@ -491,8 +491,8 @@ def get_op_support_info(x,
                 "inputList": [{
                     "idx": 1,
                     "axis": [1],
-                    "headOverLap": [0],
-                    "tailOverLap": [0]
+                    "headOverLap": [-1],
+                    "tailOverLap": [-1]
                 }],
                 "outputList": [{
                     "idx": 0,
@@ -509,5 +509,16 @@ def get_op_support_info(x,
     if bias:
         bias_input = [{"idx": 2, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}]
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
+
+    # >>> start: process for dynamic shape
+    shape_x = x.get("ori_shape")
+    # shape is [-2], all axes do not support split
+    if list(shape_x) == [-2]:
+        slice_info["_op_slice_info"]["splitMaps"].clear()
+    # shape has -1, only N/c_out support split
+    elif -1 in shape_x:
+        slice_info['_op_slice_info']["splitMaps"].pop(1)
+        slice_info['_op_slice_info']["splitMaps"].pop(1)
+    # <<< end: process for dynamic shape
 
     return json.dumps(slice_info)

@@ -492,3 +492,58 @@ TEST_F(Conv2DProtoTest, conv2dFuzzBuildCorrectLeftRange) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     EXPECT_EQ((input_range == expect_x_range), true);
 }
+
+
+TEST_F(Conv2DProtoTest, conv2dDynamicSplitUnknownRank) {
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({-2}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-2}, ge::FORMAT_NCHW));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 64, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 64, 1, 1}, ge::FORMAT_NCHW));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {}, ge::FORMAT_NCHW));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv2d);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Conv2DProtoTest, conv2dDynamicSplitNormal) {
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({-1, 64, 32, 32}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-1, 64, 32, 32}, ge::FORMAT_NCHW));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 64, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 64, 1, 1}, ge::FORMAT_NCHW));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {}, ge::FORMAT_NCHW));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{-1, -1}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv2d);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+
+    auto ret = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{-1, -1}, {}, {}, {}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(Conv2DProtoTest, conv2dDynamicSplitH) {
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({-1, 64, -1, 32}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-1, 64, -1, 32}, ge::FORMAT_NCHW));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 64, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 64, 1, 1}, ge::FORMAT_NCHW));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {}, ge::FORMAT_NCHW));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {-1, -1}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv2d);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

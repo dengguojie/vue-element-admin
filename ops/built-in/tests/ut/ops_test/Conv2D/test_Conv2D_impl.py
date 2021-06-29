@@ -225,6 +225,40 @@ def test_conv2d_fuzz_build_correct_range(test_arg):
 print("adding conv2d test_conv2d_fuzz_build_correct_range testcase")
 ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_correct_range)
 
+def test_conv2d_split_info_unknown_shape(test_arg):
+    input_list = [
+        {
+            'ori_shape': (-2,),
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW']
+    get_op_support_info(*input_list)
+print("adding conv2d test_conv2d_split_info_unknown_shape testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_split_info_unknown_shape)
+
+def test_conv2d_split_info_normal(test_arg):
+    input_list = [
+        {
+            'ori_shape': (-1, 64, 32, 32),
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW']
+    get_op_support_info(*input_list)
+print("adding conv2d test_conv2d_split_info_normal testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_split_info_normal)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310"])
     dsl_cpu_test_int8()

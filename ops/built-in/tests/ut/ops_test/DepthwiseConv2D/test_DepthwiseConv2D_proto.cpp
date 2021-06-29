@@ -250,3 +250,56 @@ TEST_F(DepthwiseConv2DProtoTest, checksupporterror2) {
     auto ret = depthwiseconv2d.InferShapeAndType();
     EXPECT_EQ(ret, false);
 }
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dDynamicSplitUnknownRank) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori({-2}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-2}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 64, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 64, 1, 1}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {}, ge::FORMAT_NCHW));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("pads", {0, 0, 0, 0});
+    depthwiseconv2d.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(depthwiseconv2d);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dDynamicSplitNormal) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori({-1, 64, 32, 32}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-1, 64, 32, 32}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 64, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 64, 1, 1}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {}, ge::FORMAT_NCHW));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("pads", {0, 0, 0, 0});
+    depthwiseconv2d.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{-1, -1}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(depthwiseconv2d);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+
+    auto ret = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{-1, -1}, {}, {}, {}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dDynamicSplitH) {
+    ge::op::DepthwiseConv2D depthwiseconv2d;
+    depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori({-1, 64, -1, 32}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {-1, 64, -1, 32}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 64, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 64, 1, 1}, ge::FORMAT_NCHW));
+    depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {}, ge::FORMAT_NCHW));
+    depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
+    depthwiseconv2d.SetAttr("pads", {0, 0, 0, 0});
+    depthwiseconv2d.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {-1, -1}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(depthwiseconv2d);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto ret = op_desc->InferDataSlice();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
