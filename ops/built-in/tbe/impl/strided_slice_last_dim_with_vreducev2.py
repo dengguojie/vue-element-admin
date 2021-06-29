@@ -241,9 +241,6 @@ class StridedSliceLastDimWithVreducev2:
             if rows_each_repeat == 0:
                 self.vreducev2_and_datamove_flag = 0
                 rows_each_repeat = max_rows
-            else:
-                repeat_times = ceil_align(ceil_div(to_do_rows, rows_each_repeat), thread_num)
-                rows_each_repeat = ceil_div(to_do_rows, repeat_times)
         repeat_times = ceil_div(to_do_rows, rows_each_repeat)
         repeat_tail_count = to_do_rows % rows_each_repeat
         roll_back_rows = 0
