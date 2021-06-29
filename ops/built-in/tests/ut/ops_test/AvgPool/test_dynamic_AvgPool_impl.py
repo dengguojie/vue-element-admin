@@ -444,6 +444,119 @@ ut_case.add_case(["Ascend910A"], case33)
 ut_case.add_case(["Ascend910A"], case34)
 ut_case.add_case(["Ascend910A"], case35)
 
+def test_avg_pool_fuzz_build_generalization(test_arg):
+    from impl.dynamic.avg_pool import avg_pool_generalization
+    input_list = [
+        {
+            'shape': (16, 3, 16, 16, 16),
+            'ori_shape': (16, 33, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'ori_shape': (33, 1, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 3, 5), (1, 1, 1, 1), "VALID", 'NCHW', 0, 'avg_pool_fuzz_build_generalization']
+    avg_pool_generalization(*input_list)
+print("adding avg_pool test_avg_pool_fuzz_build_generalization testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_fuzz_build_generalization)
+
+def test_avg_pool_fuzz_build_tilingcase(test_arg):
+    import json
+    from impl.dynamic.avg_pool import avg_pool
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [16, 32],
+                                        [33, 33],
+                                        [256, 512],
+                                        [256, 512]
+                                    ],
+                                    "shape": [-1, 33, -1, -1]
+                                }]
+                            }]
+                        }, {
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [16, 32],
+                                        [33, 33],
+                                        [512, 1024],
+                                        [512, 1024]
+                                    ],
+                                    "shape": [-1, 33, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+
+        input_list = [
+            {
+                'shape': (-1, 3, -1, -1, 16),
+                'ori_shape': (-1, 33, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((16, 32), (33, 33), (256, 1024), (256, 1024))
+            }, {
+                'ori_shape': (33, 1, 3, 5),
+                'ori_format': 'NCHW',
+                'format': 'FRACTAL_Z',
+                'dtype': 'float16'
+            }, None, {
+                'shape': (-1, 3, -1, -1, 16),
+                'ori_shape': (-1, 33, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16'
+            }, (1, 1, 3, 5), (1, 1, 1, 1), "VALID", 'NCHW', 0, 'avg_pool_fuzz_build_generalization']
+        avg_pool(*input_list)
+print("adding avg_pool test_conv2d_fuzz_build_tilingcase testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_fuzz_build_tilingcase)
+
+def test_avg_pool_fuzz_build_correct_range(test_arg):
+    from impl.dynamic.avg_pool import avg_pool_generalization
+    input_list = [
+        {
+            'shape': (1, 4, 1080, 1080, 16),
+            'ori_shape': (1, 64, 1080, 1080),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 2), (1, 1), (1024, 4096), (1024, 4096), (16, 16)),
+            'ori_range': ((1, 2), (3, 3), (1024, 4096), (1024, 4096))
+            }, {
+                'ori_shape': (64, 64, 7, 7),
+                'ori_format': 'NCHW',
+                'format': 'FRACTAL_Z',
+                'dtype': 'float16'
+            }, None, {
+            'shape': (-1, 4, -1, -1, 16),
+            'ori_shape': (-1, 64, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 7, 7), (1, 1, 2, 2), "SAME", 'NCHW', 0, 'test_avg_pool_fuzz_build_correct_range']
+    avg_pool_generalization(*input_list)
+print("adding conv2d test_conv2d_fuzz_build_correct_range testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_fuzz_build_correct_range)
+
 from impl.dynamic.avg_pool import check_supported, get_op_support_info
 
 def test_check_support(test_arg):

@@ -1611,6 +1611,11 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
     if (!GenConv2dShapeRange(op, x_desc, x_range)) {
         return GRAPH_FAILED;
     }
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
+    }
     // when opti, max_range should be modified
     if ((filter_h == 1) && (filter_w == 1)) {
         if (!modify_dy_w_max(op, dy_sizes, dy_format, stride_h, stride_w, x_range)) {
@@ -2001,6 +2006,11 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
     std::vector<std::pair<int64_t, int64_t>> out_backprop_range;
     if (!GenConv2dShapeRange(op, out_backprop_desc, out_backprop_range)){
       return GRAPH_FAILED;
+    }
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
     }
     int32_t kh_dilate = dilation_h * (filter_h - 1) + 1;
     int32_t kw_dilate = dilation_w * (filter_w - 1) + 1;
@@ -3021,6 +3031,11 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     if (!GenConv2dShapeRange(op, x_desc, input_range)){
         return GRAPH_FAILED;
     }
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
+    }
     filterFormatStr = format2str[filter_format];
     fh_position = filterFormatStr.find("H");
     fw_position = filterFormatStr.find("W");
@@ -3668,6 +3683,11 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     std::vector<std::pair<int64_t, int64_t>> out_backprop_range;
     if (!GenConv2dShapeRange(op, dy_desc, out_backprop_range)){
       return GRAPH_FAILED;
+    }
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
     }
     std::vector<int64_t> filter_sizes = y_desc->MutableShape().GetDims();
     int32_t filter_h = static_cast<int32_t>(filter_sizes[filter_h_position]);
@@ -9725,6 +9745,11 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     if (!GenConv2dShapeRange(op, xDesc, input_range)) {
         return GRAPH_FAILED;
+    }
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzz cpmpile");
     }
     filterFormatStr = format2str[filterFormat];
     fh_position = filterFormatStr.find("H");

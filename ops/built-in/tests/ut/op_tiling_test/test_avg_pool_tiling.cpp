@@ -150,3 +150,39 @@ TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_Vector) {
   ASSERT_TRUE(iter->second(avg_pool_op, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 30 7 5 79 69 2 2 65 65 0 0 0 0 1 1 1 2 0 2 0 ");
 }
+
+// fuzz build compile list input
+TEST_F(AvgPoolTiling, AvgPool_tiling_fuzz_build_list_input) {
+  using namespace optiling;
+  std::string op_name = "AvgPool";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  const ge::AscendString compileInfo = R"([{"_pattern": "Convolution", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"0": [16, 32, 16, 32, 16, 32]}, "strides_h" : 60, "strides_w" : 60, "block_dim": {"0": 16}, "_vars": {"0": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}},{"_pattern": "Convolution", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"1": [16, 32, 64, 128, 64, 128]}, "block_dim": {"1": 16}, "_vars": {"1": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}}])";
+
+  ge::Graph graph("avg_pool_op_tiling_test2");
+
+  auto x_shape = vector<int64_t>({16, 3, 16, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), ge::FORMAT_NC1HWC0, ge::DT_FLOAT16);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto avg_pool_op = op::AvgPool(op_name);
+  avg_pool_op.set_input_x(x);
+
+  auto output_shape = vector<int64_t>({16, 3, 14, 12, 16});
+  ge::TensorDesc output_desc_y(ge::Shape(output_shape), ge::FORMAT_NC1HWC0, ge::DT_FLOAT16);
+
+  avg_pool_op.update_input_desc_x(desc_x);
+  avg_pool_op.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x};
+  std::vector<Operator> outputs{avg_pool_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  optiling::utils::OpCompileInfo op_compile_info("AvgPool_tiling_fuzz_build_list_input", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(avg_pool_op, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 14 16 12 ");  
+}

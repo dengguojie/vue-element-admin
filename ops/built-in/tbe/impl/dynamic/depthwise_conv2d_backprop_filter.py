@@ -246,8 +246,8 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     in_dtype = input_fm.get('dtype')
     dedy_dtype = out_backprop.get('dtype')
     dedw_dtype = filter_grad.get('dtype')
-    in_range = input_fm.get('range')
-    dedy_range = out_backprop.get('range')
+    in_range = list(input_fm.get('range'))
+    dedy_range = list(out_backprop.get('range'))
 
     input_ori_format = input_fm.get('ori_format')
     dedy_ori_format = out_backprop.get('ori_format')

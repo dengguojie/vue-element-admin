@@ -262,16 +262,7 @@ bool AvgPoolTilingCube(const std::string& opType, const ge::Operator& opParas, c
       opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0){
     return false;
   }
-
-  if(opCompileInfo.empty()) {
-    GELOGD("op compile info is empty");
-    return false;
-  }
-  // accurate build has only one item
-  // fuzzy build has multiple items
   std::vector<std::string> varMap;
-  GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
-
   varMap = opCompileInfo.at("_vars").begin().value().get<std::vector<std::string>>();
 
   std::vector<int64_t> var_value;
@@ -293,14 +284,51 @@ bool AvgPoolTilingCube(const std::string& opType, const ge::Operator& opParas, c
 bool AvgPoolTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
                   utils::OpRunInfo& runInfo) 
 {
-  int32_t strides_h = opCompileInfo.at("strides_h");
-  int32_t strides_w = opCompileInfo.at("strides_w");
+  if(opCompileInfo.empty()) {
+    GELOGD("op compile info is empty");
+    return false;
+  }
+  // accurate build has only one item
+  // fuzzy build has multiple items
+  nlohmann::json opInfo;
+  std::vector<std::string> varMap;
+  GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
+
+  if (opCompileInfo.is_array()) {
+    // >>> start: splice compile info
+    opInfo = opCompileInfo[0];
+    nlohmann::json item;
+    for (size_t i = 1; i < opCompileInfo.size(); ++i) {
+      item = opCompileInfo[i];
+      std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
+      for (auto key: key_list) {
+        if (item[key].is_object() && !item[key].empty()) {
+          std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
+          opInfo[key][item[key].begin().key()] = list_value;
+        }
+      }
+      std::vector<std::string> key_int = {"block_dim"};
+      for (auto key: key_int) {
+        if (item[key].is_object() && !item[key].empty()) {
+          int32_t int_value = item[key].begin().value().get<int32_t>();
+          opInfo[key][item[key].begin().key()] = int_value;
+        }
+      }
+    }
+    // <<< end: put together compile info
+    GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
+  } else if (opCompileInfo.is_object()) {
+    opInfo = opCompileInfo;
+  }
+
+  int32_t strides_h = opInfo.at("strides_h");
+  int32_t strides_w = opInfo.at("strides_w");
   bool result = true;
 
   if (strides_h <= MAX_STRIDE && strides_w <= MAX_STRIDE) {
-    result = AvgPoolTilingCube(opType, opParas, opCompileInfo, runInfo);
+    result = AvgPoolTilingCube(opType, opParas, opInfo, runInfo);
   } else {
-    result = AvgPoolTilingVector(opType, opParas, opCompileInfo, runInfo);
+    result = AvgPoolTilingVector(opType, opParas, opInfo, runInfo);
   }
   return result;
 }

@@ -1367,37 +1367,172 @@ INFER_FORMAT_FUNC_REG(Pooling, PoolingInferFormat);
 INFER_DATA_SLICE_FUNC_REG(Pooling, PoolingInferDataSlice);
 // ----------------Pooling-------------------
 
+/*!
+  * Simply get value range in grade list.
+  */
+static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
+                          const int64_t& value, int64_t& low, int64_t& high) {
+  size_t min_size = 2;
+  if (grade.size() < min_size) {
+    OP_LOGE(op.GetName().c_str(), "input grade size smaller then %u", min_size);
+    return false;
+  }
+  // grade is in ascending order
+  size_t last = grade.size() - 1;
+  if (value > grade[last]) {
+    OP_LOGE(op.GetName().c_str(), "input value %lld is out the range of %lld", value, grade[last]);
+    return false;
+  }
+  // if it is the right boundary value, use the right closed interval
+  if (value == grade[last]) {
+    low = grade[last - 1];
+    high = grade[last];
+    return true;
+  }
+  for (auto n : grade) {
+    if (value >= n) {
+      low = n;
+    }
+    if (value < n) {
+      high = n;
+      break;
+    }
+  }
+  return true;
+}
+
+/*!
+  * Generate NHW shape range
+  */
+static bool GenFuzzyCompileShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
+                                      std::vector<std::pair<int64_t, int64_t>>& input_range) {
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  // only support 4D shape
+  auto x_format = x_tensor->GetFormat();
+  size_t idx_n = 0;
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  size_t idx_c = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+    idx_c = 3;
+  } else {
+    idx_c = 1;
+    idx_h = 2;
+    idx_w = 3;
+  }
+  std::vector<int64_t> grade_n = {1, 2, 4, 8, 16, 32, ((1 << 31) - 1)};
+  std::vector<int64_t> grade_w = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
+  std::vector<int64_t> grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
+  // init empty range
+  // shape -1 without set range call "GetShapeRange" will return [1,-1]
+  input_range = {{}, {}, {}, {}};
+  std::vector<std::pair<int64_t, int64_t>> range_set;
+  x_tensor->GetShapeRange(range_set);
+  std::map<size_t, std::vector<int64_t>> grade_map;
+  grade_map[idx_n] = grade_n;
+  grade_map[idx_h] = grade_h;
+  grade_map[idx_w] = grade_w;
+  for (auto item: grade_map) {
+    // allow shape -1 with range
+    if(x_shape[item.first] == -1) {
+      if (range_set.size() > item.first) {
+        input_range[item.first] = range_set[item.first];
+      } else {
+        OP_LOGE(op.GetName().c_str(), "cant't get input index %zu range", item.first);
+        return false;
+      }
+    } else {
+      int64_t low = 1;
+      int64_t high = 1;
+      if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
+        OP_LOGE(op.GetName().c_str(), "failed to get the %zu range", item.first);
+        return false;
+      }
+      input_range[item.first] = std::make_pair(low, high);
+    }
+  }
+  input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
+  return true;
+}
+
+/*!
+  * Make sure that output shape is larger than 0
+  */
+bool CorrectFuzzyCompileRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
+                                        std::vector<std::pair<int64_t, int64_t>>& input_range,
+                                        int32_t kh, int32_t kw) {
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  // only support 4D shape
+  auto x_format = x_tensor->GetFormat();
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+  } else {
+    idx_h = 2;
+    idx_w = 3;
+  }
+  std::string pads_str;
+  op.GetAttr("padding", pads_str);
+
+  int64_t low_h = kh;
+  int64_t low_w = kw;
+  // get the smallest shape value allowed
+  if (pads_str == "SAME") {
+    // pad is dynamic, get value from shape or range
+    if (x_shape[idx_h] != -1) {
+      // shape is static
+      low_h = x_shape[idx_h] < low_h ? x_shape[idx_h] : low_h;
+    } else {
+      // shape is dynamic
+      low_h = input_range[idx_h].first < low_h ? input_range[idx_h].first : low_h;
+    }
+    if (x_shape[idx_w] != -1) {
+      low_w = x_shape[idx_w] < low_w ? x_shape[idx_w] : low_w;
+    } else {
+      low_w = input_range[idx_w].first < low_w ? input_range[idx_w].first : low_w;
+    }
+  }
+  // get larger one for left range
+  input_range[idx_h].first = input_range[idx_h].first > low_h ? input_range[idx_h].first : low_h;
+  input_range[idx_w].first = input_range[idx_w].first > low_w ? input_range[idx_w].first : low_w;
+  return true;
+}
+
 // ----------------AvgPool-------------------
 IMPLEMT_VERIFIER(AvgPool, AvgPoolVerify) {
   auto ksize = op.get_attr_ksize();
   auto strides = op.get_attr_strides();
-  auto xShape = op.get_input_desc_x().GetShape().GetDims();
-  bool unknownRank = IsUnknownRankShape(xShape);
-  bool invalidParam = ((!unknownRank && xShape.size() != 4) || ksize.size() != 4 || strides.size() != 4);
-  if (invalidParam) {
+  auto x_shape = op.get_input_desc_x().GetShape().GetDims();
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+  bool invalid_param = ((!unknown_rank && x_shape.size() != 4) || ksize.size() != 4 || strides.size() != 4);
+  if (invalid_param) {
     std::string err_msg = OtherErrMsg("xShape size != 4 or kSize size() != 4, strides size() != 4");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  std::string dataFormat;
-  if (GRAPH_SUCCESS == op.GetAttr("data_format", dataFormat)) {
-    if (dataFormat != "NHWC" && dataFormat != "NCHW" && dataFormat != "NC1HWC0") {
+  std::string data_format;
+  if (GRAPH_SUCCESS == op.GetAttr("data_format", data_format)) {
+    if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
       string expected_format_list = ConcatString("NHWC,NCHW,NC1HWC0");
-      std::string err_msg = GetInputFormatNotSupportErrMsg("dataFormat", expected_format_list, dataFormat);
+      std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     } else {
-      if (dataFormat == "NHWC") {
+      if (data_format == "NHWC") {
         if (ksize[0] != 1 || ksize[3] != 1) {
           string expected_pool_list = ConcatString("width,height");
-          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(),dataFormat, expected_pool_list);
+          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(),data_format, expected_pool_list);
           std::string err_msg = ConcatString(err_msg1,"and other ksize dimension should be one");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
         if (strides[0] != 1 || strides[3] != 1) {
           string expected_pool_list = ConcatString("width,height");
-          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), dataFormat, expected_pool_list);
+          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), data_format, expected_pool_list);
           std::string err_msg = ConcatString(err_msg1,"and other strides dimension should be one");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
          return GRAPH_FAILED;
@@ -1405,14 +1540,14 @@ IMPLEMT_VERIFIER(AvgPool, AvgPoolVerify) {
       } else {
         if (ksize[0] != 1 || ksize[1] != 1) {
           string expected_pool_list = ConcatString("width,height");
-          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), dataFormat, expected_pool_list);
+          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), data_format, expected_pool_list);
           std::string err_msg = ConcatString(err_msg1,"and other ksize dimension should be one");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
         if (strides[0] != 1 || strides[1] != 1) {
           string expected_pool_list = ConcatString("width,height");
-          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(),dataFormat, expected_pool_list);
+          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), data_format, expected_pool_list);
           std::string err_msg = ConcatString(err_msg1,"and other strides dimension should be one");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
@@ -1423,106 +1558,106 @@ IMPLEMT_VERIFIER(AvgPool, AvgPoolVerify) {
   return GRAPH_SUCCESS;
 }
 
-static void SetAvgPoolOutRange(const std::string padStr, const vector<int32_t>& attrParams,
-                               const bool& ceilMode,
-                               const std::vector<std::pair<int64_t, int64_t>>& inputRange,
-                               std::vector<std::pair<int64_t, int64_t>>& outputRange) {
+static void SetAvgPoolOutRange(const std::string pad_str, const vector<int32_t>& attr_params,
+                              const bool& ceil_mode,
+                              const std::vector<std::pair<int64_t, int64_t>>& input_range,
+                              std::vector<std::pair<int64_t, int64_t>>& output_range) {
   size_t attrIdx = 0;
-  int32_t stride = attrParams[attrIdx++];
-  int32_t pad = attrParams[attrIdx++];
-  int32_t kernel = attrParams[attrIdx++];
-  int32_t InputPosition = attrParams[attrIdx++];
-  int32_t OutputPosition = attrParams[attrIdx++];
-  int32_t low = inputRange[InputPosition].first;
-  int32_t high = inputRange[InputPosition].second;
-  if (padStr == "SAME") {
-    outputRange[InputPosition].first = (low + stride - 1) / stride;
-    outputRange[InputPosition].second = (high + stride - 1) / stride;;
-  } else if (padStr == "VALID") {
-    if (ceilMode) {
-      outputRange[InputPosition].first = (low - kernel + pad + stride - 1) / stride + 1;
-      outputRange[InputPosition].second = (high - kernel + pad + stride - 1) / stride + 1;
+  int32_t stride = attr_params[attrIdx++];
+  int32_t pad = attr_params[attrIdx++];
+  int32_t kernel = attr_params[attrIdx++];
+  int32_t input_position = attr_params[attrIdx++];
+  int32_t output_position = attr_params[attrIdx++];
+  int32_t low = input_range[input_position].first;
+  int32_t high = input_range[input_position].second;
+  if (pad_str == "SAME") {
+    output_range[input_position].first = (low + stride - 1) / stride;
+    output_range[input_position].second = (high + stride - 1) / stride;;
+  } else if (pad_str == "VALID") {
+    if (ceil_mode) {
+      output_range[input_position].first = (low - kernel + pad + stride - 1) / stride + 1;
+      output_range[input_position].second = (high - kernel + pad + stride - 1) / stride + 1;
     } else {
-      outputRange[InputPosition].first = (low - kernel + 1 + (stride - 1) + pad) / stride;
-      outputRange[InputPosition].second = (high - kernel + 1 + (stride - 1) + pad) / stride;
+      output_range[input_position].first = (low - kernel + 1 + (stride - 1) + pad) / stride;
+      output_range[input_position].second = (high - kernel + 1 + (stride - 1) + pad) / stride;
     }
   } else {
-    if (ceilMode) {
-      outputRange[InputPosition].first = (low - kernel + pad + stride - 1) / stride + 1;
-      outputRange[InputPosition].second = (high - kernel + pad + stride - 1) / stride + 1;
+    if (ceil_mode) {
+      output_range[input_position].first = (low - kernel + pad + stride - 1) / stride + 1;
+      output_range[input_position].second = (high - kernel + pad + stride - 1) / stride + 1;
     } else {
-      outputRange[InputPosition].first = (low - kernel + pad) / stride + 1;
-      outputRange[InputPosition].second = (high - kernel + pad) / stride + 1;
+      output_range[input_position].first = (low - kernel + pad) / stride + 1;
+      output_range[input_position].second = (high - kernel + pad) / stride + 1;
     }
   }
-  outputRange[InputPosition].first = std::max(outputRange[InputPosition].first, kDynamicRangeLowerBound);
-  outputRange[InputPosition].second = std::min(outputRange[InputPosition].second, kDynamicRangeUpperBound);
+  output_range[input_position].first = std::max(output_range[input_position].first, kDynamicRangeLowerBound);
+  output_range[input_position].second = std::min(output_range[input_position].second, kDynamicRangeUpperBound);
   if (high == -1) {
-    outputRange[InputPosition].second = high;
+    output_range[input_position].second = high;
   }
 }
 
-static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& inputTensorDesc, ge::GeTensorDescPtr& td,
-                                    Format inputFormat, const std::string& dataFormat,
-                                    const std::vector<int32_t>& ksizeList, const std::vector<int32_t>& stridesList,
-                                    const std::vector<int32_t>& padList, const std::vector<int64_t>& dimsInput,
-                                    std::vector<int64_t> dimVector, const bool& ceilMode, const bool& globalPooling,
-                                    const std::string& paddingMode) {
-  std::string inputFormatStr = format2str[inputFormat];
-  if (inputFormatStr != "NHWC") {
-    inputFormatStr = "NCHW";
+static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input_tensor_desc, ge::GeTensorDescPtr& td,
+                                    Format input_format, const std::string& data_format,
+                                    const std::vector<int32_t>& ksize_list, const std::vector<int32_t>& strides_list,
+                                    const std::vector<int32_t>& pad_list, const std::vector<int64_t>& dims_input,
+                                    std::vector<int64_t> dim_vector, const bool& ceil_mode, const bool& global_pooling,
+                                    const std::string& padding_mode) {
+  std::string input_format_str = format2str[input_format];
+  if (input_format_str != "NHWC") {
+    input_format_str = "NCHW";
   }
-  int32_t hInputPosition = inputFormatStr.find("H");
-  int32_t wInputPosition = inputFormatStr.find("W");
-  int32_t cInputPosition = inputFormatStr.find("C");
-  int64_t inputH = dimsInput[hInputPosition];
-  int64_t inputW = dimsInput[wInputPosition];
-  int64_t inputC = dimsInput[cInputPosition];
+  int32_t h_input_position = input_format_str.find("H");
+  int32_t w_input_position = input_format_str.find("W");
+  int32_t c_input_position = input_format_str.find("C");
+  int64_t input_h = dims_input[h_input_position];
+  int64_t input_w = dims_input[w_input_position];
+  int64_t input_c = dims_input[c_input_position];
 
-  int32_t hOutputPosition = dataFormat.find("H");
-  int32_t wOutputPosition = dataFormat.find("W");
-  int32_t cOutputPosition = dataFormat.find("C");
+  int32_t h_output_position = data_format.find("H");
+  int32_t w_output_position = data_format.find("W");
+  int32_t c_output_position = data_format.find("C");
   
-  int32_t strH = stridesList[hOutputPosition];
-  int32_t strW = stridesList[wOutputPosition];
-  int32_t padT = padList[0];
-  int32_t padB = padList[1];
-  int32_t padL = padList[2];
-  int32_t padR = padList[3];
-  int32_t kH = ksizeList[hOutputPosition];
-  int32_t kW = ksizeList[wOutputPosition];
+  int32_t strh = strides_list[h_output_position];
+  int32_t strw = strides_list[w_output_position];
+  int32_t padt = pad_list[0];
+  int32_t padb = pad_list[1];
+  int32_t padl = pad_list[2];
+  int32_t padr = pad_list[3];
+  int32_t kh = ksize_list[h_output_position];
+  int32_t kw = ksize_list[w_output_position];
 
   // update pads if padding is SAME
-  if (paddingMode == "SAME" && (inputH == -1 || inputW == -1)) {
+  if (padding_mode == "SAME" && (input_h == -1 || input_w == -1)) {
     op.SetAttr("pads", {-1, -1, -1, -1});
     OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
   }
 
   OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
-  std::vector<std::pair<int64_t, int64_t>> InputRange;
-  inputTensorDesc->GetShapeRange(InputRange);
-  if (inputH == -1 && !globalPooling) {
-    dimVector[hOutputPosition] = -1;
+  std::vector<std::pair<int64_t, int64_t>> Input_range;
+  input_tensor_desc->GetShapeRange(Input_range);
+  if (input_h == -1 && !global_pooling) {
+    dim_vector[h_output_position] = -1;
   }
-  if (inputW == -1 && !globalPooling) {
-    dimVector[wOutputPosition] = -1;
+  if (input_w == -1 && !global_pooling) {
+    dim_vector[w_output_position] = -1;
   }
-  if (!InputRange.empty() && dimsInput.size() == InputRange.size()) {
-    std::vector<std::pair<int64_t, int64_t>> outputRange(InputRange);
-    outputRange[cInputPosition] = InputRange[cInputPosition];
-    outputRange[hInputPosition] = std::make_pair(dimVector[hInputPosition], dimVector[hInputPosition]);
-    outputRange[wInputPosition] = std::make_pair(dimVector[wInputPosition], dimVector[wInputPosition]);    
-    if (inputH == -1 && !globalPooling) {
-      vector<int32_t> attrParamsH = {strH, padT + padB, kH, hInputPosition, hOutputPosition};
-      SetAvgPoolOutRange(paddingMode, attrParamsH, ceilMode, InputRange, outputRange);
+  if (!Input_range.empty() && dims_input.size() == Input_range.size()) {
+    std::vector<std::pair<int64_t, int64_t>> output_range(Input_range);
+    output_range[c_input_position] = Input_range[c_input_position];
+    output_range[h_input_position] = std::make_pair(dim_vector[h_input_position], dim_vector[h_input_position]);
+    output_range[w_input_position] = std::make_pair(dim_vector[w_input_position], dim_vector[w_input_position]);    
+    if (input_h == -1 && !global_pooling) {
+      vector<int32_t> attrParams_h = {strh, padt + padb, kh, h_input_position, h_output_position};
+      SetAvgPoolOutRange(padding_mode, attrParams_h, ceil_mode, Input_range, output_range);
     }
-    if (inputW == -1 && !globalPooling) {
-      vector<int32_t> attrParamsW = {strW, padL + padR, kW, wInputPosition, wOutputPosition};
-      SetAvgPoolOutRange(paddingMode, attrParamsW, ceilMode, InputRange, outputRange);
+    if (input_w == -1 && !global_pooling) {
+      vector<int32_t> attrParams_w = {strw, padl + padr, kw, w_input_position, w_output_position};
+      SetAvgPoolOutRange(padding_mode, attrParams_w, ceil_mode, Input_range, output_range);
     }
-    td->SetShapeRange(outputRange);
+    td->SetShapeRange(output_range);
   }
-  td->SetShape(GeShape(dimVector));
+  td->SetShape(GeShape(dim_vector));
   return true;
 }
 
@@ -1532,123 +1667,146 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   const size_t DIM_SIZE2 = 2;
   const size_t DIM_SIZE3 = 3;
   const size_t DIM_SIZE4 = 4;
-  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
-  auto inputTensorDesc = opDesc->MutableInputDesc("x");
-  auto shape = inputTensorDesc->MutableShape();
-  Format inputFormat = inputTensorDesc->GetFormat();
-  std::vector<int64_t> dimsInput = shape.GetDims();
-  bool unknownRank = IsUnknownRankShape(dimsInput);
-  bool isDynamic = false;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_tensor_desc = op_desc->MutableInputDesc("x");
+  auto shape = input_tensor_desc->MutableShape();
+  Format input_format = input_tensor_desc->GetFormat();
+  std::vector<int64_t> dims_input = shape.GetDims();
+  bool unknown_rank = IsUnknownRankShape(dims_input);
+  bool is_dynamic = false;
   // when static op or dynamic op phase_running, is_dynamic == False
-  if (std::find(dimsInput.begin(), dimsInput.end(), -1) != dimsInput.end()) {
-    isDynamic = true;
+  if (std::find(dims_input.begin(), dims_input.end(), -1) != dims_input.end()) {
+    is_dynamic = true;
     reset_range(op, "x");
   }
   // get input ksize
-  std::vector<int32_t> ksizeList;
-  if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
-    std::string err_msg = GetInputInvalidErrMsg("ksizeList");
+  std::vector<int32_t> ksize_list;
+  if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize_list)) {
+    std::string err_msg = GetInputInvalidErrMsg("ksize_list");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  if (ksizeList.size() != DIM_SIZE4) {
-    std::string err_msg1 = GetAttrValueErrMsg("ksizeList", std::to_string(ksizeList.size()), ConcatString(DIM_SIZE4));
+  if (ksize_list.size() != DIM_SIZE4) {
+    std::string err_msg1 = GetAttrValueErrMsg("ksize_list", std::to_string(ksize_list.size()), ConcatString(DIM_SIZE4));
     std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input strides
-  std::vector<int32_t> stridesList;
-  if (GRAPH_SUCCESS != op.GetAttr("strides", stridesList)) {
-    std::string err_msg = GetInputInvalidErrMsg("stridesList");
+  std::vector<int32_t> strides_list;
+  if (GRAPH_SUCCESS != op.GetAttr("strides", strides_list)) {
+    std::string err_msg = GetInputInvalidErrMsg("strides_list");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  if (stridesList.size() != DIM_SIZE4) {
-    std::string err_msg = GetAttrValueErrMsg("stridesList", std::to_string(stridesList.size()), ConcatString(DIM_SIZE4));
+  if (strides_list.size() != DIM_SIZE4) {
+    std::string err_msg = GetAttrValueErrMsg("strides_list", std::to_string(strides_list.size()), ConcatString(DIM_SIZE4));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input data_format
-  std::string dataFormat;
-  if (GRAPH_SUCCESS != op.GetAttr("data_format", dataFormat)) {
+  std::string data_format;
+  if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
     std::string err_msg = GetInputInvalidErrMsg("data_format");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input paddingMode
-  std::string paddingMode;
-  if (GRAPH_SUCCESS != op.GetAttr("padding", paddingMode)) {
+  std::string padding_mode;
+  if (GRAPH_SUCCESS != op.GetAttr("padding", padding_mode)) {
     std::string err_msg = GetInputInvalidErrMsg("padding");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  if (paddingMode != "SAME" && paddingMode != "VALID") {
+  if (padding_mode != "SAME" && padding_mode != "VALID") {
     string expected_format_list = ConcatString("SAME,VALID");
-    std::string err_msg = GetInputFormatNotSupportErrMsg(op.GetName().c_str(), expected_format_list, paddingMode);
+    std::string err_msg = GetInputFormatNotSupportErrMsg(op.GetName().c_str(), expected_format_list, padding_mode);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // set output shape
-  std::vector<int64_t> outputShape;
-  outputShape.resize(4);
-  int32_t nOutputPosition = dataFormat.find("N");
-  int32_t cOutputPosition = dataFormat.find("C");
-  int32_t wOutputPosition = dataFormat.find("W");
-  int32_t hOutputPosition = dataFormat.find("H");
-  std::string inputFormatStr = format2str[inputFormat];
-  if (inputFormatStr != "NHWC") {
-    inputFormatStr = "NCHW";
+  std::vector<int64_t> output_shape;
+  output_shape.resize(4);
+  int32_t n_output_position = data_format.find("N");
+  int32_t c_output_position = data_format.find("C");
+  int32_t w_output_position = data_format.find("W");
+  int32_t h_output_position = data_format.find("H");
+  std::string input_format_str = format2str[input_format];
+  if (input_format_str != "NHWC") {
+    input_format_str = "NCHW";
   }
-  int32_t nInputPosition = inputFormatStr.find("N");
-  int32_t cInputPosition = inputFormatStr.find("C");
-  int32_t wInputPosition = inputFormatStr.find("W");
-  int32_t hInputPosition = inputFormatStr.find("H");
-  if (!unknownRank) {
-    int64_t inputW = dimsInput[wInputPosition];
-    int64_t inputH = dimsInput[hInputPosition];
+  int32_t n_input_position = input_format_str.find("N");
+  int32_t c_input_position = input_format_str.find("C");
+  int32_t w_input_position = input_format_str.find("W");
+  int32_t h_input_position = input_format_str.find("H");
+  if (!unknown_rank) {
+    int64_t input_w = dims_input[w_input_position];
+    int64_t input_h = dims_input[h_input_position];
 
     // set for global avg pool
-    if (ksizeList[hOutputPosition] == -1 && ksizeList[wOutputPosition] == -1) {
-      ksizeList[hOutputPosition] = dimsInput[hOutputPosition];
-      ksizeList[wOutputPosition] = dimsInput[wOutputPosition];
+    if (ksize_list[h_output_position] == -1 && ksize_list[w_output_position] == -1) {
+      ksize_list[h_output_position] = dims_input[h_output_position];
+      ksize_list[w_output_position] = dims_input[w_output_position];
     }
-    op.SetAttr("ksize", ksizeList);  
-    outputShape[nInputPosition] = dimsInput[nInputPosition];
-    outputShape[cInputPosition] = dimsInput[cInputPosition];
-    if (paddingMode == "SAME") {
-      outputShape[hInputPosition] = (inputH + stridesList[hOutputPosition] - 1) / stridesList[hOutputPosition];
-      outputShape[wInputPosition] = (inputW + stridesList[wOutputPosition] - 1) / stridesList[wOutputPosition];
+    op.SetAttr("ksize", ksize_list);  
+    output_shape[n_input_position] = dims_input[n_input_position];
+    output_shape[c_input_position] = dims_input[c_input_position];
+    if (padding_mode == "SAME") {
+      output_shape[h_input_position] = (input_h + strides_list[h_output_position] - 1) / strides_list[h_output_position];
+      output_shape[w_input_position] = (input_w + strides_list[w_output_position] - 1) / strides_list[w_output_position];
     } else {
-      outputShape[hInputPosition] =
-        (inputH - ksizeList[hOutputPosition] + 1 + (stridesList[hOutputPosition] - 1)) / stridesList[hOutputPosition];
-      outputShape[wInputPosition] =
-        (inputW - ksizeList[wOutputPosition] + 1 + (stridesList[wOutputPosition] - 1)) / stridesList[wOutputPosition];
+      output_shape[h_input_position] =
+        (input_h - ksize_list[h_output_position] + 1 + (strides_list[h_output_position] - 1)) / strides_list[h_output_position];
+      output_shape[w_input_position] =
+        (input_w - ksize_list[w_output_position] + 1 + (strides_list[w_output_position] - 1)) / strides_list[w_output_position];
     }
   } else {
-    outputShape[nInputPosition] = -1;
-    outputShape[hInputPosition] = -1;
-    outputShape[wInputPosition] = -1;
-    outputShape[cInputPosition] = -1;
+    output_shape[n_input_position] = -1;
+    output_shape[h_input_position] = -1;
+    output_shape[w_input_position] = -1;
+    output_shape[c_input_position] = -1;
   }
-  auto td = opDesc->MutableOutputDesc("y");
-  DataType inputDtype = inputTensorDesc->GetDataType();
-  td->SetShape(GeShape(outputShape));
-  td->SetDataType(inputDtype);
-  if (isDynamic) {
-    std::vector<int32_t> padVec = {0, 0, 0, 0};
-    bool isGlobalPool = false;
-    bool ceilMode = false;
-    if (!SetAvgPoolOutShapeRange(op, inputTensorDesc, td, inputFormat, dataFormat,
-                                 ksizeList, stridesList, padVec, dimsInput, outputShape,
-                                 ceilMode, isGlobalPool, paddingMode)) {
+  auto td = op_desc->MutableOutputDesc("y");
+  DataType input_dtype = input_tensor_desc->GetDataType();
+  td->SetShape(GeShape(output_shape));
+  td->SetDataType(input_dtype);
+  if (is_dynamic) {
+    std::vector<int32_t> pad_vec = {0, 0, 0, 0};
+    bool is_global_pool = false;
+    bool ceil_mode = false;
+    if (!SetAvgPoolOutShapeRange(op, input_tensor_desc, td, input_format, data_format,
+                                      ksize_list, strides_list, pad_vec, dims_input, output_shape,
+                                      ceil_mode, is_global_pool, padding_mode)) {
+      return GRAPH_FAILED;
+    }
+  }
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+  if ((!unknown_rank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // generate range
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    if (!GenFuzzyCompileShapeRange(op, input_tensor_desc, input_range)){
+      return GRAPH_FAILED;
+    }
+    int32_t kh = ksize_list[h_output_position];
+    int32_t kw = ksize_list[w_output_position];
+    // left range should ensure output >= 1
+    if (!CorrectFuzzyCompileRangeStart(op, input_tensor_desc, input_range, kh, kw)){
+      return GRAPH_FAILED;
+    }
+    // only need to set input fuzz build range
+    graphStatus ret = input_tensor_desc->SetShapeRange(input_range);
+    if (ret != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "set input range failed");
       return GRAPH_FAILED;
     }
   }

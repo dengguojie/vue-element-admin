@@ -588,7 +588,7 @@ class Conv2dTiling(CubeTilingOp):
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range,
                 "correct_range_flag": correct_range_flag}
 
-    def _get_al1_bound(self, tiling, curent_size):
+    def _get_al1_bound(self, tiling, curent_w, curent_h):
         """
         get al1 bound info
 
@@ -604,7 +604,7 @@ class Conv2dTiling(CubeTilingOp):
 
         """
         # shape info
-        h_i, w_i = curent_size, curent_size
+        h_i, w_i = curent_h, curent_w
         out_w = self.get_output_w(w_i)
 
         zero_padding = False
@@ -644,7 +644,7 @@ class Conv2dTiling(CubeTilingOp):
 
         # calculate input lines (hi) from output lines (ho)
         if not strideh_opti_flag:
-            li_hi = self.k_h + (l1_ho - 1) * self.stride_h
+            li_hi = min(self.k_h + (l1_ho - 1) * self.stride_h, h_i)
         else:
             li_hi = self.k_h + (l1_ho - 1)
 
@@ -670,7 +670,7 @@ class Conv2dTiling(CubeTilingOp):
             return True
 
         # get M axis length in al1
-        al1_bound = self._get_al1_bound(tiling, current_w)
+        al1_bound = self._get_al1_bound(tiling, current_w, current_h)
 
         # fmap size in L1 ( M * K * db * 2byte)
         type_size = CUBE_INFO["type_size"][self.w_type]
