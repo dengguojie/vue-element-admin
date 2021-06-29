@@ -40,19 +40,35 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_1) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_custom_vars": {
-                        "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
-                        "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 16, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -102,7 +118,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(runInfo.tiling_key, 670000);
+  EXPECT_EQ(runInfo.tiling_key, 670001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "11 12 512 989855744 11 1 12 0 ");
 }
 
@@ -114,21 +130,41 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_2) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": []},
+                        "_attr_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": [], "1480001": [], "1540001": [], "2180001": [], "2240001": [], "390001": [], "1480002": [], "1540002": [], "2180002": [], "2240002": [], "390002": []},
                         "_custom_vars": {
-                        "1480000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "1540000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "2180000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "2240000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": []},
+                        "1480000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1540000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2180000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2240000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1540001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2180001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2240001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "390001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1540002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2180002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2240002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "390002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": [], "1480001": [], "1540001": [], "2180001": [], "2240001": [], "390001": [], "1480002": [], "1540002": [], "2180002": [], "2240002": [], "390002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1480000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "1540000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2180000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2240000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 8, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -178,7 +214,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_2) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 1480000);
+  EXPECT_EQ(runInfo.tiling_key, 1480001);
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "1024 30 512 948471945 32 1 20 23 ");
 }
@@ -191,21 +227,41 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_3) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": []},
+                        "_attr_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": [], "1480001": [], "1540001": [], "2180001": [], "2240001": [], "390001": [], "1480002": [], "1540002": [], "2180002": [], "2240002": [], "390002": []},
                         "_custom_vars": {
                         "1480000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "1540000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2180000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2240000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": []},
+                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": [], "1480001": [], "1540001": [], "2180001": [], "2240001": [], "390001": [], "1480002": [], "1540002": [], "2180002": [], "2240002": [], "390002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1480000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "1540000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2180000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2240000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 8, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -255,7 +311,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_3) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 3);
-  EXPECT_EQ(runInfo.tiling_key, 1480000);
+  EXPECT_EQ(runInfo.tiling_key, 1480001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 919869235 16 1 20 16 ");
 }
 
@@ -267,7 +323,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1260000": [],"1320000": [],"1380000": [],"1960000": [],"2020000": [],"2080000": [],"2660000": [],"2720000": [],"2780000": []},
+                        "_attr_vars": {"1260000": [],"1320000": [],"1380000": [],"1960000": [],"2020000": [],"2080000": [],"2660000": [],"2720000": [],"2780000": [], "1260001": [],"1320001": [],"1380001": [],"1960001": [],"2020001": [],"2080001": [],"2660001": [],"2720001": [],"2780001": [], "1260002": [],"1320002": [],"1380002": [],"1960002": [],"2020002": [],"2080002": [],"2660002": [],"2720002": [],"2780002": []},
                         "_custom_vars": {
                         "1260000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
                         "1320000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
@@ -277,8 +333,26 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
                         "2080000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
                         "2660000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
                         "2720000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
-                        "2780000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1260000": [],"1320000": [],"1380000": [],"1960000": [],"2020000": [],"2080000": [],"2660000": [],"2720000": [],"2780000": []},
+                        "2780000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1260001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1320001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1380001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1960001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2020001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2080001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2660001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2720001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2780001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1260002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1320002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1380002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1960002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2020002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2080002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2660002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2720002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2780002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1260000": [],"1320000": [],"1380000": [],"1960000": [],"2020000": [],"2080000": [],"2660000": [],"2720000": [],"2780000": [], "1260001": [],"1320001": [],"1380001": [],"1960001": [],"2020001": [],"2080001": [],"2660001": [],"2720001": [],"2780001": [], "1260002": [],"1320002": [],"1380002": [],"1960002": [],"2020002": [],"2080002": [],"2660002": [],"2720002": [],"2780002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1260000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
@@ -289,7 +363,25 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
                         "2080000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
                         "2660000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
                         "2720000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
-                        "2780000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "2780000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1260001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1320001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1380001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1960001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2020001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2080001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2660001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2720001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2780001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1260002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1320002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1380002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1960002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2020002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2080002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2660002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2720002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "2780002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 8, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -339,7 +431,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(runInfo.tiling_key, 2020000);
+  EXPECT_EQ(runInfo.tiling_key, 2020001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 877108573 34 1 20 34 ");
 }
 
@@ -351,21 +443,41 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_5) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": []},
+                        "_attr_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": [], "1480001": [], "1540001": [], "2180001": [], "2240001": [], "390001": [], "1480002": [], "1540002": [], "2180002": [], "2240002": [], "390002": []},
                         "_custom_vars": {
                         "1480000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "1540000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2180000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2240000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": []},
+                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1480000": [], "1540000": [], "2180000": [], "2240000": [], "390000": [], "1480001": [], "1540001": [], "2180001": [], "2240001": [], "390001": [], "1480002": [], "1540002": [], "2180002": [], "2240002": [], "390002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1480000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "1540000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2180000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "2240000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "390000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1480002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "1540002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2180002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "2240002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "390002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 8, 0],
                         "common_info": [32, 1, 8, 0],
                         "core_num": 32,
@@ -416,7 +528,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_5) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 5);
-  EXPECT_EQ(runInfo.tiling_key, 1480000);
+  EXPECT_EQ(runInfo.tiling_key, 1480001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 919869235 8 1 20 8 ");
 }
 
@@ -428,19 +540,35 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_custom_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 16, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -490,7 +618,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 671000);
+  EXPECT_EQ(runInfo.tiling_key, 671001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "20 304 512 989855744 2 16 19 0 ");
 }
 
@@ -502,19 +630,35 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_custom_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 16, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -564,7 +708,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 784);
-  EXPECT_EQ(runInfo.tiling_key, 671000);
+  EXPECT_EQ(runInfo.tiling_key, 671001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "49 304 512 989855744 49 16 19 0 ");
 }
 
@@ -576,19 +720,35 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_custom_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 8, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -638,7 +798,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 671000);
+  EXPECT_EQ(runInfo.tiling_key, 671001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 989855744 2 16 20 0 ");
 }
 
@@ -650,19 +810,35 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_custom_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 16, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -712,7 +888,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(runInfo.tiling_key, 270000);
+  EXPECT_EQ(runInfo.tiling_key, 270001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "352 4 512 989855744 352 1 5 0 ");
 }
 
@@ -724,19 +900,35 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "_attr_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_custom_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
-                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "6710000": []},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "_normal_vars": {"1940000": [], "270000": [], "670000": [], "671000": [], "1940001": [], "270001": [], "670001": [], "671001": [], "1940002": [], "270002": [], "670002": [], "671002": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
                         "1940000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "270000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
                         "670000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
+                        "671000": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671001": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"],
+                        "1940002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "270002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "670002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"], 
+                        "671002": ["dim0_0", "dim0_1", "dim0_2", "mean_cof", "block_factor", "block_factor_1", "ub_factor", "ub_fuse_factor"]},
                         "common_info": [32, 1, 16, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -786,7 +978,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 1940000);
+  EXPECT_EQ(runInfo.tiling_key, 1940001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "32 121 768 984263339 1 1 768 1 ");
 }
 
@@ -798,13 +990,13 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_11) {
   ASSERT_TRUE(iter !=
               optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   std::string compileInfo = R"({
-                        "_attr_vars": {"6710000": []},
+                        "_attr_vars": {"671001": []},
                         "_custom_vars": {
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2"]},
-                        "_normal_vars": {"6710000": []},
+                        "671001": ["dim0_0", "dim0_1", "dim0_2"]},
+                        "_normal_vars": {"671001": []},
                         "_pattern": "LayerNorm", 
                         "_vars": {
-                        "6710000": ["dim0_0", "dim0_1", "dim0_2"]},
+                        "671001": ["dim0_0", "dim0_1", "dim0_2"]},
                         "common_info": [32, 1, 16, 0],
                         "core_num": 32,
                         "max_ub_size_normal_fp16": 10240,
@@ -853,6 +1045,6 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_11) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 671000);
+  EXPECT_EQ(runInfo.tiling_key, 671001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "20 304 512 0 1 1 0 2 16 19 0 1 ");
 }
