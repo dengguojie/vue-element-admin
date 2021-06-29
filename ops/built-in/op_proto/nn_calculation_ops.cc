@@ -312,6 +312,14 @@ static bool CheckListEmpty(const std::string& opName, const std::vector<int64_t>
   return true;
 }
 
+static void SetInputConst(const bool is_filter_size_const, const bool is_unknown_shape, const bool unknown_rank,
+                          ge::OpDescPtr op_desc) {
+  if (is_filter_size_const && (is_unknown_shape || unknown_rank)) {
+    vector<bool> is_input_const = {false, true, false};
+    op_desc->SetIsInputConst(is_input_const);
+  }
+}
+
 static bool GetPadDepthwiseConv2D(ge::Operator& op, int64_t inH, int64_t inW, int64_t filterH, int64_t filterW,
                                   int64_t strideH, int64_t strideW, int64_t dilationH, int64_t dilationW,
                                   int64_t& padtop, int64_t& padbottom, int64_t& padleft, int64_t& padright) {
@@ -1953,6 +1961,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
     reset_range(op, "input");
     reset_range(op, "out_backprop");
   }
+  SetInputConst(is_filter_size_const, IsUnKnownShape(input_sizes), unknown_rank, op_desc);
   if (!is_dynamic) {
     // NC1HWC0(NCHW)
     in_h = shapeIn.GetDim(h_position);
@@ -3592,6 +3601,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     reset_range(op, "x");
     reset_range(op, "out_backprop");
   }
+  SetInputConst(is_filter_size_const, IsUnKnownShape(x_sizes), unknown_rank, op_desc);
   if (unknown_rank || filter_sizes[filter_ci_position] < 1 || x_c < 1){
     OP_LOGD(op.GetName().c_str(), "ignore set groups.");
   } else if (false == SetGroupsConv(op, x_sizes, x_format, filter_sizes, filter_format)) {
