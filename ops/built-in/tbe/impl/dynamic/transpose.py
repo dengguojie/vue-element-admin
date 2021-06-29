@@ -107,7 +107,7 @@ def _by_dynamic_static_union_version(shape, core_num):
                          [32, 3, 85, 38, 38], [32, 3, 85, 19, 19], [512, 512, 9],
                          [3, 256, 1024], [48, 56, 64], [3, 16, 256, 64], [3, 1024, 256], [3, 3, 16, 16, 16, 16],
                          [3, 256, 16, 64], [48, 256, 64], [48, 256, 256], [768, 768], [3072, 768], [768, 197, 197],
-                         [768, 3072]
+                         [768, 3072], [512, 512, 3, 3]
                        ]
     shape_t = list(shape)
     if shape_t in white_list_shape:
@@ -964,6 +964,9 @@ class Transpose(object):
         backup_steps = self.tik_inst.Scalar("int64", init_value=0)
         backup_steps.set_as(steps)
         tik_inst = self.tik_inst
+        accu_block_size = ACCU_BLOCK_SIZE
+        if self.fp16_times == 1:
+            accu_block_size = ACCU_BLOCK_SIZE // 2
         with tik_inst.for_range(0, major_loop):
             self._get_src_addr_s2(tp)
             tik_inst.data_move(ub_input[accu_blocks * self.ele_per_block], self.data_in[tp.src_addr], 0, major_num,
@@ -972,7 +975,7 @@ class Transpose(object):
             self._update_tuple_with_steps(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor, tp.dst_jump_factor_mod,
                                           tp.base, steps)
             accu_blocks.set_as(accu_blocks + major_num * tp.last_axis_burst_len)
-            with self.tik_inst.if_scope(accu_blocks >= ACCU_BLOCK_SIZE):  # 64=2KB, 128=4KB, 200=6.4KB
+            with self.tik_inst.if_scope(accu_blocks >= accu_block_size):  # 64=2KB, 128=4KB, 200=6.4KB
                 self._copy_out_s2(tp, ub_input, accu_blocks, backup_steps, steps)
 
         with tik_inst.if_scope(tail_num != 0):
@@ -983,7 +986,7 @@ class Transpose(object):
             self._update_tuple_with_steps(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor, tp.dst_jump_factor_mod,
                                           tp.base, steps)
             accu_blocks.set_as(accu_blocks + tail_num * tp.last_axis_burst_len)
-            with self.tik_inst.if_scope(accu_blocks >= ACCU_BLOCK_SIZE):  # 64=2KB, 128=4KB, 200=6.4KB
+            with self.tik_inst.if_scope(accu_blocks >= accu_block_size):  # 64=2KB, 128=4KB, 200=6.4KB
                 self._copy_out_s2(tp, ub_input, accu_blocks, backup_steps, steps)
 
         with self.tik_inst.if_scope(accu_blocks != 0):
