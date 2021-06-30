@@ -137,6 +137,8 @@ class TensorFormat(Enum):
     C1HWNCoC0 = "C1HWNCoC0"
     FRACTAL_Z_3D = "FRACTAL_Z_3D"
     FRACTAL_ZN_LSTM = "FRACTAL_ZN_LSTM"
+    FRACTAL_ZN_RNN = "FRACTAL_ZN_RNN"
+    ND_RNN_BIAS = "ND_RNN_BIAS"
 
 
 ALL_FORMAT_LIST = [entry.value for entry in TensorFormat]

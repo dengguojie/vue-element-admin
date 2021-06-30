@@ -75,7 +75,7 @@ class Test_OpConfig(unittest.TestCase):
         allow_formats = set(['FRACTAL_NZ', 'FRACTAL_Z', 'ND', 'FRACTAL_ZN_LSTM',
                              'NC1HWC0', 'C1HWNCoC0', 'NCHW', 'NHWC',
                              'NDC1HWC0', 'FRACTAL_Z_3D', 'NC1HWC0_C04', 'HWCN', 'CHWN',
-                             'NDHWC', 'DHWCN', 'NCDHW', 'NULL', 'FRACTAL_Z_C04'])
+                             'NDHWC', 'DHWCN', 'NCDHW', 'NULL', 'FRACTAL_Z_C04', 'FRACTAL_ZN_RNN', 'ND_RNN_BIAS'])
 
         def check_op_key_info(file_name, op_type, op_key_infos):
             """
