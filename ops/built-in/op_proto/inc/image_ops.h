@@ -1517,6 +1517,9 @@ REG_OP(IMGWarp)
 
 *@par Outputs:
 *map_img: A Tensor after resize. \n
+
+*@par Restrictions:
+*Warning:THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(Remap)
     .INPUT(img, TensorType({DT_UINT8, DT_FLOAT16, DT_FLOAT32}))
@@ -1866,6 +1869,9 @@ REG_OP(GridUnnormal)
 
 *@par Outputs:
 *y: Returns 4-D Tensor with the same dtype as `x`.
+
+*@par Restrictions:
+*Warning:THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(ImageUnfold)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
