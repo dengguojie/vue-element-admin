@@ -187,7 +187,7 @@ class MaxPool3DWithArgmax():
                              dst_rep_stride=8)
         tik_instance.vec_dup(mask=self.mask4compute,
                              dst=aux1_ub_T,
-                             scalar=0,
+                             scalar=1,
                              repeat_times=2,
                              dst_rep_stride=8)
 
@@ -455,9 +455,9 @@ class MaxPool3DWithArgmax():
                                                  src1=bitmask_ub_T[line_ind, 0],
                                                  rep_times=ubtail_bm_line_loop)
                                 _compute_two_ctn(method=tik_instance.vand,
-                                                 dst=maskor_ub_T,
-                                                 src0=maskor_ub_T,
-                                                 src1=bitmask_ub_T[line_ind, 0],
+                                                 dst=bitmask_ub_T[line_ind, 0],
+                                                 src0=bitmask_ub_T[line_ind, 0],
+                                                 src1=masknot_ub_T,
                                                  rep_times=ubtail_bm_line_loop)
                                 _vnot_ctn(inst=tik_instance,
                                           dst=masknot_ub_T,
@@ -485,8 +485,7 @@ class MaxPool3DWithArgmax():
                             sid=0,
                             nburst=self.k_elem,
                             burst=math.ceil(ubtail_bm_cut_ub * self.each_elem_bytes / self.block_size),
-                            src_stride=(bm_line_cut_ub - ubtail_bm_cut_ub) *
-                                       self.each_elem_bytes // self.block_size,
+                            src_stride=(bm_line_cut_ub // 16) - math.ceil(ubtail_bm_cut_ub / 16),
                             dst_stride=(self.aligned_bitmask_line // 16) - math.ceil(ubtail_bm_cut_ub / 16)
                         )
         output_gm_T = output_gm_T.reshape(self.output_shape)
