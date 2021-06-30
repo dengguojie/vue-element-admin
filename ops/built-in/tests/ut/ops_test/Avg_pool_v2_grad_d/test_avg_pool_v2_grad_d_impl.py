@@ -1,28 +1,10 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
-"""
-avg_pool_v2_grad_test
-"""
+# # -*- coding:utf-8 -*-
 import sys
-from op_test_frame.ut import BroadcastOpUT
+from op_test_frame.ut import OpUT
 import numpy as np
 from op_test_frame.common import precision_info
 
-ut_case = BroadcastOpUT("avg_pool_v2_grad_d")
+ut_case = OpUT("avg_pool_v2_grad_d")
 
 def _NCHW_to_NC1HWC0(tensor):
     """
@@ -48,6 +30,22 @@ def _NCHW_to_NC1HWC0(tensor):
     tensor_pad = tensor_pad.reshape(dims).transpose(0, 1, 3, 4, 2)
 
     return tensor_pad
+
+def _NC1HWC0_to_NCHW(tensor):
+    """
+    input tensor is a 5D feature map,
+    with a shape [N, C1, H, W, C0]
+    padding C to C1*C0, where C0 = 16
+    output: tensor_pad[N, C, H, W]
+    """
+    Ftemp = np.shape(tensor)
+    F = [Ftemp[0], Ftemp[1]*Ftemp[4], Ftemp[2], Ftemp[3]]
+    outputData = np.zeros(F)
+    for i in range(Ftemp[0]):
+        for j in range(Ftemp[1]):
+            for k in range(Ftemp[4]):
+                outputData[i,j*Ftemp[4]+k,:,:] = tensor[i,j,:,:,k]
+    return outputData
 
 def _NCHW_to_NC1C0HW(tensor):
     """
@@ -142,7 +140,8 @@ def tf_get_windowed_output_size_verbose(input_size, filter_size, stride,
 
     return output_size, padding_before, padding_after
 
-def conv_forward_naive(x, w, strides, padding, pads, ceil_mode, data_format, dilations, name):
+def conv_forward_naive(x, w, strides, padding, pads, ceil_mode,
+                       exclusive):
     out = None
     N, C, H, W = x.shape
     _, _, HH, WW = w.shape
@@ -155,12 +154,15 @@ def conv_forward_naive(x, w, strides, padding, pads, ceil_mode, data_format, dil
     for f in range(1):
         for i in range(Ho):
             for j in range(Wo):
-                out[:, :, i, j] = np.sum(x_pad[:, :, i * stride_h: i * stride_h + HH,
-                                         j * stride_w: j * stride_w + WW] * w[0, :, :, :], axis=(2,3))
+                if exclusive:
+                    out[:, :, i, j] = np.sum(x_pad[:, :, i * stride_h: i * stride_h + HH,
+                                             j * stride_w: j * stride_w + WW] * w[0, :, :, :], axis=(2,3))
+                else:
+                    out[:, :, i, j] = HH * WW
     return out
 
-def depthwise_grad(input_sizes, weight, out_backprop, strides, padding, pads, ceil_mode,
-                   data_format='NHWC', dilations=(1, 1, 1, 1), name=None):
+def depthwise_grad(input_sizes, weight, out_backprop, strides, padding, pads, ceil_mode):
+
     batch = input_sizes[0]
     input_height = input_sizes[1]
     input_width = input_sizes[2]
@@ -173,7 +175,6 @@ def depthwise_grad(input_sizes, weight, out_backprop, strides, padding, pads, ce
     stride_h = strides[1]
     stride_w = strides[2]
     dilation_rate = 1
-
     effective_filter_size = (filter_height - 1) * dilation_rate + 1
     if padding == "SAME":
         output_size_h = (input_height + stride_h - 1) // stride_h
@@ -190,6 +191,7 @@ def depthwise_grad(input_sizes, weight, out_backprop, strides, padding, pads, ce
             output_size_h = ((input_height - effective_filter_size +
                               pads[0] + pads[1]) // stride_h) + 1
         padding_before = pads[0]
+
     out_height = output_size_h
     padding_top = padding_before
 
@@ -217,15 +219,14 @@ def depthwise_grad(input_sizes, weight, out_backprop, strides, padding, pads, ce
     padded_dilated_width = input_width + filter_height - 1
     padding_out_top = filter_height - 1 - padding_top
     padding_out_left = filter_width - 1 - padding_left
-
     padded_dilated_grad = np.zeros(
         [batch, padded_dilated_height, padded_dilated_width, out_channels])
+
     for i in range(0, out_height):
         index_h = padding_out_top + i * stride_h
         for j in range(0, out_width):
             index_w = padding_out_left + j * stride_w
-            padded_dilated_grad[:, index_h, index_w, :] = out_backprop[:, i,
-                                                          j, :]
+            padded_dilated_grad[:, index_h, index_w, :] = out_backprop[:, i, j, :]
 
     filter_rotated = np.zeros([filter_height, filter_width, in_channels, 1])
     for i in range(0, filter_height):
@@ -246,14 +247,13 @@ def depthwise_grad(input_sizes, weight, out_backprop, strides, padding, pads, ce
 
     return input_grad
 
-def _conv2d(feature_map, weight, strides=(1,1,1,1), padding = None):
+def _conv2d(feature_map, weight, strides=(1,1,1,1)):
     ish = feature_map.shape
     fsh = weight.shape
     output_h = (ish[1] - fsh[0]) // strides[1] + 1
     output_w = (ish[2] - fsh[1]) // strides[2] + 1
     output = np.zeros([ish[0], output_h, output_w, fsh[3]])
     osh = output.shape
-
     for p in range(osh[0]):
         for i in range(osh[1]):
             for j in range(osh[2]):
@@ -265,95 +265,108 @@ def _conv2d(feature_map, weight, strides=(1,1,1,1), padding = None):
                         output[p, i, j] = np.sum([t, output[p, i, j]], axis=0)
     return output
 
-def gen_input_value(orig_input_shape, ksize, strides, padding_mode,
-                    pads, data_format, global_pooling, ceil_mode, exclusive):
+def gen_input_value(orig_input_shape, ksize, strides, padding_mode, pads, data_format, global_pooling, ceil_mode, exclusive):
     ####
-    shape_k = ksize
-    strides = strides
-    padding = padding_mode
-    data_format = data_format
     dilations = [1,1,1,1]
     name = None
     inputShape = orig_input_shape
     block_size = 16
     if data_format == "NCHW":
         inputShape_N, inputShape_C, inputShape_H, inputShape_W = inputShape
-        _, _, ksize_h, ksize_w = shape_k
+        _, _, ksize_h, ksize_w = ksize
         _, _, stride_h, stride_w = strides
     elif data_format == "NHWC":
         inputShape_N, inputShape_H, inputShape_W, inputShape_C = inputShape
-        _, ksize_h, ksize_w, _ = shape_k
+        _, ksize_h, ksize_w, _ = ksize
         _, stride_h, stride_w, _ = strides
     else:
-        raise RuntimeError("only support HCHW NHWC,")
+        raise RuntimeError("only support NCHW NHWC,")
+    if global_pooling:
+        inputShape_NCHW = inputShape_N, inputShape_C, 1, 1
+        pool_out_no_mean_NCHW = np.random.randn(*inputShape_NCHW).astype(np.float32)
+        mean_matrix_value = None
+        kernel_matrix_value = None
+    else:
+        # mean_matrix_value
+        depthwise_grad_kernel_shape = (1, inputShape_C, ksize_h, ksize_w)
+        strides = 1, stride_h, stride_w, 1
+        inputShape_NCHW = inputShape_N, inputShape_C, inputShape_H, inputShape_W
+        mean_value_x = np.ones(inputShape_NCHW)
+        depthwise_grad_kernel_KCHW = np.ones(depthwise_grad_kernel_shape)
+        area_value_NCHW = conv_forward_naive(mean_value_x, depthwise_grad_kernel_KCHW, strides,
+                                             padding_mode, pads, ceil_mode, exclusive)
+        mean_value_table_NCHW = np.reciprocal(area_value_NCHW)
+        mean_value_table_NCHW = mean_value_table_NCHW.astype(np.float16)
+        mean_value_table_NCHW = mean_value_table_NCHW.astype(np.float32)
+        mean_matrix_value = _NCHW_to_NC1HWC0(mean_value_table_NCHW)
+        # kernel_matrix_value
+        c1 = (inputShape_C + block_size - 1) // block_size
+        file_6d_shape = (c1, 1, ksize_h, ksize_w, block_size, block_size)
 
-    # mean_matrix_value
-    depthwise_grad_kernel_shape = (1, inputShape_C, ksize_h, ksize_w)
-    strides = 1, stride_h, stride_w, 1
-    shape_k = 1, ksize_h, ksize_w, 1
-    inputShape_NCHW = inputShape_N, inputShape_C, inputShape_H, inputShape_W
-    mean_value_x = np.ones(inputShape_NCHW)
-    depthwise_grad_kernel_KCHW = np.ones(depthwise_grad_kernel_shape)
-    area_value_NCHW = conv_forward_naive(mean_value_x, depthwise_grad_kernel_KCHW, strides,
-                                         padding, pads, ceil_mode, data_format, dilations, name)
-    mean_value_table_NCHW = np.reciprocal(area_value_NCHW)
-    mean_value_table_NCHW = mean_value_table_NCHW.astype(np.float16)
-    mean_value_table_NCHW = mean_value_table_NCHW.astype(np.float32)
-    mean_matrix_value = _NCHW_to_NC1HWC0(mean_value_table_NCHW)
-    # kernel_matrix_value
-    c1 = (inputShape_C + block_size - 1) // block_size
-    file_6d_shape = (c1, 1, ksize_h, ksize_w, block_size, block_size)
-    depthwise_grad_kernel_HWCK = depthwise_grad_kernel_KCHW.transpose(2,3,1,0)
-    file_5d = _NCHW_to_NC1C0HW(depthwise_grad_kernel_KCHW).transpose(1, 3, 4, 0, 2)
-    kernel_matrix_value = np.zeros(file_6d_shape, dtype=np.float16)
-    for d4 in range(block_size):
-        for d5 in range(block_size):
-            if d4 == d5:
-                kernel_matrix_value[:, 0, :, :, d4, d5] = file_5d[:, :, :,0, d5]
-    # input_grad_5d
-    inputShape_NHWC = inputShape_N, inputShape_H, inputShape_W, inputShape_C
-    x1 = np.random.randn(*inputShape_NCHW).astype(np.float32)
-    pool_out_no_mean_NCHW = conv_forward_naive(x1, depthwise_grad_kernel_KCHW, strides,padding,
-                                               pads, ceil_mode, data_format="NCHW", dilations=dilations, name=name)
+        file_5d = _NCHW_to_NC1C0HW(depthwise_grad_kernel_KCHW).transpose(1, 3, 4, 0, 2)
+        kernel_matrix_value = np.zeros(file_6d_shape, dtype=np.float16)
+        for d4 in range(block_size):
+            for d5 in range(block_size):
+                if d4 == d5:
+                    kernel_matrix_value[:, 0, :, :, d4, d5] = file_5d[:, :, :,0, d5]
+        # input_grad_5d
+        x1 = np.random.randn(*inputShape_NCHW).astype(np.float32)
+        pool_out_no_mean_NCHW = conv_forward_naive(x1, depthwise_grad_kernel_KCHW, strides, padding_mode,
+                                                   pads, ceil_mode, exclusive)
+        mean_matrix_value = mean_matrix_value.astype(np.float16)
+        kernel_matrix_value = kernel_matrix_value.astype(np.float16)
     pool_out_NCHW = pool_out_no_mean_NCHW
-    pool_out_NCHW = pool_out_NCHW.astype(np.float16)
-    pool_out_NCHW = pool_out_NCHW.astype(np.float32)
-    mean_value_pool_out_NCHW = np.multiply(mean_value_table_NCHW, pool_out_NCHW)
-    mean_value_pool_out_NCHW = mean_value_pool_out_NCHW.astype(np.float16)
-    mean_value_pool_out_NCHW = mean_value_pool_out_NCHW.astype(np.float32)
-    mean_value_pool_out_NHWC = mean_value_pool_out_NCHW.transpose(0,2,3,1)
-    simulator_depthwise_grad_input_NHWC = depthwise_grad(inputShape_NHWC, depthwise_grad_kernel_HWCK,
-                                                         mean_value_pool_out_NHWC, strides, padding, pads, ceil_mode,
-                                                         data_format='NHWC', dilations=dilations, name=name)
-    simulator_depthwise_backward_input_NCHW = simulator_depthwise_grad_input_NHWC.transpose(0,3,1,2)
-    input_grad_5d = _NCHW_to_NC1HWC0(simulator_depthwise_backward_input_NCHW)
-    input_grad_5d = input_grad_5d.astype(np.float16)
-    mean_matrix_value = mean_matrix_value.astype(np.float16)
-    kernel_matrix_value = kernel_matrix_value.astype(np.float16)
     pool_out_NC1HWC0 = _NCHW_to_NC1HWC0(pool_out_NCHW)
     pool_out_NC1HWC0 = pool_out_NC1HWC0.astype(np.float16)
 
-    return input_grad_5d, mean_matrix_value, kernel_matrix_value, pool_out_NC1HWC0
+    return mean_matrix_value, kernel_matrix_value, pool_out_NC1HWC0
 
-#######
-orig_input_shape = [1, 16, 4, 4]
-ksize = [1, 1, 2, 2]
-strides = [1, 1, 2, 2]
-padding_mode = "CALCULATED"
-pads = (0, 0, 0, 0)
-data_format = "NCHW"
-global_pooling = False
-ceil_mode = False
-exclusive = True
+def gen_output_value(orig_input_shape, ksize, strides, data_format, padding_mode,
+                     global_pooling, mean_matrix_value, input_grad_value, pads, ceil_mode):
+    ####
+    inputShape = orig_input_shape
+    if data_format == "NCHW":
+        inputShape_N, inputShape_C, inputShape_H, inputShape_W = inputShape
+        _, _, ksize_h, ksize_w = ksize
+        _, _, stride_h, stride_w = strides
+    elif data_format == "NHWC":
+        inputShape_N, inputShape_H, inputShape_W, inputShape_C = inputShape
+        _, ksize_h, ksize_w, _ = ksize
+        _, stride_h, stride_w, _ = strides
+    else:
+        raise RuntimeError("only support NCHW NHWC,")
 
-input_grad_value, mean_matrix_value, kernel_matrix_value, pool_out_NC1HWC0 = \
-    gen_input_value(orig_input_shape, ksize, strides, padding_mode,
-                    pads, data_format, global_pooling, ceil_mode, exclusive)
+    if not global_pooling:
+        strides = 1, stride_h, stride_w, 1
+        inputShape_NHWC = inputShape_N, inputShape_H, inputShape_W, inputShape_C
+
+        pool_out_NCHW = _NC1HWC0_to_NCHW(input_grad_value)
+        mean_value_table_NCHW = _NC1HWC0_to_NCHW(mean_matrix_value)
+        mean_value_table_NCHW = mean_value_table_NCHW.astype(np.float32)
+        pool_out_NCHW = pool_out_NCHW.astype(np.float32)
+        depthwise_grad_kernel_shape = (1, inputShape_C, ksize_h, ksize_w)
+        depthwise_grad_kernel_KCHW = np.ones(depthwise_grad_kernel_shape)
+        depthwise_grad_kernel_HWCK = depthwise_grad_kernel_KCHW.transpose(2,3,1,0)
+
+        mean_value_pool_out_NCHW = np.multiply(mean_value_table_NCHW, pool_out_NCHW)
+        mean_value_pool_out_NCHW = mean_value_pool_out_NCHW.astype(np.float16)
+        mean_value_pool_out_NCHW = mean_value_pool_out_NCHW.astype(np.float32)
+        mean_value_pool_out_NHWC = mean_value_pool_out_NCHW.transpose(0,2,3,1)
+        simulator_depthwise_grad_input_NHWC = depthwise_grad(inputShape_NHWC, depthwise_grad_kernel_HWCK,
+                                                             mean_value_pool_out_NHWC, strides, padding_mode,
+                                                             pads, ceil_mode)
+        simulator_depthwise_backward_input_NCHW = simulator_depthwise_grad_input_NHWC.transpose(0,3,1,2)
+        output_grad_5d = _NCHW_to_NC1HWC0(simulator_depthwise_backward_input_NCHW)
+    else:
+        output_grad_5d = input_grad_value / (inputShape_H * inputShape_W)
+    output_grad_5d = output_grad_5d.astype(np.float16)
+
+    return output_grad_5d
 
 # [TODO] coding expect function here
 def avgpoolgrad_expect_func(input_grad,
                             mean_matrix,
-                            kernel_matrix,
+                            #kernel_matrix,
                             out_grad,
                             orig_input_shape,
                             ksize,
@@ -363,26 +376,209 @@ def avgpoolgrad_expect_func(input_grad,
                             data_format='NCHW',
                             global_pooling=False,
                             ceil_mode=False,
-                            exclusive=True,
-                            kernel_name="avg_pool_v2_grad"):
-    return input_grad_value
+                            #exclusive=True,
+                            #kernel_name="avg_pool_v2_grad"
+                            ):
+    input_grad_value = input_grad.get('value')
+    if mean_matrix is not None:
+        mean_matrix_value = mean_matrix.get('value')
+    else:
+        mean_matrix_value = None
+    output_grad_value = gen_output_value(orig_input_shape, ksize, strides, data_format, padding_mode, global_pooling,
+                                         mean_matrix_value, input_grad_value, pads,ceil_mode)
+    if global_pooling:
+        output_grad_value = np.broadcast_to(output_grad_value, out_grad.get('shape'))
 
-# [TODO] coding cases here
-
-ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 2, 2),
-                "shape": (1, 1, 2, 2, 16), "param_type": "input", "value": pool_out_NC1HWC0},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 4, 4),
-                "shape": (1, 1, 2, 2, 16), "param_type": "input", "value": mean_matrix_value},
+    return output_grad_value
+########
+case1 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (2, 16, 1, 1),
+                "shape": (2, 1, 1, 1, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 1, 1),
+                "shape": (1, 1, 1, 1, 16), "param_type": "input",},
                {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
-                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input", "value": kernel_matrix_value},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 4, 4),
-                "shape": (1, 1, 4, 4, 16), "param_type": "output"},
-               orig_input_shape, ksize, strides, padding_mode, pads,
-               data_format, global_pooling, ceil_mode, exclusive],
-    "calc_expect_func": avgpoolgrad_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1),
+               "NCHW", False, False, True],
+    "case_name": "avg_pool_v2_grad_d_wrong_dim_n",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case2 = {
+        "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                    "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+                   {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                    "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+                   {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                    "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+                   {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                    "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+                   [1, 32, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1),
+                   "NCHW", False, False, True],
+        "case_name": "avg_pool_v2_grad_d_wrong_outshape",
+        "expect": RuntimeError,
+        "format_expect": [],
+        "support_expect": True
+}
+case3 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 32, 15, 15),
+                "shape": (1, 2, 15, 15, 16), "param_type": "output"},
+               [1, 32, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1),
+               "NCHW", False, False, True],
+    "case_name": "avg_pool_v2_grad_d_wrong_dim_c",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case4 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1),
+               "NCHW", True, False, True],
+    "case_name": "avg_pool_v2_grad_d_global_wrong_shape",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case5 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 2, 2], [1, 1, 0, 0], "CALCULATED", (1, 1, 1, 1),
+               "NCHW", True, False, True],
+    "case_name": "avg_pool_v2_grad_d_wrong_stride",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case6 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 1, 256], [1, 1, 1, 1], "CALCULATED", (1, 1, 1, 1),
+               "NCHW", False, False, True],
+    "case_name": "avg_pool_v2_grad_d_global_wrong_ksize",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case7 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "padding_mode", (1, 1, 1, 1),
+               "NCHW", False, False, True],
+    "case_name": "avg_pool_v2_grad_d_global_wrong_padding_mode",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case8 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "CALCULATED", (10, 10, 1, 1),
+               "NCHW", False, False, True],
+    "case_name": "avg_pool_v2_grad_d_global_wrong_pads",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case9 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
+                "shape": (1, 1, 8, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1),
+               "NCHW", False, True, True],
+    "case_name": "avg_pool_v2_grad_d_global_wrong_out_shape_h",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case10 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 9, 8),
+                "shape": (1, 1, 9, 8, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 9, 9),
+                "shape": (1, 1, 9, 9, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1),
+               "NCHW", False, True, True],
+    "case_name": "avg_pool_v2_grad_d_global_wrong_out_shape_w",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+case11 = {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 9, 9),
+                "shape": (1, 1, 9, 9, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 9, 9),
+                "shape": (1, 1, 9, 9, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
+                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input",},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
+                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
+               [1, 16, 15, 15], [1, 1, 2, 2], [1, 1, 2, 2], "CALCULATED", (1, 1, 1, 1),
+               "NCHW", False, True, True],
+    "case_name": "avg_pool_v2_grad_d_global_wrong_out_shape_w",
+    "expect": RuntimeError,
+    "format_expect": [],
+    "support_expect": True
+}
+ut_case.add_case(["Ascend310", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend910A"], case11)
 
-if __name__ == "__main__":
-    ut_case.run("Ascend910")
+if __name__ == '__main__':
+    ut_case.run("Ascend910A")
+    exit(0)

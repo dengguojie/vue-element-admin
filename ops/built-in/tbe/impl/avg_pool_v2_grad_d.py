@@ -26,6 +26,7 @@ from te.platform import insn_cmd
 from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
 from topi import generic
+import collections
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
 
@@ -43,6 +44,8 @@ OUTPUT_DIM = 5
 # shape's dim of strides must be 2
 STRIDES_DIM = 2
 
+# get device core number
+DEVICE_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # pylint: disable=unused-variable,too-many-locals,missing-docstring
@@ -52,6 +55,28 @@ def _ceil(x):
     Return the least multiple of 16 integer number
     """
     return ((x + BLOCK_SIZE - 1) // BLOCK_SIZE)*BLOCK_SIZE
+
+
+def _cal_multi_core_factor(m, n):
+    """
+    Return the cut factors for multicore axis.
+    """
+    def _ceiling(x, y):
+        """
+        Compute the floor of x / y
+        """
+        return (x + y - 1) // y
+
+    min_cycle_num = m * n
+    core_m, core_n = 1, 1
+    for i in range(min(m, DEVICE_CORE_NUM), 0, -1):
+        j = min(n, DEVICE_CORE_NUM // i)
+        m_inner = _ceiling(m, i)
+        n_inner = _ceiling(n, j)
+        if m_inner * n_inner < min_cycle_num:
+            core_m, core_n = i, j
+            min_cycle_num = m_inner * n_inner
+    return core_m, core_n
 
 
 # pylint: disable=useless-return,too-many-branches
@@ -116,9 +141,14 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
     dilated_w = wo * strides[1] - (strides[1] - 1)
     max_dh_in_l1 = (l1_size // 2 - hk * wk * BLOCK_SIZE * BLOCK_SIZE *
                     data_size) // (data_size * dilated_w * BLOCK_SIZE)
+    
+    l1_load_kernel = True
     if max_dh_in_l1 < BLOCK_SIZE:
-        raise RuntimeError("In op[avg_pool_v2_grad], L1's memory space is not enough to support "
-                           "dilated_h tiling with 16!")
+        l1_load_kernel = False
+        max_dh_in_l1 = l1_size // (data_size * dilated_w * BLOCK_SIZE)
+        if max_dh_in_l1 < BLOCK_SIZE:
+            raise RuntimeError("In op[avg_pool_v2_grad], L1's memory space is not enough to support "
+                        "dilated_h tiling with 16!")
     # limiting eque get_tiling, but tile_m get max(1024)
     # 3*max_h_in_ub * out_w  + (max_h_in_ub*stride - (stride - 1)) * dila_w
     # < (ub_size/2 - tile_m * BLOCK_SIZE)/BLOCK_SIZE
@@ -155,16 +185,9 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
         error_detail = "the shape of out_w and out_w by formula must be equal"
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "out_w",
                                                                "out_w by formula", error_detail)
-
     pad_bottom_actual = (ho - 1) * stride_h + hk - hi - pads[0]
     pad_left_actual = (wo - 1) * stride_w + wk - wi - pads[2]
-    if pad_bottom_actual >= hk or pad_left_actual >= wk:
-        expected_value = "smaller than ksize"
-        real_value = "greater than or equal to ksize"
-        error_manager_vector.raise_err_input_value_invalid(kernel_name, "actual pads",
-                                                           expected_value, real_value)
-
-    return
+    return l1_load_kernel
 
 
 def calculation_dilation(input_shape, weight_sizes, strides, padding_mode,
@@ -282,11 +305,11 @@ def avg_pool_grad_compute(input_shape, weight, out, vealuemean, k_sizes,
 
     # compute of out_backprop dilation
     out_dilated = tvm.compute(
-        dilated_shape,
-        lambda n, cg, c1, h, w, c0: tvm.select(
-            tvm.all(h % strides[0] == 0, w % strides[1] == 0), out_mul[
-                n, cg, c1, h // strides[0], w // strides[1], c0],
-            tvm.const(0, out.dtype)),
+            dilated_shape, 
+            lambda n, cg, c1, h, w, c0: tvm.select(
+                tvm.all(h % strides[0] == 0, w % strides[1] == 0), 
+                    out_mul[n, cg, c1, h // strides[0], w // strides[1], c0],
+                tvm.const(0, out.dtype)),
         attrs={'strides': strides},
         name='out_dilated')
 
@@ -332,7 +355,7 @@ def avg_pool_grad_compute(input_shape, weight, out, vealuemean, k_sizes,
 
 
 def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
-                         stride):
+                         stride, l1_load_kernel):
     """
     tiling plan, cut of batch and ci;
                  cut of output height and weight;
@@ -348,6 +371,7 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     l0a_size = tbe_platform.cce_conf.get_soc_spec(
         tbe_platform.cce_conf.L0A_SIZE)
     ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    l1_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
 
     hk_wk = kernel_shape[1]
     out_h = out_shape[3]
@@ -361,6 +385,7 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     dilated_pad_top = res.op.attrs['dilated_pad'][0].value
     dilated_pad_bottom = res.op.attrs['dilated_pad'][1].value
     k_height = res.op.attrs['weight_height'].value
+    w_height = res.op.attrs['weight_width'].value
 
     # tiling in UB
     # out : out_n, out_cgroup, out_c1, out_h, out_w, dout_c0
@@ -386,19 +411,39 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     # It is certain that max_h_in_l1 is grater
     # than max_h_in_ub, so max_h_in_ub one time
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
-
+    max_tile_input_h = l1_size // (input_w * BLOCK_SIZE * 2)
+    dout_l1_size = input_w * (k_height + stride) * BLOCK_SIZE * 2
+    tile_k_o = dout_l1_size // l1_size + 1 if dout_l1_size > l1_size else 0
+    
     max_h_in_ub = ((ub_size // data_size -
                     (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
                    (stride - 1) * dila_w) // (3 * out_w + stride * dila_w)
-    tile_dile_h_ub = max_h_in_ub * stride - (stride - 1)
-    tile_hd = tile_dile_h_ub
-    tile_input_h = tile_hd + dilated_pad_top + dilated_pad_bottom - k_height + 1
-    # if tile_input_h > input_h, input_h no tiling
-    if tile_input_h >= input_h:
-        tile_input_h = input_h
-        tile_hd = tile_input_h - 1 + k_height - dilated_pad_top - \
-                  dilated_pad_bottom
-        tile_dile_h_ub = tile_hd
+    def _compute_tile_h(max_h_in_ub):
+        tile_dile_h_ub = max_h_in_ub * stride - (stride - 1)
+        if k_height > stride:
+            tile_input_h = (max_h_in_ub - 1) * stride + k_height
+        else:
+            tile_input_h = max_h_in_ub * stride
+        tile_input_h = min(tile_input_h, max_tile_input_h)
+        if tile_input_h < 1:
+            tile_input_h = 1
+            tile_dile_h_ub = tile_input_h - 1 + k_height - dilated_pad_top - dilated_pad_bottom
+        
+        tile_hd = tile_dile_h_ub
+        tile_input_h = tile_hd + dilated_pad_top + dilated_pad_bottom - k_height + 1
+        # if tile_input_h > input_h, input_h no tiling
+        if tile_input_h >= input_h:
+            tile_input_h = input_h
+            tile_hd = tile_input_h - 1 + k_height - dilated_pad_top - \
+                    dilated_pad_bottom
+            tile_dile_h_ub = tile_hd
+        return tile_input_h, tile_dile_h_ub
+       
+    tile_input_h, tile_dile_h_ub = _compute_tile_h(max_h_in_ub)
+    dila_h = tile_input_h + k_height - 1
+    if dila_h * dila_w * BLOCK_SIZE * data_size > l1_size:
+        tile_input_h, tile_dile_h_ub = _compute_tile_h(1)
+        
     # tiling in L0;
     tile_m = min(max_l0a_m, _ceil(tile_input_h * input_w))
     tile_k = 1
@@ -407,12 +452,17 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     # when res_l1 > 16, return a rounded integer down to a multiple of BLOCK_SIZE
     if res_l1 < input_h * input_w:
         res_l1 = max(res_l1 // BLOCK_SIZE * BLOCK_SIZE, BLOCK_SIZE)
-
-    return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n
+    
+    dila_h = tile_input_h + k_height - 1
+    if (k_height * w_height * BLOCK_SIZE * BLOCK_SIZE * data_size + dila_h * dila_w * BLOCK_SIZE * data_size) > l1_size:
+        l1_load_kernel = False
+    return_args = collections.namedtuple("args", 
+            "res_l1 tile_input_h tile_dile_h_ub tile_m tile_k tile_n tile_k_o l1_load_kernel") 
+    return return_args(res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o, l1_load_kernel)
 
 
 # pylint: disable=locally-disabled,too-many-locals
-def avg_pool_grad_schedule(res):
+def avg_pool_grad_schedule(res, l1_load_kernel):
     """
     the tiling avg pool grad schedule
     """
@@ -479,22 +529,29 @@ def avg_pool_grad_schedule(res):
     res_block_n, res_block_cgroup, _, _, _ = mad_res_shape
     #tiling
     res_l1, tile_input_h, tile_dile_h_ub, tile_m, \
-    tile_k, tile_n = avg_pool_grad_tiling(
-        input_w, input_h, weight_shape, dout_shape, res, stride)
+    tile_k, tile_n, tile_k_o, l1_load_kernel = avg_pool_grad_tiling(
+        input_w, input_h, weight_shape, dout_shape, res, stride, l1_load_kernel)
 
     mad_cc_Ncut_o, mad_cc_Ncut_i = s[mad_cc].split(mad_cc_axis_n, factor=1)
     mad_cc_mcut_o, mad_cc_mcut_i = s[mad_cc].split(mad_cc_axis_howomad,
                                                    factor=tile_m)
     mad_cc_kcut_o, mad_cc_kcut_i = s[mad_cc].split(mad_cc.op.reduce_axis[0],
-                                                   factor=tile_k)
+                                                   factor=tile_k)                                           
+    if tile_k_o != 0:
+        mad_cc_kcut_o_o, mad_cc_kcut_o_i = s[mad_cc].split(mad_cc_kcut_o, nparts=tile_k_o)
     mad_cc_ncut_o, mad_cc_ncut_i = s[mad_cc].split(mad_cc_axis_co1,
                                                    factor=tile_n)
-    s[mad_cc].reorder(mad_cc_Ncut_o, mad_cc_axis_cg, mad_cc_ncut_o,
-                      mad_cc_mcut_o, mad_cc_kcut_o, mad_cc_Ncut_i,
-                      mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0,
-                      mad_cc_kcut_i, mad_cc.op.reduce_axis[1])
-    s[dout_ca].compute_at(s[mad_cc], mad_cc_kcut_o)
-    s[weight_cb].compute_at(s[mad_cc], mad_cc_kcut_o)
+    if tile_k_o != 0:
+        s[mad_cc].reorder(mad_cc_kcut_o_o, mad_cc_Ncut_o, mad_cc_axis_cg, mad_cc_ncut_o, mad_cc_mcut_o,
+                          mad_cc_kcut_o_i, mad_cc_Ncut_i, mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0, mad_cc_kcut_i,
+                          mad_cc.op.reduce_axis[1])
+        s[dout_ca].compute_at(s[mad_cc], mad_cc_kcut_o_i)
+        s[weight_cb].compute_at(s[mad_cc], mad_cc_kcut_o_i)
+    else:
+        s[mad_cc].reorder(mad_cc_Ncut_o, mad_cc_axis_cg, mad_cc_ncut_o, mad_cc_mcut_o, mad_cc_kcut_o, mad_cc_Ncut_i,
+                          mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0, mad_cc_kcut_i, mad_cc.op.reduce_axis[1])
+        s[dout_ca].compute_at(s[mad_cc], mad_cc_kcut_o)
+        s[weight_cb].compute_at(s[mad_cc], mad_cc_kcut_o)      
 
     mad_ubuf_Ncut_o, mad_ubuf_Ncut_i = s[mad_ubuf].split(mad_ubuf_axis_n,
                                                          factor=1)
@@ -518,9 +575,15 @@ def avg_pool_grad_schedule(res):
     s[dout_cbuf_row_major].buffer_align((1, 1), (1, 1), (input_w, input_w),
                                         (1, 1), (1, 1), (1, 1),
                                         (1, block_size))
-    s[dout_cbuf_row_major].compute_at(s[res], conv_hcut_o)
-    s[dout_cbuf_nc1hwc0].compute_at(s[res], conv_hcut_o)
+    if tile_k_o != 0:
+        s[dout_cbuf_row_major].compute_at(s[mad_cc], mad_cc_kcut_o_o)
+        s[dout_cbuf_nc1hwc0].compute_at(s[mad_cc], mad_cc_kcut_o_o)
+    else:
+        s[dout_cbuf_row_major].compute_at(s[res], conv_hcut_o)
+        s[dout_cbuf_nc1hwc0].compute_at(s[res], conv_hcut_o)
     s[weight_cbuf].compute_at(s[res], conv_hcut_o)
+    if not l1_load_kernel:
+        s[weight_cbuf].compute_inline()
 
     dout_dilated_w = dout_dilated_shape[4]
     ub_l1hcut_o, ub_l1hcut_i = s[dout_cbuf_nc1hwc0].split(
@@ -572,6 +635,9 @@ def avg_pool_grad_schedule(res):
     s[mad_ubuf].emit_insn(mad_ubuf_Ncut_i, insn_cmd.DMA_COPY)
     mad_dict = {
         "mad_pattern": tbe_platform.cce_params.CONV_MODE,
+        "k_outer": [mad_cc_kcut_o, mad_cc_kcut_o_o]
+    } if tile_k_o != 0 else {
+        "mad_pattern": tbe_platform.cce_params.CONV_MODE,
         "k_outer": mad_cc_kcut_o
     }
     s[mad_cc].emit_insn(mad_cc_Ncut_i, insn_cmd.MAD, mad_dict)
@@ -582,14 +648,15 @@ def avg_pool_grad_schedule(res):
     s[mad_cc].double_buffer()
     # for multi cores
     if res_block_n < 16:
+        res_n_factor, res_cgroup_factor = _cal_multi_core_factor(res_block_n, res_block_cgroup)
         res_NNCut_o, res_NNCut_i = s[res].split(conv_Ncut_o,
-                                                nparts=res_block_n)
+                                                nparts=res_n_factor)
         res_ccCut_o, res_ccCut_i = s[res].split(res.op.axis[1],
-                                                nparts=res_block_cgroup)
+                                                nparts=res_cgroup_factor)
         s[res].reorder(res_NNCut_o, res_ccCut_o, res_NNCut_i, res_ccCut_i)
         out_fused = s[res].fuse(res_NNCut_o, res_ccCut_o)
         out_fused_out, _ = s[res].split(out_fused,
-                                        nparts=res_block_n * res_block_cgroup)
+                                        nparts=res_n_factor * res_cgroup_factor)
         bind_out, _ = s[res].split(out_fused_out, 1)
         blockidx = tvm.thread_axis("blockIdx.x")
         s[res].bind(bind_out, blockidx)
@@ -615,7 +682,7 @@ def avg_pool_v2_grad_d(input_grad,
                        ksize,
                        strides,
                        padding_mode="CALCULATED",
-                       pads=(0, 0, 0, 0),
+                       pads=None,
                        data_format='NCHW',
                        global_pooling=False,
                        ceil_mode=False,
@@ -661,7 +728,10 @@ def avg_pool_v2_grad_d(input_grad,
     -------
     The output tensor of avg_pool reslut. The data type is same as input tensor.
     """
-
+    if pads is None:
+        pads = (0, 0, 0, 0)
+    else:
+        pads = pads
     input_grad_ori_format = input_grad.get('ori_format')
     if input_grad_ori_format == "NHWC":
         kernel_h = ksize[1]
@@ -710,7 +780,6 @@ def avg_pool_v2_grad_d(input_grad,
     para_check.check_dtype(data_dtype, ('float16',))
 
     _, _, HH, WW, _ = orig_input_shape
-
     if global_pooling or (kernel_h >= HH + pads[0] + pads[1] and kernel_w >= WW + pads[2] + pads[3]):
         if input_grad_shape[2] != 1 or input_grad_shape[3] != 1:
             error_detail = "when global mode, the h-axis and w-axis of input_grad must be 1."
@@ -744,7 +813,7 @@ def avg_pool_v2_grad_d(input_grad,
         shape_out_c0 = shape_out
         # strides dim is two
         strides = stride_h, stride_w
-        parameter_check(shape_in, shape_k, shape_out, dtype, strides,
+        l1_load_kernel = parameter_check(shape_in, shape_k, shape_out, dtype, strides,
                         padding_mode, pads, global_pooling, ceil_mode,
                         exclusive, kernel_name)
         if kernel_h > HH:
@@ -771,8 +840,7 @@ def avg_pool_v2_grad_d(input_grad,
                                     dout_placeholder, vealuemean_placeholder,
                                     [kernel_h, kernel_w], strides,
                                     padding_mode, pads, ceil_mode)
-
-        s = avg_pool_grad_schedule(res)
+        s = avg_pool_grad_schedule(res, l1_load_kernel)
 
         with tbe_platform.build_config:
             tvm.build(s, [

@@ -140,7 +140,7 @@ def tf_get_windowed_output_size_verbose(input_size, filter_size, stride,
 
     return output_size, padding_before, padding_after
 
-def conv_forward_naive(x, w, strides, padding, pads, global_pooling, ceil_mode,
+def conv_forward_naive(x, w, strides, padding, pads, ceil_mode,
                        exclusive):
     out = None
     N, C, H, W = x.shape
@@ -247,7 +247,7 @@ def depthwise_grad(input_sizes, weight, out_backprop, strides, padding, pads, ce
 
     return input_grad
 
-def _conv2d(feature_map, weight, strides=(1,1,1,1), padding = None):
+def _conv2d(feature_map, weight, strides=(1,1,1,1)):
     ish = feature_map.shape
     fsh = weight.shape
     output_h = (ish[1] - fsh[0]) // strides[1] + 1
@@ -295,7 +295,7 @@ def gen_input_value(orig_input_shape, ksize, strides, padding_mode, pads, data_f
         mean_value_x = np.ones(inputShape_NCHW)
         depthwise_grad_kernel_KCHW = np.ones(depthwise_grad_kernel_shape)
         area_value_NCHW = conv_forward_naive(mean_value_x, depthwise_grad_kernel_KCHW, strides,
-                                             padding_mode, pads, global_pooling, ceil_mode, exclusive)
+                                             padding_mode, pads, ceil_mode, exclusive)
         mean_value_table_NCHW = np.reciprocal(area_value_NCHW)
         mean_value_table_NCHW = mean_value_table_NCHW.astype(np.float16)
         mean_value_table_NCHW = mean_value_table_NCHW.astype(np.float32)
@@ -313,7 +313,7 @@ def gen_input_value(orig_input_shape, ksize, strides, padding_mode, pads, data_f
         # input_grad_5d
         x1 = np.random.randn(*inputShape_NCHW).astype(np.float32)
         pool_out_no_mean_NCHW = conv_forward_naive(x1, depthwise_grad_kernel_KCHW, strides, padding_mode,
-                                                   pads, global_pooling, ceil_mode, exclusive)
+                                                   pads, ceil_mode, exclusive)
         mean_matrix_value = mean_matrix_value.astype(np.float16)
         kernel_matrix_value = kernel_matrix_value.astype(np.float16)
     pool_out_NCHW = pool_out_no_mean_NCHW
@@ -323,7 +323,7 @@ def gen_input_value(orig_input_shape, ksize, strides, padding_mode, pads, data_f
     return mean_matrix_value, kernel_matrix_value, pool_out_NC1HWC0
 
 def gen_output_value(orig_input_shape, ksize, strides, data_format, padding_mode,
-                     global_pooling, mean_matrix_value, input_grad_value):
+                     global_pooling, mean_matrix_value, input_grad_value, pads, ceil_mode):
     ####
     inputShape = orig_input_shape
     if data_format == "NCHW":
@@ -367,7 +367,7 @@ def gen_output_value(orig_input_shape, ksize, strides, data_format, padding_mode
 # [TODO] coding expect function here
 def avgpoolgrad_expect_func(input_grad,
                             mean_matrix,
-                            kernel_matrix,
+                            #kernel_matrix,
                             out_grad,
                             orig_input_shape,
                             ksize,
@@ -376,16 +376,17 @@ def avgpoolgrad_expect_func(input_grad,
                             pads=(0,0,0,0),
                             data_format='NCHW',
                             global_pooling=False,
-                            ceil_mode=False,
-                            exclusive=True,
-                            kernel_name="avg_pool_v2_grad"):
+                            ceil_mode=False
+                            #exclusive=True,
+                            #kernel_name="avg_pool_v2_grad"
+                            ):
     input_grad_value = input_grad.get('value')
     if mean_matrix is not None:
         mean_matrix_value = mean_matrix.get('value')
     else:
         mean_matrix_value = None
     output_grad_value = gen_output_value(orig_input_shape, ksize, strides, data_format, padding_mode, global_pooling,
-                                         mean_matrix_value, input_grad_value)
+                                         mean_matrix_value, input_grad_value, pads, ceil_mode)
     if global_pooling:
         output_grad_value = np.broadcast_to(output_grad_value, out_grad.get('shape'))
 
@@ -567,130 +568,18 @@ case11 = {
     "format_expect": [],
     "support_expect": True
 }
-ut_case.add_case(["Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend710", "Ascend910"], case5)
-ut_case.add_case(["Ascend710", "Ascend910"], case6)
-ut_case.add_case(["Ascend710", "Ascend910"], case7)
-ut_case.add_case(["Ascend710", "Ascend910"], case8)
-ut_case.add_case(["Ascend710", "Ascend910"], case9)
-ut_case.add_case(["Ascend710", "Ascend910"], case10)
-ut_case.add_case(["Ascend710", "Ascend910"], case11)
-# [TODO] coding cases here
-#######
-orig_input_shape = [1, 16, 15, 15]
-ksize = [1, 1, 2, 2]
-strides = [1, 1, 2, 2]
-padding_mode = "CALCULATED"
-pads = (1, 1, 1, 1)
-data_format = "NCHW"
-global_pooling = False
-ceil_mode = False
-exclusive = False
+ut_case.add_case(["Ascend310", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend910A"], case11)
 
-mean_matrix_value, kernel_matrix_value, pool_out_NC1HWC0 = \
-    gen_input_value(orig_input_shape, ksize, strides, padding_mode, pads, data_format,
-                    global_pooling, ceil_mode, exclusive)
-ut_case.add_precision_case(["Ascend710", "Ascend910"], {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
-                "shape": (1, 1, 8, 8, 16), "param_type": "input", "value": pool_out_NC1HWC0},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
-                "shape": (1, 1, 8, 8, 16), "param_type": "input", "value": mean_matrix_value},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
-                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input", "value": kernel_matrix_value},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
-                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
-               orig_input_shape, ksize, strides, padding_mode, pads,
-               data_format, global_pooling, ceil_mode, exclusive],
-    "calc_expect_func": avgpoolgrad_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
-###############
-orig_input_shape = [1, 15, 15, 16]
-ksize = [1, 3, 3, 1]
-strides = [1, 2, 2, 1]
-padding_mode = "SAME"
-pads = (1, 1, 1, 1)
-data_format = "NHWC"
-global_pooling = False
-ceil_mode = False
-exclusive = True
-
-mean_matrix_value, kernel_matrix_value, pool_out_NC1HWC0 = \
-    gen_input_value(orig_input_shape, ksize, strides, padding_mode, pads, data_format,
-                    global_pooling, ceil_mode, exclusive)
-
-ut_case.add_precision_case(["Ascend710", "Ascend910"], {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC", "ori_shape": (1, 8, 8, 16),
-                "shape": (1, 1, 8, 8, 16), "param_type": "input", "value": pool_out_NC1HWC0},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC", "ori_shape": (1, 8, 8, 16),
-                "shape": (1, 1, 8, 8, 16), "param_type": "input", "value": mean_matrix_value},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (3, 3, 16, 1),
-                "shape": (1, 3, 3, 1, 16, 16), "param_type": "input", "value": kernel_matrix_value},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC", "ori_shape": (1, 15, 15, 16),
-                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
-               orig_input_shape, ksize, strides, padding_mode, pads,
-               data_format, global_pooling, ceil_mode, exclusive],
-    "calc_expect_func": avgpoolgrad_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
-################
-orig_input_shape = [2, 2048, 1, 1]
-ksize = [1, 1, 7, 7]
-strides = [1, 1, 1, 1]
-padding_mode = "CALCULATED"
-pads = (1, 1, 1, 1)
-data_format = "NCHW"
-global_pooling = True
-ceil_mode = False
-exclusive = True
-
-mean_matrix_value, kernel_matrix_value, pool_out_NC1HWC0 = \
-    gen_input_value(orig_input_shape, ksize, strides, padding_mode, pads, data_format,
-                    global_pooling, ceil_mode, exclusive)
-
-ut_case.add_precision_case(["Ascend710", "Ascend910"], {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (2, 2048, 1, 1),
-                "shape": (2, 128, 1, 1, 16), "param_type": "input", "value": pool_out_NC1HWC0},
-               None,
-               None,
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (2, 2048, 1, 1),
-                "shape": (2, 128, 1, 1, 16), "param_type": "output"},
-               orig_input_shape, ksize, strides, padding_mode, pads,
-               data_format, global_pooling, ceil_mode, exclusive],
-    "calc_expect_func": avgpoolgrad_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
-#######
-orig_input_shape = [1, 16, 15, 15]
-ksize = [1, 1, 2, 2]
-strides = [1, 1, 2, 2]
-padding_mode = "CALCULATED"
-pads = (0, 0, 0, 0)
-data_format = "NCHW"
-global_pooling = False
-ceil_mode = True
-exclusive = True
-
-mean_matrix_value, kernel_matrix_value, pool_out_NC1HWC0 = \
-    gen_input_value(orig_input_shape, ksize, strides, padding_mode, pads, data_format,
-                    global_pooling, ceil_mode, exclusive)
-ut_case.add_precision_case(["Ascend710", "Ascend910"], {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
-                "shape": (1, 1, 8, 8, 16), "param_type": "input", "value": pool_out_NC1HWC0},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 8, 8),
-                "shape": (1, 1, 8, 8, 16), "param_type": "input", "value": mean_matrix_value},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "HWCN", "ori_shape": (2, 2, 16, 1),
-                "shape": (1, 2, 2, 1, 16, 16), "param_type": "input", "value": kernel_matrix_value},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1, 16, 15, 15),
-                "shape": (1, 1, 15, 15, 16), "param_type": "output"},
-               orig_input_shape, ksize, strides, padding_mode, pads,
-               data_format, global_pooling, ceil_mode, exclusive],
-    "calc_expect_func": avgpoolgrad_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run("Ascend910A")
     exit(0)
