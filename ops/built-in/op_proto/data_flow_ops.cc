@@ -1273,6 +1273,11 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
   TensorDesc y_desc = op.GetOutputDesc("y");
   for (int64_t i = 0; i < num_incides; ++i) {
     auto indices_tensor_name = "indices" + std::to_string(i);
+
+    std::vector<std::string> input_infer_depends = {indices_tensor_name};
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    op_desc->SetOpInferDepends(input_infer_depends);
+
     TensorDesc unused_tensor;
     const TensorDesc indices_tensor = op.GetDynamicInputDesc("indices", i);
     const TensorDesc data_tensor = op.GetDynamicInputDesc("x", i);

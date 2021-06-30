@@ -104,8 +104,28 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
   }
 
   TensorDesc outputDesc = op.GetOutputDesc("output_dense_values");
-  outputDesc.SetDataType(Tvalues_type);
-  outputDesc.SetShape(values);
+
+  if(op.GetInputDesc("params_dense_values").GetShape().GetShapeSize() == UNKNOWN_DIM){
+    outputDesc.SetShape(Shape({UNKNOWN_DIM}));
+    outputDesc.SetDataType(Tvalues_type);
+    op.UpdateOutputDesc("output_dense_values",outputDesc);
+    return GRAPH_SUCCESS;
+  }else{
+    std::vector<std::pair<int64_t,int64_t>> range;
+    int64_t min_dim = 1;
+    std::vector<int64_t> max_dims = op.GetInputDesc("params_dense_values").GetShape().GetDims();
+    for(const auto &maxdim:max_dims){
+      auto p = std::make_pair(min_dim,maxdim);
+      range.push_back(p);
+    }
+    std::vector<int64_t> output_dims;
+    output_dims.push_back(ge::UNKNOWN_DIM);
+
+    outputDesc.SetShape(Shape(output_dims));
+    outputDesc.SetShapeRange(range);
+    outputDesc.SetDataType(Tvalues_type);
+  }
+
   if (op.UpdateOutputDesc("output_dense_values", outputDesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("fail to update output[output_dense_values] desc."));
     return GRAPH_FAILED;
