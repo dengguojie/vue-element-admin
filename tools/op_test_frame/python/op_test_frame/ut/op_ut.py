@@ -46,6 +46,7 @@ from op_test_frame.common.ascend_tbe_op import AscendOpKernel
 from op_test_frame.common.ascend_tbe_op import AscendOpKernelRunner
 
 
+# pylint: disable=too-many-lines,too-many-branches,too-many-locals,invalid-name,no-self-use
 class OpFuncType(Enum):
     """
     Op Func Type Enum, contains INTF_FUNC, SELECT_FORMAT_FUNC, CHECK_SUPPORT_TYPE
@@ -564,8 +565,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                     compile_info = tbe.common.context.get_context().get_compile_info()
                     self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
             else:
-                import tbe
-                # import tbe.common.context.op_info as operator_info #pylint:disable=import-outside-toplevel
+                import tbe # pylint: disable=import-outside-toplevel
                 with tbe.common.context.op_context.OpContext("pre-static"):
                     op_func(*case_info.op_params, **addition_params)
         except BaseException as run_err:  # pylint: disable=broad-except
@@ -643,7 +643,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
 
     def _do_tiling(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase,
                    input_info_list: List, output_info_list: List):
-        from tbe.common.utils import op_tiling
+        from tbe.common.utils import op_tiling # pylint: disable=import-outside-toplevel
         kernel_name = self._get_kernel_name(run_soc_version, case_info)
         compile_info = self._get_compile_info(kernel_name)
         tiling_info = op_tiling.do_op_tiling(self.op_type, compile_info=compile_info,
@@ -684,7 +684,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             if op_param_desc.lower().startswith("option") and not (
                     op_params[param_idx] is None or isinstance(op_params[param_idx], dict)):
                 raise RuntimeError("Op params in testcase not match the op interface check_op_params decorator.")
-            if op_param_desc.lower().startswith("dynamic") and not (isinstance(op_params[param_idx], (tuple, list))):
+            if op_param_desc.lower().startswith("dynamic") and not isinstance(op_params[param_idx], (tuple, list)):
                 raise RuntimeError("Op params in testcase not match the op interface check_op_params decorator.")
 
         if param_desc_list:
@@ -911,10 +911,10 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         run_success = True
         err_trace = None
         try:
-            import tbe
+            import tbe # pylint: disable=import-outside-toplevel
             # import tbe.common.context.op_info as operator_info #pylint:disable=import-outside-toplevel
             with tbe.common.context.op_context.OpContext("pre-static"):
-              case_info.test_func(run_soc_version)
+                case_info.test_func(run_soc_version)
         except BaseException as _:  # pylint: disable=broad-except
             run_success = False
             err_trace = get_trace_info()
