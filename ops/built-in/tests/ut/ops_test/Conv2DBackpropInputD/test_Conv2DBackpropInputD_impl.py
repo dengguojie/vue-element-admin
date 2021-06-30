@@ -126,8 +126,6 @@ def _gen_conv2d_bp_input_op_case():
         ut_case.add_case(["Ascend910A"], _gen_trans_data_case(*test_case))
 
 
-_gen_conv2d_bp_input_op_case()
-
 def _test_op_check_supported(test_arg):
     from impl.conv2d_backprop_input_d import check_supported
     filter = {"ori_shape": (32, 32, 3, 3), "dtype": "float16", "ori_format": "NCHW"}
@@ -137,6 +135,10 @@ def _test_op_check_supported(test_arg):
     check_supported(filter, out_backprop, y, input_size, (1, 1, 2, 2), (0, 0, 0, 0),
                     dilations=(1, 1, 1, 1), groups=1, data_format="NCHW",
                     kernel_name="conv2d_backprop_input")
+
+
+def _gen_conv2d_bp_input_check_support_case():
+    ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported)
 
 
 def _test_nhwc_in_nhwc_out_case_1(test_arg):
@@ -168,6 +170,7 @@ def _test_nhwc_in_nhwc_out_case_1(test_arg):
         }
         cce_build_code(sch, config)
     cce_conf.te_set_version('Ascend910A')
+
 
 def _test_nhwc_in_nhwc_out_case_2(test_arg):
     cce_conf.te_set_version('Ascend920A')
@@ -203,13 +206,41 @@ def _test_nhwc_in_nhwc_out_case_2(test_arg):
     cce_conf.te_set_version('Ascend910A')
 
 
-ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_1)
-ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_2)
+def _test_set2d_case_1(test_arg):
+    cce_conf.te_set_version('Ascend920A')
+    filter_frac = (144, 16, 16, 16)
+    out_shape_5hd = (2, 16, 14, 14, 16)
+    input_size = (2, 256, 28, 28)
+    strides = (2, 2)
+    pads = (0, 1, 0, 1)
+    dilations = (1, 1, 1, 1)
+    data_type = "float16"
+    with cce():
+        weight = tvm.placeholder(filter_frac, name="filter", dtype=data_type,
+                                 attrs={"ori_shape": (256, 256, 3, 3), "dtype":data_type, "ori_format": "NCHW"})
+        dedy = tvm.placeholder(out_shape_5hd, name="dedy", dtype=data_type,
+                               attrs={"ori_shape": (2, 256, 14, 14), "dtype":data_type, "ori_format": "NCHW"})
+        y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NCHW"}
+        out = conv2d_backprop_input_d_compute(weight, dedy, y, input_size, strides, pads)
+        tensor_list = [weight, dedy, out]
+        sch = auto_schedule(out)
+        config = {
+            "name" : "conv2d_bp_input_ut_set2d_case_1",
+            "tensor_list" : tensor_list
+        }
+        cce_build_code(sch, config)
+    cce_conf.te_set_version('Ascend910A')
 
-def _gen_conv2d_bp_input_check_support_case():
-    ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported)
 
+def _gen_conv2d_bp_input_920A_case():
+    ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_1)
+    ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_2)
+    ut_case.add_cust_test_func(test_func=_test_set2d_case_1)
+
+
+_gen_conv2d_bp_input_op_case()
 _gen_conv2d_bp_input_check_support_case()
+_gen_conv2d_bp_input_920A_case()
 
 
 if __name__ == "__main__":

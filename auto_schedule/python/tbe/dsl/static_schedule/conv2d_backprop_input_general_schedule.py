@@ -386,13 +386,19 @@ def general_schedule(
                     tensor_map["a_filling"] = a_filling
                     tensor_map["a_zero"] = a_zero
                     # generate a_zero in ub
-                    sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
-                    sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
+                    if not cube_vector_split:
+                        sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
+                        sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
+                    else:
+                        sch[a_zero].set_scope(tbe_platform_info.scope_cbuf)
+                        sch[a_filling].set_scope(tbe_platform_info.scope_cbuf)
                     tensor_map["a_l1"] = a_l1
                     sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
 
                     a_ddr = a_filling.op.input_tensors[0]
-                    if input_mem[0] == 0 and l1_fusion_type != 1:
+                    if cube_vector_split:
+                        a_ub = None
+                    elif input_mem[0] == 0 and l1_fusion_type != 1:
                         a_ub = sch.cache_read(
                             a_ddr, tbe_platform_info.scope_ubuf, [a_filling]
                         )
@@ -1637,6 +1643,10 @@ def general_schedule(
                 (1, 1),
                 (1, tbe_platform.CUBE_MKN[a_col_before.dtype]["mac"][1])
             )
+        
+        if cube_vector_split and (stride_h > 1 or stride_w > 1):
+            sch_agent.same_attach(a_filling, a_l1)
+            sch_agent.same_attach(a_zero, a_l1)
 
     def _bl1_process():
         if tiling.get("BL1_shape") != []:
@@ -1804,7 +1814,7 @@ def general_schedule(
                 _bl1_process()
                 _al1_process()
 
-        if stride_h > 1 or stride_w > 1 or "a_avg" in tensor_map:
+        if not cube_vector_split and (stride_h > 1 or stride_w > 1 or "a_avg" in tensor_map):
             _aub_process()
 
     def _do_nbuffer_split():
@@ -1853,7 +1863,9 @@ def general_schedule(
                     sch[input_tensor_mem].preload()
 
         if stride_h > 1 or stride_w > 1:
-            if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2 and "a_avg" not in tensor_map:
+            if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2 \
+                and "a_avg" not in tensor_map \
+                and not cube_vector_split:
                 sch[a_filling].double_buffer()
                 sch[a_zero].double_buffer()
                 if var_map:
@@ -1868,6 +1880,9 @@ def general_schedule(
 
         if a_l1_db_flag == 2:
             sch[a_l1].double_buffer()
+            if cube_vector_split and (stride_h > 1 or stride_w > 1):
+                sch[a_filling].double_buffer()
+                sch[a_zero].double_buffer()
 
         if tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == 2:
             sch[b_l1].double_buffer()
@@ -2004,7 +2019,6 @@ def general_schedule(
                 if l1_fusion_type != -1:
                     sch_agent[a_l1].pragma(a_l1.op.axis[0], "jump_data", 1)
         else:
-            sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
             afill_n, afill_c, afill_h, afill_w, _ = sch_agent[
                 a_filling
             ].get_active_scopes()
@@ -2020,13 +2034,22 @@ def general_schedule(
             sch_agent[a_filling].unroll(afill_h_inner)
             sch_agent[a_filling].unroll(afill_w_inner)
             sch_agent[a_filling].reused_by(a_zero)
-            sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
-            if w_trans_flag:
-                sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
-            else:
-                sch_agent[a_filling].emit_insn(afill_n, "vector_muls")
             al1_insn, _, _ = sch_agent[a_l1].nlast_scopes(3)
-            sch_agent[a_l1].emit_insn(al1_insn, "dma_copy")
+
+            if cube_vector_split and (stride_h > 1 or stride_w > 1):
+                sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "set_2d")
+                sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
+                sch_agent[a_l1].emit_insn(al1_insn, "phony_insn")
+                sch_agent[a_l1].reused_by(a_filling)
+            else:
+                sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
+                sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
+                if w_trans_flag:
+                    sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
+                else:
+                    sch_agent[a_filling].emit_insn(afill_n, "vector_muls")
+                sch_agent[a_l1].emit_insn(al1_insn, "dma_copy")
+
         setfmatrix_dict["conv_fm_c"] = a_l1.shape[1] * a_l1.shape[4]
         setfmatrix_dict["conv_fm_h"] = a_l1.shape[2]
         setfmatrix_dict["conv_fm_w"] = a_l1.shape[3]

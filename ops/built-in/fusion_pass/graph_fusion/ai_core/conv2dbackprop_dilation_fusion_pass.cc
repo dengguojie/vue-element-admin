@@ -413,7 +413,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
     pre_dilation = true;
   }
   for (unsigned int i = 0; i < strides.size(); ++i){
-    if (strides[i] > 1){
+    if (strides[i] > 2 || (strides[i] > 1 and !pre_dilation)){
       need_dilation_flag = true;
       break;
     }
