@@ -21,12 +21,14 @@ import stat
 DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
-# pylint: disable=unused-argument,invalid-name,unused-variable
+# pylint: disable=unused-argument
 def _mkdir_without_file_exist_err(dir_path, mode):
     try:
         os.mkdir(dir_path, mode)
     except FileExistsError as err:
         pass
+    except:
+        raise
 
 
 def makedirs(path, mode=DATA_DIR_MODES):

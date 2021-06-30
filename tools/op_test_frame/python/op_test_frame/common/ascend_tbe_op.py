@@ -22,20 +22,18 @@ import sys
 import json
 import ctypes
 import shutil
+import numpy as np
 
 from typing import List
 from typing import Dict
 from typing import Union
 
-import numpy as np
 from op_test_frame.runtime import AscendRTSApi
 from op_test_frame.common import dtype_trans
 from op_test_frame.utils import shape_utils
 from op_test_frame.utils import file_util
 
 
-# pylint: disable=too-many-locals,too-many-arguments,too-few-public-methods
-# pylint: disable=too-many-instance-attributes,too-many-boolean-expressions
 class AscendOpKernel:
     """
     Class AscendOpKernel
@@ -541,7 +539,7 @@ class AscendOpKernelRunner:
 
     def run(self, kernel: AscendOpKernel, inputs, output_input_ref: List[List[int]] = None,
             tiling=None, block_dim=None, actual_output_info=None) -> Union[
-                AscendOpKernelParam, List[AscendOpKernelParam], None]:
+        AscendOpKernelParam, List[AscendOpKernelParam], None]:
         """
         run
         """

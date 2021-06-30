@@ -26,7 +26,6 @@ FUZZ_FUNCTION = 'fuzz_branch'
 MAX_FUZZ_CASE_NUM = 2000
 
 
-# pylint: disable=too-many-arguments
 class SubCaseDesignFuzz(SD.SubCaseDesign):
     """
     the class for design test subcase by fuzz.

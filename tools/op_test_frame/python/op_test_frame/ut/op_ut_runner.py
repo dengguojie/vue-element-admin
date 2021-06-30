@@ -38,7 +38,6 @@ from op_test_frame.ut.op_ut_case_info import CaseUsage
 DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-statements
 class OpUTTestRunner:  # pylint: disable=too-few-public-methods
     """
     Op ut runner
@@ -150,7 +149,7 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     try:
         if sys.modules.get(run_arg.op_module_name):
             print("[INFO]reload module for coverage ,moule name:", sys.modules.get(run_arg.op_module_name))
-            import importlib # pylint: disable=import-outside-toplevel
+            import importlib
             importlib.reload(sys.modules.get(run_arg.op_module_name))
         case_dir = os.path.dirname(os.path.realpath(run_arg.case_file))
         case_module_name = os.path.basename(os.path.realpath(run_arg.case_file))[:-3]

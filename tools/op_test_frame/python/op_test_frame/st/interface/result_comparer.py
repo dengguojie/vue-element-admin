@@ -26,7 +26,6 @@ from op_test_frame.st.interface import utils
 from op_test_frame.st.interface import op_st_case_info
 
 
-# pylint: disable=too-many-locals
 def _cal_relative_diff(real_data, expect_data, diff_thd, type_str='fp16'):
     if 'nan' in str(expect_data) or 'inf' in str(expect_data):
         if type_str.lower() == 'fp16':

@@ -26,7 +26,6 @@ except (ImportError,) as import_error:
         "[ms_op_generator]Unable to import module: %s." % str(import_error))
 
 
-# pylint: disable=too-many-locals
 def _create_ms_op_json_content(testcase_list):
     content = []
     for testcase_struct in testcase_list:

@@ -22,7 +22,6 @@ from op_test_frame.common.precision_info import PrecisionStandard
 from op_test_frame.common.precision_info import PrecisionCompareResult
 
 
-# pylint: disable=too-many-statements
 def _get_np_dtype(d_type):
     res = np.float16
     if d_type.strip() == "float16":

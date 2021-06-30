@@ -172,7 +172,6 @@ OPTIONAL_TYPE_LIST = ['UNDEFINED', 'RESERVED']
 TRUE_OR_FALSE_LIST = ['True', 'False']
 
 
-# pylint: disable=too-few-public-methods
 def create_attr_list_str(attr_value):
     """
     create attribute exact value string based on list type
