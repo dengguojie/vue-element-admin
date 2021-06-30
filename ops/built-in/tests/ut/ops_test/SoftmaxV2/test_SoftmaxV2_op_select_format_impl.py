@@ -42,7 +42,7 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
 case6 = {"params": [{"shape": (16, 16, 1, 16, 16, 16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16, 16, 16, 16, 16),"ori_format": "NDHWC"},
                     {"shape": (16, 16, 1, 16, 16 ,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16, 16, 16, 16, 16),"ori_format": "NDHWC"},
                     [0]],
-         "case_name": "softmax_v2_5",
+         "case_name": "softmax_v2_6",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
@@ -50,7 +50,23 @@ case6 = {"params": [{"shape": (16, 16, 1, 16, 16, 16), "dtype": "float16", "form
 case7 = {"params": [{"shape": (16, 16, 1, 16, 16, 16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16, 16, 16, 16, 16),"ori_format": "NDHWC"},
                     {"shape": (16, 16, 1, 16, 16 ,16), "dtype": "float16", "format": "NDC1HWC0", "ori_shape": (16, 16, 16, 16, 16),"ori_format": "NDHWC"},
                     [-1]],
-         "case_name": "softmax_v2_5",
+         "case_name": "softmax_v2_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case8 = {"params": [{"shape": (16, 16, 4, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 16, 50, 50),"ori_format": "ND"},
+                    {"shape": (16, 16, 4, 4, 16 ,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 16, 50, 50),"ori_format": "ND"},
+                    [-1]],
+         "case_name": "softmax_v2_8",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case9 = {"params": [{"shape": (16, 16, 4, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 16, 50, 50),"ori_format": "ND"},
+                    {"shape": (16, 16, 4, 4, 16 ,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 16, 50, 50),"ori_format": "ND"},
+                    [-2]],
+         "case_name": "softmax_v2_9",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
@@ -62,4 +78,6 @@ ut_case.add_case(["all"], case4)
 ut_case.add_case(["all"], case5)
 ut_case.add_case(["all"], case6)
 ut_case.add_case(["all"], case7)
+ut_case.add_case(["all"], case8)
+ut_case.add_case(["all"], case9)
 

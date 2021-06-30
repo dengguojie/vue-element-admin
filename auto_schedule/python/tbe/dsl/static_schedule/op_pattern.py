@@ -1166,6 +1166,43 @@ l2loss_mul_addn_pattern_list = [
 ]
 
 softmax_dfs_tag_list = [  # pylint: disable=invalid-name
+    # softmax_v2 fp16 nz non16 1980
+    [
+        "elewise_single_cast|not_auto_cast",
+        "elewise_binary_mul",
+        "elewise_single_exp",
+        "elewise_single_cast|not_auto_cast",
+        "elewise_binary_sub",
+        "elewise_binary_add",
+        "elewise_binary_VS_add",
+        "placeholder",
+        "tail_block_pretreatment",
+        "broadcast_for_tensor",
+        "broadcast_for_tensor",
+        "reduce_max",
+        "broadcast_for_tensor",
+        "broadcast_for_tensor",
+        "elewise_single_rec",
+        "reduce_sum",
+    ],
+    # softmax_v2 fp32 nz non16 1980
+    [
+        "elewise_single_div",
+        "elewise_single_exp",
+        "elewise_binary_sub",
+        "elewise_binary_add",
+        "elewise_binary_VS_add",
+        "placeholder",
+        "tail_block_pretreatment",
+        "elewise_single_cast",
+        "broadcast_for_tensor",
+        "broadcast_for_tensor",
+        "reduce_max",
+        "elewise_single_cast",
+        "broadcast_for_tensor",
+        "broadcast_for_tensor",
+        "reduce_sum",
+    ],
     # softmax fp16 for bert
     [
         "elewise_single_cast|not_auto_cast",

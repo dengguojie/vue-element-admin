@@ -365,6 +365,19 @@ class ReduceMultiSchedule(ElewiseSchedule):
                 if self._special_non_last_broadcast_scene:
                     if self._is_special_tensor_of_broadcast_not_last_axis(i):
                         insn = "vector_sub_with_multi_broadcast"
+            
+            if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp32_nz_non16'):
+                if self._pattern in ('softmax_fp16_nz_non16'):
+                    phony_node = self._mid_tensors[5]
+                else:
+                    phony_node = self._mid_tensors[3]
+                op_name = phony_node.op.name
+                if insn == "vector_dup_with_align":
+                    ori_shape = self._input_tensors[0].op.attrs["ori_shape"]
+                    if ori_shape[-1].value % 16 == 15:
+                        insn = "vector_dup"
+                if write_buffer.op.name.find(op_name) != -1:
+                    insn = "phony_insn"
 
             if self._pattern in ('layernorm_fp16_nz_non16', 'layernorm_fp32_nz_non16'):
                 if self._pattern in ('layernorm_fp16_nz_non16'):
@@ -1180,6 +1193,34 @@ class ReduceMultiSchedule(ElewiseSchedule):
         # common reuse
         reused_relation = {}
         used = []
+
+        if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp32_nz_non16'):
+            if self._pattern in ('softmax_fp16_nz_non16'):
+                tensor_before_tail = self._mid_tensors[6]
+                tensor_with_tail = self._mid_tensors[7]
+                tensor_after_tail = self._mid_tensors[5]
+            else:
+                tensor_before_tail = self._mid_tensors[4]
+                tensor_with_tail = self._mid_tensors[5]
+                tensor_after_tail = self._mid_tensors[3]
+            src_buffer = self._cache_write_tensors_and_buffer_map.get(tensor_before_tail)
+            if src_buffer is not None:
+                dst_buffer = self._cache_write_tensors_and_buffer_map.get(tensor_with_tail)
+                self._schedule[src_buffer].reused_by(dst_buffer)
+
+                src_buffer = self._cache_write_tensors_and_buffer_map.get(tensor_with_tail)
+                dst_buffer = self._cache_write_tensors_and_buffer_map.get(tensor_after_tail)
+                dst_shape = tensor_with_tail.shape
+                dim_with_tail = dst_shape[-3]
+                ori_shape = self._input_tensors[1].op.attrs["ori_shape"]
+                tail = ori_shape[-1] % 16 - 1
+
+                condition1 = (src_buffer.op.axis[-3].var == (dim_with_tail - 1)).asnode()
+                condition2 = src_buffer.op.axis[-1].var > tail
+
+                self._schedule[src_buffer].set_store_predicate([condition1, condition2], partition=True)
+                self._schedule[src_buffer].reused_by(dst_buffer)
+            return
 
         if self._pattern in ('layernorm_fp16_nz_non16', 'layernorm_fp32_nz_non16'):
             if self._pattern in ('layernorm_fp16_nz_non16'):

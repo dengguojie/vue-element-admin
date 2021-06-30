@@ -162,13 +162,9 @@ def check_axis_is_last(shape_x_ori, axis):
     else:
         axis = [axis]
     axis_is_last = 0
-    if length_x_ori == 2:
-        if axis[0] == -1 or axis[0] == 1:
-            axis_is_last = 1
-        else:
-            axis_is_last = 0
-    else:
-        axis_is_last = 0
+
+    if axis[0] == -1 or axis[0] == length_x_ori - 1:
+        axis_is_last = 1
     return axis_is_last
 
 
@@ -262,12 +258,24 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                     datatype="float16,float16,float16,float",
                                                     format="NC1HWC0,NDC1HWC0,ND,ND")
         if tbe_product in ("Ascend910", "Ascend920",):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16,float16,float,float,float16,float",
-                                                   format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+            if check_axis_is_last(shape_x_ori, axis):
+                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                    datatype="float16,float16,float,float,\
+                                                              float16,float,float16,float",
+                                                    format="NC1HWC0,ND,ND,NC1HWC0,\
+                                                            NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                        datatype="float16,float16,float,float,\
+                                                                  float16,float,float16,float",
+                                                        format="NC1HWC0,ND,ND,NC1HWC0,\
+                                                                NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
+            else:
+                input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                     datatype="float16,float16,float,float,float16,float",
                                                     format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                        datatype="float16,float16,float,float,float16,float",
+                                                        format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
         if tbe_product in ("Ascend310",):
             if select_nd_to_5d(dtype, shape_x_ori, axis):
                 # Supplement dimensions to find the C-axis
@@ -376,6 +384,14 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     for i in axis:
         if i in (-1, last_dim):
             vcmax_flag = True
+    
+    ori_shape = input_x.op.attrs["ori_shape"]
+    if output_y.get("format") == "FRACTAL_NZ" and len(axis) == 2 and ori_shape[-1].value % 16 != 0:
+        input_x = te.lang.cce.vadds(input_x, 0)
+        with tvm.tag_scope("tail_block_pretreatment"):
+            lambda_func = lambda *indice : tvm.const(-65000, input_x.dtype)
+            temp = tvm.compute(input_x.shape, lambda_func, name="tail_block_pretreatment")
+        input_x = te.lang.cce.vadd(input_x, temp)
 
     if dtype == "float32" and vcmax_flag and \
         not tbe_platform.cce_conf.api_check_support(
@@ -2683,7 +2699,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
         shape, axis = util.shape_refine(list(shape), axis)
         shape, axis = util.simplify_axis_shape(shape, axis)
 
-        data_input = tvm.placeholder(shape, dtype=dtype, name="data")
+        attr = {"ori_shape": input_x.get("ori_shape")}
+        data_input = tvm.placeholder(shape, dtype=dtype, name="data", attrs=attr)
         output = softmax_v2_compute(data_input, output_y, axis, kernel_name)
         with tvm.target.cce():
             result = generic.auto_schedule(output)
