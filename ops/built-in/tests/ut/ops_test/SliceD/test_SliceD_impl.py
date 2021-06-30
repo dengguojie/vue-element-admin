@@ -165,7 +165,17 @@ case14 = {"params": [
     "case_name": "SliceD_13",
     "expect": "success",
     "support_expect": True}
-
+case15 = {"params": [
+    {"shape": (23,4,11,50,26,13,1,23), "dtype": "float32", "format": "NCHW", "ori_shape": (23,4,11,50,26,13,1,23),
+     "ori_format": "NCHW"},
+    # x
+    {"shape": (23,4,11,50,26,13,1,2), "dtype": "float32", "format": "NCHW", "ori_shape": (23,4,11,50,26,13,1,2),
+     "ori_format": "NCHW"},
+    (0,0,0,0,0,0,0,0), (-1,-1,-1,-1,-1,-1,-1,2),
+],
+    "case_name": "SliceD_1112",
+    "expect": "success",
+    "support_expect": True}
 
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
@@ -181,6 +191,7 @@ ut_case.add_case("Ascend910A", case11)
 ut_case.add_case("Ascend910A", case12)
 ut_case.add_case("Ascend910A", case13)
 ut_case.add_case("Ascend910A", case14)
+ut_case.add_case("Ascend910A", case15)
 
 case_fz = {"params": [
     {"shape": (1 * 16 * 16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),
@@ -286,6 +297,19 @@ def test_op_select_format(test_arg):
 
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
-
+def test_use_strided_slice(test_arg):
+    from impl.slice_d import _use_strided_slice
+    _use_strided_slice({"shape":(2560,17),"ori_shape":(2560,17),"dtype":"float32"},[0,0],[-1,2],{"shape":(2560,2),"ori_shape":(2560,2),"dtype":"float32"})
+    _use_strided_slice({"shape":(2176, 71),"ori_shape":(2176, 71),"dtype":"float16"},[0,0],[-1,2],{"shape":(2176, 2),"ori_shape":(2176, 2),"dtype":"float16"})
+    _use_strided_slice({"shape":(544, 2, 67, 52),"ori_shape":(544, 2, 67, 52),"dtype":"float32"},[0,0,0,0],[-1,-1,-1,2],{"shape":(544, 2, 67, 2),"ori_shape":(544, 2, 67, 2),"dtype":"float32"})
+    _use_strided_slice({"shape":(928, 19, 11, 84),"ori_shape":(928, 19, 11, 84),"dtype":"int32"},[0,0,0,0],[-1,-1,-1,2],{"shape":(928, 19, 11, 2),"ori_shape":(928, 19, 11, 2),"dtype":"int32"})
+    _use_strided_slice({"shape":(38, 27, 3, 112, 192),"ori_shape":(38, 27, 3, 112, 192),"dtype":"float32"},[0,0,0,0,0],[-1,-1,-1,-1,2],{"shape":(38, 27, 3, 112, 2),"ori_shape":(38, 27, 3, 112, 2),"dtype":"float32"})
+    _use_strided_slice({"shape":(2, 10, 31, 12, 3, 6, 752),"ori_shape":(2, 10, 31, 12, 3, 6, 752),"dtype":"int32"},[0,0,0,0,0,0,0],[-1,-1,-1,-1,-1,-1,2],{"shape":(2, 10, 31, 12, 3, 6, 2),"ori_shape":(2, 10, 31, 12, 3, 6, 2),"dtype":"int32"})
+    _use_strided_slice({"shape":(19, 14, 3, 1104, 128),"ori_shape":(19, 14, 3, 1104, 128),"dtype":"float16"},[0,0,0,0,0],[-1,-1,-1,-1,2],{"shape":(19, 14, 3, 1104, 2),"ori_shape":(19, 14, 3, 1104, 2),"dtype":"float16"})
+    _use_strided_slice({"shape":(1552, 19, 56, 84),"ori_shape":(1552, 19, 56, 84),"dtype":"float16"},[0,0,0,0],[-1,-1,-1,2],{"shape":(1552, 19, 56, 2),"ori_shape":(1552, 19, 56, 2),"dtype":"float16"})
+    _use_strided_slice({"shape":(83, 2, 97, 304, 32),"ori_shape":(83, 2, 97, 304, 32),"dtype":"int32"},[0,0,0,0,0],[-1,-1,-1,-1,2],{"shape":(83, 2, 97, 304, 2),"ori_shape":(83, 2, 97, 304, 2),"dtype":"int32"})
+    _use_strided_slice({"shape":(77, 74, 5, 16, 384),"ori_shape":(77, 74, 5, 16, 384),"dtype":"float16"},[0,0,0,0,0],[-1,-1,-1,-1,2],{"shape":(77, 74, 5, 16, 2),"ori_shape":(77, 74, 5, 16, 2),"dtype":"float16"})
+    
+    
 if __name__ == "__main__":
     ut_case.run("Ascend910A", simulator_mode="pv", simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")

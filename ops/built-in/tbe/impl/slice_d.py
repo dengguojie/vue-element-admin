@@ -7430,12 +7430,13 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
     return param_dynamic_in_json
 
 
-def _use_strided_slice(ori_x, ori_begin, ori_size):
+def _use_strided_slice(ori_x, ori_begin, ori_size, ori_y):
     """
     can use strided_slice
     """
     dtype = ori_x.get("dtype")
     input_shape = list(ori_x.get("ori_shape"))
+    ori_y_shape = list(ori_y.get("ori_shape"))
     if len(input_shape) != len(ori_begin) or len(input_shape) != len(ori_size):
         return False
 
@@ -7481,9 +7482,33 @@ def _use_strided_slice(ori_x, ori_begin, ori_size):
         ["float32", [64, 4800, 85], [64, 4800, 1]],
         ["float32", [64, 4800, 85], [64, 4800, 2]],
         ["float16", [104, 80, 896], [104, 80, 1]],
+        ["float32", [2560, 17], [2560, 2]],
+        ["float16", [2176, 71], [2176, 2]],
+        ["float32", [544, 2, 67, 52], [544, 2, 67, 2]],
+        ["int32", [928, 19, 11, 84], [928, 19, 11, 2]],
+        ["float32", [38, 27, 3, 112, 192], [38, 27, 3, 112, 2]],
+        ["int32", [2, 10, 31, 12, 3, 6, 752], [2, 10, 31, 12, 3, 6, 2]],
+        ["float16", [19, 14, 3, 1104, 128], [19, 14, 3, 1104, 2]],
+        ["float16", [1552, 19, 56, 84], [1552, 19, 56, 2]],
+        ["int32", [83, 2, 97, 304, 32], [83, 2, 97, 304, 2]],
+        ["float16", [77, 74, 5, 16, 384], [77, 74, 5, 16, 2]],
+        ["int32", [1200, 41, 67, 61], [1200, 41, 67, 2]],
+        ["float16", [11, 14, 3, 7, 2, 34, 1040], [11, 14, 3, 7, 2, 34, 2]],
+        ["int32", [5, 17, 23, 3, 2, 54, 23, 17], [5, 17, 23, 3, 2, 54, 23, 2]],
+        ["int32", [224, 37, 2, 71, 44, 5], [224, 37, 2, 71, 44, 2]],
+        ["float16", [1104, 5, 2, 11, 36, 69], [1104, 5, 2, 11, 36, 2]],
+        ["int32", [9, 26, 2, 752, 864], [9, 26, 2, 752, 2]],
+        ["float32", [1, 10, 53, 256, 2336], [1, 10, 53, 256, 2]],
+        ["float16", [2, 19, 73, 7, 4, 27, 15, 12], [2, 19, 73, 7, 4, 27, 15, 2]],
+        ["int32", [23, 23, 11, 5, 7, 6, 320], [23, 23, 11, 5, 7, 6, 2]],
+        ["float32", [41, 3, 31, 2, 17, 35, 96], [41, 3, 31, 2, 17, 35, 2]],
+        ["float32", [96, 5, 2, 89, 70, 77], [96, 5, 2, 89, 70, 2]],
+        ["int32", [464, 13, 53, 2, 12, 62], [464, 13, 53, 2, 12, 2]],
+        ["float32", [23, 5, 11, 50, 26, 13, 1, 23], [23, 5, 11, 50, 26, 13, 1, 2]],
     ]
-
-    return [dtype, input_shape, output_shape] in supported_params
+    support = ([dtype, input_shape, output_shape] in supported_params) or \
+              ([dtype, input_shape, ori_y_shape] in supported_params)
+    return support
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -7977,7 +8002,8 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
             sch = tvm.create_schedule(res.op)
             with build_config:
                 tvm.build(sch, tensor_list, "cce", name=kernel_name)
-        elif input_format in ("NDC1HWC0", "NHWC", "NCHW", "ND") and _use_strided_slice(ori_x, ori_begin, ori_size):
+        elif input_format in ("NDC1HWC0", "NHWC", "NCHW", "ND", "NCDHW") and _use_strided_slice(ori_x, ori_begin,
+                                                                                                ori_size, ori_y):
             strides = [1] * len(ori_begin)
             end_new = _get_end(ori_x.get("ori_shape"), ori_begin, ori_size)
             strided_slice_d(ori_x, ori_y, ori_begin, end_new, strides, 0, 0, 0, 0, 0, kernel_name)
