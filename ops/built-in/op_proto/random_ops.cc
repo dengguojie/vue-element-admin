@@ -612,4 +612,15 @@ COMMON_INFER_FUNC_REG(DropoutV2, DropoutV2InferShape);
 VERIFY_FUNC_REG(DropoutV2, DropoutV2Verify);
 // ------------------DropoutV2 End-------------------------------
 
+// ------------------Bernoulli Start-------------------------------
+IMPLEMT_COMMON_INFERFUNC(BernoulliInferShape)
+{
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "p", "y")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Bernoulli, BernoulliInferShape);
+// ------------------Bernoulli End-------------------------------
 }  // namespace ge
