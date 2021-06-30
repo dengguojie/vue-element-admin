@@ -423,6 +423,11 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
 
     if fmap_h == kernel_h and fmap_w == kernel_w and ho == 1 and wo == 1 and padding == 'VALID':
         return atomic_flag
+
+    # temp plan for large H support
+    if fmap_h >= 200000:
+        return True
+
     c0_local = ori_input_shape[-1]
     input_l1_size = _cal_byte_size(ori_input_shape, "float16")
     # each type of buffer's bit size

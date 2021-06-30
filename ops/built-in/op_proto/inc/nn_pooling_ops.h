@@ -564,8 +564,7 @@ REG_OP(MaxPool3DGradGrad)
 * y: A mutable tensor. Has the same shape and type as "x1" . \n
 
 * @attention Constraints:
-* @li Computing gradients of global pooling is not supported, which means
-* "ksize < x1".
+* @li ksize is limited by buffer with full tiling.
 * @li "ksize" is in the range [1, 255]. "strides" is in the range [1, 63]
 
 * @par Third-party framework compatibility
