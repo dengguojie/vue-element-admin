@@ -91,7 +91,8 @@ REG_OP(Quantize)
 *@li offset: A required float16, specifying the offset.
 *@li sqrt_mode: A optional bool, specifying whether to perform square root on "scale", either "True" or "False". Defaults to "False".
 *@li round_mode: An optional string, specifying the float16 to int8 cast type.
-* The value range is [Round, Floor, Ceiling, Truncate]. Defaults to "Round" . \n
+* The value range is [Round, Floor, Ceil, Truncate]. Defaults to "Round" .
+*@li dst_type: A optional int32, specifying the output data type. Defaults to "DT_INT8" . \n
 
 *@par Outputs:
 *y: The quantized output tensor of type int8 and with format NC1HWC0 . \n
@@ -101,11 +102,12 @@ REG_OP(Quantize)
 */
 REG_OP(AscendQuant)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32}))
-    .OUTPUT(y, TensorType({DT_INT8}))
+    .OUTPUT(y, TensorType({DT_INT8, DT_INT4}))
     .REQUIRED_ATTR(scale, Float)
     .REQUIRED_ATTR(offset, Float)
     .ATTR(sqrt_mode, Bool, false)
     .ATTR(round_mode, String, "Round")
+    .ATTR(dst_type, Int, DT_INT8)
     .OP_END_FACTORY_REG(AscendQuant)
 
 /**

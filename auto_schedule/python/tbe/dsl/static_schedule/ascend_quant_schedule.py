@@ -36,6 +36,7 @@ VMULS_REFORM_NAME = "reform_by_vmuls"
 SQRT_NAME = "scale_sqrt_ub"
 OFFSET_NAME = "offset_ub"
 CAST_I8_NAME = "cast_i8_ub"
+CAST_I4_NAME = "cast_i4_ub"
 VADDS_REFORM_NAME = "reform_by_vadds"
 
 # define the Maximum number of cores
@@ -232,8 +233,10 @@ def _set_buffer_emit_insn(sch, tensor_list, axis_inner, attr_dic):
     res = tensor_list[0]
     tensor_map = tensor_list[1]
     round_emit_insn = _round_emit_insn(attr_dic.get("round_mode"))
+    round_emit_insn_i4 = "vector_conv"
     input_c1 = attr_dic.get("input_c1")
-    if input_c1 % 2 == 0:
+    c1_transform = attr_dic.get("c1_transform")
+    if input_c1 % c1_transform == 0:
         in_dma = "dma_copy"
     else:
         in_dma = "dma_padding"
@@ -252,8 +255,12 @@ def _set_buffer_emit_insn(sch, tensor_list, axis_inner, attr_dic):
     if VADDS_REFORM_NAME in tensor_map:
         sch[tensor_map.get(VADDS_REFORM_NAME)].emit_insn(
             sch[tensor_map.get(VADDS_REFORM_NAME)].op.axis[0], 'vector_adds')
-    sch[tensor_map.get(CAST_I8_NAME)].emit_insn(
-        sch[tensor_map.get(CAST_I8_NAME)].op.axis[0], round_emit_insn)
+    if CAST_I8_NAME in tensor_map:
+        sch[tensor_map.get(CAST_I8_NAME)].emit_insn(
+            sch[tensor_map.get(CAST_I8_NAME)].op.axis[0], round_emit_insn)
+    if CAST_I4_NAME in tensor_map:
+        sch[tensor_map.get(CAST_I4_NAME)].emit_insn(
+            sch[tensor_map.get(CAST_I4_NAME)].op.axis[0], round_emit_insn_i4)
     sch[tensor_map.get(INPUT_NAME)].emit_insn(
         sch[tensor_map.get(INPUT_NAME)].op.axis[0], in_dma)
     sch[res].emit_insn(axis_inner, 'dma_copy')
@@ -443,6 +450,7 @@ def ascend_quant_schedule(res, input_tensors):
             "input_c1": res.op.attrs['c1_dim'].value,
             "l1_fusion_flag": res.op.attrs['l1_fusion_flag'].value,
             'input_format': res.op.attrs['input_format'],
+            "c1_transform": res.op.attrs['c1_transform'].value,
             'addr_type': res.op.attrs['addr_type'].value
         }
         l1_fusion_flag = attr_dic.get("l1_fusion_flag")
@@ -516,8 +524,9 @@ class QuantSchedule(ElewiseSchedule):
             'input_format']
         self.attrs["c1_dim"] = self._quant_output_tensor.op.attrs[
             'c1_dim'].value
+        self.attrs["c1_transform"] = self._quant_output_tensor.op.attrs['c1_transform'].value
         self.attrs["addr_type"] = self._quant_output_tensor.op.attrs[
-            'addr_type']
+            'addr_type'].value
 
     def _calculate_emit_insn_map(self, tensor):
         """
@@ -532,6 +541,7 @@ class QuantSchedule(ElewiseSchedule):
         Instruction map string
         """
         round_emit_insn = _round_emit_insn(self.attrs.get("round_mode"))
+        round_emit_insn_i4 = "vector_conv"
         if tensor.op.tag.find("|") != -1:
             str_list = tensor.op.tag.split("|")
             insn = self._insn_map.get(str_list[0])
@@ -548,8 +558,10 @@ class QuantSchedule(ElewiseSchedule):
                     insn = "dma_copy"
                 elif tensor.op.name == "cast_i8_ub":
                     insn = round_emit_insn
+                elif tensor.op.name == "cast_i4_ub":
+                    insn = round_emit_insn_i4
                 elif tensor.op.name == "input_ub" and \
-                        self.attrs["c1_dim"] % 2 != 0:
+                        self.attrs["c1_dim"] % self.attrs["c1_transform"] != 0:
                     insn = "dma_padding"
                 elif tensor.op.tag == "res_out_fp16":
                     insn = "dma_copy"
@@ -591,7 +603,7 @@ class QuantSchedule(ElewiseSchedule):
         list : read buffers
         """
         for i in self._mid_tensors:
-            if i.op.name == "input_ub" and self.attrs["c1_dim"] % 2 == 0:
+            if i.op.name == "input_ub" and self.attrs["c1_dim"] % self.attrs["c1_transform"] == 0:
                 self._cache_write_exclude_tensors.append(i)
 
         exclude_tensors = self._cache_write_exclude_tensors + self._mid_output_tensors

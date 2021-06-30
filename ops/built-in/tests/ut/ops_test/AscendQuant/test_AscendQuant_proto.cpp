@@ -46,6 +46,7 @@ TEST_F(AscendQuantProto, AscendQuant_proto_0) {
   op.set_attr_offset(offset);
   op.set_attr_sqrt_mode(sqrt_mode);
   op.set_attr_round_mode(round_mode);
+  op.set_attr_dst_type(2);
   auto ret = op.InferShapeAndType();
 
   // check result

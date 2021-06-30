@@ -21,12 +21,17 @@
 #include <map>
 #include <nlohmann/json.hpp>
 
-#include "../op_proto/util/error_util.h"
 #include "error_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "../op_proto/util/error_util.h"
 
 namespace optiling {
+
+struct CompileInfo {
+  int64_t max_ub_count{0};
+  int32_t core_num{1};
+};
 
 struct TilingParams {
   int32_t block_dim{0};
@@ -37,15 +42,33 @@ struct TilingParams {
   int32_t is_fuse_block{1};
 };
 
-struct CompileInfo {
-  int64_t max_ub_count{0};
-  int32_t core_num{1};
-};
+int32_t CalcPatternKey(std::vector<int64_t>& shape,
+                       int32_t block_tiling_axis,
+                       int32_t ub_tiling_axis) {
+  int32_t pattern = 0;
+  for (size_t i = 0; i < shape.size(); i++) {
+    pattern += pow(2, (shape.size() - 1 - i));
+  }
+  pattern += block_tiling_axis * 100 + ub_tiling_axis * 10;
 
-static void PrintTilingParams(const TilingParams& param) {
-  OP_LOGD("ascend_quant_tiling",
-          "(block_dim,block_tiling_axis,block_factor,ub_tiling_axis,ub_factor):(%d,%d,%d,%d,%d)",
-          param.block_dim, param.block_tiling_axis, param.block_factor, param.ub_tiling_axis, param.ub_factor);
+  return pattern;
+}
+
+int32_t GetBlockDim(std::vector<int64_t>& out_shape,
+                    int32_t tiling_axis,
+                    int64_t tiling_n_parts) {
+  int32_t block_dim = 1;
+  for (int32_t i = 0; i <= tiling_axis; i++) {
+    if (out_shape[i] != 0) {
+      if (i == tiling_axis) {
+        block_dim = (int32_t)tiling_n_parts * block_dim;
+      } else {
+        block_dim = (int32_t)out_shape[i] * block_dim;
+      }
+    }
+  }
+
+  return block_dim;
 }
 
 bool GetCompileInfo(const std::string& op_type,
@@ -71,23 +94,6 @@ int32_t GetBlockSize(const std::string& dtype) {
   }
 
   return block_size;
-}
-
-int32_t GetBlockDim(std::vector<int64_t>& out_shape,
-                    int32_t tiling_axis,
-                    int64_t tiling_n_parts) {
-  int32_t block_dim = 1;
-  for (int32_t i = 0; i <= tiling_axis; i++) {
-    if (out_shape[i] != 0) {
-      if (i == tiling_axis) {
-        block_dim = (int32_t)tiling_n_parts * block_dim;
-      } else {
-        block_dim = (int32_t)out_shape[i] * block_dim;
-      }
-    }
-  }
-
-  return block_dim;
 }
 
 void GetUbTilingData(TilingParams& param,
@@ -123,6 +129,28 @@ void GetUbTilingData(TilingParams& param,
 
   param.ub_tiling_axis = ub_tiling_axis;
   param.ub_factor = ub_factor;
+}
+
+int32_t CalcTilingKey(std::vector<int64_t>& shape,
+                      TilingParams& param) {
+  int32_t key = 0;
+  int32_t block_tiling_axis = param.block_tiling_axis;
+  int32_t ub_tiling_axis = param.ub_tiling_axis;
+  int32_t is_fuse_block = param.is_fuse_block;
+  int32_t pattern = CalcPatternKey(shape, block_tiling_axis, ub_tiling_axis);
+  std::vector<int32_t> val = {1000000000, 10000000, 1000000, 100000, 10000, 1000};
+  std::vector<int32_t> pos = {0, is_fuse_block, 0, block_tiling_axis, ub_tiling_axis, pattern};
+  for (size_t i = 0; i < pos.size(); i++) {
+    key += pos[i] * val[i];
+  }
+
+  return key;
+}
+
+static void PrintTilingParams(const TilingParams& param) {
+  OP_LOGD("ascend_quant_tiling",
+          "(block_dim,block_tiling_axis,block_factor,ub_tiling_axis,ub_factor):(%d,%d,%d,%d,%d)",
+          param.block_dim, param.block_tiling_axis, param.block_factor, param.ub_tiling_axis, param.ub_factor);
 }
 
 void GetTilingData(TilingParams& param,
@@ -170,34 +198,6 @@ void GetTilingData(TilingParams& param,
   int32_t dtype_size = GetBlockSize(input_dtype);
   int64_t max_ub_size = compile_info.max_ub_count / dtype_size;
   GetUbTilingData(param, block_tiling_axis, block_factor, out_shape, max_ub_size);
-}
-
-int32_t CalcPatternKey(std::vector<int64_t>& shape,
-                       int32_t block_tiling_axis,
-                       int32_t ub_tiling_axis) {
-  int32_t pattern = 0;
-  for (size_t i = 0; i < shape.size(); i++) {
-    pattern += pow(2, (shape.size() - 1 - i));
-  }
-  pattern += block_tiling_axis * 100 + ub_tiling_axis * 10;
-
-  return pattern;
-}
-
-int32_t CalcTilingKey(std::vector<int64_t>& shape,
-                      TilingParams& param) {
-  int32_t key = 0;
-  int32_t block_tiling_axis = param.block_tiling_axis;
-  int32_t ub_tiling_axis = param.ub_tiling_axis;
-  int32_t is_fuse_block = param.is_fuse_block;
-  int32_t pattern = CalcPatternKey(shape, block_tiling_axis, ub_tiling_axis);
-  std::vector<int32_t> val = {1000000000, 10000000, 1000000, 100000, 10000, 1000};
-  std::vector<int32_t> pos = {0, is_fuse_block, 0, block_tiling_axis, ub_tiling_axis, pattern};
-  for (size_t i = 0; i < pos.size(); i++) {
-    key += pos[i] * val[i];
-  }
-
-  return key;
 }
 
 bool AscendQuantTiling(const std::string& op_type,

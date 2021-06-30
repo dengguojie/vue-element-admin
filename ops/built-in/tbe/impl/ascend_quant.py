@@ -27,7 +27,7 @@ from impl import ascend_quant_util as util
 
 
 # pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
-def _check_params(x, y, scale, offset, sqrt_mode, round_mode, kernel_name):
+def _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr
     """
@@ -53,6 +53,10 @@ def _check_params(x, y, scale, offset, sqrt_mode, round_mode, kernel_name):
     if round_mode not in round_mode_list:
         rule = "round_mode only support [Round, Ceil, Floor, Trunc]"
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "round_mode", round_mode)
+
+    y_dtype = _dst_type_conversion(dst_type)
+    y_check_list = ["int8", "int4"]
+    para_check.check_dtype(y_dtype, y_check_list, param_name="dst_type")
 
 
 def _check_l1_fusion(x, y):
@@ -120,12 +124,12 @@ def _reform_compute_generate(tensor, in_shape, out_shape, val_info, nz_format_fl
     return lambda_func
 
 
-def _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index):
+def _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index, c1_transform):
     """
     generate lambda func
     """
     dtype = x.dtype
-    if c1_dim % 2 == 0:
+    if c1_dim % c1_transform == 0:
         input_ub = tvm.compute(in_shape, lambda *i: x(*i), name="input_ub", attrs={"c_out": c1_dim})
     else:
         zero = tvm.const(0, dtype=dtype)
@@ -202,17 +206,18 @@ def _compute_scale(in_tensor, in_shape, out_shape, attr_list, nz_format_flag):
     scale = attr_list[0]
     offset = attr_list[1]
     sqrt_mode = attr_list[2]
+    y_dtype = attr_list[3]
     if scale != 1:
         scale_value = tvm.const(scale, "float16")
         scale_ub = _reform_by_vmuls(in_tensor, in_shape, out_shape, scale_value, nz_format_flag)
         if sqrt_mode:
             scale_sqrt_ub = tvm.compute(out_shape, lambda *indice: scale_ub(*indice) * scale_value,
                                         name="scale_sqrt_ub")
-            res = _compute_offset(scale_sqrt_ub, in_shape, out_shape, (offset, False, scale), nz_format_flag)
+            res = _compute_offset(scale_sqrt_ub, in_shape, out_shape, (offset, False, scale, y_dtype), nz_format_flag)
         else:
-            res = _compute_offset(scale_ub, in_shape, out_shape, (offset, False, scale), nz_format_flag)
+            res = _compute_offset(scale_ub, in_shape, out_shape, (offset, False, scale, y_dtype), nz_format_flag)
     else:
-        res = _compute_offset(in_tensor, in_shape, out_shape, (offset, True, scale), nz_format_flag)
+        res = _compute_offset(in_tensor, in_shape, out_shape, (offset, True, scale, y_dtype), nz_format_flag)
     return res
 
 
@@ -235,47 +240,45 @@ def _compute_offset(in_tensor, in_shape, out_shape, attr_list, nz_format_flag):
     offset = attr_list[0]
     reform_flag = attr_list[1]
     scale = attr_list[2]
+    y_dtype = attr_list[3]
     if offset != 0 or scale == 1:
         offset_value = tvm.const(offset, "float16")
         if reform_flag:
             offset_ub = _reform_by_vadds(in_tensor, in_shape, out_shape, offset_value, nz_format_flag)
         else:
             offset_ub = tvm.compute(out_shape, lambda *indice: in_tensor(*indice) + offset_value, name="offset_ub")
-        cast_i8_ub = tvm.compute(out_shape,
-                                 lambda *indice: shape_util.cast(offset_ub(*indice), "int8"), name='cast_i8_ub')
+        if y_dtype == "int8":
+            res = tvm.compute(out_shape,
+                              lambda *indice: shape_util.cast(offset_ub(*indice), "int8"), name='cast_i8_ub')
+        else:
+            res = tvm.compute(out_shape,
+                              lambda *indice: shape_util.cast(offset_ub(*indice), "int4"), name='cast_i4_ub')
     else:
-        cast_i8_ub = tvm.compute(out_shape,
-                                 lambda *indice: shape_util.cast(in_tensor(*indice), "int8"), name='cast_i8_ub')
-    return cast_i8_ub
+        if y_dtype == "int8":
+            res = tvm.compute(out_shape,
+                              lambda *indice: shape_util.cast(in_tensor(*indice), "int8"), name='cast_i8_ub')
+        else:
+            res = tvm.compute(out_shape,
+                              lambda *indice: shape_util.cast(in_tensor(*indice), "int4"), name='cast_i4_ub')
+    return res
 
 
-def _get_shape_info(in_shape, nz_format_flag):
+def _get_shape_info(in_shape, nz_format_flag, c1_transform):
     """
     the compute of scale
-
-    Parameters
-    ----------
-    in_shape: the shape of input tensor
-    nz_format_flag: the format of output tensor
-
-    Returns
-    -------
-    read_shape, out_shape
     """
     c0_index = len(in_shape) - 1
     c1_index = 1
-    c1_dim = in_shape[1]
     if nz_format_flag:
         c1_index = len(in_shape) - 4
-        c1_dim = in_shape[c1_index]
     out_shape = in_shape[:]
     read_shape = in_shape[:]
-    read_shape[c1_index] = read_shape[c1_index] + 1 * (c1_dim % 2)
+    read_shape[c1_index] = (read_shape[c1_index] + c1_transform - 1) // c1_transform * c1_transform
     for dim, _ in enumerate(in_shape):
         if dim == c0_index:
-            out_shape[dim] = in_shape[dim] * 2
+            out_shape[dim] = in_shape[dim] * c1_transform
         if dim == c1_index:
-            out_shape[dim] = in_shape[dim] // 2 + 1 * (c1_dim % 2)
+            out_shape[dim] = (in_shape[dim] + c1_transform - 1) // c1_transform
     return read_shape, out_shape
 
 
@@ -315,9 +318,10 @@ def _get_out_l1_info(y):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("ascend_quant")
-def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kernel_name="ascend_quant"):
+def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_type=2,
+                         kernel_name="ascend_quant"):
     """
-    float16/float32 -> int8
+    float16/float32 -> int8/int4
 
     Parameters:
     ----------
@@ -332,6 +336,8 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     sqrt_mode : the sqrt mode when true the result to do sqrt
 
     round_mode : the data conversion mode
+
+    dst_type : the dtype of output, default value is 2
 
     kernel_name : cce kernel name, default value is "ascend_quant"
 
@@ -356,16 +362,22 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
         c1_index = len(in_shape) - 4
         c1_dim = in_shape[c1_index]
 
-    read_shape, out_shape = _get_shape_info(in_shape, nz_format_flag)
+    y_dtype = _dst_type_conversion(dst_type)
+    c1_transform = 2
+    if y_dtype == "int4":
+        c1_transform = 4
 
-    input_ub = _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index)
+    read_shape, out_shape = _get_shape_info(in_shape, nz_format_flag, c1_transform)
+
+    input_ub = _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index, c1_transform)
+    attr_list = (scale, offset, sqrt_mode, y_dtype)
     if dtype == "float32":
         cast_f16_ub = tvm.compute(read_shape, lambda *indice: shape_util.cast(input_ub(*indice), "float16"),
                                   name="cast_f16_ub")
-        cast_i8_ub = _compute_scale(cast_f16_ub, in_shape, out_shape, (scale, offset, sqrt_mode), nz_format_flag)
+        cast_i8_or_i4_ub = _compute_scale(cast_f16_ub, in_shape, out_shape, attr_list, nz_format_flag)
     else:
-        cast_i8_ub = _compute_scale(input_ub, in_shape, out_shape, (scale, offset, sqrt_mode), nz_format_flag)
-    res = tvm.compute(out_shape, lambda *indice: cast_i8_ub(*indice), name="res", tag="quant",
+        cast_i8_or_i4_ub = _compute_scale(input_ub, in_shape, out_shape, attr_list, nz_format_flag)
+    res = tvm.compute(out_shape, lambda *indice: cast_i8_or_i4_ub(*indice), name="res", tag="quant",
                       attrs={"scale": scale,
                              "sqrt_mode": sqrt_mode,
                              "offset": offset,
@@ -373,6 +385,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
                              "input_format": tensor_format,
                              "c1_dim": c1_dim,
                              "l1_fusion_flag": l1_fusion_flag,
+                             "c1_transform": c1_transform,
                              "addr_type": y_addr_type})
     return res
 
@@ -384,12 +397,24 @@ def get_op_support_info(x, y, scale, offset, sqrt_mode=False, round_mode="Round"
     return util.get_quant_support_info(x, l1_fusion_enable=1)
 
 
+def _dst_type_conversion(dst_type):
+    """
+    convert dst_type from int to string
+    """
+    dst_type_str = ""
+    if dst_type == 2:
+        dst_type_str = "int8"
+    elif dst_type == 29:
+        dst_type_str = "int4"
+    return dst_type_str
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
-                            para_check.KERNEL_NAME)
-def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kernel_name="ascend_quant"):
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_type=2, kernel_name="ascend_quant"):
     """
-    float16/float32 -> int8
+    float16/float32 -> int8/int4
 
     Parameters:
     ----------
@@ -405,13 +430,15 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kerne
 
     round_mode : the data conversion mode
 
+    dst_type : the dtype of output, default value is 2
+
     kernel_name : cce kernel name, default value is "ascend_quant"
 
     Returns:
     -------
     None
     """
-    _check_params(x, y, scale, offset, sqrt_mode, round_mode, kernel_name)
+    _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name)
     shape = x.get("shape")
     input_dtype = x.get("dtype").lower()
     input_format = x.get("format")
@@ -433,7 +460,7 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kerne
         input_shape = (batch, shape[-4], shape[-3] * shape[-2], shape[-1])
     input_x = tvm.placeholder(input_shape, name="input_x", dtype=input_dtype, attrs=attr)
 
-    res = ascend_quant_compute(input_x, y, scale, offset, sqrt_mode, round_mode, kernel_name)
+    res = ascend_quant_compute(input_x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 

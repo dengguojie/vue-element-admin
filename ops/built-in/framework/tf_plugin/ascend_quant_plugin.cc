@@ -18,12 +18,39 @@
  * \file ascend_quant_plugin.cpp
  * \brief
  */
+#include "op_log.h"
+#include "graph/types.h"
 #include "register/register.h"
+#include "graph/utils/attr_utils.h"
+#include "graph/utils/op_desc_utils.h"
+#include "proto/tensorflow/node_def.pb.h"
+#include "tensorflow_fusion_op_parser_util.h"
+
+using domi::tensorflow::NodeDef;
 
 namespace domi {
+
+Status AutoMappingFnQuant(const google::protobuf::Message* op_src, ge::Operator& op) {
+  AutoMappingFn(op_src, op);
+  const NodeDef* node_def = reinterpret_cast<const NodeDef*>(op_src);
+  if (node_def == nullptr) {
+     OP_LOGE(op.GetName().c_str(), "node_def is nullptr.");
+     return FAILED;
+  }
+  int dst_type = ge::DT_INT8;
+  auto it = node_def->attr().find("dst_type");
+  if (it != node_def->attr().end()) {
+    auto attr_val = it->second;
+    if (attr_val.s() == "INT4") {
+      dst_type = ge::DT_INT4;
+    }
+  }
+  op.SetAttr("dst_type",dst_type);
+  return SUCCESS;
+}
 REGISTER_CUSTOM_OP("AscendQuant")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("AscendQuant")
-    .ParseParamsFn(AutoMappingFn)
+    .ParseParamsFn(AutoMappingFnQuant)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

@@ -49,13 +49,20 @@ case6 = {"params": [{"shape": (2,1,1,16,16), "dtype": "float16", "format": "FRAC
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-
+case7 = {"params": [{"shape": (10,21,40,40,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (10,21,40,40,16),"ori_format": "NC1HWC0"},
+                    {"shape": (10,21,40,40,16), "dtype": "int4", "format": "NC1HWC0", "ori_shape": (10,21,40,40,16),"ori_format": "NC1HWC0"},
+                    2.0, 0.0, False, "Round", 29],
+         "case_name": "ascend_quant_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend710"], case7)
 
 #precision cases
 def nhwc_data4Dto5D(inputData, channel0=16):
