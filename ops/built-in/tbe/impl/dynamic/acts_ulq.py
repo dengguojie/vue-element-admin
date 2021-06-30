@@ -28,6 +28,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 SHAPE_SIZE_LIMIT = 2 ** 31
 EPS = 1.192092896e-07
+CALCULATE_TYPE = 'float32'
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
@@ -61,26 +62,30 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
         shape_data, shape_clamp_min, param_name_input1='data', param_name_input2='clamp_min')
     _, _, shape_broadcast = shape_util.broadcast_shapes(
         shape_data, shape_clamp_max, param_name_input1='data', param_name_input2='clamp_max')
-    data = tbe.broadcast(data, shape_broadcast)
+
+    dtype = data.dtype
+    data = tbe.cast_to(data, CALCULATE_TYPE)
+    clamp_min = tbe.cast_to(clamp_min, CALCULATE_TYPE)
+    clamp_max = tbe.cast_to(clamp_max, CALCULATE_TYPE)
 
     if fixed_min:
-        ori_clip_min = tbe.vmuls(clamp_min, tvm.const(0, clamp_min.dtype))
+        ori_clip_min = tbe.vmuls(clamp_min, tvm.const(0, CALCULATE_TYPE))
     else:
-        # forcing pass zero
-        ori_clip_min = tbe.vmins(clamp_min, tvm.const(0, clamp_min.dtype))
-    ori_clip_max = tbe.vmaxs(clamp_max, tvm.const(step * EPS, clamp_max.dtype))
+        ori_clip_min = tbe.vmins(clamp_min, tvm.const(0, CALCULATE_TYPE))
+
+    ori_clip_max = tbe.vmaxs(clamp_max, tvm.const(step * EPS, CALCULATE_TYPE))
 
     scale = tbe.vsub(ori_clip_max, ori_clip_min)
-    scale = tbe.vdiv(scale, tbe.broadcast(tvm.const(step, scale.dtype), scale.shape))
+    scale = tbe.vdiv(scale, tbe.broadcast(tvm.const(step, CALCULATE_TYPE), scale.shape))
 
     offset = tbe.vdiv(ori_clip_min, scale)
     offset = tbe.round(offset)
     offset = tbe.cast_to(offset, 'float16')
-    offset = tbe.cast_to(offset, data.dtype)
+    offset = tbe.cast_to(offset, CALCULATE_TYPE)
 
     #fake quant clip min/max
     clip_min = tbe.vmul(scale, offset)
-    clip_max = tbe.vadds(offset, tvm.const(step, offset.dtype))
+    clip_max = tbe.vadds(offset, tvm.const(step, CALCULATE_TYPE))
     clip_max = tbe.vmul(clip_max, scale)
 
     #clip data = data
@@ -89,7 +94,6 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     clamped_x = tbe.vmax(data, clip_min)
     clamped_x = tbe.vmin(clamped_x, clip_max)
 
-    #adjust shape first
     clamp_min_mask = tbe.vcmp(data, clip_min, 'ge')
     clamp_max_mask = tbe.vcmp(data, clip_max, 'le')
 
@@ -97,30 +101,31 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     raw_x = tbe.vdiv(clamped_x, tbe.broadcast(scale, shape_broadcast))
     round_x = tbe.round(raw_x)
     round_x = tbe.cast_to(round_x, 'float16')
-    round_x = tbe.cast_to(round_x, data.dtype)
-
+    round_x = tbe.cast_to(round_x, CALCULATE_TYPE)
     clamped_loss = tbe.vsub(round_x, raw_x)
-    clamped_loss = tbe.vdiv(clamped_loss, tbe.broadcast(tvm.const(step, scale.dtype), clamped_loss.shape))
+    clamped_loss = tbe.vdiv(clamped_loss, tbe.broadcast(tvm.const(step, CALCULATE_TYPE), shape_broadcast))
 
     raw_m = tbe.vdiv(ori_clip_min, scale)
     round_m = tbe.round(raw_m)
     round_m = tbe.cast_to(round_m, 'float16')
-    round_m = tbe.cast_to(round_m, data.dtype)
+    round_m = tbe.cast_to(round_m, CALCULATE_TYPE)
     loss_m = tbe.vsub(round_m, raw_m)
-    loss_m = tbe.vdiv(loss_m, tbe.broadcast(tvm.const(step, loss_m.dtype), loss_m.shape))
+    loss_m = tbe.vdiv(loss_m, tbe.broadcast(tvm.const(step, CALCULATE_TYPE), shape_broadcast))
 
     clamped_loss_float16 = tbe.cast_to(clamped_loss, 'float16')
-    temp = tbe.broadcast(loss_m, shape_broadcast)
-    temp = tbe.cast_to(temp, 'float16')
-    clamped_loss = tbe.vsel(clamp_min_mask, clamped_loss_float16, temp)
-    clamped_loss = tbe.vsel(clamp_max_mask, clamped_loss_float16, temp)
-    clamped_loss = tbe.cast_to(clamped_loss, data.dtype)
+    loss_m_float16 = tbe.broadcast(loss_m, shape_broadcast)
+    loss_m_float16 = tbe.cast_to(loss_m_float16, 'float16')
+    clamped_loss = tbe.vsel(clamp_min_mask, clamped_loss_float16, loss_m_float16)
+    clamped_loss = tbe.vsel(clamp_max_mask, clamped_loss_float16, loss_m_float16)
+    clamped_loss = tbe.cast_to(clamped_loss, dtype)
 
     output = tbe.vmul(round_x, tbe.broadcast(scale, shape_broadcast))
+    output = tbe.cast_to(output, dtype)
+
     clamp_min_mask = tbe.vsel(clamp_min_mask, tvm.const(1, 'float16'), tvm.const(0, 'float16'))
     clamp_max_mask = tbe.vsel(clamp_max_mask, tvm.const(1, 'float16'), tvm.const(0, 'float16'))
-    clamp_min_mask = tbe.cast_to(clamp_min_mask, data.dtype)
-    clamp_max_mask = tbe.cast_to(clamp_max_mask, data.dtype)
+    clamp_min_mask = tbe.cast_to(clamp_min_mask, dtype)
+    clamp_max_mask = tbe.cast_to(clamp_max_mask, dtype)
 
     return [output, clamp_min_mask, clamp_max_mask, clamped_loss]
 
