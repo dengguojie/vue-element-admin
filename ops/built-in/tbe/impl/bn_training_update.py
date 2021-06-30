@@ -479,7 +479,8 @@ def bn_training_update(x,
     """
 
     from tbe.common.buildcfg import get_current_build_config
-    if get_current_build_config("enable_op_prebuild"):
+    # dynamic and static code. for now, only static
+    if get_current_build_config("enable_op_prebuild") or True:
         bn_training_update_prebuild(x,
                                     sum,
                                     square_sum,
