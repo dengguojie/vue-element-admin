@@ -55,7 +55,7 @@ class Test_OpConfig(unittest.TestCase):
         """test_op_config"""
         allow_types = set(["int4", "int8", "uint8", "int16", "uint16", "int32", "uint32",
                            "int64", "uint64", "float16", "float32",
-                           "float", "bool", "double"])
+                           "float", "bool", "double", "bfloat16"])
         allow_input_info_keys = set(["name", "dtype", "format", "shape", "reshapeType",
                                      "needCompile", "shapesType", "valueDepend",
                                      "unknownshape_format", "valueDepend"])

@@ -660,6 +660,68 @@ def _gather_c0_for_out(args):
             tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
 
+def _gather_c0_with_gap_for_out(args):
+    """
+    put data in hwc0 format with gap for output
+    """
+
+    (tik_inst, src_ub, ub_offset, pl_c_size, c0_size, pln_dst_cr_size,
+     cr_idx, src_stride, dst_stride, dst_gap, stride_value) = args
+
+    repeat_cnt = tdc.ceil_div(pl_c_size, c0_size)
+    tensor_dtype = src_ub.dtype.lower()
+    size_factor = tdc.get_dtype_factor(tensor_dtype)
+    ub_offset_casted = ub_offset * size_factor
+    if tensor_dtype in ("float32", "int8", "uint8", "int32", "uint32"):
+        src_ub_casted = src_ub.reinterpret_cast_to("float16")
+    else:
+        src_ub_casted = src_ub
+
+    src_c1_step = cr_idx * tdc.ceil_fill(pl_c_size, c0_size) * c0_size * size_factor
+    if tensor_dtype not in ("int8", "uint8"):
+        with tik_inst.for_range(0, size_factor) as factor_idx:
+            src_factor_step = factor_idx * tdc.VNC_LINES * c0_size
+            dst_factor_step = factor_idx * c0_size
+            src_addr_list = [src_ub_casted[src_factor_step + src_c1_step + c0_size * i]
+                             for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [src_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i]
+                             for i in tdc.ADDR_IDX_LIST]
+            with tik_inst.if_scope(repeat_cnt == 1):
+                src_stride.set_as(0)
+                dst_stride.set_as(0)
+            with tik_inst.else_scope():
+                src_stride.set_as(c0_size * size_factor)
+                dst_stride.set_as(stride_value * size_factor)
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+
+    else:
+        with tik_inst.if_scope(pl_c_size % c0_size == 0):  # two int8 data in one line
+            src_addr_list = [src_ub_casted[(src_c1_step // 2 + c0_size * i) // 2] for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [src_ub_casted[(ub_offset_casted + dst_gap * i) // 2]
+                             for i in tdc.ADDR_IDX_LIST]
+            with tik_inst.if_scope(repeat_cnt == 1):
+                src_stride.set_as(0)
+                dst_stride.set_as(0)
+            with tik_inst.else_scope():
+                src_stride.set_as(c0_size // 2)
+                dst_stride.set_as(stride_value)
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+
+        with tik_inst.else_scope():  # one int8 data in one line
+            dst_addr_list = [src_ub[ub_offset + dst_gap * i] for i in tdc.ADDR_IDX_LIST]
+            with tik_inst.if_scope(repeat_cnt == 1):
+                src_stride.set_as(0)
+                dst_stride.set_as(0)
+            with tik_inst.else_scope():
+                src_stride.set_as(c0_size)
+                dst_stride.set_as(stride_value)
+            src_addr_list = [src_ub[src_c1_step + c0_size * i] for i in tdc.ADDR_IDX_LIST]
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+            src_addr_list = [src_ub[src_c1_step + tdc.VNC_LINES * c0_size + c0_size * i]
+                             for i in tdc.ADDR_IDX_LIST]
+            tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+
+
 # pylint: disable=unused-variable
 def _copy_data_out_1010(copy_out_args):
     """
@@ -668,19 +730,36 @@ def _copy_data_out_1010(copy_out_args):
 
     (tik_inst, dst_out_gm, src_ub, ub_offset, c_step_out, vnc_line_cnt,
      pln_dst_cr_size, ll_cr_size, pl_c_size, c0_size, ele_per_block) = copy_out_args
+    vnc_dst_col_size = pln_dst_cr_size * c0_size
+    repeat_stride = pln_dst_cr_size * tdc.VNC_LINES * c0_size
+    out_crc_cnt = ((vnc_line_cnt - 1) * pln_dst_cr_size + ll_cr_size) * c0_size
+    dst_stride_gap = (c_step_out - out_crc_cnt) // ele_per_block
 
     with tik_inst.new_stmt_scope():
         src_stride = tik_inst.Scalar()
         dst_stride = tik_inst.Scalar()
         c1_cnt = tdc.ceil_div(pl_c_size, c0_size)
-        with tik_inst.for_range(0, c1_cnt) as c1_idx:
-            gather_c0_args = (tik_inst, src_ub, ub_offset, pl_c_size, c0_size,
-                              pln_dst_cr_size, c1_idx, src_stride, dst_stride, pln_dst_cr_size * c0_size, 1)
-            _gather_c0_for_out(gather_c0_args)  # transfer hc0h to hhc0
 
-            out_cr_cnt = (vnc_line_cnt - 1) * pln_dst_cr_size + ll_cr_size
-            tik_inst.data_move(dst_out_gm[c1_idx * c_step_out], src_ub[ub_offset],
-                               0, 1, out_cr_cnt * c0_size // ele_per_block, 0, 0)
+        with tik_inst.if_scope(pln_dst_cr_size > c1_cnt):
+            with tik_inst.for_range(0, c1_cnt) as c1_idx:
+                gather_c0_args = (tik_inst, src_ub, ub_offset + c1_idx * repeat_stride, pl_c_size,
+                                  c0_size, pln_dst_cr_size, c1_idx, src_stride, dst_stride, vnc_dst_col_size, 1)
+                _gather_c0_for_out(gather_c0_args)  # transfer hc0h to hhc0
+        with tik_inst.else_scope():
+            with tik_inst.for_range(0, pln_dst_cr_size) as cr_idx:
+                gather_c0_args = (tik_inst, src_ub, ub_offset + cr_idx * c0_size, pl_c_size, c0_size, pln_dst_cr_size,
+                                  cr_idx, src_stride, dst_stride, vnc_dst_col_size, repeat_stride // c0_size)
+                _gather_c0_with_gap_for_out(gather_c0_args)  # transfer hc0h to hhc0
+
+        with tik_inst.if_scope(dst_stride_gap > tdc.STRIDE_LIMIT_MTE):
+            with tik_inst.new_stmt_scope(disable_sync=True):
+                with tik_inst.for_range(0, c1_cnt) as c1_idx_1:
+                    tik_inst.data_move(dst_out_gm[c1_idx_1 * c_step_out], src_ub[ub_offset + c1_idx_1 * repeat_stride],
+                                       0, 1, out_crc_cnt // ele_per_block, 0, 0)
+        with tik_inst.else_scope():
+            tik_inst.data_move(dst_out_gm[0], src_ub[ub_offset],
+                               0, c1_cnt, out_crc_cnt // ele_per_block,
+                               (repeat_stride - out_crc_cnt) // ele_per_block, dst_stride_gap)
 
 
 def _func_transform_1010(tensor_args, tp_args):
@@ -900,7 +979,7 @@ def trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name=
     dst_format = dst_format.upper()
     in_shape = list(src.get("shape"))
     out_shape = list(dst.get("shape"))
-    in_dtype = src.get("dtype").lower() if src.get("dtype").lower() != "bool" else "int8"
+    in_dtype = src.get("dtype").lower() if src.get("dtype").lower() != "bfloat16" else "float16"
     ub_size = tdc.get_max_element_in_ub(in_dtype, 1)
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 

@@ -53,8 +53,10 @@ from impl import hwcn_2_fractal_z_g
 from impl import trans_data_positive_source_ntc
 from impl import trans_data_negative_target_ntc
 from impl import trans_data_positive_source_tc
+from impl import trans_data_negative_target_tc
 from tbe.dsl.compute import cube_util
 from tbe.tvm import api as tvm
+
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
 # pylint: disable=too-many-arguments
@@ -131,6 +133,18 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
         trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
     elif src_format.upper() == "FRACTAL_Z" and dst_format.upper() == "NCHW" and \
             src.get("dtype") == "int8" and src.get("shape")[-1] == 32 and groups == 1:
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "NHWC" and dst_format.upper() == "NC1HWC0" and \
+            src.get("dtype") == "bfloat16":
+        trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "NC1HWC0" and dst_format.upper() == "NHWC" and \
+            src.get("dtype") == "bfloat16":
+        trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "NCHW" and dst_format.upper() == "NC1HWC0" and \
+            src.get("dtype") == "bfloat16":
+        trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "NC1HWC0" and dst_format.upper() == "NCHW" and \
+            src.get("dtype") == "bfloat16":
         trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
     elif (src_format.upper() == "NHWC" or src_format.upper() == "NCHW") \
             and dst_format.upper() == "NC1HWC0":

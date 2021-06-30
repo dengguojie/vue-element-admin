@@ -1297,7 +1297,7 @@ def trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name
     dst_format = dst_format.upper()
     in_shape = list(src.get("shape"))
     out_shape = list(dst.get("shape"))
-    in_dtype = src.get("dtype").lower()
+    in_dtype = src.get("dtype").lower() if src.get("dtype").lower() != "bfloat16" else "float16"
     ub_size = tdc.get_max_element_in_ub(in_dtype, 1)
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 
