@@ -4251,11 +4251,11 @@ static graphStatus GetStridedSliceInfer(
 
   // required input
   if (op.GetInputConstData("begin", begin_tensor) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Get constValue failed of [begin]");
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [begin]");
     return GRAPH_FAILED;
   }
   if (op.GetInputConstData("end", end_tensor) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Get constValue failed of [end]");
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [end]");
     return GRAPH_FAILED;
   }
   DataType dtype_begin = op.GetInputDesc("begin").GetDataType();
@@ -4312,9 +4312,9 @@ static graphStatus UpdateParams1(
 
   if (GRAPH_FAILED == GetStridedSliceInfer(op, slice_params_output,
                                            slice_params_output_formal)) {
-    OP_LOGW(op.GetName().c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "Get constValue failed of [begin,end,[stride]]");
-    return GRAPH_SUCCESS;
+    return GRAPH_FAILED;
   }
 
   // get axes and permute others attr
@@ -4448,9 +4448,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
 
   if (UpdateParams1(op, slice_params_output, slice_params_output_formal) !=
       GRAPH_SUCCESS) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
-    return op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_FAILED;
   }
 
   op.SetAttr("begin", slice_params_output.begin_list);
