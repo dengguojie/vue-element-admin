@@ -36,10 +36,14 @@ set_st_env() {
   export PYTHONPATH=$install_path/atc/python/site-packages:${CANN_ST_SOURCE}:${PYTHONPATH}
   export LD_LIBRARY_PATH=$install_path/atc/lib64:$LD_LIBRARY_PATH
   export ASCEND_OPP_PATH=$install_path/opp
-  # acl
+  # acl ascend310
   export DDK_PATH=$install_path
   export NPU_HOST_LIB=$install_path/acllib/lib64/stub
   export LD_LIBRARY_PATH=$install_path/acllib/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
+  # for ascend 910
+  export DDK_PATH=$install_path
+  export NPU_HOST_LIB=$install_path/fwkacllib/lib64/stub
+  export LD_LIBRARY_PATH=$install_path/fwkacllib/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
 }
 
 run_st() {

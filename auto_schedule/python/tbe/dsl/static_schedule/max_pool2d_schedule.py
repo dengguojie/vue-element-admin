@@ -34,6 +34,7 @@ VMULS_REFORM_NAME = "reform_by_vmuls"
 SQRT_NAME = "scale_sqrt_ub"
 OFFSET_NAME = "offset_ub"
 CAST_I8_NAME = "cast_i8_ub"
+CAST_I4_NAME = "cast_i4_ub"
 VADDS_REFORM_NAME = "reform_by_vadds"
 
 SIZE_OF_FP16 = 2
@@ -184,7 +185,7 @@ def _tiling(context, core_n):
         if fused_dequant:
             return 2
         if fused_quant and p_c1 != 1:
-            return 2
+            return context["quant_min_c1_factor"]
         return 1
 
     def _get_need_size(c1_factor, ho_factor, wo_factor):
@@ -347,6 +348,7 @@ def _schedule_quant(res, sch, tensors, context, round_mode):
     _emit_insn(_get_tensor(VADDS_REFORM_NAME), "vector_adds")
     _emit_insn(_get_tensor(CAST_I8_NAME),
                _set_round_emit_insn(round_mode))
+    _emit_insn(_get_tensor(CAST_I4_NAME), "vector_conv")
     _emit_insn(_get_tensor(INPUT_NAME), "dma_copy")
 
 
@@ -579,6 +581,15 @@ def schedule(res, sch_list):
     context["ho"], context["wo"] = o_h, o_w
     context["kh"], context["kw"] = k_h, k_w
     context["sh"], context["sw"] = s_h, s_w
+
+    def _set_quant_min_c1_factor(context, fused_quant, quant_tensors):
+        if fused_quant:
+            if quant_tensors.get(CAST_I8_NAME, None) is not None:
+                context["quant_min_c1_factor"] = 2
+            elif quant_tensors.get(CAST_I4_NAME, None) is not None:
+                context["quant_min_c1_factor"] = 4
+
+    _set_quant_min_c1_factor(context, fused_quant, quant_tensors)
 
     # bind core select: n, c1, ho
     c1_core = (p_c1 + 1) // 2 if fused_quant else p_c1

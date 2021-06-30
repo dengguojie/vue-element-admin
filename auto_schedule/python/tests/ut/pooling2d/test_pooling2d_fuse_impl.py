@@ -8,6 +8,15 @@ import te.lang.cce as tbe
 from impl.ascend_anti_quant import ascend_anti_quant_compute
 from impl.ascend_quant import ascend_quant_compute
 from impl.strided_write import strided_write_compute
+from sch_test_frame.ut import OpUT
+import warnings
+from enum import Enum
+
+from te import tvm
+import te.lang.cce as tbe
+from impl.ascend_anti_quant import ascend_anti_quant_compute
+from impl.ascend_quant import ascend_quant_compute
+from impl.strided_write import strided_write_compute
 
 warnings.filterwarnings("ignore")
 
@@ -33,6 +42,10 @@ def dsl_pooling2d_fuse(x, y, fuse_type, window, stride, pooling_mode, padding_mo
         res = tbe.pooling2d(data1, window, stride, pooling_mode, padding_mode, pad, dilation, data_mode, ceil_mode,
                             fusion_params, impl_mode)
         res = strided_write_compute(res, None, 1, 4)
+    elif fuse_type == 5:
+        res = tbe.pooling2d(data1, window, stride, pooling_mode, padding_mode, pad, dilation, data_mode, ceil_mode,
+                            fusion_params, impl_mode)
+        res = ascend_quant_compute(res, y, 36.9753761, -128, False)
 
     tensor_list = [data1, res]
     with tvm.target.cce():
@@ -152,6 +165,31 @@ case8 = {
                         "fusion_params": {}, "impl_mode": "high_performance"}
 }
 
+case9 = {
+    "params": [{"shape": (1, 4, 112, 112, 16), "dtype": "float16"},
+               {"shape": (1, 4, 56, 56, 1), "dtype": "int8"},
+               5
+               ],
+    "case_name": "test_pooling2d_max_quant_int8",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (3, 3), "stride": (2, 2), "pooling_mode": "MAX", "padding_mode": "VALID",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
+
+case10 = {
+    "params": [{"shape": (1, 4, 112, 112, 16), "dtype": "float16"},
+               {"shape": (1, 4, 56, 56, 1), "dtype": "int4"},
+               5
+               ],
+    "case_name": "test_pooling2d_max_quant_int4",
+    "expect": "success",
+    "support_expect": True,
+    "addition_params": {"window": (3, 3), "stride": (2, 2), "pooling_mode": "MAX", "padding_mode": "VALID",
+                        "pad": (0, 0, 0, 0), "dilation": (1, 1), "data_mode": 0, "ceil_mode": 0,
+                        "fusion_params": {}, "impl_mode": "high_performance"}
+}
 
 compile_case_list = [
     case1,
@@ -162,6 +200,8 @@ compile_case_list = [
     case6,
     case7,
     case8,
+    case9,
+    # case10,
 ]
 for item in compile_case_list:
     ut_case.add_case(case=item)
