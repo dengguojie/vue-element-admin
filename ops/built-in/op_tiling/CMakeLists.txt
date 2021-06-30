@@ -48,7 +48,6 @@ set(_optiling_files
   sigmoid_cross_entropy_with_logits_grad_v2.cc
   conv2d.cc
   conv2d_transpose.cc
-  depthwise_conv2d.cc
   conv3d.cc
   mse_loss.cc
   mse_loss_grad.cc

@@ -18,12 +18,16 @@
  * \file conv2d.cpp
  * \brief tiling function of conv2d
  */
+#include <vector>
 #include <string>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
-#include "graph/debug/ge_log.h"
 #include "cube_tiling.h"
+#include "graph/debug/ge_log.h"
+#include "graph/utils/type_utils.h"
+#include "external/graph/operator.h"
+#include "op_tiling.h"
 #include "op_log.h"
+#include "../op_proto/util/error_util.h"
 
 using namespace std;
 namespace optiling {
@@ -33,16 +37,16 @@ namespace optiling {
  * @param [in] op_paras: inputs/outputs/atts of the conv2d
  * @param [out] valValue: val value
  */
-std::vector<int64_t> setValValue(std::vector<std::string> varMap, const TeOpParas& opParas) {
+std::vector<int64_t> setValValue(std::vector<std::string> varMap, const ge::Operator& opParas) {
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
 
-  int32_t batch = opParas.inputs[0].tensor[0].shape[nDim];
-  int32_t hi = opParas.inputs[0].tensor[0].shape[hDim];
-  int32_t wi = opParas.inputs[0].tensor[0].shape[wDim];
-  int32_t ho = opParas.outputs[0].tensor[0].shape[hDim];
-  int32_t wo = opParas.outputs[0].tensor[0].shape[wDim];
+  int32_t batch = opParas.GetInputDesc(0).GetShape().GetDim(nDim);
+  int32_t hi = opParas.GetInputDesc(0).GetShape().GetDim(hDim);
+  int32_t wi = opParas.GetInputDesc(0).GetShape().GetDim(wDim);
+  int32_t ho = opParas.GetOutputDesc(0).GetShape().GetDim(hDim);
+  int32_t wo = opParas.GetOutputDesc(0).GetShape().GetDim(wDim);
   std::vector<int64_t> varValue;
   for (auto var:varMap) {
     if (var == "batch_n") {
@@ -68,17 +72,21 @@ std::vector<int64_t> setValValue(std::vector<std::string> varMap, const TeOpPara
  * @return bool: success or not
  */
 
-bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                  OpRunInfo& runInfo) {
-
-  if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.outputs[0].tensor.empty() || opParas.inputs[0].tensor[0].shape.empty() ||
-      opParas.outputs[0].tensor[0].shape.empty()) {
+bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+                  utils::OpRunInfo& runInfo) {
+  int32_t nDim = 0;
+  int32_t cDim = 1;
+  int32_t hDim = 2;
+  int32_t wDim = 3;
+  if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 || 
+      opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0) {
     return false;
   }
 
-  if (opCompileInfo.contains("fmap_c1") && opParas.inputs[0].tensor[0].shape[1] != opCompileInfo["fmap_c1"]) {
-    OP_LOGE(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups");
+  if (opType.c_str() == "Conv2D" && opCompileInfo.contains("fmap_c1") && 
+      opParas.GetInputDesc(0).GetShape().GetDim(cDim) != opCompileInfo["fmap_c1"]) {
+    CUBE_INNER_ERR_REPORT(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups;"
+      "x_channel=%d, fmap_c1=%d", opParas.GetInputDesc(0).GetShape().GetDim(cDim), opCompileInfo["fmap_c1"]);
     return false;
   }
 
@@ -124,21 +132,19 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
   std::vector<int64_t> varValue = setValValue(varMap, opParas);
 
-  bool res = cube_tiling(opType, opParas.inputs[0].tensor[0].shape, varValue, opInfo, runInfo);
+  bool res = cube_tiling1(opType, opParas.GetInputDesc(0).GetShape().GetDims(), varValue, opInfo, runInfo);
   // for log
-  int32_t nDim = 0;
-  int32_t hDim = 2;
-  int32_t wDim = 3;
-  int32_t batch = opParas.inputs[0].tensor[0].shape[nDim];
-  int32_t hi = opParas.inputs[0].tensor[0].shape[hDim];
-  int32_t wi = opParas.inputs[0].tensor[0].shape[wDim];
-  int32_t ho = opParas.outputs[0].tensor[0].shape[hDim];
-  int32_t wo = opParas.outputs[0].tensor[0].shape[wDim];
-  GELOGD("conv2d tiling_data is %d, %d, %d, %d, %d, %d", runInfo.tiling_key, batch, hi, ho, wi, wo);
+  int32_t batch = opParas.GetInputDesc(0).GetShape().GetDim(nDim);
+  int32_t hi = opParas.GetInputDesc(0).GetShape().GetDim(hDim);
+  int32_t wi = opParas.GetInputDesc(0).GetShape().GetDim(wDim);
+  int32_t ho = opParas.GetOutputDesc(0).GetShape().GetDim(hDim);
+  int32_t wo = opParas.GetOutputDesc(0).GetShape().GetDim(wDim);
+  GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
 
   return res;
 }
 
 // register tiling interface of the conv2d
-REGISTER_OP_TILING_FUNC_BUFFERED(Conv2D, Conv2DTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(Conv2D, Conv2DTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(DepthwiseConv2D, Conv2DTiling);
 }  // namespace optiling

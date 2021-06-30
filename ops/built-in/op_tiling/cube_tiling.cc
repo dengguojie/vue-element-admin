@@ -183,9 +183,9 @@ namespace {
     }
   }
 
-  void update_run_info_cube(const std::vector<int64_t>& var_value, optiling::OpRunInfo& run_info) {
+  void update_run_info_cube(const std::vector<int64_t>& var_value, optiling::utils::OpRunInfo& run_info) {
     for (int64_t i = 0; i < var_value.size(); ++i) {
-      optiling::ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(var_value[i]));
+      run_info.AddTilingData(static_cast<int32_t>(var_value[i]));
     }
   }
 
@@ -265,11 +265,11 @@ namespace optiling {
   * @param [out] run_info: runtime information
   * @return bool: success or not
   */
-  bool cube_tiling(const std::string& op_type,
+  bool cube_tiling1(const std::string& op_type,
                   const std::vector<int64_t>& input_shape,
                   const std::vector<int64_t>& var_value,
                   const nlohmann::json& compile_info,
-                  OpRunInfo& run_info) {
+                  utils::OpRunInfo& run_info) {
     try {
       OP_LOGD(op_type.c_str(), "input compile info: %s", compile_info.dump().c_str());
       std::vector<std::string> vars = compile_info.at("_vars").begin().value().get<std::vector<std::string>>();
@@ -302,8 +302,8 @@ namespace optiling {
       }
 
       OP_LOGD(op_type.c_str(), "get tiling_id: %s", tiling_id.c_str());
-      run_info.block_dim = static_cast<uint32_t>(compile_info["block_dim"][tiling_id]);
-      run_info.tiling_key = std::stoi(tiling_id);
+      run_info.SetBlockDim(static_cast<uint32_t>(compile_info["block_dim"][tiling_id]));
+      run_info.SetTilingKey(std::stoi(tiling_id));
 
       update_run_info_cube(var_value, run_info);
       return true;

@@ -23,6 +23,8 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
+#include "graph/utils/type_utils.h"
+#include "external/graph/operator.h"
 #include "cube_tiling.h"
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
@@ -42,15 +44,14 @@ using namespace std;
 
 const int32_t MAX_STRIDE = 63;
 
-bool AvgPoolV2TilingCube(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                  OpRunInfo& runInfo) {
+bool AvgPoolV2TilingCube(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+                         utils::OpRunInfo& runInfo) {
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
 
-  if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.outputs[0].tensor.empty() || opParas.inputs[0].tensor[0].shape.empty() ||
-      opParas.outputs[0].tensor[0].shape.empty()) {
+  if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 || 
+      opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0) {
     return false;
   }
 
@@ -63,11 +64,11 @@ bool AvgPoolV2TilingCube(const std::string& opType, const TeOpParas& opParas, co
   GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
 
   std::vector<std::string> varMap = opCompileInfo.at("_vars").begin().value().get<std::vector<std::string>>();
-  int64_t batch = opParas.inputs[0].tensor[0].shape[nDim];
-  int64_t hi = opParas.inputs[0].tensor[0].shape[hDim];
-  int64_t ho = opParas.outputs[0].tensor[0].shape[hDim];
-  int64_t wi = opParas.inputs[0].tensor[0].shape[wDim];
-  int64_t wo = opParas.outputs[0].tensor[0].shape[wDim];
+  int64_t batch = opParas.GetInputDesc(0).GetShape().GetDim(nDim);
+  int64_t hi = opParas.GetInputDesc(0).GetShape().GetDim(hDim);
+  int64_t ho = opParas.GetOutputDesc(0).GetShape().GetDim(hDim);
+  int64_t wi = opParas.GetInputDesc(0).GetShape().GetDim(wDim);
+  int64_t wo = opParas.GetOutputDesc(0).GetShape().GetDim(wDim);
   std::vector<int64_t> var_value;
   for (auto var:varMap) {
     if (var == "batch_n") {
@@ -82,12 +83,12 @@ bool AvgPoolV2TilingCube(const std::string& opType, const TeOpParas& opParas, co
       var_value.insert(var_value.end(), wo);
     }
   }
-  GELOGD("avgpoolv2 tiling_data is %d, %d, %d, %d, %d, %d", runInfo.tiling_key, batch, hi, ho, wi, wo);
-  return cube_tiling(opType, opParas.inputs[0].tensor[0].shape, var_value, opCompileInfo, runInfo);
+  GELOGD("avgpoolv2 tiling_data is %d, %d, %d, %d, %d, %d", runInfo.GetTilingKey(), batch, hi, ho, wi, wo);
+  return cube_tiling1(opType, opParas.GetInputDesc(0).GetShape().GetDims(), var_value, opCompileInfo, runInfo);
 }
 // register tiling interface of the avgpool
-bool AvgPoolTilingV2(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                  OpRunInfo& runInfo)
+bool AvgPoolTilingV2(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+                     utils::OpRunInfo& runInfo)
 {
   int32_t strides_h = opCompileInfo.at("strides_h");
   int32_t strides_w = opCompileInfo.at("strides_w");
@@ -96,9 +97,9 @@ bool AvgPoolTilingV2(const std::string& opType, const TeOpParas& opParas, const 
   if (strides_h <= MAX_STRIDE && strides_w <= MAX_STRIDE) {
     result = AvgPoolV2TilingCube(opType, opParas, opCompileInfo, runInfo);
   } else {
-    GELOGW("optiling is not support AvgPoolTilingVector");
+    GELOGW("optiling is not support AvgPoolV2TilingVector");
   }
   return result;
 }
-REGISTER_OP_TILING_FUNC_BUFFERED(AvgPoolV2, AvgPoolTilingV2);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(AvgPoolV2, AvgPoolTilingV2);
 }  // namespace optiling

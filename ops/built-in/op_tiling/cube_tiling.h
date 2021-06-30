@@ -37,11 +37,11 @@ namespace optiling {
  * @param [out] runInfo: result data
  * @return int: tiling id
  */
-bool cube_tiling(const std::string& op_type,
+bool cube_tiling1(const std::string& op_type,
                 const std::vector<int64_t>& input_shape,
                 const std::vector<int64_t>& var_value,
                 const nlohmann::json& compile_info,
-                OpRunInfo& run_info);
+                utils::OpRunInfo& run_info);
 
 /*
  * @brief: tiling function of cube operators

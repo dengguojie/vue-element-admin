@@ -3,9 +3,17 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "array_ops.h"
+#include "nn_calculation_ops.h"
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/graph_utils.h"
+#include "graph/utils/op_desc_utils.h"
 #include "register/op_tiling_registry.h"
 
 using namespace std;
+using namespace ge;
+using namespace op;
 
 class Conv2DTiling : public testing::Test {
  protected:
@@ -34,189 +42,186 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(Conv2DTiling, Conv2d_tiling_dynamic_nhw) {
   using namespace optiling;
   std::string op_name = "Conv2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
 
-  std::vector<std::vector<int64_t>> inputs {
-    {1, 32, 16, 16},
-    {64, 32, 3, 3},
-  };
-  std::vector<int64_t> output {1, 64, 16, 16};
-  std::vector<std::string> input_types{"float16", "float16"};
-  std::string output_dtype = "float16";
-  std::vector<std::string> input_formats{"NCHW", "NCHW"};
-  std::string output_format = "NCHW";
+  ge::Graph graph("conv2d_op_tiling_test_0");
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = input_formats[i];
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = output_dtype;
-  tensor_output.format = output_format;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "Conv2d_tiling_dynamic_nhw";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 2);
-  EXPECT_EQ(runInfo.tiling_key, 10000);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 16 16 16 16 ");
+  auto x_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_dynamic_nhw", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(conv2d, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 2);
+  EXPECT_EQ(runInfo.GetTilingKey(), 10000);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 16 16 16 ");
 }
 
 TEST_F(Conv2DTiling, Conv2d_tiling_dynamic_None) {
   using namespace optiling;
   std::string op_name = "Conv2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-  
-  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "default_tiling", "default_range": {"10000": [1, 2147483647, 16, 16, 16, 16]}, "block_dim": {"10000": 1}, "_vars": {"10000": ["batch_n"]}})";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::vector<std::vector<int64_t>> inputs {
-    {1, 32, 16, 16},
-    {64, 32, 3, 3},
-  };
-  std::vector<int64_t> output {1, 64, 16, 16};
-  std::vector<std::string> input_types{"float16", "float16"};
-  std::string output_dtype = "float16";
-  std::vector<std::string> input_formats{"NCHW", "NCHW"};
-  std::string output_format = "NCHW";
+  const ge::AscendString compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "default_tiling", "default_range": {"10000": [1, 2147483647, 16, 16, 16, 16]}, "block_dim": {"10000": 1}, "_vars": {"10000": ["batch_n"]}})";
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = input_formats[i];
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = output_dtype;
-  tensor_output.format = output_format;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "Conv2d_tiling_dynamic_None";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(runInfo.tiling_key, 10000);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 ");
+  ge::Graph graph("conv2d_op_tiling_test_1");
+
+  auto x_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_dynamic_None", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(conv2d, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(runInfo.GetTilingKey(), 10000);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 ");
 }
 
 TEST_F(Conv2DTiling, Conv2d_tiling_dynamic_channel) {
   using namespace optiling;
   std::string op_name = "Conv2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "fmap_c1": 5, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
+  const ge::AscendString compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "fmap_c1": 5, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
 
-  std::vector<std::vector<int64_t>> inputs {
-    {1, 32, 16, 16},
-    {64, 32, 3, 3},
-  };
-  std::vector<int64_t> output {1, 64, 16, 16};
-  std::vector<std::string> input_types{"float16", "float16"};
-  std::string output_dtype = "float16";
-  std::vector<std::string> input_formats{"NCHW", "NCHW"};
-  std::string output_format = "NCHW";
+  ge::Graph graph("conv2d_op_tiling_test_2");
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = input_formats[i];
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = output_dtype;
-  tensor_output.format = output_format;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "Conv2d_tiling_dynamic_channel";
-  OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  auto x_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({1, 64, 16, 16});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_dynamic_channel", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(conv2d, op_compile_info, runInfo));
 }
 
 // fuzz build compile list input
 TEST_F(Conv2DTiling, Conv2d_tiling_fuzz_build_list_input) {
+  // new ut ops
   using namespace optiling;
   std::string op_name = "Conv2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"([{"_pattern": "Convolution", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"0": [16, 32, 16, 32, 16, 32]}, "block_dim": {"0": 16}, "_vars": {"0": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}},{"_pattern": "Convolution", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"1": [16, 32, 64, 128, 64, 128]}, "block_dim": {"1": 16}, "_vars": {"1": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}}])";
+  const ge::AscendString compileInfo = R"([{"_pattern": "Convolution", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"0": [16, 32, 16, 32, 16, 32]}, "block_dim": {"0": 16}, "_vars": {"0": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}},{"_pattern": "Convolution", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"1": [16, 32, 64, 128, 64, 128]}, "block_dim": {"1": 16}, "_vars": {"1": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}}])";
 
-  std::vector<std::vector<int64_t>> inputs {
-    {16, 3, 16, 16},
-    {33, 3, 3, 5},
-  };
-  std::vector<int64_t> output {16, 33, 14, 12};
-  std::vector<std::string> input_types{"float16", "float16"};
-  std::string output_dtype = "float16";
-  std::vector<std::string> input_formats{"NCHW", "NCHW"};
-  std::string output_format = "NCHW";
+  ge::Graph graph("conv2d_op_tiling_test_3");
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = input_formats[i];
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = output_dtype;
-  tensor_output.format = output_format;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "Conv2d_tiling_fuzz_build_list_input";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 16);
-  EXPECT_EQ(runInfo.tiling_key, 0);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "16 16 14 16 12 ");
+  auto x_shape = vector<int64_t>({16, 3, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({33, 3, 3, 5});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter);
+
+  auto y_shape = vector<int64_t>({16, 33, 14, 12});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_fuzz_build_list_input", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(conv2d, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 16);
+  EXPECT_EQ(runInfo.GetTilingKey(), 0);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 14 16 12 ");
 }
