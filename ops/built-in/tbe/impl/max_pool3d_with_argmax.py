@@ -69,6 +69,8 @@ class MaxPool3DWithArgmax():
         self.vector_size_elem = self.vector_size_bytes // self.each_elem_bytes
         self.out_mask_type = 'uint16'
         self.mask4compute = 128
+        self.upper_rep_limit = 255
+
         self.N, self.input_d, self.C1, self.input_h, self.input_w, self.C0 = x.get('shape')
         _, _, self.k_d, self.k_h, self.k_w = kernel_size
         _, _, self.stride_d, self.stride_h, self.stride_w = stride
@@ -107,13 +109,11 @@ class MaxPool3DWithArgmax():
         cut_ub_loop = self.h_step * self.w_step * self.C0 // ub_line_cut_ub
         cut_ub_tail = self.h_step * self.w_step * self.C0 % ub_line_cut_ub
 
-        # Notice: line_rep_loop usually be 182, and all of 'line_loop4cmp * 2, bm_line_loop, ub_line_rep_loop,
-        #       ubtail_bm_line_loop, ubtail_line_loop4cmp * 2' are smaller than that, so there is no need to
-        #       consider the case that repeat times > 255
+        # Notice: 1. line_rep_loop probably more than 255.
+        #         2. ub_line_cut_ub has already aligned to 256, so there is no need to consider line_rep_tail.
         line_rep_loop = ub_line_cut_ub // self.vector_size_elem
-        line_rep_tail = ub_line_cut_ub % self.vector_size_elem
-        # 256 here is to aligned the uint16's block (contains 16 uint16), and each uint16 represents 16 numbers
-        line_loop4cmp = ub_line_cut_ub // 256
+        super_line_loop = line_rep_loop // self.upper_rep_limit
+        super_line_tail = line_rep_loop % self.upper_rep_limit
         bm_line_loop = bm_line_cut_ub // self.vector_size_elem
         bm_line_tail = bm_line_cut_ub % self.vector_size_elem
 
@@ -216,21 +216,28 @@ class MaxPool3DWithArgmax():
                                               data_blknum=ub_line_cut_ub * self.each_elem_bytes // self.block_size,
                                               inst=tik_instance)
                                     with tik_instance.for_range(1, self.k_elem) as line_ind:
-                                        if line_rep_loop != 0:
+                                        if super_line_loop != 0:
+                                            with tik_instance.for_range(0, super_line_loop) as super_loop_ind:
+                                                _compute_two_ctn(
+                                                    method=tik_instance.vmax,
+                                                    dst=maxline_ub_T[super_loop_ind * self.upper_rep_limit
+                                                                     * self.mask4compute],
+                                                    src0=maxline_ub_T[super_loop_ind * self.upper_rep_limit
+                                                                      * self.mask4compute],
+                                                    src1=bigmat_ub_T[line_ind, super_loop_ind * self.upper_rep_limit
+                                                                     * self.mask4compute],
+                                                    rep_times=self.upper_rep_limit
+                                                )
+                                        if super_line_tail != 0:
                                             _compute_two_ctn(
                                                 method=tik_instance.vmax,
-                                                dst=maxline_ub_T[0],
-                                                src0=maxline_ub_T,
-                                                src1=bigmat_ub_T[line_ind, 0],
-                                                rep_times=line_rep_loop
-                                            )
-                                        if line_rep_tail != 0:
-                                            _compute_two_ctn(
-                                                method=tik_instance.vmax,
-                                                dst=maxline_ub_T[line_rep_loop * self.mask4compute],
-                                                src0=maxline_ub_T[line_rep_loop * self.mask4compute],
-                                                src1=bigmat_ub_T[line_ind, line_rep_loop * self.mask4compute],
-                                                mask=line_rep_tail
+                                                dst=maxline_ub_T[super_line_loop * self.upper_rep_limit
+                                                                 * self.mask4compute],
+                                                src0=maxline_ub_T[super_line_loop * self.upper_rep_limit
+                                                                  * self.mask4compute],
+                                                src1=bigmat_ub_T[line_ind, super_line_loop * self.upper_rep_limit
+                                                                 * self.mask4compute],
+                                                rep_times=super_line_tail
                                             )
                                     # move the max_line_ub_T to gm
                                     _move_ctn(dst=output_gm_T[loop_ind_N, loop_ind_d, loop_ind_C1,
@@ -240,11 +247,27 @@ class MaxPool3DWithArgmax():
                                               inst=tik_instance)
                                     # step 2: compute the bitmask
                                     with tik_instance.for_range(0, self.k_elem) as line_ind:
-                                        _cmp_ctn(inst=tik_instance,
-                                                 dst=bitmask_ub_T[line_ind, 0],
-                                                 src0=bigmat_ub_T[line_ind, 0],
-                                                 src1=maxline_ub_T[0],
-                                                 rep_times=line_loop4cmp * 2)
+                                        if super_line_loop != 0:
+                                            with tik_instance.for_range(0, super_line_loop) as super_loop_ind:
+                                                _cmp_ctn(
+                                                    inst=tik_instance,
+                                                    dst=bitmask_ub_T[line_ind, super_loop_ind * self.upper_rep_limit
+                                                                     * self.mask4compute // 16],
+                                                    src0=bigmat_ub_T[line_ind, super_loop_ind * self.upper_rep_limit
+                                                                     * self.mask4compute],
+                                                    src1=maxline_ub_T[super_loop_ind * self.upper_rep_limit
+                                                                      * self.mask4compute],
+                                                    rep_times=self.upper_rep_limit,
+                                                )
+                                        if super_line_tail != 0:
+                                            _cmp_ctn(inst=tik_instance,
+                                                     dst=bitmask_ub_T[line_ind, super_line_loop * self.upper_rep_limit
+                                                                      * self.mask4compute // 16],
+                                                     src0=bigmat_ub_T[line_ind, super_line_loop * self.upper_rep_limit
+                                                                      * self.mask4compute],
+                                                     src1=maxline_ub_T[super_line_loop * self.upper_rep_limit
+                                                                       * self.mask4compute],
+                                                     rep_times=super_line_tail)
                                     # step 3: deduplicate the bitmask, each column must have at most one '1'.
                                     # first, init the masknot and maskor.
                                     if bm_line_loop != 0:
@@ -464,7 +487,7 @@ class MaxPool3DWithArgmax():
                             burst=math.ceil(ubtail_bm_cut_ub * self.each_elem_bytes / self.block_size),
                             src_stride=(bm_line_cut_ub - ubtail_bm_cut_ub) *
                                        self.each_elem_bytes // self.block_size,
-                            dst_stride=self.aligned_bitmask_line // 16 - math.ceil(ubtail_bm_cut_ub / 16)
+                            dst_stride=(self.aligned_bitmask_line // 16) - math.ceil(ubtail_bm_cut_ub / 16)
                         )
         output_gm_T = output_gm_T.reshape(self.output_shape)
         tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[input_gm_T],

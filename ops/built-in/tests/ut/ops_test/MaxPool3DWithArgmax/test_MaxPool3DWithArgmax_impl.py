@@ -18,9 +18,13 @@ from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
 ut_case = OpUT("MaxPool3DWithArgmax", "impl.max_pool3d_with_argmax", "max_pool3d_with_argmax")
 
-case1 = {"params": [{"shape": (1, 10, 1, 6, 6, 16), "dtype":"float16"},
+case1 = {"params": [{"shape": (1, 10, 1, 6, 6, 16), "dtype": "float16"},
                     {}, {}, [1, 1, 1, 2, 2], [1, 1, 1, 2, 2]]}
+case2 = {"params": [{"shape": (3, 87, 6, 100, 64, 16), "dtype": "float16"},
+                    {}, {}, [1, 1, 1, 1, 2], [1, 1, 10, 1, 1]]}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 
 if __name__ == '__main__':
     ut_case.run()
