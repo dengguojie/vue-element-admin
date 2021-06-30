@@ -232,7 +232,7 @@ REG_OP(Relu6Grad)
 *Applies the element-wise function:
 * Computes the backward for the elu: if x>0, 1; otherwise elu() + alpha .
 *@par Inputs:
-*One inputs, including:
+*Two inputs, including:
 * @li grads: A tensor. Must be one of the following types:
 *     float16, float32. 
 * @li activations: A tensor. Must be one of the following types:
@@ -242,7 +242,7 @@ REG_OP(Relu6Grad)
 *y: A Tensor with the same type and shape of grads's.
 * 
 *@par Attributes:
-*@li alpha: scalar parameter, default value = 1.0
+*alpha: scalar parameter, default value = 1.0
 */	
 REG_OP(EluGradV2)
     .INPUT(grads, TensorType({DT_FLOAT, DT_FLOAT16}))
@@ -721,20 +721,20 @@ REG_OP(MishGrad)
  * @brief pytorch hardtanh_backward operator.
  *
  * @par Inputs:
- * 2 inputs, including:
+ * Two inputs, including:
  * @li result, minimum tensor of the linear region range,
  * datatype: float16/float32, format:ND/5HD.
  * @li grad, maximum tensor of the linear region range,
  * datatype:float16/float32, format:ND/5HD. \n
 
  * @par Attributes:
- * 2 attributes, including:
+ * Two attributes, including:
  * @li min_val, minimum value of the linear region range, datatype:float.
  * @li max_val, maximum value of the linear region range, datatype:float. \n
 
  * @par Outputs:
- * 1 output, including:
- * @li y, hardtanh_backward output tensor, datatype and format is same as
+ * One output, including:
+ * y, hardtanh_backward output tensor, datatype and format is same as
  * input result. \n
 
  * @attention Constraints:
@@ -756,7 +756,7 @@ REG_OP(HardtanhGrad)
 
 * @par Inputs:
 * One inputs, including:
-* @li x: A mutable Tensor. Must be one of the following types:
+* x: A mutable Tensor. Must be one of the following types:
 *     float16, float32. \n
 
 * @par Attributes:
@@ -765,7 +765,7 @@ REG_OP(HardtanhGrad)
 * @li threshold: An optional float. Defaults to "20.0" \n
 
 * @par Outputs:
-* @li y: A mutable Tensor. Has the same type as "x" \n
+* y: A mutable Tensor. Has the same type as "x" \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator Softplus.
@@ -792,7 +792,7 @@ REG_OP(SoftplusV2)
 * @li threshold: An optional float. Defaults to "20.0" \n
 
 * @par Outputs:
-* @li output_backprops: A mutable Tensor. Has the same type as "input_gradients" \n
+* output_backprops: A mutable Tensor. Has the same type as "input_gradients" \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator SoftplusGrad.
@@ -809,13 +809,13 @@ REG_OP(SoftplusV2Grad)
  * @brief ThresholdedRelu takes one input data (Tensor) and produces one output data (Tensor)
  *  where the rectified linear function, y = x for x > alpha, y = 0 otherwise, is applied to the tensor elementwise.
  * 
- * @par inputs
+ * @par Input
  * one input including:
  * @li x: input A Tensor. Must be one of the following types: float32, float16
  * 
- * @par output
+ * @par Output
  * one output including:
- * @li y:A Tensor of the same type as x
+ * y:A Tensor of the same type as x
  * 
  */
 REG_OP(ThresholdedRelu)
@@ -829,11 +829,11 @@ REG_OP(ThresholdedRelu)
 
 * @par Inputs:
 * One inputs, including:
-* @li input_x: A tensor. Must be one of the following types:
+* input_x: A tensor. Must be one of the following types:
 *     float16, float32. \n
 
 * @par Attributes:
-* @li lambd: An optional float. Defaults to 0.5. \n
+* lambd: An optional float. Defaults to 0.5. \n
 
 * @par Outputs:
 * y: A Tensor with the same dtype and shape of input_x's. \n
@@ -863,7 +863,7 @@ REG_OP(HardShrink)
 *backprops: A Tensor with the same type and shape of features's. \n
 *
 *@par Attributes:
-*@li lambd: An optional float.Defaults to 0.5. \n
+*lambd: An optional float.Defaults to 0.5. \n
 *
 *@par Third-party framework compatibility
 *Compatible with the Pytorch operator Hardshrink_backward. \n
@@ -880,7 +880,7 @@ REG_OP(HardShrink)
 
 * @par Inputs:
 * One inputs, including:
-* @li input_x: A tensor. Must be one of the following types:
+* input_x: A tensor. Must be one of the following types:
 *     float16, float32, int32. \n
 
 * @par Attributes:
@@ -905,11 +905,11 @@ REG_OP(HardSigmoid)
 
 * @par Inputs:
 * One inputs, including:
-* @li input_x: A tensor. Must be one of the following types:
+* input_x: A tensor. Must be one of the following types:
 *     float16, float32. \n
 
 * @par Attributes:
-* @li lambd: An optional float. Defaults to 0.5. \n
+* lambd: An optional float. Defaults to 0.5. \n
 
 * @par Outputs:
 * y: A Tensor with the same dtype and shape of input_x's. \n
@@ -933,7 +933,7 @@ REG_OP(SoftShrink)
 * @li input_x: A tensor of the same dtype as "input_grad". \n
 
 * @par Attributes:
-* @li lambd: An optional float. Defaults to 0.5. \n
+* lambd: An optional float. Defaults to 0.5. \n
 
 * @par Outputs:
 * y: A Tensor of the same dtype and shape as "input_graxd". \n
@@ -976,12 +976,12 @@ REG_OP(LogSigmoidGrad)
 
 *@par Inputs:
 *One inputs, including:
-* @li x: A tensor. Must be one of the following types:
+* x: A tensor. Must be one of the following types:
 *       float16, float32. \n
 
 *@par Outputs:
 *One outputs, including:
-* @li y: A tensor with the same type and shape of x's. \n
+* y: A tensor with the same type and shape of x's. \n
 
 *@par Third-party framework compatibility
 *Compatible with the Pytorch operator LogSigmoid. \n
@@ -1003,7 +1003,7 @@ REG_OP(LogSigmoid)
 
 *@par Outputs:
 *One outputs, including:
-* @li y: A tensor with the same type and shape of x's. \n
+* y: A tensor with the same type and shape of x's. \n
 
 * @par Attributes:
 * @li alpha: An optional float. Defaults to 0.16666666. \n

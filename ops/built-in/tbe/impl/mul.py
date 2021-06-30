@@ -189,288 +189,315 @@ def op_sub_select_format(x, y, output, kernel_name="mul"):
 def op_select_format(x, y, output, kernel_name="mul"):
     """
     select format dynamically\n
+
     1.when the lengths of x's shape and y's shape are the same and equal to 5, the formats of x and
     y are the same and are one of [NDHWC,DHWCN,NCDHW], and x's shape == y's shape: support ND, NDC1HWC0,
     FRACTAL_Z_3D format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
-    > y's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
-    > support conversion to NDC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
-    > y's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
+        y's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
+        support conversion to NDC1HWC0 operation:\n
+        x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
+        y's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
 
     2.when the lengths of x's shape and y's shape are the same and equal to 5, the formats of x and
     y are the same and are one of [NDHWC,DHWCN,NCDHW], x's shape != y's shape, and x's dim of c == y's
     dim of c: support ND, NDC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
-    > y's Tensor(shape=(1, 2, 3, 4, 6), "NDHWC")\n
-    > support conversion to NDC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
-    > y's Tensor(shape=(1, 2, 1, 3, 4, 16), "NDC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
+        y's Tensor(shape=(1, 2, 3, 4, 6), "NDHWC")\n
+        support conversion to NDC1HWC0 operation:\n
+        x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
+        y's Tensor(shape=(1, 2, 1, 3, 4, 16), "NDC1HWC0")\n
 
     3.when the lengths of x's shape and y's shape are the same and equal to 5,the formats of x and
     y are the same and are one of [NDHWC,DHWCN,NCDHW], x's shape != y's shape, x's dim of c == y's dim
     of c, and x's dim of n == y's dim of n: support ND, NDC1HWC0, FRACTAL_Z_3D format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
-    > y's Tensor(shape=(2, 2, 3, 4, 6), "NDHWC")\n
-    > support conversion to NDC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
-    > y's Tensor(shape=(2, 2, 1, 3, 4, 16), "NDC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4, 5, 6), "NDHWC")\n
+        y's Tensor(shape=(2, 2, 3, 4, 6), "NDHWC")\n
+        support conversion to NDC1HWC0 operation:\n
+        x's Tensor(shape=(2, 3, 1, 4, 5, 16), "NDC1HWC0")\n
+        y's Tensor(shape=(2, 2, 1, 3, 4, 16), "NDC1HWC0")\n
 
     4.when the lengths of x's shape >= 2, the lengths of y's shape >= 2, and x's shape[-2:] == y's shape[-2:]:
     support ND, FRACTAL_NZ format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 3, 4), "ND")\n
-    > y's Tensor(shape=(1, 3, 4), "ND")\n
-    > support conversion to FRACTAL_NZ operation:\n
-    > x's Tensor(shape=(2, 1, 1, 16, 16), "FRACTAL_NZ")\n
-    > y's Tensor(shape=(2, 1, 1, 16, 16), "FRACTAL_NZ")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4), "ND")\n
+        y's Tensor(shape=(1, 3, 4), "ND")\n
+        support conversion to FRACTAL_NZ operation:\n
+        x's Tensor(shape=(2, 1, 1, 16, 16), "FRACTAL_NZ")\n
+        y's Tensor(shape=(2, 1, 1, 16, 16), "FRACTAL_NZ")\n
 
     5.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NCHW,
     x's dim of c == y's dim of c or x's dim of c / 16 == 1 or y's dim of c / 16 == 1, and x's dim of
     n == y's dim of n or x's dim of n == 1 or y's dim of n == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 16, 4, 5), "NCHW")\n
-    > y's Tensor(shape=(2, 16, 4, 16), "NCHW")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(1, 1, 4, 16, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 16, 4, 5), "NCHW")\n
+        y's Tensor(shape=(2, 16, 4, 16), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 4, 16, 16), "NC1HWC0")\n
 
     6.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
     x's dim of h == y's dim of h, and x's dim of w == 1 or y's dim of w == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 4, 16, 5), "HWCN")\n
-    > y's Tensor(shape=(2, 1, 16, 4), "HWCN")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(5, 1, 2, 4, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(4, 1, 2, 1, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 4, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 1, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 2, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 1, 16), "NC1HWC0")\n
 
     7.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
     x's dim of w == y's dim of w, and x's dim of h == 1 or y's dim of h == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1, 4, 16, 5), "HWCN")\n
-    > y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(5, 1, 1, 4, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 4, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 1, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
 
     8.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
     x's dim of w == y's dim of w, and x's dim of h == y's dim of h: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 4, 16, 5), "HWCN")\n
-    > y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(5, 1, 2, 4, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 4, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 2, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
 
     9.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
     and x's dim of w == x's dim of h == 1 or y's dim of h == y's dim of w == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1, 1, 16, 5), "HWCN")\n
-    > y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(5, 1, 1, 1, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 1, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 4, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 4, 16), "NC1HWC0")\n
 
     10.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are HWCN,
     and x's dim of h == y's dim of w == 1 or x's dim of w == y's dim of h == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1, 2, 16, 5), "HWCN")\n
-    > y's Tensor(shape=(2, 1, 16, 4), "HWCN")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(5, 1, 1, 2, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(4, 1, 2, 1, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 2, 16, 5), "HWCN")\n
+        y's Tensor(shape=(2, 1, 16, 4), "HWCN")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(5, 1, 1, 2, 16), "NC1HWC0")\n
+        y's Tensor(shape=(4, 1, 2, 1, 16), "NC1HWC0")\n
 
     11.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
     x's dim of h == y's dim of h, and x's dim of n == 1 or y's dim of n == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1, 2, 3, 16), "NHWC")\n
-    > y's Tensor(shape=(2, 2, 4, 16), "NHWC")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(1, 1, 2, 3, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 2, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 2, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 2, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 2, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 2, 4, 16), "NC1HWC0")\n
 
     12.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
     x's dim of n == y's dim of n, and x's dim of h == 1 or y's dim of h == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 1, 3, 16), "NHWC")\n
-    > y's Tensor(shape=(2, 2, 4, 16), "NHWC")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 1, 1, 3, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 2, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 1, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 2, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 1, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 2, 4, 16), "NC1HWC0")\n
 
     13.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
     x's dim of n == y's dim of n, and x's dim of h == y's dim of h: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 3, 3, 16), "NHWC")\n
-    > y's Tensor(shape=(2, 3, 4, 16), "NHWC")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 1, 3, 3, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 3, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 3, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
 
     14.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
     and x's dim of n == x's dim of h == 1 or y's dim of n == y's dim of h == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1, 1, 3, 16), "NHWC")\n
-    > y's Tensor(shape=(2, 3, 4, 16), "NHWC")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(1, 1, 1, 3, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 1, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 3, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 1, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
 
     15.when the lengths of x's shape and y's shape are the same and equal to 4, x's dim of c % 16 == 0
     and y's dim of c % 16 == 0 or x's dim of c == y's dim of c, x's format == y's format and are NHWC,
     and x's dim of n == y's dim of h == 1 or x's dim of h == y's dim of n == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1, 3, 3, 16), "NHWC")\n
-    > y's Tensor(shape=(2, 1, 4, 16), "NHWC")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(1, 1, 3, 3, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 1, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 3, 3, 16), "NHWC")\n
+        y's Tensor(shape=(2, 1, 4, 16), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 3, 3, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 1, 4, 16), "NC1HWC0")\n
 
     16.when the lengths of x's shape and y's shape are the same and equal to 4, the formats of x and y are
     the same and are one of [NDHWC,DHWCN,NCDHW], x's dim of c % 16 == 0 and y's dim of c % 16 == 0, x's
     dim of n % 16 == 0 and y's dim of n % 16 == 0, and when x, y are converted to FRACTAL_Z format
     (each dim of x, y dim_i(x[dim_i] == y[dim_i] or x[dim_i] == 1 or y[dim_i] == 1)): support ND,
     FRACTAL_Z format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
-    > y's Tensor(shape=(32, 16, 2, 6), "NCHW")\n
-    > support conversion to FRACTAL_Z operation:\n
-    > x's Tensor(shape=(12, 1, 16, 16), "FRACTAL_Z")\n
-    > y's Tensor(shape=(12, 2, 16, 16), "FRACTAL_Z")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
+        y's Tensor(shape=(32, 16, 2, 6), "NCHW")\n
+        support conversion to FRACTAL_Z operation:\n
+        x's Tensor(shape=(12, 1, 16, 16), "FRACTAL_Z")\n
+        y's Tensor(shape=(12, 2, 16, 16), "FRACTAL_Z")\n
 
     17.when the lengths of x's shape and y's shape are the same and equal to 4, the formats of x and y
     are one of [NCHW,NHWC,HWCN], x's shape == y's shape, and any axis value in x != -1: support
     ND, NC1HWC0, FRACTAL_NZ format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
-    > y's Tensor(shape=(1, 2, 3, 4), "NHWC")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(1, 1, 2, 3, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
+        y's Tensor(shape=(1, 2, 3, 4), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 2, 3, 16), "NC1HWC0")\n
 
     18.when the lengths of y's shape == 1, first dim of y == 1, the lengths of x's shape == 4, and the
     format of x is one of [NCHW,NHWC,HWCN]: support ND, C1HWNCoC0, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
-    > y's Tensor(shape=(1), "ND")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
+        y's Tensor(shape=(1), "ND")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
 
     19.when the lengths of y's shape == 1, first dim of y == 1, the lengths of x's shape == 4, the format of x
     is one of [NCHW,NHWC,HWCN], x's dim of c % 16 == 0, and x's dim of n % 16 == 0:
     support ND, C1HWNCoC0, NC1HWC0, FRACTAL_Z format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
-    > y's Tensor(shape=(1), "ND")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(16, 1, 3, 4, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
+        y's Tensor(shape=(1), "ND")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(16, 1, 3, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
 
     20.when the lengths of x's shape == 1, first dim of x == 1, the lengths of y's shape == 4, the format of y
     is one of [NCHW,NHWC,HWCN]: support ND, C1HWNCoC0, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1), "ND")\n
-    > y's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1), "ND")\n
+        y's Tensor(shape=(1, 2, 3, 4), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(1, 1, 3, 4, 16), "NC1HWC0")\n
 
     21.when the lengths of x's shape == 1, first dim of x == 1, the lengths of y's shape == 4, the format of y
     is one of [NCHW,NHWC,HWCN], y's dim of c % 16 == 0, and y's dim of n % 16 == 0:
     support ND, C1HWNCoC0, NC1HWC0, FRACTAL_Z format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(1), "ND")\n
-    > y's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(16, 1, 3, 4, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(1), "ND")\n
+        y's Tensor(shape=(16, 16, 3, 4), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(1, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(16, 1, 3, 4, 16), "NC1HWC0")\n
 
     22.when the lengths of x's shape and y's shape are the same and equal to 1, first dim of x % 16 == 0,
     and first dim of y % 16 == 0: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(16), "ND")\n
-    > y's Tensor(shape=(16), "ND")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(16), "ND")\n
+        y's Tensor(shape=(16), "ND")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")\n
 
     23.when first dim of x != 1, the lengths of x's shape == 1, the lengths of y's shape == 4, x's format == y's
     format, and the format of y is one of ("NHWC",): support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2), "NHWC")\n
-    > y's Tensor(shape=(2, 3, 4, 5), "NHWC")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 3, 3, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2), "NHWC")\n
+        y's Tensor(shape=(2, 3, 4, 5), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 3, 3, 16), "NC1HWC0")\n
 
     24.when first dim of x != 1, the lengths of x's shape == 1, the lengths of y's shape == 4, x's format == y's
     format, the format of y is one of ("NCHW", "HWCN"), and y's dim of c == first dim of x or y's dim of c == 1 or
     first dim of x / 16 == 1: support ND, C1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2), "NCHW")\n
-    > y's Tensor(shape=(2, 2, 4, 5), "NCHW")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2), "NCHW")\n
+        y's Tensor(shape=(2, 2, 4, 5), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
 
     25.when first dim of y != 1, the lengths of x's shape == 4, the lengths of y's shape == 1, x's format == y's
     format, and the format of x is one of ("NHWC",): support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 3, 4, 5), "NHWC")\n
-    > y's Tensor(shape=(2), "NHWC")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 3, 4, 5), "NHWC")\n
+        y's Tensor(shape=(2), "NHWC")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 3, 4, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
 
     26.when first dim of y != 1, the lengths of x's shape == 4, the lengths of y's shape == 1, x's format == y's
     format, the format of x is one of ("NCHW", "HWCN"), and x's dim of c == first dim of y or x's dim of c == 1 or
     y's dim of c / 16 == 1 or first dim of y / 16 == 1: support ND, NC1HWC0 format.\n
-    > example:\n
-    > original:\n
-    > x's Tensor(shape=(2, 2, 4, 5), "NCHW")\n
-    > y's Tensor(shape=(2), "NCHW")\n
-    > support conversion to NC1HWC0 operation:\n
-    > x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
-    > y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
+
+        example:\n
+        original:\n
+        x's Tensor(shape=(2, 2, 4, 5), "NCHW")\n
+        y's Tensor(shape=(2), "NCHW")\n
+        support conversion to NC1HWC0 operation:\n
+        x's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")\n
+        y's Tensor(shape=(2, 1, 1, 1, 16), "NC1HWC0")\n
     """
     cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cce_product in ("Ascend910"):

@@ -35,10 +35,10 @@ namespace ge {
 *@li max_num_elements: The maximum number of elements. \n
 
 *@par Attributes:
-*@li element_dtype: The type of elements in the list. \n
+*element_dtype: The type of elements in the list. \n
 
 *@par Outputs:
-*@li handle: An empty tensor list . \n
+*handle: An empty tensor list . \n
 
 *@par Third-party framework compatibility.
 *Compatible with tensorflow EmptyTensorList operator.

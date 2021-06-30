@@ -35,7 +35,7 @@ namespace ge {
 * @li values:A `Tensor`. Must have the same type as `sorted_x`. \n
 
 *@par Attributes:
-*@li out_type:An optional `DType` from: `int32, int64`.
+*out_type:An optional `DType` from: `int32, int64`.
 Defaults to `int32`. \n
 
 *@par Outputs:
@@ -1134,10 +1134,10 @@ This is an M-length vector.
 This is an R-length vector
 
 *@par Attributes:
-*@li normalize: boolean (if true, edit distances are normalized by length of truth). \n
+*normalize: boolean (if true, edit distances are normalized by length of truth). \n
 
 *@par Outputs:
-*@li output: A dense float tensor with rank R - 1. \n
+*output: A dense float tensor with rank R - 1. \n
 
 *@par Third-party framework compatibility
 * Compatible with TensorFlow EditDistance operator.
@@ -1205,7 +1205,7 @@ REG_OP(Expand)
 *@Returns a tensor containing the indices of all non-zero elements of input. \n
 
 *@par Inputs:
-*@li x: A Tensor. Must be one of the following types: float16, float32, int32, int64.
+*x: A Tensor. Must be one of the following types: float16, float32, int32, int64.
 
 *@par Attributes:
 * transpose: the output tensor will be transposed if true. \n
@@ -1229,15 +1229,15 @@ REG_OP(NonZero)
 
 * @par Inputs:
 * One inputs, including:
-* @li x: A Tensor. Must be one of the following types:
+* x: A Tensor. Must be one of the following types:
 *     float16, float32, int32, int8 ,uint8. \n
 
 * @par Attributes:
-* @li shape: A required listInt to specify the shape that the input tensor expanded to. \n
+* shape: A required listInt to specify the shape that the input tensor expanded to. \n
 
 
 * @par Outputs:
-* @li y: A Tensor. Has the same type as "x", and the shape specified by input and attr shape \n
+* y: A Tensor. Has the same type as "x", and the shape specified by input and attr shape \n
 
 * @par Third-party framework compatibility
 * Compatible with the ONNX operator Expand.

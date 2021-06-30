@@ -508,7 +508,7 @@ REG_OP(UnsortedSegmentSum)
 
 *@par Inputs:
 *One inputs, including:
-* @li assist: A tensor. Must be one of the following types:
+* assist: A tensor. Must be one of the following types:
 *     float16, float32. \n
 
 * @par Attributes:
@@ -1619,12 +1619,12 @@ REG_OP(UnsortedSegmentMinD)
 * y: A Tensor of type RealNumberType . \n
 
 * @attention Constraints:
-* @li segment_ids must be non-negative tensor.
+* segment_ids must be non-negative tensor.
 
 * @see UnsortedSegmentSum(), UnsortedSegmentProd(),
 
 * @par Third-party framework compatibility
-* @li Compatible with the TensorFlow operator UnsortedSegmentMax.
+* Compatible with the TensorFlow operator UnsortedSegmentMax.
 */
 REG_OP(UnsortedSegmentMax)
     .INPUT(x, TensorType::RealNumberType())
@@ -1876,11 +1876,11 @@ REG_OP(Crop)
 
 *@par Inputs:
 *One inputs, including:
-* @li x: A tensor . Must be one of the following types:
+* x: A tensor . Must be one of the following types:
 *     float16, float32, int32, uint32, int8, uint8. \n
 
 *@par Attributes:
-* @li axis: Axis along which to cummin. \n
+* axis: Axis along which to cummin. \n
 
 *@par Outputs:
 * y: A Tensor with the same type and shape of x's. \n
@@ -2072,10 +2072,10 @@ REG_OP(CumulativeLogsumexpD)
 * @li updates: A Tensor of the same type as "var". \n
 
 * @par Attributes:
-* @li axis: An required int to specify the axis to perform indices add. \n
+* axis: An required int to specify the axis to perform indices add. \n
 
 * @par Outputs:
-* @li var: A Tensor. Same as input "var".
+* var: A Tensor. Same as input "var".
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator index_add_.
@@ -2100,7 +2100,7 @@ REG_OP(InplaceIndexAdd)
 *  @li value: A Tensor of dtype float16 or float32 or int64 or int32 or int8.
 
 * @par Outputs:
-*  @li y: A tensor. Must be one of the following dtypes:
+*  y: A tensor. Must be one of the following dtypes:
 *   float16, float32, int64, int32, int8.
 */
 REG_OP(MaskedFill)
@@ -2119,7 +2119,7 @@ REG_OP(MaskedFill)
 *  @li mask: A Tensor of dtype is bool. \n
 
 * @par Outputs:
-*  @li y: A tensor with the same type as x. \n
+* y: A tensor with the same type as x. \n
 
 * @par Third-party framework compatibility
 * Compatible with the Numpy operator select.
@@ -2173,7 +2173,7 @@ REG_OP(MaskedScatter)
 
 * @par Inputs:
 * One inputs, including:
-* @li x: A Tensor. Must be one of the following types: float16, float32, int16, int32.
+* x: A Tensor. Must be one of the following types: float16, float32, int16, int32.
 
 * @par Attributes:
 * @li start: An  attribute of type Int, start index of last dim. \n
@@ -2181,7 +2181,7 @@ REG_OP(MaskedScatter)
 * @li stride: An  attribute of type Int, stride of slice. \n
 
 * @par Outputs:
-* @li y: A Tensor. Has the same type as "x". \n
+* y: A Tensor. Has the same type as "x". \n
 
 * @par Third-party framework compatibility
 * No compatibility
@@ -2264,7 +2264,7 @@ REG_OP(StridedSliceV2)
 *     float16, float32, int32. \n
 
 * @par Attributes:
-* @li dim: A required int. Used to select the dimension of this tensor. \n
+* dim: A required int. Used to select the dimension of this tensor. \n
 
 *@par Outputs:
 *y: A Tensor with the same type and shape of input_x's. \n

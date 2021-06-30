@@ -29,15 +29,15 @@ namespace ge {
 
 *@par Inputs:
 *The input handle must have the resource type. Inputs include:
-*@li x:A list of Tensor objects. One or more tensors from which
+*x:A list of Tensor objects. One or more tensors from which
 the enqueued tensors should be taken . \n
 
 *@par Outputs:
-*@li y:A list of Tensor objects. One or more tensors from which
+*y:A list of Tensor objects. One or more tensors from which
 the enqueued tensors should be taken . \n
 
 *@par Attributes:
-*@li type: An optional ge::DataType. It refers to the target data type of outputs . \n
+*type: An optional ge::DataType. It refers to the target data type of outputs . \n
 
 *@par Third-party framework compatibility
 *Compatible with tensorflow QueueIsClosed operator.

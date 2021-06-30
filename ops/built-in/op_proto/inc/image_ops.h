@@ -620,9 +620,10 @@ REG_OP(ResizeBilinearV2Grad)
 size for the images . \n
 
 *@par Attributes:
-*align_corners: If true, the centers of the 4 corner pixels of the input and
+* @li align_corners: If true, the centers of the 4 corner pixels of the input and
 output tensors are aligned, preserving the values at the corner pixels.
-Defaults to false . \n
+Defaults to false .
+* @li half_pixel_centers: An optional bool. Defaults to False . \n
 
 *@par Outputs:
 *y: 4-D with shape [batch, new_height, new_width, channels] . \n
@@ -1469,9 +1470,9 @@ if they fall beyond [0, 1]. If false, do not do clipping and output the box
 coordinates as it is. If not specified, defaults to true . \n
 
 *@par Outputs:
-*nmsed_boxes:type is float
-*nmsed_scores:type is float
-*nmsed_classes:type is float  \n
+*@li nmsed_boxes:type is float
+*@li nmsed_scores:type is float
+*@li nmsed_classes:type is float  \n
 
 *@par Third-party framework compatibility
 * Compatible with tensorflow CombinedNonMaxSuppression operator.
@@ -1536,7 +1537,7 @@ and 4 mean input[(h_top, w_left), (h_top, w_right), (h_bottom, w_left),  (h_bott
 *@li warp_index: the resize offset A 4-D float tensor of shape `[n, 2, h, w]`, 2 means (x, y) for resize point.
 
 *@par Outputs:
-*remap_img: A Tensor after ResizeBilinear, A 4-D tensor of shape `[n, c, h, w]`. \n
+*warp_img: A Tensor after ResizeBilinear, A 4-D tensor of shape `[n, c, h, w]`. \n
 */
 REG_OP(IMGWarpResize)
     .INPUT(img, TensorType({DT_FLOAT32}))
@@ -1738,7 +1739,7 @@ REG_OP(ResizeD)
 
 *@par Inputs:
 *One inputs, including:
-* @li grads: A tensor. Must be one of the following types:
+* grads: A tensor. Must be one of the following types:
 *     float16, float32. \n
 
 *@par Attributes:
@@ -1842,12 +1843,12 @@ REG_OP(GridSampler2D)
 *@li assist: Assist matrix, a 4-D tensor of type float16.
 
 *@par Attributes:
-*@li align_corners: An optional bool. If "true", the centers of the corner
+*align_corners: An optional bool. If "true", the centers of the corner
  pixels of the input and output tensors are aligned. Defaults to "false" .
 
 *@par Outputs:
-*diff: Returns 4-D Tensor with the same shape and dtype as `grid`.
-*position: Returns 4-D Tensor with the same shape as `grid`.
+*@li diff: Returns 4-D Tensor with the same shape and dtype as `grid`.
+*@li position: Returns 4-D Tensor with the same shape as `grid`.
 */
 REG_OP(GridUnnormal)
     .INPUT(grid, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -1865,7 +1866,7 @@ REG_OP(GridUnnormal)
 *@li position: 4-D Tensor with shape `[batch, output_height, output_width, 2]`.
 
 *@par Attributes:
-*@li padding_mode: An optional string specifying the pad method. Only 'zeros' is supported for now .
+*padding_mode: An optional string specifying the pad method. Only 'zeros' is supported for now .
 
 *@par Outputs:
 *y: Returns 4-D Tensor with the same dtype as `x`.

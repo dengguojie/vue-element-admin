@@ -1233,7 +1233,7 @@ REG_OP(ReduceJoin)
 * @brief Calculates the standard deviation and average value of Tensors.
 
 * @par Inputs:
-* @li x: A Tensor. Must be one of the following types:
+* x: A Tensor. Must be one of the following types:
 *     float16, float32. \n
 
 * @par Attributes:

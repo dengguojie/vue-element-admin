@@ -1068,7 +1068,7 @@ REG_OP(GRUV2HiddenGradCell)
 *     If "False", "grad_weight" will not be scale by word_frequency. \n
 
 * @par Outputs:
-* @li grad_weight: A mutable output Tensor of new word grad has the same type as "grads". \n
+* grad_weight: A mutable output Tensor of new word grad has the same type as "grads". \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator EmbeddingDenseGrad.
@@ -1220,7 +1220,7 @@ REG_OP(CommonGRU)
 *     is equivalent to the size of indices. This matches the CSR format.. \n
 
 * @par Outputs:
-* @li grad_weight: A mutable output Tensor of new word grad has the same type as "grads". \n
+* grad_weight: A mutable output Tensor of new word grad has the same type as "grads". \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator EmbeddingBag.

@@ -1438,7 +1438,7 @@ REG_OP(OrderedMapClear)
 
 *@par Inputs:
 *Including:
-* @li resource: A Tensor of type DT_RESOURCE.
+* resource: A Tensor of type DT_RESOURCE.
 
 *@par Outputs:
 *handle: A Tensor of type DT_STRING ref. \n
@@ -1529,7 +1529,7 @@ REG_OP(OrderedMapPeek)
 
 *@par Inputs:
 *Including:
-* @li indices: A Tensor of type DT_INT32. \n
+* indices: A Tensor of type DT_INT32. \n
 
 *@par Attributes:
 *@li capacity: An optional int that is >= 0. Defaults to "0".

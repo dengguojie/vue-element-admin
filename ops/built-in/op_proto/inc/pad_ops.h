@@ -461,7 +461,7 @@ REG_OP(FillV2)
 * @li dims: An required listInt to specify the shape that the value to fill.
 
 * @par Outputs:
-* @li y: A Tensor. Has the shape specify by attr shape, and full of the value specify by attr value.
+* y: A Tensor. Has the shape specify by attr shape, and full of the value specify by attr value.
 
 * @par Third-party framework compatibility
 * Compatible with the ONNX operator ConstantOfShape.

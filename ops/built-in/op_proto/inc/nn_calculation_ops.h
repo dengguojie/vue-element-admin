@@ -1635,15 +1635,15 @@ REG_OP(DeformableOffsets)
  * of the input.
  * @li ksize: A tuple/list of 2 integers.kernel size.
 *@par Attributes:
- * Three attributes:
+ * Four attributes:
  * @li dilations: A tuple/list of 4 integers, The dilation factor for each dimension
  * of input.  Defaults to [1, 1, 1, 1]
  * @li data_format: An optional string from: "NCHW", "NHWC". Defaults to "NCHW". Specify the data format of the input x.
  * @li deformable_groups: Specify the c-axis grouping number of input x.
  * @li modulated: Specify version of DeformableConv2D, true means v2, false means v1.
 *@par Outputs:
- * grad_x: A Tensor of type float16, float32. Gradients with respect to input_x
- * grad_offsets: A Tensor of type float16, float32. Gradients with respect to input_offsets
+ * @li grad_x: A Tensor of type float16, float32. Gradients with respect to input_x
+ * @li grad_offsets: A Tensor of type float16, float32. Gradients with respect to input_offsets
 */
 REG_OP(DeformableOffsetsGrad)
     .INPUT(grad, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -1664,9 +1664,9 @@ REG_OP(DeformableOffsetsGrad)
 *@brief Computes the deformed dilation output with the expected input
 *@par Inputs:
  * One inputs:
- * @li x: A Tensor of type int8, float16, float32
+ * x: A Tensor of type int8, float16, float32
 *@par Required Attributes:
- * @li dilations: A tuple/list of integers.
+ *  dilations: A tuple/list of integers.
 *@par Attributes:
  * Two attributes:
  * @li padding_value: default value filling in blank

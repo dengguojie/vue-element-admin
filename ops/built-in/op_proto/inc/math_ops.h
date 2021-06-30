@@ -539,11 +539,11 @@ REG_OP(NextAfter)
 
 *@par Inputs:
 *One inputs, including:
-* @li input_x: A tensor. Must be one of the following types:
+* input_x: A tensor. Must be one of the following types:
 *     float16, float32. \n
 
 *@par Attributes:
-*@li  p: An optional float.Defaults to 2. \n
+*p: An optional float.Defaults to 2. \n
 
 *@par Outputs:
 *y: A Tensor with the same type and shape of input_x's. \n
@@ -911,7 +911,7 @@ REG_OP(ActULQClampMinGrad)
 * @brief Computes Lp norm.
 
 * @par Inputs:
-* @li x: An ND tensor of type float16, float32. \n
+* x: An ND tensor of type float16, float32. \n
 *
 * @par Attributes:
 * @li p: Int, "inf" or "-inf", default value is 2.
@@ -920,7 +920,7 @@ REG_OP(ActULQClampMinGrad)
 * @li epsilon: Float, default is 1e-12. \n
 
 * @par Outputs:
-* @li y: An ND tensor of type float16, float32. The shape of y is depending
+* y: An ND tensor of type float16, float32. The shape of y is depending
 * on axes and keepdim. \n
 
 * @par Third-party framework compatibility
@@ -997,7 +997,7 @@ REG_OP(Angle)
 *     float16, float32. \n
 
 *@par Attributes:
-* @li reduction: Specifies the reduction to apply to the output:
+* reduction: Specifies the reduction to apply to the output:
 *     'none' | 'mean' | 'sum'. Default: 'mean'. \n
 
 *@par Outputs:

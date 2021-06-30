@@ -205,7 +205,7 @@ REG_OP(AvgPool3D)
 *y: The average pooled output tensor . \n
 
 *@attention Constraints:
-*@li "ksize" is in the range [1, 255]. "strides" is in the range [1, 63]
+*"ksize" is in the range [1, 255]. "strides" is in the range [1, 63]
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator AvgPool3D.
@@ -282,10 +282,10 @@ REG_OP(AvgPool3DGrad)
 * @li data_format: A string, format of input data . \n
 
 * @par Outputs:
-* @output: The average pooled output tensor . \n
+* output: The average pooled output tensor . \n
 
 * @attention Constraints:
-* @li "ksize" is in the range [1, 255]. "strides" is in the range [1, 63]
+* "ksize" is in the range [1, 255]. "strides" is in the range [1, 63]
 
 * @par Third-party framework compatibility
 * Compatible with the TensorFlow operator AvgPool3DGradD.
@@ -1490,8 +1490,8 @@ REG_OP(MaxPoolV3Grad)
 *@brief Performs Dilation2D on the input . \n
 
 *@par Inputs:
-*x: A tensor of shape is 4d, format is support NHWC.
-*filter: A tensor of shape is 3d, the type is same with x, and the c dimension is same with x. \n
+*@li x: A tensor of shape is 4d, format is support NHWC.
+*@li filter: A tensor of shape is 3d, the type is same with x, and the c dimension is same with x. \n
 
 *@par Attributes:
 *@li strides: A required list of 4 ints, specifying the stride of the sliding window. The strides of the N and C dimensions are 1.
@@ -1523,9 +1523,9 @@ REG_OP(Dilation2D)
 *@brief Performs Dilation2DBackpropFilter on the input. \n
 
 *@par Inputs:
-*x: A tensor of shape is 4d, format is support NHWC.
-*filter: A tensor of shape is 3d, the type is same with x, and the c dimension is same with x.
-*out_backprop: Has the same type and format as input x and the c dimension is same with x. \n
+*@li x: A tensor of shape is 4d, format is support NHWC.
+*@li filter: A tensor of shape is 3d, the type is same with x, and the c dimension is same with x.
+*@li out_backprop: Has the same type and format as input x and the c dimension is same with x. \n
 
 *@par Attributes
 *@li strides: A required list of 4 ints, specifying the stride of the sliding window. The strides of the N and C dimension are 1.
@@ -1562,9 +1562,9 @@ REG_OP(Dilation2DBackpropFilter)
 *@brief Performs Dilation2DBackpropInput on the input. \n
 
 *@par Inputs:
-*x: A tensor of shape is 4d, format is support NHWC.
-*filter: A tensor of shape is 3d, the type is same with x, and the c dimension is same with x.
-*out_backprop: Has the same type and format as input x and the c dimension is same with x. \n
+*@li x: A tensor of shape is 4d, format is support NHWC.
+*@li filter: A tensor of shape is 3d, the type is same with x, and the c dimension is same with x.
+*@li out_backprop: Has the same type and format as input x and the c dimension is same with x. \n
 
 *@par Attributes
 *@li strides: A required list of 4 ints, specifying the stride of the sliding window. The strides of the N and C dimension are 1.

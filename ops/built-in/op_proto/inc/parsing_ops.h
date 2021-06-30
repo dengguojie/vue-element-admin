@@ -73,7 +73,7 @@ REG_OP(StringToNumber)
 *@li dense_values:  Has the same type as dense_defaults.
 
 *Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
-**/
+*/
 REG_OP(ParseSingleExample)
     .INPUT(serialized, TensorType({DT_STRING}))
     .DYNAMIC_INPUT(dense_defaults, TensorType({DT_STRING,DT_FLOAT,DT_INT64}))
@@ -100,7 +100,7 @@ REG_OP(ParseSingleExample)
 
 *@par Outputs:
 *Output: A Tensor
-**/
+*/
 REG_OP(DecodeRaw)
     .INPUT(bytes, TensorType({DT_STRING}))
     .OUTPUT(output, TensorType({DT_BOOL,DT_FLOAT16,DT_DOUBLE,DT_FLOAT,

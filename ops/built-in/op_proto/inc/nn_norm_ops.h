@@ -134,7 +134,7 @@ REG_OP(SoftmaxGrad)
 *@li dout:A multi-dimensional Tensor of float16 or float32,specifying the gradient transferred from the upper layer. \n
 
 *@par Outputs:
-*loss: Sigmoid cross entropy between the predictive value and target value. Has the same dimensions as "predict" . \n
+*gradient: Sigmoid cross entropy between the predictive value and target value. Has the same dimensions as "predict" . \n
 
 *@par Third-party framework compatibility
 * Compatible with the scenario where "reduction" is set to "none"of PyTorch operator SigmoidCrossEntropyWithLogitsGrad.
@@ -150,13 +150,12 @@ REG_OP(SigmoidCrossEntropyWithLogitsGrad)
 *@brief Performs the backpropagation of SigmoidCrossEntropyWithLogits for training scenarios . \n
 
 *@par Inputs:
-* Three inputs, including:
+* Two inputs, including:
 *@li predict: A multi-dimensional Tensor of type float16 or float32, specifying the predictive value.
-*@li target: A multi-dimensional Tensor of type float16 or float32, specifying the target value.
-*@li dout: A multi-dimensional Tensor of float16 or float32, specifying the gradient transferred from the upper layer . \n
+*@li target: A multi-dimensional Tensor of type float16 or float32, specifying the target value. \n
 
 *@par Outputs:
-*gradient: Return gradient. Has the same dimensions and type as "predict" . \n
+*loss: Return loss. Has the same dimensions and type as "predict" . \n
 
 *@par Third-party framework compatibility
 * Compatible with the scenario where "reduction" is set to "none"of PyTorch operator SigmoidCrossEntropyWithLogits.
@@ -574,7 +573,7 @@ REG_OP(LayerNorm)
 
 *@par Inputs:
 *One input, including:
-* @li x: A Tensor. Must be one of the following types: float16, float32 . \n
+* x: A Tensor. Must be one of the following types: float16, float32 . \n
 
 *@par Attributes:
 * @li p: Specify L_p norm, the type is float. 
@@ -583,7 +582,7 @@ REG_OP(LayerNorm)
 
 *@par Outputs:
 *One outputs, including:
-* @li y: shape and dtype of output, should be same shape and type as input.
+* y: shape and dtype of output, should be same shape and type as input.
 */
 REG_OP(Renorm)
     .INPUT(x, TensorType::BasicType())
@@ -1286,10 +1285,10 @@ REG_OP(KlDivLossGrad)
 * @li label: A Tensor. Has the same type as "grads". Required. \n
 
 * @par Attributes:
-* @li reduction: An optional attribute of type String. Defaults to "mean". \n
+* reduction: An optional attribute of type String. Defaults to "mean". \n
 
 * @par Outputs:
-* @li y: A Tensor. Has the same type as "x". \n
+* y: A Tensor. Has the same type as "x". \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator L1LossGrad.
@@ -1314,7 +1313,7 @@ REG_OP(L1LossGrad)
 * @li reduction: An optional string.Defaults to "mean". \n
 
 * @par Outputs:
-* @li y: An ND tensor tensor with the same shape and type as "predict". \n
+*  y: An ND tensor tensor with the same shape and type as "predict". \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator LpLoss.
@@ -1336,10 +1335,10 @@ REG_OP(LpLoss)
 * @li dout: An ND tensor of type float16, float32. \n
 
 * @par Attributes:
-* @li reduction: An optional string.Defaults to "mean". \n
+* reduction: An optional string.Defaults to "mean". \n
 
 * @par Outputs:
-* @li y: An ND tensor tensor with the same shape and type as "predict". \n
+* y: An ND tensor tensor with the same shape and type as "predict". \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator MseLossGrad.
@@ -1360,10 +1359,10 @@ REG_OP(MseLossGrad)
 *  @li label: An ND Tensor of dtype float16 or float32.\n
 *
 * @par Attributes:
-*  @li reduction:An optional str from sum, none, mean, Defaults to "mean".\n
+* reduction:An optional str from sum, none, mean, Defaults to "mean".\n
 *
 * @par Outputs:
-*  @li y: when reduction=sum/mean, y is scale. when reduction=none, y has
+* y: when reduction=sum/mean, y is scale. when reduction=none, y has
 *    same type and shape as "predict".\n
 */
 REG_OP(MseLoss)
@@ -1391,7 +1390,7 @@ REG_OP(MseLoss)
 *    Must be one of the following: "none", "mean", "sum". \n
 
 * @par Outputs:
-* @li gradient: A Tensor. Has the same type as "predict". \n
+*  gradient: A Tensor. Has the same type as "predict". \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator SmoothL1LossBackward.
@@ -1426,7 +1425,7 @@ REG_OP(SmoothL1LossGradV2)
 * the output,'sum': the output will be summed. Default: 'mean'. \n
 
 * @par Outputs:
-* @li loss: Indicates the loss between the predictive value and target value.
+* loss: Indicates the loss between the predictive value and target value.
 * Has the same dimensions as "predict". \n
 
 * @par Third-party framework compatibility
@@ -1444,12 +1443,12 @@ REG_OP(SmoothL1LossV2)
 * @brief Computes Centralization. result = x - mean(x, axes)
 
 * @par Inputs:
-* @li x: An ND tensor of type float16, float32.
+*  x: An ND tensor of type float16, float32.
 * @par Attributes:
-* @li axes: The dimensions to reduce. Must be one of the following types: int, list, tuple, NoneType.
+* axes: The dimensions to reduce. Must be one of the following types: int, list, tuple, NoneType.
 * Must be in the range [-rank(x), rank(x)).
 * @par Outputs:
-* @li y: A Tensor. Has the same type as "x". \n
+* y: A Tensor. Has the same type as "x". \n
 
 * @par Third-party framework compatibility
 * custom operator \n
@@ -1499,7 +1498,7 @@ REG_OP(Roll)
  *     float16, float32. \n
 
  *@par Attributes:
- *@li lambd: An optional string.Defaults to "mean". \n
+ *lambd: An optional string.Defaults to "mean". \n
 
  *@par Outputs:
  *output_z: while reduction == "none", A Tensor with the same type and shape of input_x's. \n
@@ -1529,7 +1528,7 @@ REG_OP(SoftMarginLoss)
 * @li reduction: An optional string.Defaults to "mean". \n
 
 * @par Outputs:
-* @li gradient: An ND tensor tensor with the same shape and type as "predict". \n
+* gradient: An ND tensor tensor with the same shape and type as "predict". \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator SigmoidCrossEntropyWithLogitsGrad.
@@ -1549,24 +1548,14 @@ REG_OP(SigmoidCrossEntropyWithLogitsGradV2)
 
  * @par Inputs:
  * Two inputs, including:
- * @li input_x: A tensor. Must be one of the following types:
- *     float16, float32. \n
- * 
- * @par Inputs:
- * @li target: A tensor. Must be one of the following types:
- *     float16, float32. \n
+ * @li input_x: A tensor. Must be one of the following types: float16, float32.
+ * @li target: A tensor. Must be one of the following types: float16, float32. \n
 
  * @par Attributes:
  * four Attributes, including:
- * @li log_input: An optional bool. Defaults to "True" \n
- * 
- *  @par Attributes:
- * @li full: An optional bool. Defaults to "False" \n
- * 
- *  @par Attributes:
- * @li eps: An optional float. Defaults to "1e-8" \n
- * 
- *  @par Attributes:
+ * @li log_input: An optional bool. Defaults to "True"
+ * @li full: An optional bool. Defaults to "False"
+ * @li eps: An optional float. Defaults to "1e-8"
  * @li reduction: An optional string. Defaults to "mean" \n
 
  * @par Outputs:

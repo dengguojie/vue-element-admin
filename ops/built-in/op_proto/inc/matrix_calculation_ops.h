@@ -534,7 +534,7 @@ REG_OP(ScatterAdd)
 *Must be one of the following types: float16, float, int32, int8, uint8
 
 *@par Attributes:
-*@li use_locking: An optional bool. Defaults to "False". If "True",
+*use_locking: An optional bool. Defaults to "False". If "True",
 * the operation will be protected by a lock . \n
 
 *@par Outputs:

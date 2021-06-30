@@ -2467,7 +2467,7 @@ REG_OP(Eltwise)
 
  *@par Inputs:
  *One inputs, including:
- * @li input_x: A tensor. Must be one of the following types:
+ * input_x: A tensor. Must be one of the following types:
  *     float16, float32. \n
 
  *@par Outputs:
@@ -3473,7 +3473,7 @@ REG_OP(AxpyV2)
 * @li x2: An ND tensor of type float16, float, int32. \n
 
 * @par Outputs:
-* @li y: An ND tensor tensor with the same type as "x1". \n
+* y: An ND tensor tensor with the same type as "x1". \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator Sub.
@@ -3500,7 +3500,7 @@ REG_OP(PtSub)
 * the difference between C1 and offset in "x1" and "x2". \n
 
 * @par Outputs:
-* @li y:  A Tensor of the same type as "x1", and the same shape as "x1",
+* y:  A Tensor of the same type as "x1", and the same shape as "x1",
 * except for the C1 value. Record the result after adding. \n
 */
 REG_OP(StrideAdd)
@@ -3659,7 +3659,7 @@ REG_OP(HardMax)
 * @li input_y: A Tensor. the second tensor must be 1d. \n
 
 * @par Outputs:
-* @li output: A Tensor. Result of the two inputs, must be 1d. \n
+* output: A Tensor. Result of the two inputs, must be 1d. \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch dot operator. \n
@@ -3803,15 +3803,11 @@ REG_OP(AddMatMatElements)
 
 *@par Inputs:
 *Two inputs, including:
-* @li input_x1: A tensor. Must be the following types:
-*     float32. \n
-
-*@par Inputs:
-*@li input_x2: A tensor. Must of the following types:
-*     float32. \n
+* @li input_x1: A tensor. Must be the following types: float32.
+* @li input_x2: A tensor. Must of the following types: float32. \n
 
 *@par Outputs:
-*@li output_y: A Tensor with the same type of input_x's. \n
+* output_y: A Tensor with the same type of input_x's. \n
 
 *@par Third-party framework compatibility
 *Compatible with the Pytorch operator CosineSimilarity. \n

@@ -1221,9 +1221,7 @@ REG_OP(RpnProposalsD)
 * @li box_filter: bool, mark of box_filter. Defaults to "true"
 * @li core_max_num: int, max number of core. Defaults to "8"
 *@par Outputs:
-* @li sorted_rois: A Tensor. Must be float16. N-D with shape [N, 4].
-* @li sorted_scores: A Tensor. Must be float16. N-D with shape [N, 1].
-* @li sorted_classes: A Tensor. Must be float16. N-D with shape [N, 1].
+*sorted_box: A Tensor. Must be float16. N-D with shape [N, 1].
 */
 REG_OP(RpnProposalPostProcessing)
     .INPUT(sorted_proposal, TensorType({DT_FLOAT16}))
@@ -1761,7 +1759,7 @@ REG_OP(AnchorResponseFlags)
 * "N" indicates the number of ROIs. \n
 
 *@par Attributes:
-*@li performance_mode: select performance mode, "high_precision" or "high_performance".
+*performance_mode: select performance mode, "high_precision" or "high_performance".
 * select "high_precision" when input type is float32, the output tensor precision
 * will be smaller than 0.0001, select "high_performance" when input type is float32,
 * the ops will be best performance, but precision will be only smaller than 0.005.
@@ -1796,9 +1794,9 @@ REG_OP(YoloBoxesEncode)
 *@li num_gts: A Tensor. Support int32. real k. shape (1, )
 
 *@par Attributes:
-*@li output_dim: float. IOU threshold for positive bboxes.
-*@li group_size: float. minimum iou for a bbox to be considered as a positive bbox
-*@li spatial_scale: bool. whether to assign all bboxes with the same highest overlap with some gt to that gt.
+*@li pos_iou_thr: float. IOU threshold for positive bboxes.
+*@li min_pos_iou: float. minimum iou for a bbox to be considered as a positive bbox
+*@li gt_max_assign_all: bool. whether to assign all bboxes with the same highest overlap with some gt to that gt.
 
 *@par Outputs:
 *@li assigned_gt_inds_pos: A Tensor. Support float16/float32. shape (n, ).
