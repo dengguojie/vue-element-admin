@@ -2215,6 +2215,7 @@ class GemmSchedule(object):
         elif status == Compare.LESS_EQ:
             sch_agent.attach_at(b_l0b, self.TENSOR_MAP.get("c_l0c"), affine_shape = l0b2l0c_affine_shape)
         elif status == Compare.GREATE_EQ:
+            l0b2out_affine_shape = self._fix_affine_out_int8(b_l0b.dtype, l0b2out_affine_shape)
             sch_agent.attach_at(b_l0b, self.root_tensor, affine_shape = l0b2out_affine_shape)
         else:
             args_dict = {
@@ -2426,6 +2427,7 @@ class GemmSchedule(object):
             sch_agent.attach_at(b_l1, self.TENSOR_MAP.get("c_l0c"), affine_shape = l1b2l0c_affine_shape)
         elif status == Compare.GREATE_EQ:
             self.bl1_attach_status = "c_gm"
+            l1b2out_affine_shape = self._fix_affine_out_int8(b_l1.dtype, l1b2out_affine_shape)
             sch_agent.attach_at(b_l1, self.root_tensor, affine_shape = l1b2out_affine_shape)
         else:
             args_dict = {
@@ -2436,6 +2438,16 @@ class GemmSchedule(object):
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
+
+    def _fix_affine_out_int8(self, tensor_dtype, affine_shape):
+        """
+        if input and output both int8, tiling_n only half
+        """
+        if self.res.dtype == "int8" and tensor_dtype in ("int8", "uint8"):
+            n_dim_index = -1 if self.format_out == "ND" else -4
+            n_factor = affine_shape[n_dim_index] // 2
+            affine_shape[n_dim_index] = 1 if n_factor == 0 else n_factor
+        return affine_shape
 
     def _renew_aub_m(self, a_ub_ori_shape):
         index_offset = 1 if self.have_batch else 0
@@ -2782,6 +2794,7 @@ class GemmSchedule(object):
                 sch_agent.attach_at(
                     b_ub, self.TENSOR_MAP.get("c_l0c"), affine_shape = bub_l0c_affine_shape)
             else:
+                bub_out_affine_shape = self._fix_affine_out_int8(b_ub.dtype, bub_out_affine_shape)
                 sch_agent.attach_at(b_ub, self.root_tensor, affine_shape = bub_out_affine_shape)
 
         for tensor in self.tensors_in_bub:
