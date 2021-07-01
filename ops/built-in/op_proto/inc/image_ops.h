@@ -2111,5 +2111,58 @@ REG_OP(UpsampleTrilinear3dGrad)
     .ATTR(scales, ListFloat, {})
     .ATTR(align_corners, Bool, false)
     .OP_END_FACTORY_REG(UpsampleTrilinear3dGrad)
+
+
+/**
+*@brief Upsample the 1-D data with the nearest neighbor ​interpolation algorithm. \n
+
+*@par Inputs:
+*x: A 1-D input tensor [N, C, W]. Must be one of the following types:
+*     float16, float32, float64. \n
+
+*@par Attributes:
+*@li output_size: An required listInt contains output_width.
+*@li scales: An optional listFloat contains scale_width. Defaults to be zero. \n
+
+*@par Outputs:
+*y: A 3-D tensor. Has the same type as input x, shape depends on x and output_size/scales. \n
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use. \n
+*/
+
+REG_OP(UpsampleNearest1d)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .REQUIRED_ATTR(output_size, ListInt)
+    .ATTR(scales, ListFloat, {})
+    .OP_END_FACTORY_REG(UpsampleNearest1d)
+
+/**
+*@brief Upsample the 1-D gradient data  with the nearest neighbor ​interpolation algorithm. \n
+
+*@par Inputs:
+*grad_output: A 3-D input tensor [N, C, W]. Must be one of the following types:
+*     float16, float32, float64. \n
+
+*@par Attributes:
+*@li output_size: An required listInt contains output_width.
+*@li scales: An optional listFloat contains scale_width. Defaults to be zero.
+*@li input_size: An required listInt contains output_width. \n
+
+*@par Outputs:
+*y: A 3-D tensor. Has the same type as input grad_output, shape depends on Attributes:input_size. \n
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use. \n
+*/
+
+REG_OP(UpsampleNearest1dGrad)
+    .INPUT(grad_output, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .REQUIRED_ATTR(input_size, ListInt)
+    .REQUIRED_ATTR(output_size, ListInt)
+    .ATTR(scales, ListFloat, {})
+    .OP_END_FACTORY_REG(UpsampleNearest1dGrad)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_IMAGE_OPS_H_

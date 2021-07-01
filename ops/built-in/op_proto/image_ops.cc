@@ -3311,6 +3311,7 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
   op.UpdateOutputDesc("y", output_desc);
   return true;
 }
+// ---------------Upsample3dBackward Op END------------------------
 
 // ---------------UpsampleNearest3dGrad Op START-------------------
 IMPLEMT_INFERFUNC(UpsampleNearest3dGrad, UpsampleNearest3dGradInferShape) {
@@ -3332,5 +3333,85 @@ IMPLEMT_INFERFUNC(UpsampleTrilinear3dGrad, UpsampleTrilinear3dGradInferShape) {
 INFER_FUNC_REG(UpsampleTrilinear3dGrad, UpsampleTrilinear3dGradInferShape);
 // ----------------UpsampleTrilinear3dGrad END---------------------
 
-// ---------------Upsample3dBackward Op END---------------------
+// ---------------UpsampleNearest1d Op START-------------------
+IMPLEMT_INFERFUNC(UpsampleNearest1d, UpsampleNearest1dInferShape) {
+  OP_LOGD(op.GetName().c_str(), "Enter UpsampleNearest1d inferfunction!");
+  TensorDesc input_desc = op.GetInputDesc("x");
+  auto input_shape_dims = input_desc.GetShape().GetDims();
+  DataType input_dtype = input_desc.GetDataType();
+  
+  std::vector<int64_t> output_shape = input_shape_dims;
+  
+  if (input_shape_dims.size() != 3) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of input x should be 3. but get %d.", input_shape_dims.size());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> output_size; 
+  op.GetAttr("output_size", output_size);
+  std::vector<float> scales; 
+  op.GetAttr("scales", scales);
+ 
+  if (!output_size.empty() && scales.empty())
+  { 
+    if (output_size.size() != 1) {
+      OP_LOGE(op.GetName().c_str(),"attr::output_size dims must be 1, but get %d.", output_size.size());
+      return GRAPH_FAILED;
+    }
+    output_shape[2] = output_size[0];
+  } else if (output_size.empty() && !scales.empty()) {
+    if (scales.size() != 1) {
+      OP_LOGE(op.GetName().c_str(),"attr::scales dims must be 1, but get %d.", scales.size());
+      return GRAPH_FAILED;
+    }
+    output_shape[2] = input_shape_dims[2] * scales[0];
+  } else {
+    OP_LOGE(op.GetName().c_str(),
+            "only one of attr::output_size or attr::scales should be defined as a non-empty value.");
+    return GRAPH_FAILED;
+  }
+
+  Shape output_desc_shape(output_shape);
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(output_desc_shape);
+  output_desc.SetDataType(input_dtype);
+  op.UpdateOutputDesc("y", output_desc);
+  
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(UpsampleNearest1d, UpsampleNearest1dInferShape);
+// ----------------UpsampleNearest1d END---------------------
+
+// ---------------UpsampleNearest1dGrad Op START-------------------
+IMPLEMT_INFERFUNC(UpsampleNearest1dGrad, UpsampleNearest1dGradInferShape) {
+  OP_LOGD(op.GetName().c_str(), "Enter UpsampleNearest1dGrad inferfunction!");
+  TensorDesc inputDesc = op.GetInputDesc("grad_output");
+  auto input_dtype = inputDesc.GetDataType();
+  auto grad_output_dims = inputDesc.GetShape().GetDims();
+ 
+  if (grad_output_dims.size() != 3) {
+    OP_LOGE(op.GetName().c_str(), "Expected dim of grad_output should be 3. but get %d.", grad_output_dims.size());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> input_size;
+  if (GRAPH_SUCCESS != op.GetAttr("input_size", input_size)) {
+    OP_LOGE(op.GetName().c_str(), "get attr::input_size faild!");
+    return GRAPH_FAILED;
+  } 
+  if (input_size.size() != 3) {
+    OP_LOGE(op.GetName().c_str(),"attr::input_size dims must be 3, but get %d.", input_size.size());
+    return GRAPH_FAILED;
+  }
+
+  Shape output_desc_shape(input_size);
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(output_desc_shape);
+  output_desc.SetDataType(input_dtype);
+  op.UpdateOutputDesc("y", output_desc);
+
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(UpsampleNearest1dGrad, UpsampleNearest1dGradInferShape);
+// ----------------UpsampleNearest1dGrad END---------------------
 }  // namespace ge
