@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <numeric>
 
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
@@ -189,11 +190,7 @@ namespace fe {
     Status AffineGridFusionPass::create_batch_mat_mul_weight_node(
         ge::NodePtr &matmul_node, vector<int64_t> &weight_dims,
         ge::GeTensorPtr &weight_ptr, bool is_assist) {
-        int64_t size = 1;
-        for (vector<int64_t>::const_iterator it = weight_dims.begin();
-                it != weight_dims.end(); it++) {
-            size *= *it;
-        }
+        int64_t size = std::accumulate(weight_dims.begin(), weight_dims.end(), 1, std::multiplies<int64_t>());
         OP_LOGI(FUSED_OP_TYPE.c_str(), "calculate weight size. %d", size);
 
         unique_ptr<uint16_t[]> data(new (std::nothrow) uint16_t[size]());
@@ -300,11 +297,17 @@ namespace fe {
     }
 
     // get node info from fused node
-    void AffineGridFusionPass::get_fuse_node_info(ge::NodePtr node) {
+    Status AffineGridFusionPass::get_fuse_node_info(ge::NodePtr node) {
         ge::OpDescPtr node_desc = node->GetOpDesc();
 
         // get theta shape
         ge::GeTensorDesc input_desc = node->GetOpDesc()->GetInputDesc(0);
+        DataType input_dtype = input_desc.GetDataType();
+        if (input_dtype == ge::DT_DOUBLE || input_dtype == ge::DT_INT64 || input_dtype == ge::DT_UINT64) {
+            OP_LOGI("AffineGridFusionPass", "Type of input data is double, int64 or uint64");
+            return NOT_CHANGED;
+        }
+
         this->theta_shape = input_desc.GetShape().GetDims();
 
         ge::Tensor ouputSizeTensor;
@@ -314,7 +317,7 @@ namespace fe {
                 node_desc->GetInputIndexByName("output_size")) != nullptr) {
             if (op.GetInputConstData("output_size", ouputSizeTensor) != GRAPH_SUCCESS) {
                 OP_LOGE("AffineGridFusionPass", "Get constValue failed of [output_size]");
-                return;
+                return FAILED;
             }
         }
         DataType dtype = op.GetInputDesc("output_size").GetDataType();
@@ -325,10 +328,9 @@ namespace fe {
 
         // get attr align_corners
         if (op.GetAttr("align_corners", this->align_corner) != ge::GRAPH_SUCCESS) {
-            OP_LOGW(op.GetName().c_str(), "GetOpAttr align_corners failed!");
-            return;
+            OP_LOGW(op.GetName().c_str(), "GetOpAttr align_corners failed! Default align_corner is false");
         }
-        return;
+        return SUCCESS;
     }
 
     //  Operator: BatchMatMul(assist,input_data.T)
@@ -406,7 +408,10 @@ namespace fe {
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Define AffineGridFusionPass fusion begin.");
         ge::NodePtr affine_node =
             this->GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-        this->get_fuse_node_info(affine_node);
+        Status ret = this->get_fuse_node_info(affine_node);
+        if (ret != SUCCESS) {
+            return ret;
+        }
 
         bool is_failure = false;
 

@@ -41,10 +41,10 @@ namespace fe {
         vector<int64_t> assist_shape;
         vector<int64_t> theta_shape;
         vector<int64_t> bmm_output_shape;
-        bool align_corner;
+        bool align_corner = false;
         const string FUSED_OP_TYPE = "AffineGrid";
 
-        void get_fuse_node_info(ge::NodePtr node);
+        Status get_fuse_node_info(ge::NodePtr node);
         void get_node_const_value(const Tensor &const_tensor, const DataType &dtype,
                                std::vector<int64_t> &const_data);
         void init_graph_shape(vector<int64_t> &output_size,
