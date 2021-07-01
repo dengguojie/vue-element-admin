@@ -379,20 +379,11 @@ class NormNormalSchedule:
 
     def _calc_emit_insn(self):
         emit_insn_axis_index = 0
-        # TODO
-        self._emit_insn_map[self._res_tensor] = [self._ub_split_result["inner_itervar"], "dma_copy"]
-        if self._is_nlast_block_split_last_a:
+        self._emit_insn_map[self._res_tensor] = [self._ub_split_result["inner_itervar"], "dma_copy", {"no_overlap": 3}]
+        if self._is_nlast_block_split_last_a or len(self._norm_info.reduce_axis_indices) > 1:
             # copy ub to gm with stride, the last block need process the overlap too
+            self._emit_insn_map[self._res_tensor].pop()
             self._emit_insn_map[self._res_tensor].append({"no_overlap": 2})
-        elif self._tiling_case.ub_split_axis_index == len(self._norm_info.shape_before_reduce) - 1 and \
-                len(self._norm_info.reduce_axis_indices) > 1:
-            self._emit_insn_map[self._res_tensor] = [self._ub_split_result["inner_itervar"],
-                                                     "dma_copy",
-                                                     {"no_overlap": 2}]
-        elif len(self._norm_info.reduce_axis_indices) > 1:
-            self._emit_insn_map[self._res_tensor] = [self._res_tensor.op.axis[-1],
-                                                     "dma_copy",
-                                                     {"no_overlap": 2}]
 
         for source, _ in self._cache_read_buffer_and_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], "dma_copy"]
@@ -977,30 +968,25 @@ class NormWorkspaceSchedule:
             reread_workspace_ub_tensor_map = self._workspace_map[workspace_tensor]["reread_ub_tensor"]
             # non_reduce workspace node, block and ub split on workspace tensor
             if workspace_tensor not in self._graph_info.reduce_tensor_set:
-                # TODO
-                if self._is_nlast_block_split_last_a:
+                if self._is_nlast_block_split_last_a or len(self._norm_info.reduce_axis_indices) > 1:
                     self._emit_insn_map[workspace_tensor] =\
-                        [self._block_split_result[workspace_tensor]["inner_itervar"],
+                        [self._ub_split_result[workspace_tensor]["inner_itervar"],
                          "dma_copy",
                          {"no_overlap": 2}]
-                elif self._tiling_case.ub_split_axis_index == len(self._norm_info.shape_before_reduce) - 1 and \
-                        len(self._norm_info.reduce_axis_indices) > 1:
-                    self._emit_insn_map[workspace_tensor] = [self._ub_split_result[workspace_tensor]["inner_itervar"],
-                                                            "dma_copy",
-                                                            {"no_overlap": 2}]
-                elif len(self._norm_info.reduce_axis_indices) > 1:
-                    self._emit_insn_map[workspace_tensor] = [workspace_tensor.op.axis[-1],
-                                                            "dma_copy",
-                                                            {"no_overlap": 2}]
                 else:
                     self._emit_insn_map[workspace_tensor] =\
                         [self._ub_split_result[workspace_tensor]["inner_itervar"], "dma_copy"]
-                # src and dst are align
-                is_align = (not self._norm_info.is_reduce_last_axis or
-                            workspace_tensor in self._graph_info.tensors_before_reduce) and \
-                           self._tiling_case.block_split_axis_index != len(self._norm_info.shape_before_reduce) - 1
-                if is_align:
-                    self._emit_insn_map[workspace_tensor].append({"no_overlap": 0})
+                    # src and dst are align
+                    is_align = (not self._norm_info.is_reduce_last_axis or
+                                workspace_tensor in self._graph_info.tensors_before_reduce) and \
+                                self._tiling_case.block_split_axis_index != len(self._norm_info.shape_before_reduce) - 1
+                    if is_align:
+                        self._emit_insn_map[workspace_tensor].append({"no_overlap": 0})
+
+                if self._tiling_case.is_partial_reorder_case:
+                    if self._tiling_case.block_split_axis_index > self._tiling_case.ub_split_axis_index:
+                        self._emit_insn_map[workspace_tensor] =\
+                            [self._block_split_result[workspace_tensor]["inner_itervar"], "dma_copy"]
 
                 self._emit_insn_map[workspace_ub_tensor] =\
                     [workspace_ub_tensor.op.axis[0], _get_insn(workspace_tensor)]
@@ -1027,22 +1013,18 @@ class NormWorkspaceSchedule:
             target = list(target_map.values())[0]
             self._emit_insn_map[source] = [source.op.axis[0], _get_insn(target)]
 
-        # TODO
-        if self._is_nlast_block_split_last_a:
-            self._emit_insn_map[self._res_tensor] =\
-                [self._block_split_result[self._res_tensor]["inner_itervar"], "dma_copy", {"no_overlap": 2}]
-        elif self._tiling_case.ub_split_axis_index == len(self._norm_info.shape_before_reduce) - 1 and \
-                len(self._norm_info.reduce_axis_indices) > 1:
+        if self._is_nlast_block_split_last_a or len(self._norm_info.reduce_axis_indices) > 1:
             self._emit_insn_map[self._res_tensor] = [self._ub_split_result[self._res_tensor]["inner_itervar"],
-                                                    "dma_copy",
-                                                    {"no_overlap": 2}]
-        elif len(self._norm_info.reduce_axis_indices) > 1:
-            self._emit_insn_map[self._res_tensor] = [self._res_tensor.op.axis[-1],
-                                                    "dma_copy",
-                                                    {"no_overlap": 2}]
+                                                     "dma_copy",
+                                                     {"no_overlap": 2}]
         else:
             self._emit_insn_map[self._res_tensor] =\
                 [self._ub_split_result[self._res_tensor]["inner_itervar"], "dma_copy"]
+
+        if self._tiling_case.is_partial_reorder_case:
+            if self._tiling_case.block_split_axis_index > self._tiling_case.ub_split_axis_index:
+                self._emit_insn_map[self._res_tensor] =\
+                    [self._block_split_result[self._res_tensor]["inner_itervar"], "dma_copy"]
 
     def _do_emit_insn(self):
         for single_tensor, param in self._emit_insn_map.items():
