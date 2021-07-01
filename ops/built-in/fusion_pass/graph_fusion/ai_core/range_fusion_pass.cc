@@ -177,7 +177,7 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
   assist_desc.SetShape(assist_shape);
   GeTensorPtr assist_ptr = nullptr;
   if (start_type == DT_INT32) {
-    unique_ptr<int32_t> input_assist(new (nothrow) int32_t[dim_num]());
+    unique_ptr<int32_t[]> input_assist(new (nothrow) int32_t[dim_num]());
     FUSION_PASS_CHECK(input_assist.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     AssistIntHelp(dim_num, input_assist.get());

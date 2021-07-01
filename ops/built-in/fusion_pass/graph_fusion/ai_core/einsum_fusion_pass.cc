@@ -150,13 +150,13 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and three."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_3(new (nothrow) int32_t[4]());
+    unique_ptr<int32_t[]> input_assist_3(new (nothrow) int32_t[4]());
     FUSION_PASS_CHECK(input_assist_3.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
@@ -477,13 +477,13 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_3(new (nothrow) int32_t[3]());
+    unique_ptr<int32_t[]> input_assist_3(new (nothrow) int32_t[3]());
     FUSION_PASS_CHECK(input_assist_3.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
@@ -613,10 +613,10 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 2),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and two."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[3]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[3]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
@@ -721,10 +721,10 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 2),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and two."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[3]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[3]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
@@ -829,10 +829,10 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and three."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
@@ -936,13 +936,13 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and three."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_3(new (nothrow) int32_t[4]());
+    unique_ptr<int32_t[]> input_assist_3(new (nothrow) int32_t[4]());
     FUSION_PASS_CHECK(input_assist_3.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
@@ -1073,13 +1073,13 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 4),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and four."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_3(new (nothrow) int32_t[3]());
+    unique_ptr<int32_t[]> input_assist_3(new (nothrow) int32_t[3]());
     FUSION_PASS_CHECK(input_assist_3.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
@@ -1399,13 +1399,13 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_3(new (nothrow) int32_t[3]());
+    unique_ptr<int32_t[]> input_assist_3(new (nothrow) int32_t[3]());
     FUSION_PASS_CHECK(input_assist_3.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
@@ -1535,13 +1535,13 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_2(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t> input_assist_3(new (nothrow) int32_t[3]());
+    unique_ptr<int32_t[]> input_assist_3(new (nothrow) int32_t[3]());
     FUSION_PASS_CHECK(input_assist_3.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     // add input and output desc
