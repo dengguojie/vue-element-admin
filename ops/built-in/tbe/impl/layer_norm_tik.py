@@ -849,6 +849,7 @@ def check_shape(params, support_shape):
     """
     for param in params:
         param_shape = param.get("shape")
+        param_shape = tuple(param_shape)
         if param_shape != support_shape:
             return False
     return True
@@ -860,6 +861,7 @@ def if_support_shape(input_x, input_gamma, input_beta, output_y,
     check shape
     """
     input_shape = input_x.get("shape")
+    input_shape = tuple(input_shape)
     if len(input_shape) <= 0:
         return False
     for dim_num in input_shape:
