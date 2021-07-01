@@ -120,6 +120,7 @@ OP_SPEC_RULES = {
     OpSpecialRules.relu_v2_operation_rule: OpSpecTypes.RELU_V2,
     OpSpecialRules.normalize_scale_operation_rule: OpSpecTypes.NORMALIZE_SCALE,
     OpSpecialRules.only_broadcast_operation_rule: OpSpecTypes.ONLY_BROADCAST_TYPE,
+    OpSpecialRules.mvn_v2_operation_rule: OpSpecTypes.MVN_V2,
     OpSpecialRules.mvn_operation_rule: OpSpecTypes.MVN,
     OpSpecialRules.bn_ext2_operation_rule: OpSpecTypes.BN_EXT2,
     OpSpecialRules.reduce_mean_2d_aligned_mid_reduce_no_cast_pattern_rule:

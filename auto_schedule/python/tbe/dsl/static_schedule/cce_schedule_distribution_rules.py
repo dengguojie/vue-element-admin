@@ -952,3 +952,42 @@ class OpSpecialRules:
             (len(input_shape) != 3 or input_shape[-3] <= 32) and \
             input_dtype in ["float16", "float32"]
         return reduce_mean_requirement_fulfilled
+
+
+    @staticmethod
+    def mvn_v2_operation_rule(flags: dict, input_tensors: list, output_tensors: list,
+                           dfs_tensor_list: list, *args):
+        """
+        check mvn operation
+        """
+        list([flags, args]).clear()  # Use it once to avoid static checks
+        out_len = 1
+        in_len = 1
+
+        mvn_v2_tag_list = [
+            [
+                "elewise_binary_div",
+                "elewise_binary_sub",
+                "placeholder",
+                "broadcast_for_tensor",
+                "elewise_single_VS_mul",
+                "reduce_sum",
+                "elewise_single_VS_add",
+                "elewise_single_sqrt",
+                "broadcast_for_tensor",
+                "elewise_single_VS_mul",
+                "reduce_sum",
+                "elewise_binary_mul"
+            ],
+        ]
+
+        if len(output_tensors) == out_len and len(input_tensors) == in_len:
+            is_match = False
+            for tag_list in mvn_v2_tag_list:
+                if _check_pattern_matched(dfs_tensor_list, tag_list):
+                    is_match = True
+                    break
+
+            return is_match
+
+        return False
