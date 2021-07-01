@@ -32,6 +32,28 @@ SCALAR_MINUS_ONE = -1
 
 # limit of input dimvalue
 MAX_SHAPE_NUM = 10000000
+MAX_INT32_VALUE = 2147483647
+
+def _process_range(range0, range1):
+    dim00_range = range0[0]
+    dim01_range = range0[1]
+    dim10_range = range1[0]
+    dim11_range = range1[1]
+    intersection_dim00_dim10_range = (max(_range_to_int(dim00_range[0]), _range_to_int(dim10_range[0])),
+                                      min(_range_to_int(dim00_range[1]), _range_to_int(dim10_range[1])))
+    intersection_dim01_dim11_range = (max(_range_to_int(dim01_range[0]), _range_to_int(dim11_range[0])),
+                                      min(_range_to_int(dim01_range[1]), _range_to_int(dim11_range[1])))
+    dim00_range = intersection_dim00_dim10_range
+    dim10_range = intersection_dim00_dim10_range
+    dim01_range = intersection_dim01_dim11_range
+    dim11_range = intersection_dim01_dim11_range
+    range0 = [dim00_range, dim01_range]
+    range1 = [dim10_range, dim11_range]
+    return range0, range1
+
+
+def _range_to_int(range_val):
+    return MAX_INT32_VALUE if range_val is None else int(range_val)
 
 
 def variable_shape(inputs: list, support_broadcast=False):
@@ -103,6 +125,8 @@ def variable_shape(inputs: list, support_broadcast=False):
         x_0, x_1 = _inputs
         shape0, range0 = list(x_0["shape"]), list(x_0["range"])
         shape1, range1 = list(x_1["shape"]), list(x_1["range"])
+
+        range0, range1 = _process_range(range0, range1)
         swapped = False
         if len(shape0) < len(shape1):
             shape0, range0, shape1, range1 = shape1, range1, shape0, range0
@@ -112,7 +136,6 @@ def variable_shape(inputs: list, support_broadcast=False):
         range1 = [(1, 1)] * d_v + range1
         if swapped:
             shape0, range0, shape1, range1 = shape1, range1, shape0, range0
-        _update_range(shape0, range0, shape1, range1)
         return [shape0, shape1], [range0, range1]
 
     def _maybe_broadcast():
@@ -166,12 +189,12 @@ def variable_shape(inputs: list, support_broadcast=False):
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
-                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
+                    _var = operation.var("dim_" + str(_suffix) + "_" + str(i),
                                          _range[i])
                 d_shape.append(_var)
             elif shape[i] == -77:
                 if _var is None:
-                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
+                    _var = operation.var("dim_" + str(_suffix) + "_" + str(i),
                                          _range[i])
                 d_shape.append(_var)
             else:
@@ -271,6 +294,8 @@ def softmax_cross_entropy_with_logits_compute(
 
 
 @register_operator("SoftmaxCrossEntropyWithLogits", pattern="SoftmaxCrossEntropyWithLogits")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def softmax_cross_entropy_with_logits(
         input_features,
         input_labels,
@@ -302,6 +327,9 @@ def softmax_cross_entropy_with_logits(
     """
     shape_features = input_features.get("shape")
     shape_labels = input_labels.get("shape")
+
+    input_features['range'], input_labels['range'] = _process_range(input_features['range'],
+                                                                    input_labels['range'])
 
     shape_util.compare_tensor_dict_key(input_features, input_labels, "dtype")
 
@@ -343,6 +371,17 @@ def softmax_cross_entropy_with_logits(
                                                 "features_shape1": input_features['shape'][1],
                                                 "labels_shape0": input_labels['shape'][0],
                                                 "labels_shape1": input_labels['shape'][1]})
+
+    tbe_context.get_context().add_compile_info("ragne",
+                                               {"features_range0_l": input_features['range'][0][0],
+                                                "features_range0_r": input_features['range'][0][1],
+                                                "features_range1_l": input_features['range'][1][0],
+                                                "features_range1_r": input_features['range'][1][1],
+                                                "labels_range0_l": input_labels['range'][0][0],
+                                                "labels_range0_r": input_labels['range'][0][1],
+                                                "labels_range1_l": input_labels['range'][1][0],
+                                                "labels_range1_r": input_labels['range'][1][1]})
+
     tbe_context.get_context().add_compile_info("common_info",
                                                {"ub_size": tbe_platform.get_soc_spec("UB_SIZE"),
                                                 "core_num": tbe_platform.get_soc_spec("CORE_NUM")})

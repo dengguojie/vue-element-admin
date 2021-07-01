@@ -43,7 +43,7 @@ struct CompileInfo {
 // tiling info
 struct TilingInfo {
   int32_t key;
-  int32_t block_factor;
+  int32_t block_nparts;
   int32_t block_axis;
   int32_t ub_factor;
   int32_t ub_axis;
@@ -55,6 +55,12 @@ int64_t GetDtypeSize(std::string& dtype) {
   // element nums in one block
   int32_t dtype_size = kDtypeSizeMap.at(dtype);
   return dtype_size;
+}
+
+void DimValPut(const int32_t dim_val, const int32_t range_l, const int32_t range_r, OpRunInfo& run_info) {
+  if (range_l < range_r) {
+    ByteBufferPut(run_info.tiling_data, dim_val);
+  }
 }
 
 bool WriteTilingData(const std::string& op_type,
@@ -70,89 +76,157 @@ bool WriteTilingData(const std::string& op_type,
   GELOGD("op [%s] tiling key:%lld", op_type.c_str(), tiling_info.key);
   GELOGD("op [%s] tiling ub_factor:%lld", op_type.c_str(), tiling_info.ub_factor);
   GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), tiling_info.ub_axis);
-  GELOGD("op [%s] tiling block_factor:%lld", op_type.c_str(), tiling_info.block_factor);
+  GELOGD("op [%s] tiling block_nparts:%lld", op_type.c_str(), tiling_info.block_nparts);
   GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), tiling_info.block_axis);
 
-  run_info.block_dim = 1;
+  run_info.block_dim = tiling_info.block_nparts;
 
-  const int32_t& x1_0 = op_info["ori_shape"]["features_shape0"];
-  const int32_t& x1_1 = op_info["ori_shape"]["features_shape1"];
-  const int32_t& x2_0 = op_info["ori_shape"]["labels_shape0"];
-  const int32_t& x2_1 = op_info["ori_shape"]["labels_shape1"];
+  const int32_t& dim_var_0_0 = op_info["ori_shape"]["features_shape0"];
+  const int32_t& dim_var_0_1 = op_info["ori_shape"]["features_shape1"];
+  const int32_t& dim_var_1_0 = op_info["ori_shape"]["labels_shape0"];
+  const int32_t& dim_var_1_1 = op_info["ori_shape"]["labels_shape1"];
+
+  const int32_t& range_0_0_l = op_info["range"]["features_range0_l"];
+  const int32_t& range_0_0_r = op_info["range"]["features_range0_r"];
+  const int32_t& range_0_1_l = op_info["range"]["features_range1_l"];
+  const int32_t& range_0_1_r = op_info["range"]["features_range1_r"];
+  const int32_t& range_1_0_l = op_info["range"]["labels_range0_l"];
+  const int32_t& range_1_0_r = op_info["range"]["labels_range0_r"];
+  const int32_t& range_1_1_l = op_info["range"]["labels_range1_l"];
+  const int32_t& range_1_1_r = op_info["range"]["labels_range1_r"];
+
+  bool case_no_unknown_1 = dim_var_0_0 > 0 && dim_var_0_1 > 0 && dim_var_1_0 > 0 && dim_var_1_1 > 0;
+
+  bool case_one_unknown_1 = dim_var_0_0 < 0 && dim_var_0_1 > 0 && dim_var_1_0 > 0 && dim_var_1_1 > 0;
+  bool case_one_unknown_2 = dim_var_0_0 > 0 && dim_var_0_1 < 0 && dim_var_1_0 > 0 && dim_var_1_1 > 0;
+  bool case_one_unknown_3 = dim_var_0_0 > 0 && dim_var_0_1 > 0 && dim_var_1_0 < 0 && dim_var_1_1 > 0;
+  bool case_one_unknown_4 = dim_var_0_0 > 0 && dim_var_0_1 > 0 && dim_var_1_0 > 0 && dim_var_1_1 < 0;
+
+  bool case_two_unknown_1 = dim_var_0_0 < 0 && dim_var_0_1 < 0 && dim_var_1_0 > 0 && dim_var_1_1 > 0;
+  bool case_two_unknown_2 = dim_var_0_0 < 0 && dim_var_0_1 > 0 && dim_var_1_0 < 0 && dim_var_1_1 > 0;
+  bool case_two_unknown_3 = dim_var_0_0 < 0 && dim_var_0_1 > 0 && dim_var_1_0 > 0 && dim_var_1_1 < 0;
+  bool case_two_unknown_4 = dim_var_0_0 > 0 && dim_var_0_1 < 0 && dim_var_1_0 < 0 && dim_var_1_1 > 0;
+  bool case_two_unknown_5 = dim_var_0_0 > 0 && dim_var_0_1 < 0 && dim_var_1_0 > 0 && dim_var_1_1 < 0;
+  bool case_two_unknown_6 = dim_var_0_0 > 0 && dim_var_0_1 > 0 && dim_var_1_0 < 0 && dim_var_1_1 < 0;
+
+  bool case_three_unknown_1 = dim_var_0_0 < 0 && dim_var_0_1 < 0 && dim_var_1_0 < 0 && dim_var_1_1 > 0;
+  bool case_three_unknown_2 = dim_var_0_0 < 0 && dim_var_0_1 < 0 && dim_var_1_0 > 0 && dim_var_1_1 < 0;
+  bool case_three_unknown_3 = dim_var_0_0 < 0 && dim_var_0_1 > 0 && dim_var_1_0 < 0 && dim_var_1_1 < 0;
+  bool case_three_unknown_4 = dim_var_0_0 > 0 && dim_var_0_1 < 0 && dim_var_1_0 < 0 && dim_var_1_1 < 0;
+
+  bool case_four_unknown_1 = dim_var_0_0 < 0 && dim_var_0_1 < 0 && dim_var_1_0 < 0 && dim_var_1_1 < 0;
 
   int32_t tiling_key = static_cast<int32_t>(tiling_info.key);
-  if (x1_0 < 0 && x2_0 < 0 && x1_1 > 0 && x1_1 == x2_1) {
-    tiling_key = 112230000;
-  }
   run_info.tiling_key = tiling_key;
 
-  if (x1_0 < 0 && x2_0 < 0 && x1_1 > 0 && x1_1 == x2_1) {
-    // 1 [-1, 5] [-1, 5]
-    GELOGI("op [%s]: case1 running", op_type.c_str());
-    if (tiling_key == 112130000) {
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[0]));
+  if (case_no_unknown_1) {
+    GELOGI("op [%s]: case_no_unknown_1 running", op_type.c_str());
+  } else if (case_one_unknown_1) {
+    GELOGI("op [%s]: case_one_unknown_1 running", op_type.c_str());
+    DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+  } else if (case_one_unknown_2) {
+    GELOGI("op [%s]: case_one_unknown_2 running", op_type.c_str());
+    DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+  } else if (case_one_unknown_3) {
+    GELOGI("op [%s]: case_one_unknown_3 running", op_type.c_str());
+    DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+  } else if (case_one_unknown_4) {
+    GELOGI("op [%s]: case_one_unknown_4 running", op_type.c_str());
+    DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+  } else if (case_two_unknown_1) {
+    GELOGI("op [%s]: case_two_unknown_1 running", op_type.c_str());
+    DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+    DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+  } else if (case_two_unknown_2) {
+    GELOGI("op [%s]: case_two_unknown_2 running", op_type.c_str());
+    if (range_0_0_l > 1 && range_1_0_l > 1) {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
     } else {
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[0]));
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
     }
-  } else if (x1_0 < 0 && x2_0 < 0 && x1_1 < 0 && x2_1 < 0) {
-    // 2 [-1, -1] [-1, -1]
-    GELOGI("op [%s]: case2 running", op_type.c_str());
-    if (tiling_key == 112130000 || tiling_key == 112140000) {
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[1]));
+  } else if (case_two_unknown_3) {
+    GELOGI("op [%s]: case_two_unknown_3 running", op_type.c_str());
+    DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+    DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+  } else if (case_two_unknown_4) {
+    GELOGI("op [%s]: case_two_unknown_4 running", op_type.c_str());
+    DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+    DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+  } else if (case_two_unknown_5) {
+    GELOGI("op [%s]: case_two_unknown_5 running", op_type.c_str());
+    if (range_0_1_l > 1 && range_1_1_l > 1) {
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
     } else {
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[0]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[1]));
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
     }
-  } else if (x1_0 > 0 && x1_0 == x2_0 && x1_1 < 0 && x2_1 < 0) {
-    // 3 [5, -1] [5, -1]
-    GELOGI("op [%s]: case3 running", op_type.c_str());
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[1]));
-  } else if (x1_0 > 0 && x1_0 == x2_0 && x1_1 < 0 && x2_1 > 0) {
-    // 4 [5, -1] [5, 5]
-    GELOGI("op [%s]: case4 running", op_type.c_str());
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-  } else if (x1_0 < 0 && x2_0 > 0 && x1_1 == x2_1 && x1_1 > 0) {
-    // 5 [-1, 5] [5, 5]
-    GELOGI("op [%s]: case5 running", op_type.c_str());
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-  } else if (x1_0 == 1 && x2_0 == 1 && x1_1 < 0 && x2_1 < 0) {
-    // 6 [1, -1] [1, -1]
-    GELOGI("op [%s]: case6 running", op_type.c_str());
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_labels_shape[1]));
-  } else if (x1_0 < 0 && x2_0 < 0 && x1_1 < 0 && x2_1 > 0) {
-    // 7 [-1, -1] [-1, 5]
-    GELOGI("op [%s]: case7 running", op_type.c_str());
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-//    ByteBufferPut(run_info.tiling_data, output_shape[0]);
-  } else if (x1_0 < 0 && x2_0 > 0 && x1_1 < 0 && x2_1 < 0) {
-    // 8 [-1, -1] [5, -1]
-    GELOGI("op [%s]: case8 running", op_type.c_str());
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-  } else if (x1_0 < 0 && x2_0 > 0 && x1_1 < 0 && x2_1 > 0) {
-    // 9 [-1, -1] [5, 5]
-    GELOGI("op [%s]: case9 running", op_type.c_str());
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[0]));
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_features_shape[1]));
-  } else if (x1_0 > 0 && x2_0 < 0 && x1_1 > 0 && x2_1 > 0) {
-    // 10 [5, 5] [-1, 5]
-    GELOGI("op [%s]: case10 running", op_type.c_str());
-  } else {
-    // 11 [5, 5] [5, -1]
-    GELOGI("op [%s]: case11 running", op_type.c_str());
+  } else if (case_two_unknown_6) {
+    GELOGI("op [%s]: case_two_unknown_6 running", op_type.c_str());
+    DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+    DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+  } else if (case_three_unknown_1) {
+    GELOGI("op [%s]: case_three_unknown_1 running", op_type.c_str());
+    if (range_0_0_l > 1 && range_1_0_l > 1) {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+    } else {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+    }
+  } else if (case_three_unknown_2) {
+    GELOGI("op [%s]: case_three_unknown_2 running", op_type.c_str());
+    if (range_0_1_l > 1 && range_1_1_l > 1) {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+    } else {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+    }
+  } else if (case_three_unknown_3) {
+    GELOGI("op [%s]: case_three_unknown_3 running", op_type.c_str());
+    if (range_0_0_l > 1 && range_1_0_l > 1) {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+    } else {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+    }
+  } else if (case_three_unknown_4) {
+    GELOGI("op [%s]: case_three_unknown_4 running", op_type.c_str());
+    if (range_0_1_l > 1 && range_1_1_l > 1) {
+      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+    } else {
+      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+    }
+  } else if (case_four_unknown_1) {
+    GELOGI("op [%s]: case_four_unknown_1 running", op_type.c_str());
+    if (range_0_0_l > 1 && range_0_1_l > 1 && range_1_0_l > 1 && range_1_1_l > 1) {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+    } else if (range_0_1_l > 1 && range_1_1_l > 1) {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+    } else if (range_0_0_l > 1 && range_1_0_l > 1) {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+    } else {
+      DimValPut(static_cast<int32_t>(input_features_shape[0]), range_0_0_l, range_0_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[0]), range_1_0_l, range_1_0_r, run_info);
+      DimValPut(static_cast<int32_t>(input_features_shape[1]), range_0_1_l, range_0_1_r, run_info);
+      DimValPut(static_cast<int32_t>(input_labels_shape[1]), range_1_1_l, range_1_1_r, run_info);
+    }
   }
 
-  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(tiling_info.block_factor));
+  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(tiling_info.block_nparts));
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(tiling_info.ub_factor));
 
   return true;
@@ -325,7 +399,7 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   int32_t ub_axis = 0;
   int32_t ub_factor = 0;
   int32_t block_axis = 0;
-  int32_t block_factor = 0;
+  int32_t block_nparts = 0;
   int32_t dtype_size = GetDtypeSize(out_type);
   if (n_h_w < multi_core_threshold) {
     need_multi_core = false;
@@ -375,15 +449,26 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   ub_axis = 0;
   ub_factor = output_shape[0];
   block_axis = 0;
-  block_factor = output_shape[0];
-  if (output_shape[1] > (compile_info.ub_size / dtype_size / 10)) {
+  block_nparts = 1;
+  int32_t bound_size = compile_info.ub_size / dtype_size / 10;
+
+  if (c_size > bound_size) {
       VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "not supported shape");
       return false;
-  } else if (ub_factor * output_shape[1] > (compile_info.ub_size / dtype_size / 10)) {
-      ub_factor = max<int32_t>(compile_info.ub_size / (dtype_size * output_shape[1] * 10), 1);
+  } else if ((c_size * (32 / dtype_size) < bound_size) &&
+             (n_h_w >= (32 / dtype_size))) {
+      // for open multi-core
+      block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * 32) ?
+                     compile_info.core_num : n_h_w * dtype_size / 32;
+      int32_t block_tiling_inner_loop = n_h_w / block_nparts;
+      ub_factor = min(bound_size / c_size, block_tiling_inner_loop);
+  } else {
+      // for cannot open multi-core scene
+      block_nparts = 1;
+      ub_factor = bound_size / c_size;
   }
 
-  tiling_info.block_factor = block_factor;
+  tiling_info.block_nparts = block_nparts;
   tiling_info.block_axis = block_axis;
   tiling_info.ub_factor = ub_factor;
   tiling_info.ub_axis = ub_axis;

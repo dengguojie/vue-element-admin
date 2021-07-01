@@ -64,11 +64,25 @@ case5 = {"params": [{"shape": (-1, -1), "dtype": "float16", "format": "NCHW", "o
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case6 = {"params": [{"shape": (2, 24), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 24),"ori_format": "NCHW",
+                     "range": ((2, 2), (24, 24))},
+                    {"shape": (-1, -1), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, -1),"ori_format": "NCHW",
+                     "range": ((2, None), (22, None))},
+                    {"shape": (2,), "dtype": "float16", "format": "NCHW", "ori_shape": (2,),"ori_format": "NCHW",
+                     "range": ((2, 2),)},
+                    {"shape": (2, 24), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 24),"ori_format": "NCHW",
+                     "range": ((2, 2), (24, 24))}],
+         "case_name": "softmax_cross_entropy_with_logits_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A", "Ascend710"], case6)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

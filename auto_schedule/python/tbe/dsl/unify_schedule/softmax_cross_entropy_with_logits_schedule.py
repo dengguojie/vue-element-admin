@@ -326,7 +326,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         u_bound = self._tiling_case.get("ub_factor_bound")
         if u_bound is None:
             u_bound = (1, util.get_bound(shape[u_i])[1])
-        self._block_tiling_vars[b_i] = operation.var("block_factor_" + str(b_i), b_bound)
+        self._block_tiling_vars[b_i] = operation.var("block_nparts_" + str(b_i), b_bound)
         self._ub_tiling_vars[u_i] = operation.var("ub_factor_" + str(u_i), u_bound)
 
     def _do_tiling(self):
@@ -345,7 +345,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         ub_axes = []
         inner_axes = []
         b_o, b_i = sch[res].split(res.op.axis[0],
-                                  factor=self._block_tiling_vars[0])
+                                  nparts=self._block_tiling_vars[0])
         block_axes.append([b_o, b_idx])
         u_o, u_i = sch[res].split(b_i, factor=self._ub_tiling_vars[u_idx])
         ub_axes.append([u_o, u_idx])

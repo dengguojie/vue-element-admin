@@ -122,9 +122,6 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 return ins_list
 
         def add_original():
-            if _get_broadcast_axis_size(self.f_strict_pattern) <= 1:
-                return []
-
             ins = []
             for x in self.ins:
                 in_x = OriginalMode.gen_in(x["shape"])
@@ -135,18 +132,6 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
             return [ins]
 
         ret = []
-        if self.format == "ND":
-            const_flag = 0
-            runtime_flag = 0
-            for i in range(self.dim_length):
-                dims_i = [s[i] for s in self.normalized_shapes]
-                min_dim_v, max_dim_v = min(dims_i), max(dims_i)
-                if min_dim_v == -1 and max_dim_v in (-1, 1):
-                    runtime_flag = 1
-                elif min_dim_v == -1:
-                    const_flag = 1
-            if not (const_flag and runtime_flag):
-                ret.extend(add_special())
         ret.extend(add_original())
         return ret
 
