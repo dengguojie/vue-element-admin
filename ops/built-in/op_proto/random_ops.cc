@@ -132,6 +132,21 @@ IMPLEMT_INFERFUNC(RandomGamma, RandomGammaInfer) {
 
 INFER_FUNC_REG(RandomGamma, RandomGammaInfer);
 
+IMPLEMT_INFERFUNC(Randperm, RandpermInferShape) {
+  Shape scalar_shape;
+  (void)Scalar(scalar_shape);
+  auto attr_dtype = op.get_attr_dtype();
+
+  TensorDesc outDesc = op.GetOutputDesc("out");
+  outDesc.SetDataType(ge::DataType(attr_dtype));
+  outDesc.SetShape(scalar_shape);
+  (void)op.UpdateOutputDesc("out", outDesc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(Randperm, RandpermInferShape);
+
 IMPLEMT_INFERFUNC(RandomPoisson, RandomPoissonInfer) {
   Shape shape;
   Tensor shape_tensor;
@@ -186,6 +201,21 @@ IMPLEMT_INFERFUNC(RandomStandardNormal, RandomStandardNormalInfer) {
 }
 
 INFER_FUNC_REG(RandomStandardNormal, RandomStandardNormalInfer);
+
+// -------------------------Normal-----------------------------
+IMPLEMT_INFERFUNC(Normal, NormalInferShape) {
+  auto outShape = op.GetInputDesc("mean").GetShape();
+  auto outDtype = op.GetInputDesc("mean").GetDataType();
+
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(outShape);
+  td.SetDataType(outDtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(Normal, NormalInferShape);
+// -------------------------Normal END-----------------------------
 
 IMPLEMT_INFERFUNC(RandomUniformInt, RandomUniformIntInfer) {
   Shape unused;

@@ -521,6 +521,61 @@ REG_OP(ScatterAdd)
     .OP_END_FACTORY_REG(ScatterAdd)
 
 /**
+*@brief  Use a scalar to modify the tensor. \n
+
+*@par Inputs:
+*inputs, including:
+*@li index: An ND Tensor . \n
+
+*Must be one of the following types: float16, float32, int32, int8, uint8
+
+*@par Attributes:
+* dim : the axis along which to index .
+* value : the source element(s) to scatter . \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type and format as input "index" . \n
+
+*@par Third-party framework compatibility
+* Compatible with the Pytorch operator ScatterScalar.
+*/
+REG_OP(ScatterScalar)
+    .INPUT(index, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .REQUIRED_ATTR(dim, Int)
+    .REQUIRED_ATTR(value, Float)
+    .OP_END_FACTORY_REG(ScatterScalar)
+
+/**
+*@brief Use a tensor to modify the tensor . \n
+
+*@par Inputs:
+* Two inputs, including:
+*@li index: An ND Tensor . \n
+
+*Must be one of the following types: float16, float32, int32, int8, uint8
+
+*@li src: An ND Tensor . \n
+
+*Must be one of the following types: float16, float32, int32, int8, uint8
+
+*@par Attributes:
+* dim : the axis along which to index . \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type and format as input "index" . \n
+
+*@par Third-party framework compatibility
+* Compatible with the Pytorch operator ScatterTensor.
+*/
+REG_OP(ScatterTensor)
+    .INPUT(index, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .INPUT(src, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT,DT_INT32,DT_INT8,DT_UINT8}))
+    .REQUIRED_ATTR(dim, Int)
+    .OP_END_FACTORY_REG(ScatterTensor)
+
+/**
 *@brief Divides a variable reference by sparse updates . \n
 
 *@par Inputs:
@@ -1117,6 +1172,37 @@ REG_OP(IndexAdd)
     .OP_END_FACTORY_REG(IndexAdd)
 
 /**
+* @brief According to the index number of indexes, replace the value
+*corresponding to X1 with the value in x2.
+
+* @par Inputs:
+* Three inputs, including:
+* @li x1: A Tensor. Must be one of the following types:
+*     float16, float32, int32, int8, uint8.
+* @li x2: A Tensor of the same type as "x1".
+* @li indices: A Tensor of the indices, type should be int32.
+
+* @par Attributes:
+* @li accumulate: Does it support self accumulation.Defaults to 0.
+
+* @par Outputs:
+* @li y: A Tensor. Same as input "x1".
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator index_put.
+
+* @par Restrictions:
+* Warning:THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(IndexPut)
+    .INPUT(x1, TensorType({DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
+    .INPUT(x2, TensorType({DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
+    .INPUT(indices, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
+    .ATTR(accumulate, Int, 0)
+    .OP_END_FACTORY_REG(IndexPut)
+
+/**
 *@brief: Returns the upper triangular part of a matrix (2-D tensor) or batch of matrices input \n
 
 *@par Inputs:
@@ -1218,6 +1304,30 @@ REG_OP(Eye)
     .ATTR(batch_shape, ListInt, {})
     .ATTR(dtype, Int, 0)
     .OP_END_FACTORY_REG(Eye)
+
+/**
+*@brief: Fill diagonal of at least 2 dimension tensors with value . \n
+
+*@par Inputs:
+*x: A Tensor. Must be one of the following types:
+*    float32, int32, int64 . \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type as "x" . \n
+
+*@par Attributes:
+*fill_value:The value to fill in
+*wrap: An optional bool. Defaults to "False". If "True", Use recursive fill. \n
+
+*@par Third-party framework compatibility
+* Compatible with the Pytorch operator FillDiagonal.
+*/
+REG_OP(FillDiagonal)
+    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT64}))
+    .REQUIRED_ATTR(fill_value, Float)
+    .ATTR(wrap, Bool, false)
+    .OP_END_FACTORY_REG(FillDiagonal)
 
 }  // namespace ge
 

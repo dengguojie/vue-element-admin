@@ -148,6 +148,32 @@ REG_OP(RandomGamma)
     .OP_END_FACTORY_REG(RandomGamma)
 
 /**
+*@brief Returns the random permutation of integers from 0 to n-1. \n
+
+*@par Attributes:
+*@li n: An required int.
+*@li dtype: An optional str. Defaults to int64 .
+*@li layout: An optional int. Defaults to 0 . \n
+
+*@par Outputs:
+*out: A required Tensor. Must be one of the following types:
+         float16, float32, float32, int8, uint8, int16, int32, int64. \n
+
+*@attention Constraints:
+*The implementation for Randperm on Ascend uses AICPU, with bad performance.
+
+*@par Third-party framework compatibility
+*@li compatible with Pytorch Randperm operator.
+*/
+REG_OP(Randperm)
+    .OUTPUT(out, TensorType({DT_INT64, DT_INT32, DT_INT16,
+        DT_UINT8, DT_INT8, DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))
+    .REQUIRED_ATTR(n, Int)
+    .ATTR(layout, Int, 0)
+    .ATTR(dtype, Type, DT_INT64)
+    .OP_END_FACTORY_REG(Randperm)
+
+/**
 *@brief Outputs random values from the Poisson distribution(s) described by rate . \n
 
 *@par Inputs:
@@ -243,6 +269,28 @@ REG_OP(RandomStandardNormal)
     .ATTR(seed, Int, 0)
     .ATTR(seed2, Int, 0)
     .OP_END_FACTORY_REG(RandomStandardNormal)
+
+/**
+*@brief Output random value from  separate normal distribution. \n
+
+*@par Inputs:
+*Inputs include:
+*mean: The mean is a tensor with the mean of each output element’s normal distribution . 
+*std: The std is a tensor with the standard deviation of each output element’s normal distribution. \n
+*@par Outputs:
+*y: A Tensor of type dtype . \n
+
+*@attention Constraints:
+*The implementation for Normal on Ascend uses AICPU, with bad performance.
+
+*@par Third-party framework compatibility
+*@li compatible with Pytorch Normal operator.
+*/
+REG_OP(Normal)
+    .INPUT(mean, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(std, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(Normal)
 
 /**
 *@brief Outputs random integers from a uniform distribution . \n

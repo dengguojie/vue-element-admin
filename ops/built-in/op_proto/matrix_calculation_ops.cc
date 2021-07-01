@@ -2201,6 +2201,44 @@ COMMON_INFER_FUNC_REG(ScatterAdd, ScatterAddInferShape);
 VERIFY_FUNC_REG(ScatterAdd, ScatterAddVerify);
 // --------------ScatterAdd END------------------
 
+// ------------------ScatterScalar--------------------
+IMPLEMT_COMMON_INFERFUNC(ScatterScalarInferShape) {
+  // main part of shape infer
+  Shape index_shape = op.GetInputDesc("index").GetShape();
+  DataType index_dtype = op.GetInputDesc("index").GetDataType();
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(ge::Shape(index_shape));
+  td.SetDataType(index_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ScatterScalar, ScatterScalarInferShape);
+// --------------ScatterScalar END------------------
+
+// ------------------ScatterTensor---------------------
+IMPLEMT_VERIFIER(ScatterTensor, ScatterTensorVerify) {
+  if (!CheckTwoInputDtypeSame(op, "index", "src")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(ScatterTensorInferShape) {
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape index_shape = op_desc->MutableInputDesc("index")->GetShape();
+  DataType input_dtype = op_desc->MutableInputDesc("index")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("y");
+  td->SetShape(index_shape);
+  td->SetDataType(input_dtype);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ScatterTensor, ScatterTensorInferShape);
+VERIFY_FUNC_REG(ScatterTensor, ScatterTensorVerify);
+// --------------ScatterTensor END------------------
+
 // ------------------ScatterDiv---------------------
 IMPLEMT_VERIFIER(ScatterDiv, ScatterDivVerify) {
   if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
@@ -3073,6 +3111,63 @@ COMMON_INFER_FUNC_REG(IndexAdd, IndexAddInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(IndexAdd, IndexAddVerify);
 // ----------------IndexAdd END---------------------
+
+// ----------------IndexPut Begin-------------------
+bool InferShapeAndTypeIndexPut(Operator& op) {
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  DataType x1_dtype = op.GetInputDesc("x1").GetDataType();
+  Format x1_format = op.GetInputDesc("x1").GetFormat();
+  ge::Shape x1_shape = op.GetInputDesc("x1").GetShape();
+  std::vector<int64_t> x1_dims = x1_shape.GetDims();
+
+  ge::Shape x2_shape = op.GetInputDesc("x2").GetShape();
+  std::vector<int64_t> x2_dims = x2_shape.GetDims();
+
+  if (x2_dims != x1_dims) {
+    OP_LOGE(op.GetName().c_str(), "x1_dims not equal x2_dims");
+    return GRAPH_FAILED;
+  }
+
+  ge::Shape output_shape = ge::Shape(x1_dims);
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(x1_dtype);
+  output_desc.SetFormat(x1_format);
+  op.UpdateOutputDesc("y", output_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
+  DataType x1_dtype = op.GetInputDesc("x1").GetDataType();
+  DataType indices_dtype = op.GetInputDesc("indices").GetDataType();
+  DataType x2_dtype = op.GetInputDesc("x2").GetDataType();
+  if (x1_dtype != x2_dtype) {
+    OP_LOGE(op.GetName().c_str(),
+            "The input shape of x1 x2 y is equal, please check!");
+    return GRAPH_FAILED;
+  }
+  if (indices_dtype != DT_INT32) {
+    OP_LOGE(op.GetName().c_str(),
+            "The input shape of indices is not int32, please check!");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(IndexPutInferShape) {
+  if (InferShapeAndTypeIndexPut(op) == GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "index_put infer shape failed!");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(IndexPut, IndexPutInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(IndexPut, IndexPutVerify);
+// ----------------IndexPut END---------------------
+
 // ---------------Triu--------------
 IMPLEMT_COMMON_INFERFUNC(TriuInferShape) {
   Shape input_shape = op.GetInputDesc(0).GetShape();
@@ -3403,5 +3498,19 @@ COMMON_INFER_FUNC_REG(Eye, EyeInferShape);
 
 VERIFY_FUNC_REG(Eye, EyeVerify);
 //--------------Eye END-------------------------------
+
+// ----------------FillDiagonal-------------------
+IMPLEMT_COMMON_INFERFUNC(FillDiagonalInferShape) {
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(ge::Shape(x_shape));
+  td.SetDataType(x_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(FillDiagonal, FillDiagonalInferShape);
+// ----------------FillDiagonal END-------------------
 
 }  // namespace ge
