@@ -126,19 +126,10 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
     dimsInputWDim.push_back(1);
     dimsInputWDim.push_back(1);
 
-    std::vector<int64_t> dimsOriInputWDim;
-    // no need padding
-    dimsOriInputWDim.push_back(wCol);
-    dimsOriInputWDim.push_back(wRow);
-
-    dimsOriInputWDim.push_back(1);
-    dimsOriInputWDim.push_back(1);
-
     ge::GeShape dimsInputWShape(dimsInputWDim);
-    ge::GeShape dimsOriInputWShape(dimsOriInputWDim);
 
     inputWTensorDesc.SetShape(dimsInputWShape);
-    inputWTensorDesc.SetOriginShape(dimsOriInputWShape);
+    inputWTensorDesc.SetOriginShape(dimsInputWShape);
     inputWTensorDesc.SetFormat(ge::FORMAT_NCHW);
     inputWTensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
     fusedNode->GetInDataAnchor(wxStaticIndex)
