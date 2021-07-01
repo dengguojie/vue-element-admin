@@ -170,7 +170,26 @@ def check_axis_is_last(shape_x_ori, axis):
 
 def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
-    select format dynamically
+    select format dynamically \n
+    1.when is dynamic softmax, the formats of x and y are the same and only support ND. \n
+    > example: \n
+    > original: \n
+    > x's Tensor(shape=(16, 16, 16), "ND") \n
+    > y's Tensor(shape=(16, 16, 16), "ND") \n
+
+    2.when the lengths of x's shape and y's shape are the same and equal to 2,
+    the formats of x and y are the same and are one of [FRACTAL_NZ,NC1HWC0,ND]. \n
+    > example: \n
+    > original: \n
+    > x's Tensor(shape=(16, 16, 16, 16, 16), "FRACTAL_NZ") \n
+    > y's Tensor(shape=(16, 16, 16, 16, 16), "FRACTAL_NZ") \n
+
+    3.when the lengths of x's shape and y's shape are the same and large than 2,
+    the formats of x and y are the same and are one of [FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0]. \n
+    > example: \n
+    > original: \n
+    > x's Tensor(shape=(16, 16, 16, 16, 16, 16), "NDC1HWC0") \n
+    > y's Tensor(shape=(16, 16, 16, 16, 16, 16), "NDC1HWC0") \n
     """
     shape_x = list(input_x.get("shape"))
     length_x = len(shape_x)
