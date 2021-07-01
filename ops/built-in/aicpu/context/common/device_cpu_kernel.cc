@@ -93,7 +93,7 @@ __attribute__((visibility("default"))) uint32_t RunCpuKernel(void *param) {
         param_head->extInfoLength, kMaxExtendLen);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-
+ 
   SessionInfo *session = nullptr;
   uint32_t ret = ParseExtSessionInfo(param_head, session);
   if (ret != KERNEL_STATUS_OK) {
@@ -107,13 +107,14 @@ __attribute__((visibility("default"))) uint32_t RunCpuKernel(void *param) {
     return cache.RunKernel(param);
   }
 
-  std::string stream_id_value;
-  auto status = GetThreadLocalCtx(kContextKeyStreamId, stream_id_value);
-  if (status != AICPU_ERROR_NONE) {
-    KERNEL_LOG_ERROR("GetThreadLocalCtx failed, ret[%d].", status);
-    return KERNEL_STATUS_INNER_ERROR;
+  std::string stream_id_value = "0";
+  if (aicpu::GetThreadLocalCtx != nullptr) {
+    auto status = GetThreadLocalCtx(kContextKeyStreamId, stream_id_value);
+    if (status != AICPU_ERROR_NONE) {
+      KERNEL_LOG_ERROR("GetThreadLocalCtx failed, ret[%d].", status);
+      return KERNEL_STATUS_INNER_ERROR;
+    }
   }
-
   uint64_t stream_id = atoi(stream_id_value.c_str());
   KERNEL_LOG_INFO(
       "RunCpuKernel from cache, stream id[%llu], session id[%llu], session "

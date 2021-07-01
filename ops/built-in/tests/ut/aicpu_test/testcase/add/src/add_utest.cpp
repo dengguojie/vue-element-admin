@@ -244,6 +244,59 @@ TEST_F(TEST_ADD_UT, INT16_VECTOR_ADD_VECTOR_BROADCAST_1) {
   EXPECT_EQ(compare, true);
 }
 
+TEST_F(TEST_ADD_UT, INT16_VECTOR_ADD_VECTOR_DIM_7) {
+  vector<DataType> data_types = {DT_INT16, DT_INT16, DT_INT16};
+  vector<vector<int64_t>> shapes = {{2, 1, 1, 1, 1, 1, 1}, {1}, {2, 1, 1, 1, 1, 1, 1}};
+
+  int16_t input1[2] = {2, 3};
+  int16_t input2[1] = {3};
+  int16_t output[2] = {0};
+  vector<void *> datas = {(void *)input1,
+                          (void *)input2,
+                          (void *)output};
+
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+
+  int16_t output_exp[2] = {5, 6};
+  bool compare = CompareResult(output, output_exp, 2);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_ADD_UT, INT16_VECTOR_ADD_VECTOR_DIM_8) {
+  vector<DataType> data_types = {DT_INT16, DT_INT16, DT_INT16};
+  vector<vector<int64_t>> shapes = {{2, 1, 1, 1, 1, 1, 1, 1}, {1}, {2, 1, 1, 1, 1, 1, 1, 1}};
+
+  int16_t input1[2] = {2, 3};
+  int16_t input2[1] = {3};
+  int16_t output[2] = {0};
+  vector<void *> datas = {(void *)input1,
+                          (void *)input2,
+                          (void *)output};
+
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+
+  int16_t output_exp[2] = {5, 6};
+  bool compare = CompareResult(output, output_exp, 2);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_ADD_UT, INT16_VECTOR_ADD_VECTOR_INVALID_DIM) {
+  vector<DataType> data_types = {DT_INT16, DT_INT16, DT_INT16};
+  vector<vector<int64_t>> shapes = {{2, 1, 1, 1, 1, 1, 1, 1, 1}, {1}, {2, 1, 1, 1, 1, 1, 1, 1, 1}};
+
+  int16_t input1[2] = {2, 3};
+  int16_t input2[1] = {3};
+  int16_t output[2] = {0};
+  vector<void *> datas = {(void *)input1,
+                          (void *)input2,
+                          (void *)output};
+
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+}
+
 TEST_F(TEST_ADD_UT, INT32_VECTOR_ADD_VECTOR_BROADCAST_BOTH) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
   vector<vector<int64_t>> shapes = {{1, 2}, {2, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 2}};

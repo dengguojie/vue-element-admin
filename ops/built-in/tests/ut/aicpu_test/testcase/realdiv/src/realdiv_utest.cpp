@@ -16,6 +16,15 @@ using namespace aicpu;
 
 class TEST_REALDIV_UT : public testing::Test {};
 
+template <typename T>
+void CalcExpectFunc(const NodeDef &node_def, T expect_out[]) {
+  auto output = node_def.MutableOutputs(0);
+  int64_t output_num = output->NumElements();
+  for (int i = 0; i < output_num; i++) {
+    expect_out[i] = 1;
+  }
+}
+
 #define CREATE_NODEDEF(shapes, data_types, datas)                                 \
   auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();                \
   NodeDefBuilder(node_def.get(), "RealDiv", "RealDiv")                            \
@@ -37,6 +46,21 @@ class TEST_REALDIV_UT : public testing::Test {};
     RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                                 \
   }
 
+#define REALDIV_CASE_WITH_SHAPE(case_name, base_type, aicpu_type,                  \
+                                shapes, data_num)                                  \
+  TEST_F(TEST_REALDIV_UT, TestRealdiv_##case_name) {                               \
+    vector<DataType> data_types = {aicpu_type, aicpu_type, aicpu_type};            \
+    base_type input1[data_num[0]] = {(base_type)1};                                \
+    base_type input2[data_num[1]] = {(base_type)1};                                \
+    base_type output[data_num[2]] = {(base_type)0};                                \
+    vector<void *> datas = {(void *)input1, (void *)input2, (void *)output};       \
+    CREATE_NODEDEF(shapes, data_types, datas);                                     \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                                  \
+    base_type expect_out[data_num[2]] = {(base_type)0};                            \
+    CalcExpectFunc(*node_def.get(), expect_out);                                   \
+    CompareResult<base_type>(output, expect_out, data_num[2]);                     \
+  }
+
 ADD_CASE(Eigen::half, DT_FLOAT16)
 
 ADD_CASE(float, DT_FLOAT)
@@ -54,3 +78,11 @@ ADD_CASE(int64_t, DT_INT64)
 ADD_CASE(uint8_t, DT_UINT8)
 
 ADD_CASE(uint16_t, DT_UINT16)
+
+vector<vector<int64_t>> shapes_realdiv_dim7 = {{2, 1, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 1, 1}};
+vector<int64_t> data_num_realdiv_dim7 = {2, 1, 2};
+REALDIV_CASE_WITH_SHAPE(int16_realdiv_vector_dim_7, int16_t, DT_INT16, shapes_realdiv_dim7, data_num_realdiv_dim7)
+
+vector<vector<int64_t>> shapes_realdiv_dim8 = {{2, 1, 1, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 1, 1, 1}};
+vector<int64_t> data_num_realdiv_dim8 = {2, 1, 2};
+REALDIV_CASE_WITH_SHAPE(int16_realdiv_vector_dim_8, int16_t, DT_INT16, shapes_realdiv_dim8, data_num_realdiv_dim8)

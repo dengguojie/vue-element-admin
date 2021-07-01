@@ -116,8 +116,12 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
       return MulCalculateWithAlignedCheck<5, T>(ctx, calc_info);
     case 6:
       return MulCalculateWithAlignedCheck<6, T>(ctx, calc_info);
+    case 7:
+      return MulCalculateWithAlignedCheck<7, T>(ctx, calc_info);
+    case 8:
+      return MulCalculateWithAlignedCheck<8, T>(ctx, calc_info);
     default:
-      KERNEL_LOG_ERROR("[%s] Rank of output should less than 6 but get [%zu].",
+      KERNEL_LOG_ERROR("[%s] Rank of output should less than 8 but get [%zu].",
                        ctx.GetOpType().c_str(), calc_info.shape_out.size());
       return KERNEL_STATUS_PARAM_INVALID;
   }

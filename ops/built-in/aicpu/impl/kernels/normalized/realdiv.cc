@@ -183,6 +183,9 @@ uint32_t RealDivKernel::ComputeDiffShape(int64_t dim, T *x_addr, T *y_addr,
     case 7:
       return DoCompute<T, 7>(x_addr, y_addr, z_addr, x_dim_size, y_dim_size,
                              z_dim_size, ctx);
+    case 8:
+      return DoCompute<T, 8>(x_addr, y_addr, z_addr, x_dim_size, y_dim_size,
+                             z_dim_size, ctx);
     default:
       KERNEL_LOG_ERROR("RealDiv op don't support [%d] dims", dim);
       return KERNEL_STATUS_PARAM_INVALID;

@@ -60,43 +60,51 @@ void CalcExpectFunc(const NodeDef &node_def, T expect_out[]) {
 
 vector<vector<int64_t>> shapes_mul1 = {{}, {}, {}};
 vector<int64_t> data_num_mul1 = {1, 1, 1};
-MUL_CASE_WITH_SHAPE(int8_scalar_add_scalar, int8_t, DT_INT8, shapes_mul1, data_num_mul1)
+MUL_CASE_WITH_SHAPE(int8_scalar_mul_scalar, int8_t, DT_INT8, shapes_mul1, data_num_mul1)
 
-MUL_CASE_WITH_SHAPE(uint8_scalar_add_scalar, uint8_t, DT_UINT8, shapes_mul1, data_num_mul1)
+MUL_CASE_WITH_SHAPE(uint8_scalar_mul_scalar, uint8_t, DT_UINT8, shapes_mul1, data_num_mul1)
 
-MUL_CASE_WITH_SHAPE(uint16_scalar_add_scalar, uint16_t, DT_UINT16, shapes_mul1, data_num_mul1)
+MUL_CASE_WITH_SHAPE(uint16_scalar_mul_scalar, uint16_t, DT_UINT16, shapes_mul1, data_num_mul1)
 
-MUL_CASE_WITH_SHAPE(uint32_scalar_add_scalar, uint32_t, DT_UINT32, shapes_mul1, data_num_mul1)
+MUL_CASE_WITH_SHAPE(uint32_scalar_mul_scalar, uint32_t, DT_UINT32, shapes_mul1, data_num_mul1)
 
-MUL_CASE_WITH_SHAPE(uint64_scalar_add_scalar, uint64_t, DT_UINT64, shapes_mul1, data_num_mul1)
+MUL_CASE_WITH_SHAPE(uint64_scalar_mul_scalar, uint64_t, DT_UINT64, shapes_mul1, data_num_mul1)
 
-MUL_CASE_WITH_SHAPE(float_scalar_add_scalar, float, DT_FLOAT, shapes_mul1, data_num_mul1)
+MUL_CASE_WITH_SHAPE(float_scalar_mul_scalar, float, DT_FLOAT, shapes_mul1, data_num_mul1)
 
-MUL_CASE_WITH_SHAPE(double_scalar_add_scalar, double, DT_DOUBLE, shapes_mul1, data_num_mul1)
+MUL_CASE_WITH_SHAPE(double_scalar_mul_scalar, double, DT_DOUBLE, shapes_mul1, data_num_mul1)
 
 vector<vector<int64_t>> shapes_mul2 = {{}, {2}, {2}};
 vector<int64_t> data_num_mul2 = {1, 2, 2};
-MUL_CASE_WITH_SHAPE(int16_scalar_add_vector, int16_t, DT_INT16, shapes_mul2, data_num_mul2)
+MUL_CASE_WITH_SHAPE(int16_scalar_mul_vector, int16_t, DT_INT16, shapes_mul2, data_num_mul2)
 
 vector<vector<int64_t>> shapes_mul3 = {{2}, {}, {2}};
 vector<int64_t> data_num_mul3 = {2, 1, 2};
-MUL_CASE_WITH_SHAPE(int32_vector_add_scalar, int32_t, DT_INT32, shapes_mul3, data_num_mul3)
+MUL_CASE_WITH_SHAPE(int32_vector_mul_scalar, int32_t, DT_INT32, shapes_mul3, data_num_mul3)
 
 vector<vector<int64_t>> shapes_mul4 = {{2, 1, 1}, {2, 1, 1}, {2, 1, 1}};
 vector<int64_t> data_num_mul4 = {2, 2, 2};
-MUL_CASE_WITH_SHAPE(int64_vector_add_vector_match, int64_t, DT_INT64, shapes_mul4, data_num_mul4)
+MUL_CASE_WITH_SHAPE(int64_vector_mul_vector_match, int64_t, DT_INT64, shapes_mul4, data_num_mul4)
 
 vector<vector<int64_t>> shapes_mul5 = {{1}, {2, 1, 1, 1}, {2, 1, 1, 1}};
 vector<int64_t> data_num_mul5 = {1, 2, 2};
-MUL_CASE_WITH_SHAPE(int8_vector_add_vector_broadcast_0, int8_t, DT_INT8, shapes_mul5, data_num_mul5)
+MUL_CASE_WITH_SHAPE(int8_vector_mul_vector_broadcast_0, int8_t, DT_INT8, shapes_mul5, data_num_mul5)
 
 vector<vector<int64_t>> shapes_mul6 = {{2, 1, 1, 1}, {1}, {2, 1, 1, 1}};
 vector<int64_t> data_num_mul6 = {2, 1, 2};
-MUL_CASE_WITH_SHAPE(int16_add_vector_broadcast_1, int16_t, DT_INT16, shapes_mul6, data_num_mul6)
+MUL_CASE_WITH_SHAPE(int16_mul_vector_broadcast_1, int16_t, DT_INT16, shapes_mul6, data_num_mul6)
+
+vector<vector<int64_t>> shapes_mul_dim7 = {{2, 1, 1, 1, 1, 1, 1}, {1}, {2, 1, 1, 1, 1, 1, 1}};
+vector<int64_t> data_num_mul_dim7 = {2, 1, 2};
+MUL_CASE_WITH_SHAPE(int16_mul_vector_dim_7, int16_t, DT_INT16, shapes_mul_dim7, data_num_mul_dim7)
+
+vector<vector<int64_t>> shapes_mul_dim8 = {{2, 1, 1, 1, 1, 1, 1, 1}, {1}, {2, 1, 1, 1, 1, 1, 1, 1}};
+vector<int64_t> data_num_mul_dim8 = {2, 1, 2};
+MUL_CASE_WITH_SHAPE(int16_mul_vector_dim_8, int16_t, DT_INT16, shapes_mul_dim8, data_num_mul_dim8)
 
 vector<vector<int64_t>> shapes_mul7 = {{1, 2}, {2, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 2}};
 vector<int64_t> data_num_mul7 = {2, 2, 4};
-MUL_CASE_WITH_SHAPE(int32_vector_add_vector_broatcast_both, int32_t, DT_INT32, shapes_mul7, data_num_mul7)
+MUL_CASE_WITH_SHAPE(int32_vector_mul_vector_broatcast_both, int32_t, DT_INT32, shapes_mul7, data_num_mul7)
 
 
 MUL_CASE_WITH_TYPE_DISMATCH(bool_unsupport, bool, bool, DT_BOOL, DT_BOOL, shapes_mul1, data_num_mul1)

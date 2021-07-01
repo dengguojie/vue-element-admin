@@ -118,8 +118,12 @@ uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
       return AddCalculateWithAlignedCheck<5, T>(ctx, calc_info);
     case 6:
       return AddCalculateWithAlignedCheck<6, T>(ctx, calc_info);
+    case 7:
+      return AddCalculateWithAlignedCheck<7, T>(ctx, calc_info);
+    case 8:
+      return AddCalculateWithAlignedCheck<8, T>(ctx, calc_info);
     default:
-      KERNEL_LOG_ERROR("[%s] Rank of output should less than 6 but get [%zu].",
+      KERNEL_LOG_ERROR("[%s] Rank of output should less than 8 but get [%zu].",
                        ctx.GetOpType().c_str(), calc_info.shape_out.size());
       return KERNEL_STATUS_PARAM_INVALID;
   }
