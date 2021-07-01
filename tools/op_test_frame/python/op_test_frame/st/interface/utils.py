@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 # coding=utf-8
 """
 Function:
@@ -286,7 +286,7 @@ def map_to_acl_datatype_enum(dtype_list):
     acl_dtype_list = []
     for dtype in dtype_list:
         dtype = adapt_acl_datatype(dtype)
-        acl_dtype_list.append("ACL_" + str(dtype).upper())
+        acl_dtype_list.append("ACL_{}".format(str(dtype).upper()))
     result_str += ", ".join(acl_dtype_list)
     return result_str
 
@@ -297,7 +297,7 @@ class OpTestGenException(Exception):
     """
 
     def __init__(self, error_info):
-        super().__init__(error_info)
+        super(OpTestGenException, self).__init__(error_info)
         self.error_info = error_info
 
 
@@ -578,7 +578,7 @@ def fix_name_lower_with_under(name):
                 # If a capital letter is surrounded by lowercase letters, convert to "_" + lowercase letter
                 # In addition, all are converted to lowercase letters
                 # eg: "Abc2DEf"  ->   "abc2d_ef"
-                fix_name += "_" + name_str.lower()
+                fix_name += "_{}".format(name_str.lower())
             else:
                 fix_name += name_str.lower()
         else:
@@ -615,3 +615,10 @@ class ScanFile:
             print_error_log("The scanned directory does not exist: %s"
                             % self.directory)
         return files_list
+
+    def get_prefix(self):
+        """
+        get prefix
+        :return: prefix
+        """
+        return self.prefix

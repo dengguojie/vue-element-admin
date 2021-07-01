@@ -86,8 +86,9 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         raise utils.OpTestGenException(
             utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
 
-    def _check_fuzz_value_valid(self, json_obj, key, support_list, param_type,
-                                fuzz_dict, required=True):
+    def _check_fuzz_value_valid(self, json_tuple, param_type, fuzz_dict,
+                                required=True):
+        json_obj, key, support_list = json_tuple
         if required:
             self._check_key_exist(json_obj, key, param_type)
         json_obj = self._replace_fuzz_param(json_obj, key, param_type,
@@ -111,8 +112,9 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         return param_value
 
-    def _check_fuzz_shape_valid(self, json_obj, key, param_type, fuzz_dict,
+    def _check_fuzz_shape_valid(self, json_tuple, param_type, fuzz_dict,
                                 required=True):
+        json_obj, key = json_tuple
         if required:
             self._check_key_exist(json_obj, key, param_type)
         json_obj = self._replace_fuzz_param(json_obj, key, param_type,
@@ -132,8 +134,8 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                                           fuzz_dict):
         if key in json_obj and utils.VALUE not in json_obj:
             data_distribute_value = self._check_fuzz_value_valid(
-                json_obj, key, SD.WHITE_LISTS.data_distribution_list, param_type,
-                fuzz_dict)
+                (json_obj, key, SD.WHITE_LISTS.data_distribution_list),
+                param_type, fuzz_dict)
         else:
             data_distribute_value = 'uniform'
         return data_distribute_value
@@ -170,10 +172,10 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         for desc_obj in json_obj[desc_type]:
             type_value = self._check_fuzz_value_valid(
-                desc_obj, 'type', SD.WHITE_LISTS.mindspore_type_list,
+                (desc_obj, 'type', SD.WHITE_LISTS.mindspore_type_list),
                 desc_type, fuzz_dict)
             shape_value = self._check_fuzz_shape_valid(
-                desc_obj, 'shape', desc_type, fuzz_dict)
+                (desc_obj, 'shape'), desc_type, fuzz_dict)
             if desc_type == CD.INPUT_DESC:
                 data_distribute = self._check_fuzz_data_distribute_valid(
                     desc_obj, 'data_distribute', desc_type, fuzz_dict)
@@ -197,10 +199,10 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                                        one_input_desc):
         ori_shape_value = None
         ori_format_value = self._check_fuzz_value_valid(
-            json_obj, 'ori_format', None, param_type, fuzz_dict, required=False)
+            (json_obj, 'ori_format', None), param_type, fuzz_dict, required=False)
         if json_obj.get('ori_shape') is not None:
             ori_shape_value = self._check_fuzz_shape_valid(
-                json_obj, 'ori_shape', param_type, fuzz_dict, required=False)
+                (json_obj, 'ori_shape'), param_type, fuzz_dict, required=False)
         if ori_format_value and ori_shape_value:
             one_input_desc['ori_format'] = ori_format_value
             one_input_desc['ori_shape'] = ori_shape_value
@@ -220,7 +222,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         if not dynamic_handle.check_not_dynamic_shape(json_obj.get('shape')):
             return one_input_desc
         typical_shape = self._check_fuzz_shape_valid(
-            json_obj, utils.TYPICAL_SHAPE, param_type, fuzz_dict)
+            (json_obj, utils.TYPICAL_SHAPE), param_type, fuzz_dict)
         dynamic_handle.check_typical_shape_valid(typical_shape,
                                                  self.current_json_path)
         one_input_desc[utils.TYPICAL_SHAPE] = typical_shape
@@ -243,13 +245,13 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         for desc_obj in json_obj[desc_type]:
             format_value = self._check_fuzz_value_valid(
-                desc_obj, 'format', list(SD.WHITE_LISTS.format_map.keys()),
+                (desc_obj, 'format', list(SD.WHITE_LISTS.format_map.keys())),
                 desc_type, fuzz_dict)
             type_value = self._check_fuzz_value_valid(
-                desc_obj, 'type', SD.WHITE_LISTS.type_list,
+                (desc_obj, 'type', SD.WHITE_LISTS.type_list),
                 desc_type, fuzz_dict)
             shape_value = self._check_fuzz_shape_valid(
-                desc_obj, 'shape', desc_type, fuzz_dict)
+                (desc_obj, 'shape'), desc_type, fuzz_dict)
             if desc_type == CD.INPUT_DESC:
                 data_distribute = self._check_fuzz_data_distribute_valid(
                     desc_obj, 'data_distribute', desc_type, fuzz_dict)

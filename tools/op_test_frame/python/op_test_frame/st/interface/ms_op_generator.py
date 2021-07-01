@@ -233,8 +233,30 @@ class MsOpGenerator:
             input_data_abs_paths
         return input_data_abs_paths
 
-    def _generate_function_content(self, testcase_struct, input_data_abs_paths):
+    def _generate_output_content(self, testcase_struct, tensor_list,
+                                 inputs_str):
         _, op_name_lower = self._get_op_name()
+        testcase_test_func_content = ''
+        testcase_name = testcase_struct.get('case_name')
+        outputs_str = ''
+        output_count = 1
+        for output_desc in testcase_struct.get('output_desc'):
+            output_name = 'output{}'.format(output_count)
+            data_type = getattr(np, output_desc.get('type'))
+            outputs_str += code_snippet.TESTCASE_TEST_NET_OUTPUT.format(
+                output_name=output_name,
+                op_lower=op_name_lower,
+                tensor=','.join(tensor_list),
+                np_type=data_type)
+            output_count += 1
+        testcase_test_func_content += code_snippet.TESTCASE_TEST_NET \
+            .format(subcase=testcase_name[0].lower() + testcase_name[1:],
+                    op_lower=op_name_lower,
+                    inputs=inputs_str,
+                    outputs=outputs_str)
+        return testcase_test_func_content
+
+    def _generate_function_content(self, testcase_struct, input_data_abs_paths):
         input_count = 1
         inputs_str = ''
         tensor_content_list = []
@@ -250,25 +272,10 @@ class MsOpGenerator:
                 op_shape=input_desc.get('shape'))
             input_name_list.append(input_name)
             input_count += 1
-        testcase_test_func_content = ''
-        testcase_name = testcase_struct.get('case_name')
-        outputs_str = ''
-        output_count = 1
-        for output_desc in testcase_struct.get('output_desc'):
-            output_name = 'output{}'.format(output_count)
-            data_type = getattr(np, output_desc.get('type'))
-            outputs_str += code_snippet.TESTCASE_TEST_NET_OUTPUT.format(
-                output_name=output_name,
-                op_lower=op_name_lower,
-                tensor=','.join(tensor_content_list),
-                np_type=data_type)
-            output_count += 1
-        testcase_test_func_content += code_snippet.TESTCASE_TEST_NET \
-            .format(subcase=testcase_name[0].lower() + testcase_name[1:],
-                    op_lower=op_name_lower,
-                    inputs=inputs_str,
-                    outputs=outputs_str)
-        return testcase_test_func_content, input_count, input_name_list
+        func_content = self._generate_output_content(testcase_struct,
+                                                     tensor_content_list,
+                                                     inputs_str)
+        return func_content, input_count, input_name_list
 
     def _generate_net_content(self, input_count, input_name_list,
                               ms_param_type_list):

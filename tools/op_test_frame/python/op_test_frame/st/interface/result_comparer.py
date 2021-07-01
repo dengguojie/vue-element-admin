@@ -120,6 +120,47 @@ def _display_error_output(real_data, expect_data, err_idx, relative_diff):
     utils.print_info_log('---------------------------------------------------------------------------------------')
 
 
+def _get_error_percent(diff_list, real_data, data_compe, split_count,
+                          pct_thd):
+    diff_index = np.where(diff_list[0] > 0)
+    rdiff = _cal_relative_diff_np(real_data[diff_index].astype(np.float32),
+                                  data_compe[diff_index].astype(np.float32),
+                                  diff_list[1])
+    err_diff = rdiff[rdiff > diff_list[1]]
+    diff_idx_list = diff_index[0]
+    err_idx = diff_idx_list[np.where(rdiff > diff_list[1])]
+
+    fulfill_num = split_count - err_diff.size
+    fulfill_percent = float(fulfill_num) / float(split_count) * 100.0
+    pct_thd = (1 - pct_thd) * 100.0
+    result = "Pass" if (fulfill_percent >= pct_thd) else "Failed"
+    if len(err_diff) > 0:
+        max_error = max(err_diff)
+        if max(err_diff) >= diff_list[2]:
+            result = "Failed"
+    utils.print_info_log(
+        '---------------------------------------------------------------------------------------')
+    utils.print_info_log('DiffThd  \t PctThd   \t PctRlt   \t Result')
+    utils.print_info_log(
+        '---------------------------------------------------------------------------------------')
+    utils.print_info_log('%.4f     \t %.2f%%   \t %.6f%%   \t %s' % (
+        diff_list[1], pct_thd, fulfill_percent, result))
+    if len(err_diff) > 0:
+        utils.print_info_log(
+            'Maximum error is: %s. Tolerance threshold is: %s.' % (
+                max_error, diff_list[2]))
+    return [err_idx, err_diff], fulfill_percent
+
+
+def _check_overflows_count(data_compe):
+    overflows_count = data_compe[np.isinf(data_compe)].size + data_compe[
+        np.isnan(data_compe)].size
+    if overflows_count > 0:
+        utils.print_info_log('Overflow,size:%s,benchmark_output:%s, %s' % (
+            overflows_count, data_compe[np.isinf(data_compe)][0:10],
+            data_compe[np.isnan(data_compe)][0:10]))
+
+
 def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
                   max_diff_hd=0.1):
     real_data = npu_output.flatten()
@@ -139,14 +180,7 @@ def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
             'Error,the size of npu output[%s] and benchmark[%s] is not equal.' % (
                 real_data.size, data_compe.size))
         return result, 0.0, max_error
-
-    overflows_count = data_compe[np.isinf(data_compe)].size + data_compe[
-        np.isnan(data_compe)].size
-    if overflows_count > 0:
-        utils.print_info_log('Overflow,size:%s,benchmark_output:%s, %s' % (
-            overflows_count, data_compe[np.isinf(data_compe)][0:10],
-            data_compe[np.isnan(data_compe)][0:10]))
-
+    _check_overflows_count(data_compe)
     split_count = int(end - start + 1) if end != start else 1
     utils.print_info_log(
         'split_count:%s; max_diff_hd:%s;' % (float(split_count), max_diff_hd))
@@ -155,36 +189,12 @@ def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
                                       data_compe.astype(np.float32)))
     except MemoryError:
         return result, 0.0, max_error
-    diff_index = np.where(diff_abs > 0)
-    rdiff = _cal_relative_diff_np(real_data[diff_index].astype(np.float32),
-                                  data_compe[diff_index].astype(np.float32),
-                                  diff_thd)
-    err_diff = rdiff[rdiff > diff_thd]
-    diff_idx_list = diff_index[0]
-    err_idx = diff_idx_list[np.where(rdiff > diff_thd)]
-    error_cnt = err_diff.size
-
-    fulfill_num = split_count - error_cnt
-    fulfill_percent = float(fulfill_num) / float(split_count) * 100.0
     _display_output(real_data, data_compe, start, end, diff_thd)
-    pct_thd = (1 - pct_thd) * 100.0
-    result = "Pass" if (fulfill_percent >= pct_thd) else "Failed"
-    if len(err_diff) > 0:
-        max_error = max(err_diff)
-        if max(err_diff) >= max_diff_hd:
-            result = "Failed"
-    utils.print_info_log(
-        '---------------------------------------------------------------------------------------')
-    utils.print_info_log('DiffThd  \t PctThd   \t PctRlt   \t Result')
-    utils.print_info_log(
-        '---------------------------------------------------------------------------------------')
-    utils.print_info_log('%.4f     \t %.2f%%   \t %.6f%%   \t %s' % (
-        diff_thd, pct_thd, fulfill_percent, result))
-    if len(err_diff) > 0:
-        utils.print_info_log('Maximum error is: %s. Tolerance threshold is: %s.' % (
-            max_error, max_diff_hd))
+    err_list, fulfill_percent = _get_error_percent(
+        [diff_abs, diff_thd, max_diff_hd], real_data, data_compe, split_count,
+        pct_thd)
     if result == "Failed":
-        _display_error_output(real_data, data_compe, err_idx, err_diff)
+        _display_error_output(real_data, data_compe, err_list[0], err_list[1])
     return result, fulfill_percent, max_error
 
 

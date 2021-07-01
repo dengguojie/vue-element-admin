@@ -419,8 +419,8 @@ class CaseGenerator:
                 if name is None:
                     break
                 # match type.
-                input_tensor_type = start_str[
-                                    start_str.find("{") + 1:start_str.find("}")]
+                input_tensor_type = start_str[start_str.find("{")
+                                              + 1:start_str.find("}")]
 
                 op_info_key = ''
                 # record the input information of key
