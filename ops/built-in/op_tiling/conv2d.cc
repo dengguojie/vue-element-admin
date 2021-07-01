@@ -86,7 +86,7 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas, const 
   if (opType.c_str() == "Conv2D" && opCompileInfo.contains("fmap_c1") && 
       opParas.GetInputDesc(0).GetShape().GetDim(cDim) != opCompileInfo["fmap_c1"]) {
     CUBE_INNER_ERR_REPORT(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups;"
-      "x_channel=%d, fmap_c1=%d", opParas.GetInputDesc(0).GetShape().GetDim(cDim), opCompileInfo["fmap_c1"]);
+      "x_channel=%d, fmap_c1=%d", (int32_t)opParas.GetInputDesc(0).GetShape().GetDim(cDim), (int32_t)opCompileInfo["fmap_c1"]);
     return false;
   }
 
