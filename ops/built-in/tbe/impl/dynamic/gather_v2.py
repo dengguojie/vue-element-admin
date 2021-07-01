@@ -21,6 +21,9 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 PARAMS_SIZE = 2 ** 31 - 1
 INDICES_NUM = 2 ** 31 - 1
@@ -113,6 +116,27 @@ def align_value(value, factor):
     return (value + factor - 1) // factor * factor
 
 
+def get_op_support_info(x_dict, indices_dict, axis_dict, y_dict, kernel_name="GatherV2"):
+    """
+    get_op_support_info
+    """
+    format_x = x_dict.get("format").upper()
+    format_indices = indices_dict.get("format").upper()
+    shape_indices_len = len(indices_dict.get("ori_shape"))
+    if format_x == "ND" and format_indices == "ND":
+        axis_split_matrix = []
+        for j in range(shape_indices_len):
+            split_0 = [SplitInput([1, [j], [-1], [-1]]), SplitOutput([0, [j]])]
+            axis_split_matrix.append(split_0)
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
+
 def check_supported(x_dict, indices_dict, axis_dict, y_dict, kernel_name="GatherV2"):
     """
     Parameters
@@ -121,17 +145,6 @@ def check_supported(x_dict, indices_dict, axis_dict, y_dict, kernel_name="Gather
     """
     shape_x = x_dict.get("ori_shape")
     shape_indices = indices_dict.get("ori_shape")
-    shape_axis = axis_dict.get("ori_shape")
-
-    if -2 in shape_x:
-        reason = "shape_x contains -2."
-        return False, reason
-    if -2 in shape_indices:
-        reason = "shape_indices contains -2."
-        return False, reason
-    if -2 in shape_axis:
-        reason = "shape_axis contains -2."
-        return False, reason
 
     shape_x_list = [(7709, 512)]
     shape_indices_list = [(1,)]
@@ -139,7 +152,6 @@ def check_supported(x_dict, indices_dict, axis_dict, y_dict, kernel_name="Gather
     if shape_x in shape_x_list and shape_indices in shape_indices_list:
         reason = "shape in bad-performance list."
         return False, reason
-
 
     return True, ""
 
