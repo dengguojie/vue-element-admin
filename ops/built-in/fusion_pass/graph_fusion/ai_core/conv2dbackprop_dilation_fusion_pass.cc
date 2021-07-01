@@ -86,6 +86,24 @@ vector<int64_t> post_get_pad_value(
   return post_pad_hw;
 }
 
+vector<int64_t> pre_get_pad_value(
+  const vector<int64_t> post_dilation_hw,
+  const vector<int64_t> dx_shape,
+  size_t pos_y_h,
+  size_t pos_y_w,
+  const vector<int64_t> filter_shape,
+  size_t pos_filter_h,
+  size_t pos_filter_w,
+  const vector<int64_t> pads
+  ) {
+  int pad_down = dx_shape[pos_y_h] - filter_shape[pos_filter_h] + pads[0] + pads[2] + 1 - post_dilation_hw[0];
+  int pad_right = dx_shape[pos_y_w] - filter_shape[pos_filter_w] + pads[1] + pads[3] + 1 - post_dilation_hw[1];
+  vector<int64_t> post_pad_hw;
+  post_pad_hw.push_back(pad_down);
+  post_pad_hw.push_back(pad_right);
+  return post_pad_hw;
+}
+
 static Status generate_pre_dilation_node(
   ge::ComputeGraph* graph,
   ge::GeTensorDesc* prev_out_desc,
@@ -391,14 +409,11 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   size_t pos_backprop_out_h = backprop_out_fmt_str.find('H');
   size_t pos_backprop_out_w = backprop_out_fmt_str.find('W');
 
-  
+
   std::string y_fmt_str;
   AttrUtils::GetStr(conv2dbp_input_y_desc, kAttrOrgFmt, y_fmt_str);
   size_t pos_y_h = y_fmt_str.find('H');
   size_t pos_y_w = y_fmt_str.find('W');
- 
-  dilation_hw = post_get_hw_not_pad(out_backprop_ori_shape,strides, pos_backprop_out_h, pos_backprop_out_w);
-  pad_hw = post_get_pad_value(dilation_hw, y_shape, pos_y_h, pos_y_w);
 
   bool pre_dilation = false;
   bool need_dilation_flag = false;
@@ -423,6 +438,15 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Because stride is 1, Dilation is not required");
     return NOT_CHANGED;
   }
+
+  dilation_hw = post_get_hw_not_pad(out_backprop_ori_shape,strides, pos_backprop_out_h, pos_backprop_out_w);
+  if (pre_dilation) {
+    pad_hw = pre_get_pad_value(dilation_hw, y_shape, pos_y_h, pos_y_w,
+                               filter_ori_shape, pos_filter_h, pos_filter_w, pads);
+  } else {
+    pad_hw = post_get_pad_value(dilation_hw, y_shape, pos_y_h, pos_y_w);
+  }
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "the pad_hw is %d and %d", pad_hw[0], pad_hw[1]);
 
   ge::NodePtr dilation_node = nullptr;
   ge::NodePtr pad_node = nullptr;
@@ -462,7 +486,15 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   fusion_nodes.push_back(dilation_node);
   op.SetAttr("strides", {1, 1, 1, 1});
 
-  if (!pre_dilation){
+  if (pre_dilation) {
+    vector<int64_t> new_pads = pads;
+    new_pads[1] = pads[1] - pad_hw[0];
+    new_pads[3] = pads[3] - pad_hw[1];
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "the pad_new is %d and %d", new_pads[1], new_pads[3]);
+    op.SetAttr("pads", new_pads);
+  }
+
+  if (!pre_dilation) {
     std::vector<int64_t> input_size_new = input_size;
     input_size_new[pos_backprop_out_h] = out_backprop_ori_shape[pos_backprop_out_h];
     input_size_new[pos_backprop_out_w] = out_backprop_ori_shape[pos_backprop_out_w];
