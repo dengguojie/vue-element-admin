@@ -25,6 +25,7 @@ from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 
+
 BITS_OF_BYTE = 8
 BLOCK_BYTES_SIZE = 32
 VECTOR_BYTES_SIZE = 256
@@ -95,8 +96,7 @@ def check_supported(x,
     """
     check whether ai_core is supported
     """
-    check_list = ["float32", "float16"]
-    format_list = ["NCHW", "NHWC"]
+    check_list = ["float32"]
     x_shape = x.get("shape")
     x_dtype = x.get("dtype").lower()
     x_format = x.get("format")
@@ -107,10 +107,10 @@ def check_supported(x,
         reason = "dtype is x is not supported, x_dtype is %s,supported list is %s" % (x_dtype, check_list)
         return False, reason
     if len(x_shape) != 4:
-        reason = "len of x_shape is not 4, x_shape is %s" % (str(x_shape),)
+        reason = "len of x_shape is not 4, x_shape is %s" %(str(x_shape),)
         return False, reason
-    if (x_format not in format_list) or (data_format not in format_list):
-        reason = "x_format is not [NHWC, NCHW] or data_format is not [NHWC, NCHW]"
+    if x_format != "NHWC" or data_format != "NHWC":
+        reason = "x_format is not NHWC or data_format is not NHWC"
         return False, reason
     if x_shape[3] % deformable_groups != 0:
         reason = "x_shape[3][%s] is not a multiple of deformable_groups[%s] != 0 " % (
@@ -118,17 +118,16 @@ def check_supported(x,
         return False, reason
     group_c = x_shape[3] // deformable_groups
     if group_c % 8 != 0 or deformable_groups != 1:
-        reason = "group_c[%s] is not multiple of 8, or deformable_groups is not 1" % (str(group_c),)
+        reason = "group_c[%s] is not multiple of 8, or deformable_groups is not 1" %(str(group_c),)
         return False, reason
     return True, ""
 
 
 # pylint: disable=too-many-instance-attributes,too-many-arguments
-class DeformableOffsets(object):
+class DeformableOffsets:
     """
     initialize some properties
     """
-
     def __init__(self, x, offsets, helper, y, strides, pads, ksize,
                  data_format="NHWC", deformable_groups=1, modulated=True,
                  kernel_name="deformable_offsets"):
@@ -170,13 +169,13 @@ class DeformableOffsets(object):
         self.offsets_len = functools_reduce(lambda x_ele, y_ele: x_ele * y_ele, self.offsets_shape)
         self.helper_len = self.offsets_len // self.dim_offsets_n
         self.y_len = self.offsets_len * self.dim_group_c // 3
-        self.thread_num = 1
+        self.thread_num = 2
         self.x_gm = self.tik_instance.Tensor(
-            self.x_dtype, [self.x_len, ], name="x_gm", scope=tbe_platform.scope_gm)
+            self.x_dtype, [self.x_len,], name="x_gm", scope=tbe_platform.scope_gm)
         self.offsets_gm = self.tik_instance.Tensor(
-            self.offsets_dtype, [self.offsets_len, ], name="offsets_gm", scope=tbe_platform.scope_gm)
+            self.offsets_dtype, [self.offsets_len,], name="offsets_gm", scope=tbe_platform.scope_gm)
         self.helper_gm = self.tik_instance.Tensor(
-            self.helper_dtype, [self.helper_len, ], name="helper_gm", scope=tbe_platform.scope_gm)
+            self.helper_dtype, [self.helper_len,], name="helper_gm", scope=tbe_platform.scope_gm)
         self.y_gm = self.tik_instance.Tensor(
             self.y_dtype, [self.y_len], name="y_gm", scope=tbe_platform.scope_gm)
         self.scalar_const_pos1 = self.tik_instance.Scalar(
@@ -185,7 +184,6 @@ class DeformableOffsets(object):
         self.loop_seg = self.dim_offsets_w // self.ub_seg_size
         self.ub_seg_res = self.dim_offsets_w % self.ub_seg_size
         self.cmp_flag = tbe_platform.api_check_support("tik.vec_cmpv_ge", dtype="float32")
-        self.conv_num = min(self.dim_group_c, CAL_MASK_SIZE)
 
         self.ub_out = None
         self.ub_offsets_ori = None
@@ -221,7 +219,7 @@ class DeformableOffsets(object):
         None.
         Error will report when exception happened.
         """
-        check_list = ["float32", "float16"]
+        check_list = ["float32"]
         para_check.check_shape(self.x_shape, min_rank=4, max_rank=4, param_name="x")
         para_check.check_shape(self.offsets_shape, min_rank=4, max_rank=4, param_name="offsets")
         para_check.check_dtype(self.x_dtype, check_list, param_name="x")
@@ -516,7 +514,7 @@ class DeformableOffsets(object):
         repeat_times = process_num // mask
         tail_elem = process_num % mask
         x_offset = ((dim_n * self.dim_h_in + dim_h) * self.dim_w_in + \
-                    dim_w * self.dim_group + dim_g) * self.dim_c
+                   dim_w * self.dim_group + dim_g) * self.dim_c
         burst_len = process_num // self.data_in_one_block
         self.tik_instance.data_move(ub_x[0],
                                     self.x_gm[x_offset],
@@ -526,10 +524,7 @@ class DeformableOffsets(object):
                                     constant.STRIDE_ZERO,
                                     constant.STRIDE_ZERO)
         plat_flag = tbe_platform.api_check_support("tik.vsel", dtype="float32")
-        if (not plat_flag) and (self.x_dtype == "float32"):
-            size, mask, _ = get_params("float16")
-            repeat_times = process_num // mask
-            tail_elem = process_num % mask
+        if not plat_flag:
             ub_x_local = self.tik_instance.Tensor(
                 "float16", (process_num,), scope=tbe_platform.scope_ubuf, name="ub_x_local")
             util_tik_comm_func.tik_func_vconv(
@@ -569,7 +564,7 @@ class DeformableOffsets(object):
         """
         vmax_support = tbe_platform.api_check_support("tik.vmax", dtype="float32")
         vsel_support = tbe_platform.api_check_support("tik.vsel", dtype="float32")
-        if (vsel_support and vmax_support) and (self.x_dtype == "float32"):
+        if vsel_support and vmax_support:
             self.ub_limit_h = self.tik_instance.Tensor(
                 "float32", (CAL_MASK_SIZE,), name="ub_limit_h", scope=tbe_platform.scope_ubuf)
             self.ub_limit_w = self.tik_instance.Tensor(
@@ -680,66 +675,39 @@ class DeformableOffsets(object):
                                                   name="ub_helper")
         self.ub_out = self.tik_instance.Tensor(self.x_dtype,
                                                (self.ub_seg_size * self.dim_kw * self.dim_c,),
-                                               scope=tbe_platform.scope_cbuf,
+                                               scope=tbe_platform.scope_ubuf,
                                                name="ub_out")
         if self.loop_seg != 0:
             with self.tik_instance.for_range(0, self.loop_seg) as ub_w_idx:
                 offsets_f_start = offsets_w_start * self.dim_offsets_w + ub_w_idx * self.ub_seg_size
                 helper_f_start = helper_w_start * self.dim_offsets_w + ub_w_idx * self.ub_seg_size
-                with self.tik_instance.new_stmt_scope():
-                    self.compute_one_filter(
-                        n_idx, offsets_f_start, helper_f_start, kh_idx, self.ub_seg_size, self.ub_out)
-                with self.tik_instance.new_stmt_scope():
-                    out_gm_addr = (out_gm_start * self.dim_offsets_w + \
-                                   ub_w_idx * self.ub_seg_size) * self.dim_c * self.dim_kw
-                    bur_len = _ceil_div(self.ub_seg_size * self.dim_kw * self.dim_c, self.data_in_one_block)
-
-                    ub_out_temp = self.tik_instance.Tensor(self.x_dtype,
-                                                           (self.ub_seg_size * self.dim_kw * self.dim_c,),
-                                                           scope=tbe_platform.scope_ubuf,
-                                                           name="ub_out_temp")
-                    self.tik_instance.data_move(ub_out_temp[0],
-                                                self.ub_out[0],
-                                                constant.SID,
-                                                constant.DEFAULT_NBURST,
-                                                bur_len,
-                                                constant.STRIDE_ZERO,
-                                                constant.STRIDE_ZERO)
-                    self.tik_instance.data_move(self.y_gm[out_gm_addr],
-                                                ub_out_temp[0],
-                                                constant.SID,
-                                                constant.DEFAULT_NBURST,
-                                                bur_len,
-                                                constant.STRIDE_ZERO,
-                                                constant.STRIDE_ZERO)
-        if self.ub_seg_res != 0:
-            offsets_f_start = offsets_w_start * self.dim_offsets_w + self.loop_seg * self.ub_seg_size
-            helper_f_start = helper_w_start * self.dim_offsets_w + self.loop_seg * self.ub_seg_size
-            with self.tik_instance.new_stmt_scope():
-                self.compute_one_filter(n_idx, offsets_f_start, helper_f_start, kh_idx, self.ub_seg_res, self.ub_out)
-            with self.tik_instance.new_stmt_scope():
+                self.compute_one_filter(
+                    n_idx, offsets_f_start, helper_f_start, kh_idx, self.ub_seg_size, self.ub_out)
                 out_gm_addr = (out_gm_start * self.dim_offsets_w + \
-                               self.loop_seg * self.ub_seg_size) * self.dim_c * self.dim_kw
-                bur_len = _ceil_div(
-                    self.ub_seg_res * self.dim_kw * self.dim_c, self.data_in_one_block)
-                temp_ub_out = self.tik_instance.Tensor(self.x_dtype,
-                                                       (self.ub_seg_size * self.dim_kw * self.dim_c,),
-                                                       scope=tbe_platform.scope_ubuf,
-                                                       name="temp_ub_out")
-                self.tik_instance.data_move(temp_ub_out[0],
+                            ub_w_idx * self.ub_seg_size) * self.dim_c * self.dim_kw
+                bur_len = _ceil_div(self.ub_seg_size * self.dim_kw * self.dim_c, self.data_in_one_block)
+                self.tik_instance.data_move(self.y_gm[out_gm_addr],
                                             self.ub_out[0],
                                             constant.SID,
                                             constant.DEFAULT_NBURST,
                                             bur_len,
                                             constant.STRIDE_ZERO,
                                             constant.STRIDE_ZERO)
-                self.tik_instance.data_move(self.y_gm[out_gm_addr],
-                                            temp_ub_out[0],
-                                            constant.SID,
-                                            constant.DEFAULT_NBURST,
-                                            bur_len,
-                                            constant.STRIDE_ZERO,
-                                            constant.STRIDE_ZERO)
+        if self.ub_seg_res != 0:
+            offsets_f_start = offsets_w_start * self.dim_offsets_w + self.loop_seg * self.ub_seg_size
+            helper_f_start = helper_w_start * self.dim_offsets_w + self.loop_seg * self.ub_seg_size
+            self.compute_one_filter(n_idx, offsets_f_start, helper_f_start, kh_idx, self.ub_seg_res, self.ub_out)
+            out_gm_addr = (out_gm_start * self.dim_offsets_w + \
+                        self.loop_seg * self.ub_seg_size) * self.dim_c * self.dim_kw
+            bur_len = _ceil_div(
+                self.ub_seg_res * self.dim_kw * self.dim_c, self.data_in_one_block)
+            self.tik_instance.data_move(self.y_gm[out_gm_addr],
+                                        self.ub_out[0],
+                                        constant.SID,
+                                        constant.DEFAULT_NBURST,
+                                        bur_len,
+                                        constant.STRIDE_ZERO,
+                                        constant.STRIDE_ZERO)
 
     def compute_one_filter(self, n_idx, f_start, hlp_start, kh_idx, out_c_num, ub_out):
         """
@@ -783,7 +751,7 @@ class DeformableOffsets(object):
                 self.x_dtype, (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="sub_floor_x")
             sub_floor_y = self.tik_instance.Tensor(
                 self.x_dtype, (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="sub_floor_y")
-            scalar_tmp_f32 = self.tik_instance.Scalar(dtype=self.x_dtype)
+            scalar_tmp_f32 = self.tik_instance.Scalar(dtype="float32")
             ub_offset_s = self.tik_instance.Tensor(
                 self.x_dtype, (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="ub_offset_s")
 
@@ -793,9 +761,9 @@ class DeformableOffsets(object):
                     scalar_tmp_f32.set_as(
                         self.ub_offsets_ori[(2 * self.dim_group + group_idx) * self.dim_kh * self.dim_kw + \
                                             kh_idx * self.dim_kw + kw_idx])
-                    self.vector_dup(ub_offset_s, self.dim_group_c, scalar_tmp_f32, self.x_dtype)
+                    self.vector_dup(ub_offset_s, self.dim_group_c, scalar_tmp_f32)
 
-                    if (self.x_dtype == "float16") or (not self.cmp_flag):
+                    if not self.cmp_flag:
                         ub_offset_x_ceil_f16 = self.tik_instance.Tensor("float16",
                                                                         (F16_CAL_MASK_SIZE,),
                                                                         scope=tbe_platform.scope_ubuf,
@@ -893,22 +861,22 @@ class DeformableOffsets(object):
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_ceil_int32,
                                                           ub_offset_x_ceil_f16,
-                                                          self.conv_num,
+                                                          CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_floor_int32,
                                                           ub_offset_x_floor_f16,
-                                                          self.conv_num,
+                                                          CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_ceil_int32,
                                                           ub_offset_y_ceil_f16,
-                                                          self.conv_num,
+                                                          CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_floor_int32,
                                                           ub_offset_y_floor_f16,
-                                                          self.conv_num,
+                                                          CAL_MASK_SIZE,
                                                           mode="ceil")
                     else:
                         ub_offset_x_ceil_f32 = self.tik_instance.Tensor("float32",
@@ -1005,22 +973,22 @@ class DeformableOffsets(object):
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_ceil_int32,
                                                           ub_offset_x_ceil_f32,
-                                                          self.conv_num,
+                                                          CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_floor_int32,
                                                           ub_offset_x_floor_f32,
-                                                          self.conv_num,
+                                                          CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_ceil_int32,
                                                           ub_offset_y_ceil_f32,
-                                                          self.conv_num,
+                                                          CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_floor_int32,
                                                           ub_offset_y_floor_f32,
-                                                          self.conv_num,
+                                                          CAL_MASK_SIZE,
                                                           mode="ceil")
                     scalar_idx_lth_int.set_as(ub_offsets_y_floor_int32[0])
                     scalar_idx_ltw_int.set_as(ub_offsets_x_floor_int32[0])
@@ -1065,31 +1033,31 @@ class DeformableOffsets(object):
                     scalar_tmp_f32.set_as(
                         self.ub_offsets_ceil_sub[group_idx * self.dim_kh * self.dim_kw + \
                                                  kh_idx * self.dim_kw + kw_idx])
-                    self.vector_dup(ceil_sub_x, self.dim_group_c, scalar_tmp_f32, self.x_dtype)
+                    self.vector_dup(ceil_sub_x, self.dim_group_c, scalar_tmp_f32)
                     scalar_tmp_f32.set_as(
                         self.ub_offsets_ceil_sub[(self.dim_group + group_idx) * self.dim_kh * self.dim_kw + \
                                                  kh_idx * self.dim_kw + kw_idx])
-                    self.vector_dup(ceil_sub_y, self.dim_group_c, scalar_tmp_f32, self.x_dtype)
+                    self.vector_dup(ceil_sub_y, self.dim_group_c, scalar_tmp_f32)
                     scalar_tmp_f32.set_as(
                         self.ub_offsets_sub_floor[group_idx * self.dim_kh * self.dim_kw + \
                                                   kh_idx * self.dim_kw + kw_idx])
-                    self.vector_dup(sub_floor_x, self.dim_group_c, scalar_tmp_f32, self.x_dtype)
+                    self.vector_dup(sub_floor_x, self.dim_group_c, scalar_tmp_f32)
                     scalar_tmp_f32.set_as(
                         self.ub_offsets_sub_floor[(self.dim_group + group_idx) * self.dim_kh * self.dim_kw + \
                                                   kh_idx * self.dim_kw + kw_idx])
-                    self.vector_dup(sub_floor_y, self.dim_group_c, scalar_tmp_f32, self.x_dtype)
-                    self.vector_mul(ub_weight_lt, sub_floor_y, sub_floor_x, self.dim_group_c, self.x_dtype)
-                    self.vector_mul(ub_weight_lb, sub_floor_x, ceil_sub_y, self.dim_group_c, self.x_dtype)
-                    self.vector_mul(ub_weight_rt, sub_floor_y, ceil_sub_x, self.dim_group_c, self.x_dtype)
-                    self.vector_mul(ub_weight_rb, ceil_sub_x, ceil_sub_y, self.dim_group_c, self.x_dtype)
-                    self.vector_mul(ub_lt_x, ub_lt_x, ub_weight_lt, self.dim_group_c, self.x_dtype)
-                    self.vector_mul(ub_lb_x, ub_lb_x, ub_weight_lb, self.dim_group_c, self.x_dtype)
-                    self.vector_mul(ub_rt_x, ub_rt_x, ub_weight_rt, self.dim_group_c, self.x_dtype)
-                    self.vector_mul(ub_rb_x, ub_rb_x, ub_weight_rb, self.dim_group_c, self.x_dtype)
-                    self.vector_add(ub_lt_x, ub_lt_x, ub_lb_x, self.dim_group_c, self.x_dtype)
-                    self.vector_add(ub_lt_x, ub_lt_x, ub_rt_x, self.dim_group_c, self.x_dtype)
-                    self.vector_add(ub_lt_x, ub_lt_x, ub_rb_x, self.dim_group_c, self.x_dtype)
-                    self.vector_mul(ub_lt_x, ub_lt_x, ub_offset_s, self.dim_group_c, self.x_dtype)
+                    self.vector_dup(sub_floor_y, self.dim_group_c, scalar_tmp_f32)
+                    self.vector_mul(ub_weight_lt, sub_floor_y, sub_floor_x, self.dim_group_c)
+                    self.vector_mul(ub_weight_lb, sub_floor_x, ceil_sub_y, self.dim_group_c)
+                    self.vector_mul(ub_weight_rt, sub_floor_y, ceil_sub_x, self.dim_group_c)
+                    self.vector_mul(ub_weight_rb, ceil_sub_x, ceil_sub_y, self.dim_group_c)
+                    self.vector_mul(ub_lt_x, ub_lt_x, ub_weight_lt, self.dim_group_c)
+                    self.vector_mul(ub_lb_x, ub_lb_x, ub_weight_lb, self.dim_group_c)
+                    self.vector_mul(ub_rt_x, ub_rt_x, ub_weight_rt, self.dim_group_c)
+                    self.vector_mul(ub_rb_x, ub_rb_x, ub_weight_rb, self.dim_group_c)
+                    self.vector_add(ub_lt_x, ub_lt_x, ub_lb_x, self.dim_group_c)
+                    self.vector_add(ub_lt_x, ub_lt_x, ub_rt_x, self.dim_group_c)
+                    self.vector_add(ub_lt_x, ub_lt_x, ub_rb_x, self.dim_group_c)
+                    self.vector_mul(ub_lt_x, ub_lt_x, ub_offset_s, self.dim_group_c)
                     burst_len_out = _ceil_div(self.dim_group_c, self.data_in_one_block)
                     out_ub_addr = (out_ub_start * self.dim_group + group_idx) * self.dim_group_c
                     self.tik_instance.data_move(ub_out[out_ub_addr],
@@ -1125,7 +1093,7 @@ class DeformableOffsets(object):
                                           self.ub_offsets_int32_ceil, load_num)
         util_tik_comm_func.tik_func_vconv(self.tik_instance, self.ub_offsets_floor,
                                           self.ub_offsets_int32_floor, load_num)
-        if (self.x_dtype == "float16") or (not self.cmp_flag):
+        if not self.cmp_flag:
             util_tik_comm_func.tik_func_vconv(self.tik_instance, self.ub_offsets_ceil_f16,
                                               self.ub_offsets_int32_ceil, load_num)
             util_tik_comm_func.tik_func_vconv(self.tik_instance, self.ub_offsets_floor_f16,
