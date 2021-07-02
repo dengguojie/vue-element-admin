@@ -5327,7 +5327,17 @@ class CceConvOp:
 
         # split N begin
         c_col_batch, cn_axis = sch[c_col].split(c_col.op.axis[1], 1)
-
+        if is_support_v220():
+            k0_value = reduce_kk.dom.extent.value
+            sch[c_col].buffer_align(
+                (1, 1),
+                (1, 1),
+                (1, 1),
+                (16, 16), # m0
+                (16, 16), # n0
+                (1, 1),
+                (k0_value, k0_value) # k0
+                )
         if self._l0b_first_flag:
             sch[c_col].reorder(k_outer_outer,
                                coo,
