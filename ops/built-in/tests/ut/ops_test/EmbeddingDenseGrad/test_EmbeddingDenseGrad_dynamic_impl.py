@@ -166,18 +166,9 @@ case12 = {"params": [
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case("all", case1)
-ut_case.add_case("all", case2)
-ut_case.add_case("all", case3)
-ut_case.add_case("all", case4)
-ut_case.add_case("all", case5)
-ut_case.add_case("all", case6)
-ut_case.add_case("all", case7)
-ut_case.add_case("all", case8)
-ut_case.add_case("all", case9)
-ut_case.add_case("all", case10)
-ut_case.add_case("all", case11)
-ut_case.add_case("all", case12)
-
+case_lis = [case1, case2, case3, case4, case5, case6, case7, case8, case9, case10, case11, case12]
+for ele in case_lis:
+    ut_case.add_case("Ascend910A", ele)
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
+
