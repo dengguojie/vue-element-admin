@@ -1392,6 +1392,7 @@ int64_t CalcMaxElementsCount(const Operator &op, const std::vector<std::pair<int
         max_elements_count *= x_range_i.second;
       } else {
         max_elements_count = -1;
+        break;
       }
     }
   }
@@ -1517,6 +1518,17 @@ void ReshapeRangeInferAllDims(const Operator &op, const std::vector<std::pair<in
   std::vector<int64_t> y_dims = y_shape.GetDims();
   UpdateDimsAndShapeRange(op, max_elements_count, value_range, y_dims, y_shape_range);
   y_shape = GeShape(y_dims);
+}
+
+void FixRangeMaxToInt32max(GeShape &shape, std::vector<std::pair<int64_t, int64_t>> &shape_range) {
+  int64_t int32_max = static_cast<int64_t>(INT32_MAX);
+  auto dims = shape.GetDims();
+  for (size_t i = 0; i < dims.size(); ++i) {
+    shape_range[i].first = std::min(shape_range[i].first, int32_max);
+    shape_range[i].second = std::min(shape_range[i].second, int32_max);
+    dims[i] = std::min(dims[i], int32_max);
+  }
+  shape = GeShape(dims);
 }
 
 void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 

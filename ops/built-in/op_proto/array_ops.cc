@@ -1308,6 +1308,14 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
 
       ge::array_ops::ReshapeRangeInferAllDims(op, x_shape_range, x_shape, shape_value_range,
                                               y_rank, y_shape_range, y_shape);
+      
+      // At present, some operators do not support the shape range exceeding INT32MAX.
+      // Here is a temporary process to set the exceeding range to INT32MAX.
+      // This process will be deleted when all operators fully support INT64.
+      // Note: When dim is really greater than INT32MAX, 
+      // the current processing will cause cause errors in the infer result.
+      ge::array_ops::FixRangeMaxToInt32max(y_shape, y_shape_range);
+
       td->SetShapeRange(y_shape_range);
       td->SetShape(y_shape);
       td->SetOriginShape(y_shape);

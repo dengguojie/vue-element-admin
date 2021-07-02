@@ -86,6 +86,27 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, InferShape) {
   EXPECT_EQ(ret, true);
 }
 
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, reshape_range_infer_test_range_max_exceeding_int32max) {
+  int64_t oversized_dim = static_cast<int64_t>(INT32_MAX) + 100;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {make_pair(200, 200),
+                                                          make_pair(1, oversized_dim),
+                                                          make_pair(oversized_dim, -1),
+                                                          make_pair(1, -1)};
+  ge::GeShape shape = ge::GeShape({200, -1, -1, -1});
+
+  ge::array_ops::FixRangeMaxToInt32max(shape, shape_range);
+
+  std::vector<int64_t> target_shape_dims = {200, -1, -1, -1};
+  EXPECT_EQ(shape.GetDims(), target_shape_dims);
+  std::vector<int64_t> target_shape_range = {200, 200, 1, INT32_MAX, INT32_MAX, -1, 1, -1};
+  std::vector<int64_t> output_shape_range;
+  for (auto pair : shape_range) {
+    output_shape_range.push_back(pair.first);
+    output_shape_range.push_back(pair.second);
+  }
+  EXPECT_EQ(output_shape_range, target_shape_range);
+}
+
 TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, reshape_range_infer_test_precise_max) {
   ge::op::Reshape op("Reshape");
   auto rank = 4;

@@ -407,6 +407,8 @@ void ReshapeRangeInferAllDims(const Operator &op, const std::vector<std::pair<in
 
 void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, int64_t>>& x_range, 
                        std::vector<std::pair<int64_t, int64_t>>& y_range, GeShape& output_shape);
+
+void FixRangeMaxToInt32max(GeShape &shape, std::vector<std::pair<int64_t, int64_t>> &shape_range);
 }    
 }  // namespace ge
 
