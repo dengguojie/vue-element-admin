@@ -4417,6 +4417,29 @@ class CceConvOp:
                 if dma_im2col_tensor_map["c0_optim_flg"] or dma_im2col_tensor_map["c04_v200_flag"]:
                     err_man.raise_err_specific("conv2d", "dma im2col not support c0 optim")
 
+        def _handle_bias_align_init_compute_at():
+            """
+            bias_init_align_dim_ub, bias_virtual_add schedule
+            """
+            if ConvParam.bias_init_align_dim_flag:
+                # set scope
+                sch[tensor_map["bias_init_align_dim_ub"]].set_scope(cce.scope_ubuf)
+                sch[tensor_map["bias_virtual_add"]].set_scope(cce.scope_ubuf)
+                # set compute at as bias_ub
+                if tiling["CUB_channel_wise_flag"]:
+                    sch[tensor_map["bias_virtual_add"]].compute_at(sch[res_c], c_slice_axis)
+                    sch[tensor_map["bias_init_align_dim_ub"]].compute_at(sch[res_c], c_slice_axis)
+                else:
+                    sch[tensor_map["bias_virtual_add"]].compute_at(sch[res_c], bido)
+                    sch[tensor_map["bias_init_align_dim_ub"]].compute_at(sch[res_c], bido)
+                # set emit insn
+                sch[tensor_map["bias_init_align_dim_ub"]].emit_insn(
+                    tensor_map["bias_init_align_dim_ub"].op.axis[0], "dma_copy")
+                sch[tensor_map["bias_virtual_add"]].emit_insn(
+                    tensor_map["bias_virtual_add"].op.axis[0], "phony_insn")
+                sch[tensor_map["bias_virtual_add"]].reused_by(
+                    tensor_map["bias_init_align_dim_ub"], tensor_map["bias_ub"])
+
         self_init()
         _l0a_dma_load3d_support_check()
         tensor_map = ConvParam.tensor_map
@@ -5618,6 +5641,7 @@ class CceConvOp:
         _body_ops_convbn1_flag(multiout_ub2)
         _input_ops_compute_at()
         _pragma_for_convbn()
+        _handle_bias_align_init_compute_at()
         _handle_bias_compute_at()
 
         self._flag_dict["addrelu_flag"] = False
@@ -6475,6 +6499,8 @@ class AutoScheduleOp:
             "convolution__im2col_fractal_convolution_Input": OpFusionype.CONV,
             "convolution_im2col_fractal_v2_convolution_Input": OpFusionype.CONV,
             "bias_ub": OpFusionype.OP_EMPTY,
+            "convolution_bias_init_align_dim_ub": OpFusionype.OP_EMPTY,
+            "convolution_bias_virtual_add": OpFusionype.OP_EMPTY,
             # for read select
             "strided_read_convolution_A": OpFusionype.OP_EMPTY,
             "aipp_res_convolution": OpFusionype.OP_EMPTY,

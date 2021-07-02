@@ -554,8 +554,8 @@ class Conv2dParaProcess(CubeParaProcess):
         calculate shape for mmad
         """
 
-        self.round_channel(in_shape, w_shape, self.dtype)
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]['mac'][1:3]
+        in_shape[C_DIM] = align(in_shape[C_DIM], block_size_k)
         # filter channel should be equal input channel
         w_shape[C_DIM] = in_shape[C_DIM]
 
@@ -585,7 +585,7 @@ class Conv2dParaProcess(CubeParaProcess):
 
         if self.paras.get("optim_dict").get("c0_optim_flg"):
             w_shape_frac_z = (ceil_div(4 * w_shape[H_DIM] * w_shape[W_DIM], block_size_k),
-                              w_shape[N_DIM] // block_size_n, block_size_n, block_size_k)
+                              math.ceil(w_shape[N_DIM] / block_size_n), block_size_n, block_size_k)
         elif self.pooling_mode == "AVG":
             w_shape_frac_z = (group_para["group_opt"] * group_para["c1_opt"] * w_shape[H_DIM] * w_shape[W_DIM],
                               group_para["cout1_opt"], block_size_n, block_size_k)

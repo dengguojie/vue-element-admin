@@ -488,7 +488,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     shape_w = list(shape_w)
     # fix the weight's channel=cin_ori
     shape_w[1] = shape_in[1]
-    weight_ori_shape_nchw = shape_w
+    weight_ori_shape_nchw = shape_w.copy()
     cin_ori = shape_in[1] // groups
     cout_ori = shape_w[0] // groups
     shape_in, shape_w = util_conv2d.conv_layer_cce_para_check(shape_in, shape_w, padh, padw,

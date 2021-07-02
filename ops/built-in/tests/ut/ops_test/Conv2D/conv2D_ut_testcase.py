@@ -39,6 +39,15 @@ conv2D_ut_testcase = [
 ["Ascend310", {'ori_shape': (1, 0, 9, 3), 'shape': (1, 1, 0, 9, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (255, 9, 3, 9), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 # ============ when data h == 1, use conv1d(load3d) ===============
 ["Ascend310", {'ori_shape': (1, 3, 1, 50000), 'shape': (1, 1, 1, 50000, 16), 'ori_format': 'NCHW', 'dtype': 'float16'}, {'ori_shape': (1, 1, 3, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+# ============ test float16 case when cout % 16 == 0 ===============
+["Ascend310", {'ori_shape': (1, 16, 16, 16), 'shape': (1, 1, 16, 16, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (3, 3, 16, 16), 'ori_format': 'HWCN', 'dtype': 'float16'}, {'ori_shape': (16), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["Ascend310", {'ori_shape': (111, 111, 111, 111), 'shape': (1, 1, 16, 16, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (5, 5, 111, 128), 'ori_format': 'HWCN', 'dtype': 'float16'}, {'ori_shape': (128), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+# ============ test float16 case when cout % 16 != 0 ===============
+["Ascend310", {'ori_shape': (111, 111, 111, 111), 'shape': (1, 7, 16, 16, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (5, 5, 111, 127), 'ori_format': 'HWCN', 'dtype': 'float16'}, {'ori_shape': (127), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["Ascend310", {'ori_shape': (111, 111, 111, 111), 'shape': (1, 7, 16, 16, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (5, 5, 111, 126), 'ori_format': 'HWCN', 'dtype': 'float16'}, {'ori_shape': (126), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["Ascend310", {'ori_shape': (111, 111, 111, 111), 'shape': (1, 7, 16, 16, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (5, 5, 111, 123), 'ori_format': 'HWCN', 'dtype': 'float16'}, {'ori_shape': (123), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["Ascend310", {'ori_shape': (111, 111, 111, 111), 'shape': (1, 7, 16, 16, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (5, 5, 111, 120), 'ori_format': 'HWCN', 'dtype': 'float16'}, {'ori_shape': (120), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["Ascend310", {'ori_shape': (111, 111, 111, 111), 'shape': (1, 7, 16, 16, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (5, 5, 111, 113), 'ori_format': 'HWCN', 'dtype': 'float16'}, {'ori_shape': (113), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 ]
 
 conv2D_op_select_ut_testcase = [

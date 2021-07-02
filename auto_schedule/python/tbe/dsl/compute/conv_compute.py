@@ -448,6 +448,7 @@ class ConvParam:
         cls.has_padding = False
         cls.dequant_doubleout_flag = False # mark v100 v200 conv_dequant_*_quant doubleout
         cls.multi_conv2d_fusion_flag = False # mark multi conv2d fusion
+        cls.bias_init_align_dim_flag = False
         cls.fusion_para = {"input_memory_type": [],
                            "output_memory_type": [],
                            "slice_offset": (0, 0, 0, 0, 0),
@@ -483,6 +484,7 @@ class ConvParam:
     l0a_dma_flag = False
     dynamic_flag = False
     has_padding = False
+    bias_init_align_dim_flag = False
     dynamic_para = None
     compress_index_shape = {}
     compress_tiling_ = {}
@@ -1663,13 +1665,44 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         in_tensor0+in_tensor1 tensor
         """
         out_shape = shape_to_list(in_tensor0.shape)
-
+        bias_real_dim_len = ConvParam.para_dict["weight_ori_shape_nchw"][0]
         # load bias into UB and do 32Byte align
         bias_32byte_align_shape = []
-        bias_32byte_align_shape.append(ceil(in_tensor1.shape[0], 16))
-        bias_ub = tvm.compute(bias_32byte_align_shape, lambda *indice: in_tensor1(*indice),
-                              name=get_name_with_suffix_num('bias_ub'))
-        TENSOR_MAP["bias_ub"] = bias_ub
+        if bias_real_dim_len % 16 != 0:
+            # when bias needs to align
+            bias_32byte_align_shape.append(ceil(bias_real_dim_len, 16))
+            # set bias_init_align_dim_flag to true
+            ConvParam.bias_init_align_dim_flag = True
+            # move bias from ddr to ub
+            bias_ub = tvm.compute(bias_32byte_align_shape,
+                                  lambda bias_index:
+                                  tvm.select(bias_index < bias_real_dim_len,
+                                             in_tensor1(bias_index)), name=get_name_with_suffix_num('bias_ub'))
+            # set bias align data to zero
+            init_value = tvm.const(0, dtype=in_tensor1.dtype)
+            bias_init_align_dim_ub = tvm.compute(bias_32byte_align_shape,
+                                                 lambda bias_index:
+                                                 tvm.select(bias_index >= bias_real_dim_len, init_value),
+                                                 name=get_name_with_suffix_num(OP_TAG + "bias_init_align_dim_ub"))
+            # use virtual add tensor connect bias tensor and init value tensor in ub
+            bias_virtual_add = tvm.compute(bias_32byte_align_shape,
+                                           lambda *indice:
+                                           bias_ub(*indice) + bias_init_align_dim_ub(*indice),
+                                           name=get_name_with_suffix_num(OP_TAG + "bias_virtual_add"))
+            # save three bias tensor in TENSOR MAP
+            TENSOR_MAP["bias_ub"] = bias_ub
+            TENSOR_MAP["bias_init_align_dim_ub"] = bias_init_align_dim_ub
+            TENSOR_MAP["bias_virtual_add"] = bias_virtual_add
+            # reset bias_ub for subsequent calculation
+            bias_ub = bias_virtual_add
+        else:
+            # when bias no needs to align
+            bias_32byte_align_shape.append(bias_real_dim_len)
+            # move bias from ddr to ub
+            bias_ub = tvm.compute(bias_32byte_align_shape, lambda *indice: in_tensor1(*indice),
+                                  name=get_name_with_suffix_num('bias_ub'))
+            # save bias tensor in TENSOR MAP
+            TENSOR_MAP["bias_ub"] = bias_ub
 
         with tvm.tag_scope('conv_vector_bias_add'):
             c_add_vector = tvm.compute(
