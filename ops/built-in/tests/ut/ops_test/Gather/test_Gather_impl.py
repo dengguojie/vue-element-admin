@@ -71,6 +71,22 @@ precision_case3 = {"params": [{"shape": (512,1024), "dtype": "float16", "format"
                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
 
 
+def test_get_op_support_info(test_arg):
+    from impl.dynamic.gather import get_op_support_info
+    get_op_support_info({"shape": [-2], "dtype": "int8", "format": "ND", "ori_shape": [20, 28], "ori_format": "ND"},
+                     {"shape": [200], "dtype": "int32", "format": "ND", "ori_shape": [200], "ori_format": "ND"},
+                     {"shape": [200, 28], "dtype": "int8", "format": "NCHW", "ori_shape": [200, 28],"ori_format": "ND"})
+    get_op_support_info({"shape": [20], "dtype": "float16", "format": "ND", "ori_shape": [-2], "ori_format": "ND"},
+                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [10], "ori_format": "ND"},
+                     {"shape": [10], "dtype": "float16", "format": "NCHW", "ori_shape": [10], "ori_format": "ND"})
+    get_op_support_info({"shape": [30, 5, 61], "dtype": "int32", "format": "ND", "ori_shape": [30, 5, 61],
+                     "ori_format": "ND"},
+                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [-2], "ori_format": "ND"},
+                     {"shape": [10, 5, 61], "dtype": "int32", "format": "NCHW", "ori_shape": [10, 5, 61],
+                      "ori_format": "ND"})
+
+
 ut_case.add_precision_case("Ascend910", precision_case1)
 ut_case.add_precision_case("Ascend910", precision_case2)
 ut_case.add_precision_case("Ascend910", precision_case3)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
