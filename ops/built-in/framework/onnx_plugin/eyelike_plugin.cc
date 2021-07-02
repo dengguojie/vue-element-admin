@@ -62,7 +62,7 @@ Status ParseOpToGraphEyeLike(const ge::Operator& op, Graph& graph) {
   ge::Tensor k_tensor(tensor_desc, reinterpret_cast<uint8_t*>(&k), sizeof(int32_t));
 
   std::vector<int64_t> dims;
-  ge::Shape shape1({dims});
+  ge::Shape shape1(dims);
   int32_t pad = 0;
   TensorDesc tensor_desc1(shape1, ge::FORMAT_ND, dmap[dtype]);
   ge::Tensor pad_tensor(tensor_desc1, reinterpret_cast<uint8_t*>(&pad), sizeof(int32_t));
