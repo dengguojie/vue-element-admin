@@ -22,10 +22,124 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_apply_op_schedule
 from impl.util import util_compute
-
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 CONST_ZERO = 0
 CONST_ONE = 1
+
+
+def len_c(format, shape):
+    """
+    Judge the c axis
+    :param format: input format
+    :param shape: input shape
+    :return: c axis and nd_fromat
+    """
+    nd_format = False
+    shape_c = 1
+    if format == "NHWC" and len(shape) == 4:
+        shape_c = shape[3]
+    elif format == "NCHW" and len(shape) == 4:
+        shape_c = shape[1]
+    else:
+        nd_format = True
+    return shape_c, nd_format
+
+
+def op_select_format(var, accum, lr, l1, l2, grad, var_out,
+                     accum_out, use_locking=False,
+                     kernel_name="apply_proximal_adagrad_d"):
+    """
+    Select format according to the following rules.
+    input2 input3 input4 only support ND,and output0 output1 is the same as input0
+    1.When the input0 or input1 or input5 shape is -2, all inputs and outputs only ND format is supported
+    2.Supports input0 input1 input5 ND, 5HD, FZ when the N and C axis can be divisible by 16
+    3.Supports input0 input1 input5 ND, 5HD when the N and C axis can be divisible by 16
+    4.In other cases, only ND is supported
+    """
+    var_format = var.get("format")
+    accum_format = accum.get("format")
+    grad_format = grad.get("format")
+    var_shape = list(var.get("ori_shape"))
+    accum_shape = list(accum.get("ori_shape"))
+    grad_shape = list(grad.get("ori_shape"))
+    var_n = var_shape[0]
+    accum_n = accum_shape[0]
+    grad_n = grad_shape[0]
+    var_c, var_nd_format = len_c(var_format, var_shape)
+    accum_c, accum_nd_format = len_c(accum_format, accum_shape)
+    grad_c, grad_nd_format = len_c(grad_format, grad_shape)
+    if var_n == -2 or accum_n == -2 or grad_n == -2 or var_nd_format or accum_nd_format or grad_nd_format:
+        format_list = "ND,ND"
+        dtype_list = "float16,float32"
+        unknowshape_format =format_list
+        format_list_nd = format_list
+        dtype_list_nd = dtype_list
+        unknowshape_format_nd =format_list
+    else:
+        support_fz_var = (var_c % 16 == 0) and (var_n % 16 == 0)
+        support_5hd_var = var_c % 16 == 0
+        support_fz_accum = (accum_c % 16 == 0) and (accum_n % 16 == 0)
+        support_5hd_accum = accum_c % 16 == 0
+        support_fz_grad = (grad_c % 16 == 0) and (grad_n % 16 == 0)
+        support_5hd_grad = grad_c % 16 == 0
+        if support_fz_var and support_fz_accum and support_fz_grad:
+            format_list = "ND,ND,FRACTAL_Z,FRACTAL_Z,NC1HWC0,NC1HWC0"
+            dtype_list = "float16,float32,float16,float32,float16,float32"
+            unknowshape_format =format_list
+            format_list_nd = "ND,ND,ND,ND,ND,ND"
+            dtype_list_nd = dtype_list
+            unknowshape_format_nd =format_list_nd
+        elif support_5hd_var and support_5hd_accum and support_5hd_grad:
+            format_list = "ND,ND,NC1HWC0,NC1HWC0"
+            dtype_list = "float16,float32,float16,float32"
+            unknowshape_format =format_list
+            format_list_nd = "ND,ND,ND,ND"
+            dtype_list_nd = dtype_list
+            unknowshape_format_nd =format_list_nd
+        else:
+            format_list = "ND,ND"
+            dtype_list = "float16,float32"
+            unknowshape_format =format_list
+            format_list_nd = format_list
+            dtype_list_nd = dtype_list
+            unknowshape_format_nd =format_list
+    input0 = gen_param(classify="input0", name="var",
+                       datatype=dtype_list,
+                       format=format_list,
+                       unknownshape_format=unknowshape_format)
+    input1 = gen_param(classify="input1", name="accum",
+                       datatype=dtype_list,
+                       format=format_list,
+                       unknownshape_format=unknowshape_format)
+    input2 = gen_param(classify="input2", name="lr",
+                       datatype=dtype_list_nd,
+                       format=format_list_nd,
+                       unknownshape_format=unknowshape_format_nd)
+    input3 = gen_param(classify="input3", name="l1",
+                       datatype=dtype_list_nd,
+                       format=format_list_nd,
+                       unknownshape_format=unknowshape_format_nd)
+    input4 = gen_param(classify="input4", name="l2",
+                       datatype=dtype_list_nd,
+                       format=format_list_nd,
+                       unknownshape_format=unknowshape_format_nd)
+    input5 = gen_param(classify="input5", name="grad",
+                       datatype=dtype_list,
+                       format=format_list,
+                       unknownshape_format=unknowshape_format)
+    output0 = gen_param(classify="output0", name="var",
+                       datatype=dtype_list,
+                       format=format_list,
+                       unknownshape_format=unknowshape_format)
+    output1 = gen_param(classify="output1", name="accum",
+                       datatype=dtype_list,
+                       format=format_list,
+                       unknownshape_format=unknowshape_format)
+    param_list = [input0, input1, input2, input3, input4, input5, output0, output1]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 def _check_shape_is_same(var, accum, grad):

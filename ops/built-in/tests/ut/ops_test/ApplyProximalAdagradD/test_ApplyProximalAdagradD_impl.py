@@ -50,7 +50,45 @@ case2 = {"params": [{"shape": (2, 2), "dtype": "float32", "format": "ND", "ori_s
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-
+def test_op_select_format(test_arg):
+    from impl.apply_proximal_adagrad_d import op_select_format
+    op_select_format({"shape": (16,16,5,5), "ori_shape": (16,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (16,16,5,5), "ori_shape": (16,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (16,16,5,5), "ori_shape": (16,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (16,16,5,5), "ori_shape": (16,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (16,16,5,5), "ori_shape": (16,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             False)
+    op_select_format({"shape": (1,16,5,5), "ori_shape": (1,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,16,5,5), "ori_shape": (1,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,16,5,5), "ori_shape": (1,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,16,5,5), "ori_shape": (1,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,16,5,5), "ori_shape": (1,16,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             False)
+    op_select_format({"shape": (16,), "ori_shape": (16,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (16,), "ori_shape": (16,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (16,), "ori_shape": (16,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (16,), "ori_shape": (16,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (16,), "ori_shape": (16,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             False)
+    op_select_format({"shape": (1,2,5,5), "ori_shape": (1,2,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,2,5,5), "ori_shape": (1,2,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,), "ori_shape": (1,),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,2,5,5), "ori_shape": (1,2,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,2,5,5), "ori_shape": (1,2,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             {"shape": (1,2,5,5), "ori_shape": (1,2,5,5),"dtype": "float32", "format": "NCHW", "ori_format": "NCHW"},
+                             False)
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 #precision cases
 def _gen_outputs(input_var, input_accum, input_lr, input_l1, input_l2,
                  input_grad):
