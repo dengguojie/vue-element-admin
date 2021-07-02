@@ -42,6 +42,14 @@ namespace fe {
 static const string PATTERN_CONV2DBACKPROPINPUT = "Conv2DBackpropInputD";
 static const string kAttrOrgFmt  = "origin_format";
 
+#define CHECK_POSITION(position)                                                                        \
+  {                                                                                                     \
+    if (position == std::string::npos) {                                                                \
+        OP_LOGI(PATTERN_CONV2DBACKPROPINPUT.c_str(), "get position failed:%s:%d", #position, position); \
+        return FAILED;                                                                                  \
+    }                                                                                                   \
+  }
+
 vector<FusionPattern*> Conv2DbpInputDilationFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter Conv2DbpInputDilationFusionPass::DefinePatterns.");
   vector<FusionPattern*> patterns;
@@ -119,7 +127,9 @@ static Status generate_pre_dilation_node(
   std::string fmt_str;
   AttrUtils::GetStr(next_in_desc, kAttrOrgFmt, fmt_str);
   size_t pos_h = fmt_str.find('H');
+  CHECK_POSITION(pos_h);
   size_t pos_w = fmt_str.find('W');
+  CHECK_POSITION(pos_w);
 
   // nc1hwc0
   dilation_desc->AddInputDesc("x", *prev_out_desc);
@@ -161,12 +171,16 @@ static Status generate_post_dilation_node(
   std::string y_fmt_str;
   AttrUtils::GetStr(prev_out_desc, kAttrOrgFmt, y_fmt_str);
   size_t pos_y_h = y_fmt_str.find('H');
+  CHECK_POSITION(pos_y_h);
   size_t pos_y_w = y_fmt_str.find('W');
+  CHECK_POSITION(pos_y_w);
 
   std::string outbackprop_fmt_str;
   AttrUtils::GetStr(conv2dbp_input_outbackprop_desc, kAttrOrgFmt, outbackprop_fmt_str);
   size_t pos_outbackprop_out_h = outbackprop_fmt_str.find('H');
+  CHECK_POSITION(pos_outbackprop_out_h);
   size_t pos_outbackprop_out_w = outbackprop_fmt_str.find('W');
+  CHECK_POSITION(pos_outbackprop_out_w);
   auto out_backprop_ori_shape = conv2dbp_input_outbackprop_desc->GetOriginShape().GetDims();
 
   dilation_desc->AddOutputDesc("y", *next_in_desc);
@@ -206,7 +220,9 @@ static Status generate_pad_node(
   std::string fmt_str;
   AttrUtils::GetStr(next_in_desc, kAttrOrgFmt, fmt_str);
   size_t pos_h = fmt_str.find('H');
+  CHECK_POSITION(pos_h);
   size_t pos_w = fmt_str.find('W');
+  CHECK_POSITION(pos_w);
   pad_desc->AddOutputDesc("y", *next_in_desc);
 
   int64_t pad_down = pad_hw[0];
@@ -407,20 +423,25 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   std::string backprop_out_fmt_str;
   AttrUtils::GetStr(conv2dbp_input_outbackprop_desc, kAttrOrgFmt, backprop_out_fmt_str);
   size_t pos_backprop_out_h = backprop_out_fmt_str.find('H');
+  CHECK_POSITION(pos_backprop_out_h);
   size_t pos_backprop_out_w = backprop_out_fmt_str.find('W');
-
+  CHECK_POSITION(pos_backprop_out_w);
 
   std::string y_fmt_str;
   AttrUtils::GetStr(conv2dbp_input_y_desc, kAttrOrgFmt, y_fmt_str);
   size_t pos_y_h = y_fmt_str.find('H');
+  CHECK_POSITION(pos_y_h);
   size_t pos_y_w = y_fmt_str.find('W');
+  CHECK_POSITION(pos_y_w);
 
   bool pre_dilation = false;
   bool need_dilation_flag = false;
   std::string filter_fmt_str;
   AttrUtils::GetStr(filter_desc, kAttrOrgFmt, filter_fmt_str);
   size_t pos_filter_h = filter_fmt_str.find('H');
+  CHECK_POSITION(pos_filter_h);
   size_t pos_filter_w = filter_fmt_str.find('W');
+  CHECK_POSITION(pos_filter_w);
 
   // if pre_dilation is true, Dilation -> conv2dbp_input
   // else conv2dbp_input -> Dilation
