@@ -44,6 +44,8 @@ const int64_t TILING_MODE_3 = 3;
 const int64_t TILING_MODE_4 = 4;
 // updateDataNum isn't 32b aligned and more than 1 block
 const int64_t TILING_MODE_5 = 5;
+// div 0 check
+const int64_t ZERO = 0;
 
 struct ScatterNdUpdateTilingParams {
   int64_t tilingMode;
@@ -241,6 +243,12 @@ bool ScatterNdUpdateTiling(const std::string& opType, const TeOpParas& opParas, 
   bool can_get_params = GetScatteUpdateCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize);
   if (!can_get_params) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetScatteUpdateCompileParams error.");
+    return false;
+  }
+  if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
+    VECTOR_INNER_ERR_REPORT_TILIING(
+        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %d, %d, %d, %d", coreNum, ubSize,
+        varSize, indicesSize);
     return false;
   }
 

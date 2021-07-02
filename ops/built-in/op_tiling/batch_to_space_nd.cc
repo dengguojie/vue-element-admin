@@ -257,12 +257,24 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     // BatchToSpace
     block_vec.push_back(block_size);
     block_vec.push_back(block_size);
+    if (op_paras.const_inputs.count("crops") == 0 || get<0>(op_paras.const_inputs.at("crops")) == nullptr) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_inputs not include crops or crops is null");
+      return false;
+    }
     const uint8_t* crops_data = get<0>(op_paras.const_inputs.at("crops"));
     size_t crops_size = get<1>(op_paras.const_inputs.at("crops"));
     string crops_dtype = op_paras.inputs[1].tensor[0].dtype;
     GetConstDataBs(crops_data, crops_dtype, crops_size, crops_vec);
   } else {
     // BatchToSpaceND
+    if (op_paras.const_inputs.count("crops") == 0 || get<0>(op_paras.const_inputs.at("crops")) == nullptr) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_inputs not include crops or crops is null");
+      return false;
+    }
+    if (op_paras.const_inputs.count("block_shape") == 0 || get<0>(op_paras.const_inputs.at("block_shape")) == nullptr) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_inputs not include block_shape or block_shape is null");
+      return false;
+    }
     const uint8_t* block_data = get<0>(op_paras.const_inputs.at("block_shape"));
     size_t block_size = get<1>(op_paras.const_inputs.at("block_shape"));
     string block_dtype = op_paras.inputs[1].tensor[0].dtype;

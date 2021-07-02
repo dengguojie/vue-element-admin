@@ -20,6 +20,16 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_select_op_base import get_op_cal_info
+
+
+def get_op_support_info(x, paddings, y, block_size, kernel_name="space_to_batch"):
+    """get op support info
+    """
+    axis_split_list = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_list)
+    return op_cal_info_in_json
 
 
 # pylint: disable=invalid-name,unused-argument

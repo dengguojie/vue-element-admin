@@ -52,6 +52,8 @@ const int64_t TILING_MODE_8 = 8;
 const int64_t TILING_MODE_9 = 9;
 // updateDataNum is more than 1 block, not atomic, and more than updateubnum
 const int64_t TILING_MODE_10 = 10;
+// div 0 check
+const int64_t ZERO = 0;
 
 struct ScatterMinTilingParams {
   int64_t tilingMode;
@@ -285,6 +287,12 @@ bool ScatterMinTiling(const std::string& opType, const TeOpParas& opParas, const
   bool can_get_params = GetScatterMinCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize);
   if (!can_get_params) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetScatterMinCompileParams error.");
+    return false;
+  }
+  if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
+    VECTOR_INNER_ERR_REPORT_TILIING(
+        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %d, %d, %d, %d", coreNum, ubSize,
+        varSize, indicesSize);
     return false;
   }
 

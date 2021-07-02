@@ -203,3 +203,54 @@ TEST_F(ScatterNdUpdateTiling, scatter_nd_update_tiling_3) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 0 1 7 5 19056 622216 0 7 21 7 0 0 0 0 0 2 88888 ");
 }
+
+TEST_F(ScatterNdUpdateTiling, scatter_nd_update_tiling_4) {
+  using namespace optiling;
+  std::string op_name = "ScatterNdUpdate";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterNdUpdate");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 0, \"core_num\": 0, \"var_size\":4, \"indices_size\":4}}";
+
+  std::vector<int64_t> inputA{2, 3, 88888};
+  std::vector<int64_t> inputB{2, 2};
+  std::vector<int64_t> inputC{2, 88888};
+  std::vector<int64_t> output{2, 3, 88888};
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "float32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "h1234561";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+}

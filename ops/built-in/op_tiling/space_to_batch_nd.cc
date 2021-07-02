@@ -257,12 +257,24 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     // SpaceToBatch
     block_vec.push_back(block_size);
     block_vec.push_back(block_size);
+    if (op_paras.const_inputs.count("paddings") == 0 || get<0>(op_paras.const_inputs.at("paddings")) == nullptr) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_inputs not include paddings or paddings is null");
+      return false;
+    }
     const uint8_t* pads_data = get<0>(op_paras.const_inputs.at("paddings"));
     size_t pads_size = get<1>(op_paras.const_inputs.at("paddings"));
     string pads_dtype = op_paras.inputs[1].tensor[0].dtype;
     GetConstDataBs(pads_data, pads_dtype, pads_size, pads_vec);
   } else {
     // SpaceToBatchND
+    if (op_paras.const_inputs.count("paddings") == 0 || get<0>(op_paras.const_inputs.at("paddings")) == nullptr) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_inputs not include paddings or paddings is null");
+      return false;
+    }
+    if (op_paras.const_inputs.count("block_shape") == 0 || get<0>(op_paras.const_inputs.at("block_shape")) == nullptr) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_inputs not include block_shape or block_shape is null");
+      return false;
+    }
     const uint8_t* block_data = get<0>(op_paras.const_inputs.at("block_shape"));
     size_t block_size = get<1>(op_paras.const_inputs.at("block_shape"));
     string block_dtype = op_paras.inputs[1].tensor[0].dtype;

@@ -71,6 +71,8 @@ const int64_t TILING_MODE_15 = 15;
 const int64_t TILING_MODE_16 = 16;
 // high perf branch, updateDataNum is 32b aligned
 const int64_t TILING_MODE_17 = 17;
+// div 0 check
+const int64_t ZERO = 0;
 
 struct ScatterAddTilingParams {
   int64_t tilingMode;
@@ -403,6 +405,12 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
       GetScatterAddCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize, supportAtomic);
   if (!can_get_params) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetScatterAddCompileParams error.");
+    return false;
+  }
+  if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
+    VECTOR_INNER_ERR_REPORT_TILIING(
+        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %d, %d, %d, %d", coreNum, ubSize,
+        varSize, indicesSize);
     return false;
   }
 

@@ -315,6 +315,10 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
   // get axis value
   int32_t axis;
   string axis_type = op_paras.inputs[1].tensor[0].dtype;
+  if (op_paras.const_inputs.count("dimension") == 0 || get<0>(op_paras.const_inputs.at("dimension")) == nullptr) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "const_inputs not include dimension or dimension is null");
+    return false;
+  }
   if (axis_type == "int32") {
     const int32_t* axis_ptr = reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at("dimension")));
     axis = *axis_ptr;

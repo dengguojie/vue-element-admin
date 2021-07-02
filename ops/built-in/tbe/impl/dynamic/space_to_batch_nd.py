@@ -23,6 +23,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.util_select_op_base import get_op_cal_info
 
 # max int32
 MAX_INT32 = 2**31 - 1
@@ -36,6 +37,15 @@ EIGHT_BIT = 8
 BLOCK_BYTES = 32
 # repeat limit
 REPEAT_LIMIT = 255
+
+
+def get_op_support_info(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
+    """get op support info.
+    """
+    axis_split_list = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_list)
+    return op_cal_info_in_json
 
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements

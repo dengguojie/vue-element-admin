@@ -23,6 +23,9 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # max int32
 MAX_INT32 = 2**31 - 1
@@ -34,6 +37,19 @@ RESERVED_UB_SIZE = 8 * 1024
 EIGHT_BIT = 8
 # bytes of one block
 BLOCK_BYTES = 32
+
+
+def get_op_support_info(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
+    """get op support info."""
+    format_x = x.get("format").upper()
+    if format_x == "NC1HWC0":
+        axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])]]
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements

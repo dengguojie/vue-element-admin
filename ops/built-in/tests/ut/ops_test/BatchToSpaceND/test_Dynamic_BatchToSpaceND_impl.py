@@ -64,6 +64,26 @@ def test_op_select_format(test_arg):
                     {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),"ori_format": "NHWC", "param_type": "input"},
                     )
 
+def test_get_op_support_info_1(test_arg):
+    from impl.dynamic.batch_to_space_nd import get_op_support_info
+    get_op_support_info({"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),"ori_format": "NHWC", "param_type": "input"},
+                    {"shape": (2,), "dtype": "float16", "format": "ND", "ori_shape": (2,),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),"ori_format": "NHWC", "param_type": "input"},
+                    )
+
+def test_get_op_support_info_2(test_arg):
+    from impl.dynamic.batch_to_space_nd import get_op_support_info
+    get_op_support_info({"shape": (16, 1, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 16),"ori_format": "NHWC", "param_type": "input"},
+                    {"shape": (2,), "dtype": "float16", "format": "ND", "ori_shape": (2,),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (16, 1, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 16),"ori_format": "NHWC", "param_type": "input"},
+                    )
+
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_1)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_2)
+
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 
