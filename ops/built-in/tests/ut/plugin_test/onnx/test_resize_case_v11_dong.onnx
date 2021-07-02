@@ -1,0 +1,31 @@
+onnx-parser_test:þ
+n
+x
+roi
+scales
+sizesy"Resize*7
+coordinate_transformation_mode"pytorch_half_pixel *
+mode"linear 
+Resize_v11*:BsizesZ
+x
+
+
+
+
+Z
+roi
+
+
+Z 
+scales
+
+
+
+
+b
+y
+
+
+
+
+B
