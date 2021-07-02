@@ -33,10 +33,19 @@ def layer_norm_beta_gamma_backprop_v2_generalization(input_dy, res_for_gamma, ou
     for now only support dy (-1, -1, N)  and shape_gamma is (N,)
     """
     result = []
-    dy_shape = input_dy["shape"]
-    last_dim = dy_shape[-1]
-    input_dy["shape"] = [-1, -1, last_dim]
-    res_for_gamma["shape"] = [-1, -1, last_dim]
+    last_dim = input_dy["shape"][-1]
+    shape_in = (-1, -1, last_dim)
+    range_in = [(1, -1), (1, -1), (last_dim, last_dim)]
+    shape_out = (last_dim, )
+    range_out = [(last_dim, last_dim)]
+    input_dy["shape"], input_dy["ori_shape"] = shape_in, shape_in
+    input_dy["range"], input_dy["ori_range"] = range_in, range_in
+    res_for_gamma["shape"], res_for_gamma["ori_shape"] = shape_in, shape_in
+    res_for_gamma["range"], res_for_gamma["ori_range"] = range_in, range_in
+    output_pd_gamma["shape"], output_pd_gamma["ori_shape"] = shape_out, shape_out
+    output_pd_gamma["range"], output_pd_gamma["ori_range"] = range_out, range_out
+    output_pd_beta["shape"], output_pd_beta["ori_shape"] = shape_out, shape_out
+    output_pd_beta["range"], output_pd_beta["ori_range"] = range_out, range_out
     result.append([input_dy, res_for_gamma, output_pd_gamma, output_pd_beta, shape_gamma])
     return result
 

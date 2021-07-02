@@ -42,13 +42,35 @@ def layer_norm_x_backprop_generalization(input_dy, input_x, input_variance,
     # for now only support dy and x is (-1, -1, N), variavce and mean is (-1, -1, 1),
     # shape_gamma is (N,)
     result = []
-    x_shape = input_x["shape"]
-    last_dim = x_shape[-1]
-    input_dy["shape"] = [-1, -1, last_dim]
-    input_x["shape"] = [-1, -1, last_dim]
-    input_variance["shape"] = [-1, -1, 1]
-    input_mean["shape"] = [-1, -1, 1]
-    input_gamma["shape"] = [last_dim]
+    last_dim = input_x["shape"][-1]
+    shape_dy = (-1, -1, last_dim)
+    range_dy = [(1, -1), (1, -1), (last_dim, last_dim)]
+    shape_var = (-1, -1, 1)
+    range_var = [(1, -1), (1, -1), (1, 1)]
+    shape_gamma = (last_dim, )
+    range_gamma = [(last_dim, last_dim)]
+
+    input_dy["shape"], input_dy["ori_shape"] = shape_dy, shape_dy
+    input_dy["range"], input_dy["ori_range"] = range_dy, range_dy
+
+    input_x["shape"], input_x["ori_shape"] = shape_dy, shape_dy
+    input_x["range"], input_x["ori_range"] = range_dy, range_dy
+
+    input_variance["shape"], input_variance["ori_shape"] = shape_var, shape_var
+    input_variance["range"], input_variance["ori_range"] = range_var, range_var
+
+    input_mean["shape"], input_mean["ori_shape"] = shape_var, shape_var
+    input_mean["range"], input_mean["ori_range"] = range_var, range_var
+
+    input_gamma["shape"], input_gamma["ori_shape"] = shape_gamma, shape_gamma
+    input_gamma["range"], input_gamma["ori_range"] = range_gamma, range_gamma
+
+    output_pd_x["shape"], output_pd_x["ori_shape"] = shape_dy, shape_dy
+    output_pd_x["range"], output_pd_x["ori_range"] = range_dy, range_dy
+
+    output_res_gamma["shape"], output_res_gamma["ori_shape"] = shape_dy, shape_dy
+    output_res_gamma["range"], output_res_gamma["ori_range"] = range_dy, range_dy
+
     result.append([input_dy, input_x, input_variance, input_mean, input_gamma, output_pd_x, output_res_gamma])
     return result
 

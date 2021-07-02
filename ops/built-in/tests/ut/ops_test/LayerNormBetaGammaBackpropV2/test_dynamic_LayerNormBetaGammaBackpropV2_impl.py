@@ -14,7 +14,19 @@ case1 = {"params": [{"shape": (2,3,512), "dtype": "float32", "format": "ND", "or
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+
+def test_generalization(args):
+    from impl.dynamic.layer_norm_beta_gamma_backprop_v2 import layer_norm_beta_gamma_backprop_v2_generalization
+    layer_norm_beta_gamma_backprop_v2_generalization(
+        {"shape": (2,3,512), "dtype": "float32", "format": "ND", "ori_shape": (2,3,512),"ori_format": "ND","range":[(1,10),(1,10),(1,1024)]},
+        {"shape": (2,3,512), "dtype": "float32", "format": "ND", "ori_shape": (2,3,512),"ori_format": "ND","range":[(1,10),(1,10),(1,1024)]},
+        {"shape": (1,1,512), "dtype": "float32", "format": "ND", "ori_shape": (1,1,512),"ori_format": "ND","range":[(1,10),(1,10),(1,1024)]},
+        {"shape": (1,1,512), "dtype": "float32", "format": "ND", "ori_shape": (1,1,512),"ori_format": "ND","range":[(1,10),(1,10),(1,1024)]},
+        [512], None, None)
+
+
 ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_cust_test_func(test_func=test_generalization)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):
