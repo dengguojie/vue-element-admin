@@ -3438,7 +3438,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   if ((is_dynamic || has_padding_attr) && padding == "SAME") {
     if (!is_dynamic || (fmap_shape[orig_shape_format_str.find("D")] != -1 &&
                         fmap_shape[orig_shape_format_str.find("H")] != -1 &&
-                        fmap_shape[orig_shape_format_str.find("w")] != -1)){
+                        fmap_shape[orig_shape_format_str.find("W")] != -1)){
       OP_LOGD(op.GetName().c_str(), "Fix padding attr.");
       AvgPool3DGradCalcPads(fmap_shape, orig_shape_format_str, ksize, strides, pads, data_format);
     } else {

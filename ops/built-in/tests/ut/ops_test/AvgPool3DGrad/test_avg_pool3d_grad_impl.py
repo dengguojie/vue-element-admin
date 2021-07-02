@@ -241,16 +241,128 @@ case15 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 
          False,
          0,
          "NCDHW"]
+case16 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
+         {'ori_shape': (1,1,4,4,4), 'shape': (1,4,1,4,4,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1),(4,4),(1,1),(4,4),(4,4),(16,16))},
+         {'ori_shape': (2,2,2,1,1), 'shape': (8,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
+            'range':((8,8),(1,1),(16,16),(16,16))},
+         {'ori_shape': (1,1,5,5,5), 'shape': (1,5,1,5,5,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1), (5,5), (1,1), (5,5), (5,5), (16,16))},
+         (1,2,2,-1,1),
+         (1,1,1,1,1),
+         (0,0,0,0,0,0),
+         False,
+         False,
+         0,
+         "NCDHW"]
+case17 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
+         {'ori_shape': (1,1,4,4,4), 'shape': (1,4,1,4,4,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1),(4,4),(1,1),(4,4),(4,4),(16,16))},
+         {'ori_shape': (2,2,2,1,1), 'shape': (8,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
+            'range':((8,8),(1,1),(16,16),(16,16))},
+         {'ori_shape': (1,1,5,5,5), 'shape': (1,5,1,5,5,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1), (5,5), (1,1), (5,5), (5,5), (16,16))},
+         (1,2,2,2,1),
+         (1,1,1),
+         (0,0,0,0,0,0),
+         False,
+         False,
+         0,
+         "NCDHW"]
+case18 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
+         {'ori_shape': (1,1,4,4,4), 'shape': (1,4,1,4,4,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1),(4,4),(1,1),(4,4),(4,4),(16,16))},
+         {'ori_shape': (2,2,2,1,1), 'shape': (8,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
+            'range':((8,8),(1,1),(16,16),(16,16))},
+         {'ori_shape': (1,1,5,5,5), 'shape': (1,5,1,5,5,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1), (5,5), (1,1), (5,5), (5,5), (16,16))},
+         (2,2,2),
+         (1,1,1,1,1),
+         (0,0,0,0,0,0),
+         False,
+         False,
+         0,
+         "NCDHW"]
+case19 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
+         {'ori_shape': (1,1,-1,4,4), 'shape': (1,-1,1,4,4,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1),(1,10),(1,1),(4,4),(4,4),(16,16))},
+         {'ori_shape': (2,2,2,1,1), 'shape': (8,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
+            'range':((8,8),(1,1),(16,16),(16,16))},
+         {'ori_shape': (1,1,5,5,5), 'shape': (1,5,1,5,5,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1), (1,10), (1,1), (5,5), (5,5), (16,16))},
+         (1,1,2,2,2),
+         (1,1,1,1,1),
+         (0,0,0,0,0,0),
+         False,
+         False,
+         0,
+         "NCDHW"]
+case20 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
+         {'ori_shape': (1,1,4,-1,4), 'shape': (1,4,1,-1,4,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1),(4,4),(1,1),(1,10),(4,4),(16,16))},
+         {'ori_shape': (2,2,2,1,1), 'shape': (8,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
+            'range':((8,8),(1,1),(16,16),(16,16))},
+         {'ori_shape': (1,1,5,5,5), 'shape': (1,5,1,5,5,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1), (5,5), (1,1), (1,10), (5,5), (16,16))},
+         (1,1,2,2,2),
+         (1,1,1,1,1),
+         (0,0,0,0,0,0),
+         False,
+         False,
+         0,
+         "NCDHW"]
+case21 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
+         {'ori_shape': (1,1,4,4,-1), 'shape': (1,4,1,4,-1,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1),(4,4),(1,1),(4,4),(1,10),(16,16))},
+         {'ori_shape': (2,2,2,1,1), 'shape': (8,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
+            'range':((8,8),(1,1),(16,16),(16,16))},
+         {'ori_shape': (1,1,5,5,5), 'shape': (1,5,1,5,5,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1), (5,5), (1,1), (5,5), (1,10), (16,16))},
+         (1,1,2,2,2),
+         (1,1,1,1,1),
+         (0,0,0,0,0,0),
+         False,
+         False,
+         0,
+         "NCDHW"]
+case22 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
+         {'ori_shape': (1,1,4,4,-1), 'shape': (1,4,1,4,-1,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1),(4,4),(1,1),(4,4),(1,10),(16,16))},
+         {'ori_shape': (2,2,2,1,1), 'shape': (8,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
+            'range':((8,8),(1,1),(16,16),(16,16))},
+         {'ori_shape': (1,1,5,5,5), 'shape': (1,5,1,5,5,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1), (5,5), (1,1), (5,5), (5,5), (16,16))},
+         (1,1,2,2,2),
+         (1,1,1,1,1),
+         (0,0,0,0,0),
+         False,
+         False,
+         0,
+         "NCDHW"]
+case23 = [{'ori_shape': (5,), 'shape': (5,), 'format': "ND",'ori_format': 'ND', 'dtype': 'int32', 'range': ((5,5),)},
+         {'ori_shape': (-1,1,4,4,-1), 'shape': (1,4,1,4,-1,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,10),(4,4),(1,1),(4,4),(1,10),(16,16))},
+         {'ori_shape': (2,2,2,1,1), 'shape': (8,1,16,16), 'format': "FRACTAL_Z_3D", 'ori_format': 'DHWCN', 'dtype': 'float16',
+            'range':((8,8),(1,1),(16,16),(16,16))},
+         {'ori_shape': (1,1,4,4,4), 'shape': (1,4,1,4,4,16), 'format': "NDC1HWC0", 'ori_format': 'NCDHW', 'dtype': 'float16',
+            'range': ((1,1), (4,4), (1,1), (4,4), (4,4), (16,16))},
+         (1,1,2,2,2),
+         (1,1,1,1,1),
+         (-1,-1,-1,-1,-1, -1),
+         False,
+         False,
+         0,
+         "NCDHW"]
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A"],
-                 _gen_data_case(case1, "success", "dynamic_case_w", True))
+                 _gen_data_case(case1, "success", "dynamic_case_w_same", True))
 ut_case.add_case(["Ascend910A"],
-                 _gen_data_case(case2, "success", "dynamic_case_h", True))
+                 _gen_data_case(case2, "success", "dynamic_case_h_same", True))
 ut_case.add_case(["Ascend910A"],
-                 _gen_data_case(case3, "success", "dynamic_case_d", True))
+                 _gen_data_case(case3, "success", "dynamic_case_d_same", True))
 ut_case.add_case(["Ascend910A"],
-                 _gen_data_case(case4, "success", "dynamic_case_n", True))
+                 _gen_data_case(case4, "success", "dynamic_case_n_same", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case5, "success", "dynamic_case_all_const", True))
 ut_case.add_case(["Ascend910A"],
@@ -272,12 +384,27 @@ ut_case.add_case(["Ascend910A"],
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case14, RuntimeError, "dynamic_case_invalid_grads_range_dim", False))
 ut_case.add_case(["Ascend910A"],
-                 _gen_data_case(case15, RuntimeError, "dynamic_case_invalid_strides", False))
-
+                 _gen_data_case(case15, RuntimeError, "dynamic_case_invalid_strides_val", False))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case16, RuntimeError, "dynamic_case_invalid_ksize_val", False))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case17, RuntimeError, "dynamic_case_invalid_strides_dims", False))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case18, RuntimeError, "dynamic_case_invalid_ksize_dims", False))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case19, "success", "dynamic_case_d_valid", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case20, "success", "dynamic_case_h_valid", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case21, "success", "dynamic_case_w_valid", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case22, RuntimeError, "dynamic_case_invalid_pads_dims", False))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case23, "success", "dynamic_case_fix_grads_shape", True))
 
 if __name__ == '__main__':
     import tbe
     with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+        ut_case.run()
     exit(0)
 

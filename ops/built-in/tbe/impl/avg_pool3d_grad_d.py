@@ -170,7 +170,7 @@ def get_op_support_info(grads,
                                                              _GRADS_TARGET_FORMAT,
                                                              ksize,
                                                              _GRADS_FORMAT_WHITE_LIST)
-    if ori_shape_grads is None or strides_formated is None:
+    if ori_shape_grads is None:
         dict_args = {
             'errCode': 'E60008',
             'param_name': 'grads',
@@ -184,7 +184,8 @@ def get_op_support_info(grads,
                                                             _FMAP_TARGET_FORMAT,
                                                             orig_input_shape,
                                                             _DATA_FORMAT_WHITE_LIST)
-    if ori_shape_res is None:
+
+    if ori_shape_res is None or strides_formated is None or ksize_formated is None:
         dict_args = {
             'errCode': 'E62002',
             'param_name': 'data_format',

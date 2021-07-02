@@ -102,19 +102,6 @@ vector<FusionPattern*> AvgPool3DGradFusionPass::DefinePatterns() {
   return patterns;
 }
 
-bool DeleteNodeFromGraph(ComputeGraph& graph, NodePtr& node_ptr)
-{
-  for (auto in_anchor: node_ptr->GetAllInDataAnchors()) {
-    if (in_anchor != nullptr) {
-      in_anchor->UnlinkAll();
-    }
-  }
-  FUSION_PASS_CHECK(graph.RemoveNode(node_ptr) != SUCCESS,
-                    CUBE_CALL_ERR_REPORT("avgpool3d_grad", "remove node %s failed.", node_ptr->GetName().c_str()),
-                    return false);
-  return true;
-}
-
 void GenFilter(int64_t filter_size, float val, uint16_t *data)
 {
   uint64_t block_num = filter_size / (kC0 * kC0);
