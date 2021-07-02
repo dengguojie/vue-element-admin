@@ -187,7 +187,7 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
         assist_ptr = nullptr;
         return PARAM_INVALID);
   } else {
-    unique_ptr<float> input_assist(new (nothrow) float[dim_num]());
+    unique_ptr<float[]> input_assist(new (nothrow) float[dim_num]());
     FUSION_PASS_CHECK(input_assist.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     AssistFloatHelp(dim_num, input_assist.get());
