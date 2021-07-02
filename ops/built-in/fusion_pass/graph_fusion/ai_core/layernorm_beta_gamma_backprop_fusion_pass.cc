@@ -77,7 +77,7 @@ Status LayerNormBetaGammaBackpropFusionPass::Run(ge::ComputeGraph& graph) {
   fusionStatisticInst.UpdateGraphFusionMatchTimes(fusionInfo);
   fusionStatisticInst.UpdateGraphFusionEffectTimes(fusionInfo);
   OP_LOGD(FUSED_OP_TYPE.c_str(),
-          "SessionId[%d], GraphId[%d], GraphFusionPass[%s]: pattern=undefined, matchedTimes=%zu, effectTimes=%zu.",
+          "SessionId[%d], GraphId[%d], GraphFusionPass[%s]: pattern=undefined, matchedTimes=%zu, effectTimes=%d.",
           graph.GetSessionID(), graph.GetGraphID(), GetName().c_str(), passMatchResultVec.size(), effectTimes);
 
   return SUCCESS;

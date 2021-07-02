@@ -71,6 +71,9 @@ vector<FusionPattern*> AvgPoolV2FusionPass::DefinePatterns() {
 
 NodePtr AvgPoolV2FusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode, ge::Format& inputOriginFormat) {
   ge::OutDataAnchorPtr avgPoolAnchorPtr1 = avgPoolNode->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(avgPoolAnchorPtr1 == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "avgPoolAnchorPtr1 is null, fusion failed."),
+                    return nullptr);
   ge::NodePtr postNode = nullptr;
   ge::NodePtr mulNode = nullptr;
   int64_t mulN = 0;

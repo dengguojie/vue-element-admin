@@ -258,6 +258,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       newNodes.push_back(add1Node);
 
       if (isfindSoftmax) {
+        auto inAnchorSizes = fusedNode->GetAllInDataAnchorsSize();
+        if (inAnchorSizes < INT_NUM_TWO) {
+          return FAILED;
+        }
         auto ExpandDims_5_node = fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
         auto strided_slice_10_node = ExpandDims_5_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
         auto Reshape_4_node = strided_slice_10_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
@@ -535,6 +539,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
   // add node to graph
   ge::NodePtr reduceNode = graph.AddNode(reduceDesc);
+  FUSION_PASS_CHECK(reduceNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "reduceNode is null, fusion failed."),
+                    return FAILED);
   auto out_data_anchor = fusedNode->GetOutDataAnchor(INT_NUM_THREE);
   FUSION_PASS_CHECK(out_data_anchor == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "out_data_anchor is null, fusion failed."),

@@ -76,9 +76,15 @@ static Status GenerateTransposeNode(ge::ComputeGraph* graph,
   transpose_desc->AddInputDesc("x", prev_out_desc);
   next_in_desc->SetShape(ge::GeShape(next_in_shape));
   next_in_desc->SetOriginShape(ge::GeShape(next_in_shape));
+  if (next_in_desc == nullptr) {
+    return FAILED;
+  }
   transpose_desc->AddOutputDesc("y", *next_in_desc);
   ge::AttrUtils::SetListInt(transpose_desc, "perm", perm);
   *transpose_node = graph->AddNode(transpose_desc);
+  if (transpose_node == nullptr) {
+    return FAILED;
+  }
   return SUCCESS;
 }
 

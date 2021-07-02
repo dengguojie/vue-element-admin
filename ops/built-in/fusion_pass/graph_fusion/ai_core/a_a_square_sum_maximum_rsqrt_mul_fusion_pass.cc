@@ -147,6 +147,10 @@ Status AASquareSumMaximumRsqrtMulFusionPass::IsMatch(ge::NodePtr& squareNode, ge
   auto sum_in_anchors = sumNode->GetAllInDataAnchors();
   std::vector<ge::GeTensorPtr> sumWeights;
   for (auto &sum_in_anchor : sum_in_anchors) {
+    FUSION_PASS_CHECK(sum_in_anchor == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "sum_in_anchor is null, fusion failed."),
+                      return PARAM_INVALID);
+
     auto sum_out_anchor = sum_in_anchor->GetPeerOutAnchor();
     if (sum_out_anchor == nullptr)
       continue;

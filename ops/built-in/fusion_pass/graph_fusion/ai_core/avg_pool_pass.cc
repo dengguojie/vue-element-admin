@@ -45,6 +45,7 @@ namespace fe {
 static const uint16_t UINT_NUM_ZERO = 0;
 static const int8_t INT8_NUM_ZERO = 0;
 static const int8_t INT8_NUM_ONE = 1;
+static const int32_t INT_NUM_FOUR = 4;
 static const string PATTERN_AVGPOOL = "AvgPool";
 static const std::string CONSTANTOP = "Const";
 static const char* AVGPOOL = "AvgPool";
@@ -197,6 +198,10 @@ NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolN
                     return nullptr);
 
   for (auto postAnchorPtr0 : avgPoolAnchorPtr1->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(postAnchorPtr0 == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "postAnchorPtr0 is null, fusion failed."),
+                      return nullptr);
+
     postNode = postAnchorPtr0->GetOwnerNode();
 
     // remove edge between avgpool and next node
@@ -235,7 +240,6 @@ Status AvgPoolFusionPass::Calc4DWeightAvgPool(const std::vector<int64_t>& filter
           FUSION_PASS_CHECK(k >= kernelDataCount,
                             OP_LOGE(FUSED_OP_TYPE.c_str(), "The index %ld is out of weightInt8Data's range", k),
                             return FAILED);
-          // FE_INT64_ADDCHECK(sum_temp, filterInt8Data[k]);
           sum_temp += filterInt8Data[k];
         }
       }
@@ -376,6 +380,10 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
   ge::GeTensorDesc inputDesc0 = poolingOp->GetInputDesc(0);
   ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
   int biasInputIndex = 2;
+  auto biasPeerOutAnchor = poolingNode->GetInDataAnchor(biasInputIndex)->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(biasPeerOutAnchor == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "biasPeerOutAnchor is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::NodePtr biasNode = poolingNode->GetInDataAnchor(biasInputIndex)->GetPeerOutAnchor()->GetOwnerNode();
   ge::OpDescPtr biasOpDesc = biasNode->GetOpDesc();
   OP_LOGI(FUSED_OP_TYPE.c_str(), "bias_node_name is %s", biasNode->GetName().c_str());
@@ -614,23 +622,23 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::AttrUtils::GetListInt(avgPoolDesc, "strides", strides);
 
   if (dataFormat == "NHWC") {
-    if (ksize.size() != 0 and strides.size() != 0) {
+    if (ksize.size() == INT_NUM_FOUR and strides.size() == INT_NUM_FOUR) {
       ksizeH = ksize[1];
       ksizeW = ksize[2];
       stridesH = strides[1];
       stridesW = strides[2];
     } else {
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize or strides is null, please check!");
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize or strides is incorrect, please check!");
       return NOT_CHANGED;
     }
   } else if (dataFormat == "NCHW") {
-    if (ksize.size() != 0 and strides.size() != 0) {
+    if (ksize.size() == INT_NUM_FOUR and strides.size() == INT_NUM_FOUR) {
       ksizeH = ksize[2];
       ksizeW = ksize[3];
       stridesH = strides[2];
       stridesW = strides[3];
     } else {
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize or strides is null, please check!");
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "ksize or strides is incorrect, please check!");
       return NOT_CHANGED;
     }
   } else {
@@ -660,6 +668,9 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                     return FAILED);
   // get pre node of pooling
   ge::InDataAnchorPtr poolingAnchorPtr0 = avgPoolNode->GetInDataAnchor(0);
+  FUSION_PASS_CHECK(poolingAnchorPtr0 == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingAnchorPtr0's OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::OutDataAnchorPtr preAnchorPtr0 = poolingAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr preNode = preAnchorPtr0->GetOwnerNode();
 
@@ -709,6 +720,9 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       return PARAM_INVALID;
     }
     OutDataAnchorPtr outDataAnchorPtr = inDataAnchorPtr1->GetPeerOutAnchor();
+    if (outDataAnchorPtr == nullptr) {
+      return PARAM_INVALID;
+    }
 
     NodePtr HostcpuNode = outDataAnchorPtr->GetOwnerNode();
     std::string type = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(HostcpuNode);

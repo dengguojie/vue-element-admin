@@ -31,6 +31,7 @@
 
 namespace fe {
 static const string PATTERN_BATCHNORM = "batchNorm";
+static const int32_t INT_NUM_FIVE = 5;
 static const string PATTERN_INPUTS1 = "input1";
 static const string PATTERN_INPUTS2 = "input2";
 static const string PATTERN_INPUTS3 = "input3";
@@ -83,6 +84,11 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
 
   FUSION_PASS_CHECK(is_traing, OP_LOGI(FUSED_OP_TYPE.c_str(), "is_traing is true, no need fusion."), return NOT_CHANGED);
 
+  auto batchnorm_anchors_size = batchNormNode->GetAllOutDataAnchorsSize();
+  if (batchnorm_anchors_size < INT_NUM_FIVE) {
+    return FAILED;
+  }
+  
   FUSION_PASS_CHECK(batchNormNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() != 0 ||
                         batchNormNode->GetOutDataAnchor(2)->GetPeerInDataAnchors().size() != 0 ||
                         batchNormNode->GetOutDataAnchor(3)->GetPeerInDataAnchors().size() != 0 ||

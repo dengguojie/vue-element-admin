@@ -29,6 +29,7 @@
 namespace fe {
 static const string PATTERN_RELUGRAD = "reluGrad";
 static const string PATTERN_RELU = "relu";
+static const int32_t INT_NUM_TWO = 2;
 static const string OP_RELU = "Relu";
 static const string RELU_V2 = "ReluV2";
 static const string RELUGRAD = "ReluGrad";
@@ -86,6 +87,10 @@ Status DreluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                     return PARAM_INVALID);
 
   ge::NodePtr relu2 = CreateNode(graph, relu, fusionNodes);
+  FUSION_PASS_CHECK(relu2 == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "relu2 is null, fusion failed."),
+                    return PARAM_INVALID);
+
   if (relu2->GetOpDesc()->InferShapeAndType() != ge::GRAPH_SUCCESS) {
     FUSION_PASS_CHECK(graph.RemoveNode(relu2) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove ReluV2 failed."),
                       return FAILED);
@@ -96,6 +101,10 @@ Status DreluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   FUSION_PASS_CHECK(ReplaceNode(relu, relu2, graph) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "replace node failed"),
                     return FAILED);
 
+  ge::OpDescPtr reluDesc = relu2->GetOpDesc();
+  if (reluDesc->GetAllOutputsDescSize() < INT_NUM_TWO) {
+    return FAILED;
+  }
   if (IsUnknownShape(relu2->GetOpDesc()->GetOutputDesc(1).GetShape())) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "DreluFusionPass cannot be applied for unknown shape.");
     return SUCCESS;

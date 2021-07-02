@@ -38,6 +38,7 @@
 namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeReduceMin";
 static const string FUSED_NODE = "ReduceMin";
+static const int32_t INT_NUM_TWO = 2;
 
 Status CheckMinFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info) {
   for (size_t i = 0; i < axis_info.size(); ++i) {
@@ -64,6 +65,10 @@ Status AReduceMinFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   FUSION_PASS_CHECK(minNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "minNode is null, fusion failed."),
                     return PARAM_INVALID);
 
+  ge::OpDescPtr minNodeDesc = minNode->GetOpDesc();
+  if (minNodeDesc->GetAllInputsSize() < INT_NUM_TWO) {
+    return FAILED;
+  }
   ge::GeTensorDesc tensor_input = minNode->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc axis_input = minNode->GetOpDesc()->GetInputDesc(1);
 

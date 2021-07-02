@@ -42,6 +42,8 @@ static const char* FUSED_NODE = "MaxPoolWithArgmax";
 
 static const std::string PATTERN_FUSEDNODE = "MaxPoolWithArgmax";
 
+static const int32_t INT_NUM_ZERO = 0;
+
 vector<FusionPattern*> MaxPoolWithArgmaxFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
@@ -180,6 +182,10 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     if (paddingMode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
+          if (stridesList[i] <= INT_NUM_ZERO) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
+            return FAILED; 
+          }
           int64_t dims = (dims_input[i] + stridesList[i] - 1) / stridesList[i];
           dimVector.push_back(dims);
         } else {
@@ -190,6 +196,10 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     } else {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
+          if (stridesList[i] <= INT_NUM_ZERO) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
+            return FAILED;
+          }
           int64_t dims = (dims_input[i] - ksizeList[i] + 1 + (stridesList[i] - 1)) / stridesList[i];
           dimVector.push_back(dims);
         } else {
@@ -202,6 +212,10 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     if (paddingMode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
+          if (stridesList[i - 1] <= INT_NUM_ZERO) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
+            return FAILED;
+          }
           int64_t dims = (dims_input[i] + stridesList[i - 1] - 1) / stridesList[i - 1];
           dimVector.push_back(dims);
         } else {
@@ -212,6 +226,10 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     } else {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
+          if (stridesList[i - 1] <= INT_NUM_ZERO) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
+            return FAILED;
+          }
           int64_t dims = (dims_input[i] - ksizeList[i - 1] + 1 + (stridesList[i - 1] - 1)) / stridesList[i - 1];
           dimVector.push_back(dims);
         } else {

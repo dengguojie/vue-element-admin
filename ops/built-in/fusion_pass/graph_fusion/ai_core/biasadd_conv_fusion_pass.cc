@@ -128,6 +128,10 @@ Status BiasaddConvFusionPass::AdjustShapeOfBiasWeight(
 
 Status BiasaddConvFusionPass::GetWeightNode(const ge::NodePtr &biasadd_node, const ge::NodePtr conv,
     ge::NodePtr &weight_node, ge::GeShape &bias_shape) {
+  auto biasaddPeerAnchor = biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(biasaddPeerAnchor == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "biasaddPeerAnchor is null, fusion failed."),
+                    return NOT_CHANGED);
   auto nodeInfrontOfAdd = biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
   bool case_training = (nodeInfrontOfAdd->GetType() == VARIABLE);
 
@@ -203,6 +207,9 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter BiasaddConvFusionPass");
   ge::NodePtr conv = GetNodeFromMapping(PATTERN_SRC, mapping);
   ge::NodePtr biasadd_node = GetNodeFromMapping(PATTERN_BIASADD, mapping);
+  FUSION_PASS_CHECK(biasadd_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "biasadd_node is null, fusion failed."),
+                    return PARAM_INVALID);
   Status result = CheckParam(conv, biasadd_node);
   FUSION_PASS_CHECK(result != SUCCESS, , return result);
 
