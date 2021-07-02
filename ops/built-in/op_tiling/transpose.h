@@ -33,6 +33,12 @@
 namespace optiling {
 
 #define TRANSPOSE_MAX_AXIS_NUM 8
+#define BORROW_SRC_AXIS_NUM 2
+#define BORROW_DST_AXIS_NUM 2
+#define BORROW_MAX_AXIS_NUM (BORROW_SRC_AXIS_NUM + BORROW_DST_AXIS_NUM)
+#define BORROW_OTHER_AXIS_NUM 6
+#define UB_REORDER_COMBINATION 4 // src: intact|tail dst:intact|tail 4 = 2*2
+#define UB_REORDER_LOOP 3
 #define BYTES_PER_BLOCK 32
 #define UB_REORDER_FACTOR 33
 #define ELE_NUM_PER_BLOCK_B8 32 
@@ -47,12 +53,12 @@ namespace optiling {
  * 4KB : reserved
  */
 #define UB_RESERVED_BLOCK_SIZE 4 * 32
-#define UB_RESERVED_KB 4
+#define UB_RESERVED_KB 4 // keep same with transpose.py
 #define LAST_AXIS_HUGE_THRESHOLD 100 * 1024 //unit B
 #define HUGE_BLOCKS_UNIT (LAST_AXIS_HUGE_THRESHOLD / 32) //unit blocks, 3200 blocks
 #define LAST_AXIS_BLOCK_ALIGN_LARGE_THRESHOLD 4096 //unit B
-#define LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD 128 //unit B
-#define WORKSPACE_MAX_SIZE (int64_t)(16 * 1024 * 1024 * 1024) // 16GB
+#define LAST_AXIS_BLOCK_ALIGN_N_BORROW_THRESHOLD 512 //unit B
+#define LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD 256 //unit B
 #define UB_CAP_BLOCKS 7800 // for 310 256 - 8 = 248KB = 7936 Blocks
 
 #define STRIDE_BOUNDARY 65535
@@ -63,7 +69,6 @@ namespace optiling {
 #define MAX_COL_FP16_VNCHWCONV_FULL    256 // verify 128 is better than 248 //496
 #define MAX_COL_FP16_VNCHWCONV_PARTIAL 256
 #define MAX_ROW_FP16_VNCHWCONV_FULL    128
-#define UB_SIZE_1_16_FP16              3968 // 3968 * 33 < 256 * 1024
 #define SMALL_SHAPE_SIZE_THRESHOLD     1024
 #define F2T_THRESHOLD_B16  64 // unit : byte
 #define F2T_THRESHOLD_B32  32 // unit : byte
@@ -74,9 +79,12 @@ enum TransposeScenario {
     SCENARIO_1 = 1,     //large last axis and not transpose
     SCENARIO_2 = 2,     //small last axis and not transpose
     SCENARIO_3 = 3,     //huge  last axis and not transpose
+    SCENARIO_4 = 4,     //borrow axis scenario with last axis not transposed
+    SCENARIO_5 = 5,     //borrow axis scenario with last axis transposed
     SCENARIO_6 = 6,     //small shape
     SCENARIO_7 = 7,     //last axis transpose
     SCENARIO_8 = 8,     //920A verifaction
+    SCENARIO_9 = 9,     //last axis block aligned and not transpose
 };
 
 enum SubScenarioLastAxisTrans {
@@ -248,20 +256,6 @@ struct LastAxisNTHugeInfo {
     }
 };
 
-struct WorkspaceInfo {
-    int64_t loop;
-    int64_t repeat1;
-    int64_t repeat2;
-    int64_t repeat3;
-
-    WorkspaceInfo() {
-        loop = 0;
-        repeat1 = 0;
-        repeat2 = 0;
-        repeat3 = 0;
-    }
-};
-
 struct IdenticalInfo {
     int64_t base;
     int64_t eleNum;
@@ -285,7 +279,6 @@ struct InfoPerCoreLastAxisNT {
     int64_t num;
     int64_t initTuple[TRANSPOSE_MAX_AXIS_NUM];
     LastAxisNTLoopInfo loopInfo;
-    WorkspaceInfo workspaceInfo;
     InfoPerCoreLastAxisNT() {
         base = 0;
         num = 0;
@@ -363,26 +356,224 @@ struct InfoPerCore {
     InfoRow infoRow;
 };
 
-struct BorrowAxis {
-    int64_t index;
+struct BorrowAxisPerCore {
+    int64_t initTupleLogic;
+    int64_t initTuple[BORROW_MAX_AXIS_NUM];
+    BorrowAxisPerCore() {
+        initTupleLogic = 0;
+        for (int i = 0; i < BORROW_MAX_AXIS_NUM; i++) {
+            initTuple[i] = 0;
+        }
+    }
+};
+
+struct OtherAxisPerCore {
+    int64_t idx;
+    int64_t base;
+    int64_t loop;
+    int64_t initTuple[TRANSPOSE_MAX_AXIS_NUM];
+    OtherAxisPerCore() {
+        idx = 0;
+        base = 0;
+        loop = 0;
+        for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+            initTuple[i] = 0;
+        }
+    }
+};
+
+struct IndexInfo {
+    int64_t idx_in;
+    int64_t idx_out;
     int64_t loop;
     int64_t step;
     int64_t tail;
-    int64_t stride;
-    BorrowAxis() {
-        index = -1;
+    int64_t intact;
+    int64_t dup;
+
+    IndexInfo() {
+        idx_in = 0;
+        idx_out = 0;
         loop = 0;
         step = 0;
         tail = 0;
-        stride = 1;
+        intact = 0;
+        dup = 0;
+    }
+};
+
+//L:loop; R:repeat; S:stride; B:burstLen
+struct LRSB {
+    int64_t loop;
+    int64_t repeat;
+    int64_t srcStride;
+    int64_t dstStride;
+    int64_t burstLen;
+    int64_t srcOffset;
+    int64_t dstOffset;
+    LRSB() {
+        loop = 0;
+        repeat = 0;
+        srcStride = 0;
+        dstStride = 0;
+        burstLen = 0;
+        srcOffset = 0;
+        dstOffset = 0;
+    }
+    void Set(int64_t l, int64_t r, int64_t ss, int64_t ds, int64_t b, int64_t st, int64_t dt) {
+        loop = l;
+        repeat = r;
+        srcStride = ss;
+        dstStride = ds;
+        burstLen = b;
+        srcOffset = st;
+        dstOffset = dt;
     }
 };
 
 struct BorrowInfo {
-    BorrowAxis src_1;
-    BorrowAxis src_2;
-    BorrowAxis dst_1;
-    BorrowAxis dst_2;
+    int64_t srcNum;
+    int64_t dstNum;
+    int64_t srcNumNoDup;
+    int64_t dstNumNoDup;
+    int64_t otherNum;
+    int64_t srcVol;
+    int64_t dstVol;
+    int64_t dupAxis;
+    int64_t supportvCopy;
+    int64_t dstAxisPerm;
+    int64_t srcAxisPerm;
+    int64_t axisPerm;
+
+    int64_t majorDstLoop_in;
+    int64_t tailDstLoop_in;
+    int64_t majorSrcLoop_out;
+    int64_t tailSrcLoop_out;
+
+    int64_t majorBurstLen_in;
+    int64_t tailBurstLen_in;
+    int64_t majorBurstLen_out;
+    int64_t tailBurstLen_out;
+
+    int64_t majorInEle;
+    int64_t tailInEle;
+    int64_t majorInTailEle;
+    int64_t tailInTailEle;
+
+    int64_t majorOutEle;
+    int64_t tailOutEle;
+    int64_t majorOutTailEle;
+    int64_t tailOutTailEle;
+
+    IndexInfo srcIndexIn[BORROW_SRC_AXIS_NUM];
+    IndexInfo srcIndexOut[BORROW_SRC_AXIS_NUM];
+    IndexInfo dstIndexIn[BORROW_DST_AXIS_NUM];
+    IndexInfo dstIndexOut[BORROW_DST_AXIS_NUM];
+    IndexInfo srcIndexInNoDup[BORROW_SRC_AXIS_NUM];
+    IndexInfo dstIndexInNoDup[BORROW_DST_AXIS_NUM];
+    IndexInfo srcIndexOutNoDup[BORROW_SRC_AXIS_NUM];
+    IndexInfo dstIndexOutNoDup[BORROW_DST_AXIS_NUM];
+    IndexInfo otherIndex[BORROW_OTHER_AXIS_NUM];
+
+    LRSB lrsb[UB_REORDER_COMBINATION][UB_REORDER_LOOP];
+
+    std::vector<int64_t> loopPerCore;
+    std::vector<BorrowAxisPerCore> srcAxis_in;
+    std::vector<BorrowAxisPerCore> dstAxis_in;
+    std::vector<OtherAxisPerCore> otherAxis_in;
+
+    int64_t srcJumpFactorLogic_in;
+    int64_t srcJumpFactorMod_in;
+    int64_t dstJumpFactorLogic_in;
+    int64_t dstJumpFactorMod_in;
+    int64_t dstStrideCopyIn[BORROW_DST_AXIS_NUM];
+    int64_t dstFactorCopyIn[BORROW_DST_AXIS_NUM];
+    int64_t srcFactorCopyOut[BORROW_SRC_AXIS_NUM];
+    int64_t srcStrideCopyOut[BORROW_SRC_AXIS_NUM];
+
+    int64_t otherJumpFactor_in[BORROW_OTHER_AXIS_NUM];
+    int64_t otherJumpStride_in[BORROW_OTHER_AXIS_NUM];
+    int64_t otherJumpFactorMod_in[BORROW_OTHER_AXIS_NUM];
+    int64_t otherInitTuple_in[BORROW_OTHER_AXIS_NUM];
+
+    int64_t srcJumpFactorMod_out;
+    int64_t dstJumpFactorMod_out;
+    int64_t dstJumpstride_out;
+
+    int64_t otherJumpFactor_out[BORROW_OTHER_AXIS_NUM];
+    int64_t otherJumpStride_out[BORROW_OTHER_AXIS_NUM];
+    int64_t otherJumpFactorMod_out[BORROW_OTHER_AXIS_NUM];
+    int64_t otherInitTuple_out[BORROW_OTHER_AXIS_NUM];
+
+    int64_t ubPermNum;
+    int64_t ubPermRaw[BORROW_MAX_AXIS_NUM];
+    int64_t ubPerm[BORROW_MAX_AXIS_NUM];
+
+    BorrowInfo() {
+        srcNum = 0;
+        dstNum = 0;
+        srcNumNoDup = 0;
+        dstNumNoDup = 0;
+        otherNum = 0;
+        srcVol = 1;
+        dstVol = 1;
+        dupAxis = 0;
+        supportvCopy = 0;
+        dstAxisPerm = 0x0;
+        srcAxisPerm = 0x0;
+        axisPerm = 0x0;
+
+        majorDstLoop_in = 1;
+        tailDstLoop_in = 1;
+        majorSrcLoop_out = 1;
+        tailSrcLoop_out = 1;
+        majorBurstLen_in = 1;
+        tailBurstLen_in = 1;
+        majorBurstLen_out = 1;
+        tailBurstLen_out = 1;
+        majorInEle = 0;
+        tailInEle = 0;
+        majorInTailEle = 0;
+        tailInTailEle = 0;
+        majorOutEle = 0;
+        tailOutEle = 0;
+        majorOutTailEle = 0;
+        tailOutTailEle = 0;
+        ubPermNum = 0;
+
+        srcJumpFactorLogic_in = 0;
+        srcJumpFactorMod_in = 0;
+        dstJumpFactorLogic_in = 0;
+        dstJumpFactorMod_in = 0;
+        srcJumpFactorMod_out = 0;
+        dstJumpFactorMod_out = 0;
+        dstJumpstride_out = 0;
+
+        for (int i = 0; i <BORROW_DST_AXIS_NUM; i++) {
+            dstFactorCopyIn[i] = 0;
+            dstStrideCopyIn[i] = 0;
+        }
+
+        for (int i = 0; i <BORROW_DST_AXIS_NUM; i++) {
+            srcFactorCopyOut[i] = 0;
+            srcStrideCopyOut[i] = 0;
+        }
+
+        for (int i = 0; i <BORROW_OTHER_AXIS_NUM; i++) {
+            otherJumpFactor_in[i] = 0;
+            otherJumpStride_in[i] = 0;
+            otherJumpFactorMod_in[i] = 1;
+            otherInitTuple_in[i] = 0;
+            otherJumpFactor_out[i] = 0;
+            otherJumpStride_out[i] = 0;
+            otherJumpFactorMod_out[i] = 1;
+            otherInitTuple_out[i] = 0;
+        }
+
+        for (int i = 0; i < BORROW_MAX_AXIS_NUM; i++) {
+            ubPerm[i] = 0;
+        }
+    }
 };
 
 struct RuntimeInfo {
@@ -428,6 +619,11 @@ struct RuntimeInfo {
      * scenario_3: last axis huge not transposed
      */
     LastAxisNTHugeInfo hugeInfo;
+
+    /*
+     * scenario_4: borrow axis scenario
+     */
+    BorrowInfo borrowInfo;
 
     /*
      *

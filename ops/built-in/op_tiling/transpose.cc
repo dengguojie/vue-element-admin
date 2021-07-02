@@ -33,6 +33,7 @@ using namespace std;
 namespace optiling {
 
 #define INVALID_SPLIT 999
+#define LOOP_FOR_UB_PADDING 10
 
 #define TRANSPOSE_CHECK_RET(res) \
     if (res == false) { \
@@ -47,25 +48,20 @@ static void PrintScreen(const string & logStr) {
         return;
     }
     if (pLevel[0] == '0' && pStdout[0] == '1') {
-        cout<<logStr<<endl;
+        cout << logStr << endl;
     }
 }
 
-// 1/16 usage of UB with vnchwconv
+static int64_t AlignX(int64_t a, int64_t x) {
+    if (a % x == 0) {
+        return a;
+    }
+    return a + x - a % x;
+}
+
+// 1/16 usage of UB with vnchwconv as b16
 static int64_t CalcVnchwconvPartialUbSize(int64_t coreNum, int64_t ubBlocks) {
-    int scalarBorrow = 8 * 1024; // unit: bytes
-    int vorBorrow = 128;// unit: bytes 
-    if (coreNum > 2 && ubBlocks == 8192) {
-        return 3952; // 910, UB : 256KB
-    }
-    else if (coreNum == 2 && ubBlocks == 7936) {
-        return 3696; // 310, UB : 248KB
-    }
-    else if (coreNum == 1 && ubBlocks == 6144) {
-        return 2832; // cs and es, UB : 192KB
-    } else {
-        return (ubBlocks * 32 - scalarBorrow - vorBorrow - TILING_FIXED_MAX_LEN) / 33 / 2 / 16 * 16;
-    }
+    return (ubBlocks * 32 - UB_RESERVED_KB * 1024) / 32 / 2;
 }
 
 // full usage of UB with vnchwconv
@@ -146,7 +142,23 @@ static string PadString(string &in, int width = 0) {
 template<typename T> static string to_string(T in, int width = 0) {
     string s = std::to_string(in);
     return PadString(s, width);
+}
 
+static string hex_perm_to_string(int64_t hexPerm, int width = 0) {
+    string s;
+    if (hexPerm == 0x10) {
+        s = "0x10";
+    }
+    if (hexPerm == 0x01) {
+        s = "0x01";
+    }
+    if (hexPerm == 0x00) {
+        s = "0x0";
+    }
+    if (hexPerm == 0x210) {
+        s = "0x210";
+    }
+    return PadString(s, width);
 }
 
 static string vec_to_string(const vector<int64_t> & v, int width = 0) {
@@ -277,6 +289,15 @@ static void BlockAlign(vector<int64_t> & vec) {
     }
 }
 
+static int64_t GetPermIndex(const vector<int64_t> & perm, int p) {
+    for (size_t i = 0; i < perm.size(); i++) {
+        if (perm[i] == p) {
+            return i;
+        }
+    }
+    return 0;
+}
+
 static bool IsStrideTooHuge(const ShapeInfo &shapeInfo, const RuntimeInfo &runtimeInfo) {
     return runtimeInfo.srcStrideLogic * shapeInfo.lastAxisBurstLen > STRIDE_BOUNDARY;
 }
@@ -341,12 +362,15 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
     }
 
     if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING(opType, "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
+        VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                        "inputs.size=%u, outputs.size=%u,",
+                                        paras.inputs.size(), paras.outputs.size());
         return false;
     } 
     if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING(opType, "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
-                                                                                  paras.outputs[0].tensor.size());
+        VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                        "inputs tensor size=%u, outputs tensor size=%u,",
+                                        paras.inputs[0].tensor.size(), paras.outputs[0].tensor.size());
         return false;
     }
     shapeInfo.inShape = paras.inputs[0].tensor[0].shape;
@@ -359,12 +383,15 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
     OP_LOGD(opType.c_str(), "Entering AddShapePerm.");
 
     if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING(opType, "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
+        VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                        "inputs.size=%u, outputs.size=%u,",
+                                        paras.inputs.size(), paras.outputs.size());
         return false;
     }
     if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING(opType, "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
-                                                                                  paras.outputs[0].tensor.size());
+        VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                        "inputs tensor size=%u, outputs tensor size=%u,",
+                                        paras.inputs[0].tensor.size(), paras.outputs[0].tensor.size());
         return false;
     }
     shapeInfo.inShape = paras.inputs[0].tensor[0].shape;
@@ -374,12 +401,15 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
     if (opType == "DepthToSpace") {
         // check input and block
         if (shapeInfo.inShape.size() != 4) {
-            VECTOR_INNER_ERR_REPORT_TILIING(opType, "The length of input shape must be 4, but got %u.", shapeInfo.inShape.size());
+            VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                            "The length of input shape must be 4, but got %u.",
+                                            shapeInfo.inShape.size());
             return false;
         }
         if (shapeInfo.inShape[3] % (info.blockSize * info.blockSize) != 0) {
-            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Depth size must be divisible by block size, but got depth[%u], block[%u].",
-                    shapeInfo.inShape[3], info.blockSize);
+            VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                           "Depth size must be divisible by block size, but got depth[%u], block[%u].",
+                                           shapeInfo.inShape[3], info.blockSize);
             return false;
         }
         // calc input and output shape and perm
@@ -406,17 +436,21 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
     if (opType == "SpaceToDepth") {
         // check input and block
         if (shapeInfo.inShape.size() != 4) {
-            VECTOR_INNER_ERR_REPORT_TILIING(opType, "The length of input shape must be 4, but got %u,", shapeInfo.inShape.size());
+            VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                            "The length of input shape must be 4, but got %u,",
+                                            shapeInfo.inShape.size());
             return false;
         }
         if (shapeInfo.inShape[1] % info.blockSize != 0) {
-            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Height size must be divisible by block size, but got height[%u], block[%u].",
-                    shapeInfo.inShape[1], info.blockSize);
+            VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                        "Height size must be divisible by block size, but got height[%u], block[%u].",
+                                        shapeInfo.inShape[1], info.blockSize);
             return false;
         }
         if (shapeInfo.inShape[2] % info.blockSize != 0) {
-            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Width size must be divisible by block size, but got width[%u], block[%u].",
-                    shapeInfo.inShape[2], info.blockSize);
+            VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                       "Width size must be divisible by block size, but got width[%u], block[%u].",
+                                       shapeInfo.inShape[2], info.blockSize);
             return false;
         }
         // calc input and output shape and perm
@@ -457,8 +491,9 @@ static bool CheckTensorShape(const string & opType,
     int64_t permDims = shapeInfo.perm.size();
 
     if (inDims < 1 || inDims != outDims || inDims != permDims) {
-        VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim of inputs is invalid, inDims = %ld, outDims = %ld, permDims = %ld",
-                                inDims, outDims, permDims);
+        VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                        "The dim of inputs is invalid, inDims = %ld, outDims = %ld, permDims = %ld",
+                                        inDims, outDims, permDims);
         return false;
     }
 
@@ -471,7 +506,9 @@ static bool CheckTensorShape(const string & opType,
 
     for (int64_t i = 0; i < inDims; i++) {
         if (shapeInfo.inShape[i] <= 0 || shapeInfo.outShape[i] <= 0) {
-            VECTOR_INNER_ERR_REPORT_TILIING(opType, "Invalid shape, %ld, %ld, %ld", i, shapeInfo.inShape[i], shapeInfo.outShape[i]);
+            VECTOR_INNER_ERR_REPORT_TILIING(opType,
+                                            "Invalid shape, %ld, %ld, %ld",
+                                            i, shapeInfo.inShape[i], shapeInfo.outShape[i]);
             return false;
         }
     }
@@ -567,7 +604,7 @@ static bool IsAllOne(const ShapeInfo& shapeInfo) {
  *
  *     inShape              perm                    reducedInShape       reducedPerm
  *     ---------------------------------------------------------------------------------
- *     Shape(4,1,6,1)       perm(0,1,2,3)	        Shape(4,6)           perm(0,1)
+ *     Shape(4,1,6,1)       perm(0,1,2,3)           Shape(4,6)           perm(0,1)
  */
 void RemoveAxis(ShapeInfo & shapeInfo) {
     int64_t dim = shapeInfo.inShape.size();
@@ -689,32 +726,10 @@ void UpdateCoreNum(CompilerInfo &compilerInfo, ShapeInfo &shapeInfo) {
     }
 }
 
-/*
- *     inShape              perm                    reducedInShape     reducedOutShape    reducedPerm
- *     --------------------------------------------------------------------------------------------------
- *     Shape(4,5,6,7)       perm(1,0,2,3)	        Shape(4,5,42)      Shape(5,4,42)      perm(1,0,2)
- *     Shape(2,3,4,5)       perm(0,2,3,1)	        Shape(2,3,20)      Shape(2,20,3)      perm(0,2,1)
- *     Shape(2,3,4,5,6)     perm(0,4,1,2,3)         Shape(2,60,6)      Shape(2,6,60)      perm(0,2,1)
- *     Shape(2,3,4,5,6)     perm(2,3,4,0,1)         Shape(6,120)       Shape(120,6)       perm(1,0)
- *
- *     If last axis join transpose, the implementation now is add a axis with value 1.
- */
-void ReduceAxis(const string & opType,
-                CompilerInfo & compilerInfo,
-                ShapeInfo & shapeInfo) {
-    OP_LOGD(opType.c_str(), "Entering ReduceAxis.");
-
-    SetElePerBlock(compilerInfo, shapeInfo);
-
-    RemoveAxis(shapeInfo);
-
-    MergeAxis(shapeInfo);
-
-    shapeInfo.totalVolumeLogic = CalcTotalVolumeLogic(shapeInfo.reducedInShape);
-    shapeInfo.totalVolumeActual = CalcTotalVolumeActual(shapeInfo.reducedInShape);
-    shapeInfo.dim = shapeInfo.reducedInShape.size();
-
-    CalcReducePermGrad(shapeInfo.reducedPerm, shapeInfo.reducedPermGrad);
+static void SetScenario(const string & opType,
+                        CompilerInfo & compilerInfo,
+                        ShapeInfo & shapeInfo) {
+    OP_LOGD(opType.c_str(), "Entering SetScenario.");
 
     if(IsIdentical(shapeInfo)) {
         shapeInfo.identical = 1;
@@ -741,14 +756,17 @@ void ReduceAxis(const string & opType,
         else if (shapeInfo.lastAxisLen % shapeInfo.elePerBlock == 0) {
             if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes >= LAST_AXIS_BLOCK_ALIGN_LARGE_THRESHOLD) {
                 shapeInfo.scenario = SCENARIO_1;
-            } else {
+            }
+            else if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes > LAST_AXIS_BLOCK_ALIGN_N_BORROW_THRESHOLD) {
                 shapeInfo.scenario = SCENARIO_2;
+            } else {
+                shapeInfo.scenario = SCENARIO_4;
             }
         } else {
             if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes > LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD) {
                 shapeInfo.scenario = SCENARIO_1;
             } else {
-                shapeInfo.scenario = SCENARIO_2;
+                shapeInfo.scenario = SCENARIO_4;
             }
 
         }
@@ -763,6 +781,33 @@ void ReduceAxis(const string & opType,
         shapeInfo.isLastAxisHuge = true;
     }
 
+    return;
+}
+
+/*
+ *     inShape              perm                    reducedInShape     reducedOutShape    reducedPerm
+ *     --------------------------------------------------------------------------------------------------
+ *     Shape(4,5,6,7)       perm(1,0,2,3)           Shape(4,5,42)      Shape(5,4,42)      perm(1,0,2)
+ *     Shape(2,3,4,5)       perm(0,2,3,1)           Shape(2,3,20)      Shape(2,20,3)      perm(0,2,1)
+ *     Shape(2,3,4,5,6)     perm(0,4,1,2,3)         Shape(2,60,6)      Shape(2,6,60)      perm(0,2,1)
+ *     Shape(2,3,4,5,6)     perm(2,3,4,0,1)         Shape(6,120)       Shape(120,6)       perm(1,0)
+ *
+ *     If last axis join transpose, the implementation now is add a axis with value 1.
+ */
+void ReduceAxis(const string & opType,
+                CompilerInfo & compilerInfo,
+                ShapeInfo & shapeInfo) {
+    OP_LOGD(opType.c_str(), "Entering ReduceAxis.");
+
+    SetElePerBlock(compilerInfo, shapeInfo);
+    RemoveAxis(shapeInfo);
+    MergeAxis(shapeInfo);
+
+    shapeInfo.totalVolumeLogic = CalcTotalVolumeLogic(shapeInfo.reducedInShape);
+    shapeInfo.totalVolumeActual = CalcTotalVolumeActual(shapeInfo.reducedInShape);
+    shapeInfo.dim = shapeInfo.reducedInShape.size();
+
+    SetScenario(opType, compilerInfo, shapeInfo);
     return;
 }
 
@@ -783,65 +828,18 @@ static void CalcUbReorderFactor(const CompilerInfo & compilerInfo,
     return;
 }
 
-/*
- *  For float32:
- *   alignElement   gcd   cycleNum
- *   0              NA    NA
- *   1              1     8
- *   2              2     4
- *   3              1     8
- *   4              4     2
- *   5              1     8
- *   6              2     4
- *   7              1     8
- */
-static void CalcWorkspaceParams(const CompilerInfo & compilerInfo,
-                                const ShapeInfo & shapeInfo,
-                                RuntimeInfo & runtimeInfo) {
-    if (shapeInfo.scenario == SCENARIO_6) {
-        return;
-    }
-
-    int64_t totalVolLogic = shapeInfo.totalVolumeLogic;
-    int64_t gcd = GCD(shapeInfo.alignElement, shapeInfo.elePerBlock);
-    int64_t cycleNum = shapeInfo.elePerBlock / gcd;
-    int64_t v1Num = 0;
-    int64_t v2Num = 0;
-    int64_t v1 = 0;
-    int64_t v2 = 0;
-    SplitEvenly(compilerInfo.coreNum, totalVolLogic, v1Num, v2Num, v1, v2);
-    for (int64_t i = 0; i < v1Num ; i++) {
-        InfoPerCoreLastAxisNT & infoPerCore = runtimeInfo.infoPerCoreLastAxisNT[i];
-        WorkspaceInfo & wspi = infoPerCore.workspaceInfo;
-        wspi.repeat1 = UB_CAP_BLOCKS / (shapeInfo.lastAxisBurstLen * cycleNum);
-        wspi.loop = v1 / (wspi.repeat1 * cycleNum);
-        wspi.repeat2 = (v1 - wspi.loop * wspi.repeat1 * cycleNum) / cycleNum;
-        wspi.repeat3 = v1 - wspi.loop * wspi.repeat1 * cycleNum - wspi.repeat2 * cycleNum;
-    }
-    for (int64_t i = 0; i < v2Num ; i++) {
-        InfoPerCoreLastAxisNT & infoPerCore = runtimeInfo.infoPerCoreLastAxisNT[i];
-        WorkspaceInfo & wspi = infoPerCore.workspaceInfo;
-        wspi.repeat1 = UB_CAP_BLOCKS / (shapeInfo.lastAxisBurstLen * cycleNum);
-        wspi.loop = v2 / (wspi.repeat1 * cycleNum);
-        wspi.repeat2 = (v2 - wspi.loop * wspi.repeat1 * cycleNum) / cycleNum;
-        wspi.repeat3 = v2 - wspi.loop * wspi.repeat1 * cycleNum - wspi.repeat2 * cycleNum;
-    }
-    runtimeInfo.cycleNumWorkspace = cycleNum;
-    runtimeInfo.workspaceSizeInBytes = shapeInfo.totalVolumeLogic * shapeInfo.lastAxisBurstLen * BYTES_PER_BLOCK;
-}
-
 static void PrintShapeInfo(const ShapeInfo &shapeInfo, string & logStr) {
-    logStr += "\nscenario  in                  out                 perm        reducedIn           reducedOut        ";
-    logStr += "  reducedPerm  dim  lastAxisLen  lastAxisBurstLen  alignElement\n";
+    logStr += "\nscenario  in                  out                 perm            reducedIn           reducedOut     ";
+    logStr += "     reducedPerm     dim  lastAxisLen  lastAxisBurstLen  alignElement\n";
     logStr += "------------------------------------------------------------------------------------------------------";
     logStr += "-----------------------------------------------------------------\n";
     logStr += to_string(shapeInfo.scenario, 10);
     logStr += vec_to_string(shapeInfo.inShape, 20);
     logStr += vec_to_string(shapeInfo.outShape, 20);
-    logStr += vec_to_string(shapeInfo.perm, 12);
+    logStr += vec_to_string(shapeInfo.perm, 16);
     logStr += vec_to_string(shapeInfo.reducedInShape, 20);
     logStr += vec_to_string(shapeInfo.reducedOutShape, 20);
-    logStr += vec_to_string(shapeInfo.reducedPerm, 13);
+    logStr += vec_to_string(shapeInfo.reducedPerm, 16);
     logStr += to_string(shapeInfo.dim, 5);
     logStr += to_string(shapeInfo.lastAxisLen, 13);
     logStr += to_string(shapeInfo.lastAxisBurstLen, 18);
@@ -993,6 +991,256 @@ static string PrintTilingInfoScenario3(const CompilerInfo & compilerInfo,
     return logStr;
 }
 
+static string PrintTilingInfoScenario4(const CompilerInfo & compilerInfo,
+                                       const ShapeInfo & shapeInfo,
+                                       const RuntimeInfo & runtimeInfo) {
+    string logStr;
+    const BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    PrintShapeInfo(shapeInfo, logStr);
+    PrintCompilerInfo(compilerInfo, logStr);
+
+    logStr += "srcNum dstNum dupAxis srcVol dstVol srcIndexIn.i dstIndexIn.i srcIndexIn.o dstIndexIn.o ";
+    logStr += "otherIndex.i srcIndexInNoDup.i dstIndexInNoDup.i srcIndexInNoDup.o dstIndexInNoDup.o\n";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "----------------------------------------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.srcNum, 7);
+    logStr += to_string(borrowInfo.dstNum, 7);
+    logStr += to_string(borrowInfo.dupAxis, 8);
+    logStr += to_string(borrowInfo.srcVol, 7);
+    logStr += to_string(borrowInfo.dstVol, 7);
+    int64_t arr[TRANSPOSE_MAX_AXIS_NUM];
+    for (int64_t i = 0; i < borrowInfo.srcNum; i++) {
+        arr[i] = borrowInfo.srcIndexIn[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.srcNum, 13);
+    
+    for (int64_t i = 0; i < borrowInfo.dstNum; i++) {
+        arr[i] = borrowInfo.dstIndexIn[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.dstNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.srcNum; i++) {
+        arr[i] = borrowInfo.srcIndexIn[i].idx_out;
+    }
+    logStr += arr_to_string(arr, borrowInfo.srcNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.dstNum; i++) {
+        arr[i] = borrowInfo.dstIndexIn[i].idx_out;
+    }
+    logStr += arr_to_string(arr, borrowInfo.dstNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.otherNum; i++) {
+        arr[i] = borrowInfo.otherIndex[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.otherNum, 13);
+
+    for (int64_t i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        arr[i] = borrowInfo.srcIndexInNoDup[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.srcNumNoDup, 18);
+
+    for (int64_t i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        arr[i] = borrowInfo.dstIndexInNoDup[i].idx_in;
+    }
+    logStr += arr_to_string(arr, borrowInfo.dstNumNoDup, 18);
+
+    for (int64_t i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        arr[i] = borrowInfo.srcIndexInNoDup[i].idx_out;
+    }
+    logStr += arr_to_string(arr, borrowInfo.srcNumNoDup, 18);
+
+    for (int64_t i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        arr[i] = borrowInfo.dstIndexInNoDup[i].idx_out;
+    }
+    logStr += arr_to_string(arr, borrowInfo.dstNumNoDup, 16);
+
+    logStr += "\n\n";
+    logStr += "srcTail dstTail ubPermRaw    ubPerm      srcAxisPerm dstAxisPerm axisPerm\n";
+    logStr += "------------------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.srcIndexIn[0].tail, 8);
+    logStr += to_string(borrowInfo.dstIndexOut[borrowInfo.dstNum - 1].tail, 8);
+    logStr += arr_to_string(borrowInfo.ubPermRaw, borrowInfo.ubPermNum, 13);
+    logStr += arr_to_string(borrowInfo.ubPerm, borrowInfo.ubPermNum, 12);
+    logStr += hex_perm_to_string(borrowInfo.srcAxisPerm, 12);
+    logStr += hex_perm_to_string(borrowInfo.dstAxisPerm, 12);
+    logStr += hex_perm_to_string(borrowInfo.axisPerm, 12);
+    logStr += "\n\n";
+
+    logStr += "majorDstLoop_in tailDstLoop_in majorSrcLoop_out tailSrcLoop_out majorBurstLen_in ";
+    logStr += "tailBurstLen_in majorBurstLen_out tailBurstLen_out\n";
+    logStr += "--------------------------------------------------------------------------------";
+    logStr += "---------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.majorDstLoop_in, 16);
+    logStr += to_string(borrowInfo.tailDstLoop_in, 15);
+    logStr += to_string(borrowInfo.majorSrcLoop_out, 17);
+    logStr += to_string(borrowInfo.tailSrcLoop_out, 16);
+    logStr += to_string(borrowInfo.majorBurstLen_in, 17);
+    logStr += to_string(borrowInfo.tailBurstLen_in, 16);
+    logStr += to_string(borrowInfo.majorBurstLen_out, 18);
+    logStr += to_string(borrowInfo.tailBurstLen_out, 17);
+    logStr += "\n\n";
+    logStr += "majorInEle tailInEle majorInTailEle tailInTailEle ";
+    logStr += "majorOutEle tailOutEle majorOutTailEle tailOutTailEle\n";
+    logStr += "--------------------------------------------------------------------------------";
+    logStr += "---------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.majorInEle, 11);
+    logStr += to_string(borrowInfo.tailInEle, 10);
+    logStr += to_string(borrowInfo.majorInTailEle, 15);
+    logStr += to_string(borrowInfo.tailInTailEle, 14);
+    logStr += to_string(borrowInfo.majorOutEle, 12);
+    logStr += to_string(borrowInfo.tailOutEle, 11);
+    logStr += to_string(borrowInfo.majorOutTailEle, 16);
+    logStr += to_string(borrowInfo.tailOutTailEle, 15);
+    logStr += "\n\n";
+    logStr += "loop1 repeat1 srcStride1 dstStride1 burstLen1 srcOffset1 dstOffset1 ";
+    logStr += "loop2 repeat2 srcStride2 dstStride2 burstLen2 srcOffset2 dstOffset2 ";
+    logStr += "loop3 repeat3 srcStride3 dstStride3 burstLen3 srcOffset3 dstOffset3 \n";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "----------------------------------------------------------------------------------------------------\n";
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        const LRSB* lrsb = borrowInfo.lrsb[i];
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            logStr += to_string(lrsb[j].loop, 6);
+            logStr += to_string(lrsb[j].repeat, 8);
+            logStr += to_string(lrsb[j].srcStride, 11);
+            logStr += to_string(lrsb[j].dstStride, 11);
+            logStr += to_string(lrsb[j].burstLen, 10);
+            logStr += to_string(lrsb[j].srcOffset, 11);
+            logStr += to_string(lrsb[j].dstOffset, 11);
+        }
+        logStr += "\n";
+    }
+    logStr += "\n";
+
+    logStr += "srcJumpFactorLogic_in dstJumpFactorLogic_in srcStep dstStep dstFactorCopyIn dstStrideCopyIn      ";
+    logStr += "srcFactorCopyOut srcStrideCopyOut      srcJumpFactorMod_in dstJumpFactorMod_in\n";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "-----------------------------------------------------------------------------------\n";
+    logStr += to_string(borrowInfo.srcJumpFactorLogic_in, 22);
+    logStr += to_string(borrowInfo.dstJumpFactorLogic_in, 22);
+    logStr += to_string(borrowInfo.srcIndexIn[0].step, 8);
+    logStr += to_string(borrowInfo.dstIndexOut[borrowInfo.dstNum - 1].step, 8);
+    logStr += arr_to_string(borrowInfo.dstFactorCopyIn, borrowInfo.dstNumNoDup, 16);
+    logStr += arr_to_string(borrowInfo.dstStrideCopyIn, borrowInfo.dstNumNoDup, 21);
+    logStr += arr_to_string(borrowInfo.srcFactorCopyOut, borrowInfo.srcNumNoDup, 17);
+    logStr += arr_to_string(borrowInfo.srcStrideCopyOut, borrowInfo.srcNumNoDup, 22);
+    logStr += to_string(borrowInfo.srcJumpFactorMod_in, 20);
+    logStr += to_string(borrowInfo.dstJumpFactorMod_in, 20);
+    logStr += "\n\n";
+
+    logStr += "flag      idxIn idxOut loop    step    tail    intact \n";
+    logStr += "-------------------------------------------------------------------------------------------\n";
+    for(int i = 0; i < borrowInfo.srcNum; i++) {
+        logStr += "src       ";
+        logStr += to_string(borrowInfo.srcIndexIn[i].idx_in, 6);
+        logStr += to_string(borrowInfo.srcIndexIn[i].idx_out,7);
+        logStr += to_string(borrowInfo.srcIndexIn[i].loop, 8);
+        logStr += to_string(borrowInfo.srcIndexIn[i].step, 8);
+        logStr += to_string(borrowInfo.srcIndexIn[i].tail, 8);
+        logStr += to_string(borrowInfo.srcIndexIn[i].intact, 7);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.dstNum; i++) {
+        logStr += "dst       ";
+        logStr += to_string(borrowInfo.dstIndexIn[i].idx_in, 6);
+        logStr += to_string(borrowInfo.dstIndexIn[i].idx_out,7);
+        logStr += to_string(borrowInfo.dstIndexIn[i].loop, 8);
+        logStr += to_string(borrowInfo.dstIndexIn[i].step, 8);
+        logStr += to_string(borrowInfo.dstIndexIn[i].tail, 8);
+        logStr += to_string(borrowInfo.dstIndexIn[i].intact, 7);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        logStr += "srcNoDup  ";
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].idx_in, 6);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].idx_out,7);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].loop, 8);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].step, 8);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].tail, 8);
+        logStr += to_string(borrowInfo.srcIndexInNoDup[i].intact, 7);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        logStr += "dstNoDup  ";
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].idx_in, 6);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].idx_out,7);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].loop, 8);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].step, 8);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].tail, 8);
+        logStr += to_string(borrowInfo.dstIndexInNoDup[i].intact, 7);
+        logStr += "\n";
+    }
+    logStr += "\n";
+
+    logStr += "flag      idxIn idxOut loop    step    tail    intact \n";
+    logStr += "-------------------------------------------------------------------------------------------\n";
+    for(int i = 0; i < borrowInfo.srcNum; i++) {
+        logStr += "src       ";
+        logStr += to_string(borrowInfo.srcIndexOut[i].idx_in, 6);
+        logStr += to_string(borrowInfo.srcIndexOut[i].idx_out,7);
+        logStr += to_string(borrowInfo.srcIndexOut[i].loop, 8);
+        logStr += to_string(borrowInfo.srcIndexOut[i].step, 8);
+        logStr += to_string(borrowInfo.srcIndexOut[i].tail, 8);
+        logStr += to_string(borrowInfo.srcIndexOut[i].intact, 7);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.dstNum; i++) {
+        logStr += "dst       ";
+        logStr += to_string(borrowInfo.dstIndexOut[i].idx_in, 6);
+        logStr += to_string(borrowInfo.dstIndexOut[i].idx_out,7);
+        logStr += to_string(borrowInfo.dstIndexOut[i].loop, 8);
+        logStr += to_string(borrowInfo.dstIndexOut[i].step, 8);
+        logStr += to_string(borrowInfo.dstIndexOut[i].tail, 8);
+        logStr += to_string(borrowInfo.dstIndexOut[i].intact, 7);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        logStr += "srcNoDup  ";
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].idx_in, 6);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].idx_out,7);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].loop, 8);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].step, 8);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].tail, 8);
+        logStr += to_string(borrowInfo.srcIndexOutNoDup[i].intact, 7);
+        logStr += "\n";
+    }
+    for(int i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        logStr += "dstNoDup  ";
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].idx_in, 6);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].idx_out,7);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].loop, 8);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].step, 8);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].tail, 8);
+        logStr += to_string(borrowInfo.dstIndexOutNoDup[i].intact, 7);
+        logStr += "\n";
+    }
+    logStr += "\n";
+
+    logStr += "otherJumpFactor_in otherJumpStride_in otherJumpStride_out otherJumpFactorMod_in\n";
+    logStr += "----------------------------------------------------------------------------------------------------\n";
+    logStr += arr_to_string(borrowInfo.otherJumpFactor_in, borrowInfo.otherNum, 19);
+    logStr += arr_to_string(borrowInfo.otherJumpStride_in, borrowInfo.otherNum, 19);
+    logStr += arr_to_string(borrowInfo.otherJumpStride_out, borrowInfo.otherNum, 20);
+    logStr += arr_to_string(borrowInfo.otherJumpFactorMod_in, borrowInfo.otherNum, 22);
+    logStr += "\n\n";
+
+    logStr += "core_id loopPerCore srcTupleLogic dstTupleLogic otherTuple    srcTuple       dstTuple       \n";
+    logStr += "-------------------------------------------------------------------------------------------\n";
+    for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
+        logStr += to_string(i, 8);
+        logStr += to_string(borrowInfo.loopPerCore[i], 12);
+        logStr += to_string(borrowInfo.srcAxis_in[i].initTupleLogic, 14);
+        logStr += to_string(borrowInfo.dstAxis_in[i].initTupleLogic, 14);
+        logStr += arr_to_string(borrowInfo.otherAxis_in[i].initTuple, borrowInfo.otherNum, 14);
+        logStr += arr_to_string(borrowInfo.srcAxis_in[i].initTuple, borrowInfo.srcNumNoDup, 15);
+        logStr += arr_to_string(borrowInfo.dstAxis_in[i].initTuple, borrowInfo.dstNumNoDup, 15);
+        logStr += "\n";
+    }
+    logStr += "\n\n";
+    PrintScreen(logStr);
+    return logStr;
+}
+
 static string PrintTilingInfoScenario6(const CompilerInfo & compilerInfo,
                                        const ShapeInfo & shapeInfo,
                                        const RuntimeInfo & runtimeInfo) {
@@ -1101,7 +1349,7 @@ static void CalcTuple(const CompilerInfo &compilerInfo, const ShapeInfo &shapeIn
             infoPerCore.initTuple[j] = (vol / runtimeInfo.dstJumpFactorMod[j]) % shapeInfo.reducedOutShape[j];
         }
         ReverseArray(infoPerCore.initTuple, dim - 1); //since in ops, left tuple change faster than right
-        runtimeInfo.infoPerCoreLastAxisNT.push_back(infoPerCore);
+        runtimeInfo.infoPerCoreLastAxisNT.emplace_back(infoPerCore);
         vol += v1;
     }
     for (int64_t i = 0; i < v2Num; i++) {
@@ -1111,13 +1359,13 @@ static void CalcTuple(const CompilerInfo &compilerInfo, const ShapeInfo &shapeIn
             infoPerCore.initTuple[j] = (vol / runtimeInfo.dstJumpFactorMod[j]) % shapeInfo.reducedOutShape[j];
         }
         ReverseArray(infoPerCore.initTuple, dim - 1); //since in ops, left tuple change faster than right
-        runtimeInfo.infoPerCoreLastAxisNT.push_back(infoPerCore);
+        runtimeInfo.infoPerCoreLastAxisNT.emplace_back(infoPerCore);
         vol += v2;
     }
     for(int64_t i = v1Num + v2Num; i < compilerInfo.coreNum; i++) {
         //compilerInfo.usedCoreNum != 0, and gt compilerInfo.coreNum
         InfoPerCoreLastAxisNT infoPerCore;
-        runtimeInfo.infoPerCoreLastAxisNT.push_back(infoPerCore);
+        runtimeInfo.infoPerCoreLastAxisNT.emplace_back(infoPerCore);
     }
     ReverseArray(runtimeInfo.dstJumpFactorMod, dim - 1);
 }
@@ -1126,7 +1374,7 @@ static void CalcHugeInfo(const ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
     runtimeInfo.hugeInfo.majorBlocks =  HUGE_BLOCKS_UNIT;
     runtimeInfo.hugeInfo.majorLoopNum = shapeInfo.lastAxisBurstLen / HUGE_BLOCKS_UNIT;
     runtimeInfo.hugeInfo.tailBlocks = shapeInfo.lastAxisBurstLen - runtimeInfo.hugeInfo.majorLoopNum * HUGE_BLOCKS_UNIT;
-    runtimeInfo.hugeInfo.backEle = shapeInfo.alignElement; 
+    runtimeInfo.hugeInfo.backEle = shapeInfo.alignElement;
 }
 
 static void CalcLoopInfo(int64_t &majorLoop, int64_t &majorNum, int64_t &tailNum,
@@ -1238,7 +1486,13 @@ bool TilingDataScenario0(const CompilerInfo & compilerInfo,
     int64_t base = 0;
     int64_t blocks = 0;
 
-    SplitEvenly(compilerInfo.coreNum, shapeInfo.totalVolumeActual, p1Num, p2Num, perCoreSize1, perCoreSize2, shapeInfo.elePerBlock);
+    SplitEvenly(compilerInfo.coreNum,
+                shapeInfo.totalVolumeActual,
+                p1Num,
+                p2Num,
+                perCoreSize1,
+                perCoreSize2,
+                shapeInfo.elePerBlock);
 
     vector<IdenticalInfo> & identicalInfo = runtimeInfo.infoPerCoreIdentical;
     identicalInfo.resize(compilerInfo.coreNum);
@@ -1316,7 +1570,6 @@ bool TilingDataScenario2(const CompilerInfo & compilerInfo,
     TilingDataScenario1(compilerInfo, shapeInfo, runtimeInfo);
     CalcBackNum(shapeInfo, runtimeInfo);
     CalcLoopInfo(compilerInfo, shapeInfo, runtimeInfo);
-    CalcWorkspaceParams(compilerInfo, shapeInfo, runtimeInfo);
     return true;
 }
 
@@ -1353,9 +1606,957 @@ bool TilingDataScenario3(const CompilerInfo & compilerInfo,
     return true;
 }
 
-bool TilingDataScenario6(const CompilerInfo & compilerInfo,
-                         const ShapeInfo & shapeInfo,
-                         RuntimeInfo & runtimeInfo) {
+static void CalcStrideS4(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    int64_t srcIdx = borrowInfo.srcIndexIn[0].idx_in;
+
+    for (int i = borrowInfo.dstNumNoDup - 1, j = 0; i >= 0; i--) {
+        int64_t idx = borrowInfo.dstIndexInNoDup[i].idx_in;
+        borrowInfo.dstStrideCopyIn[j++] = CalcStride(shapeInfo.reducedInShape, shapeInfo.dim, idx);
+    }
+
+    for (int i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        int64_t idx = borrowInfo.srcIndexOutNoDup[i].idx_out;
+        borrowInfo.srcStrideCopyOut[i] = CalcStride(shapeInfo.reducedOutShape, shapeInfo.dim, idx);
+    }
+
+    for (int i = 0; i < borrowInfo.otherNum; i++) {
+        borrowInfo.otherJumpStride_in[i] = CalcStride(shapeInfo.reducedInShape,
+                                                      shapeInfo.dim,
+                                                      borrowInfo.otherIndex[i].idx_in);
+    }
+    for (int i = 0; i < borrowInfo.otherNum; i++) {
+        borrowInfo.otherJumpStride_out[i] = CalcStride(shapeInfo.reducedOutShape,
+                                                       shapeInfo.dim,
+                                                       borrowInfo.otherIndex[i].idx_out);
+    }
+}
+
+static void CalcSrcDstPerm(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    if (bi.srcNum == 2) {
+        if (bi.srcIndexIn[0].idx_out > bi.srcIndexIn[1].idx_out) {
+            bi.srcAxisPerm = 0x10;
+        } else {
+            bi.srcAxisPerm = 0x01;
+        }
+    }
+    if (bi.dstNum == 2) {
+        if (bi.dstIndexIn[0].idx_out > bi.dstIndexIn[1].idx_out) {
+            bi.dstAxisPerm = 0x10;
+        } else {
+            bi.dstAxisPerm = 0x01;
+        }
+    }
+}
+
+static void SplitCore(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    int64_t sum = 1;
+    int64_t coreNum = compilerInfo.coreNum;
+    BorrowInfo & bi = runtimeInfo.borrowInfo;
+
+    for (int64_t i = 0; i < bi.srcNum; i++) {
+        sum *= bi.srcIndexIn[i].loop;
+    }
+    for (int64_t i = 0; i < bi.dstNum; i++) {
+        if (bi.dstIndexIn[i].dup == 0) {
+            sum *= bi.dstIndexIn[i].loop;
+        } else {
+            bi.dupAxis++;
+        }
+    }
+    for (int64_t i = 0; i < bi.otherNum; i++) {
+        sum *= bi.otherIndex[i].loop;
+    }
+
+    int64_t base = 0;
+    int64_t stride1 = 0;
+    int64_t stride2 = 0;
+    int64_t s1Num = 0;
+    int64_t s2Num = 0;
+
+    SplitEvenly(coreNum, sum, s1Num, s2Num, stride1, stride2);
+
+    int srcFactor = bi.srcIndexIn[0].loop;
+    int dstFactor = 1;
+    if (bi.dstNumNoDup > 0) {
+        dstFactor = bi.dstIndexOutNoDup[bi.dstNumNoDup - 1].loop;
+    }
+
+    bi.srcJumpFactorLogic_in = srcFactor;
+    bi.dstJumpFactorLogic_in = dstFactor;
+
+    for (int64_t i = bi.dstNumNoDup - 1, j = 0; i >= 0; i--) {
+        int64_t idx = bi.dstIndexInNoDup[i].idx_in;
+        bi.dstFactorCopyIn[j++] = shapeInfo.reducedInShape[idx];
+    }
+
+    for (int64_t i = 0; i < bi.srcNumNoDup; i++) {
+        int64_t idx = bi.srcIndexOutNoDup[i].idx_out;
+        bi.srcFactorCopyOut[i] = shapeInfo.reducedOutShape[idx];
+    }
+
+    for (int i = 0; i < bi.otherNum; i++) {
+        bi.otherJumpFactor_in[i] = shapeInfo.reducedInShape[bi.otherIndex[i].idx_in];
+    }
+
+    bi.srcJumpFactorMod_in  = 1;
+    bi.dstJumpFactorMod_in  = srcFactor;
+    bi.otherJumpFactorMod_in[0] = srcFactor * dstFactor;
+
+    for (int64_t i = 1; i < bi.otherNum; i++) {
+        bi.otherJumpFactorMod_in[i] *= bi.otherJumpFactorMod_in[i - 1] * bi.otherJumpFactor_in[i - 1];
+    }
+
+    bi.loopPerCore.resize(compilerInfo.coreNum, 0);
+    bi.srcAxis_in.resize(compilerInfo.coreNum);
+    bi.dstAxis_in.resize(compilerInfo.coreNum);
+    bi.otherAxis_in.resize(compilerInfo.coreNum);
+
+    for (int64_t i = 0; i < s1Num; i++) {
+        bi.loopPerCore[i] = stride1;
+        bi.srcAxis_in[i].initTupleLogic = base % srcFactor;
+        bi.dstAxis_in[i].initTupleLogic = base / srcFactor % dstFactor;
+        bi.srcAxis_in[i].initTuple[0] =  (base % srcFactor) * bi.srcIndexIn[0].step;
+        bi.dstAxis_in[i].initTuple[0] =  (base / srcFactor % dstFactor) * bi.dstIndexOut[bi.dstNum - 1].step;
+
+        for (int j = 0; j < bi.otherNum; j++) {
+            bi.otherAxis_in[i].initTuple[j] = base / bi.otherJumpFactorMod_in[j] % bi.otherJumpFactor_in[j];
+        }
+        base += stride1;
+    }
+    for (int64_t i = s1Num; i < s1Num + s2Num; i++) {
+        bi.loopPerCore[i] = stride2;
+        bi.srcAxis_in[i].initTupleLogic = base % srcFactor;
+        bi.dstAxis_in[i].initTupleLogic = base / srcFactor % dstFactor;
+        bi.srcAxis_in[i].initTuple[0] =  (base % srcFactor) * bi.srcIndexIn[0].step;
+        bi.dstAxis_in[i].initTuple[0] =  (base / srcFactor % dstFactor) * bi.dstIndexOut[bi.dstNum - 1].step;
+
+        for (int j = 0; j < bi.otherNum; j++) {
+            bi.otherAxis_in[i].initTuple[j] = base / bi.otherJumpFactorMod_in[j] % bi.otherJumpFactor_in[j];
+        }
+        base += stride2;
+    }
+}
+
+static void UpdateIndexInfo(IndexInfo& info, int64_t step, int64_t axisVol) {
+    if (step > axisVol) {
+        step = axisVol;
+    }
+    info.step = step;
+    info.loop = axisVol / step;
+    info.tail =  axisVol % step;
+    info.dup = 1;
+}
+
+static void MergeDupAxis(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    for (int64_t i = 0; i < borrowInfo.srcNum; i++) {
+        int64_t p = borrowInfo.srcIndexIn[i].idx_in;
+        for (int64_t j = 0; j < borrowInfo.dstNum; j++) {
+            if (p == borrowInfo.dstIndexIn[j].idx_in) {
+                int64_t step = max(borrowInfo.srcIndexIn[i].step, borrowInfo.dstIndexIn[j].step); 
+                int64_t axisVol = shapeInfo.reducedInShape[p]; 
+                UpdateIndexInfo(borrowInfo.srcIndexIn[i], step, axisVol);
+                UpdateIndexInfo(borrowInfo.dstIndexIn[j], step, axisVol);
+                break;
+            }
+        }
+    }
+    for (int64_t i = 0; i < borrowInfo.srcNum; i++) {
+        if (borrowInfo.srcIndexIn[i].dup == 0) {
+            borrowInfo.srcIndexInNoDup[borrowInfo.srcNumNoDup++] = borrowInfo.srcIndexIn[i];
+        }
+    }
+    for (int64_t i = 0; i < borrowInfo.dstNum; i++) {
+        if (borrowInfo.dstIndexIn[i].dup == 0) {
+            borrowInfo.dstIndexInNoDup[borrowInfo.dstNumNoDup++] = borrowInfo.dstIndexIn[i];
+        }
+    }
+}
+
+static void CalcLeftVol(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    int64_t ubSize = 0;
+    if (shapeInfo.alignElement == 0) {
+        ubSize = 32 * 1024; // as b16
+    } else {
+        ubSize = CalcVnchwconvPartialUbSize(compilerInfo.coreNum, compilerInfo.ubSize);
+    }
+
+    int64_t leftVol = ubSize / (shapeInfo.lastAxisLen * compilerInfo.fp16Times);
+    // since block align padding may result ub size not enough
+    // loop 10 is ok for lastAxisLen from 1 to 256
+    for (int i = 0; i < LOOP_FOR_UB_PADDING; i++) {
+        int64_t vol = sqrt(leftVol) - i;
+        if (vol * AlignX(vol * shapeInfo.lastAxisLen, shapeInfo.elePerBlock) * compilerInfo.fp16Times <= ubSize) {
+            runtimeInfo.borrowInfo.srcVol = vol;
+            runtimeInfo.borrowInfo.dstVol = vol;
+            break;
+        }
+        else {
+            continue;
+        }
+    }
+}
+
+static void MakeSrcIndexAsInShape(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    IndexInfo indexInfo[BORROW_MAX_AXIS_NUM];
+    BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    int k = 0;
+    for (int64_t i = 0; i < shapeInfo.dim; i++) {
+        for (int64_t j = 0; j < borrowInfo.srcNum; j++) {
+            if (i == borrowInfo.srcIndexIn[j].idx_in) {
+                indexInfo[k++] = borrowInfo.srcIndexIn[j];
+            }
+        }
+    }
+    for (int64_t i = 0; i < borrowInfo.srcNum; i++) {
+        borrowInfo.srcIndexIn[i] = indexInfo[i];
+    }
+
+    k = 0;
+    for (int64_t i = 0; i < shapeInfo.dim; i++) {
+        for (int64_t j = 0; j < borrowInfo.srcNumNoDup; j++) {
+            if (i == borrowInfo.srcIndexInNoDup[j].idx_in) {
+                indexInfo[k++] = borrowInfo.srcIndexInNoDup[j];
+            }
+        }
+    }
+    for (int64_t i = 0; i < borrowInfo.srcNumNoDup; i++) {
+        borrowInfo.srcIndexInNoDup[i] = indexInfo[i];
+    }
+}
+
+static void MakeSrcIndexAsOutShape(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    int k = 0;
+    for (int64_t i = shapeInfo.dim - 1; i >= 0; i--) {
+        for (int64_t j = 0; j < borrowInfo.srcNum; j++) {
+            if (shapeInfo.reducedPerm[i] == borrowInfo.srcIndexIn[j].idx_in) {
+                borrowInfo.srcIndexOut[k++] = borrowInfo.srcIndexIn[j];
+                break;
+            }
+        }
+    }
+    k = 0;
+    for (int64_t i = shapeInfo.dim - 1; i >= 0; i--) {
+        for (int64_t j = 0; j < borrowInfo.srcNumNoDup; j++) {
+            if (shapeInfo.reducedPerm[i] == borrowInfo.srcIndexInNoDup[j].idx_in) {
+                borrowInfo.srcIndexOutNoDup[k++] = borrowInfo.srcIndexInNoDup[j];
+                break;
+            }
+        }
+    }
+}
+
+static void MakeDstIndexAsInShape(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    IndexInfo indexInfo[BORROW_MAX_AXIS_NUM];
+    BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    int k = 0;
+    for (int64_t i = 0; i < shapeInfo.dim; i++) {
+        for (int64_t j = 0; j < borrowInfo.dstNum; j++) {
+            if (i == borrowInfo.dstIndexIn[j].idx_in) {
+                indexInfo[k++] = borrowInfo.dstIndexIn[j];
+            }
+        }
+    }
+    for (int64_t i = 0; i < borrowInfo.dstNum; i++) {
+        borrowInfo.dstIndexIn[i] = indexInfo[i];
+    }
+    k = 0;
+    for (int64_t i = 0; i < shapeInfo.dim; i++) {
+        for (int64_t j = 0; j < borrowInfo.dstNumNoDup; j++) {
+            if (i == borrowInfo.dstIndexInNoDup[j].idx_in) {
+                indexInfo[k++] = borrowInfo.dstIndexInNoDup[j];
+            }
+        }
+    }
+    for (int64_t i = 0; i < borrowInfo.dstNumNoDup; i++) {
+        borrowInfo.dstIndexInNoDup[i] = indexInfo[i];
+    }
+}
+
+static void MakeDstIndexAsOutShape(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    int k = 0;
+    for (int64_t i = shapeInfo.dim - 1; i >= 0; i--) {
+        for (int64_t j = 0; j < borrowInfo.dstNum; j++) {
+            if (shapeInfo.reducedPerm[i] == borrowInfo.dstIndexIn[j].idx_in) {
+                borrowInfo.dstIndexOut[k++] = borrowInfo.dstIndexIn[j];
+                break;
+            }
+        }
+    }
+    k = 0;
+    for (int64_t i = shapeInfo.dim - 1; i >= 0; i--) {
+        for (int64_t j = 0; j < borrowInfo.dstNumNoDup; j++) {
+            if (shapeInfo.reducedPerm[i] == borrowInfo.dstIndexInNoDup[j].idx_in) {
+                borrowInfo.dstIndexOutNoDup[k++] = borrowInfo.dstIndexIn[j];
+                break;
+            }
+        }
+    }
+}
+
+/*
+ * ubPermRaw: 5,4,1,0; ubPerm: 3,2,1,0
+ */
+static void MakeDiscreteBeContiguous(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    int64_t perm[BORROW_MAX_AXIS_NUM];
+    for (int i = 0; i < BORROW_MAX_AXIS_NUM; i++) {
+        perm[i] = borrowInfo.ubPermRaw[i];
+    }
+
+    for (int64_t i = 0; i < borrowInfo.ubPermNum; i++) {
+        int idx = 0;
+        int minVal = TRANSPOSE_MAX_AXIS_NUM;
+        for (int64_t j = 0; j < borrowInfo.ubPermNum; j++) {
+            if (perm[j] < minVal) {
+                minVal = perm[j];
+                idx = j;
+            }
+        }
+        perm[idx] = TRANSPOSE_MAX_AXIS_NUM;
+        runtimeInfo.borrowInfo.ubPerm[idx] = TRANSPOSE_MAX_AXIS_NUM + i;
+    }
+
+    for (int64_t i = 0; i < borrowInfo.ubPermNum; i++) {
+        runtimeInfo.borrowInfo.ubPerm[i] = runtimeInfo.borrowInfo.ubPerm[i] - TRANSPOSE_MAX_AXIS_NUM;
+    }
+}
+
+static void CalcPermInUb(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+    for (int64_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
+        bool exist = false;
+        int64_t p = shapeInfo.reducedPerm[i];
+        for (int64_t j = 0; j < borrowInfo.srcNum; j++) {
+            if(p == borrowInfo.srcIndexIn[j].idx_in) {
+                for (int64_t k = 0; k < borrowInfo.ubPermNum; k++) {
+                    if (borrowInfo.ubPermRaw[k] == p) {
+                        exist = true;
+                        break;
+                    }
+                }
+                if (!exist) {
+                    borrowInfo.ubPermRaw[borrowInfo.ubPermNum++] = p;
+                    break;
+                }
+            }
+        }
+
+        exist = false;
+        for (int64_t j = 0; j < borrowInfo.dstNum; j++) {
+            if(p == borrowInfo.dstIndexIn[j].idx_in) {
+                for (int64_t k = 0; k < borrowInfo.ubPermNum; k++) {
+                    if (borrowInfo.ubPermRaw[k] == p) {
+                        exist = true;
+                        break;
+                    }
+                }
+                if (!exist) {
+                    borrowInfo.ubPermRaw[borrowInfo.ubPermNum++] = p;
+                    break;
+                }
+            }
+        }
+    }
+    MakeDiscreteBeContiguous(shapeInfo, runtimeInfo);
+}
+
+static int64_t GetDupAxisInSrc(const RuntimeInfo& runtimeInfo, int64_t index) {
+    const BorrowInfo& bi = runtimeInfo.borrowInfo;
+    for (int64_t i = 0; i < bi.srcNum; i++) {
+        if (index == bi.srcIndexIn[i].idx_in) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void CalcSrcBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
+    int64_t dim = si.dim;
+    int64_t borrowed = 1;
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    for (int i = 0; i < BORROW_SRC_AXIS_NUM; i++) {
+        if (dim >= i + 2) {
+            borrowed *= si.reducedInShape[dim - i - 2];
+            int64_t srcNum = bi.srcNum;
+            bi.srcNum++;
+            bi.srcIndexIn[srcNum].idx_in = dim - i - 2;
+            bi.srcIndexIn[srcNum].idx_out = GetPermIndex(si.reducedPerm, bi.srcIndexIn[srcNum].idx_in);
+            if (borrowed >= bi.srcVol) {
+                borrowed /= si.reducedInShape[dim - i - 2];
+                bi.srcIndexIn[srcNum].step =  bi.srcVol / borrowed;
+                bi.srcIndexIn[srcNum].loop =  si.reducedInShape[dim - i - 2] / bi.srcIndexIn[srcNum].step;
+                bi.srcIndexIn[srcNum].tail =  si.reducedInShape[dim - i - 2] % \
+                                                (bi.srcIndexIn[srcNum].step * bi.srcIndexIn[srcNum].loop);
+                break;
+            } else {
+                bi.srcIndexIn[srcNum].loop = 1;
+                bi.srcIndexIn[srcNum].step = si.reducedInShape[dim - i - 2];
+                bi.srcIndexIn[srcNum].intact = 1;
+            }
+        }
+    }
+}
+
+static void CalcBorrowLoop(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+
+    for (int64_t i = 0; i < bi.srcNumNoDup; i++) {
+        bi.majorSrcLoop_out *= bi.srcIndexInNoDup[i].step;
+    }
+
+    bi.tailSrcLoop_out = bi.srcIndexInNoDup[0].tail;
+    for (int64_t i = 1; i < bi.srcNumNoDup; i++) {
+        bi.tailSrcLoop_out *= bi.srcIndexInNoDup[i].step;
+    }
+
+    for (int64_t i = 0; i < bi.dstNumNoDup; i++) {
+        bi.majorDstLoop_in *= bi.dstIndexInNoDup[i].step;
+    }
+
+    if (bi.dstNumNoDup == bi.dstNum) {
+        for (int64_t i = 0; i < bi.dstNumNoDup; i++) {
+            if (i == bi.dstNumNoDup - 1) {
+                bi.tailDstLoop_in *= bi.dstIndexOut[i].tail;
+            } else {
+                bi.tailDstLoop_in *= bi.dstIndexOut[i].step;
+            }
+        }
+    } else {
+        bi.tailDstLoop_in = bi.dstIndexOutNoDup[0].tail;
+    }
+}
+
+static void CalcBorrowBurstLen(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+
+    for (int64_t i = 0; i < bi.srcNum; i++) {
+        if (i == 0) {
+            bi.majorBurstLen_in *= bi.srcIndexIn[i].step;
+            bi.tailBurstLen_in *= bi.srcIndexIn[i].tail;
+        } else {
+            bi.majorBurstLen_in *= bi.srcIndexIn[i].loop * bi.srcIndexIn[i].step;
+            bi.tailBurstLen_in *= bi.srcIndexIn[i].loop * bi.srcIndexIn[i].step;
+        }
+    }
+    bi.majorInEle = bi.majorBurstLen_in * si.lastAxisLen;
+    bi.tailInEle = bi.tailBurstLen_in * si.lastAxisLen;
+    bi.majorInTailEle = bi.majorBurstLen_in * si.lastAxisLen % si.elePerBlock;
+    bi.tailInTailEle = bi.tailBurstLen_in * si.lastAxisLen % si.elePerBlock;
+    bi.majorBurstLen_in = (bi.majorBurstLen_in * si.lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
+    bi.tailBurstLen_in = (bi.tailBurstLen_in * si.lastAxisLen + si.elePerBlock -1) / si.elePerBlock;
+
+    for (int64_t i = 0; i < bi.dstNum; i++) {
+        if (i == bi.dstNum - 1) {
+            bi.majorBurstLen_out *= bi.dstIndexOut[i].step;
+            bi.tailBurstLen_out *= bi.dstIndexOut[i].tail;
+        } else {
+            bi.majorBurstLen_out *= bi.dstIndexOut[i].step;
+            bi.tailBurstLen_out *= bi.dstIndexOut[i].step;
+        }
+    }
+
+    bi.majorOutEle = bi.majorBurstLen_out * si.lastAxisLen;
+    bi.tailOutEle = bi.tailBurstLen_out * si.lastAxisLen;
+    bi.majorOutTailEle = bi.majorBurstLen_out * si.lastAxisLen % si.elePerBlock;
+    bi.tailOutTailEle = bi.tailBurstLen_out * si.lastAxisLen % si.elePerBlock;
+    bi.majorBurstLen_out = (bi.majorBurstLen_out * si.lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
+    bi.tailBurstLen_out = (bi.tailBurstLen_out * si.lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
+}
+
+void CalcDstBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& runtimeInfo) {
+    int64_t dim = si.dim;
+    int64_t borrowed = 1;
+    int64_t tailEle = si.lastAxisLen;
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    for (int i = 0; i < BORROW_DST_AXIS_NUM; i++) {
+        if (dim >= i + 2) {
+            int64_t id = dim -i - 2;
+            int64_t dstNum = bi.dstNum;
+            int64_t index = si.reducedPerm[id];
+            int64_t dupId = GetDupAxisInSrc(runtimeInfo, index);
+            bi.dstIndexIn[dstNum].idx_out = id;
+            bi.dstIndexIn[dstNum].idx_in = index;
+
+            if (dupId != -1) {
+                bi.dstVol = bi.dstVol * bi.srcIndexIn[dupId].step;
+            }
+
+            if (si.reducedOutShape[id] * borrowed <= bi.dstVol) {
+                borrowed *= si.reducedOutShape[id];
+                bi.dstNum++;
+                bi.dstIndexIn[dstNum].loop = 1;
+                bi.dstIndexIn[dstNum].step = si.reducedOutShape[dim - i - 2];
+                bi.dstIndexIn[dstNum].intact = 1;
+                tailEle *= bi.dstIndexIn[dstNum].step;
+            } else {
+                if (borrowed * 2 > bi.dstVol) {
+                    break;
+                }
+
+                bi.dstNum++;
+                bi.dstIndexIn[dstNum].step =  bi.dstVol / borrowed;
+                bi.dstIndexIn[dstNum].loop =  si.reducedOutShape[id] / bi.dstIndexIn[dstNum].step;
+                bi.dstIndexIn[dstNum].tail =  si.reducedOutShape[id] % \
+                                              (bi.dstIndexIn[dstNum].step * bi.dstIndexIn[dstNum].loop);
+
+                for (int j = 0; j < ELE_NUM_PER_BLOCK_FP16; j++) {
+                    if ((bi.dstIndexIn[dstNum].tail != 0) && (tailEle * bi.dstIndexIn[dstNum].tail < si.elePerBlock)) {
+                        bi.dstIndexIn[dstNum].step -= 1;
+                        bi.dstIndexIn[dstNum].loop = si.reducedOutShape[id] / bi.dstIndexIn[dstNum].step;
+                        bi.dstIndexIn[dstNum].tail = si.reducedOutShape[id] % \
+                                                     (bi.dstIndexIn[dstNum].step * bi.dstIndexIn[dstNum].loop);
+                    } else {
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+}
+
+static void ReorderIndexInfo(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    MakeSrcIndexAsInShape(shapeInfo, runtimeInfo);
+    MakeSrcIndexAsOutShape(shapeInfo, runtimeInfo);
+    MakeDstIndexAsInShape(shapeInfo, runtimeInfo);
+    MakeDstIndexAsOutShape(shapeInfo, runtimeInfo);
+}
+
+static void CalcOtherAxisIndex(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    for (int i = 0; i < shapeInfo.reducedPerm.size(); i++) {
+        bool borrowed = false;
+        for (int j = 0; j < runtimeInfo.borrowInfo.srcNum; j++) {
+            if (i == runtimeInfo.borrowInfo.srcIndexIn[j].idx_in) {
+                borrowed = true;
+            }
+        }
+        for (int j = 0; j < runtimeInfo.borrowInfo.dstNum; j++) {
+            if (i == runtimeInfo.borrowInfo.dstIndexIn[j].idx_in) {
+                borrowed = true;
+            }
+        }
+        if (!borrowed) {
+            if (i != shapeInfo.dim - 1) {
+                int otherNum = runtimeInfo.borrowInfo.otherNum;
+                runtimeInfo.borrowInfo.otherIndex[otherNum].idx_in = i;
+                runtimeInfo.borrowInfo.otherIndex[otherNum].idx_out = GetPermIndex(shapeInfo.reducedPerm, i);
+                runtimeInfo.borrowInfo.otherIndex[otherNum].loop = shapeInfo.reducedInShape[i];
+                runtimeInfo.borrowInfo.otherNum++;
+            }
+        }
+    }
+}
+
+/*
+ * four axis
+ * perm           valid
+ * ---------------------
+ * 3 2 0 1        y
+ * 3 2 1 0        y
+ * 3 0 2 1        n
+ * 3 0 1 2        n
+ * 3 1 2 0        n
+ * 3 1 0 2        n
+ * 2 3 0 1        y 
+ * 2 3 1 0        y 
+ * 2 0 3 1        n
+ * 2 0 1 3        n
+ * 2 1 3 0        n
+ * 2 1 0 3        n
+ * 0 3 2 1        n
+ * 0 3 1 2        n
+ * 0 2 3 1        n
+ * 0 2 1 3        n
+ * 0 1 3 2        n
+ * 0 1 2 3        n
+ * 1 3 2 0        n
+ * 1 3 0 2        n
+ * 1 2 3 0        n
+ * 1 2 0 3        n
+ * 1 0 3 2        n
+ * 1 0 2 3        n
+ *
+ * there axis
+ * perm           valid
+ * ---------------------
+ * 1 0 2          n 
+ * 1 2 0          y 
+ * 0 1 2          n
+ * 0 2 1          n
+ * 2 1 0          y
+ * 2 0 1          y
+ *
+ * two axis
+ * perm           valid
+ * ---------------------
+ * 1 0            y
+ * 0 1            n
+ */
+static int64_t GetPermHex(const RuntimeInfo& runtimeInfo) {
+    const BorrowInfo& bi = runtimeInfo.borrowInfo;
+    if (bi.ubPermNum == 4) {
+        if(bi.ubPerm[0] == 3 && bi.ubPerm[1] == 2 && bi.ubPerm[2] == 1 && bi.ubPerm[3] == 0) {
+            return 0x3210;
+        } else  if(bi.ubPerm[0] == 3 && bi.ubPerm[1] == 2 && bi.ubPerm[2] == 0 && bi.ubPerm[3] == 1) {
+            return 0x3201;
+        } else  if(bi.ubPerm[0] == 2 && bi.ubPerm[1] == 3 && bi.ubPerm[2] == 0 && bi.ubPerm[3] == 1) {
+            return 0x2301;
+        } else  if(bi.ubPerm[0] == 2 && bi.ubPerm[1] == 3 && bi.ubPerm[2] == 1 && bi.ubPerm[3] == 0) {
+            return 0x2310;
+        }
+    } else if (bi.ubPermNum == 3) {
+        if(bi.ubPerm[0] == 2 && bi.ubPerm[1] == 1 && bi.ubPerm[2] == 0) {
+            return 0x210;
+        } else if(bi.ubPerm[0] == 2 && bi.ubPerm[1] == 0 && bi.ubPerm[2] == 1) {
+            return 0x201;
+        } else if(bi.ubPerm[0] == 1 && bi.ubPerm[1] == 2 && bi.ubPerm[2] == 0) {
+            return 0x120;
+        }
+    } else if (bi.ubPermNum == 2) {
+        return 0x10;
+    }
+    return 0;
+}
+
+static void SetLRSB(LRSB& lrsb, int64_t p1, int64_t p2, int64_t bl, int epb) {
+    if (p1 > 1 && p2 > 1) {
+        if (p1 < p2) {
+            lrsb.Set(p1, p2, 0, bl * (p1 - 1),  bl, bl * epb * p2,  bl * epb);
+        } else {
+            lrsb.Set(p2, p1, bl * (p2 - 1), 0, bl, bl * epb, bl * epb * p1);
+        }
+    }
+}
+
+/*
+ * 0123 -> 1203 -> 2103 -> 3210
+ */
+static void RepeatStride3210(const CompilerInfo& compilerInfo,
+                             const ShapeInfo& shapeInfo,
+                             RuntimeInfo& runtimeInfo,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    int64_t * perm = bi.ubPerm;
+    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
+                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
+    int64_t epb = shapeInfo.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        SetLRSB(lrsb[0], s[0], s[1] * s[2], s[3] * bl, epb);
+        SetLRSB(lrsb[1], s[1], s[2], s[0] * s[3] * bl, epb);
+        SetLRSB(lrsb[2], s[2] * s[1] * s[0], s[3], bl, epb);
+    }
+}
+
+/*
+ * 3201:   0123  ->  2301 -> 3201 
+ */
+static void RepeatStride3201(const CompilerInfo& compilerInfo,
+                             const ShapeInfo& shapeInfo,
+                             RuntimeInfo& runtimeInfo,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    int64_t * perm = bi.ubPerm;
+    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
+                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
+    int64_t epb = shapeInfo.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        SetLRSB(lrsb[0], s[0] * s[1], s[2] * s[3], bl, epb);
+        SetLRSB(lrsb[1], s[2], s[3], s[0] * s[1] * bl, epb);
+    }
+}
+
+/*
+ * 2301:   0123  ->  2301 
+ */
+static void RepeatStride2301(const CompilerInfo& compilerInfo,
+                             const ShapeInfo& shapeInfo,
+                             RuntimeInfo& runtimeInfo,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    int64_t * perm = bi.ubPerm;
+    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
+                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
+    int64_t epb = shapeInfo.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        SetLRSB(lrsb[0], s[0] * s[1], s[2] * s[3], bl, epb);
+    }
+}
+
+/*
+ * 2310:   0123  ->  1023 -> 2310
+ */
+static void RepeatStride2310(const CompilerInfo& compilerInfo,
+                             const ShapeInfo& shapeInfo,
+                             RuntimeInfo& runtimeInfo,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    int64_t * perm = bi.ubPerm;
+    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
+                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
+    int64_t epb = shapeInfo.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        SetLRSB(lrsb[0], s[0], s[1], s[2] * s[3] * bl, epb);
+        SetLRSB(lrsb[1], s[1] * s[0], s[2] * s[3], bl, epb);
+    }
+}
+
+/*
+ * 210: 012 -> 102 ->  210
+ */
+static void RepeatStride210(const CompilerInfo& compilerInfo,
+                             const ShapeInfo& shapeInfo,
+                             RuntimeInfo& runtimeInfo,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    int64_t * perm = bi.ubPerm;
+    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
+                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
+    int64_t epb = shapeInfo.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        SetLRSB(lrsb[0], s[0], s[1], s[2] * bl, epb);
+        SetLRSB(lrsb[1], s[0] * s[1], s[2], bl, epb);
+    }
+}
+
+/*
+ * 201: 012 -> 201 
+ */
+static void RepeatStride201(const CompilerInfo& compilerInfo,
+                             const ShapeInfo& shapeInfo,
+                             RuntimeInfo& runtimeInfo,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    int64_t * perm = bi.ubPerm;
+    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
+                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
+    int64_t epb = shapeInfo.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        SetLRSB(lrsb[0], s[0] * s[1], s[2], bl, epb);
+    }
+}
+
+/*
+ * 120: 012 -> 120 
+ */
+static void RepeatStride120(const CompilerInfo& compilerInfo,
+                             const ShapeInfo& shapeInfo,
+                             RuntimeInfo& runtimeInfo,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    int64_t * perm = bi.ubPerm;
+    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
+                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
+    int64_t epb = shapeInfo.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        SetLRSB(lrsb[0], s[0], s[1] * s[2], bl, epb);
+    }
+}
+
+/*
+ * 01 -> 10
+ */
+static void RepeatStride10(const CompilerInfo& compilerInfo,
+                             const ShapeInfo& shapeInfo,
+                             RuntimeInfo& runtimeInfo,
+                             int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
+    BorrowInfo& bi = runtimeInfo.borrowInfo;
+    int64_t * perm = bi.ubPerm;
+    int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
+                                               shapeInfo.lastAxisLen * compilerInfo.fp16Times;
+    int64_t epb = shapeInfo.elePerBlock;
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        LRSB * lrsb = bi.lrsb[i];
+        int64_t* s = step[i];
+        SetLRSB(lrsb[0], s[0], s[1], bl, epb);
+    }
+}
+
+/*   0 :  major_dst_major_src
+ *   1 :  major_dst_tail_src 
+ *   2 :  major_src_tail_dst
+ *   3 :  tail_src_tail_dst
+ *
+ */
+#define SET_P4(d0, p0, p1, p2, p3) step[d0][0] = p0, step[d0][1] = p1, step[d0][2] = p2, step[d0][3] = p3;
+
+static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_MAX_AXIS_NUM]) {
+    const BorrowInfo& bi = runtimeInfo.borrowInfo; 
+
+    if (bi.srcNum == 1 && bi.dstNum == 1) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, 0, 0);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, 0, 0);
+        SET_P4(2, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].step, 0, 0);
+        SET_P4(3, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].tail, 0, 0);
+    }
+
+    if (bi.srcNum == 2 && bi.dstNum == 1 && bi.srcNumNoDup == 2 && bi.dstNumNoDup == 1) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+        SET_P4(2, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+        SET_P4(3, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+    }
+
+    if (bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x10) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0);
+        SET_P4(2, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].step, 0);
+        SET_P4(3, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].tail, 0);
+    }
+
+    if (bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x01) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0);
+        SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0);
+        SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0);
+    }
+
+    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 2 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x10) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+        SET_P4(2, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+        SET_P4(3, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+    }
+
+    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 2 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x01) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+        SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step);
+        SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step);
+    }
+
+    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 1 && bi.axisPerm == 0x210) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+        SET_P4(3, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+    }
+
+    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 1 && bi.axisPerm == 0x120) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+        SET_P4(2, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+        SET_P4(3, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+    }
+
+    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 1 && bi.axisPerm == 0x201) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+        SET_P4(2, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0);
+        SET_P4(3, bi.dstIndexIn[0].tail, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0);
+    }
+
+    if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 0 && bi.dstNumNoDup == 0) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, 0, 0)
+        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, 0, 0)
+        SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, 0, 0)
+        SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].tail, 0, 0)
+    }
+
+    if (bi.srcNum == 2 && bi.dstNum == 1 && bi.dstNumNoDup == 0 && bi.srcNumNoDup == 1) {
+        SET_P4(0, bi.srcIndexIn[0].step, bi.srcIndexIn[1].step, 0, 0);
+        SET_P4(1, bi.srcIndexIn[0].tail, bi.srcIndexIn[1].step, 0, 0);
+    }
+
+    if (bi.srcNum == 1 && bi.dstNum == 2 && bi.dstNumNoDup == 1 && bi.srcNumNoDup == 0) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.srcIndexIn[0].step, 0, 0);
+        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, 0, 0);
+    }
+
+    if(bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x10) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
+        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0)
+        SET_P4(2, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].step, 0)
+        SET_P4(3, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].tail, 0)
+    }
+
+    if(bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x01) {
+        SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
+        SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0)
+        SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
+        SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0)
+    }
+}
+
+static void CalcRepetStride(const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
+    int perm = GetPermHex(runtimeInfo);
+    runtimeInfo.borrowInfo.axisPerm = perm;
+
+    int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM];
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        for (int j = 0; j < BORROW_MAX_AXIS_NUM; j++) {
+            step[i][j] = 0;
+        }
+    }
+
+    ConstructStep(runtimeInfo, step);
+
+    switch(perm) {
+        case 0x3210:
+            RepeatStride3210(compilerInfo, shapeInfo, runtimeInfo, step);
+            break;
+        case 0x03201:
+            RepeatStride3201(compilerInfo, shapeInfo, runtimeInfo, step);
+            break;
+        case 0x2301:
+            RepeatStride2301(compilerInfo, shapeInfo, runtimeInfo, step);
+            break;
+        case 0x2310:
+            RepeatStride2310(compilerInfo, shapeInfo, runtimeInfo, step);
+            break;
+        case 0x210:
+            RepeatStride210(compilerInfo, shapeInfo, runtimeInfo, step);
+            break;
+        case 0x201:
+            RepeatStride201(compilerInfo, shapeInfo, runtimeInfo, step);
+            break;
+        case 0x120:
+            RepeatStride120(compilerInfo, shapeInfo, runtimeInfo, step);
+            break;
+        case 0x10:
+            RepeatStride10(compilerInfo, shapeInfo, runtimeInfo, step);
+            break;
+    }
+}
+
+static bool TilingDataScenario4(const CompilerInfo& compilerInfo,
+                                const ShapeInfo& shapeInfo,
+                                RuntimeInfo& runtimeInfo) {
+    CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
+    CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo);
+    CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo);
+    MergeDupAxis(shapeInfo, runtimeInfo);
+    ReorderIndexInfo(shapeInfo, runtimeInfo);
+    CalcSrcDstPerm(shapeInfo, runtimeInfo);
+    CalcBorrowLoop(shapeInfo, runtimeInfo);
+    CalcBorrowBurstLen(shapeInfo, runtimeInfo);
+    CalcOtherAxisIndex(shapeInfo, runtimeInfo);
+    CalcPermInUb(shapeInfo, runtimeInfo);
+    CalcRepetStride(compilerInfo, shapeInfo, runtimeInfo);
+    SplitCore(compilerInfo, shapeInfo, runtimeInfo);
+    CalcStrideS4(shapeInfo, runtimeInfo);
+    return true;
+}
+
+static bool TilingDataScenario6(const CompilerInfo& compilerInfo,
+                                const ShapeInfo& shapeInfo,
+                                RuntimeInfo& runtimeInfo) {
     TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
     return true;
 }
@@ -1565,15 +2766,6 @@ static bool SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
         }
     }
     return true;
-}
-
-static int64_t GetPermIndex(const vector<int64_t> & perm, int p) {
-    for (size_t i = 0; i < perm.size(); i++) {
-        if (perm[i] == p) {
-            return i;
-        }
-    }
-    return 0;
 }
 
 void CalcJumpInfo(RuntimeInfo & runtimeInfo,
@@ -2361,7 +3553,7 @@ bool TransposeCalcTilingData(const string &opType,
             break;
         case SCENARIO_1:
             res = TilingDataScenario1(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_2:
             res = TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
@@ -2370,6 +3562,10 @@ bool TransposeCalcTilingData(const string &opType,
         case SCENARIO_3:
             res = TilingDataScenario3(compilerInfo, shapeInfo, runtimeInfo);
             OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario3(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            break;
+        case SCENARIO_4:
+            res = TilingDataScenario4(compilerInfo, shapeInfo, runtimeInfo);
+            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario4(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_6:
             res = TilingDataScenario6(compilerInfo, shapeInfo, runtimeInfo);
@@ -2397,6 +3593,11 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
     OP_LOGD(opType.c_str(), "Entering GetCompileParams.");
 
     using namespace nlohmann;
+
+    if (opCompileInfoJson.count("vars") == 0) {
+        VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get vars error");
+        return false;
+    }
 
     auto allVars = opCompileInfoJson["vars"];
 
@@ -2725,6 +3926,158 @@ static void SerializeScenario3(OpRunInfo &runInfo,
     runInfo.workspaces = workspace;
 }
 
+static void SerializeScenario4(OpRunInfo &runInfo,
+                               const CompilerInfo & compilerInfo,
+                               const ShapeInfo & shapeInfo,
+                               const RuntimeInfo & runtimeInfo) {
+    vector<int64_t> headVec;
+    vector<int64_t> fixedVec;
+    vector<int64_t> perCoreVec;
+    const BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+
+    // part1: head
+    WRITE_DATA_H(shapeInfo.scenario);              //0 : scenario
+    WRITE_DATA_H(0);                               //1 : fixed_len
+    WRITE_DATA_H(0);                               //2 : percore_len
+    WRITE_DATA_H(0);                               //3 : subSceanrio
+
+    // part2: fixed
+    WRITE_DATA_F(shapeInfo.lastAxisLen);
+    WRITE_DATA_F(shapeInfo.lastAxisBurstLen);
+    WRITE_DATA_F(shapeInfo.alignElement);
+    WRITE_DATA_F(borrowInfo.otherNum + 2);//logic_axis_num
+    WRITE_DATA_F(borrowInfo.otherNum);
+    WRITE_DATA_F(borrowInfo.srcNumNoDup);
+    WRITE_DATA_F(borrowInfo.dstNumNoDup);
+    WRITE_DATA_F(borrowInfo.majorBurstLen_in);
+    WRITE_DATA_F(borrowInfo.tailBurstLen_in);
+    WRITE_DATA_F(borrowInfo.majorBurstLen_out);
+    WRITE_DATA_F(borrowInfo.tailBurstLen_out);
+    WRITE_DATA_F(borrowInfo.majorDstLoop_in);
+    WRITE_DATA_F(borrowInfo.tailDstLoop_in);
+    WRITE_DATA_F(borrowInfo.majorSrcLoop_out);
+    WRITE_DATA_F(borrowInfo.tailSrcLoop_out);
+    WRITE_DATA_F(borrowInfo.majorInEle);
+    WRITE_DATA_F(borrowInfo.tailInEle);
+    WRITE_DATA_F(borrowInfo.majorInTailEle);
+    WRITE_DATA_F(borrowInfo.tailInTailEle);
+    WRITE_DATA_F(borrowInfo.majorOutEle);
+    WRITE_DATA_F(borrowInfo.tailOutEle);
+    WRITE_DATA_F(borrowInfo.majorOutTailEle);
+    WRITE_DATA_F(borrowInfo.tailOutTailEle);
+    WRITE_DATA_F(borrowInfo.dstIndexOut[borrowInfo.dstNum - 1].step);
+    WRITE_DATA_F(borrowInfo.srcIndexIn[0].step);
+    WRITE_DATA_F(borrowInfo.dupAxis);
+    WRITE_DATA_F(borrowInfo.srcAxisPerm);
+    WRITE_DATA_F(borrowInfo.dstAxisPerm);
+    WRITE_DATA_F(borrowInfo.axisPerm);
+
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+        const LRSB* lrsb = borrowInfo.lrsb[i];
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].loop);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].repeat);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].srcStride);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].dstStride);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].burstLen);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].srcOffset);
+        }
+        for (int j = 0; j < UB_REORDER_LOOP; j++) {
+            WRITE_DATA_F(lrsb[j].dstOffset);
+        }
+    }
+
+    for (int64_t i = 0 ; i < borrowInfo.dstNumNoDup; i++) {
+        WRITE_DATA_F(borrowInfo.dstFactorCopyIn[i]);
+    }
+    for (int64_t i = 0 ; i < borrowInfo.srcNumNoDup; i++) {
+        WRITE_DATA_F(borrowInfo.srcFactorCopyOut[i]);
+    }
+
+    WRITE_DATA_F(borrowInfo.srcJumpFactorLogic_in);
+    WRITE_DATA_F(borrowInfo.dstJumpFactorLogic_in);
+
+    for (int64_t i = 0 ; i < borrowInfo.otherNum; i++) {
+        WRITE_DATA_F(borrowInfo.otherJumpFactor_in[i]);
+    }
+
+    for (int64_t i = 0 ; i < borrowInfo.dstNumNoDup; i++) {
+        WRITE_DATA_F(borrowInfo.dstStrideCopyIn[i]);
+    }
+    for (int64_t i = 0 ; i < borrowInfo.srcNumNoDup; i++) {
+        WRITE_DATA_F(borrowInfo.srcStrideCopyOut[i]);
+    }
+
+    //logicStrideIn,first two is 0 for no use
+    for (int i = 0; i < 2; i++) {
+        WRITE_DATA_F(0);
+    }
+    for (int64_t i = 0 ; i < borrowInfo.otherNum; i++) {
+        WRITE_DATA_F(borrowInfo.otherJumpStride_in[i]);
+    }
+
+    //logicStrideOut, first two is 0 for no use
+    for (int i = 0; i < 2; i++) {
+        WRITE_DATA_F(0);
+    }
+    for (int64_t i = 0 ; i < borrowInfo.otherNum; i++) {
+        WRITE_DATA_F(borrowInfo.otherJumpStride_out[i]);
+    }
+
+    // part3: per core
+    int perCoreLen = 0;
+    for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
+        WRITE_DATA_P(borrowInfo.loopPerCore[i]);
+        for (int64_t j = 0; j < borrowInfo.srcNumNoDup; j++) {
+            WRITE_DATA_P(borrowInfo.srcAxis_in[i].initTuple[j]);
+        }
+        for (int64_t j = 0; j < borrowInfo.dstNumNoDup; j++) {
+            WRITE_DATA_P(borrowInfo.dstAxis_in[i].initTuple[j]);
+        }
+
+        WRITE_DATA_P(borrowInfo.srcAxis_in[i].initTupleLogic);
+        WRITE_DATA_P(borrowInfo.dstAxis_in[i].initTupleLogic);
+
+        for(int64_t j = 0; j < borrowInfo.otherNum; j++) {
+            WRITE_DATA_P(borrowInfo.otherAxis_in[i].initTuple[j]);
+        }
+        if (perCoreLen == 0) {
+            perCoreLen = perCoreVec.size();
+        }
+    }
+
+    BlockAlign(fixedVec);
+    BlockAlign(perCoreVec);
+
+    headVec[1] = fixedVec.size();
+    headVec[2] = perCoreLen;
+
+    for (size_t i = 0; i < headVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, headVec[i]);
+    }
+    for (size_t i = 0; i < fixedVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
+    }
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
+    }
+
+    runInfo.block_dim = compilerInfo.coreNum;
+    std::vector<int64_t> workspace;
+    workspace.push_back(1024);
+    runInfo.workspaces = workspace;
+}
+
 static void SerializeScenario6(OpRunInfo &runInfo,
                                          const CompilerInfo & compilerInfo,
                                          const ShapeInfo & shapeInfo,
@@ -2873,6 +4226,9 @@ void SerializeTilingData(OpRunInfo &runInfo,
             break;
         case SCENARIO_3:
             SerializeScenario3(runInfo, compilerInfo, shapeInfo, runtimeInfo);
+            break;
+        case SCENARIO_4:
+            SerializeScenario4(runInfo, compilerInfo, shapeInfo, runtimeInfo);
             break;
         case SCENARIO_6:
             SerializeScenario6(runInfo, compilerInfo, shapeInfo, runtimeInfo);

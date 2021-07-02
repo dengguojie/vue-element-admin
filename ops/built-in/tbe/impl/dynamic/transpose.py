@@ -23,7 +23,7 @@ from impl.util.platform_adapter import tbe_context
 from tbe.common.platform.platform_info import api_check_support
 
 UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+TRANSPOSE_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 ACCU_BLOCK_SIZE = 128  # should less than 240 for both 310 and 910
 ROW_UNIT = 128
 
@@ -38,6 +38,10 @@ S1_PERCORE_PART_SCALA_MAX_NUM = 100
 S3_FIXED_PART_SCALA_MAX_NUM = 100
 S3_PERCORE_PART_SCALA_MAX_NUM = 100
 
+# scenario_4
+S4_FIXED_PART_SCALA_MAX_NUM = 100
+S4_PERCORE_PART_SCALA_MAX_NUM = 100
+
 # scenario_7
 S7_FIXED_PART_SCALA_MAX_NUM = 100
 S7_PERCORE_PART_SCALA_MAX_NUM = 100
@@ -47,13 +51,17 @@ TILING_MAX_SIZE_GM = 2048  # 16KB
 MAX_INT64_VALUE = 2 ** 64 - 1
 BLOCK_SIZE = 32
 TRANSPOSE_MAX_AXIS_NUM = 8
+BORROW_SRC_AXIS_NUM = 2
+BORROW_DST_AXIS_NUM = 2
+BORROW_AXIS_NUM = BORROW_SRC_AXIS_NUM + BORROW_DST_AXIS_NUM 
+UB_REORDER_COMBINATION = 4
 RESERVED_UB = 4  # 4KB
 EPB16 = 16
 EPB32 = 32 
 ELE_NUM_PER_BLOCK_FP32 = 8
 ELE_NUM_PER_BLOCK_INT64 = 4
 TILING_HEAD_LEN = 4
-TILING_FIXED_MAX_LEN = 1024
+TILING_FIXED_MAX_LEN = 2048
 
 
 def _fuzzy_match(shape_t):
@@ -138,7 +146,7 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     if util_common.is_unknown([input_x, perm, output_y]):
         return True, ""
 
-    if _by_dynamic_static_union_version(x_shape, CORE_NUM):
+    if _by_dynamic_static_union_version(x_shape, TRANSPOSE_CORE_NUM):
         return True, ""
 
     if tbe_context.get_context():
@@ -149,15 +157,23 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     return False, ""
 
 
-def _assert(tik_inst, ub_input, p, v):
-    index = tik_inst.Scalar("int64", init_value=1)
-    with tik_inst.if_scope(p != v):
-        tik_inst.data_move(ub_input, ub_input[index], 0, 1, 1, 0, 0)
+def _set_param_python_arr(tiling_reg_list, reg_base, ub_input, ub_offset, param, actual_num, max_num):
+    for i in range(max_num):
+        tiling_reg_list[reg_base[0] + i].set_as(ub_input[ub_offset + i])
+        param.append(tiling_reg_list[reg_base[0] + i])
+    ub_offset.set_as(ub_offset + actual_num)
+    reg_base[0] = reg_base[0] + max_num
+
+
+def _set_param_scalar_arr(tiling_reg_list, ub_input, ub_offset, param, actual_num, max_num):
+    for i in range(max_num):
+        param[i].set_as(ub_input[ub_offset + i])
+    ub_offset.set_as(ub_offset + actual_num)
 
 
 def _get_half_ub():
+    # first div 2 means half the ub, second div 2 means b16
     return (UB_SIZE - RESERVED_UB * 1024) // 2 // 2
-
 
 # pylint: disable=unused-argument,invalid-name, too-many-arguments, unused-variable, too-many-locals
 # pylint: disable=too-many-statements, invalid-name, no-self-use, protected-access
@@ -438,6 +454,174 @@ class Transpose(object):
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
+    class TilingParamS4(object):
+        """
+        TilingParamS4
+        """
+        def __init__(self, tiling_reg_list, ub_input_64_t, ub_input_64, tik_inst):
+            """
+            get tiling parameters
+            """
+            # part 2: fixed
+            ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN)
+
+            reg_base = [29]
+            for i in range(reg_base[0]):
+                tiling_reg_list[i].set_as(ub_input_64_t[ub_offset + i])
+            self.last_axis_len = tiling_reg_list[0]
+            self.last_axis_burst_len = tiling_reg_list[1]
+            self.align_ele = tiling_reg_list[2]
+            self.logic_axis_num = tiling_reg_list[3]
+            self.other_axis_num = tiling_reg_list[4]
+            self.src_axis_num_no_dup = tiling_reg_list[5]
+            self.dst_axis_num_no_dup = tiling_reg_list[6]
+            self.major_burst_len_in = tiling_reg_list[7]
+            self.tail_burst_len_in = tiling_reg_list[8]
+            self.major_burst_len_out = tiling_reg_list[9]
+            self.tail_burst_len_out = tiling_reg_list[10]
+            self.major_dst_loop_in = tiling_reg_list[11]
+            self.tail_dst_loop_in = tiling_reg_list[12]
+            self.major_src_loop_out = tiling_reg_list[13]
+            self.tail_src_loop_out = tiling_reg_list[14]
+            self.major_in_ele = tiling_reg_list[15]
+            self.tail_in_ele = tiling_reg_list[16]
+            self.major_in_tail_ele = tiling_reg_list[17]
+            self.tail_in_tail_ele = tiling_reg_list[18]
+            self.major_out_ele = tiling_reg_list[19]
+            self.tail_out_ele = tiling_reg_list[20]
+            self.major_out_tail_ele = tiling_reg_list[21]
+            self.tail_out_tail_ele = tiling_reg_list[22]
+            self.dst_jump_major_step = tiling_reg_list[23]
+            self.src_jump_major_step = tiling_reg_list[24]
+            self.dup_axis = tiling_reg_list[25]
+            self.src_axis_perm = tiling_reg_list[26]
+            self.dst_axis_perm = tiling_reg_list[27]
+            self.ub_axis_perm = tiling_reg_list[28]
+
+            ub_offset.set_as(ub_offset + reg_base[0])
+
+            self.loop_1 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.loop_2 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.loop_3 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+
+            self.repeat_1 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.repeat_2 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.repeat_3 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+
+            self.burst_len_1 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.burst_len_2 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.burst_len_3 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+
+            self.src_stride_1 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.src_stride_2 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.src_stride_3 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+
+            self.dst_stride_1 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.dst_stride_2 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.dst_stride_3 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+
+            self.src_offset_1 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.src_offset_2 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.src_offset_3 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+
+            self.dst_offset_1 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.dst_offset_2 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+            self.dst_offset_3 = tik_inst.ScalarArray("int64", length=UB_REORDER_COMBINATION)
+
+            cycle = 21
+            for i in range(UB_REORDER_COMBINATION):
+                self.loop_1[i].set_as(ub_input_64_t[ub_offset + i * cycle + 0])
+                self.loop_2[i].set_as(ub_input_64_t[ub_offset + i * cycle + 1])
+                self.loop_3[i].set_as(ub_input_64_t[ub_offset + i * cycle + 2])
+                self.repeat_1[i].set_as(ub_input_64_t[ub_offset + i * cycle + 3])
+                self.repeat_2[i].set_as(ub_input_64_t[ub_offset + i * cycle + 4])
+                self.repeat_3[i].set_as(ub_input_64_t[ub_offset + i * cycle + 5])
+                self.src_stride_1[i].set_as(ub_input_64_t[ub_offset + i * cycle + 6])
+                self.src_stride_2[i].set_as(ub_input_64_t[ub_offset + i * cycle + 7])
+                self.src_stride_3[i].set_as(ub_input_64_t[ub_offset + i * cycle + 8])
+                self.dst_stride_1[i].set_as(ub_input_64_t[ub_offset + i * cycle + 9])
+                self.dst_stride_2[i].set_as(ub_input_64_t[ub_offset + i * cycle + 10])
+                self.dst_stride_3[i].set_as(ub_input_64_t[ub_offset + i * cycle + 11])
+                self.burst_len_1[i].set_as(ub_input_64_t[ub_offset + i * cycle + 12])
+                self.burst_len_2[i].set_as(ub_input_64_t[ub_offset + i * cycle + 13])
+                self.burst_len_3[i].set_as(ub_input_64_t[ub_offset + i * cycle + 14])
+                self.src_offset_1[i].set_as(ub_input_64_t[ub_offset + i * cycle + 15])
+                self.src_offset_2[i].set_as(ub_input_64_t[ub_offset + i * cycle + 16])
+                self.src_offset_3[i].set_as(ub_input_64_t[ub_offset + i * cycle + 17])
+                self.dst_offset_1[i].set_as(ub_input_64_t[ub_offset + i * cycle + 18])
+                self.dst_offset_2[i].set_as(ub_input_64_t[ub_offset + i * cycle + 19])
+                self.dst_offset_3[i].set_as(ub_input_64_t[ub_offset + i * cycle + 20])
+
+            ub_offset.set_as(ub_offset + UB_REORDER_COMBINATION * cycle)
+
+            self.dst_jump_factor_in = []
+            self.src_jump_factor_out = []
+            self.logic_jump_factor = []
+            self.src_stride_out = []
+
+            self.dst_stride_in = tik_inst.ScalarArray("int64", length=BORROW_DST_AXIS_NUM)
+            self.src_stride_out = tik_inst.ScalarArray("int64", length=BORROW_SRC_AXIS_NUM)
+            self.logic_stride_in = tik_inst.ScalarArray("int64", length=TRANSPOSE_MAX_AXIS_NUM)
+            self.logic_stride_out = tik_inst.ScalarArray("int64", length=TRANSPOSE_MAX_AXIS_NUM)
+
+            _set_param_python_arr(tiling_reg_list, reg_base, ub_input_64_t, ub_offset, self.dst_jump_factor_in,
+                                  self.dst_axis_num_no_dup, BORROW_DST_AXIS_NUM)
+            _set_param_python_arr(tiling_reg_list, reg_base, ub_input_64_t, ub_offset, self.src_jump_factor_out,
+                                  self.src_axis_num_no_dup, BORROW_SRC_AXIS_NUM)
+            _set_param_python_arr(tiling_reg_list, reg_base, ub_input_64_t, ub_offset, self.logic_jump_factor,
+                                  self.logic_axis_num, TRANSPOSE_MAX_AXIS_NUM)
+            _set_param_scalar_arr(tiling_reg_list, ub_input_64_t, ub_offset, self.dst_stride_in,
+                                  self.dst_axis_num_no_dup, BORROW_DST_AXIS_NUM)
+            _set_param_scalar_arr(tiling_reg_list, ub_input_64_t, ub_offset, self.src_stride_out,
+                                  self.src_axis_num_no_dup, BORROW_SRC_AXIS_NUM)
+            _set_param_scalar_arr(tiling_reg_list, ub_input_64_t, ub_offset, self.logic_stride_in,
+                                  self.logic_axis_num, TRANSPOSE_MAX_AXIS_NUM)
+            _set_param_scalar_arr(tiling_reg_list, ub_input_64_t, ub_offset, self.logic_stride_out,
+                                  self.logic_axis_num, TRANSPOSE_MAX_AXIS_NUM)
+
+            # part 3: percore
+            tiling_reg_list[reg_base[0]].set_as(ub_input_64[0])
+            self.loop_per_core = tiling_reg_list[reg_base[0]]
+            reg_base[0] = reg_base[0] + 1
+            ub_offset.set_as(1)
+
+            self.init_src_tuple_out = []
+            self.init_dst_tuple_in = []
+            self.init_logic_tuple = []
+
+            _set_param_python_arr(tiling_reg_list, reg_base, ub_input_64, ub_offset, self.init_src_tuple_out,
+                                  self.src_axis_num_no_dup, BORROW_SRC_AXIS_NUM)
+            _set_param_python_arr(tiling_reg_list, reg_base, ub_input_64, ub_offset, self.init_dst_tuple_in,
+                                  self.dst_axis_num_no_dup, BORROW_DST_AXIS_NUM)
+            _set_param_python_arr(tiling_reg_list, reg_base, ub_input_64, ub_offset, self.init_logic_tuple,
+                                  self.other_axis_num + 2, TRANSPOSE_MAX_AXIS_NUM)
+
+            # part 4: variable
+            reg_base[0] = S4_FIXED_PART_SCALA_MAX_NUM + S4_PERCORE_PART_SCALA_MAX_NUM
+
+            self.rt_dst_tuple_in = tik_inst.ScalarArray("int64", length=BORROW_DST_AXIS_NUM)
+            self.rt_src_tuple_out = tik_inst.ScalarArray("int64", length=BORROW_SRC_AXIS_NUM)
+            self.rt_logic_tuple = tik_inst.ScalarArray("int64", length=TRANSPOSE_MAX_AXIS_NUM)
+
+            self.rt_src_tuple_logic = tiling_reg_list[reg_base[0] + 0]
+            self.rt_dst_tuple_logic = tiling_reg_list[reg_base[0] + 1]
+            self.src_addr = tiling_reg_list[reg_base[0] + 2]
+            self.dst_addr = tiling_reg_list[reg_base[0] + 3]
+            self.offset_1 = tiling_reg_list[reg_base[0] + 4]
+            self.offset_2 = tiling_reg_list[reg_base[0] + 5]
+            self.is_offset_2_res = tiling_reg_list[reg_base[0] + 6]
+            self.offset_a = tiling_reg_list[reg_base[0] + 7] # always hold thre result
+            self.offset_b = tiling_reg_list[reg_base[0] + 8]
+            self.offset_t = tiling_reg_list[reg_base[0] + 9]
+            self.ub_res_addr = tiling_reg_list[reg_base[0] + 10]
+            self.ub_offset = tiling_reg_list[reg_base[0] + 11]
+
+            self.ub_offset.set_as(0)
+            self.offset_1.set_as(0)
+            self.offset_2.set_as(_get_half_ub())
+            self.ub_res_addr.set_as(self.offset_1)
+
+
     class TilingParamS7(object):
         """
         TilingParamS7
@@ -578,14 +762,16 @@ class Transpose(object):
 
             reg_base = S7_FIXED_PART_SCALA_MAX_NUM + S7_PERCORE_PART_SCALA_MAX_NUM + cycle * TRANSPOSE_MAX_AXIS_NUM
 
-            self.fp16_offset_1 = tiling_reg_list[reg_base + 0]
-            self.fp16_offset_2 = tiling_reg_list[reg_base + 1]
-            self.fp16_offset_3 = tiling_reg_list[reg_base + 2]
+            self.offset_a = tiling_reg_list[reg_base + 0]
+            self.offset_b = tiling_reg_list[reg_base + 1]
+            self.offset_t = tiling_reg_list[reg_base + 2]
             self.src_stride_reorder = tiling_reg_list[reg_base + 3]
             self.dst_stride_reorder = tiling_reg_list[reg_base + 4]
             self.col_reorder = tiling_reg_list[reg_base + 5]
             self.row_reorder = tiling_reg_list[reg_base + 6]
             self.rt_dst_addr = tiling_reg_list[reg_base + 7]
+            self.offset_a.set_as(0)
+            self.offset_b.set_as(_get_half_ub())
 
     def _init_mem_make_ub_allocated(self, ub_input):
         ub_input_b16 = ub_input.reinterpret_cast_to("int16")
@@ -598,14 +784,15 @@ class Transpose(object):
         self.data_in, self.data_perm, self.data_out, self.data_workspace, self.data_tiling = tensor_list
         self.ub_size = self._get_ub_size_by_dtype()
         self.ub_size_64 = self._get_ub_size_by_int64()
-        self.ub_input_64_t = self.tik_inst.Tensor("int64", (128,), tik.scope_ubuf, "ub_input_64_t")
-        self.ub_input_b16_vor = self.tik_inst.Tensor("int16", (128,), tik.scope_ubuf, "ub_input_b16_vor")
+        self.ub_input_64_t = self.tik_inst.Tensor("int64", (256,), tik.scope_ubuf, "ub_input_64_t") # 2048B
+        self.ub_input_b16_vor = self.tik_inst.Tensor("int16", (128,), tik.scope_ubuf, "ub_input_b16_vor") #256B
+        self.ub_input_b64_helper = self.tik_inst.Tensor("int64", (128,), tik.scope_ubuf, "ub_input_b64_helper") # 1024B
         self._init_mem_make_ub_allocated(self.ub_input_b16_vor)
         self.ub_input_64 = self.tik_inst.Tensor("int64", (self.ub_size_64,), tik.scope_ubuf, "ub_input_64")
         self._init_mem_make_ub_allocated(self.ub_input_64)
         self.tiling_reg_list = [self.tik_inst.Scalar("int64") for i in range(TILING_MAX_PARAM_NUM)]
         self.element_per_block = self._element_per_block(self.x_dtype)
-        self.fp16_times = (self._sizeof_dtype(x_dtype) + 1) // self._sizeof_dtype("float16") # fp32/int32:2  fp16/int16:1
+        self.fp16_times = (self._sizeof_dtype(x_dtype) + 1) // self._sizeof_dtype("float16") # fp32/int32:2 fp16/int16:1
         self.ele_per_block = BLOCK_SIZE // self._sizeof_dtype(x_dtype)
         tik_inst.data_move(self.ub_input_64_t, self.data_tiling, 0, 1, TILING_FIXED_MAX_LEN // BLOCK_SIZE, 0, 0)
 
@@ -639,90 +826,32 @@ class Transpose(object):
 
     def _get_src_size(self):
         if UB_SIZE == 256 * 1024:
-            return 3968 - 16  # 910 & 310
+            return 3968 - 16  # 910
+        if UB_SIZE == 248 * 1024:
+            return 3968 - 16  # 310
         if UB_SIZE == 192 * 1024:
-            return 2848  # cs
+            return 2848  # cs & 920
         if UB_SIZE == 128 * 1024:
             return 1861  # es
         return 3968 - 16
 
     def _get_dst_size(self):
         if UB_SIZE == 256 * 1024:
-            return 247  # 910 & 301,  247 to avoid bank conflict
+            return 247  # 910, 247 to avoid bank conflict
+        if UB_SIZE == 248 * 1024:
+            return 247  # 310, 247 to avoid bank conflict
         if UB_SIZE == 192 * 1024:
-            return 191 # cs
+            return 191 # cs & 920
         if UB_SIZE == 128 * 1024:
             return 123 # es
         return 247
 
-    def _get_offset_1(self):
-        if CORE_NUM > 2 and UB_SIZE == 256 * 1024:
-            return 3952 # 910
-        if CORE_NUM == 2 and UB_SIZE == 256 * 1024:
-            return 3824 # 310
-        if CORE_NUM == 1 and UB_SIZE == 192 * 1024:
-            return 2832 # cs es
-        return 3952
-
-    def _get_offset_2(self, offset_1):
-        return offset_1 + offset_1 * EPB16
-
-    #       cycle_num_wsp: 4
-    #                loop_0       loop_1    tail
-    #             ------------|------------|----
-    #    cycle_0  -   -   -   |-   -   -   |-
-    #    cycle_1   -   -   -  | -   -   -  | -
-    #    cycle_2    -   -   - |  -   -   - |  -
-    #    cycle_3     -   -   -|   -   -   -|   -
-
-    # pylint: disable=too-many-arguments, unused-argument, invalid-name
-    def _copy_input_2_workspace(self, tiling_param, ub_input, src_pos_wsp, dst_pos_wsp):
-        tp = tiling_param
-        with self.tik_inst.for_range(0, tp.cycle_num_wsp) as i:
-            with self.tik_inst.for_range(0, tp.loop_num_wsp) as j:
-                self.tik_inst.data_move(ub_input,
-                                        self.data_in[src_pos_wsp +\
-                                                j * tp.nburst_wsp * tp.last_axis_ele * self.element_per_block +\
-                                                i * tp.last_axis_ele],
-                                        0,
-                                        tp.nburst_wsp,
-                                        tp.burst_len,
-                                        tp.src_stride_wsp,
-                                        0)
-                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp +\
-                                            j * tp.nburst_wsp * tp.last_axis_ele_a * self.element_per_block +\
-                                            i * tp.last_axis_ele_a],
-                                        ub_input,
-                                        0,
-                                        tp.nburst_wsp,
-                                        tp.burst_len,
-                                        0,
-                                        tp.dst_stride_wsp)
-            with self.tik_inst.if_scope(tp.nburst_tail_wsp != 0):
-                self.tik_inst.data_move(ub_input,
-                                        self.data_in[src_pos_wsp +\
-                                                     tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele *\
-                                                     self.element_per_block +\
-                                                     i * tp.last_axis_ele],
-                                        0,
-                                        tp.nburst_tail_wsp,
-                                        tp.burst_len,
-                                        tp.src_stride_wsp,
-                                        0)
-                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp +\
-                                                         tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele_a *\
-                                                         self.element_per_block +\
-                                                         i * tp.last_axis_ele_a],
-                                        ub_input,
-                                        0,
-                                        tp.nburst_tail_wsp,
-                                        tp.burst_len,
-                                        0,
-                                        tp.dst_stride_wsp)
-
     def _ele_per_block(self):
         return BLOCK_SIZE // self._sizeof_dtype(self.x_dtype)
 
+    # -------------------------------------------------------------------------------------------------
+    #                                    scenario_0
+    # -------------------------------------------------------------------------------------------------
     def _move_data_s0(self, tp, ub_input_64):
         ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
         with self.tik_inst.for_range(0, tp.major_loop) as i:
@@ -748,6 +877,9 @@ class Transpose(object):
                 self.tik_inst.data_move(self.data_out[tp.base + tp.ele_num - self.ele_per_block], ub_input,
                                         0, 1, 1, 0, 0)
 
+    # -------------------------------------------------------------------------------------------------
+    #                                    scenario_1
+    # -------------------------------------------------------------------------------------------------
     def _get_src_addr_s1(self, tp):
         with self.tik_inst.if_scope(tp.trans_axis_num == 7):
             tp.src_addr.set_as(tp.rt_tuple[0] * tp.src_jump_stride[0] + \
@@ -875,6 +1007,9 @@ class Transpose(object):
             self._copy_out_s1(tp, ub_input, tp.last_axis_burst_len - 1, ub_offset)
             self._copy_anti_overlap_s1(tp, ub_input)
 
+    # -------------------------------------------------------------------------------------------------
+    #                                    scenario_2
+    # -------------------------------------------------------------------------------------------------
     # pylint: disable=too-many-arguments, unused-argument, invalid-name
     def _reorder_s2(self, tp, ub_input, ub_offset, ub_offset_exclude_pad):
         if self.x_dtype in ("int8", "uint8", "bool"):
@@ -1112,6 +1247,9 @@ class Transpose(object):
                 with self.tik_inst.if_scope(tp.last_axis_len > self.ele_per_block):
                     self._copy_anti_overlap_gt_blk_s2(tp, ub_input, steps, accu_blocks)
 
+    # -------------------------------------------------------------------------------------------------
+    #                                    scenario_3
+    # -------------------------------------------------------------------------------------------------
     def _copy_in_major_s3(self, tp, ub_input, last_axis_offset):
         self.tik_inst.data_move(ub_input, self.data_in[tp.src_addr + last_axis_offset], 0, 1, tp.major_blocks, 0, 0)
 
@@ -1155,6 +1293,1135 @@ class Transpose(object):
                 self._copy_out_tail_s3(tp, ub_input, last_axis_offset)
             self._update_tuple(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor)
 
+    # -------------------------------------------------------------------------------------------------
+    #                                    scenario_4
+    # -------------------------------------------------------------------------------------------------
+    def _update_tuple_major_s4(self, axis_num, rt_tuple, step, logic_tuple, jump_factor, axis_perm):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(axis_num == 2):
+
+            with tik_inst.if_scope(axis_perm == 0x10):
+                with tik_inst.if_scope((rt_tuple[0] + 1) % step == 0):
+                    rt_tuple[0].set_as(logic_tuple * step)
+                    rt_tuple[1].set_as(rt_tuple[1] + 1)
+                with tik_inst.else_scope():
+                    rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+            with tik_inst.if_scope(axis_perm == 0x01):
+                with tik_inst.if_scope((rt_tuple[0] + 1) == jump_factor[0]):
+                    rt_tuple[0].set_as(0)
+                    rt_tuple[1].set_as(rt_tuple[1] + 1)
+                with tik_inst.else_scope():
+                    rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+        with tik_inst.if_scope(axis_num == 1):
+            rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+    def _update_tuple_tail_s4(self, axis_num, rt_tuple, step, logic_tuple, jump_factor, axis_perm):
+        tik_inst = self.tik_inst
+        with self.tik_inst.if_scope(axis_num == 2):
+
+            with tik_inst.if_scope(axis_perm == 0x10):
+                with self.tik_inst.if_scope((rt_tuple[0] + 1) == jump_factor[0]):
+                    rt_tuple[0].set_as((logic_tuple + 1) * step)
+                    rt_tuple[1].set_as(rt_tuple[1] + 1)
+                with self.tik_inst.else_scope():
+                    rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+            with tik_inst.if_scope(axis_perm == 0x01):
+                with self.tik_inst.if_scope((rt_tuple[0] + 1) == jump_factor[0]):
+                    rt_tuple[0].set_as(0)
+                    rt_tuple[1].set_as(rt_tuple[1] + 1)
+                with self.tik_inst.else_scope():
+                    rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+        with self.tik_inst.if_scope(axis_num == 1):
+            rt_tuple[0].set_as(rt_tuple[0] + 1)
+
+    def _init_major_src_tuple_copy_out_s4(self, tp):
+        tik_inst = self.tik_inst
+        with self.tik_inst.if_scope(tp.src_axis_num_no_dup == 2):
+
+            with tik_inst.if_scope(tp.src_axis_perm == 0x10):
+                tp.rt_src_tuple_out[0].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
+                tp.rt_src_tuple_out[1].set_as(0)
+
+            with tik_inst.if_scope(tp.src_axis_perm == 0x01):
+                tp.rt_src_tuple_out[0].set_as(0)
+                tp.rt_src_tuple_out[1].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
+
+        with self.tik_inst.if_scope(tp.src_axis_num_no_dup == 1):
+
+            with tik_inst.if_scope(tp.src_axis_perm == 0x0):
+                tp.rt_src_tuple_out[0].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
+
+            with tik_inst.if_scope(tp.src_axis_perm == 0x01):
+                tp.rt_src_tuple_out[0].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
+
+            with tik_inst.if_scope(tp.src_axis_perm == 0x10):
+                tp.rt_src_tuple_out[0].set_as(0)
+
+    def _init_tail_src_tuple_copy_out_s4(self, tp):
+        tik_inst = self.tik_inst
+        with self.tik_inst.if_scope(tp.src_axis_num_no_dup == 2):
+
+            with tik_inst.if_scope(tp.src_axis_perm == 0x10):
+                tp.rt_src_tuple_out[0].set_as((tp.rt_logic_tuple[0] + 1) * tp.src_jump_major_step)
+                tp.rt_src_tuple_out[1].set_as(0)
+
+            with tik_inst.if_scope(tp.src_axis_perm == 0x01):
+                tp.rt_src_tuple_out[0].set_as(0)
+                tp.rt_src_tuple_out[1].set_as((tp.rt_logic_tuple[0] + 1) * tp.src_jump_major_step)
+
+        with self.tik_inst.if_scope(tp.src_axis_num_no_dup == 1):
+            tp.rt_src_tuple_out[0].set_as((tp.rt_logic_tuple[0] + 1) * tp.src_jump_major_step)
+
+    def _init_major_dst_tuple_copy_in_s4(self, tp):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(tp.dst_axis_num_no_dup == 2):
+
+            with tik_inst.if_scope(tp.dst_axis_perm == 0x10):
+                tp.rt_dst_tuple_in[0].set_as(tp.rt_logic_tuple[1] * tp.dst_jump_major_step)
+                tp.rt_dst_tuple_in[1].set_as(0)
+
+            with tik_inst.if_scope(tp.dst_axis_perm == 0x01):
+                tp.rt_dst_tuple_in[0].set_as(0)
+                tp.rt_dst_tuple_in[1].set_as(tp.rt_logic_tuple[1] * tp.dst_jump_major_step)
+
+        with tik_inst.if_scope(tp.dst_axis_num_no_dup == 1):
+            tp.rt_dst_tuple_in[0].set_as(tp.rt_logic_tuple[1] * tp.dst_jump_major_step)
+
+    def _init_tail_dst_tuple_copy_in_s4(self, tp):
+        tik_inst = self.tik_inst
+        with self.tik_inst.if_scope(tp.dst_axis_num_no_dup == 2):
+
+            with tik_inst.if_scope(tp.dst_axis_perm == 0x10):
+                tp.rt_dst_tuple_in[0].set_as((tp.rt_logic_tuple[1] + 1) * tp.dst_jump_major_step)
+                tp.rt_dst_tuple_in[1].set_as(0)
+
+            with tik_inst.if_scope(tp.dst_axis_perm == 0x01):
+                tp.rt_dst_tuple_in[0].set_as(0)
+                tp.rt_dst_tuple_in[1].set_as((tp.rt_logic_tuple[1] + 1) * tp.dst_jump_major_step)
+
+        with self.tik_inst.if_scope(tp.dst_axis_num_no_dup == 1):
+            tp.rt_dst_tuple_in[0].set_as((tp.rt_logic_tuple[1] + 1) * tp.dst_jump_major_step)
+
+    def _init_major_src_tuple_copy_out_dup_0x210_s4(self, tp):
+        tp.rt_src_tuple_out[0].set_as(0)
+
+    def _init_major_dst_tuple_copy_in_dup_0x210_s4(self, tp):
+        tp.rt_dst_tuple_in[0].set_as(0)
+
+    def _init_tail_src_tuple_copy_out_dup_0x210_s4(self, tp):
+        tp.rt_src_tuple_out[0].set_as(0)
+
+    def _init_tail_dst_tuple_copy_in_dup_0x210_s4(self, tp):
+        tp.rt_dst_tuple_in[0].set_as(0)
+
+    def _init_major_src_tuple_copy_out_dup_0x201_s4(self, tp):
+        tp.rt_src_tuple_out[0].set_as(0)
+
+    def _init_major_dst_tuple_copy_in_dup_0x201_s4(self, tp):
+        tp.rt_dst_tuple_in[0].set_as(tp.rt_logic_tuple[1]  * tp.dst_jump_major_step)
+
+    def _init_tail_dst_tuple_copy_in_dup_0x201_s4(self, tp):
+        tp.rt_dst_tuple_in[0].set_as((tp.rt_logic_tuple[1] + 1)  * tp.dst_jump_major_step)
+
+    def _init_major_src_tuple_copy_out_dup_0x120_s4(self, tp):
+        tp.rt_src_tuple_out[0].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
+
+    def _init_major_dst_tuple_copy_in_dup_0x120_s4(self, tp):
+        tp.rt_dst_tuple_in[0].set_as(0)
+
+    def _init_tail_src_tuple_copy_out_dup_0x120_s4(self, tp):
+        tp.rt_src_tuple_out[0].set_as((tp.rt_logic_tuple[0] + 1) * tp.src_jump_major_step)
+
+    def _init_major_dst_tuple_copy_in_dup_0x10_s1d2_s4(self, tp):
+        tp.rt_dst_tuple_in[0].set_as(0)
+        
+    def _init_major_src_tuple_copy_out_dup_0x10_s2d1_s4(self, tp):
+        tp.rt_src_tuple_out[0].set_as(0)
+
+    def _init_major_tuple_copy_in_dup_s4(self, tp):
+        tp.rt_dst_tuple_in[0].set_as(tp.init_dst_tuple_in[0])
+
+    def _init_major_tuple_copy_out_dup_s4(self, tp):
+        tik_inst = self.tik_inst
+
+        with self.tik_inst.if_scope(tp.src_axis_perm == 0x0):
+            tp.rt_src_tuple_out[0].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
+
+        with self.tik_inst.if_scope(tp.src_axis_perm == 0x01):
+            tp.rt_src_tuple_out[0].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
+
+        with self.tik_inst.if_scope(tp.src_axis_perm == 0x10):
+            tp.rt_src_tuple_out[0].set_as(0)
+
+    def _init_tail_tuple_copy_in_dup_s4(self, tp):
+        # mul round % axis  as tail
+        tp.rt_dst_tuple_in[0].set_as(tp.init_dst_tuple_in[0])
+
+    def _init_tail_tuple_copy_out_dup_s4(self, tp):
+        with self.tik_inst.if_scope(tp.src_axis_perm == 0x01):
+            tp.rt_src_tuple_out[0].set_as((tp.rt_logic_tuple[0] + 1) * tp.src_jump_major_step)
+
+        with self.tik_inst.if_scope(tik.any(tp.src_axis_perm == 0x10, tp.src_axis_perm == 0x0)):
+            tp.rt_src_tuple_out[0].set_as(tp.init_src_tuple_out[0])
+
+    def _init_logic_tuple_s4(self, tp):
+        for i in range(TRANSPOSE_MAX_AXIS_NUM):
+            tp.rt_logic_tuple[i].set_as(tp.init_logic_tuple[i])
+
+    def _update_major_dst_tuple_in_s4(self, tp):
+        self._update_tuple_major_s4(tp.dst_axis_num_no_dup,
+                                    tp.rt_dst_tuple_in,
+                                    tp.dst_jump_major_step,
+                                    tp.rt_logic_tuple[1],
+                                    tp.dst_jump_factor_in,
+                                    tp.dst_axis_perm)
+
+    def _update_major_src_tuple_out_s4(self, tp):
+        self._update_tuple_major_s4(tp.src_axis_num_no_dup,
+                                    tp.rt_src_tuple_out,
+                                    tp.src_jump_major_step,
+                                    tp.rt_logic_tuple[0],
+                                    tp.src_jump_factor_out,
+                                    tp.src_axis_perm)
+
+    def _update_tail_dst_tuple_in_s4(self, tp):
+        self._update_tuple_tail_s4(tp.dst_axis_num_no_dup,
+                                   tp.rt_dst_tuple_in,
+                                   tp.dst_jump_major_step,
+                                   tp.rt_logic_tuple[1],
+                                   tp.dst_jump_factor_in,
+                                   tp.dst_axis_perm)
+
+    def _update_tail_src_tuple_out_s4(self, tp):
+        self._update_tuple_tail_s4(tp.src_axis_num_no_dup,
+                                   tp.rt_src_tuple_out,
+                                   tp.src_jump_major_step,
+                                   tp.rt_logic_tuple[0],
+                                   tp.src_jump_factor_out,
+                                   tp.src_axis_perm)
+
+    def _update_tail_tuple_in_dup_s4(self, tp):
+        tp.rt_dst_tuple_in[0].set_as(tp.rt_dst_tuple_in[0] + 1)
+
+    def _update_tail_tuple_out_dup_s4(self, tp):
+        tp.rt_src_tuple_out[0].set_as(tp.rt_src_tuple_out[0] + 1)
+
+    def _update_logic_tuple_s4(self, tp):
+        self._update_tuple(tp.logic_axis_num, tp.rt_logic_tuple, tp.logic_jump_factor)
+
+    def _detect_tail_flag(self, tp, is_src_tail_in, is_dst_tail_in):
+        with self.tik_inst.if_scope(tp.rt_logic_tuple[0] == tp.logic_jump_factor[0] - 1):
+            is_src_tail_in.set_as(1)
+
+        with self.tik_inst.if_scope(tp.rt_logic_tuple[1] == tp.logic_jump_factor[1] - 1):
+            is_dst_tail_in.set_as(1)
+
+    def _get_src_addr_s4(self, tp, src_addr, is_tail):
+        tik_inst = self.tik_inst
+
+        src_addr.set_as(0)
+
+        with tik_inst.if_scope(is_tail == 0):
+            src_addr.set_as(tp.rt_logic_tuple[0] * tp.major_in_ele)
+        with tik_inst.else_scope():
+            src_addr.set_as((tp.rt_logic_tuple[0] + 1) * tp.major_in_ele)
+
+        with tik_inst.for_range(0, tp.dst_axis_num_no_dup) as i:
+            src_addr.set_as(src_addr + tp.rt_dst_tuple_in[i] * tp.dst_stride_in[i])
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            src_addr.set_as(src_addr + tp.rt_logic_tuple[i] * tp.logic_stride_in[i])
+
+    def _get_dst_addr_s4(self, tp, dst_addr, is_tail):
+        tik_inst = self.tik_inst
+        dst_addr.set_as(0)
+
+        with tik_inst.if_scope(tp.dup_axis == 0):
+            with tik_inst.if_scope(is_tail == 0):
+                dst_addr.set_as(tp.rt_logic_tuple[1] * tp.major_out_ele)
+            with tik_inst.else_scope():
+                dst_addr.set_as((tp.rt_logic_tuple[1] + 1) * tp.major_out_ele)
+        with tik_inst.else_scope():
+            with tik_inst.if_scope(tik.any(tp.src_axis_perm == 0x10, tp.src_axis_perm == 0x0)):
+                with tik_inst.if_scope(is_tail == 0):
+                    dst_addr.set_as(tp.rt_logic_tuple[1] * tp.major_out_ele)
+                with tik_inst.else_scope():
+                    dst_addr.set_as((tp.rt_logic_tuple[1] + 1) * tp.major_out_ele)
+
+        with tik_inst.for_range(0, tp.src_axis_num_no_dup) as i:
+            dst_addr.set_as(dst_addr + tp.rt_src_tuple_out[i] * tp.src_stride_out[i])
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            dst_addr.set_as(dst_addr + tp.rt_logic_tuple[i] * tp.logic_stride_out[i])
+
+    def _get_src_addr_dup_0x210_s4(self, tp, src_addr, is_tail):
+        tik_inst = self.tik_inst
+        src_addr.set_as(0)
+
+        with tik_inst.if_scope(is_tail == 0):
+            src_addr.set_as(tp.rt_logic_tuple[0] * tp.major_in_ele)
+        with tik_inst.else_scope():
+            src_addr.set_as((tp.rt_logic_tuple[0] + 1) * tp.major_in_ele)
+
+        with tik_inst.for_range(0, tp.dst_axis_num_no_dup) as i:
+            src_addr.set_as(src_addr + tp.rt_dst_tuple_in[i] * tp.dst_stride_in[i])
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            src_addr.set_as(src_addr + tp.rt_logic_tuple[i] * tp.logic_stride_in[i])
+
+    def _get_dst_addr_dup_0x210_s4(self, tp, dst_addr, is_tail):
+        tik_inst = self.tik_inst
+        dst_addr.set_as(0)
+
+        with tik_inst.if_scope(is_tail == 0):
+            dst_addr.set_as(tp.rt_logic_tuple[0] * tp.major_out_ele)
+        with tik_inst.else_scope():
+            dst_addr.set_as((tp.rt_logic_tuple[0] + 1) * tp.major_out_ele)
+
+        with tik_inst.for_range(0, tp.src_axis_num_no_dup) as i:
+            dst_addr.set_as(dst_addr + tp.rt_src_tuple_out[i] * tp.src_stride_out[i])
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            dst_addr.set_as(dst_addr + tp.rt_logic_tuple[i] * tp.logic_stride_out[i])
+
+    def _get_src_addr_dup_0x201_s4(self, tp, src_addr):
+        tik_inst = self.tik_inst
+        src_addr.set_as(0)
+
+        with tik_inst.for_range(0, tp.dst_axis_num_no_dup) as i:
+            src_addr.set_as(src_addr + tp.rt_dst_tuple_in[i] * tp.dst_stride_in[i])
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            src_addr.set_as(src_addr + tp.rt_logic_tuple[i] * tp.logic_stride_in[i])
+
+    def _get_dst_addr_dup_0x201_s4(self, tp, dst_addr, is_tail):
+        tik_inst = self.tik_inst
+        dst_addr.set_as(0)
+
+        with tik_inst.if_scope(is_tail == 0):
+            dst_addr.set_as(tp.rt_logic_tuple[1] * tp.major_out_ele)
+        with tik_inst.else_scope():
+            dst_addr.set_as((tp.rt_logic_tuple[1] + 1) * tp.major_out_ele)
+
+        with tik_inst.for_range(0, tp.src_axis_num_no_dup) as i:
+            dst_addr.set_as(dst_addr + tp.rt_src_tuple_out[i] * tp.src_stride_out[i])
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            dst_addr.set_as(dst_addr + tp.rt_logic_tuple[i] * tp.logic_stride_out[i])
+
+    def _get_src_addr_dup_0x10_s1d2_s4(self, tp, src_addr, is_tail):
+        tik_inst = self.tik_inst
+        src_addr.set_as(0)
+
+        with tik_inst.if_scope(is_tail == 0):
+            src_addr.set_as(tp.rt_logic_tuple[0] * tp.major_in_ele)
+        with tik_inst.else_scope():
+            src_addr.set_as((tp.rt_logic_tuple[0] + 1) * tp.major_in_ele)
+
+        with tik_inst.for_range(0, tp.dst_axis_num_no_dup) as i:
+            src_addr.set_as(src_addr + tp.rt_dst_tuple_in[i] * tp.dst_stride_in[i])
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            src_addr.set_as(src_addr + tp.rt_logic_tuple[i] * tp.logic_stride_in[i])
+
+    def _get_dst_addr_dup_0x10_s1d2_s4(self, tp, dst_addr, is_tail):
+        tik_inst = self.tik_inst
+        dst_addr.set_as(0)
+
+        with tik_inst.if_scope(is_tail == 0):
+            dst_addr.set_as(tp.rt_logic_tuple[0] * tp.major_out_ele)
+        with tik_inst.else_scope():
+            dst_addr.set_as((tp.rt_logic_tuple[0] + 1) * tp.major_out_ele)
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            dst_addr.set_as(dst_addr + tp.rt_logic_tuple[i] * tp.logic_stride_out[i])
+
+    def _get_src_addr_dup_0x10_s2d1_s4(self, tp, src_addr, is_tail):
+        tik_inst = self.tik_inst
+        src_addr.set_as(0)
+
+        with tik_inst.if_scope(is_tail == 0):
+            src_addr.set_as(tp.rt_logic_tuple[0] * tp.major_in_ele)
+        with tik_inst.else_scope():
+            src_addr.set_as((tp.rt_logic_tuple[0] + 1) * tp.major_in_ele)
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            src_addr.set_as(src_addr + tp.rt_logic_tuple[i] * tp.logic_stride_in[i])
+
+    def _get_dst_addr_dup_0x10_s2d1_s4(self, tp, dst_addr, is_tail):
+        tik_inst = self.tik_inst
+        dst_addr.set_as(0)
+
+        with tik_inst.if_scope(is_tail == 0):
+            dst_addr.set_as(tp.rt_logic_tuple[0] * tp.major_out_ele)
+        with tik_inst.else_scope():
+            dst_addr.set_as((tp.rt_logic_tuple[0] + 1) * tp.major_out_ele)
+
+        with tik_inst.for_range(0, tp.src_axis_num_no_dup) as i:
+            dst_addr.set_as(dst_addr + tp.rt_src_tuple_out[i] * tp.src_stride_out[i])
+
+        with tik_inst.for_range(2, tp.other_axis_num + 2) as i:
+            dst_addr.set_as(dst_addr + tp.rt_logic_tuple[i] * tp.logic_stride_out[i])
+
+    def _copy_out_common_s4(self, tp, ub_input, loop, burst_len, x_out_ele, x_out_tail_ele):
+        tik_inst = self.tik_inst
+        ub_tail_offset = tik_inst.Scalar("int32")
+        ub_tail_offset.set_as(loop % 32 * self.ele_per_block)
+        with tik_inst.if_scope(tik.any(tp.align_ele == 0, x_out_tail_ele == 0)):
+            tik_inst.data_move(self.data_out[tp.dst_addr],
+                               ub_input[tp.ub_res_addr + loop * burst_len * EPB16 // self.fp16_times],
+                               0, 1, burst_len, 0, 0)
+        with tik_inst.else_scope():
+            tik_inst.data_move(self.data_out[tp.dst_addr],
+                               ub_input[tp.ub_res_addr + loop * burst_len * EPB16 // self.fp16_times],
+                               0, 1, burst_len - 1, 0, 0)
+            ub_input_tail = self.ub_input_b64_helper.reinterpret_cast_to(self.x_dtype)
+            scalar_value = self.tik_inst.Scalar(self.x_dtype)
+            with self.tik_inst.for_range(0, self.ele_per_block) as i:
+                scalar_value.set_as(ub_input[tp.ub_res_addr + i +\
+                                    loop * burst_len * EPB16 // self.fp16_times +\
+                                    x_out_ele -\
+                                    self.ele_per_block])
+                ub_input_tail[ub_tail_offset + i] = scalar_value
+            tik_inst.data_move(self.data_out[tp.dst_addr + x_out_ele - self.ele_per_block],
+                               ub_input_tail[ub_tail_offset], 0, 1, 1, 0, 0)
+
+    def _copy_in_major_src_major_dst_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
+                self._get_src_addr_s4(tp, tp.src_addr, 0)
+                tik_inst.data_move(ub_input[i * tp.major_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr],
+                                   0,
+                                   1,
+                                   tp.major_burst_len_in,
+                                   0,
+                                   0)
+                self._update_major_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
+
+    def _copy_out_major_src_major_dst_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_s4(tp, tp.dst_addr, 0)
+                self._copy_out_common_s4(tp, ub_input, i, tp.major_burst_len_out,
+                                         tp.major_out_ele, tp.major_out_tail_ele)
+                self._update_major_src_tuple_out_s4(tp)
+
+    def _copy_in_tail_src_major_dst_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
+                self._get_src_addr_s4(tp, tp.src_addr, 1)
+                tik_inst.data_move(ub_input[i * tp.tail_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr], 0, 1, tp.tail_burst_len_in, 0, 0)
+                self._update_major_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.tail_burst_len_in)
+
+    def _copy_out_tail_src_major_dst_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.tail_src_loop_out) as i:
+                self._get_dst_addr_s4(tp, tp.dst_addr, 0)
+                self._copy_out_common_s4(tp, ub_input, i, tp.major_burst_len_out,
+                                         tp.major_out_ele, tp.major_out_tail_ele)
+                self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_major_src_tail_dst_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.tail_dst_loop_in) as i:
+                self._get_src_addr_s4(tp, tp.src_addr, 0)
+                tik_inst.data_move(ub_input[i * tp.major_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr], 0, 1, tp.major_burst_len_in, 0, 0)
+                self._update_tail_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
+
+    def _copy_out_major_src_tail_dst_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_s4(tp, tp.dst_addr, 1)
+                self._copy_out_common_s4(tp, ub_input, i, tp.tail_burst_len_out, tp.tail_out_ele, tp.tail_out_tail_ele)
+                self._update_major_src_tuple_out_s4(tp)
+
+    def _copy_in_tail_src_tail_dst_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.tail_dst_loop_in) as i:
+                self._get_src_addr_s4(tp, tp.src_addr, 1)
+                tik_inst.data_move(ub_input[i * tp.tail_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr], 0, 1, tp.tail_burst_len_in, 0, 0)
+                self._update_tail_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.tail_burst_len_in)
+
+    def _copy_out_tail_src_tail_dst_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.tail_src_loop_out) as i:
+                self._get_dst_addr_s4(tp, tp.dst_addr, 1)
+                self._copy_out_common_s4(tp, ub_input, i, tp.tail_burst_len_out, tp.tail_out_ele, tp.tail_out_tail_ele)
+                self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_major_src_major_dst_dup_0x210_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
+                self._get_src_addr_dup_0x210_s4(tp, tp.src_addr, 0)
+                tik_inst.data_move(ub_input[i * tp.major_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr],
+                                   0, 1, tp.major_burst_len_in, 0, 0)
+                self._update_major_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
+
+    def _copy_out_major_src_major_dst_dup_0x210_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_dup_0x210_s4(tp, tp.dst_addr, 0)
+                self._copy_out_common_s4(tp, ub_input, i, tp.major_burst_len_out,
+                                         tp.major_out_ele, tp.major_out_tail_ele)
+                self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_tail_src_tail_dst_dup_0x210_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
+                self._get_src_addr_dup_0x210_s4(tp, tp.src_addr, 1)
+                tik_inst.data_move(ub_input[i * tp.tail_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr], 0, 1, tp.tail_burst_len_in, 0, 0)
+                self._update_tail_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.tail_burst_len_in)
+
+    def _copy_out_tail_src_tail_dst_dup_0x210_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_dup_0x210_s4(tp, tp.dst_addr, 1)
+                self._copy_out_common_s4(tp, ub_input, i, tp.tail_burst_len_out, tp.tail_out_ele, tp.tail_out_tail_ele)
+                self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_major_src_major_dst_dup_0x201_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
+                self._get_src_addr_dup_0x201_s4(tp, tp.src_addr)
+                tik_inst.data_move(ub_input[i * tp.major_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr],
+                                   0, 1, tp.major_burst_len_in, 0, 0)
+                self._update_major_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
+
+    def _copy_out_major_src_major_dst_dup_0x201_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_dup_0x201_s4(tp, tp.dst_addr, 0)
+                self._copy_out_common_s4(tp, ub_input, i, tp.major_burst_len_out,
+                                         tp.major_out_ele, tp.major_out_tail_ele)
+                self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_major_src_tail_dst_dup_0x201_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.tail_dst_loop_in) as i:
+                self._get_src_addr_dup_0x201_s4(tp, tp.src_addr)
+                tik_inst.data_move(ub_input[i * tp.major_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr], 0, 1, tp.major_burst_len_in, 0, 0)
+                self._update_tail_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
+
+    def _copy_out_major_src_tail_dst_dup_0x201_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_dup_0x201_s4(tp, tp.dst_addr, 1)
+                self._copy_out_common_s4(tp, ub_input, i, tp.tail_burst_len_out, tp.tail_out_ele, tp.tail_out_tail_ele)
+                self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_major_src_major_dst_dup_0x10_s1d2_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
+                self._get_src_addr_dup_0x10_s1d2_s4(tp, tp.src_addr, 0)
+                tik_inst.data_move(ub_input[i * tp.major_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr],
+                                   0, 1, tp.major_burst_len_in, 0, 0)
+                self._update_major_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
+
+    def _copy_out_major_src_major_dst_dup_0x10_s1d2_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            self._get_dst_addr_dup_0x10_s1d2_s4(tp, tp.dst_addr, 0)
+            self._copy_out_common_s4(tp, ub_input, 0, tp.major_burst_len_out, tp.major_out_ele, tp.major_out_tail_ele)
+            self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_tail_src_major_dst_dup_0x10_s1d2_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
+                self._get_src_addr_dup_0x10_s1d2_s4(tp, tp.src_addr, 1)
+                tik_inst.data_move(ub_input[i * tp.tail_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr],
+                                   0, 1, tp.tail_burst_len_in, 0, 0)
+                self._update_major_dst_tuple_in_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.tail_burst_len_in)
+
+    def _copy_out_tail_src_major_dst_dup_0x10_s1d2_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            self._get_dst_addr_dup_0x10_s1d2_s4(tp, tp.dst_addr, 1)
+            self._copy_out_common_s4(tp, ub_input, 0, tp.tail_burst_len_out, tp.tail_out_ele, tp.tail_out_tail_ele)
+            self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_major_src_major_dst_dup_0x10_s2d1_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            self._get_src_addr_dup_0x10_s2d1_s4(tp, tp.src_addr, 0)
+            tik_inst.data_move(ub_input[0],
+                               self.data_in[tp.src_addr],
+                               0, 1, tp.major_burst_len_in, 0, 0)
+            self._update_major_dst_tuple_in_s4(tp)
+            tp.ub_offset.set_as(tp.ub_offset + tp.major_burst_len_in)
+
+    def _copy_out_major_src_major_dst_dup_0x10_s2d1_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_dup_0x10_s2d1_s4(tp, tp.dst_addr, 0)
+                self._copy_out_common_s4(tp, ub_input, i, tp.major_burst_len_out,
+                                         tp.major_out_ele, tp.major_out_tail_ele)
+                self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_tail_src_major_dst_dup_0x10_s2d1_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            self._get_src_addr_dup_0x10_s2d1_s4(tp, tp.src_addr, 1)
+            tik_inst.data_move(ub_input[0],
+                               self.data_in[tp.src_addr],
+                               0, 1, tp.tail_burst_len_in, 0, 0)
+            self._update_major_dst_tuple_in_s4(tp)
+            tp.ub_offset.set_as(tp.ub_offset + tp.tail_burst_len_in)
+
+    def _copy_out_tail_src_major_dst_dup_0x10_s2d1_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_dup_0x10_s2d1_s4(tp, tp.dst_addr, 1)
+                self._copy_out_common_s4(tp, ub_input, i, tp.tail_burst_len_out, tp.tail_out_ele, tp.tail_out_tail_ele)
+                self._update_tail_src_tuple_out_s4(tp)
+
+    def _copy_in_tail_dup_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        tp.ub_offset.set_as(0)
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_dst_loop_in) as i:
+                self._get_src_addr_s4(tp, tp.src_addr, 1)
+                tik_inst.data_move(ub_input[i * tp.tail_burst_len_in * EPB16 // self.fp16_times],
+                                   self.data_in[tp.src_addr],
+                                   0,
+                                   1,
+                                   tp.tail_burst_len_in,
+                                   0,
+                                   0)
+                self._update_tail_tuple_in_dup_s4(tp)
+                tp.ub_offset.set_as(tp.ub_offset + tp.tail_burst_len_in)
+
+    def _copy_out_tail_dup_0x10_s1d2_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_s4(tp, tp.dst_addr, 1)
+                self._copy_out_common_s4(tp, ub_input, i, tp.tail_burst_len_out, tp.tail_out_ele, tp.tail_out_tail_ele)
+                self._update_tail_tuple_out_dup_s4(tp)
+
+    def _copy_out_tail_dup_0x01_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.tail_src_loop_out) as i:
+                self._get_dst_addr_s4(tp, tp.dst_addr, 1)
+                self._copy_out_common_s4(tp, ub_input, i, tp.major_burst_len_out,
+                                         tp.major_out_ele, tp.major_out_tail_ele)
+                self._update_tail_tuple_out_dup_s4(tp)
+
+    def _copy_out_tail_dup_0x0_s4(self, tp, ub_input):
+        tik_inst = self.tik_inst
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.major_src_loop_out) as i:
+                self._get_dst_addr_s4(tp, tp.dst_addr, 1)
+                self._copy_out_common_s4(tp, ub_input, i, tp.tail_burst_len_out, tp.tail_out_ele, tp.tail_out_tail_ele)
+                self._update_tail_tuple_out_dup_s4(tp)
+
+    def _swap(self, tp):
+        tp.offset_t.set_as(tp.offset_a)
+        tp.offset_a.set_as(tp.offset_b)
+        tp.offset_b.set_as(tp.offset_t)
+
+    def _make_ualigned_be_head_of_block(self, tp, ub_input, x_in_ele, x_in_tail_ele, x_dst_loop_in):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(tp.align_ele != 0):
+            ub_input_b16 = ub_input.reinterpret_cast_to("int16")
+            src_ele_num_in_b16 = self._get_src_size() # avoid bank conflict
+            src_list = [ub_input_b16[tp.offset_a * self.fp16_times + src_ele_num_in_b16 * i] for i in range(EPB16)]
+            dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + EPB16 * i] for i in range(EPB16)]
+            tik_inst.vnchwconv(False, False, dst_list, src_list, tp.ub_offset, EPB16, 1)
+            self._swap(tp)
+
+            #eliminate dirty data between two in_blocks
+            with tik_inst.if_scope(x_in_tail_ele != 0):
+                tik_inst.data_move(ub_input_b16[tp.offset_b * self.fp16_times],
+                                   ub_input_b16[tp.offset_a * self.fp16_times],
+                                   0,
+                                   x_dst_loop_in,
+                                   x_in_ele * self.fp16_times,
+                                   (self.ele_per_block - x_in_tail_ele) * self.fp16_times, # src_stride
+                                   0) # dst_stride
+                self._swap(tp)
+
+    def _make_block_head_be_contiguous(self, tp, ub_input, x_out_ele, x_out_tail_ele, burst_len_out, x_src_loop_out):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(tp.align_ele != 0):
+            ub_input_b16 = ub_input.reinterpret_cast_to("int16")
+            # insert data between two in_blocks to make each out_blocks be started with block align
+            with tik_inst.if_scope(x_out_tail_ele != 0):
+                tik_inst.data_move(ub_input_b16[tp.offset_b * self.fp16_times],
+                                   ub_input_b16[tp.offset_a * self.fp16_times],
+                                   0,
+                                   x_src_loop_out,
+                                   x_out_ele * self.fp16_times,
+                                   0,
+                                   (self.ele_per_block - x_out_tail_ele) * self.fp16_times)
+                self._swap(tp)
+
+            # make block head be line
+            src_list = [ub_input_b16[tp.offset_a * self.fp16_times + EPB16 * i] for i in range(EPB16)]
+            dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + self._get_dst_size() * EPB16 * i] \
+                        for i in range(EPB16)]
+            tik_inst.vnchwconv(False, False, dst_list, src_list, x_src_loop_out * burst_len_out, 1, EPB16)
+            self._swap(tp)
+
+    def _get_reorder_idx(self, is_src_tail_in, is_dst_tail_in, idx):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(tik.all(is_dst_tail_in == 0, is_src_tail_in == 0)):
+            idx.set_as(0)
+        with tik_inst.if_scope(tik.all(is_dst_tail_in == 0, is_src_tail_in == 1)):
+            idx.set_as(1)
+        with tik_inst.if_scope(tik.all(is_dst_tail_in == 1, is_src_tail_in == 0)):
+            idx.set_as(2)
+        with tik_inst.if_scope(tik.all(is_dst_tail_in == 1, is_src_tail_in == 1)):
+            idx.set_as(3)
+
+    def _reorder_s4_data_move(self, tp, ub_input, idx):
+        tik_inst = self.tik_inst
+        ub_input_b16 = ub_input.reinterpret_cast_to("int16")
+        with tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.loop_1[idx]) as i:
+                tik_inst.data_move(ub_input_b16[(tp.offset_b + i * tp.dst_offset_1[idx]) * self.fp16_times],
+                                   ub_input_b16[(tp.offset_a + i * tp.src_offset_1[idx]) * self.fp16_times],
+                                   0,
+                                   tp.repeat_1[idx],
+                                   tp.burst_len_1[idx],
+                                   tp.src_stride_1[idx],
+                                   tp.dst_stride_1[idx])
+        with tik_inst.if_scope(tp.loop_1[idx] > 0):
+            self._swap(tp)
+
+        with tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.loop_2[idx]) as i:
+                tik_inst.data_move(ub_input_b16[(tp.offset_b + i * tp.dst_offset_2[idx]) * self.fp16_times],
+                                   ub_input_b16[(tp.offset_a + i * tp.src_offset_2[idx]) * self.fp16_times],
+                                   0,
+                                   tp.repeat_2[idx],
+                                   tp.burst_len_2[idx],
+                                   tp.src_stride_2[idx],
+                                   tp.dst_stride_2[idx])
+        with tik_inst.if_scope(tp.loop_2[idx] > 0):
+            self._swap(tp)
+
+        with tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.loop_3[idx]) as i:
+                tik_inst.data_move(ub_input_b16[(tp.offset_b + i * tp.dst_offset_3[idx]) * self.fp16_times],
+                                   ub_input_b16[(tp.offset_a + i * tp.src_offset_3[idx]) * self.fp16_times],
+                                   0,
+                                   tp.repeat_3[idx],
+                                   tp.burst_len_3[idx],
+                                   tp.src_stride_3[idx],
+                                   tp.dst_stride_3[idx])
+        with tik_inst.if_scope(tp.loop_3[idx] > 0):
+            self._swap(tp)
+
+    def _reorder_s4_vcopy(self, tp, ub_input, idx):
+        tik_inst = self.tik_inst
+        ub_input_b16 = ub_input.reinterpret_cast_to("int16")
+        with tik_inst.for_range(0, 4) as i:
+            with tik_inst.for_range(0, 8) as j:
+                with tik_inst.new_stmt_scope(disable_sync=True):
+                    tik_inst.vcopy(6 * 16,
+                                   ub_input_b16[tp.offset_b + i * 6 * 16 + j * 10 * 4 * 6 * 16],
+                                   ub_input_b16[tp.offset_a + i * 10 * 8 * 6 * 16 + j * 6 * 16],
+                                   10,
+                                   1,
+                                   1,
+                                   4 * 6,
+                                   8 * 6,
+                                   "counter")
+        self._swap(tp)
+
+    def _reorder_s4(self, tp, ub_input, is_src_tail_in, is_dst_tail_in,
+                    x_in_ele, x_in_tail_ele, burst_len_in, x_dst_loop_in,
+                    x_out_ele, x_out_tail_ele, burst_len_out, x_src_loop_out):
+
+        tik_inst = self.tik_inst
+        idx = tik_inst.Scalar("int32")
+
+        tp.offset_a.set_as(tp.offset_1 // self.fp16_times)
+        tp.offset_b.set_as(tp.offset_2 // self.fp16_times)
+
+        self._get_reorder_idx(is_src_tail_in, is_dst_tail_in, idx)
+
+        self._make_ualigned_be_head_of_block(tp, ub_input, x_in_ele, x_in_tail_ele, x_dst_loop_in)
+
+        if not api_check_support("tik.vcopy", "int16"):
+            self._reorder_s4_data_move(tp, ub_input, idx)
+        else:
+            self._reorder_s4_vcopy(tp, ub_input, idx)
+
+        self._make_block_head_be_contiguous(tp, ub_input, x_out_ele, x_out_tail_ele, burst_len_out, x_src_loop_out)
+
+        tp.ub_res_addr.set_as(tp.offset_a)
+
+    def _init_all_tuple_s4(self, tp):
+        self._init_logic_tuple_s4(tp)
+
+    ##tik_inst.data_move(self.data_out[0], ub_input[tp.offset_a], 0, 1, 4000, 0, 0)
+
+    def _move_data_no_dup_s4(self, tp, ub_input, is_src_tail_in, is_dst_tail_in):
+        tik_inst = self.tik_inst
+        with tik_inst.for_range(0, tp.loop_per_core):
+            is_src_tail_in.set_as(0)
+            is_dst_tail_in.set_as(0)
+
+            self._init_major_src_tuple_copy_out_s4(tp)
+            self._init_major_dst_tuple_copy_in_s4(tp)
+            self._copy_in_major_src_major_dst_s4(tp, ub_input)
+            self._reorder_s4(tp, ub_input, 0, 0,
+                             tp.major_in_ele,
+                             tp.major_in_tail_ele,
+                             tp.major_burst_len_in,
+                             tp.major_dst_loop_in,
+                             tp.major_out_ele,
+                             tp.major_out_tail_ele,
+                             tp.major_burst_len_out,
+                             tp.major_src_loop_out)
+            self._copy_out_major_src_major_dst_s4(tp, ub_input)
+
+            self._detect_tail_flag(tp, is_src_tail_in, is_dst_tail_in)
+
+            with tik_inst.if_scope(is_src_tail_in == 1):
+                with tik_inst.if_scope(tp.tail_burst_len_in != 0):
+                    self._init_tail_src_tuple_copy_out_s4(tp)
+                    self._init_major_dst_tuple_copy_in_s4(tp)
+                    self._copy_in_tail_src_major_dst_s4(tp, ub_input)
+                    self._reorder_s4(tp, ub_input, 1, 0,
+                                     tp.tail_in_ele,
+                                     tp.tail_in_tail_ele,
+                                     tp.tail_burst_len_in,
+                                     tp.major_dst_loop_in,
+                                     tp.major_out_ele,
+                                     tp.major_out_tail_ele,
+                                     tp.major_burst_len_out,
+                                     tp.major_src_loop_out)
+                    self._copy_out_tail_src_major_dst_s4(tp, ub_input)
+                    #tik_inst.data_move(self.data_out[0], ub_input[tp.offset_a], 0, 1, 4000, 0, 0)
+
+            with tik_inst.if_scope(is_dst_tail_in == 1):
+                with tik_inst.if_scope(tp.tail_burst_len_out != 0):
+                    self._init_major_src_tuple_copy_out_s4(tp)
+                    self._init_tail_dst_tuple_copy_in_s4(tp)
+                    self._copy_in_major_src_tail_dst_s4(tp, ub_input)
+                    self._reorder_s4(tp, ub_input, 0, 1,
+                                     tp.major_in_ele,
+                                     tp.major_in_tail_ele,
+                                     tp.major_burst_len_in,
+                                     tp.tail_dst_loop_in,
+                                     tp.tail_out_ele,
+                                     tp.tail_out_tail_ele,
+                                     tp.tail_burst_len_out,
+                                     tp.major_src_loop_out)
+                    self._copy_out_major_src_tail_dst_s4(tp, ub_input)
+
+            with tik_inst.if_scope(tik.all(is_src_tail_in == 1, is_dst_tail_in == 1)):
+                with tik_inst.if_scope(tik.all(tp.tail_burst_len_in != 0, tp.tail_burst_len_out != 0)):
+                    self._init_tail_src_tuple_copy_out_s4(tp)
+                    self._init_tail_dst_tuple_copy_in_s4(tp)
+                    self._copy_in_tail_src_tail_dst_s4(tp, ub_input)
+                    self._reorder_s4(tp, ub_input, 1, 1,
+                                     tp.tail_in_ele,
+                                     tp.tail_in_tail_ele,
+                                     tp.tail_burst_len_in,
+                                     tp.tail_dst_loop_in,
+                                     tp.tail_out_ele,
+                                     tp.tail_out_tail_ele,
+                                     tp.tail_burst_len_out,
+                                     tp.tail_src_loop_out)
+                    self._copy_out_tail_src_tail_dst_s4(tp, ub_input)
+
+            self._update_logic_tuple_s4(tp)
+
+    def _move_data_dup_0x210_s4(self, tp, ub_input, is_src_tail_in, is_dst_tail_in):
+        tik_inst = self.tik_inst
+        with tik_inst.for_range(0, tp.loop_per_core):
+            is_src_tail_in.set_as(0)
+            is_dst_tail_in.set_as(0)
+
+            self._init_major_src_tuple_copy_out_dup_0x210_s4(tp)
+            self._init_major_dst_tuple_copy_in_dup_0x210_s4(tp)
+            self._copy_in_major_src_major_dst_dup_0x210_s4(tp, ub_input)
+            self._reorder_s4(tp, ub_input, 0, 0,
+                             tp.major_in_ele,
+                             tp.major_in_tail_ele,
+                             tp.major_burst_len_in,
+                             tp.major_dst_loop_in,
+                             tp.major_out_ele,
+                             tp.major_out_tail_ele,
+                             tp.major_burst_len_out,
+                             tp.major_src_loop_out)
+            self._copy_out_major_src_major_dst_dup_0x210_s4(tp, ub_input)
+
+            self._detect_tail_flag(tp, is_src_tail_in, is_dst_tail_in)
+
+            with tik_inst.if_scope(tik.all(is_src_tail_in == 1, is_dst_tail_in == 1)):
+                with tik_inst.if_scope(tik.all(tp.tail_burst_len_in != 0, tp.tail_burst_len_out != 0)):
+                    self._init_tail_src_tuple_copy_out_dup_0x210_s4(tp)
+                    self._init_tail_dst_tuple_copy_in_dup_0x210_s4(tp)
+                    self._copy_in_tail_src_tail_dst_dup_0x210_s4(tp, ub_input)
+                    self._reorder_s4(tp, ub_input, 1, 1,
+                                     tp.tail_in_ele,
+                                     tp.tail_in_tail_ele,
+                                     tp.tail_burst_len_in,
+                                     tp.major_dst_loop_in,
+                                     tp.tail_out_ele,
+                                     tp.tail_out_tail_ele,
+                                     tp.tail_burst_len_out,
+                                     tp.major_src_loop_out)
+                    self._copy_out_tail_src_tail_dst_dup_0x210_s4(tp, ub_input)
+
+            self._update_logic_tuple_s4(tp)
+
+    def _move_data_dup_0x201_s4(self, tp, ub_input, is_src_tail_in, is_dst_tail_in):
+        # major_src_major_dst + major_src_tail_dst 
+        tik_inst = self.tik_inst
+        with tik_inst.for_range(0, tp.loop_per_core):
+            is_src_tail_in.set_as(0)
+            is_dst_tail_in.set_as(0)
+            tik_inst = self.tik_inst
+
+            self._init_major_src_tuple_copy_out_dup_0x201_s4(tp)
+            self._init_major_dst_tuple_copy_in_dup_0x201_s4(tp)
+            self._copy_in_major_src_major_dst_dup_0x201_s4(tp, ub_input)
+            self._reorder_s4(tp, ub_input, 0, 0,
+                            tp.major_in_ele,
+                            tp.major_in_tail_ele,
+                            tp.major_burst_len_in,
+                            tp.major_dst_loop_in,
+                            tp.major_out_ele,
+                            tp.major_out_tail_ele,
+                            tp.major_burst_len_out,
+                            tp.major_src_loop_out)
+            self._copy_out_major_src_major_dst_dup_0x201_s4(tp, ub_input)
+
+            self._detect_tail_flag(tp, is_src_tail_in, is_dst_tail_in)
+
+            with tik_inst.if_scope(is_dst_tail_in == 1):
+                with tik_inst.if_scope(tp.tail_burst_len_out != 0):
+                    self._init_major_src_tuple_copy_out_dup_0x201_s4(tp)
+                    self._init_tail_dst_tuple_copy_in_dup_0x201_s4(tp)
+                    self._copy_in_major_src_tail_dst_dup_0x201_s4(tp, ub_input)
+                    self._reorder_s4(tp, ub_input, 0, 1,
+                                     tp.major_in_ele,
+                                     tp.major_in_tail_ele,
+                                     tp.major_burst_len_in,
+                                     tp.tail_dst_loop_in,
+                                     tp.tail_out_ele,
+                                     tp.tail_out_tail_ele,
+                                     tp.tail_burst_len_out,
+                                     tp.major_src_loop_out)
+                    self._copy_out_major_src_tail_dst_dup_0x201_s4(tp, ub_input)
+            self._update_logic_tuple_s4(tp)
+
+    def _move_data_dup_0x120_s4(self, tp, ub_input, is_src_tail_in, is_dst_tail_in):
+        tik_inst = self.tik_inst
+        with tik_inst.for_range(0, tp.loop_per_core):
+            is_src_tail_in.set_as(0)
+            is_dst_tail_in.set_as(0)
+
+            self._init_major_dst_tuple_copy_in_dup_0x120_s4(tp)
+            self._init_major_src_tuple_copy_out_dup_0x120_s4(tp)
+            self._copy_in_major_src_major_dst_s4(tp, ub_input)
+            self._reorder_s4(tp, ub_input, 0, 0,
+                             tp.major_in_ele,
+                             tp.major_in_tail_ele,
+                             tp.major_burst_len_in,
+                             tp.major_dst_loop_in,
+                             tp.major_out_ele,
+                             tp.major_out_tail_ele,
+                             tp.major_burst_len_out,
+                             tp.major_src_loop_out)
+            self._copy_out_major_src_major_dst_s4(tp, ub_input)
+
+            self._detect_tail_flag(tp, is_src_tail_in, is_dst_tail_in)
+
+            with tik_inst.if_scope(is_src_tail_in == 1):
+                with tik_inst.if_scope(tp.tail_burst_len_in != 0):
+                    self._init_major_dst_tuple_copy_in_dup_0x120_s4(tp)
+                    self._init_tail_src_tuple_copy_out_dup_0x120_s4(tp)
+                    self._copy_in_tail_dup_s4(tp, ub_input)
+                    self._reorder_s4(tp, ub_input, 1, 0,
+                                     tp.tail_in_ele,
+                                     tp.tail_in_tail_ele,
+                                     tp.tail_burst_len_in,
+                                     tp.major_dst_loop_in,
+                                     tp.major_out_ele,
+                                     tp.major_out_tail_ele,
+                                     tp.major_burst_len_out,
+                                     tp.tail_src_loop_out)
+                    self._copy_out_tail_dup_0x01_s4(tp, ub_input)
+
+            self._update_logic_tuple_s4(tp)
+
+    def _move_data_dup_0x10_s1d2_s4(self, tp, ub_input, is_src_tail_in, is_dst_tail_in):
+        tik_inst = self.tik_inst
+        with tik_inst.for_range(0, tp.loop_per_core):
+            is_src_tail_in.set_as(0)
+            is_dst_tail_in.set_as(0)
+
+            self._init_major_dst_tuple_copy_in_dup_0x10_s1d2_s4(tp)
+            self._copy_in_major_src_major_dst_dup_0x10_s1d2_s4(tp, ub_input)
+            self._reorder_s4(tp, ub_input, 0, 0,
+                             tp.major_in_ele,
+                             tp.major_in_tail_ele,
+                             tp.major_burst_len_in,
+                             tp.major_dst_loop_in,
+                             tp.major_out_ele,
+                             tp.major_out_tail_ele,
+                             tp.major_burst_len_out,
+                             tp.major_src_loop_out)
+            self._copy_out_major_src_major_dst_dup_0x10_s1d2_s4(tp, ub_input)
+
+            self._detect_tail_flag(tp, is_src_tail_in, is_dst_tail_in)
+
+            with tik_inst.if_scope(is_src_tail_in == 1):
+                with tik_inst.if_scope(tp.tail_burst_len_in != 0):
+                    self._init_major_dst_tuple_copy_in_dup_0x10_s1d2_s4(tp)
+                    self._copy_in_tail_src_major_dst_dup_0x10_s1d2_s4(tp, ub_input)
+                    self._reorder_s4(tp, ub_input, 1, 0,
+                                     tp.tail_in_ele,
+                                     tp.tail_in_tail_ele,
+                                     tp.tail_burst_len_in,
+                                     tp.major_dst_loop_in,
+                                     tp.tail_out_ele,
+                                     tp.tail_out_tail_ele,
+                                     tp.tail_burst_len_out,
+                                     tp.major_src_loop_out)
+                    self._copy_out_tail_src_major_dst_dup_0x10_s1d2_s4(tp, ub_input)
+
+            self._update_logic_tuple_s4(tp)
+
+    def _move_data_dup_0x10_s2d1_s4(self, tp, ub_input, is_src_tail_in, is_dst_tail_in):
+        # major_src_major_dst + tail_src_major_dst 
+        tik_inst = self.tik_inst
+        with tik_inst.for_range(0, tp.loop_per_core):
+            is_src_tail_in.set_as(0)
+            is_dst_tail_in.set_as(0)
+
+            self._init_major_src_tuple_copy_out_dup_0x10_s2d1_s4(tp)
+            self._copy_in_major_src_major_dst_dup_0x10_s2d1_s4(tp, ub_input)
+            self._reorder_s4(tp, ub_input, 0, 0,
+                             tp.major_in_ele,
+                             tp.major_in_tail_ele,
+                             tp.major_burst_len_in,
+                             tp.major_dst_loop_in,
+                             tp.major_out_ele,
+                             tp.major_out_tail_ele,
+                             tp.major_burst_len_out,
+                             tp.major_src_loop_out)
+            self._copy_out_major_src_major_dst_dup_0x10_s2d1_s4(tp, ub_input)
+
+            self._detect_tail_flag(tp, is_src_tail_in, is_dst_tail_in)
+
+            with tik_inst.if_scope(is_dst_tail_in == 1):
+                with tik_inst.if_scope(tp.tail_burst_len_in != 0):
+                    self._init_major_src_tuple_copy_out_dup_0x10_s2d1_s4(tp)
+                    self._copy_in_tail_src_major_dst_dup_0x10_s2d1_s4(tp, ub_input)
+                    self._reorder_s4(tp, ub_input, 1, 0,
+                                     tp.tail_in_ele,
+                                     tp.tail_in_tail_ele,
+                                     tp.tail_burst_len_in,
+                                     tp.major_dst_loop_in,
+                                     tp.tail_out_ele,
+                                     tp.tail_out_tail_ele,
+                                     tp.tail_burst_len_out,
+                                     tp.major_src_loop_out)
+                    self._copy_out_tail_src_major_dst_dup_0x10_s2d1_s4(tp, ub_input)
+
+            self._update_logic_tuple_s4(tp)
+
+    def _move_data_s4(self, tp, ub_input_64):
+        is_src_tail_in  = self.tik_inst.Scalar("int32")
+        is_dst_tail_in  = self.tik_inst.Scalar("int32")
+
+        ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
+        tik_inst = self.tik_inst
+
+        self._init_all_tuple_s4(tp)
+
+        with tik_inst.if_scope(tp.dup_axis == 0):
+            self._move_data_no_dup_s4(tp, ub_input, is_src_tail_in, is_dst_tail_in)
+
+        with tik_inst.if_scope(tp.dup_axis == 2):
+            self._move_data_no_dup_s4(tp, ub_input, is_src_tail_in, is_dst_tail_in)
+
+        with tik_inst.if_scope(tik.all(tp.dup_axis == 1, tp.ub_axis_perm == 0x210)):
+            self._move_data_dup_0x210_s4(tp, ub_input, is_src_tail_in, is_dst_tail_in)
+
+        with tik_inst.if_scope(tik.all(tp.dup_axis == 1, tp.ub_axis_perm == 0x201)):
+            self._move_data_dup_0x201_s4(tp, ub_input, is_src_tail_in, is_dst_tail_in)
+
+        with tik_inst.if_scope(tik.all(tp.dup_axis == 1, tp.ub_axis_perm == 0x120)):
+            self._move_data_dup_0x120_s4(tp, ub_input, is_src_tail_in, is_dst_tail_in)
+
+        with tik_inst.if_scope(tik.all(tp.dup_axis == 1, tp.ub_axis_perm == 0x10)):
+
+            # 2, 10000, x -> 10000, 2, x
+            with tik_inst.if_scope(tp.dst_axis_num_no_dup == 1):
+                self._move_data_dup_0x10_s1d2_s4(tp, ub_input, is_src_tail_in, is_dst_tail_in)
+
+            # 10000, 2, x -> 2, 10000, x
+            with tik_inst.if_scope(tp.src_axis_num_no_dup == 1):
+                self._move_data_dup_0x10_s2d1_s4(tp, ub_input, is_src_tail_in, is_dst_tail_in)
+
+    # -------------------------------------------------------------------------------------------------
+    #                                    scenario_7
+    # -------------------------------------------------------------------------------------------------
     def _init_n_tuple(self, tp):
         for i in range(TRANSPOSE_MAX_AXIS_NUM - 1):
             tp.rt_n_tuple[i].set_as(tp.init_n_tuple[i])
@@ -1628,7 +2895,7 @@ class Transpose(object):
     # D:   tail_col_tail_batch
 
     def _reorder_s7_b16(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
-        tp.fp16_offset_1.set_as(248 * 256)
+        tp.offset_a.set_as(248 * 256)
         ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
 
         with self.tik_inst.if_scope(is_tc == True):
@@ -1644,7 +2911,7 @@ class Transpose(object):
         repeat_cnt = tp.col_reorder // EPB16
         with self.tik_inst.for_range(0, tp.row_reorder // EPB16) as loop:
             src_addr_list = [ub_input_fp16[loop * tp.col_reorder * EPB16 + tp.col_reorder * i] for i in range(EPB16)]
-            dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + loop * EPB16 + ROW_UNIT * i] for i in range(EPB16)]
+            dst_addr_list = [ub_input_fp16[tp.offset_a + loop * EPB16 + ROW_UNIT * i] for i in range(EPB16)]
 
             with self.tik_inst.if_scope(repeat_cnt == 1):
                 tp.src_stride_reorder.set_as(0)
@@ -1657,7 +2924,7 @@ class Transpose(object):
                                     tp.dst_stride_reorder, tp.src_stride_reorder)
 
     def _reorder_s7_b32(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
-        tp.fp16_offset_1.set_as(248 * 256)
+        tp.offset_a.set_as(248 * 256)
 
         with self.tik_inst.if_scope(is_tc == True):
             tp.col_reorder.set_as(tp.col_tc)
@@ -1676,7 +2943,7 @@ class Transpose(object):
 
         # first vnchwconv
         src_addr_list = [ub_input_fp16[fp16_inner_hwc_len * i] for i in range(EPB16)]
-        dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + EPB16 * i] for i in range(EPB16)]
+        dst_addr_list = [ub_input_fp16[tp.offset_a + EPB16 * i] for i in range(EPB16)]
         repeat_cnt = tp.col_reorder
         with self.tik_inst.if_scope(repeat_cnt == 1):
             tp.src_stride_reorder.set_as(0)
@@ -1692,12 +2959,12 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with self.tik_inst.for_range(0, inner_hw_len) as i:
                 self.tik_inst.data_move(ub_input_fp16[i * self.fp16_times * EPB16],
-                                        ub_input_fp16[tp.fp16_offset_1 + i * tp.col_reorder * self.fp16_times * EPB16],
+                                        ub_input_fp16[tp.offset_a + i * tp.col_reorder * self.fp16_times * EPB16],
                                         0, tp.col_reorder, self.fp16_times, 0, (inner_hw_len - 1) * self.fp16_times)
 
         # second vnchwconv
         src_addr_list = [ub_input_fp16[EPB16 * i] for i in range(EPB16)]
-        dst_addr_list = [ub_input_fp16[tp.fp16_offset_1 + EPB16 * i] for i in range(EPB16)]
+        dst_addr_list = [ub_input_fp16[tp.offset_a + EPB16 * i] for i in range(EPB16)]
         with self.tik_inst.if_scope(repeat_cnt == 1):
             tp.src_stride_reorder.set_as(0)
             tp.dst_stride_reorder.set_as(0)
@@ -1773,7 +3040,7 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
                 self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, lc, lr, col_id, 0, 0)],
-                                        ub_input[tp.fp16_offset_1 // self.fp16_times + col_id * ROW_UNIT],
+                                        ub_input[tp.offset_a // self.fp16_times + col_id * ROW_UNIT],
                                         0, 1, tp.row_per_mr // self.ele_per_block, 0, 0)
                 self._update_tuple(tp.dst_axis_num, tp.rt_dst_tuple, tp.dst_jump_factor)
 
@@ -1781,7 +3048,7 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
                 self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, lc, lr, col_id, 0, tp.back_step_up)],
-                                        ub_input[tp.fp16_offset_1 // self.fp16_times + col_id * ROW_UNIT],
+                                        ub_input[tp.offset_a // self.fp16_times + col_id * ROW_UNIT],
                                         0, 1, tp.row_tr // self.ele_per_block, 0, 0)
                 self._update_tuple(tp.dst_axis_num, tp.rt_dst_tuple, tp.dst_jump_factor)
 
@@ -1791,7 +3058,7 @@ class Transpose(object):
                 with self.tik_inst.if_scope(col_id >= tp.back_step_left):
                     self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, lc, lr, col_id,
                                                                              tp.back_step_left, 0)],
-                                            ub_input[tp.fp16_offset_1 // self.fp16_times + col_id * ROW_UNIT],
+                                            ub_input[tp.offset_a // self.fp16_times + col_id * ROW_UNIT],
                                             0, 1, tp.row_per_mr // self.ele_per_block, 0, 0)
                 self._update_tuple(tp.dst_axis_num, tp.rt_dst_tuple, tp.dst_jump_factor)
 
@@ -1801,20 +3068,16 @@ class Transpose(object):
                 with self.tik_inst.if_scope(col_id >= tp.back_step_left):
                     self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, lc, lr, col_id,
                                                                              tp.back_step_left, tp.back_step_up)],
-                                            ub_input[tp.fp16_offset_1 // self.fp16_times + col_id * ROW_UNIT],
+                                            ub_input[tp.offset_a // self.fp16_times + col_id * ROW_UNIT],
                                             0, 1, tp.row_tr // self.ele_per_block, 0, 0)
                 self._update_tuple(tp.dst_axis_num, tp.rt_dst_tuple, tp.dst_jump_factor)
 
     def _reorder_university_f2t(self, tp, ub_input, ub_offset, col_ele_num, row_ele_num, mode):
-
         # step1. make all elements in the first col
-        tp.fp16_offset_1.set_as(self._get_offset_1())
-        tp.fp16_offset_2.set_as(self._get_offset_2(self._get_offset_1()))
         ub_input_b16 = ub_input.reinterpret_cast_to("int16")
         src_ele_num_in_fp16 = self._get_src_size()  # minus 16 avoid bank conflict
         src_list = [ub_input_b16[src_ele_num_in_fp16 * i] for i in range(EPB16)]
-        dst_list_intermediate = [ub_input_b16[tp.fp16_offset_1 + EPB16 * i] \
-                                 for i in range(EPB16)]
+        dst_list_intermediate = [ub_input_b16[tp.offset_b + EPB16 * i]  for i in range(EPB16)]
         with self.tik_inst.if_scope(ub_offset == 1):
             self.tik_inst.vnchwconv(False, False, dst_list_intermediate, src_list, 1, 0, 0)
         with self.tik_inst.if_scope(ub_offset != 1):
@@ -1827,8 +3090,8 @@ class Transpose(object):
                 with self.tik_inst.new_stmt_scope(disable_sync=True):
                     with self.tik_inst.for_range(0, row_ele_num) as i:
                         self.tik_inst.vor(128,
-                                          ub_input_b16[tp.fp16_offset_2 + i * EPB16],
-                                          ub_input_b16[tp.fp16_offset_1 + i * col_ele_num * EPB16],
+                                          ub_input_b16[i * EPB16],
+                                          ub_input_b16[tp.offset_b + i * col_ele_num * EPB16],
                                           self.ub_input_b16_vor,
                                           col_ele_num // 8,
                                           row_ele_num,
@@ -1846,8 +3109,8 @@ class Transpose(object):
                 with self.tik_inst.new_stmt_scope(disable_sync=True):
                     with self.tik_inst.for_range(0, loop_num) as i:
                         self.tik_inst.vor(128,
-                                          ub_input_b16[tp.fp16_offset_2 + i * 8 * EPB16],
-                                          ub_input_b16[tp.fp16_offset_1 + i * col_ele_num * 8 * EPB16],
+                                          ub_input_b16[i * 8 * EPB16],
+                                          ub_input_b16[tp.offset_b + i * col_ele_num * 8 * EPB16],
                                           self.ub_input_b16_vor,
                                           col_ele_num,
                                           1,
@@ -1858,8 +3121,8 @@ class Transpose(object):
                                           0)
                     with self.tik_inst.if_scope(tail_num != 0):
                         self.tik_inst.vor(tail_num * 16,
-                                          ub_input_b16[tp.fp16_offset_2 + loop_num * 8 * EPB16],
-                                          ub_input_b16[tp.fp16_offset_1 + loop_num * col_ele_num * 8 * EPB16],
+                                          ub_input_b16[loop_num * 8 * EPB16],
+                                          ub_input_b16[tp.offset_b + loop_num * col_ele_num * 8 * EPB16],
                                           self.ub_input_b16_vor,
                                           col_ele_num,
                                           1,
@@ -1872,9 +3135,8 @@ class Transpose(object):
             with self.tik_inst.if_scope(self.fp16_times == 2):
                 with self.tik_inst.new_stmt_scope(disable_sync=True):
                     with self.tik_inst.for_range(0, row_ele_num) as i:
-                        self.tik_inst.data_move(ub_input_b16[tp.fp16_offset_2 + i * self.fp16_times * EPB16],
-                                                ub_input_b16[tp.fp16_offset_1 + \
-                                                              i * col_ele_num * self.fp16_times * EPB16],
+                        self.tik_inst.data_move(ub_input_b16[i * self.fp16_times * EPB16],
+                                                ub_input_b16[tp.offset_b + i * col_ele_num * self.fp16_times * EPB16],
                                                 0,
                                                 col_ele_num,
                                                 self.fp16_times,
@@ -1884,8 +3146,9 @@ class Transpose(object):
             # t2f
             with self.tik_inst.new_stmt_scope(disable_sync=True):
                 with self.tik_inst.for_range(0, col_ele_num) as i:
-                    self.tik_inst.data_move(ub_input_b16[tp.fp16_offset_2 + i * row_ele_num * self.fp16_times * EPB16],
-                                            ub_input_b16[tp.fp16_offset_1 + i * self.fp16_times * EPB16],
+
+                    self.tik_inst.data_move(ub_input_b16[i * row_ele_num * self.fp16_times * EPB16],
+                                            ub_input_b16[tp.offset_b + i * self.fp16_times * EPB16],
                                             0,
                                             row_ele_num,
                                             self.fp16_times,
@@ -1893,9 +3156,8 @@ class Transpose(object):
                                             0)
 
         # step3. make all elements in the first col be in memory of contiguous
-        src_list_intermediate = [ub_input_b16[tp.fp16_offset_2 + EPB16 * i]\
-                for i in range(EPB16)]
-        dst_list_finally = [ub_input_b16[self._get_dst_size() * 16 * i] for i in range(EPB16)]
+        src_list_intermediate = [ub_input_b16[EPB16 * i] for i in range(EPB16)]
+        dst_list_finally = [ub_input_b16[tp.offset_b + self._get_dst_size() * 16 * i] for i in range(EPB16)]
 
         with self.tik_inst.if_scope(ub_offset == 1):
             self.tik_inst.vnchwconv(False, False, dst_list_finally, src_list_intermediate, 1, 0, 0)
@@ -1919,7 +3181,7 @@ class Transpose(object):
 
     def _copy_out_major_col_f2t(self, tp, ub_input, ub_offset, lc):
         self.tik_inst.data_move(self.data_out[tp.rt_dst_addr],
-                                ub_input,
+                                ub_input[tp.offset_b // self.fp16_times],
                                 0,
                                 1,
                                 (tp.col_per_mc * tp.row_per_mr) // self.ele_per_block,
@@ -1945,7 +3207,7 @@ class Transpose(object):
     def _copy_out_tail_col_f2t(self, tp, ub_input, ub_offset, ln, lc):
         self._tail_dst_addr_f2t(tp, ln)
         self.tik_inst.data_move(self.data_out[tp.rt_dst_addr],
-                                ub_input,
+                                ub_input[tp.offset_b // self.fp16_times],
                                 0,
                                 1,
                                 (tp.col_tc * tp.row_per_mr) // self.ele_per_block,
@@ -1969,7 +3231,7 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
                 self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, 0, lr, col_id, 0, 0)],
-                                        ub_input[col_id * tp.row_per_mr],
+                                        ub_input[tp.offset_b // self.fp16_times + col_id * tp.row_per_mr],
                                         0,
                                         1,
                                         tp.row_per_mr // self.ele_per_block,
@@ -1994,7 +3256,7 @@ class Transpose(object):
         with self.tik_inst.new_stmt_scope(disable_sync=True):
             with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
                 self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, 0, lr, col_id, 0, tp.back_step_up)],
-                                        ub_input[col_id * tp.row_tr],
+                                        ub_input[tp.offset_b // self.fp16_times + col_id * tp.row_tr],
                                         0,
                                         1,
                                         tp.row_tr // self.ele_per_block,
@@ -2130,11 +3392,24 @@ class Transpose(object):
         tp = self.TilingParamS3(tiling_reg_list, ub_input_64_t, ub_input_64, self.tik_inst)
         return tp
 
+    def _do_tiling_s4(self, block_idx, fixed_len, per_core_len):
+        return self._do_tiling_common(block_idx, fixed_len, per_core_len, self.TilingParamS4)
+
     def _do_tiling_s7(self, block_idx, tiling_reg_list, ub_input_64_t, ub_input_64, fixed_len, per_core_len):
         self.tik_inst.data_move(ub_input_64[0],
                                 self.data_tiling[TILING_HEAD_LEN + fixed_len + block_idx * per_core_len],
                                 0, 1, per_core_len // ELE_NUM_PER_BLOCK_INT64 + 1, 0, 0)
         tp = self.TilingParamS7(tiling_reg_list, ub_input_64_t, ub_input_64, self.tik_inst)
+        return tp
+
+    def _do_tiling_common(self, block_idx, fixed_len, per_core_len, TP):
+        tiling_reg_list = self.tiling_reg_list
+        ub_input_64_t = self.ub_input_64_t
+        ub_input_64 = self.ub_input_64
+        self.tik_inst.data_move(ub_input_64[0],
+                                self.data_tiling[TILING_HEAD_LEN + fixed_len + block_idx * per_core_len],
+                                0, 1, per_core_len // ELE_NUM_PER_BLOCK_INT64 + 1, 0, 0)
+        tp = TP(tiling_reg_list, ub_input_64_t, ub_input_64, self.tik_inst)
         return tp
 
     def _decode_tiling_head(self):
@@ -2154,7 +3429,7 @@ class Transpose(object):
         """
         scenario, fixed_len, per_core_len, sub_scenario = self._decode_tiling_head()
 
-        with self.tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+        with self.tik_inst.for_range(0, TRANSPOSE_CORE_NUM, block_num=TRANSPOSE_CORE_NUM) as block_idx:
             with self.tik_inst.if_scope(scenario == 7):
                 tp = self._do_tiling_s7(block_idx, self.tiling_reg_list, self.ub_input_64_t,
                                         self.ub_input_64, fixed_len, per_core_len)
@@ -2180,12 +3455,16 @@ class Transpose(object):
                             tp = self._do_tiling_s3(block_idx, self.tiling_reg_list, self.ub_input_64_t,
                                                     self.ub_input_64, fixed_len, per_core_len)
                             self._move_data_s3(tp, self.ub_input_64)
-                        with self.tik_inst.if_scope(scenario == 0):  # scenario == 0
-                            tp = self._do_tiling_s0(block_idx, self.tiling_reg_list, self.ub_input_64_t,
-                                                    self.ub_input_64, fixed_len, per_core_len)
-                            self._move_data_s0(tp, self.ub_input_64)
-                        with self.tik_inst.if_scope(scenario == 8):
-                            self._move_data_s8(self.ub_input_64)
+                        with self.tik_inst.else_scope():  # scenario == 0
+                            with self.tik_inst.if_scope(scenario == 4):
+                                tp = self._do_tiling_s4(block_idx, fixed_len, per_core_len)
+                                self._move_data_s4(tp, self.ub_input_64)
+                            with self.tik_inst.if_scope(scenario == 8):
+                                self._move_data_s8(self.ub_input_64)
+                            with self.tik_inst.if_scope(scenario == 0):
+                                tp = self._do_tiling_s0(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                                        self.ub_input_64, fixed_len, per_core_len)
+                                self._move_data_s0(tp, self.ub_input_64)
 
     def compute(self, input_list):
         """
@@ -2193,7 +3472,7 @@ class Transpose(object):
         """
         self.compute_tiling()
         tbe_context.get_context().add_compile_info("vars", {
-            "ub_size": UB_SIZE // BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
+            "ub_size": UB_SIZE // BLOCK_SIZE, "core_num": TRANSPOSE_CORE_NUM, "dtype": self.x_dtype})
         # this "global_variable_link" flag suggest ccec.py do link without "-r" option
         # which will result in global variable in cce file with wrong address
         tbe_context.get_context().add_compile_info("global_variable_link", True)
