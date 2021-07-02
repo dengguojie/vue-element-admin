@@ -139,7 +139,7 @@ def op_select_format(input_values,
             is_concat_dim_align = False
         if input_shape[concat_dim] % align_len_for_uint8 != 0:
             is_concat_dim_align_for_uint8 = False
-        if not (is_concat_dim_align_for_uint8 and is_concat_dim_align):
+        if not is_concat_dim_align_for_uint8 and not is_concat_dim_align:
             break
 
     # charge whether support 5HD 6HD
