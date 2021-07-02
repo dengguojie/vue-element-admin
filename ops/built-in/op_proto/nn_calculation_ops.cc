@@ -179,7 +179,7 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
   auto x_format = x_tensor.GetOriginFormat();
   auto w_format = w_tensor.GetOriginFormat();
 
-  CHECK(IsUnknownRankShape(x_shape), 
+  CHECK(IsUnknownRankShape(x_shape),
         CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input x shape [-2] do not support split."),
         return GRAPH_FAILED);
 

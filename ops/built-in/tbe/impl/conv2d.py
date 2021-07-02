@@ -611,7 +611,7 @@ def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads,
                    "l1FusionEnable": 2,
                    "minTbeL1Space": 0}}
     if bias:
-        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}]
+        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
 
     # >>> start: process for dynamic shape
@@ -620,10 +620,16 @@ def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads,
     # shape is [-2], all axes do not support split
     if list(shape_x) == [-2]:
         slice_info["_op_slice_info"]["splitMaps"].clear()
-    # shape has -1, only N/c_out support split
-    elif -1 in shape_x:
-        slice_info['_op_slice_info']["splitMaps"].pop(1)
-        slice_info['_op_slice_info']["splitMaps"].pop(1)
+    else:
+        # H/W shape is -1, remove corresponding split info
+        format_fm = inputs.get("ori_format")
+        overlap_axis = {"H": [2], "W": [3]}
+        temp_info = slice_info['_op_slice_info']["splitMaps"]
+        for name, index in overlap_axis.items():
+            if shape_x[format_fm.find(name)] == -1:
+                last_maps = filter(lambda splits : splits["inputList"][0]["axis"] != index, temp_info)
+                temp_info = list(last_maps)
+        slice_info["_op_slice_info"]["splitMaps"] = temp_info
     # <<< end: process for dynamic shape
 
     return json.dumps(slice_info)

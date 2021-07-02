@@ -229,6 +229,7 @@ def test_conv2d_split_info_unknown_shape(test_arg):
     input_list = [
         {
             'ori_shape': (-2,),
+            'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, {
@@ -242,10 +243,11 @@ def test_conv2d_split_info_unknown_shape(test_arg):
 print("adding conv2d test_conv2d_split_info_unknown_shape testcase")
 ut_case.add_cust_test_func(test_func=test_conv2d_split_info_unknown_shape)
 
-def test_conv2d_split_info_normal(test_arg):
+def test_conv2d_split_info_split_n(test_arg):
     input_list = [
         {
             'ori_shape': (-1, 64, 32, 32),
+            'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, {
@@ -256,8 +258,83 @@ def test_conv2d_split_info_normal(test_arg):
             'dtype': 'float16'
         }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW']
     get_op_support_info(*input_list)
-print("adding conv2d test_conv2d_split_info_normal testcase")
-ut_case.add_cust_test_func(test_func=test_conv2d_split_info_normal)
+print("adding conv2d test_conv2d_split_info_split_n testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_split_info_split_n)
+
+def test_conv2d_split_info_split_h(test_arg):
+    input_list = [
+        {
+            'ori_shape': (1, 64, -1, 32),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW']
+    get_op_support_info(*input_list)
+print("adding conv2d test_conv2d_split_info_split_h testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_split_info_split_h)
+
+def test_conv2d_split_info_split_w(test_arg):
+    input_list = [
+        {
+            'ori_shape': (1, 64, 32, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW']
+    get_op_support_info(*input_list)
+print("adding conv2d test_conv2d_split_info_split_w testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_split_info_split_w)
+
+def test_conv2d_split_info_split_nhw(test_arg):
+    input_list = [
+        {
+            'ori_shape': (-1, 64, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW']
+    get_op_support_info(*input_list)
+print("adding conv2d test_conv2d_split_info_split_nhw testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_split_info_split_nhw)
+
+def test_conv2d_split_info_split_bias(test_arg):
+    input_list = [
+        {
+            'ori_shape': (-1, 64, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'format': 'ND',
+            'dtype': 'float16'
+        }, None, {
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW']
+    get_op_support_info(*input_list)
+print("adding conv2d test_conv2d_split_info_split_bias testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_split_info_split_bias)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310"])
