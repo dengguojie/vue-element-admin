@@ -232,7 +232,7 @@ def _get_attr_desc(testcase_struct):
                         attr_dic, attr_code_str, attr_index)
             attr_code_str += "    opTestDesc.opAttrVec.push_back(" \
                              "attr{attr_index});\n".format(
-                                attr_index=str(attr_index))
+                                 attr_index=str(attr_index))
             all_attr_code_snippet += attr_code_str
             attr_index = attr_index + 1
     return all_attr_code_snippet

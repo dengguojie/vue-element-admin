@@ -121,7 +121,7 @@ def _display_error_output(real_data, expect_data, err_idx, relative_diff):
 
 
 def _get_error_percent(diff_list, real_data, data_compe, split_count,
-                          pct_thd):
+                       pct_thd):
     diff_index = np.where(diff_list[0] > 0)
     rdiff = _cal_relative_diff_np(real_data[diff_index].astype(np.float32),
                                   data_compe[diff_index].astype(np.float32),
