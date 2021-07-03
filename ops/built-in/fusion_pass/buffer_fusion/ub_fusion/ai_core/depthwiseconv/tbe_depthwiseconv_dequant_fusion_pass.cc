@@ -191,15 +191,15 @@ vector<BufferFusionPattern *> DepthwiseConvDequantFusionPass::DefinePatterns() {
   return patterns;
 }
 
-void SearchMatchNode(const BufferFusionMapping &mapping,
-                     vector<ge::NodePtr> &fusion_nodes) {
+void SearchMatchNode(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) {
     for (auto &item : mapping) {
         auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
-
-    if (opdesc != item.first->types.end()) {
-        for (auto &node : item.second) {
-            auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
-            fusion_nodes.erase(node_ptr);
+        if (opdesc != item.first->types.end()) {
+            for (auto &node : item.second) {
+                auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
+                if (node_ptr != fusion_nodes.end()) {
+                  fusion_nodes.erase(node_ptr);
+                }
             }
         }
     }
