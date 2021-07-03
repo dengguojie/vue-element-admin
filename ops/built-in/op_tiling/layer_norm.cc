@@ -23,8 +23,6 @@ const int32_t NUM_TW = 2;
 const int32_t NUM_THR = 3;
 const string TSCONST = "const";
 const string TSSTATIC = "static";
-const int32_t LAST_DIM_RANGE_NUM1 = 64;
-const int32_t LAST_DIM_RANGE_NUM2 = 2000;
 
 struct TilingParams {
   /* data */
@@ -108,16 +106,8 @@ int32_t CalcTilingKey(CompileInfo &commoninfo, std::vector<int64_t> input_x,
   for (size_t i = 0; i < pos.size(); i++) {
     key += pos[i] * val[i];
   }
-  int32_t range_key;
-  if (input_x[input_x.size() - 1] <= LAST_DIM_RANGE_NUM1) {
-    range_key = 0;
-  } else if (input_x[input_x.size() - 1] <= LAST_DIM_RANGE_NUM2) {
-    range_key = 1;
-  } else {
-    range_key = 2;
-  }
 
-  return key + range_key;
+  return key;
 }
 
 bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_info,
@@ -143,16 +133,15 @@ bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_info,
   compileinfo.atomic = (bool)common_info[3];
 
   V_OP_TILING_CHECK(compileinfo.min_block_size > 0,
-                    VECTOR_INNER_ERR_REPORT_TILIING(
-                        op_type, "min_block_size is %d that is illegal",
-                        compileinfo.min_block_size),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                            "min_block_size is %d that is illegal",
+                            compileinfo.min_block_size),
                     return false);
 
-  V_OP_TILING_CHECK(
-      compileinfo.core_num > 0,
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal",
-                                      compileinfo.core_num),
-      return false);
+  V_OP_TILING_CHECK(compileinfo.core_num > 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal",
+                            compileinfo.core_num),
+                    return false);
 
   float reduce_mean_cof = 1.0;
 
@@ -338,7 +327,10 @@ GetBlockTilingData(int32_t block_axis, int32_t block_factor,
                    std::vector<int32_t> reduce_axis, int32_t core_num) {
   int32_t block_axis_1 = block_axis + 1;
   block_factor = input_x[block_axis];
-  int32_t block_factor_1 = ub_outer;
+  int32_t block_factor_1 = 1;
+  if (block_factor > core_num) {
+    block_factor_1 = ub_outer;
+  }
   int32_t block_axis_1_size = 1;
   int32_t fuse_axis = input_x[block_axis];
   std::vector<int32_t> cm_core_num_list;
