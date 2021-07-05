@@ -43,6 +43,7 @@ TENSOR_MAP = {}
 TILING = {}
 DIM_MAP = {}
 DOUBLE_TENSOR_OUT = []
+CUBE_MUL_SHAPE = 256
 
 FUSION_DX_DRELU = "dx+drelu"
 FUSION_DX_ELEWISE = "dx+elewise"
@@ -2766,6 +2767,8 @@ class Conv2dDxOptiSchedule:
             sch[c_l0c].op.axis[0]
         ]
         sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
+        if self.dx_para.get_para_map("cube_vector_split_flag"):
+            sch[c_l0c].storage_align(sch[c_l0c].op.axis[2], CUBE_MUL_SHAPE, 0)
         if bias_l0c is not None:
             sch[bias_l0c].compute_at(sch[c_gm], c_slice_axis)
             sch[c_add_bias].compute_at(sch[c_gm], c_slice_axis)

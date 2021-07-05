@@ -4008,10 +4008,7 @@ class MatMulCompute:
         self.block_reduce = tbe_platform.BLOCK_REDUCE
         self.origin_reduce_axis = 0
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
-        if self.cube_vector_split and self.tensor_bias is not None:
-            self.matrix_type = self.tensor_bias.dtype
-        else:
-            self.matrix_type = "float32"
+        self.matrix_type = "float32"
         self.format_out = format_out
 
     @staticmethod
