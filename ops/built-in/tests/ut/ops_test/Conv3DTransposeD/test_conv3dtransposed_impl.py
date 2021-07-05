@@ -58,8 +58,64 @@ def test_op_check_supported(test_arg):
                     strides, pads, dilations, groups, data_format, output_padding,
                     offset_x)
 
-
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+
+def _test_op_get_op_support_info(test_arg):
+    from impl.conv3d_transpose_d import get_op_support_info
+
+    [out_backprop, filters, bias, offset_w, y_input, input_sizes, strides, pads,
+     dilations, groups, data_format, output_padding, offset_x] = _run_api_end_with_d()
+    out_backprop["format"] = "NDC1HWC0"
+    get_op_support_info(
+        out_backprop, filters, bias, offset_w, y_input, input_sizes, strides, pads,
+        dilations, groups, data_format, output_padding, offset_x)
+
+    # test bias
+    bias = True
+    get_op_support_info(
+        out_backprop, filters, bias, offset_w, y_input, input_sizes, strides, pads,
+        dilations, groups, data_format, output_padding, offset_x)
+
+    wrong_out_backprop = {'ori_shape': (1, 8, 60, 88, 64), 'shape': (1, 8, 60, 88, 64),
+                          'ori_format': 'NNNNN', 'format': 'NNNNN',
+                          'dtype': 'float16'}
+    try:
+        get_op_support_info(
+            wrong_out_backprop, filters, bias, offset_w, y_input, input_sizes, strides, pads,
+            dilations, groups, data_format, output_padding, offset_x)
+    except Exception as e:
+        print(e)
+
+    wrong_filters ={'ori_shape': (2, 2, 2, 32, 64), 'shape': (2, 2, 2, 32, 64),
+                    'ori_format': 'NNNNN', 'format': 'NNNNN', 'dtype': 'float16'}
+    try:
+        get_op_support_info(
+            out_backprop, wrong_filters, bias, offset_w, y_input, input_sizes, strides, pads,
+            dilations, groups, data_format, output_padding, offset_x)
+    except Exception as e:
+        print(e)
+
+    wrong_res = {'ori_shape': (1, 16, 120, 176, 32),
+                 'shape': (1, 16, 120, 176, 32),
+                 'ori_format': 'NNNNN', 'format': 'NNNNN', 'dtype': 'float16'}
+    try:
+        get_op_support_info(
+            out_backprop, filters, bias, offset_w, wrong_res, input_sizes, strides, pads,
+            dilations, groups, data_format, output_padding, offset_x)
+    except Exception as e:
+        print(e)
+
+    # cal l1_1 size
+    y_input = {'ori_shape': (1, 16, 120, 2, 32), 'shape': (1, 16, 120, 2, 32),
+               'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
+    try:
+        get_op_support_info(
+            out_backprop, filters, bias, offset_w, y_input, input_sizes, strides, pads,
+            dilations, groups, data_format, output_padding, offset_x)
+    except Exception as e:
+        print(e)
+
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
 
 # test_conv3d_transpose_succ_d
 case1 = _run_api_end_with_d()
@@ -135,28 +191,46 @@ out_backprop = {
     'ori_format': 'NCHWD', 'format': 'NCHWD', 'dtype': 'float16'}
 case12 = _run_api_end_with_d(out_backprop=out_backprop)
 
+# test wrong filters format
 filters = {
     'ori_shape': (64, 32, 2, 2, 2), 'shape': (64, 32, 2, 2, 2),
-    'ori_format': 'NWCDH', 'format': 'NWCDH', 'dtype': 'float16'}
+    'ori_format': 'NDC1HWC0', 'format': 'NDC1HWC0', 'dtype': 'float16'}
 case13 = _run_api_end_with_d(filters=filters)
 
+# test wrong y format
 y_input = {
     'ori_shape': (1, 32, 16, 120, 176),
     'shape': (1, 32, 16, 120, 176),
-    'ori_format': 'NWCDH', 'format': 'NWCDH', 'dtype': 'float16'}
+    'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
 case14 = _run_api_end_with_d(y_input=y_input)
 
+# test bias
 bias = {
     "ori_shape": (32,), 'shape': (32,), 'ori_format': 'ND',
     'format': 'ND', 'dtype': 'float16'
 }
 case15 = _run_api_end_with_d(bias=bias)
 
+# test wrong bias length
 bias = {
     "ori_shape": (32,1), 'shape': (32,1), 'ori_format': 'ND',
     'format': 'ND', 'dtype': 'float16'
 }
 case16 = _run_api_end_with_d(bias=bias)
+
+# test wrong output padding value
+output_padding = [0, -1, 0, 0, 0]
+case17 = _run_api_end_with_d(output_padding=output_padding)
+
+# test wrong  output padding length
+output_padding = [0, 0, 0, 0, 0, 0]
+case18 = _run_api_end_with_d(output_padding=output_padding)
+
+# test wrong outbackprop format
+out_backprop = {
+    'ori_shape': (1, 16, 60, 88, 16), 'shape': (1, 16, 60, 88, 16),
+    'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16'}
+case19 = _run_api_end_with_d(out_backprop=out_backprop)
 
 # Add test Cases
 # Params is the input params of the operator. Fro example, [fmap,filter,bias...]
@@ -201,10 +275,21 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case14, RuntimeError, "case14", True))
+
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case15, "success", "case15", True))
+
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case16, RuntimeError, "case16", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case17, RuntimeError, "case17", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case18, RuntimeError, "case18", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case19, RuntimeError, "case19", True))
 
 if __name__ == '__main__':
     ut_case.run()

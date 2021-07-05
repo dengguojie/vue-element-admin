@@ -19,7 +19,7 @@ def _gen_data_case(case, expect, case_name_val, support_expect=True):
 
 def _run_api(
         input_size={'ori_shape': (5,), 'ori_format': 'ND', 'dtype': 'int32'},
-        x={'ori_shape': (-1, -1, -1, -1, 64), 'ori_format': 'NDHWC', 'dtype': 'float16', 
+        x={'ori_shape': (-1, -1, -1, -1, 64), 'ori_format': 'NDHWC', 'dtype': 'float16',
            'range': ((1, 3), (12, 12), (4, 4), (5, 40), (9, 9), (16, 16)), 'format': 'NDC1HWC0'},
         filter={'ori_shape': (1, 1, 1, 256, 64), 'ori_format': 'DHWCN', 'dtype': 'float16'},
         bias=None,
@@ -36,7 +36,7 @@ def _run_api(
     return [input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
             groups, data_format, output_padding, offset_x]
 
-def _test_op_get_op_support_info_succ(test_arg):
+def _test_op_get_op_support_info(test_arg):
     from impl.dynamic.conv3d_transpose import get_op_support_info
 
     [input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
@@ -45,6 +45,21 @@ def _test_op_get_op_support_info_succ(test_arg):
     get_op_support_info(
         input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
         groups, data_format, output_padding, offset_x)
+    # test no bias
+    bias = None
+    get_op_support_info(
+        input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
+        groups, data_format, output_padding, offset_x)
+
+    # test wrong x format
+    x = {'ori_shape': (-1, -1, -1, -1, 64), 'ori_format': 'n', 'dtype': 'float16',
+         'range': ((1, 3), (12, 12), (4, 4), (5, 40), (9, 9), (16, 16)), 'format': 'n'}
+    try:
+        get_op_support_info(
+            input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
+            groups, data_format, output_padding, offset_x)
+    except Exception as e:
+        print(e)
 
 def _test_op_get_op_support_info_wrong_input(test_arg):
     from impl.dynamic.conv3d_transpose import get_op_support_info
@@ -56,7 +71,7 @@ def _test_op_get_op_support_info_wrong_input(test_arg):
         input_size, x, filter, bias, offset_w, y, strides, pads, dilations,
         groups, data_format, output_padding, offset_x)
 
-ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info_succ)
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
 ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info_wrong_input)
 
 
@@ -78,9 +93,18 @@ case2 = _run_api(filter=filter, x=x, y=y, strides=strides, pads=pads, groups=gro
                  data_format=data_format)
 
 # test_error_output_padding_d
-output_padding =[1, 100, 1, 1, 1]
-
+output_padding = [1, 100, 1, 1, 1]
 case3 = _run_api(output_padding=output_padding)
+
+# test wrong output_pad value on h dim
+output_padding = [1, 1, -1, 1, 1]
+case4 = _run_api(output_padding=output_padding)
+
+# test wrong output_pad value on w dim
+output_padding = [1, 1, 1, -1, 1]
+case5 = _run_api(output_padding=output_padding)
+
+
 
 # Add test Cases
 # Params is the input params of the operator.
@@ -90,6 +114,10 @@ ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case2, "success", "dynamic_case2_same_pad_depthwise", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case3, RuntimeError, "dynamic_case3_error_output_padding_d", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case4, RuntimeError, "dynamic_case4", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case5, RuntimeError, "dynamic_case5", True))
 
 if __name__ == '__main__':
     ut_case.run()

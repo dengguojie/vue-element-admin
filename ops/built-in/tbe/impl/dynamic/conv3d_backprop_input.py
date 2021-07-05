@@ -358,11 +358,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     -----------------------
     All transformed params
     """
-    def _check_64bits_limitation(attr_name, attr_value, dtype=None):
-        if dtype is None:
-            bit_ratio = _BIT_RATIO_DICT.get("float16")
-        else:
-            bit_ratio = _BIT_RATIO_DICT.get(dtype)
+    def _check_64bits_limitation(attr_name, attr_value, dtype):
+        bit_ratio = _BIT_RATIO_DICT.get(dtype)
         if attr_value * bit_ratio > _DATA_SIZE_MAX:
             dict_args = {
                 'errCode': 'E60020',
@@ -812,7 +809,7 @@ def conv3d_backprop_input_generalization(input_size, filter, # pylint: disable=R
         _generalize_input_keep_rank(out_backprop)
         _generalize_input_keep_rank(y)
     else:
-        error_manager_cube.raise_err_one_para("E2306",
+        error_manager_cube.raise_err_one_para("E62306",
                                               "Conv3DBackpropInput",
                                               "Invalid generalize mode, currently only support keep_rank")
     # get dx_range depends on dy_range

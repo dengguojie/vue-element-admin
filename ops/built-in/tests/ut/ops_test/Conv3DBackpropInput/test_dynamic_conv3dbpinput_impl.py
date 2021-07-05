@@ -20,10 +20,10 @@ def _gen_data_case(case, expect, case_name_val, support_expect=True):
 def _run_api(
         input_size={'ori_shape': (5,), 'ori_format': 'ND', 'dtype': 'int32'},
         filter={'ori_shape': (1, 1, 1, 256, 64), 'ori_format': 'DHWCN', 'dtype': 'float16'},
-        out_backprop={'ori_shape': (1, 8, 56, -1, 64), 'ori_format': 'NDHWC', 'dtype': 'float16',
-                      'range': ((1, 1), (8, 8), (4, 4), (56, 56), (1, 75), (16, 16))},
-        y={'ori_shape': (1, 8, 56, -1, 256), 'ori_format': 'NDHWC', 'dtype': 'float16',
-           'range': ((1, 1), (8, 8), (16, 16), (56, 56), (1, 75), (16, 16))},
+        out_backprop={'ori_shape': (1, 8, -1, -1, 64), 'ori_format': 'NDHWC', 'dtype': 'float16',
+                      'range': ((1, 1), (8, 8), (4, 4), (1, 56), (1, 75), (16, 16))},
+        y={'ori_shape': (1, 8, -1, -1, 256), 'ori_format': 'NDHWC', 'dtype': 'float16',
+           'range': ((1, 1), (8, 8), (16, 16), (1, 56), (1, 75), (16, 16))},
         strides=(1, 1, 1, 1, 1),
         pads=[0, 0, 0, 0, 0, 0],
         dilations=(1, 1, 1, 1, 1),
@@ -63,6 +63,13 @@ def test_conv3d_backprop_input_fuzz_build_generalization(test_arg):
     conv3d_backprop_input_generalization(*input_list)
 
 
+def test_get_pad_mode(test_args):
+    from impl.dynamic.conv3d_backprop_input import _get_pad_mode
+    _get_pad_mode([-1,-1,-1,-1,-1,-1])
+    _get_pad_mode("SAME")
+
+ut_case.add_cust_test_func(test_func=test_get_pad_mode)
+
 # test_conv3dbp_succ_dynamic
 case1 = _run_api()
 
@@ -99,6 +106,83 @@ case4 = _run_api(dilations=dilations)
 input_size = {'ori_shape': (-2,), 'ori_format': 'ND', 'dtype': 'int32'}
 case5 = _run_api(input_size=input_size)
 
+# test filter worng format
+filter = {'ori_shape': (6, 3, 10, 6, 72), 'ori_format': 'ND', 'dtype': 'float16'}
+case6 = _run_api(filter=filter)
+
+# test NCDHW filter
+filter = {'ori_shape': (6, 3, 10, 6, 72), 'ori_format': 'NCDHW', 'dtype': 'float16'}
+case7 = _run_api(filter=filter)
+
+# test NDHWC filter
+filter = {'ori_shape': (6, 3, 10, 6, 72), 'ori_format': 'NDHWC', 'dtype': 'float16'}
+case8 = _run_api(filter=filter)
+
+# test out_backprop worng format
+out_backprop = {'ori_shape': (-1, 85, 25, 5, 72), 'ori_format': 'ND', 'dtype': 'float16'}
+case9 = _run_api(out_backprop=out_backprop)
+
+# test -1 in range C
+y = {'ori_shape': (1, 8, 56, -1, 256), 'ori_format': 'NDHWC', 'dtype': 'float16',
+     'range': ((1, 1), (8, 8), (56, 56), (1, 75), (-1, 16))}
+case10 = _run_api(y=y)
+
+# test -1 in range
+y = {'ori_shape': (1, 8, 56, -1, 256), 'ori_format': 'ND', 'dtype': 'float16',
+     'range': ((1, 1), (8, 8), (56, 56), (-1, 75), (16, 16))}
+case11 = _run_api(y=y)
+
+# test None in range
+y = {'ori_shape': (1, 8, 56, -1, 256), 'ori_format': 'NDHWC', 'dtype': 'float16',
+     'range': ((1, 1), (8, 8), (56, 56), (75, None), (16, 16))}
+case12 = _run_api(y=y)
+
+# test range exceed 4096
+y = {'ori_shape': (1, 8, 56, -1, 256), 'ori_format': 'NDHWC', 'dtype': 'float16',
+     'range': ((1, 1), (8, 8), (56, 56), (75, 5000), (16, 16))}
+case13 = _run_api(y=y)
+
+# test range low > high
+y = {'ori_shape': (1, 8, 56, -1, 256), 'ori_format': 'NDHWC', 'dtype': 'float16',
+     'range': ((1, 1), (8, 8), (56, 56), (75, 2), (16, 16))}
+case14 = _run_api(y=y)
+
+# test filter_d_dilation > fmap_d_padding
+input_size = {'ori_shape': (5,), 'ori_format': 'ND', 'dtype': 'int32'}
+filter = {'ori_shape': (20, 5, 5, 256, 64), 'ori_format': 'DHWCN', 'dtype': 'float16'}
+out_backprop = {'ori_shape': (-1, 8, 8, 8, 16), 'ori_format': 'NDHWC', 'dtype': 'float16',
+                'range': ((1, 1), (8, 8), (1, 1), (8, 8), (8, 8), (16, 16))}
+y = {'ori_shape': (-1, 16, 16, 16, 16), 'ori_format': 'NDHWC', 'dtype': 'float16',
+    'range': ((1, 1), (16, 16), (1, 1), (16, 16), (16, 16), (16, 16))}
+strides = (1, 2, 2, 2, 1)
+pads = [1, 2, 1, 2, 1, 2]
+case15 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
+                  input_size=input_size, filter=filter, pads=pads)
+
+# test filter_h_dilation > fmap_h_padding
+input_size = {'ori_shape': (5,), 'ori_format': 'ND', 'dtype': 'int32'}
+filter = {'ori_shape': (5, 20, 5, 256, 64), 'ori_format': 'DHWCN', 'dtype': 'float16'}
+out_backprop = {'ori_shape': (-1, 8, 8, 8, 16), 'ori_format': 'NDHWC', 'dtype': 'float16',
+                'range': ((1, 1), (8, 8), (1, 1), (8, 8), (8, 8), (16, 16))}
+y = {'ori_shape': (-1, 16, 16, 16, 16), 'ori_format': 'NDHWC', 'dtype': 'float16',
+    'range': ((1, 1), (16, 16), (1, 1), (16, 16), (16, 16), (16, 16))}
+strides = (1, 2, 2, 2, 1)
+pads = [1, 2, 1, 2, 1, 2]
+case16 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
+                  input_size=input_size, filter=filter, pads=pads)
+
+# test filter_w_dilation > fmap_w_padding
+input_size = {'ori_shape': (5,), 'ori_format': 'ND', 'dtype': 'int32'}
+filter = {'ori_shape': (5, 5, 50, 256, 64), 'ori_format': 'DHWCN', 'dtype': 'float16'}
+out_backprop = {'ori_shape': (-1, 8, 8, 8, 16), 'ori_format': 'NDHWC', 'dtype': 'float16',
+                'range': ((1, 1), (8, 8), (1, 1), (8, 8), (8, 8), (16, 16))}
+y = {'ori_shape': (-1, 16, 16, 16, 16), 'ori_format': 'NDHWC', 'dtype': 'float16',
+    'range': ((1, 1), (16, 16), (1, 1), (16, 16), (16, 16), (16, 16))}
+strides = (1, 2, 2, 2, 1)
+pads = [1, 2, 1, 2, 1, 2]
+case17 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
+                  input_size=input_size, filter=filter, pads=pads)
+
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A"],
@@ -111,6 +195,31 @@ ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case4, RuntimeError, "dynamic_case4_error_dilation", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case5, RuntimeError, "dynamic_case5_error_minus_2", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case6, RuntimeError, "dynamic_case6", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case7, RuntimeError, "dynamic_case7", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case8, RuntimeError, "dynamic_case8", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case9, RuntimeError, "dynamic_case9", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case10, RuntimeError, "dynamic_case10", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case11, RuntimeError, "dynamic_case11", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case12, RuntimeError, "dynamic_case12", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case13, RuntimeError, "dynamic_case13", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case14, RuntimeError, "dynamic_case14", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case15, RuntimeError, "dynamic_case15", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case16, RuntimeError, "dynamic_case16", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case17, RuntimeError, "dynamic_case17", True))
+
 # test_conv3d_backprop_input_fuzz_build_generalization
 print("adding conv3d test_conv3d_backprop_input_fuzz_build_generalization testcase")
 ut_case.add_cust_test_func(test_func=test_conv3d_backprop_input_fuzz_build_generalization)

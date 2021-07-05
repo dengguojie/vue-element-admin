@@ -49,7 +49,7 @@ _FILTER_HW_MAX = 255
 _FILTER_HW_SIZE = 256
 _FILTER_D_MAX = 128
 
-# stride must be in [1,63] and h*w not lagger than 256
+# stride must be in [1,63] and h*w not larger than 256
 _STRIDE_HW_MIN = 1
 _STRIDE_HW_MAX = 63
 _STRIDE_SIZE_MAX = 256
@@ -576,7 +576,7 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), int,
+                             (list, tuple), (list, tuple), int,
                              (list, tuple), str, str, str, str)
 def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                                 shape_out_backprop,
@@ -599,7 +599,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     strides : A list/tuple of ints. The stride of the sliding window
 
-    pads : A list/tuple of ints or str
+    pads : A list/tuple of ints
 
     groups : Int of blocked connections from input channels to output channels
 
@@ -624,11 +624,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                 attr_name,
                 str(attr_value))
 
-    def _check_64bits_limitation(attr_name, attr_value, dtype=None):
-        if dtype is None:
-            bit_ratio = _BIT_RATIO_DICT.get("float16")
-        else:
-            bit_ratio = _BIT_RATIO_DICT.get(dtype)
+    def _check_64bits_limitation(attr_name, attr_value, dtype):
+        bit_ratio = _BIT_RATIO_DICT.get(dtype)
         if attr_value * bit_ratio > _DATA_SIZE_MAX:
             dict_args = {
                 'errCode': 'E60020',
@@ -739,16 +736,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     if isinstance(pads, (tuple, list)) and len(pads) != _CONV_BACKPROP_PAD_SHAPE_DIM:
         error_manager_cube.raise_err_one_para('E62501', 'conv3d', 'pads')
 
-    if isinstance(pads, str) and pads not in ['SAME', 'VALID']:
-        dict_args = {
-            'errCode': 'E60000',
-            'param_name': 'pads',
-            'expected_value':'SAME or VALID',
-            'input_value': str(pads),
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
     _, dilation_d, dilation_h, dilation_w, _ = dilations
     if dilation_d != 1:
         error_manager_cube.raise_err_specific("conv3d",
@@ -779,23 +766,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
     filter_d_dilation = (filter_depth - 1) * dilation_d + 1
 
-    if pads == 'SAME':
-        pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
-        pad_h = max(pad_h, 0)
-        pad_up = pad_h // 2
-        pad_down = pad_h - pad_up
-        pad_w = util_common.align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
-        pad_w = max(pad_w, 0)
-        pad_left = pad_w // 2
-        pad_right = pad_w - pad_left
-        pad_d = util_common.align(fmap_deep, stride_d) - stride_d + filter_d_dilation - fmap_deep
-        pad_d = max(pad_d, 0)
-        pad_head = pad_d // 2
-        pad_tail = pad_d - pad_head
-
-        pads = [pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right]
-    elif pads == "VALID":
-        pads = _PADDING_VAILD
     # pads compute
     pads = list(pads)
     pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
@@ -863,7 +833,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), int, (list, tuple),
+                             (list, tuple), (list, tuple), int, (list, tuple),
                              str, str, str, str)
 def _conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
                               shape_out_backprop, input_sizes,
@@ -888,7 +858,7 @@ def _conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
 
     strides : A list/tuple of ints. The stride of the sliding window
 
-    pads : A list/tuple of ints or str
+    pads : A list/tuple of ints
 
     groups: Int of blocked connections from input channels to output channels
 
