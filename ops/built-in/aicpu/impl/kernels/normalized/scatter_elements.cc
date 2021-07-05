@@ -128,7 +128,7 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
                         value_dim_x3[i] > 0),
                        KERNEL_STATUS_PARAM_INVALID,
                        "The %d dimension verfication failed:input0[%d],input1[%d],input2[%d]",
-                       i, value_dim_x1, value_dim_x2, value_dim_x3);
+                       i, value_dim_x1[i], value_dim_x2[i], value_dim_x3[i]);
     if (i > 0) {
       sub_data_fix *= value_dim_x1[i];
       data_dim_vec.push_back(sub_data_fix);
