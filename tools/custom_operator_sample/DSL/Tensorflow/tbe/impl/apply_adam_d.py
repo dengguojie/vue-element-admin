@@ -19,7 +19,7 @@ from te import tvm
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
-from impl.util import util_apply_op_schedule
+from .util import util_apply_op_schedule
 
 
 # pylint: disable=invalid-name, too-many-arguments, too-many-locals

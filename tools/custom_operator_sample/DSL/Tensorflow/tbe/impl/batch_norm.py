@@ -21,9 +21,9 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
+from .util.util_select_op_base import SplitInput
+from .util.util_select_op_base import SplitOutput
+from .util.util_select_op_base import get_op_cal_info
 import functools
 
 NONETYPE = type(None)

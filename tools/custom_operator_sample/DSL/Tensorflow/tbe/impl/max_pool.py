@@ -22,7 +22,7 @@ from te import tvm
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from impl.util import util_select_op_base
+from .util import util_select_op_base
 # max value of ksize_h * ksize_w
 SCALAR_255 = 255
 # max value of ksize_h or ksize_w

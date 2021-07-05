@@ -18,7 +18,7 @@ inplace_update
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
-from impl.util.platform_adapter import error_manager_vector
+from .util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=unused-argument,invalid-name

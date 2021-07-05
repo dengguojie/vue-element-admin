@@ -16,10 +16,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 strided slice
 """
 from __future__ import absolute_import
-from impl.util.platform_adapter import para_check
+from .util.platform_adapter import para_check
 from .strided_slice import StridedSlice
-from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
+from .util.platform_adapter import register_operator
+from .util.platform_adapter import tbe_context
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument

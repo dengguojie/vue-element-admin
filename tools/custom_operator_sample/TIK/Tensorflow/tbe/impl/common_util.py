@@ -16,7 +16,7 @@
 common_util
 """
 from te import tik
-from impl import constant_util as constant
+from . import constant_util as constant
 
 
 def get_vector_repeat_times(tik_instance, total_size):

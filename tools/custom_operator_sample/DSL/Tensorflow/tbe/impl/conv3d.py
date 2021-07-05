@@ -15,14 +15,14 @@
 """
 conv3d
 """
-from impl.util import util_select_op_base
-from impl.util import util_common
-from impl.util.platform_adapter import error_manager_util
-from impl.util.platform_adapter import error_manager_cube
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import tvm
+from .util import util_select_op_base
+from .util import util_common
+from .util.platform_adapter import error_manager_util
+from .util.platform_adapter import error_manager_cube
+from .util.platform_adapter import para_check
+from .util.platform_adapter import tbe
+from .util.platform_adapter import tbe_platform
+from .util.platform_adapter import tvm
 
 _BIAS_LENGTH = 1
 # [strides_batch, strides_depth, strides_height,

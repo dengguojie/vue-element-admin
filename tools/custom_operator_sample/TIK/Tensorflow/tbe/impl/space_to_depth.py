@@ -24,11 +24,11 @@ from te.utils.error_manager import error_manager_vector
 from te.utils.op_utils import *
 
 import impl
-from impl import common_util
-from impl import constant_util as constant
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from impl.util import util_select_op_base
+from . import common_util
+from . import constant_util as constant
+from .util.util_select_op_base import gen_param
+from .util.util_select_op_base import get_dynamic_param_in_json
+from .util import util_select_op_base
 
 # pylint: disable=redefined-builtin
 if "reduce" not in dir(__builtins__):

@@ -18,7 +18,6 @@ conv2d
 from __future__ import absolute_import
 import math
 import json
-import traceback
 from tbe import tvm
 from tbe.dsl import auto_schedule
 from tbe.dsl import build
@@ -28,8 +27,8 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_cube as err_man
-from impl.util import util_select_op_base
-from impl.util import util_conv2d
+from .util import util_select_op_base
+from .util import util_conv2d
 
 
 @para_check.check_input_type(dict, dict, (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE), dict,
@@ -48,8 +47,7 @@ def check_supported(inputs, weights, bias, offset_w, outputs, strides,
     | Format    | NCHW    | NCHW    | ND      | NCHW    |
     |           | NHWC    | HWCN    |         | NHWC    |
 
-    Note: for float32 type, the actual calculation on the chip is based on float16. For int8,
-    a dequant or requant operator must be followed.
+    Note: for float32 type, the actual calculation on the chip is based on float16.
 
     2.The following value range restrictions must be met:
 
@@ -82,11 +80,10 @@ def check_supported(inputs, weights, bias, offset_w, outputs, strides,
         check_list = [*return_list[:6], inputs["dtype"], weights["dtype"], outputs["dtype"],
                       offset_w_dtype, (bias is None), kernel_name, *return_list[6:9], groups]
         return_list = util_conv2d.conv_layer_cce_para_check(*check_list)
-        return True
-    except (RuntimeError, ValueError, TypeError):
-        msg = traceback.format_exc()
-        print(msg)
-        return False
+    except RuntimeError as e:
+        reason = e.args[1]
+        return False, reason
+    return True, ""
 
 
 def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
@@ -150,10 +147,10 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
 
     - minimum size calculation:
 
-        `m_limit_out_v200 = lcm(out_width, 16) // out_width ("lcm": least common multiple)`
-        `in_height_need = (m_limit_out_v200 - 1) * stride_h- pad_left - pad_right +
-         (dilation_w * (filter_width - 1) + 1)`
-        `minimum_load_size = in_height_need * in_width * 8 ("8": comes from 2btype*C0=4)`
+        `limit_out_height = lcm(out_width, 16) // out_width ("lcm": least common multiple)`
+        `dilated_filter_h = dilation_h * (filter_height - 1) + 1`
+        `limit_in_height = (limit_out_height - 1) * stride_h + dilated_filter_h - pad_left - pad_right`
+        `minimum_size = limit_in_height * in_width * 8 ("8": comes from 2btype*C0=4)`
     """
     def _select_format(params):
         inputs = params[0]
@@ -480,7 +477,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False}
 
     if fusion_para is None:
-        fusion_para = {"fmap_l1_addr_flag": 0, "fmap_l1_valid_size": -1}
+        fusion_para = {"fmap_l1_addr_flag": 0, "fmap_l1_valid_size": -1, "slice_offset": (0, 0, 0, 0, 0)}
 
     in_dtype = in_dtype.lower()
     w_dtype = w_dtype.lower()
@@ -491,7 +488,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     shape_w = list(shape_w)
     # fix the weight's channel=cin_ori
     shape_w[1] = shape_in[1]
-    weight_ori_shape_nchw = shape_w
+    weight_ori_shape_nchw = shape_w.copy()
     cin_ori = shape_in[1] // groups
     cout_ori = shape_w[0] // groups
     shape_in, shape_w = util_conv2d.conv_layer_cce_para_check(shape_in, shape_w, padh, padw,
@@ -555,7 +552,8 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         "print_ir": need_print,
         "need_build": need_build,
         "name": kernel_name,
-        "tensor_list": tensor_list
+        "tensor_list": tensor_list,
+        "dummy_placeholder": True
     }
 
     build(sch, config)
@@ -601,19 +599,37 @@ def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads,
     None
     """
     slice_info = {"_op_slice_info":
-                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}],
+                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],
                                   "outputList": [{"idx": 0, "axis": [0]}]},
                                  {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],
                                   "outputList": [{"idx": 0, "axis": [2]}]},
                                  {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],
                                   "outputList": [{"idx": 0, "axis": [3]}]},
-                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [0], "tailOverLap": [0]}],
+                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],
                                   "outputList": [{"idx": 0, "axis": [1]}]}],
                    "reduceMaps": [],
                    "l1FusionEnable": 2,
                    "minTbeL1Space": 0}}
     if bias:
-        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}]
+        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
+
+    # >>> start: process for dynamic shape
+    shape_x = inputs.get("ori_shape")
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    # shape is [-2], all axes do not support split
+    if list(shape_x) == [-2]:
+        slice_info["_op_slice_info"]["splitMaps"].clear()
+    else:
+        # H/W shape is -1, remove corresponding split info
+        format_fm = inputs.get("ori_format")
+        overlap_axis = {"H": [2], "W": [3]}
+        temp_info = slice_info['_op_slice_info']["splitMaps"]
+        for name, index in overlap_axis.items():
+            if shape_x[format_fm.find(name)] == -1:
+                last_maps = filter(lambda splits : splits["inputList"][0]["axis"] != index, temp_info)
+                temp_info = list(last_maps)
+        slice_info["_op_slice_info"]["splitMaps"] = temp_info
+    # <<< end: process for dynamic shape
 
     return json.dumps(slice_info)

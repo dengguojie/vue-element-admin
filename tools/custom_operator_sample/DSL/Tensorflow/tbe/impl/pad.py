@@ -16,13 +16,13 @@
 pad.py
 """
 import functools
-from impl import constant_util as constant
-from impl.util.util_tik_comm_func import OpBase
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import register_operator
+from . import constant_util as constant
+from .util.util_tik_comm_func import OpBase
+from .util.platform_adapter import para_check
+from .util.platform_adapter import tik
+from .util.platform_adapter import tbe_platform
+from .util.platform_adapter import tbe_context
+from .util.platform_adapter import register_operator
 
 
 # tiling param nums

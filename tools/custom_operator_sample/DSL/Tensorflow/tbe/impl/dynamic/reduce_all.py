@@ -15,14 +15,13 @@
 """
 reduce all
 """
-import te
-from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import classify
-from impl.util.platform_adapter import OpPatternMode
-from impl.util.platform_adapter import shape_util
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import register_operator
+from ..util.platform_adapter import tbe
+from ..util.platform_adapter import tvm
+from ..util.platform_adapter import classify
+from ..util.platform_adapter import OpPatternMode
+from ..util.platform_adapter import shape_util
+from ..util.platform_adapter import para_check
+from ..util.platform_adapter import register_operator
 
 
 # 'pylint: disable=unused-argument,invalid-name

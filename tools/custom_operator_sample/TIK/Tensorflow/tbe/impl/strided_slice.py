@@ -18,13 +18,13 @@ strided slice
 
 from __future__ import absolute_import
 import math
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tik
+from .util.platform_adapter import para_check
+from .util.platform_adapter import tik
 
-from impl import common_util
-from impl import constant_util as constant
-from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
+from . import common_util
+from . import constant_util as constant
+from .util.platform_adapter import register_operator
+from .util.platform_adapter import tbe_context
 
 MAX_SIZE = 2 ** 31 - 1
 MAX_NBURST = 4095
