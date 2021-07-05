@@ -219,7 +219,7 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   FUSION_PASS_CHECK(topk_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "FusionNode is null, fusion failed."),
                     return PARAM_INVALID);
   GeTensorPtr assit_ptr{nullptr};
-  unique_ptr<uint16_t> inputAssit(new (nothrow) uint16_t[kAssistLen * 2]());
+  unique_ptr<uint16_t[]> inputAssit(new (nothrow) uint16_t[kAssistLen * 2]());
   FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "InputAssit is NULL"), return FAILED);
   ret = AssitHelp(kAssistLen, inputAssit.get());
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(kFusedOpType.c_str(), "AssitHelp failed."), return NOT_CHANGED);

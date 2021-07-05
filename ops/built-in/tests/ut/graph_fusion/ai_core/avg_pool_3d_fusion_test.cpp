@@ -98,6 +98,40 @@ TEST_F(avg_pool_3d_fusion_test, avg_pool_3d_fusion_static_case0) {
     EXPECT_EQ(match, true);
 }
 
+TEST_F(avg_pool_3d_fusion_test, avg_pool_3d_fusion_static_case1) {
+    ge::Graph graph("avg_pool_3d_fusion_static_case1");
+    auto avg_pool_3d_input_data = op::Data("avg_pool_3d_input_data");
+    std::vector<int64_t> dims{1, 28, 28, 28, 1};
+    ge::Shape shape(dims);
+    ge::TensorDesc tensorDesc(shape, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    avg_pool_3d_input_data.update_input_desc_x(tensorDesc);
+    avg_pool_3d_input_data.update_output_desc_y(tensorDesc);
+    auto avg_pool_3d_op = op::AvgPool3D("avgpool3d_0");
+    avg_pool_3d_op.set_input_x(avg_pool_3d_input_data);
+    avg_pool_3d_op.set_attr_ksize({1, 1, 1, 1, 1});
+    avg_pool_3d_op.set_attr_strides({1, 2, 2, 2, 1});
+    avg_pool_3d_op.set_attr_pads({1, 1, 1, 1, 1, 1,});
+    avg_pool_3d_op.set_attr_ceil_mode(false);
+    avg_pool_3d_op.set_attr_count_include_pad(false);
+    avg_pool_3d_op.set_attr_divisor_override(1);
+    avg_pool_3d_op.set_attr_data_format("NDHWC");
+    auto end_op = op::Square("end_op_0");
+    end_op.set_input_x(avg_pool_3d_op);
+    std::vector<Operator> inputs{avg_pool_3d_input_data};
+    std::vector<Operator> outputs{end_op};
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("AvgPool3DFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    bool match = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "AvgPool3DD") {
+            match = true;
+        }
+    }
+    EXPECT_EQ(match, true);
+}
+
 TEST_F(avg_pool_3d_fusion_test, avg_pool_3d_fusion_dynamic_case0) {
     ge::Graph graph("avg_pool_3d_fusion_dynamic_case0");
     auto avg_pool_3d_input_data = op::Data("avg_pool_3d_input_data");

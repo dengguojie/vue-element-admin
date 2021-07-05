@@ -307,7 +307,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
 
   int64_t filter_size = fmap_c1 * kd * kh * kw * kC0 * kC0;
   GeTensorPtr filter_ptr{nullptr};
-  unique_ptr<uint16_t> filter_mem(new (nothrow) uint16_t[filter_size]());
+  unique_ptr<uint16_t[]> filter_mem(new (nothrow) uint16_t[filter_size]());
   FUSION_PASS_CHECK(filter_mem.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "Filter is NULL"), return PARAM_INVALID);
 
   float val = 1.0;
@@ -344,7 +344,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     OP_LOGD(kFusedOpType.c_str(), "create multiplier data.");
     GeTensorPtr multiplier_ptr{nullptr};
     int64_t multiplier_size = fmap_n * fmap_c1 * kC0 * dout * ho * wo;
-    unique_ptr<uint16_t> multiplier_mem(new (nothrow) uint16_t[multiplier_size]());
+    unique_ptr<uint16_t[]> multiplier_mem(new (nothrow) uint16_t[multiplier_size]());
     FUSION_PASS_CHECK(multiplier_mem.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "Multiplier is NULL"),
                       return PARAM_INVALID);
 

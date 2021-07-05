@@ -238,7 +238,7 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   vector<int64_t> avgpool1d_assit_dim_info;
   Status ret;
   if (input_type == DT_FLOAT16) {
-    unique_ptr<uint16_t> input_assit(new (nothrow) uint16_t[value_table_size]());
+    unique_ptr<uint16_t[]> input_assit(new (nothrow) uint16_t[value_table_size]());
     FUSION_PASS_CHECK(input_assit.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "The input_assit is NULL"),
                       return PARAM_INVALID);
     ret = AvgValueTableGen(orig_input_shape_v, k_size, strides, pads, ceil_mode, count_include_pad,
@@ -257,7 +257,7 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
         avg_table_assit_ptr = nullptr;
         return PARAM_INVALID);
   } else if (input_type == DT_FLOAT) {
-    unique_ptr<float> input_assit(new (nothrow) float[value_table_size]());
+    unique_ptr<float[]> input_assit(new (nothrow) float[value_table_size]());
     FUSION_PASS_CHECK(input_assit.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "The input_assit is NULL"),
                       return PARAM_INVALID);
     ret = AvgValueTableGen(orig_input_shape_v, k_size, strides, pads, ceil_mode, count_include_pad,

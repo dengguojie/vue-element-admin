@@ -429,7 +429,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
         (avg_pool_dim_info[0] != value_table_size / (avg_pool_dim_info[1] * avg_pool_dim_info[2] * avg_pool_dim_info[3])),
         OP_LOGW(kFusedOpType.c_str(), "The value_table_size overlap , over int64"), return NOT_CHANGED);
 
-    unique_ptr<uint16_t> input_assit(new (std::nothrow) uint16_t[value_table_size]());
+    unique_ptr<uint16_t[]> input_assit(new (std::nothrow) uint16_t[value_table_size]());
     FUSION_PASS_CHECK(input_assit.get() == nullptr,
                       CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The input_assit is NULL"),
                       return PARAM_INVALID);
@@ -486,7 +486,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   FUSION_PASS_CHECK((((k_size[1] * k_size[2]) == 0) || (kernel_table_size <= 0)),
                     OP_LOGW(kFusedOpType.c_str(), "The kernel_table_size have O element"), return NOT_CHANGED);
 
-  unique_ptr<uint16_t> kernel_table_input_assit(new (std::nothrow) uint16_t[kernel_table_size]());
+  unique_ptr<uint16_t[]> kernel_table_input_assit(new (std::nothrow) uint16_t[kernel_table_size]());
   FUSION_PASS_CHECK(kernel_table_input_assit.get() == nullptr,
                     CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The kernel_table_input_assit is NULL"),
                     return PARAM_INVALID);
