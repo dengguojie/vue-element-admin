@@ -19,18 +19,21 @@
  * \brief pseudo fusion pass of "dx + bias_add"
  */
 #include "conv2d_backprop_input_bias_add_fusion_pass.h"
+
 #include <iostream>
 #include <map>
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
+#include "anchor_util.h"
+#include "common/util/error_manager/error_manager.h"
+#include "error_util.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
-#include "common/util/error_manager/error_manager.h"
-#include "../../../op_proto/util/error_util.h"
+
 namespace fe {
 static const string OP_CONV2DBACKPROPINPUTD = "Conv2DBackpropInputD";
 
@@ -84,7 +87,11 @@ Status Conv2DbpInputBiasAddFusionPass::convert_dx_to_transpose(ge::ComputeGraph 
                     CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new bias_node not success."),
                     return PARAM_INVALID);
 
-  ge::NodePtr bias_const_node = bias_node->GetInAllNodes().at(1);
+  auto in_all_nodes = bias_node->GetInAllNodes();
+  FUSION_PASS_CHECK(in_all_nodes.size() <= 1,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "num of input nodes of bias must >= 2."),
+                    return PARAM_INVALID);
+  auto bias_const_node = in_all_nodes.at(1);
   FUSION_PASS_CHECK(bias_const_node == nullptr,
                     CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new bias_const_node not success."),
                     return PARAM_INVALID);
@@ -231,13 +238,13 @@ Status Conv2DbpInputBiasAddFusionPass::connect_edges(ge::NodePtr &conv_node,
   * ========================================
   */
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(conv_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+    ge::GraphUtils::AddEdge(GetPeerOutAnchorWithInDataAnchor(conv_node, 0),
                             conv2d_transpose_d->GetInDataAnchor(1)) != SUCCESS,
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[0] to fusion node: %s's index[1] is failed.",
             conv_node->GetName().c_str(), conv2d_transpose_d->GetName().c_str()),
     return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(conv_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
+    ge::GraphUtils::AddEdge(GetPeerOutAnchorWithInDataAnchor(conv_node, 1),
                             conv2d_transpose_d->GetInDataAnchor(0)) != SUCCESS,
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[1] to fusion node: %s's index[0] is failed.",
             conv_node->GetName().c_str(), conv2d_transpose_d->GetName().c_str()),
@@ -247,8 +254,11 @@ Status Conv2DbpInputBiasAddFusionPass::connect_edges(ge::NodePtr &conv_node,
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[0] to fusion node: %s's index[2] is failed.",
             bias_const_node->GetName().c_str(), conv2d_transpose_d->GetName().c_str()),
     return FAILED);
-  auto in_anchors = bias_node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
-  for (auto in_anchor : in_anchors) {
+  auto outdata_anchor = bias_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(outdata_anchor == nullptr,
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Getting data anchor 0 of output is failed."), return FAILED);
+
+  for (auto in_anchor : outdata_anchor->GetPeerInDataAnchors()) {
     in_anchor->UnlinkAll();
     FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(conv2d_transpose_d->GetOutDataAnchor(0), in_anchor) != SUCCESS,

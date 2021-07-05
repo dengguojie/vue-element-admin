@@ -71,6 +71,8 @@ Status MatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMappin
 
   for (auto matmulNode : matmulNodes) {
     for (auto matmulControlNode : matmulNode->GetOutControlNodes()) {
+      FUSION_PASS_CHECK(matmulControlNode == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "out control of matmul is null"),
+                        return FAILED);
       if (matmulControlNode->GetType() != "ConfusionTransposeD") {
         continue;
       }
@@ -79,6 +81,8 @@ Status MatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMappin
                         OP_LOGD(FUSED_OP_TYPE.c_str(), "remove edge between matmul and confusion_transpose_d error"),
                         return FAILED);
       for (auto transposeOutNode : matmulControlNode->GetOutAllNodes()) {
+        FUSION_PASS_CHECK(transposeOutNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "output of transpose is null"),
+                          return FAILED);
         FUSION_PASS_CHECK(
             ge::GraphUtils::AddEdge(matmulNode->GetOutControlAnchor(), transposeOutNode->GetInControlAnchor()) !=
                 SUCCESS,
@@ -111,7 +115,9 @@ Status MatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMappin
     if (opdesc != item.first->types.end()) {
       for (auto& node : item.second) {
         auto nodePtr = find(fusionNodes.begin(), fusionNodes.end(), node);
-        fusionNodes.erase(nodePtr);
+        if (nodePtr != fusionNodes.end()) {
+          fusionNodes.erase(nodePtr);
+        }
       }
     }
   }

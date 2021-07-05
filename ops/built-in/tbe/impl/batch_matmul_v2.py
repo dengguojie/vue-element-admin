@@ -523,7 +523,7 @@ def check_supported(input_x,
 
 
 # pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
-@tbe_platform.fusion_manager.register("batch_matmul")
+@tbe_platform.fusion_manager.register("batch_matmul_v2")
 def batch_matmul_compute(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
                          trans_b=False, offset_x=0, kernel_name="matmul"):
     """

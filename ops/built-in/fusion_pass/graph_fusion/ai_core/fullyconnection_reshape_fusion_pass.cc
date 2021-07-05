@@ -125,6 +125,10 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
                             fullyConnectionNode->GetName().c_str()),
                     return PARAM_INVALID);
   auto xShape = reshapeInputShape.GetDims();
+  FUSION_PASS_CHECK(xShape.size() <= 1,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "size of input shape of reshape must > 1.",
+                            xShape.size()),
+                    return PARAM_INVALID);
   if (xShape.size() == 2) {
     xShape.push_back(1);
     xShape.push_back(1);

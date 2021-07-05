@@ -109,6 +109,8 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
       return SUCCESS;
     }
     for (const auto& batch_matmul_control_node : batch_matmul_node->GetOutControlNodes()) {
+      FUSION_PASS_CHECK(batch_matmul_control_node == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Out control of batch_matmul is null."), return FAILED);
       if (batch_matmul_control_node->GetType() != "ConfusionTransposeD") {
         continue;
       }
@@ -120,6 +122,8 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
                 "Removing control-edge between BatchMatMul and ConfusionTransposeD is failed."),
         return FAILED);
       for (const auto& confusion_transpose_out_node : batch_matmul_control_node->GetOutAllNodes()) {
+        FUSION_PASS_CHECK(confusion_transpose_out_node == nullptr,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of confusion transpose is null."), return FAILED);
         FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(batch_matmul_node->GetOutControlAnchor(),
             confusion_transpose_out_node->GetInControlAnchor()) != SUCCESS,
@@ -137,6 +141,8 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
       return SUCCESS;
     }
     for (const auto& dropout_control_node : dropout_node->GetInControlNodes()) {
+      FUSION_PASS_CHECK(dropout_control_node == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "in control of dropout is null."), return FAILED);
       if (dropout_control_node->GetType() != "BatchMatMul") {
         continue;
       }
@@ -148,6 +154,8 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
                 "Removing control-edge between BatchMatMul and DropOutDoMaskV3D is failed."),
         return FAILED);
       for (const auto& dropout_out_node : dropout_node->GetOutAllNodes()) {
+        FUSION_PASS_CHECK(dropout_out_node == nullptr,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
         FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
             dropout_out_node->GetInControlAnchor()) != SUCCESS,

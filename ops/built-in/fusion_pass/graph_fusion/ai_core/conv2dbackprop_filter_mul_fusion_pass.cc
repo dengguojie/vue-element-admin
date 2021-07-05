@@ -63,11 +63,9 @@ NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
   ge::NodePtr mulNode = nullptr;
 
   // create a new node desc
-  std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
-  mulDesc = std::make_shared<ge::OpDesc>(dwOutNode->GetName() + "_mul_layer", "Mul");
-  FUSION_PASS_CHECK(mulDesc == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed"),
-                    return nullptr);
+  ge::OpDescPtr mulDesc;
+  FUSION_PASS_MAKE_SHARED(mulDesc = std::make_shared<ge::OpDesc>(dwOutNode->GetName() + "_mul_layer", "Mul"),
+                          return nullptr);
   // get and set mulDesc's inputDesc
   ge::GeTensorDesc inputDesc = dwOutNode->GetOpDesc()->GetOutputDesc(0);
   ge::GeShape mulShape = inputDesc.GetShape();
@@ -84,10 +82,10 @@ NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
   outputDesc.SetDataType(ge::DT_FLOAT);
   outputDesc.SetOriginDataType(ge::DT_FLOAT);
   // mulDesc setInput inputDesc & outputDesc
-  FUSION_PASS_CHECK(mulDesc->AddInputDesc(inputDesc) != SUCCESS,
+  FUSION_PASS_CHECK(mulDesc->AddInputDesc(inputDesc) != GRAPH_SUCCESS,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc input failed"),
                     return nullptr);
-  FUSION_PASS_CHECK(mulDesc->AddOutputDesc(outputDesc) != SUCCESS,
+  FUSION_PASS_CHECK(mulDesc->AddOutputDesc(outputDesc) != GRAPH_SUCCESS,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc output failed"),
                     return nullptr);
   // graph add mulNode by mulDesc
@@ -97,6 +95,9 @@ NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
                     return nullptr);
   // modify edge info
   ge::OutDataAnchorPtr dwAnchorPtr1 = dwOutNode->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(dwAnchorPtr1 == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get data anchor 0 of output failed"),
+                    return nullptr);
   for (auto postAnchorPtr0 : dwAnchorPtr1->GetPeerInDataAnchors()) {
     /*
      * dwAnchorPtr1 : the edge to dw node
@@ -115,7 +116,7 @@ NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
                       return nullptr);
 
     // add edge between mul and next node
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0),postAnchorPtr0) != SUCCESS,
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
                       OP_LOGI(FUSED_OP_TYPE.c_str(),
                               "add edge between mul node and dw's next node failed"),
                       return nullptr);

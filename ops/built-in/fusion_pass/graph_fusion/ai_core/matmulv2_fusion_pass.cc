@@ -18,15 +18,18 @@
  * \file matmulv2_fusion_pass.cpp
  * \brief MatMulV2 fusion pass
  */
+#include "matmulv2_fusion_pass.h"
+
 #include <memory>
 #include <string>
-#include "matmulv2_fusion_pass.h"
+
+#include "anchor_util.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
+#include "graph/utils/graph_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-#include "graph/utils/graph_utils.h"
-#include "error_util.h"
 
 namespace fe {
 static const string PATTERN_INPUTS1 = "input1";
@@ -99,12 +102,18 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   matMulV2Node->GetOpDesc()->MutableInputDesc(CONST_INDEX)->SetShape(newShape);
   matMulV2Node->GetOpDesc()->MutableInputDesc(CONST_INDEX)->SetOriginShape(newShape);
 
-  ge::NodePtr constNode = matMulV2Node->GetInDataAnchor(CONST_INDEX)->GetPeerOutAnchor()->GetOwnerNode();
+  ge::NodePtr constNode = GetPeerOutNodeWithInDataAnchor(matMulV2Node, CONST_INDEX);
+  FUSION_PASS_CHECK(constNode == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to get const node"),
+                    return FAILED);
 
   std::shared_ptr<ge::OpDesc> transposeOpdesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
       (transposeOpdesc = std::make_shared<ge::OpDesc>(constNode->GetName() + "_transpose_b", TRANSPOSED_TYPE)),
       return FAILED);
+  FUSION_PASS_CHECK(transposeOpdesc == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to create transpose node"),
+                    return FAILED);
 
   vector<int64_t> perm;
   perm.push_back(1);
@@ -117,14 +126,16 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::GeTensorDesc inputDesc = constNode->GetOpDesc()->GetOutputDesc(0);
   ge::GeTensorDesc outputDesc = matMulV2Node->GetOpDesc()->GetInputDesc(CONST_INDEX);
 
-  FUSION_PASS_CHECK(transposeOpdesc->AddInputDesc("x", inputDesc) != SUCCESS,
+  FUSION_PASS_CHECK(transposeOpdesc->AddInputDesc("x", inputDesc) != GRAPH_SUCCESS,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add inputDesc failed.", transposeOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(transposeOpdesc->AddOutputDesc("y", outputDesc) != SUCCESS,
+  FUSION_PASS_CHECK(transposeOpdesc->AddOutputDesc("y", outputDesc) != GRAPH_SUCCESS,
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "%s add outputDesc failed.", transposeOpdesc->GetName().c_str()),
                     return FAILED);
 
   ge::NodePtr transposeNode = graph.AddNode(transposeOpdesc);
+  FUSION_PASS_CHECK(transposeNode == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "failed to add transpose to graph"), return FAILED);
 
   ge::OutDataAnchorPtr src = constNode->GetOutDataAnchor(0);
   ge::InDataAnchorPtr dst = matMulV2Node->GetInDataAnchor(CONST_INDEX);

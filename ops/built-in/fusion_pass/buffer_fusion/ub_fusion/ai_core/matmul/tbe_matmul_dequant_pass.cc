@@ -78,7 +78,9 @@ Status TbeMatmulDequantFusionPass::GetFusionNodes(const BufferFusionMapping &map
     if (opdesc != item.first->types.end()) {
       for (auto &node : item.second) {
         auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
-        fusion_nodes.erase(node_ptr);
+        if (node_ptr != fusion_nodes.end()) {
+          fusion_nodes.erase(node_ptr);
+        }
       }
     }
   }

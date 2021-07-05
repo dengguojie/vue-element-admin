@@ -36,10 +36,22 @@ class DeconvWeightTransFusionPass : public PatternFusionBasePass {
                                                             const vector<int64_t>& shape_NCHW, vector<int64_t>& complement_dimension,
                                                             vector<int64_t>& reshape_in, vector<int64_t>& permute_shape,
                                                             vector<int64_t>& reverse_axis, vector<int64_t>& reshape_out);
-  Status Relink(ge::NodePtr filter_node, ge::NodePtr complement_dimension_node, ge::NodePtr transpose_node, ge::NodePtr reformat_node,
+  static Status Relink(ge::NodePtr filter_node, ge::NodePtr complement_dimension_node, ge::NodePtr transpose_node, ge::NodePtr reformat_node,
                 ge::NodePtr reshape_in_node, ge::NodePtr reverse_node, ge::NodePtr reshape_out_node, ge::NodePtr deconv_node);
-  const string FUSED_OP_TYPE = "Deconvolution";
-};
+  static Status GenerateTransposeNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
+                               ge::GeTensorDesc& next_in_desc, const vector<int64_t>& perm, ge::NodePtr& transpose_node,
+                               const std::string& basename);
+  static Status GenerateReshapeNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
+                                    ge::GeTensorDesc& next_in_desc, const vector<int64_t>& shape,
+                                    ge::NodePtr& shape_node, const std::string& name, const std::string& basename);
+  static Status GenerateReverseNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
+                                    ge::GeTensorDesc& next_in_desc, const vector<int64_t>& axis,
+                                    ge::NodePtr& reverse_node, const std::string& basename);
+  static Status GenerateReFormatNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
+                                     ge::GeTensorDesc& next_in_desc, const ge::Format& format,
+                                     ge::NodePtr& reformat_node, const std::string& basename);
+  static const string FUSED_OP_TYPE;
+  };
 }  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DECONV_WEIGHT_TRANS_FUSION_PASS_H_

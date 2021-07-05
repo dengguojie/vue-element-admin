@@ -45,6 +45,8 @@ class BatchMatmulConfusiontransposeUbFusion : public BufferFusionPassBase {
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
+  Status CheckInputParameters(const vector<ge::NodePtr>& matmulNodes, const vector<ge::NodePtr>& transposeNodes);
+
   const string FUSED_OP_TYPE = "FusedOp";
 };
 

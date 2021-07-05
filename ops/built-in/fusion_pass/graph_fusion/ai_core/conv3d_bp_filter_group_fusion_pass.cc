@@ -227,7 +227,7 @@ bool Conv3DBpFilterGroupFusionPass::GenMultiplier(ge::ComputeGraph& graph,
 
   GeTensorPtr multiplier_ptr{nullptr};
   int64_t multiplier_size = real_g * kernel_depth * cin1_g * kernel_height * kernel_width * cout_g * CHANNEL_MIN;
-  unique_ptr<float> multiplier_mem(new (std::nothrow) float[multiplier_size]());
+  unique_ptr<float[]> multiplier_mem(new (std::nothrow) float[multiplier_size]());
   FUSION_PASS_CHECK(multiplier_mem.get() == nullptr,
                     CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "multiplier is NULL."),
                     return false);

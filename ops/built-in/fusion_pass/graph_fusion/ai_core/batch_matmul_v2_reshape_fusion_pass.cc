@@ -55,7 +55,11 @@ Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
       ge::NodePtr x1_reshape_node = nullptr;
       vector<int64_t> new_shape = {1, x1_shape[0]};
       auto in_anchor = fused_node->GetInDataAnchor(0);
+      FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get in data anchor 0."),
+                        return FAILED);
       auto out_anchor = in_anchor->GetPeerOutAnchor();
+      FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get out data anchor 0."),
+                        return FAILED);
       CreateReshapeNode(graph, out_anchor, new_shape, x1_reshape_node);
       fused_node->GetOpDesc()->MutableInputDesc(0)->SetShape(ge::GeShape(new_shape));
       fused_node->GetOpDesc()->MutableInputDesc(0)->SetOriginShape(ge::GeShape(new_shape));
@@ -70,7 +74,11 @@ Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
       ge::NodePtr x2_reshape_node = nullptr;
       vector<int64_t> new_shape = {x2_shape[0], 1};
       auto in_anchor = fused_node->GetInDataAnchor(1);
+      FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get in data anchor 1."),
+                        return FAILED);
       auto out_anchor = in_anchor->GetPeerOutAnchor();
+      FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get out data anchor 1."),
+                        return FAILED);
       CreateReshapeNode(graph, out_anchor, new_shape, x2_reshape_node);
       fused_node->GetOpDesc()->MutableInputDesc(1)->SetShape(ge::GeShape(new_shape));
       fused_node->GetOpDesc()->MutableInputDesc(1)->SetOriginShape(ge::GeShape(new_shape));
@@ -91,17 +99,28 @@ Status BatchMatMulV2ReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
 
   ge::NodePtr out_reshape_node = nullptr;
   auto out_anchor = fused_node->GetOutDataAnchor(0);
+  if (out_anchor == nullptr) {
+    OP_LOGD(FUSED_OP_TYPE, "Get out data anchor failed.");
+    return NOT_CHANGED;
+  }
+
   CreateReshapeNode(graph, out_anchor, out_shape, out_reshape_node);
   for (const auto &peer_input_anchor: out_anchor->GetPeerAnchors()) {
-      auto next_node = peer_input_anchor->GetOwnerNode();
-      int idx = peer_input_anchor->GetIdx();
-      next_node->GetOpDesc()->MutableInputDesc(idx)->SetShape(ge::GeShape(out_shape));
-      next_node->GetOpDesc()->MutableInputDesc(idx)->SetOriginShape(ge::GeShape(out_shape));
-      auto in_anchor = next_node->GetInDataAnchor(idx);
-      Status ret = InsertNode(in_anchor->GetPeerOutAnchor(), in_anchor, out_reshape_node);
-      if (ret != SUCCESS) {
-        OP_LOGE(out_reshape_node->GetType().c_str(), "Add node %s failed.", out_reshape_node->GetName().c_str());
-        return FAILED;
+    FUSION_PASS_CHECK(peer_input_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "peer input anchor is null."),
+                      return FAILED);
+
+    auto next_node = peer_input_anchor->GetOwnerNode();
+    int idx = peer_input_anchor->GetIdx();
+    next_node->GetOpDesc()->MutableInputDesc(idx)->SetShape(ge::GeShape(out_shape));
+    next_node->GetOpDesc()->MutableInputDesc(idx)->SetOriginShape(ge::GeShape(out_shape));
+    auto in_anchor = next_node->GetInDataAnchor(idx);
+    auto out_anchor = in_anchor->GetPeerOutAnchor();
+    FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to get peer out anchor."),
+                      return FAILED);
+    Status ret = InsertNode(out_anchor, in_anchor, out_reshape_node);
+    if (ret != SUCCESS) {
+      OP_LOGE(out_reshape_node->GetType().c_str(), "Add node %s failed.", out_reshape_node->GetName().c_str());
+      return FAILED;
       }
   }
   OP_LOGD(FUSED_OP_TYPE, "BatchMatMulV2ReshapeFusionPass success.");
@@ -112,11 +131,11 @@ Status BatchMatMulV2ReshapeFusionPass::InsertNode(const ge::OutDataAnchorPtr &sr
                                                  ge::NodePtr& new_node) {
   ge::NodePtr src_node = src->GetOwnerNode();
   ge::NodePtr dst_node = dst->GetOwnerNode();
-  if(new_node->GetOpDesc()->UpdateInputDesc(0, src_node->GetOpDesc()->GetOutputDesc(src->GetIdx())) != SUCCESS) {
-      OP_LOGI(new_node->GetName().c_str(), "update input_desc failed.");
-      return FAILED;
+  if (new_node->GetOpDesc()->UpdateInputDesc(0, src_node->GetOpDesc()->GetOutputDesc(src->GetIdx())) != GRAPH_SUCCESS) {
+    OP_LOGI(new_node->GetName().c_str(), "update input_desc failed.");
+    return FAILED;
   }
-  if(new_node->GetOpDesc()->UpdateOutputDesc(0, dst_node->GetOpDesc()->GetInputDesc(dst->GetIdx())) != SUCCESS) {
+  if (new_node->GetOpDesc()->UpdateOutputDesc(0, dst_node->GetOpDesc()->GetInputDesc(dst->GetIdx())) != GRAPH_SUCCESS) {
     OP_LOGI(new_node->GetName().c_str(), "update output_desc failed.");
     return FAILED;
   }
@@ -147,10 +166,16 @@ Status BatchMatMulV2ReshapeFusionPass::CreateReshapeNode(ge::ComputeGraph& graph
   ge::OpDescPtr reshape_desc;
   FUSION_PASS_MAKE_SHARED((reshape_desc = std::make_shared<ge::OpDesc>(
                           previous_node->GetName() + "/Reshape", "Reshape")), return FAILED);
-  reshape_desc->AddInputDesc("x", previous_node_desc);
-  reshape_desc->AddOutputDesc("y", next_in_desc);
+  FUSION_PASS_CHECK(reshape_desc->AddInputDesc("x", previous_node_desc) != GRAPH_SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc x to reshape."), return FAILED);
+  FUSION_PASS_CHECK(reshape_desc->AddOutputDesc("y", next_in_desc) != GRAPH_SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc y to reshape."), return FAILED);
   ge::AttrUtils::SetListInt(reshape_desc, "shape", shape);
-  shape_node = graph.AddNode(reshape_desc);
+
+  auto new_shape_node = graph.AddNode(reshape_desc);
+  FUSION_PASS_CHECK(new_shape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape to graph."),
+                    return FAILED);
+  shape_node = new_shape_node;
   return SUCCESS;
 }
  REGISTER_PASS("BatchMatMulV2ReshapeFusionPass", BUILT_IN_GRAPH_PASS, BatchMatMulV2ReshapeFusionPass);

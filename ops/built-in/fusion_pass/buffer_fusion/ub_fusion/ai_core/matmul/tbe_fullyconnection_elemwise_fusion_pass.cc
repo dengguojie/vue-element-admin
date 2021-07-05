@@ -98,10 +98,13 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
     }
   }
 
-  int pre = fcNodes[0]->GetInDataNodes().size() - 1;
+  int pre = 0;
   vector<AxisSplitMap> split_maps;
-  if (!GetSplitMap(split_maps, fcNodes[0], FUSED_OP_TYPE)) {
-    return;
+  if (!fcNodes.empty()) {
+    pre += fcNodes[0]->GetInDataNodes().size() - 1;
+    if (!GetSplitMap(split_maps, fcNodes[0], FUSED_OP_TYPE)) {
+      return;
+    }
   }
 
   bool tensor_mode = false;

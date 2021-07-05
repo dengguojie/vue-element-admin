@@ -62,24 +62,27 @@ REG_OP(MatMul)
 
 *@par Inputs:
 *Four inputs, including:
-* @li x1: A matrix Tensor. 2D. Must be one of the following types: float16,
-* float32, int32. Has format [ND, NHWC, FRACTAL_NZ].
-* @li x2: A matrix Tensor. 2D. Must be one of the following types: float16,
-* float32, int32. Has format [ND, NHWC, FRACTAL_NZ].
-* @li bias: A 1D Tensor. Must be one of the following types: float16,
-* float32, int32. Has format [ND, NHWC]
-* @li offset_w: A Optional 1D Tensor for quantized interference. Type is int8. Reserved. \n
+* @li x1: A matrix Tensor. 2D. Must be one of the following types: float32,
+ float16, int32, int8. Has format [ND, NHWC, FRACTAL_NZ].
+* @li x2: A matrix Tensor. 2D. Must be one of the following types: float32,
+ float16, int32, int8. Has format [ND, NHWC, FRACTAL_NZ].
+* @li bias: A 1D Tensor. Must be one of the following types: float32,
+ float16, int32. Has format [ND, NHWC].
+* @li offset_w: A Optional 1D Tensor for quantized inference. Type is int8.
+ Reserved. \n
 
 *@par Attributes:
-*@li transpose_x1: A bool. If True, changes the shape of "x1" from [M, K] to [K, M].
-*@li transpose_x2: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] .
-*@li offset_x: An optional integer for quantized deconvolution.
-*The negative offset added to the input image for int8 type. Ensure offset_x within the
-*effective range of int8 [-128, 127]. Defaults to "0". \n
+* @li transpose_x1: A bool. If True, changes the shape of "x1" from [K, M] to
+ [M, K].
+* @li transpose_x2: A bool. If True, changes the shape of "x2" from [N, K] to
+[K, N].
+* @li offset_x: An optional integer for quantized MatMulV2.
+* The negative offset added to the input x1 for int8 type. Ensure offset_x
+ within the effective range of int8 [-128, 127]. Defaults to "0". \n
 
 *@par Outputs:
-*y: The result matrix Tensor. 2D. Must be one of the following types: float16,
-* float32, int32. Has format [ND, NHWC, FRACTAL_NZ] . \n
+*y: The result matrix Tensor. 2D. Must be one of the following types: float32,
+ float16, int32. Has format [ND, NHWC, FRACTAL_NZ]. \n
 
 *@par Third-party framework compatibility
 * Compatible with the TensorFlow operator BatchMatmul.
@@ -99,19 +102,27 @@ REG_OP(MatMulV2)
 *@brief Multiplies matrix "a" by matrix "b", producing "a * b" . \n
 
 *@par Inputs:
-*Two inputs, including:
+*Five inputs, including:
 * @li x1: A matrix Tensor. 2D. Must be one of the following types: int8.
 * @li x2: A matrix Tensor. 2D. Must be one of the following types: int8.
 * @li compress_index: A compress index matrix of type int8.
-* @li bias: A 1D Tensor. Must be one of the following types: int32, float16.
+* @li bias: An optional Tensor. 1D. Must be one of the following types: int32,
+ float16.
+* @li offset_w: An optional matrix Tensor. 2D. Must be one of the following
+ types: int8. \n
 
 *@par Attributes:
-*@li transpose_x1: A bool. If True, changes the shape of "x1" from [M, K] to [K, M].
-*@li transpose_x2: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] . \n
+*@li transpose_x1: A bool. If True, changes the shape of "x1" from [K, M] to
+ [M, K].
+*@li transpose_x2: A bool. If True, changes the shape of "x2" from [N, K] to
+ [K, N].
+*@li offset_x: An optional integer for quantized MatMulV2Compress.
+*The negative offset added to the input x1 for int8 type. Ensure offset_x
+ within the effective range of int8 [-128, 127]. Defaults to "0". \n
 
 *@par Outputs:
-*y: The result matrix Tensor. 2D. Must be one of the following types: float16,
-* int32. \n
+*y: The result matrix Tensor. 2D. Must be one of the following types: int32,
+* float16. \n
 
 */
 REG_OP(MatMulV2Compress)
@@ -811,10 +822,12 @@ REG_OP(DiagPart)
 
 *@par Attributes:
 *@li num_output: Reserved.
-*@li transpose: A bool, specifying weight whether to transpose, either "true" or "false". Defaults to "false".
+*@li transpose: A bool, specifying weight whether to transpose input w, either "true" or "false". Defaults to "false".
 *@li axis: Optional. A int, 1 or 2, specifying which dimension the input "K" starts from. Defaults to 1.
 * The product of the subsequent dimensions starting form first dimension or the second dimension is "K".
-*@li offset_x: Reserved . \n
+*@li offset_x: An optional integer for quantized FullyConnection.
+*The negative offset added to the input image for int8 type. Ensure offset_x within the
+*effective range of int8 [-128, 127]. Defaults to "0". \n
 
 *@par Outputs:
 *y: The result tensor of type float16, int32, float32 . \n
@@ -838,27 +851,34 @@ REG_OP(FullyConnection)
     .OP_END_FACTORY_REG(FullyConnection)
 
 /**
-*@brief Also known as a "fully-connected-compress" layer, computes an inner product with a set of learned weights, and (optionally) adds biases . \n
+*@brief Also known as a "fully-connected-compress" layer, computes an inner
+product with a set of learned weights, and (optionally) adds biases . \n
 
 *@par Inputs:
-* Four inputs, including:
+* Five inputs, including:
 *@li x: A Tensor of type uint8, int8.
-*@li w: A weight matrix of type int8, int8.
-*@li w: A compress index matrix of type int8, int8.
-*@li b: A Tensor of type float16, int32, int32.
-*@li offset_w: A Tensor of type int8.i
+*@li w: A weight matrix of type int8.
+*@li compress_index: A compress index matrix of type int8.
+*@li b: A Tensor of type int32.
+*@li offset_w: A Tensor of type int8.
 
 *@par Attributes:
-*@li num_output: Reserved.
-*@li transpose: A bool, specifying whether to transpose, either "true" or "false". Defaults to "false".
-*@li axis: Reserved.
-*@li offset_x: Reserved . \n
+*@li num_output: A int, specifying the number of outputs.
+*@li transpose: A bool, specifying whether to transpose input w, either "true"
+ or "false". Defaults to "false".
+*@li axis: Optional. A int, 1 or 2, specifying which dimension the input "K"
+starts from. Defaults to "1".
+* The product of the subsequent dimensions starting form first dimension or the
+second dimension is "K".
+*@li offset_x: An optional integer for quantized FullyConnectionCompress.
+*The negative offset added to the input image for int8 type. Ensure offset_x
+within the effective range of int8 [-128, 127]. Defaults to "0". \n
 
 *@par Outputs:
-*y: The result tensor of type int32 . \n
+*y: The result tensor of type int32. \n
 
 *@par Third-party framework compatibility
-* Compatible with the Caffe operator InnerProduct . \n
+* Compatible with the Caffe operator InnerProduct. \n
 
 *@par Quantization supported or not
 * Yes

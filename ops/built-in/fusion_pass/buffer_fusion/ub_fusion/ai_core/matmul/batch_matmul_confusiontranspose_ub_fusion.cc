@@ -59,19 +59,17 @@ vector<BufferFusionPattern*> BatchMatmulConfusiontransposeUbFusion::DefinePatter
 }
 
 /*
- * @brief: parse nodes matched in mapping and call DoFusion
- * @param [in] graph: original graph
- * @param [out] mapping: nodes matched by pattern
- * @return bool: fusion status ok or not.
+ * @brief: check input parameters before DoFusion
+ * @param [in] matmulNodes: nodes matched pattern of matmul
+ * @param [int] transposeNodes: nodes matched pattern of transpose
+ * @return bool: check status ok or not.
  */
-Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMapping& mapping,
-                                                             vector<ge::NodePtr>& fusionNodes) {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do BatchMatmulConfusiontransposeUbFusion!");
-  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCHMATMUL, mapping);
-  vector<ge::NodePtr> tranposeNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL_CONFUSION_TRANSPOSE, mapping);
-
+Status BatchMatmulConfusiontransposeUbFusion::CheckInputParameters(const vector<ge::NodePtr>& matmulNodes,
+                                                                   const vector<ge::NodePtr>& transposeNodes) {
   for (auto matmulNode : matmulNodes) {
     for (auto matmulControlNode : matmulNode->GetOutControlNodes()) {
+      FUSION_PASS_CHECK(matmulControlNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "out control of matmul is null"),
+                        return FAILED);
       if (matmulControlNode->GetType() != "ConfusionTransposeD" && matmulControlNode->GetType() != "DropOutDoMaskV3D") {
         continue;
       }
@@ -81,6 +79,8 @@ Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionM
           OP_LOGD(FUSED_OP_TYPE.c_str(), "remove edge between batch_matmul and confusion_transpose_d error"),
           return FAILED);
       for (auto transposeOutNode : matmulControlNode->GetOutAllNodes()) {
+        FUSION_PASS_CHECK(transposeOutNode == nullptr,
+                          OP_LOGD(FUSED_OP_TYPE.c_str(), "output node of transpose is null"), return FAILED);
         FUSION_PASS_CHECK(
             ge::GraphUtils::AddEdge(matmulNode->GetOutControlAnchor(), transposeOutNode->GetInControlAnchor()) !=
                 SUCCESS,
@@ -90,8 +90,10 @@ Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionM
     }
   }
 
-  for  (auto tranposeNode : tranposeNodes) {
+  for (auto tranposeNode : transposeNodes) {
     for (auto transposeControlNode : tranposeNode->GetInControlNodes()) {
+      FUSION_PASS_CHECK(transposeControlNode == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "in control of transpose is null"), return FAILED);
       if (transposeControlNode->GetType() != "BatchMatMul") {
         continue;
       }
@@ -100,15 +102,35 @@ Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionM
               SUCCESS,
           OP_LOGD(FUSED_OP_TYPE.c_str(), "remove edge between batch_matmul and confusion_transpose_d error"),
           return FAILED);
-       for (auto transposeOutNode : tranposeNode->GetOutAllNodes()) {
+      for (auto transposeOutNode : tranposeNode->GetOutAllNodes()) {
+        FUSION_PASS_CHECK(transposeOutNode == nullptr,
+                          OP_LOGD(FUSED_OP_TYPE.c_str(), "output node of transpose is null"), return FAILED);
         FUSION_PASS_CHECK(
-            ge::GraphUtils::AddEdge(transposeControlNode->GetOutControlAnchor(), transposeOutNode->GetInControlAnchor()) !=
-                SUCCESS,
+            ge::GraphUtils::AddEdge(transposeControlNode->GetOutControlAnchor(),
+                                    transposeOutNode->GetInControlAnchor()) != SUCCESS,
             OP_LOGD(FUSED_OP_TYPE.c_str(), "add edge between batch_matmul and confusion_transpose_d's output error"),
             return FAILED);
       }
     }
   }
+
+  return SUCCESS;
+}
+
+/*
+ * @brief: parse nodes matched in mapping and call DoFusion
+ * @param [in] mapping: nodes matched by pattern
+ * @param [out] fusionNodes: nodes to be fusioned
+ * @return bool: fusion status ok or not.
+ */
+Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMapping& mapping,
+                                                             vector<ge::NodePtr>& fusionNodes) {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do BatchMatmulConfusiontransposeUbFusion!");
+  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCHMATMUL, mapping);
+  vector<ge::NodePtr> transposeNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL_CONFUSION_TRANSPOSE, mapping);
+
+  FUSION_PASS_CHECK(CheckInputParameters(matmulNodes, transposeNodes) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "check parameter failed"), return FAILED);
 
   fusionNodes = GetMatchedNodes(mapping);
 
@@ -134,7 +156,9 @@ Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionM
     if (opdesc != item.first->types.end()) {
       for (auto& node : item.second) {
         auto nodePtr = find(fusionNodes.begin(), fusionNodes.end(), node);
-        fusionNodes.erase(nodePtr);
+        if (nodePtr != fusionNodes.end()) {
+          fusionNodes.erase(nodePtr);
+        }
       }
     }
   }

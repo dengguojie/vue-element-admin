@@ -145,7 +145,8 @@ Status FCTransdataMergePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     OP_LOGI(FUSED_OP_TYPE.c_str(), "firstTransDataOutputTensor format is not ND, FCTransdataMergePass fusion end");
     return SUCCESS;
   }
-  transData_1->GetOpDesc()->UpdateOutputDesc(0, secondTransDataOutputTensor);
+  FUSION_PASS_CHECK(transData_1->GetOpDesc()->UpdateOutputDesc(0, secondTransDataOutputTensor) != ge::GRAPH_SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Update output desc fail."), return FAILED);
   ge::AttrUtils::SetStr(transData_1->GetOpDesc(), "dst_format", "NC1HWC0");
   // delete transData_2 node
   FUSION_PASS_CHECK(graph.RemoveNode(reFormat) != ge::GRAPH_SUCCESS,

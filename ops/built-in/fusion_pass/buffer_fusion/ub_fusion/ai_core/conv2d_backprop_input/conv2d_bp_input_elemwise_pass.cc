@@ -101,10 +101,10 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
     inpre += 1;
     vector<int64_t> cout_dim = {1};
     vector<int64_t> split_flag = {-1};
-    for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
-      auto output_split_infos = (*it).GetOutputSplitInfoVec();
-      auto input_split_infos = (*it).GetInputSplitInfoVec();
-      if (output_split_infos.empty() || input_split_infos.empty()) {
+    for(auto split_map : split_maps) {
+      auto output_split_infos = split_map.GetOutputSplitInfoVec();
+      auto input_split_infos = split_map.GetInputSplitInfoVec();
+      if (output_split_infos.empty() || input_split_infos.empty() || output_split_infos[0].GetAxis().empty()) {
         continue;
       }
       if (output_split_infos[0].GetAxis()[0] == 1) {
@@ -114,7 +114,7 @@ void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::ve
         input_split_info.SetAxis(cout_dim);
         input_split_info.SetHeadOverLap(split_flag);
         input_split_info.SetTailOverLap(split_flag);
-        (*it).AddInputSplitInfo(input_split_info);
+        split_map.AddInputSplitInfo(input_split_info);
       }
     }
   }
@@ -156,7 +156,9 @@ Status TbeDxElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping, vec
     if (opdesc != item.first->types.end()) {
       for (auto& node : item.second) {
         auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);
-        fusion_nodes.erase(node_ptr);
+        if (node_ptr != fusion_nodes.end()) {
+          fusion_nodes.erase(node_ptr);
+        }
       }
     }
   }

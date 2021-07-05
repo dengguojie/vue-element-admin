@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+#include "anchor_util.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -33,9 +35,10 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-#include "error_util.h"
 
 namespace fe {
+const string GemmTransFusionPass::FUSED_OP_TYPE = "GEMM";
+
 namespace {
 static const char GEMM[] = "GEMM";
 static const char PATTERN_GEMM[] = "GEMM";
@@ -59,12 +62,13 @@ vector<FusionPattern*> GemmTransFusionPass::DefinePatterns() {
   return patterns;
 }
 
-static Status GenerateTransposeNode(ge::ComputeGraph* graph,
-                                    const ge::GeTensorDesc& prev_out_desc,
-                                    ge::GeTensorDesc* next_in_desc,
-                                    const vector<int64_t>& perm,
-                                    ge::NodePtr* transpose_node,
-                                    const std::string& basename) {
+Status GemmTransFusionPass::GenerateTransposeNode(ge::ComputeGraph* graph, const ge::GeTensorDesc& prev_out_desc,
+                                                  ge::GeTensorDesc* next_in_desc, const vector<int64_t>& perm,
+                                                  ge::NodePtr* transpose_node, const std::string& basename) {
+  FUSION_PASS_CHECK(next_in_desc == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "next_in_desc is null"),
+                    return FAILED);
+
   vector<int64_t> next_in_shape(2);
   for (size_t i = 0; i < perm.size(); ++i) {
     next_in_shape[i] = prev_out_desc.GetShape().GetDim(perm[i]);
@@ -73,18 +77,23 @@ static Status GenerateTransposeNode(ge::ComputeGraph* graph,
   FUSION_PASS_MAKE_SHARED((transpose_desc = std::make_shared<ge::OpDesc>(
                                basename + "_transpose", "TransposeD")),
                           return FAILED);
-  transpose_desc->AddInputDesc("x", prev_out_desc);
+  FUSION_PASS_CHECK(transpose_desc->AddInputDesc("x", prev_out_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to transpose failed"),
+                    return FAILED);
   next_in_desc->SetShape(ge::GeShape(next_in_shape));
   next_in_desc->SetOriginShape(ge::GeShape(next_in_shape));
-  if (next_in_desc == nullptr) {
-    return FAILED;
-  }
-  transpose_desc->AddOutputDesc("y", *next_in_desc);
+
+  FUSION_PASS_CHECK(transpose_desc->AddOutputDesc("y", *next_in_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add output desc to transpose failed"),
+                    return FAILED);
   ge::AttrUtils::SetListInt(transpose_desc, "perm", perm);
-  *transpose_node = graph->AddNode(transpose_desc);
-  if (transpose_node == nullptr) {
-    return FAILED;
-  }
+
+  auto new_transpose_node = graph->AddNode(transpose_desc);
+  FUSION_PASS_CHECK(new_transpose_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "failed to add transpose node to graph"),
+                    return FAILED);
+
+  *transpose_node = new_transpose_node;
   return SUCCESS;
 }
 
@@ -152,22 +161,37 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   }
 
   // prerequisite
-  ge::NodePtr a_node =
-      gemm_node->GetInDataAnchor(a_anchor)->GetPeerOutAnchor()->GetOwnerNode();
-  int aIdx = gemm_node->GetInDataAnchor(a_anchor)->GetPeerOutAnchor()->GetIdx();
+  auto a_node = GetPeerOutNodeWithInDataAnchor(gemm_node, a_anchor);
+  FUSION_PASS_CHECK(a_node == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "a is null, fusion failed."),
+                    return PARAM_INVALID);
+  auto a_anchor_ptr = GetPeerOutAnchorWithInDataAnchor(gemm_node, a_anchor);
+  FUSION_PASS_CHECK(a_anchor_ptr == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "anchor a is null, fusion failed."),
+                    return PARAM_INVALID);
+  int a_idx = a_anchor_ptr->GetIdx();
 
-  ge::NodePtr b_node =
-      gemm_node->GetInDataAnchor(b_anchor)->GetPeerOutAnchor()->GetOwnerNode();
-  int bIdx = gemm_node->GetInDataAnchor(b_anchor)->GetPeerOutAnchor()->GetIdx();
+  auto b_node = GetPeerOutNodeWithInDataAnchor(gemm_node, b_anchor);
+  FUSION_PASS_CHECK(b_node == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "b is null, fusion failed."),
+                    return PARAM_INVALID);
+  auto b_anchor_ptr = GetPeerOutAnchorWithInDataAnchor(gemm_node, b_anchor);
+  FUSION_PASS_CHECK(b_anchor_ptr == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "anchor b is null, fusion failed."),
+                    return PARAM_INVALID);
+  int b_idx = b_anchor_ptr->GetIdx();
 
-  ge::NodePtr c_node =
-      gemm_node->GetInDataAnchor(c_anchor)->GetPeerOutAnchor()->GetOwnerNode();
-  int cIdx = gemm_node->GetInDataAnchor(c_anchor)->GetPeerOutAnchor()->GetIdx();
+  ge::NodePtr c_node = GetPeerOutNodeWithInDataAnchor(gemm_node, c_anchor);
+  FUSION_PASS_CHECK(c_node == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "c is null, fusion failed."),
+                    return PARAM_INVALID);
+  auto c_anchor_ptr = GetPeerOutAnchorWithInDataAnchor(gemm_node, c_anchor);
+  FUSION_PASS_CHECK(c_anchor_ptr == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "anchor c is null, fusion failed."),
+                    return PARAM_INVALID);
+  int c_idx = c_anchor_ptr->GetIdx();
 
   // get info of Node
-  ge::GeTensorDesc a_out_desc = a_node->GetOpDesc()->GetOutputDesc(aIdx);
-  ge::GeTensorDesc b_out_desc = b_node->GetOpDesc()->GetOutputDesc(bIdx);
-  ge::GeTensorDesc c_out_desc = c_node->GetOpDesc()->GetOutputDesc(cIdx);
+  ge::GeTensorDesc a_out_desc = a_node->GetOpDesc()->GetOutputDesc(a_idx);
+  ge::GeTensorDesc b_out_desc = b_node->GetOpDesc()->GetOutputDesc(b_idx);
+  ge::GeTensorDesc c_out_desc = c_node->GetOpDesc()->GetOutputDesc(c_idx);
 
   ge::GeTensorDesc gemm_a_in_desc =
       gemm_node->GetOpDesc()->GetInputDesc(a_anchor);

@@ -25,6 +25,9 @@
 #include <string>
 #include <vector>
 
+#include "anchor_util.h"
+#include "common/util/error_manager/error_manager.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -33,12 +36,12 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-#include "../../../op_proto/util/error_util.h"
-#include "common/util/error_manager/error_manager.h"
 
 using namespace ge;
 
 namespace fe {
+const string DeconvWeightTransFusionPass::FUSED_OP_TYPE = "Deconvolution";
+
 namespace {
 const string DECONV = "Deconvolution";
 const string CONV2D_TRANSPOSE = "Conv2DTransposeD";
@@ -209,12 +212,9 @@ void DeconvWeightTransFusionPass::
   }
 }
 
-static Status GenerateTransposeNode(ge::ComputeGraph& graph,
-                                    ge::GeTensorDesc& previous_out_desc,
-                                    ge::GeTensorDesc& next_in_desc,
-                                    const vector<int64_t>& perm,
-                                    ge::NodePtr& transpose_node,
-                                    const std::string& basename) {
+Status DeconvWeightTransFusionPass::GenerateTransposeNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
+                                                          ge::GeTensorDesc& next_in_desc, const vector<int64_t>& perm,
+                                                          ge::NodePtr& transpose_node, const std::string& basename) {
   vector<int64_t> next_in_shape(CONST_VECTOR_LEN);
   for (size_t i = 0; i < perm.size(); ++i) {
     next_in_shape[i] = previous_out_desc.GetShape().GetDim(perm[i]);
@@ -226,74 +226,102 @@ static Status GenerateTransposeNode(ge::ComputeGraph& graph,
       return FAILED);
   previous_out_desc.SetFormat(ge::FORMAT_ND);
   previous_out_desc.SetOriginFormat(ge::FORMAT_ND);
-  transpose_desc->AddInputDesc("x", previous_out_desc);
+  FUSION_PASS_CHECK(transpose_desc->AddInputDesc("x", previous_out_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to transpose failed"),
+                    return FAILED);
   next_in_desc.SetFormat(ge::FORMAT_ND);
   next_in_desc.SetOriginFormat(ge::FORMAT_ND);
   next_in_desc.SetShape(ge::GeShape(next_in_shape));
   next_in_desc.SetOriginShape(ge::GeShape(next_in_shape));
-  transpose_desc->AddOutputDesc("y", next_in_desc);
+  FUSION_PASS_CHECK(transpose_desc->AddOutputDesc("y", next_in_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add output desc y to transpose failed"),
+                    return FAILED);
   ge::AttrUtils::SetListInt(transpose_desc, "perm", perm);
-  transpose_node = graph.AddNode(transpose_desc);
+
+  auto new_transpose_node = graph.AddNode(transpose_desc);
+  FUSION_PASS_CHECK(new_transpose_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "failed to add transpose node to graph"),
+                    return FAILED);
+
+  transpose_node = new_transpose_node;
   return SUCCESS;
 }
 
-static Status GenerateReshapeNode(ge::ComputeGraph& graph,
-                                  ge::GeTensorDesc& previous_out_desc,
-                                  ge::GeTensorDesc& next_in_desc,
-                                  const vector<int64_t>& shape,
-                                  ge::NodePtr& shape_node,
-                                  const std::string& name,
-                                  const std::string& basename) {
+Status DeconvWeightTransFusionPass::GenerateReshapeNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
+                                                        ge::GeTensorDesc& next_in_desc, const vector<int64_t>& shape,
+                                                        ge::NodePtr& shape_node, const std::string& name,
+                                                        const std::string& basename) {
   ge::OpDescPtr reshape_desc;
   FUSION_PASS_MAKE_SHARED((reshape_desc = std::make_shared<ge::OpDesc>(
                                basename + "_const_fold_" + name, "Reshape")),
                           return FAILED);
-  reshape_desc->AddInputDesc("x", previous_out_desc);
+  FUSION_PASS_CHECK(reshape_desc->AddInputDesc("x", previous_out_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to reshape failed"), return FAILED);
   next_in_desc.SetShape(ge::GeShape(shape));
   next_in_desc.SetOriginShape(ge::GeShape(shape));
-  reshape_desc->AddOutputDesc("y", next_in_desc);
+  FUSION_PASS_CHECK(reshape_desc->AddOutputDesc("y", next_in_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add output desc y to reshape failed"),
+                    return FAILED);
   ge::AttrUtils::SetListInt(reshape_desc, "shape", shape);
-  shape_node = graph.AddNode(reshape_desc);
+
+  auto new_shape_node = graph.AddNode(reshape_desc);
+  FUSION_PASS_CHECK(new_shape_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "failed to add reshape node to graph"),
+                    return FAILED);
+
+  shape_node = new_shape_node;
   return SUCCESS;
 }
 
-static Status GenerateReverseNode(ge::ComputeGraph& graph,
-                                  ge::GeTensorDesc& previous_out_desc,
-                                  ge::GeTensorDesc& next_in_desc,
-                                  const vector<int64_t>& axis,
-                                  ge::NodePtr& reverse_node,
-                                  const std::string& basename) {
+Status DeconvWeightTransFusionPass::GenerateReverseNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
+                                                        ge::GeTensorDesc& next_in_desc, const vector<int64_t>& axis,
+                                                        ge::NodePtr& reverse_node, const std::string& basename) {
   ge::OpDescPtr reverse_desc;
   FUSION_PASS_MAKE_SHARED(
       (reverse_desc = std::make_shared<ge::OpDesc>(
            basename + "_const_fold_reverse_hw", "ReverseV2D")),
       return FAILED);
-  reverse_desc->AddInputDesc("x", previous_out_desc);
+  FUSION_PASS_CHECK(reverse_desc->AddInputDesc("x", previous_out_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to reverse failed"), return FAILED);
   next_in_desc.SetShape(previous_out_desc.GetShape());
   next_in_desc.SetOriginShape(previous_out_desc.GetShape());
-  reverse_desc->AddOutputDesc("y", next_in_desc);
+  FUSION_PASS_CHECK(reverse_desc->AddOutputDesc("y", next_in_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add output desc y to reverse failed"),
+                    return FAILED);
   ge::AttrUtils::SetListInt(reverse_desc, "axis", axis);
-  reverse_node = graph.AddNode(reverse_desc);
+
+  auto new_reverse_node = graph.AddNode(reverse_desc);
+  FUSION_PASS_CHECK(new_reverse_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "failed to add reverse node to graph"),
+                    return FAILED);
+
+  reverse_node = new_reverse_node;
   return SUCCESS;
 }
 
-static Status GenerateReFormatNode(ge::ComputeGraph& graph,
-                                   ge::GeTensorDesc& previous_out_desc,
-                                   ge::GeTensorDesc& next_in_desc,
-                                   const ge::Format& format,
-                                   ge::NodePtr& reformat_node,
-                                   const std::string& basename) {
+Status DeconvWeightTransFusionPass::GenerateReFormatNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
+                                                         ge::GeTensorDesc& next_in_desc, const ge::Format& format,
+                                                         ge::NodePtr& reformat_node, const std::string& basename) {
   ge::OpDescPtr reformat_desc;
   FUSION_PASS_MAKE_SHARED((reformat_desc = std::make_shared<ge::OpDesc>(
                                basename + "_const_fold_reformat", "ReFormat")),
                           return FAILED);
-  reformat_desc->AddInputDesc("x", previous_out_desc);
+  FUSION_PASS_CHECK(reformat_desc->AddInputDesc("x", previous_out_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to reformat failed"), return FAILED);
   next_in_desc.SetShape(previous_out_desc.GetShape());
   next_in_desc.SetOriginShape(previous_out_desc.GetShape());
   next_in_desc.SetFormat(format);
   next_in_desc.SetOriginFormat(format);
-  reformat_desc->AddOutputDesc("y", next_in_desc);
-  reformat_node = graph.AddNode(reformat_desc);
+  FUSION_PASS_CHECK(reformat_desc->AddOutputDesc("y", next_in_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add output desc y to reformat failed"),
+                    return FAILED);
+
+  auto new_reformat_node = graph.AddNode(reformat_desc);
+  FUSION_PASS_CHECK(new_reformat_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "failed to add reformat node to graph"),
+                    return FAILED);
+
+  reformat_node = new_reformat_node;
   return SUCCESS;
 }
 
@@ -411,6 +439,8 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                                            vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter DeconvWeightTransFusionPass.");
   ge::NodePtr deconv_node = GetNodeFromMapping(PATTERN_DECONV, mapping);
+  FUSION_PASS_CHECK(deconv_node == nullptr,
+                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get node from mapping"), return NOT_CHANGED);
 
   // pattern
   // originFormat: NCHW,HWCN,NHWC
@@ -426,14 +456,17 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
   int filter_anchor = 1;
 
   // prerequisite
-  ge::NodePtr input_node =
-      deconv_node->GetInDataAnchor(input_anchor)->GetPeerOutAnchor()->GetOwnerNode();
-  int input_index = deconv_node->GetInDataAnchor(input_anchor)->GetPeerOutAnchor()->GetIdx();
-  ge::NodePtr filter_node = deconv_node->GetInDataAnchor(filter_anchor)
-                               ->GetPeerOutAnchor()
-                               ->GetOwnerNode();
-  int filter_index =
-      deconv_node->GetInDataAnchor(filter_anchor)->GetPeerOutAnchor()->GetIdx();
+  ge::NodePtr input_node = GetPeerOutNodeWithInDataAnchor(deconv_node, input_anchor);
+  FUSION_PASS_CHECK(input_node == nullptr,
+                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get peer out node of feature map"),
+                    return NOT_CHANGED);
+  int input_index = GetPeerOutAnchorWithInDataAnchor(deconv_node, input_anchor)->GetIdx();
+
+  ge::NodePtr filter_node = GetPeerOutNodeWithInDataAnchor(deconv_node, filter_anchor);
+  FUSION_PASS_CHECK(filter_node == nullptr,
+                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get peer out node of filter"),
+                    return NOT_CHANGED);
+  int filter_index = GetPeerOutAnchorWithInDataAnchor(deconv_node, filter_anchor)->GetIdx();
   if (filter_node->GetOpDesc()->GetOutputDesc(filter_index).GetDataType() !=
           ge::DT_INT8 ||
       input_node->GetOpDesc()->GetOutputDesc(input_index).GetDataType() != ge::DT_INT8) {

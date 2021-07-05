@@ -27,6 +27,9 @@
 #include <string>
 #include <vector>
 
+#include "anchor_util.h"
+#include "common/util/platform_info.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -35,12 +38,17 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-#include "error_util.h"
-#include "common/util/platform_info.h"
 
 namespace fe {
+const string Conv2DbpInputDilationFusionPass::FUSED_OP_TYPE = "Conv2DBackpropInputD";
+const vector<std::string> Conv2DbpInputDilationFusionPass::kOriFormatSupportByFilter{"HWCN", "NHWC", "NCHW"};
+const vector<std::string> Conv2DbpInputDilationFusionPass::kOriFormatSupportByOutBackprop{"NHWC", "NCHW"};
+const vector<std::string> Conv2DbpInputDilationFusionPass::kOriFormatSupportByY{
+    Conv2DbpInputDilationFusionPass::kOriFormatSupportByOutBackprop.begin(),
+    Conv2DbpInputDilationFusionPass::kOriFormatSupportByOutBackprop.end()};
+
 static const string PATTERN_CONV2DBACKPROPINPUT = "Conv2DBackpropInputD";
-static const string kAttrOrgFmt  = "origin_format";
+static const string kAttrOrgFmt = "origin_format";
 
 #define CHECK_POSITION(position)                                                                        \
   {                                                                                                     \
@@ -71,8 +79,8 @@ vector<FusionPattern*> Conv2DbpInputDilationFusionPass::DefinePatterns() {
 vector<int64_t> post_get_hw_not_pad(
   const vector<int64_t> out_backprop_ori_shape,
   const vector<int64_t> strides,
-  size_t pos_backprop_out_h,
-  size_t pos_backprop_out_w) {
+  string::size_type pos_backprop_out_h,
+  string::size_type pos_backprop_out_w) {
   int64_t h_dilation = (out_backprop_ori_shape[pos_backprop_out_h] - 1) * strides[pos_backprop_out_h] + 1;
   int64_t w_dilation = (out_backprop_ori_shape[pos_backprop_out_w] - 1) * strides[pos_backprop_out_w] + 1;
   vector<int64_t> post_dilation_hw;
@@ -84,8 +92,8 @@ vector<int64_t> post_get_hw_not_pad(
 vector<int64_t> post_get_pad_value(
   const vector<int64_t> post_dilation_hw,
   const vector<int64_t> dx_shape,
-  size_t pos_y_h,
-  size_t pos_y_w) {
+  string::size_type pos_y_h,
+  string::size_type pos_y_w) {
   int pad_down = dx_shape[pos_y_h] - post_dilation_hw[0];
   int pad_right = dx_shape[pos_y_w] - post_dilation_hw[1];
   vector<int64_t> post_pad_hw;
@@ -112,7 +120,7 @@ vector<int64_t> pre_get_pad_value(
   return post_pad_hw;
 }
 
-static Status generate_pre_dilation_node(
+Status Conv2DbpInputDilationFusionPass::generate_pre_dilation_node(
   ge::ComputeGraph* graph,
   ge::GeTensorDesc* prev_out_desc,
   ge::GeTensorDesc* next_in_desc,
@@ -132,29 +140,45 @@ static Status generate_pre_dilation_node(
   CHECK_POSITION(pos_w);
 
   // nc1hwc0
-  dilation_desc->AddInputDesc("x", *prev_out_desc);
+  FUSION_PASS_CHECK(dilation_desc->AddInputDesc("x", *prev_out_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to dilation failed"), return FAILED);
+
   auto next_in_shape = prev_out_desc->GetShape().GetDims();
+  FUSION_PASS_CHECK(next_in_shape.size() < 4,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "size of input shape of next node must >=4"),
+                    return FAILED);
   next_in_shape[2] = (next_in_shape[2] - 1) * strides[pos_h] + 1;
   next_in_shape[3] = (next_in_shape[3] - 1) * strides[pos_w] + 1;
   next_in_desc->SetShape(ge::GeShape(next_in_shape));
 
   auto next_in_ori_shape = prev_out_desc->GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(next_in_ori_shape.size() < 4,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "size of origin input shape of next node must >=4"),
+                    return FAILED);
   next_in_ori_shape[pos_h] = (next_in_ori_shape[pos_h] - 1) * strides[pos_h] + 1;
   next_in_ori_shape[pos_w] = (next_in_ori_shape[pos_w] - 1) * strides[pos_w] + 1;
   next_in_desc->SetOriginShape(ge::GeShape(next_in_ori_shape));
 
-  dilation_desc->AddOutputDesc("y", *next_in_desc);
+  FUSION_PASS_CHECK(dilation_desc->AddOutputDesc("y", *next_in_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add output desc y to dilation failed"),
+                    return FAILED);
   vector<int64_t> dilations_new = {1, 1, 1, 1, 1};
   dilations_new[2] = strides[pos_h];
   dilations_new[3] = strides[pos_w];
 
   ge::AttrUtils::SetListInt(dilation_desc, "dilations", dilations_new);
   ge::AttrUtils::SetFloat(dilation_desc, "padding_value", 0.0);
-  *dilation_node = graph->AddNode(dilation_desc);
+
+  auto new_dilation_node = graph->AddNode(dilation_desc);
+  FUSION_PASS_CHECK(new_dilation_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "failed to add dilation node to graph"),
+                    return FAILED);
+
+  *dilation_node = new_dilation_node;
   return SUCCESS;
 }
 
-static Status generate_post_dilation_node(
+Status Conv2DbpInputDilationFusionPass::generate_post_dilation_node(
   ge::ComputeGraph* graph,
   ge::GeTensorDesc* prev_out_desc,
   ge::GeTensorDesc* next_in_desc,
@@ -181,19 +205,34 @@ static Status generate_post_dilation_node(
   CHECK_POSITION(pos_outbackprop_out_h);
   size_t pos_outbackprop_out_w = outbackprop_fmt_str.find('W');
   CHECK_POSITION(pos_outbackprop_out_w);
-  auto out_backprop_ori_shape = conv2dbp_input_outbackprop_desc->GetOriginShape().GetDims();
 
-  dilation_desc->AddOutputDesc("y", *next_in_desc);
+  auto out_backprop_ori_shape = conv2dbp_input_outbackprop_desc->GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(
+      out_backprop_ori_shape.size() < 4,
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "size of origin output shape of backprop node must >=4"),
+      return FAILED);
+
+  FUSION_PASS_CHECK(dilation_desc->AddOutputDesc("y", *next_in_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add output desc y to dilation failed"),
+                    return FAILED);
   auto prev_out_shape = next_in_desc->GetShape().GetDims();
+  FUSION_PASS_CHECK(prev_out_shape.size() < 4,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "size of output shape of previous node must >=4"),
+                    return FAILED);
   prev_out_shape[2] = out_backprop_ori_shape[pos_outbackprop_out_h];
   prev_out_shape[3] = out_backprop_ori_shape[pos_outbackprop_out_w];
   prev_out_desc->SetShape(ge::GeShape(prev_out_shape));
 
   auto prev_out_ori_shape = next_in_desc->GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(
+      prev_out_ori_shape.size() < 4,
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "size of origin output shape of previous node must >=4"),
+      return FAILED);
   prev_out_ori_shape[pos_y_h] = out_backprop_ori_shape[pos_outbackprop_out_h];
   prev_out_ori_shape[pos_y_w] = out_backprop_ori_shape[pos_outbackprop_out_w];
   prev_out_desc->SetOriginShape(ge::GeShape(prev_out_ori_shape));
-  dilation_desc->AddInputDesc("x", *prev_out_desc);
+  FUSION_PASS_CHECK(dilation_desc->AddInputDesc("x", *prev_out_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to dilation failed"), return FAILED);
 
   vector<int64_t> dilations_new = {1, 1, 1, 1, 1};
   dilations_new[2] = strides[pos_outbackprop_out_h];
@@ -202,11 +241,17 @@ static Status generate_post_dilation_node(
   ge::AttrUtils::SetFloat(dilation_desc, "padding_value", 0.0);
   const vector<int64_t> pads_in = {0, 0, pads[pos_outbackprop_out_h], pads[pos_outbackprop_out_w], 0};
   ge::AttrUtils::SetListInt(dilation_desc, "pads", pads_in);
-  *dilation_node = graph->AddNode(dilation_desc);
+
+  auto new_dilation_node = graph->AddNode(dilation_desc);
+  FUSION_PASS_CHECK(new_dilation_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "failed to add dilation node to graph"),
+                    return FAILED);
+
+  *dilation_node = new_dilation_node;
   return SUCCESS;
 }
 
-static Status generate_pad_node(
+Status Conv2DbpInputDilationFusionPass::generate_pad_node(
   ge::ComputeGraph* graph,
   ge::GeTensorDesc* prev_out_desc,
   ge::GeTensorDesc* next_in_desc,
@@ -223,20 +268,30 @@ static Status generate_pad_node(
   CHECK_POSITION(pos_h);
   size_t pos_w = fmt_str.find('W');
   CHECK_POSITION(pos_w);
-  pad_desc->AddOutputDesc("y", *next_in_desc);
+
+  FUSION_PASS_CHECK(pad_desc->AddOutputDesc("y", *next_in_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add output desc y to pad failed"), return FAILED);
 
   int64_t pad_down = pad_hw[0];
   int64_t pad_after = pad_hw[1];
   auto prev_out_shape = next_in_desc->GetShape().GetDims();
+  FUSION_PASS_CHECK(prev_out_shape.size() < 4,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "size of output shape of previous node must >=4"),
+                    return FAILED);
   prev_out_shape[2] -= pad_down;
   prev_out_shape[3] -= pad_after;
   prev_out_desc->SetShape(ge::GeShape(prev_out_shape));
-  
+
   auto prev_out_ori_shape = next_in_desc->GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(
+      prev_out_ori_shape.size() < 4,
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "size of origin output shape of previous node must >=4"),
+      return FAILED);
   prev_out_ori_shape[pos_h] -= pad_down;
   prev_out_ori_shape[pos_w] -= pad_after;
   prev_out_desc->SetOriginShape(ge::GeShape(prev_out_ori_shape));
-  pad_desc->AddInputDesc("x", *prev_out_desc);
+  FUSION_PASS_CHECK(pad_desc->AddInputDesc("x", *prev_out_desc) != GRAPH_SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to pad failed"), return FAILED);
 
   vector<vector<int64_t>> pads;
   pads.push_back({0, 0});
@@ -245,7 +300,13 @@ static Status generate_pad_node(
   pads.push_back({0, pad_after});
   pads.push_back({0, 0});
   AttrUtils::SetListListInt(pad_desc, "paddings", pads);
-  *pad_node = graph->AddNode(pad_desc);
+
+  auto new_pad_node = graph->AddNode(pad_desc);
+  FUSION_PASS_CHECK(new_pad_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "failed to add pad node to graph"),
+                    return FAILED);
+
+  *pad_node = new_pad_node;
   return SUCCESS;
 }
 
@@ -395,19 +456,37 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
                       "op Conv2DBackpropInput get attribute input_size failed or input_size not exist"),
                     return FAILED);
 
-  ge::NodePtr out_backprop_node = conv2dbp_input_node->GetInDataAnchor(out_bp_anchor)\
-                                  ->GetPeerOutAnchor()->GetOwnerNode();
-  int out_backprop_idx = conv2dbp_input_node->GetInDataAnchor(out_bp_anchor)->GetPeerOutAnchor()->GetIdx();
+  auto peer_out_anchor = GetPeerOutAnchorWithInDataAnchor(conv2dbp_input_node, out_bp_anchor);
+  FUSION_PASS_CHECK(peer_out_anchor == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "op Conv2DBackpropInput get peer out anchor failed"),
+                    return FAILED);
+  auto out_backprop_node = peer_out_anchor->GetOwnerNode();
+  FUSION_PASS_CHECK(out_backprop_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "op Conv2DBackpropInput get owner node failed"),
+                    return FAILED);
+
+  int out_backprop_idx = peer_out_anchor->GetIdx();
   ge::GeTensorDesc out_backprop_out_desc = out_backprop_node->GetOpDesc()->GetOutputDesc(out_backprop_idx);
   vector<int> y_idxs;
-  ge::NodePtr y_node = conv2dbp_input_node->GetOutDataAnchor(y_anchor)->GetPeerInDataAnchors().at(0)->GetOwnerNode();
-  for (auto in_data_anchor : conv2dbp_input_node->GetOutDataAnchor(y_anchor)->GetPeerInDataAnchors()) {
+
+  auto outdata_anchor = conv2dbp_input_node->GetOutDataAnchor(y_anchor);
+  FUSION_PASS_CHECK(
+      outdata_anchor == nullptr,
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "op Conv2DBackpropInput failed to get out data anchor of index 0"),
+      return FAILED);
+  for (auto in_data_anchor : outdata_anchor->GetPeerInDataAnchors()) {
         OP_LOGD(FUSED_OP_TYPE.c_str(), "all idx is:");
         OP_LOGD(FUSED_OP_TYPE.c_str(), "idx = %d",in_data_anchor->GetIdx());
         y_idxs.push_back(in_data_anchor->GetIdx());
   }
-  int y_idx = conv2dbp_input_node->GetOutDataAnchor(y_anchor)->GetPeerInDataAnchors().at(0)->GetIdx();
+  auto y_anchor_ptr = GetPeerInAnchorByOutDataAnchor(outdata_anchor, 0);
+  FUSION_PASS_CHECK(y_anchor_ptr == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to get anchor of y"),
+                    return FAILED);
+  int y_idx = y_anchor_ptr->GetIdx();
 
+  ge::NodePtr y_node = GetPeerInNodeByOutDataAnchor(outdata_anchor, 0);
+  FUSION_PASS_CHECK(y_node == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to get node of y"),
+                    return FAILED);
   ge::GeTensorDesc y_desc = y_node->GetOpDesc()->GetInputDesc(y_idx);
   ge::GeTensorDesc filter_desc = conv2dbp_input_node->GetOpDesc()->GetInputDesc(filter_anchor);
   ge::GeTensorDesc conv2dbp_input_outbackprop_desc = conv2dbp_input_node\
@@ -416,12 +495,30 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
 
   // get shape
   auto filter_ori_shape = filter_desc.GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(filter_ori_shape.size() != 4,
+                    OpsAttrValueErrReport(FUSED_OP_TYPE, "ori_shape of filter", "size of ori_shape of filter = 4",
+                                          std::to_string(filter_ori_shape.size())),
+                    return FAILED);
   auto out_backprop_ori_shape = conv2dbp_input_outbackprop_desc.GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(
+      out_backprop_ori_shape.size() != 4,
+      OpsAttrValueErrReport(FUSED_OP_TYPE, "ori_shape of out_backprop", "size of ori_shape of out_backprop = 4",
+                            std::to_string(out_backprop_ori_shape.size())),
+      return FAILED);
   auto y_shape = conv2dbp_input_y_desc.GetOriginShape().GetDims();
+  FUSION_PASS_CHECK(y_shape.size() != 4,
+                    OpsAttrValueErrReport(FUSED_OP_TYPE, "ori_shape of y", "size of ori_shape of y = 4",
+                                          std::to_string(y_shape.size())),
+                    return FAILED);
+
   vector<int64_t> dilation_hw;
   vector<int64_t> pad_hw;
   std::string backprop_out_fmt_str;
   AttrUtils::GetStr(conv2dbp_input_outbackprop_desc, kAttrOrgFmt, backprop_out_fmt_str);
+  FUSION_PASS_CHECK(find(kOriFormatSupportByOutBackprop.begin(), kOriFormatSupportByOutBackprop.end(),
+                         backprop_out_fmt_str) == kOriFormatSupportByOutBackprop.end(),
+                    OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support NHWC, NCHW", backprop_out_fmt_str),
+                    return FAILED);
   size_t pos_backprop_out_h = backprop_out_fmt_str.find('H');
   CHECK_POSITION(pos_backprop_out_h);
   size_t pos_backprop_out_w = backprop_out_fmt_str.find('W');
@@ -429,6 +526,9 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
 
   std::string y_fmt_str;
   AttrUtils::GetStr(conv2dbp_input_y_desc, kAttrOrgFmt, y_fmt_str);
+  FUSION_PASS_CHECK(
+      find(kOriFormatSupportByY.begin(), kOriFormatSupportByY.end(), y_fmt_str) == kOriFormatSupportByY.end(),
+      OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support NHWC, NCHW", y_fmt_str), return FAILED);
   size_t pos_y_h = y_fmt_str.find('H');
   CHECK_POSITION(pos_y_h);
   size_t pos_y_w = y_fmt_str.find('W');
@@ -438,6 +538,10 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   bool need_dilation_flag = false;
   std::string filter_fmt_str;
   AttrUtils::GetStr(filter_desc, kAttrOrgFmt, filter_fmt_str);
+  FUSION_PASS_CHECK(find(kOriFormatSupportByFilter.begin(), kOriFormatSupportByFilter.end(), filter_fmt_str) ==
+                        kOriFormatSupportByFilter.end(),
+                    OpsAttrValueErrReport(FUSED_OP_TYPE, kAttrOrgFmt, "only support HWCN, NHWC, NCHW", filter_fmt_str),
+                    return FAILED);
   size_t pos_filter_h = filter_fmt_str.find('H');
   CHECK_POSITION(pos_filter_h);
   size_t pos_filter_w = filter_fmt_str.find('W');
@@ -494,7 +598,6 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
         ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
         "fail to generate pad node"),
         return FAILED);
-    
     }
   }
 
@@ -513,9 +616,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
     new_pads[3] = pads[3] - pad_hw[1];
     OP_LOGD(FUSED_OP_TYPE.c_str(), "the pad_new is %d and %d", new_pads[1], new_pads[3]);
     op.SetAttr("pads", new_pads);
-  }
-
-  if (!pre_dilation) {
+  } else {
     std::vector<int64_t> input_size_new = input_size;
     input_size_new[pos_backprop_out_h] = out_backprop_ori_shape[pos_backprop_out_h];
     input_size_new[pos_backprop_out_w] = out_backprop_ori_shape[pos_backprop_out_w];

@@ -21,21 +21,21 @@
 #include "fullyconnection_power_fusion_pass.h"
 
 #include <iostream>
-#include <vector>
 #include <map>
 #include <memory>
-#include <string>
 #include <sstream>
+#include <string>
+#include <vector>
 
-#include "graph/utils/op_desc_utils.h"
+#include "anchor_util.h"
+#include "graph/debug/ge_attr_define.h"
+#include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
-#include "graph/utils/attr_utils.h"
-#include "graph/debug/ge_attr_define.h"
+#include "graph/utils/op_desc_utils.h"
+#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-
-#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 
 
@@ -72,12 +72,14 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
     ge::GeTensorPtr biasTensorPtr = weights[1];
     ge::GeTensorDesc biasTensorDesc = biasTensorPtr->GetTensorDesc();
 
-    fcPowerHostOp->AddInputDesc(FC_POWER_OP_INPUT, biasTensorDesc);
+    FUSION_PASS_CHECK(fcPowerHostOp->AddInputDesc(FC_POWER_OP_INPUT, biasTensorDesc) != GRAPH_SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE, "failed to add input desc to fcPowerHostOp."), return FAILED);
     fcPowerHostOp->MutableInputDesc(0)->SetOriginDataType(biasTensorDesc.GetDataType());
     fcPowerHostOp->MutableInputDesc(0)->SetOriginFormat(static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
     fcPowerHostOp->MutableInputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
 
-    fcPowerHostOp->AddOutputDesc(FC_POWER_OP_OUTPUT, biasTensorDesc);
+    FUSION_PASS_CHECK(fcPowerHostOp->AddOutputDesc(FC_POWER_OP_OUTPUT, biasTensorDesc) != GRAPH_SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE, "failed to add output desc to fcPowerHostOp."), return FAILED);
     fcPowerHostOp->MutableOutputDesc(0)->SetOriginFormat(static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
     fcPowerHostOp->MutableOutputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
     fcPowerHostOp->MutableOutputDesc(0)->SetDataType(biasTensorDesc.GetDataType());
@@ -89,6 +91,7 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
 
     // Add edges between fc bias <--> new_host_cpu_op:0
     ge::InDataAnchorPtr fcInputAnchor = fcNode->GetInDataAnchor(FC_BIAS_INDEX);
+    FUSION_PASS_CHECK(fcInputAnchor == nullptr, OP_LOGE(FUSED_OP_TYPE, "fc get const anchor failed"), return false);
     ge::OutDataAnchorPtr fcBiasPeerOutAnchor = fcInputAnchor->GetPeerOutAnchor();
     FUSION_PASS_CHECK(fcBiasPeerOutAnchor == nullptr, OP_LOGE(FUSED_OP_TYPE, "fc get const failed"), return false);
     auto fcPowerHostOpInputAnchor = fcPowerNode->GetInDataAnchor(FC_POWER_HOST_OP_BIAS_INDEX);
@@ -217,16 +220,14 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
     }
   }
 
-  for (auto inDataAnchor : powerNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(powerNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+  auto outDataAnchor0 = powerNode->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(outDataAnchor0 == nullptr, OP_LOGE(FUSED_OP_TYPE, "get out data anchor of 0"), return FAILED);
+  for (auto inDataAnchor : outDataAnchor0->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(outDataAnchor0, inDataAnchor) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE, "Remove power and outnode edge failed."), return FAILED);
-    FUSION_PASS_CHECK(
-        ge::GraphUtils::AddEdge(powerNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inDataAnchor) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE, "Add innode and outnode edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(GetPeerOutAnchorWithInDataAnchor(powerNode, 0), inDataAnchor) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE, "Add innode and outnode edge failed."), return FAILED);
   }
-
-  FUSION_PASS_CHECK(graph.RemoveNode(powerNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE, "Remove powerNode failed."),
-                    return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE, "FullyConnectionPowerPass fusion success");
 
@@ -248,7 +249,7 @@ Status FullyConnectionPowerPass::AddBiasNode(ge::ComputeGraph& graph, ge::NodePt
   constOutDesc.SetOriginDataType(ge::DT_FLOAT);
   constOutDesc.SetDataType(ge::DT_FLOAT);
 
-  FUSION_PASS_CHECK(constOpDesc->AddOutputDesc(constOutDesc) != SUCCESS, OP_LOGE("AddOutputDesc failed!"),
+  FUSION_PASS_CHECK(constOpDesc->AddOutputDesc(constOutDesc) != GRAPH_SUCCESS, OP_LOGE("AddOutputDesc failed!"),
                     return FAILED);
   constOpDesc->SetType(CONSTANTOPTAB);
 

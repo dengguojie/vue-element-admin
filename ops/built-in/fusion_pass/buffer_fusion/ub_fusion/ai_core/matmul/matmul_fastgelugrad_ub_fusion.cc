@@ -121,7 +121,9 @@ Status MatmulFastGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& map
     if (opdesc != item.first->types.end()) {
       for (auto& node : item.second) {
         auto nodePtr = find(fusionNodes.begin(), fusionNodes.end(), node);
-        fusionNodes.erase(nodePtr);
+        if (nodePtr != fusionNodes.end()) {
+          fusionNodes.erase(nodePtr);
+        }
       }
     }
   }

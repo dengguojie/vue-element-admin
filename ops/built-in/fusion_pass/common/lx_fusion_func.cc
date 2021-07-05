@@ -63,6 +63,10 @@ bool GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node, 
   string op_slice_info_str = "";
   ge::AttrUtils::GetStr(cube_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
   OP_LOGD(fused_op_type.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+  if (op_slice_info_str.empty()) {
+    OP_LOGD(fused_op_type.c_str(), "op_slice_info is null");
+    return false;
+  }
 
   OpCalcInfo op_calc_info;
   GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
