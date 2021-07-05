@@ -25,6 +25,7 @@ warnings.filterwarnings(action="ignore", category=DeprecationWarning)
 from .abs import abs
 from .l2_loss import l2_loss
 from .reduce_mean_d import reduce_mean_d
+from .reduce_std_with_mean import reduce_std_with_mean
 from .reduce_prod_d import reduce_prod_d
 from .segment_max_d import segment_max_d
 from .sign import sign
