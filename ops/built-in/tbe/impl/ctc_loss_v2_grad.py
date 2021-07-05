@@ -42,16 +42,11 @@ class CTCLossV2Grad(object):
         self.S = params[3]
         self.S_BLOCK = (self.S + BLOCK - 1) // BLOCK * BLOCK
         self.C_BLOCK = (self.C + BLOCK - 1) // BLOCK * BLOCK
-
-        if self.C < BLOCK:
-            raise RuntimeError("Unexcepted case: C < 8.")
+        self.rounds = self.C_BLOCK // (BLOCK * REPEAT_OFFSET)
 
         self.output_size = 2 * self.S + 1
         self.output_size_up = (self.output_size + BLOCK - 1) // BLOCK * BLOCK
         self.alpha_size = self.T * self.output_size
-
-        self.grad_block = self.T * self.C
-        self.grad_block_up = (self.grad_block + BLOCK - 1) // BLOCK * BLOCK + BLOCK
 
         self.grad_out = self.tik_instance.Tensor("float32", [self.N], name="grad_out", scope=tik.scope_gm)
         self.log_probs = self.tik_instance.Tensor("float32", [self.T, self.N, self.C], name="log_probs",
@@ -66,8 +61,8 @@ class CTCLossV2Grad(object):
                                                   scope=tik.scope_gm)
         self.grad = self.tik_instance.Tensor("float32", [self.N, self.T, self.C], name="grad",
                                              scope=tik.scope_gm)
-        self.grad_ = self.tik_instance.Tensor("float32", [self.N, self.grad_block_up], name="grad_", scope=tik.scope_gm,
-                                              is_workspace=True)
+        self.grad_ = self.tik_instance.Tensor("float32", [self.N, self.T, self.C_BLOCK], name="grad_",
+                                              scope=tik.scope_gm, is_workspace=True)
 
         self.available_aicore_num = tik.Dprofile().get_aicore_num()
         self.used_aicore_num = self.available_aicore_num if self.N > self.available_aicore_num else self.N
@@ -116,21 +111,21 @@ class CTCLossV2Grad(object):
 
     def ctc_loss_grad_compute_core(self, task_idx):
         """
-        Function: parameter initialization.
+        Function: ctc_loss_grad_compute_core.
         Modify : 2021-5-26
         """
         grad_out_ub = self.tik_instance.Tensor("float32", [BLOCK], name="grad_out_ub", scope=tik.scope_ubuf)
         targets_ub = self.tik_instance.Tensor("int32", [self.S_BLOCK], name="targets_ub", scope=tik.scope_ubuf)
         input_length_ub = self.tik_instance.Tensor("int32", [BLOCK], name="input_length_ub", scope=tik.scope_ubuf)
         target_length_ub = self.tik_instance.Tensor("int32", [BLOCK], name="target_length_ub", scope=tik.scope_ubuf)
-        grad_ub = self.tik_instance.Tensor("float32", [self.grad_block_up], name="grad_ub", scope=tik.scope_ubuf)
+        grad_ub = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="grad_ub", scope=tik.scope_ubuf)
         neg_log_likelihood_ub = self.tik_instance.Tensor("float32", [BLOCK], name="neg_log_likelihood_ub",
                                                          scope=tik.scope_ubuf)
         # func: initial grad_ub
-        rounds = self.grad_block_up // 2040
-        with self.tik_instance.for_range(0, rounds) as j:
-            self.tik_instance.vector_dup(BLOCK, grad_ub[2040 * j], 0, 255, 1, 1)
-        self.tik_instance.vector_dup(BLOCK, grad_ub[2040 * rounds], 0, (self.grad_block_up % 2040) // BLOCK, 1, 1)
+        with self.tik_instance.for_range(0, self.rounds) as j:
+            self.tik_instance.vector_dup(BLOCK, grad_ub[(BLOCK * REPEAT_OFFSET) * j], 0, REPEAT_OFFSET, 1, 1)
+        self.tik_instance.vector_dup(BLOCK, grad_ub[(BLOCK * REPEAT_OFFSET) * self.rounds], 0,
+                                     (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
 
         self.tik_instance.data_move(grad_out_ub, self.grad_out[task_idx], 0, 1, 1, 0, 0)
         self.tik_instance.data_move(targets_ub, self.targets[task_idx * self.S], 0, 1, self.S_BLOCK // BLOCK, 0, 0)
@@ -167,18 +162,8 @@ class CTCLossV2Grad(object):
 
         work_tensor_ub = self.tik_instance.Tensor("float32", [BLOCK], name="work_tensor_ub", scope=tik.scope_ubuf)
         log_probs_ub = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="log_probs_ub", scope=tik.scope_ubuf)
-        self.beta_grad_update(task_idx, T_i, S_i, exp_ub, log_ub, add_ub, sub_ub, tmp_ub, work_tensor_ub, a_tmp,
-                              b_tmp, lcab, start, end_loop, end, remain, current_target, next_target, tmp, min_float,
-                              repeats, s_inc, e_inc, targets_ub, grad_ub, log_probs_ub)
-        self.grad_update(task_idx, T_i, grad_out, exp_ub, log_ub, log_probs_ub, a_tmp, b_tmp, res, lp, nll, grad_ub)
 
-    def beta_grad_update(self, task_idx, T_i, S_i, exp_ub, log_ub, add_ub, sub_ub, tmp_ub, work_tensor_ub, a_tmp,
-                         b_tmp, lcab, start, end_loop, end, remain, current_target, next_target, tmp, min_float,
-                         repeats, s_inc, e_inc, targets_ub, grad_ub, log_probs_ub):
-        """
-        Function: get log_beta and update grad_ub with log_alpha and log_beta.
-        Modify : 2021-5-26
-        """
+        # beta_grad_update
         offset = self.tik_instance.Scalar("int32")
         repeat_times = self.tik_instance.Scalar("int32")
         c_tmp = self.tik_instance.Scalar("float32")
@@ -186,6 +171,22 @@ class CTCLossV2Grad(object):
         alpha_beta_tmp = self.tik_instance.Scalar("float32")
         max_tmp = self.tik_instance.Scalar("float32")
 
+        copy_ub_a = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_a", scope=tik.scope_ubuf)
+        copy_ub_b = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_b", scope=tik.scope_ubuf)
+        copy_ub_zero = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_zero", scope=tik.scope_ubuf)
+
+        with self.tik_instance.for_range(0, self.rounds) as j:
+            self.tik_instance.vector_dup(BLOCK, copy_ub_zero[(BLOCK * REPEAT_OFFSET) * j], 0, REPEAT_OFFSET, 1, 1)
+        self.tik_instance.vector_dup(BLOCK, copy_ub_zero[(BLOCK * REPEAT_OFFSET) * self.rounds], 0,
+                                     (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
+
+        with self.tik_instance.for_range(T_i, self.T) as t:
+             with self.tik_instance.if_scope(self.C % BLOCK != 0):
+                self.tik_instance.data_move(self.grad_[task_idx * self.T * self.C_BLOCK + t * self.C_BLOCK],
+                                            copy_ub_zero[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
+             with self.tik_instance.else_scope():
+                self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C],
+                                            copy_ub_zero[0], 0, 1, self.C // BLOCK, 1, 1)
         # func: get log_prob in current T
         self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx + self.N * self.C * (T_i - 1)],
                                     0, 1, self.C_BLOCK // BLOCK, 0, 0)
@@ -215,8 +216,8 @@ class CTCLossV2Grad(object):
         tmp_ub[1].set_as(log_beta_ub[output_dst + 2 * S_i - 1])
         self.tik_instance.vec_add(2, add_ub, log_ub, tmp_ub, 1, 1, 1, 1)
         # func: update grad_ub in current T with log_alpha and log_beta
-        grad_ub[(T_i - 1) * self.C + self.blank].set_as(add_ub[0])
-        grad_ub[(T_i - 1) * self.C + current_target].set_as(add_ub[1])
+        grad_ub[self.blank].set_as(add_ub[0])
+        grad_ub[current_target].set_as(add_ub[1])
 
         start.set_as(2 * S_i - 1)
         with self.tik_instance.if_scope(repeats < T_i - S_i):
@@ -225,8 +226,51 @@ class CTCLossV2Grad(object):
             end.set_as(2 * S_i)
 
         t = self.tik_instance.Scalar("int32", init_value=T_i - 1)
+
+        # func: grad = exp(log_probs)
+        with self.tik_instance.for_range(0, self.rounds) as j:
+            self.tik_instance.vec_exp(BLOCK, copy_ub_a[(BLOCK * REPEAT_OFFSET) * j],
+                                      log_probs_ub[(BLOCK * REPEAT_OFFSET) * j], REPEAT_OFFSET, 1, 1)
+        self.tik_instance.vec_exp(BLOCK, copy_ub_a[(BLOCK * REPEAT_OFFSET) * self.rounds],
+                                  log_probs_ub[(BLOCK * REPEAT_OFFSET) * self.rounds],
+                                  (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
+
+        with self.tik_instance.for_range(0, self.C) as c:
+            res.set_as(grad_ub[c])
+            # func: update certain grad
+            with self.tik_instance.if_scope(res != 0):
+                lp.set_as(log_probs_ub[c])
+                log_ub[0].set_as(res + nll - lp)
+                self.tik_instance.vec_exp(1, exp_ub, log_ub, 1, 1, 1)
+
+                a_tmp.set_as(copy_ub_a[c])
+                b_tmp.set_as(exp_ub[0])
+                copy_ub_a[c].set_as(a_tmp - b_tmp)
+
+        with self.tik_instance.for_range(0, self.rounds) as j:
+            self.tik_instance.vec_muls(BLOCK, copy_ub_b[(BLOCK * REPEAT_OFFSET) * j],
+                                       copy_ub_a[(BLOCK * REPEAT_OFFSET) * j], grad_out, REPEAT_OFFSET, 1, 1)
+        self.tik_instance.vec_muls(BLOCK, copy_ub_b[(BLOCK * REPEAT_OFFSET) * self.rounds],
+                                   copy_ub_a[(BLOCK * REPEAT_OFFSET) * self.rounds], grad_out,
+                                   (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
+
+        with self.tik_instance.if_scope(self.C % BLOCK != 0):
+            self.tik_instance.data_move(self.grad_[task_idx * self.T * self.C_BLOCK + t * self.C_BLOCK], 
+                                        copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
+        with self.tik_instance.else_scope():
+            self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C], 
+                                        copy_ub_b[0], 0, 1, self.C // BLOCK, 1, 1)
+
+
         with self.tik_instance.for_range(1, T_i):
             t.set_as(t - 1)
+
+            # func: initial grad_ub
+            with self.tik_instance.for_range(0, self.rounds) as j:
+                self.tik_instance.vector_dup(BLOCK, grad_ub[(BLOCK * REPEAT_OFFSET) * j], 0, REPEAT_OFFSET, 1, 1)
+            self.tik_instance.vector_dup(BLOCK, grad_ub[(BLOCK * REPEAT_OFFSET) * self.rounds], 0,
+                                         (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
+
             self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx + self.N * self.C * t], 0,
                                         1, self.C_BLOCK // BLOCK, 0, 0)
             self.tik_instance.data_move(log_alpha_ub[0],
@@ -254,7 +298,7 @@ class CTCLossV2Grad(object):
                 a_tmp.set_as(log_beta_ub[output_src + 2 * S_i])
                 b_tmp.set_as(log_alpha_ub[2 * S_i])
                 # func: update grad_ub in current T with log_alpha and log_beta
-                grad_ub[t * self.C + current_target].set_as(a_tmp + b_tmp)
+                grad_ub[current_target].set_as(a_tmp + b_tmp)
 
             with self.tik_instance.for_range(start, end_loop) as s:
                 with self.tik_instance.if_scope(s % 2 == 0):
@@ -347,16 +391,14 @@ class CTCLossV2Grad(object):
             # func: update log_beta in current T
             with self.tik_instance.for_range(start, end_loop) as s:
                 current_target.set_as(current_target_ub[s])
-
                 offset.set_as((s - start) * BLOCK)    
-                
 
                 a_tmp.set_as(add_ub[offset])
                 log_beta_ub[output_src + s].set_as(a_tmp)
                 # func: get log_alpha in current T
                 b_tmp.set_as(log_alpha_ub[s])
                 alpha_beta_tmp.set_as(a_tmp + b_tmp)
-                lcab.set_as(grad_ub[t * self.C + current_target])
+                lcab.set_as(grad_ub[current_target])
 
                 # func: update grad_ub in current T with log_alpha and log_beta
                 with self.tik_instance.if_scope(lcab != 0):
@@ -375,50 +417,46 @@ class CTCLossV2Grad(object):
 
                     self.tik_instance.vln(1, log_ub, tmp_ub, 1, 1, 1, 1, 1)
                     a_tmp.set_as(log_ub[0])
-                    grad_ub[t * self.C + current_target].set_as(a_tmp + max_tmp)
+                    grad_ub[current_target].set_as(a_tmp + max_tmp)
                 with self.tik_instance.else_scope():
-                    grad_ub[t * self.C + current_target].set_as(alpha_beta_tmp)
+                    grad_ub[current_target].set_as(alpha_beta_tmp)
 
+            # func: grad = exp(log_probs)
+            with self.tik_instance.for_range(0, self.rounds) as j:
+                self.tik_instance.vec_exp(BLOCK, copy_ub_a[(BLOCK * REPEAT_OFFSET) * j],
+                                          log_probs_ub[(BLOCK * REPEAT_OFFSET) * j], REPEAT_OFFSET, 1, 1)
+            self.tik_instance.vec_exp(BLOCK, copy_ub_a[(BLOCK * REPEAT_OFFSET) * self.rounds],
+                                      log_probs_ub[(BLOCK * REPEAT_OFFSET) * self.rounds],
+                                      (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
+
+            with self.tik_instance.for_range(0, self.C) as c:
+                res.set_as(grad_ub[c])
+                # func: update certain grad
+                with self.tik_instance.if_scope(res != 0):
+                    lp.set_as(log_probs_ub[c])
+                    log_ub[0].set_as(res + nll - lp)
+                    self.tik_instance.vec_exp(1, exp_ub, log_ub, 1, 1, 1)
+
+                    a_tmp.set_as(copy_ub_a[c])
+                    b_tmp.set_as(exp_ub[0])
+                    copy_ub_a[c].set_as(a_tmp - b_tmp)
+
+            with self.tik_instance.for_range(0, self.rounds) as j:
+                self.tik_instance.vec_muls(BLOCK, copy_ub_b[(BLOCK * REPEAT_OFFSET) * j],
+                                           copy_ub_a[(BLOCK * REPEAT_OFFSET) * j], grad_out, REPEAT_OFFSET, 1, 1)
+            self.tik_instance.vec_muls(BLOCK, copy_ub_b[(BLOCK * REPEAT_OFFSET) * self.rounds],
+                                       copy_ub_a[(BLOCK * REPEAT_OFFSET) * self.rounds], grad_out,
+                                       (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
+
+            with self.tik_instance.if_scope(self.C % BLOCK != 0):
+                self.tik_instance.data_move(self.grad_[task_idx * self.T * self.C_BLOCK + t * self.C_BLOCK],
+                                            copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
+            with self.tik_instance.else_scope():
+                self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C],
+                                            copy_ub_b[0], 0, 1, self.C // BLOCK, 1, 1)
+                                        
             output_src.set_as(output_dst)
             output_dst.set_as(self.output_size_up - output_src)
-
-    def grad_update(self, task_idx, T_i, grad_out, exp_ub, log_ub, log_probs_ub, a_tmp, b_tmp, res, lp, nll, grad_ub):
-        """
-        Function: Now we wrap up the calculation by adding in the remaining items this could be a great target for
-        further vectorization. grad is the output gradient, nll is the loss.
-        Modify : 2021-5-26
-        """
-        copy_ub_a = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_a", scope=tik.scope_ubuf)
-        copy_ub_b = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_b", scope=tik.scope_ubuf)
-        copy_ub_zero = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="copy_ub_zero", scope=tik.scope_ubuf)
-        self.tik_instance.vector_dup(BLOCK, copy_ub_zero, 0, self.C_BLOCK // BLOCK, 1, 1)
-
-        with self.tik_instance.for_range(0, self.T) as t:
-            with self.tik_instance.if_scope(t < T_i):
-                self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx + self.N * self.C * t], 0,
-                                            1, self.C_BLOCK // BLOCK, 0, 0)
-                # func: grad = exp(log_probs)
-                self.tik_instance.vec_exp(BLOCK, copy_ub_a[0], log_probs_ub[0], self.C_BLOCK // BLOCK, 1, 1)
-
-                with self.tik_instance.for_range(0, self.C) as c:
-                    res.set_as(grad_ub[t * self.C + c])
-                    # func: update certain grad
-                    with self.tik_instance.if_scope(res != 0):
-                        lp.set_as(log_probs_ub[c])
-                        log_ub[0].set_as(res + nll - lp)
-                        self.tik_instance.vec_exp(1, exp_ub, log_ub, 1, 1, 1)
-
-                        a_tmp.set_as(copy_ub_a[c])
-                        b_tmp.set_as(exp_ub[0])
-                        copy_ub_a[c].set_as(a_tmp - b_tmp)
-                
-                self.tik_instance.vec_muls(BLOCK, copy_ub_b[0], copy_ub_a[0], grad_out, self.C_BLOCK // BLOCK, 1, 1)
-
-                self.tik_instance.data_move(self.grad_[task_idx * self.grad_block_up + t * self.C], copy_ub_b[0], 0, 1,
-                                            self.C_BLOCK // BLOCK, 1, 1)
-            with self.tik_instance.else_scope():        
-                self.tik_instance.data_move(self.grad_[task_idx * self.grad_block_up + t * self.C], copy_ub_zero[0], 0,
-                                            1, self.C_BLOCK // BLOCK, 1, 1)
 
     def count_trace(self, S_i, targets_ub):
         """
@@ -470,14 +508,16 @@ class CTCLossV2Grad(object):
 
     def move_out(self):
         """move_out"""
-        temp_ub = self.tik_instance.Tensor("float32", [self.grad_block_up], name="temp_ub", scope=tik.scope_ubuf)
+        temp_ub = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="temp_ub", scope=tik.scope_ubuf)
 
         with self.tik_instance.for_range(0, self.N) as task_idx:
-            self.tik_instance.data_move(temp_ub, self.grad_[task_idx * self.grad_block_up], 0, 1,
-                                        self.grad_block_up // BLOCK, 1, 1)
-             
-            self.tik_instance.data_move(self.grad[task_idx * self.grad_block], temp_ub, 0, 1,
-                                        self.grad_block_up // BLOCK, 1, 1)
+            with self.tik_instance.for_range(0, self.T) as t_idx:           
+                self.tik_instance.data_move(temp_ub,
+                                            self.grad_[task_idx * self.T * self.C_BLOCK + t_idx * self.C_BLOCK], 0,
+                                            1, self.C_BLOCK // BLOCK, 1, 1)
+
+                self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t_idx * self.C], temp_ub, 0, 1,
+                                            self.C_BLOCK // BLOCK, 1, 1)
 
 
 # pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
