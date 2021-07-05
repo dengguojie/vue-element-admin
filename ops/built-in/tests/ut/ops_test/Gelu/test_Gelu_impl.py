@@ -1,30 +1,75 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-from op_test_frame.ut import ElementwiseOpUT
+from op_test_frame.ut import OpUT
 import numpy as np
 from op_test_frame.common import precision_info
 import os
 
-ut_case = ElementwiseOpUT("Gelu", None, None)
+ut_case = OpUT("Gelu", "impl.gelu", "gelu")
+
+print('run case 1')
+ut_case.add_case(
+    'Ascend910A',
+    {
+        'params': [{"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"},
+                   {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"}
+        ],
+        'addition_params': {'impl_mode': 'high_precision'},
+        'case_name': 'gelu_case1',
+        'expect': 'success',
+        'format_expect': [],
+        'support_expect': True,
+    },
+)
+
+print('run case 2')
+ut_case.add_case(
+    'Ascend910A',
+    {
+        'params': [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                   {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"}
+        ],
+        'addition_params': {'impl_mode': 'high_performance'},
+        'case_name': 'gelu_case2',
+        'expect': 'success',
+        'format_expect': [],
+        'support_expect': True,
+    },
+)
 
 
-# ============ auto gen ["Ascend910"] test cases start ===============
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (1,))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (1, 1))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (16, 32))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (16, 2, 32))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (16, 2, 4, 32))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (512, 1024))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (2, 1024))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (4096, 1024))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (32, 128, 1024))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (100, 100))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (1, 512, 1))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (1, 16, 512, 512))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (9973, 1))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (1024, 1024, 256))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (11, 33))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (10, 12))
-ut_case.add_elewise_case_simple(["Ascend910A"], ["float16", "float32"], (10, 13))
+print('run case 3')
+ut_case.add_case(
+    'Ascend910A',
+    {
+        'params': [{"shape": (16, 32), "dtype": "float16", "format": "ND", "ori_shape": (16, 32),"ori_format": "ND"},
+                   {"shape": (16, 32), "dtype": "float16", "format": "ND", "ori_shape": (16, 32),"ori_format": "ND"}
+        ],
+        'addition_params': {'impl_mode': 'high_precision'},
+        'case_name': 'gelu_case3',
+        'expect': 'success',
+        'format_expect': [],
+        'support_expect': True,
+    },
+)
 
-# ============ auto gen ["Ascend910"] test cases end =================
+
+print('run case 4')
+ut_case.add_case(
+    'Ascend910A',
+    {
+        'params': [{"shape": (16, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (16, 2, 32),"ori_format": "ND"},
+                   {"shape": (16, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (16, 2, 32),"ori_format": "ND"}
+        ],
+        'addition_params': {'impl_mode': 'high_performance'},
+        'case_name': 'gelu_case4',
+        'expect': 'success',
+        'format_expect': [],
+        'support_expect': True,
+    },
+)
+
+
+
+if __name__ == '__main__':
+    ut_case.run("Ascend910A")

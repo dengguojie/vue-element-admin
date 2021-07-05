@@ -44,7 +44,8 @@ def _tanh_parameter_compute(placeholders):
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("gelu")
-def gelu_compute(input_x, output_y, kernel_name="gelu"):
+def gelu_compute(input_x, output_y, kernel_name="gelu",
+                 impl_mode="high_precision"):
     """
     mathematical formula of gelu(x):
     gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
@@ -60,6 +61,8 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
         shape and dtype of output, should be same shape and type as input
     kernel_name: str
         cce kernel name, default value is gelu
+    impl_mode: str
+        impl_mode, default value is high_precision
 
     Returns
     -------
@@ -70,8 +73,9 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
 
     if dtype == "float16" and \
             tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
-        has_improve_precision = True
-        input_x = tbe.cast_to(input_x, "float32")
+        if impl_mode == "high_precision":
+            has_improve_precision = True
+            input_x = tbe.cast_to(input_x, "float32")
 
     # gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
     # tanh(y) = 2/(1+exp(-2y)) - 1
@@ -114,7 +118,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-def gelu(input_x, output_y, kernel_name="gelu"):
+def gelu(input_x, output_y, kernel_name="gelu", impl_mode="high_precision"):
     """
     mathematical formula of gelu(x):
     gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
@@ -130,6 +134,8 @@ def gelu(input_x, output_y, kernel_name="gelu"):
         shape and dtype of output, should be same shape and type as input
     kernel_name : str
         cce kernel name, default value is gelu
+    impl_mode:str
+        impl_mode, default value is high_precision
 
     Returns
     -------
@@ -145,7 +151,7 @@ def gelu(input_x, output_y, kernel_name="gelu"):
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data = tvm.placeholder(fuseshape, name="data", dtype=input_dtype)
-    result = gelu_compute(data, output_y, kernel_name)
+    result = gelu_compute(data, output_y, kernel_name, impl_mode=impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(result)
