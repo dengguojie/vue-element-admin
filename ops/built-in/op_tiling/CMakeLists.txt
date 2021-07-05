@@ -152,6 +152,7 @@ set(_optiling_files
   sort.cc
   as_strided.cc
   inplace_index_add.cc
+  square_sum_all.cc
 )
 
 set(_op_tiling_include
