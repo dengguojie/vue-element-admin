@@ -1815,6 +1815,40 @@ REG_OP(GridAssignPositive)
     .REQUIRED_ATTR(min_pos_iou, Float)
     .REQUIRED_ATTR(gt_max_assign_all, Bool)
     .OP_END_FACTORY_REG(GridAssignPositive)
+
+/**
+*@brief GIoUGrad . \n
+
+*@par Inputs:
+*@li dy : data of grad increment, a 1D Tensor of type float16 or float32 with
+* shape (N,).
+*@li bboxes: Bounding boxes, a 2D Tensor of type float16 or float32 with
+* shape (N, 4). "N" indicates the number of bounding boxes, and the value
+* "4" refers to [x1, y1, x2, y2] or [x, y, w, h].
+*@li gtboxes: Ground-truth boxes, a 2D Tensor of type float16 or float32
+* with shape (M, 4). "M" indicates the number of ground truth boxes, and
+* the value "4" refers to [x1, y1, x2, y2] or [x, y, w, h] . \n
+
+*@par Attributes:
+*@li trans: An optional attr, transform from xywh to xyxy or not, only support false now.
+*@li is_cross: An optional attr, if false M equals N, only support false now.
+*@li mode: An optional attr, a character string with the value range of ['iou', 'iof'],
+*          only support 'iou' now. \n
+
+*@par Outputs:
+*@li dbboxes: A 2D Tensor of type float16 or float32 with shape [N, 4].
+*@li dgtboxes: A 2D Tensor of type float16 or float32 with shape [M, 4].
+*/
+REG_OP(GIoUGrad)
+    .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(gtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(dbboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(dgtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(trans, Bool, false)
+    .ATTR(is_cross, Bool, true)
+    .ATTR(mode, String, "iou")
+    .OP_END_FACTORY_REG(GIoUGrad)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_DETECT_OPS_H_

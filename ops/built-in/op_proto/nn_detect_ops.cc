@@ -1765,4 +1765,26 @@ COMMON_INFER_FUNC_REG(GridAssignPositive, GridAssignPositiveInferShape);
 VERIFY_FUNC_REG(GridAssignPositive, GridAssignPositiveVerify);
 // ----------------GridAssignPositive END-------------------
 
+// ----------------GIoUGrad Started-------------------
+IMPLEMT_COMMON_INFERFUNC(GIoUGradInferShape) {
+ 
+  TensorDesc bboxes_desc = op.GetInputDesc("bboxes");
+  TensorDesc gtboxes_desc = op.GetInputDesc("gtboxes");
+  
+  auto shape_bboxes = bboxes_desc.GetShape().GetDims();
+  auto shape_gtboxes = gtboxes_desc.GetShape().GetDims();
+  
+  if (shape_bboxes != shape_gtboxes) {
+    OP_LOGE(op.GetName().c_str(), "shape_bboxes shoule equal to shape_gtboxes.");
+    return GRAPH_FAILED;
+  }  
+
+  (void)op.UpdateOutputDesc("dbboxes", bboxes_desc);
+  (void)op.UpdateOutputDesc("dgtboxes", gtboxes_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(GIoUGrad, GIoUGradInferShape);
+// ----------------GIoUGrad Finished-------------------
 }  // namespace ge
