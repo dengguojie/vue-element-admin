@@ -32,7 +32,7 @@ BYTE_FLOAT32 = 4
 BLOCK_SIZE = 32
 V_SIZE_BYTES = 256
 MAX_SHAPE_SIZE = 2**31 - 1
-FP_MIN = -1
+FP_MIN = -3.40282346638528860E38
 # The size of each vector instruction processing data
 V_SIZE_BYTES = 256
 
@@ -1177,7 +1177,7 @@ def _in_top_k_column_process(tik_instance, shape_info, obj_gm):
                                                name="prediction_tensor_ub",
                                                scope=tik.scope_ubuf)
     index = index * column
-    tik_instance.data_move(prediction_tensor_ub, obj_gm.get_predictions_gm()[index + inner_loop * column_num], 0, 1,
+    tik_instance.data_move(prediction_tensor_ub, obj_gm.get_predictions_gm()[index + inner_loop * column_size], 0, 1,
                            column_num // block_element, 0, 0)
 
     # dirty data set as FP_MIN, for example, A[:, 1:15] is target data,

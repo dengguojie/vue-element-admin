@@ -32,7 +32,7 @@ V_SIZE_BYTES = 256
 V_MAX_REPEAT = 255
 # size of one block
 BLOCK_SIZE = 32
-FP_MIN = -1
+FP_MIN = -3.40282346638528860E38
 
 
 # pylint: disable=unused-argument
@@ -655,7 +655,7 @@ def _in_top_k_column_process(shape_info, tensor, tik_instance):
                                                name="prediction_tensor_ub",
                                                scope=tik.scope_ubuf)
     index = (core_loop * BLOCK_SIZE + outer_loop) * column
-    tik_instance.data_move(prediction_tensor_ub, prediction_tensor[index + inner_loop * column_num], 0, 1,
+    tik_instance.data_move(prediction_tensor_ub, prediction_tensor[index + inner_loop * column_size], 0, 1,
                            int(column_num // block_element), 0, 0)
 
     # dirty data set as FP_MIN, for example, A[:, 1:15] is target data,
