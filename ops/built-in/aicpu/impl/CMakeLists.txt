@@ -24,6 +24,7 @@ set(local_kernels_src_files
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
     kernels/normalized/round.cc
+    kernels/normalized/scatter_elements.cc
     kernels/normalized/search_sorted.cc
     kernels/normalized/sparse_to_dense.cc
     kernels/normalized/spatial_transformer.cc

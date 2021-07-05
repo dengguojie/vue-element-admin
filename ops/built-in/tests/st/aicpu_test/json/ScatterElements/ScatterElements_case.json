@@ -1,0 +1,191 @@
+[
+    {
+        "case_name": "Test_ScatterElements_001",
+        "op": "ScatterElements",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int32","int64","int8","int16","bool"],
+                "shape": [5,3,10],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","int32","int64","int64"],
+                "shape": [2,3,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        9.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["int32","int64","int8","int16","bool"],
+                "shape": [2,3,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","int8","int16","bool"],
+                "shape": [5,3,10]
+            }
+        ],
+        "attr": [
+            {
+                "name": "axis",
+                "type": "int",
+                "value": 2
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScatterElements_002",
+        "op": "ScatterElements",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["uint32","uint64","uint8","uint16"],
+                "shape": [5,3,10],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","int32","int64"],
+                "shape": [2,3,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        9.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["uint32","uint64","uint8","uint16"],
+                "shape": [2,3,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["uint32","uint64","uint8","uint16"],
+                "shape": [5,3,10]
+            }
+        ],
+        "attr": [
+            {
+                "name": "axis",
+                "type": "int",
+                "value": -1
+            }
+        ]
+    },
+    {
+        "case_name": "Test_ScatterElements_003",
+        "op": "ScatterElements",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float","double","float16"],
+                "shape": [5,3,10,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        384.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32","int64","int32"],
+                "shape": [2,3,4,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        -9,
+                        0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float","double","float16"],
+                "shape": [2,3,4,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        384.0,
+                        800.0
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float","double","float16"],
+                "shape": [5,3,10,4]
+            }
+        ],
+        "attr": [
+            {
+                "name": "axis",
+                "type": "int",
+                "value": 2
+            }
+        ]
+    }
+]
