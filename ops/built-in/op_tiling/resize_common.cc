@@ -25,25 +25,25 @@ namespace optiling {
 bool GetResizeClassCompileParams(const nlohmann::json& compile_info, ResizeClassCompileParams& compile_params) {
   using namespace nlohmann;
   auto allVars = compile_info["vars"];
-  if (allVars.count("core_num") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get core_num error");
-    return false;
-  }
+  OP_TILING_CHECK(allVars.count("core_num") == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "get compile core_num error, num = 0"),
+                  return false);
   compile_params.core_num = allVars["core_num"].get<std::int64_t>();
-  if (allVars.count("max_w_len") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get max_w_len error");
-    return false;
-  }
+
+  OP_TILING_CHECK(allVars.count("max_w_len") == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "get compile max_w_len error, num = 0"),
+                  return false);
   compile_params.max_w_len = allVars["max_w_len"].get<std::int64_t>();
-  if (allVars.count("align_corners") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get align_corners error");
-    return false;
-  }
+
+  OP_TILING_CHECK(allVars.count("align_corners") == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "get compile align_corners error, num = 0"),
+                  return false);
   compile_params.align_corners = allVars["align_corners"].get<std::int64_t>();
-  if (allVars.count("half_pixel_centers") == 0) {
-    OP_LOGE(compile_params.op_type, "GetCompileParams, get half_pixel_centers error");
-    return false;
-  }
+
+  OP_TILING_CHECK(
+      allVars.count("half_pixel_centers") == 0,
+      VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "get compile half_pixel_centers error, num = 0"),
+      return false);
   compile_params.half_pixel_centers = allVars["half_pixel_centers"].get<std::int64_t>();
 
   return true;

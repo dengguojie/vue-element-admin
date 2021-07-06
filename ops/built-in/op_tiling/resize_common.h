@@ -20,9 +20,11 @@
  */
 #include <string>
 #include <math.h>
+#include <algorithm>
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 

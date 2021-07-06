@@ -48,25 +48,23 @@ static bool ResizeCommonTiling(const std::string& op_type, const TeOpParas& op_p
   using namespace ge;
   OP_LOGI(op_type, "tiling run begin.");
 
-  if (op_paras.inputs.empty()) {
-    OP_LOGE(op_type, "Length of inputs is empty.");
-    return false;
-  }
-  if (op_paras.outputs.empty()) {
-    OP_LOGE(op_type, "Length of outputs is empty.");
-    return false;
-  }
+  OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs is empty."),
+                  return false);
+
+  OP_TILING_CHECK(op_paras.outputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.outputs is empty."),
+                  return false);
+
   // get input_shape and output_shape
   const std::vector<int64_t>& input_shape = op_paras.inputs[0].tensor[0].shape;
   const std::vector<int64_t>& output_shape = op_paras.outputs[0].tensor[0].shape;
-  if (input_shape.size() != 5) {
-    OP_LOGE(op_type, "the input shape size must be 5(NC1HWC0).");
-    return false;
-  }
-  if (output_shape.size() != 5) {
-    OP_LOGE(op_type, "the output shape size must be 5(NC1HWC0).");
-    return false;
-  }
+  OP_TILING_CHECK(
+      input_shape.size() != 5,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the input shape size must be 5(NC1HWC0) but %d.", input_shape.size()),
+      return false);
+  OP_TILING_CHECK(
+      output_shape.size() != 5,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the output shape size must be 5(NC1HWC0) but %d.", output_shape.size()),
+      return false);
 
   // get compile data begin
   ResizeClassCompileParams compile_params;
@@ -78,7 +76,6 @@ static bool ResizeCommonTiling(const std::string& op_type, const TeOpParas& op_p
   compile_params.op_type = op_type;
   // get compile data
   if (!GetResizeClassCompileParams(op_info, compile_params)) {
-    OP_LOGE(op_type, "get compile info from nlohmann json failed.");
     return false;
   }
   // get compile data end
@@ -108,7 +105,7 @@ static bool ResizeCommonTiling(const std::string& op_type, const TeOpParas& op_p
   }
   if (!get_tiling_result) {
     PrintTilingParams(op_type, tiling_params, compile_params);
-    OP_LOGE(op_type, "get tiling data failed.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get tiling data failed.");
     return false;
   }
 
