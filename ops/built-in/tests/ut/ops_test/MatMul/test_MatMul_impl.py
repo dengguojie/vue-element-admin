@@ -213,7 +213,6 @@ ut_case.add_precision_case("Ascend920A", {"params": [{"shape": (6, 2,16,16), "dt
                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
 
 
-
 case_fp16_transpose_nz_1  = {"params": [{"shape": (4,6,16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64),"ori_format": "ND"},
                     {"shape": (4,6,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64),"ori_format": "ND"},
                     None,
@@ -237,7 +236,6 @@ case_fp16_transpose_nz_2  = {"params": [{"shape": (6,4,16, 16), "dtype": "float1
 
 ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_1)
 ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_2)
-
 
 
 def test_split_matmul(test_arg):
@@ -285,6 +283,7 @@ def test_matmul_confusion_transpose_710(test_arg):
         }
         cce_build_code(sch, config)
     te_set_version("Ascend310")
+
 
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_910)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_710)

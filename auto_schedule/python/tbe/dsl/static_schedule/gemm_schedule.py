@@ -3736,7 +3736,7 @@ class GEMM_Schedule:
             def _fix_pipe_bias_process():
                 bias_l1 = sch.cache_read(
                     fix_pipe_bias, tbe_platform_info.scope_cbuf, [c_l0c])
-                bias_fix_pipe = sch.cache_read(bias_l1, "local.FB", [c_l0c])
+                bias_fix_pipe = sch.cache_read(bias_l1, "local.BT", [c_l0c])
                 sch[bias_fix_pipe].compute_at(sch[c_l0c], bl0_n_outer)
                 sch[bias_l1].compute_at(sch[c_l0c], bl0_n_outer)
                 sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
