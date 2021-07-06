@@ -1053,6 +1053,9 @@ def general_schedule(
         tiling = get_tiling(info_dict)
     else:
         tiling = tiling_case
+        # close overhead flag in dynamic mode
+        tiling['A_overhead_opt_flag'] = 0
+        tiling['B_overhead_opt_flag'] = 0
 
     tbe_compile_param = tiling.get("tbe_compile_para")
     sch.tbe_compile_para, preload = parse_tbe_compile_para(tbe_compile_param)
