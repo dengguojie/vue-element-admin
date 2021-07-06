@@ -1883,8 +1883,8 @@ REG_OP(Crop)
 * axis: Axis along which to cummin. \n
 
 *@par Outputs:
-* y: A Tensor with the same type and shape of x's. \n
-* indices: A Tensor with the int32 type and the same shape of x's. \n
+* @li y: A Tensor with the same type and shape of x's.
+* @li indices: A Tensor with the int32 type and the same shape of x's. \n
 
 *@par Third-party framework compatibility
 *Compatible with the Pytorch operator Cummin. \n

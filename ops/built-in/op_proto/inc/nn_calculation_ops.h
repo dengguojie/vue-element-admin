@@ -1592,14 +1592,12 @@ REG_OP(Conv2DTransposeD)
  * Two inputs:
  * @li x: A Tensor of type float16,float32
  * @li offsets: A Tensor of type float16,float32.Deformation offset parameter.
-*@par Required Attributes:
+*@par Attributes:
  * @li strides: A tuple/list of 4 integers.The stride of the sliding window for
  * height and width for H/W dimension.
  * @li pads: A tuple/list of 4 integers.Padding added to H/W dimension
  * of the input.
  * @li ksize: A tuple/list of 2 integers.kernel size.
-*@par Attributes:
- * Four attributes:
  * @li dilations: A tuple/list of 4 integers, The dilation factor for each dimension
  * of input.  Defaults to [1, 1, 1, 1]
  * @li data_format: An optional string from: "NCHW", "NHWC". Defaults to "NCHW". Specify the data format of the input x.
@@ -1628,14 +1626,12 @@ REG_OP(DeformableOffsets)
  * @li grad: A Tensor of type float16,float32. gradients with respect to DeformableOffsets output
  * @li x: A Tensor of type float16,float32.
  * @li offsets: A Tensor of type float16,float32.Deformation offset parameter.
-*@par Required Attributes:
+*@par Attributes:
  * @li strides: A tuple/list of 4 integers.The stride of the sliding window for
  * height and width for H/W dimension.
  * @li pads: A tuple/list of 4 integers.Padding added to H/W dimension
  * of the input.
  * @li ksize: A tuple/list of 2 integers.kernel size.
-*@par Attributes:
- * Four attributes:
  * @li dilations: A tuple/list of 4 integers, The dilation factor for each dimension
  * of input.  Defaults to [1, 1, 1, 1]
  * @li data_format: An optional string from: "NCHW", "NHWC". Defaults to "NCHW". Specify the data format of the input x.
@@ -1665,10 +1661,8 @@ REG_OP(DeformableOffsetsGrad)
 *@par Inputs:
  * One inputs:
  * x: A Tensor of type int8, float16, float32
-*@par Required Attributes:
- *  dilations: A tuple/list of integers.
 *@par Attributes:
- * Two attributes:
+ * @li dilations: A tuple/list of integers.
  * @li padding_value: default value filling in blank
  * @li pads: A tuple/list of integers.
 *@par Outputs:

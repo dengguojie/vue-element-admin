@@ -2471,7 +2471,7 @@ REG_OP(Eltwise)
  *     float16, float32. \n
 
  *@par Outputs:
- *y: A Tensor with the same type and shape of input_x's. \n
+ *output_y: A Tensor with the same type and shape of input_x's. \n
 
  *@par Third-party framework compatibility
  *Compatible with the Pytorch operator Erfinv. \n
@@ -3786,6 +3786,10 @@ REG_OP(AddMatMatElements)
 *Two inputs, including:
 * @li input_x1: A tensor. Must be the following types: float32.
 * @li input_x2: A tensor. Must of the following types: float32. \n
+
+* @par Attributes:
+* @li dim:The type is Int and the default value is 1.
+* @li eps:The type is Float and the default value is 1e-8. \n
 
 *@par Outputs:
 * output_y: A Tensor with the same type of input_x's. \n

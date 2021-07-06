@@ -706,8 +706,8 @@ REG_OP(Mish)
  * @li x: A Tensor. Must be one of the following types: float16, float32
  * @li tanhx: A Tensor. shape, datatype and format is same as x
  * @par Outputs:
- * 1 output, including:
- * @li x_grad: A Tensor. shape, datatype and format is same as x
+ * One output, including:
+ * x_grad: A Tensor. shape, datatype and format is same as x
  */
 
 REG_OP(MishGrad)
@@ -809,11 +809,11 @@ REG_OP(SoftplusV2Grad)
  * @brief ThresholdedRelu takes one input data (Tensor) and produces one output data (Tensor)
  *  where the rectified linear function, y = x for x > alpha, y = 0 otherwise, is applied to the tensor elementwise.
  * 
- * @par Input
+ * @par Inputs:
  * one input including:
- * @li x: input A Tensor. Must be one of the following types: float32, float16
+ * x: input A Tensor. Must be one of the following types: float32, float16
  * 
- * @par Output
+ * @par Outputs:
  * one output including:
  * y:A Tensor of the same type as x
  * 
@@ -836,7 +836,7 @@ REG_OP(ThresholdedRelu)
 * lambd: An optional float. Defaults to 0.5. \n
 
 * @par Outputs:
-* y: A Tensor with the same dtype and shape of input_x's. \n
+* output_y: A Tensor with the same dtype and shape of input_x's. \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator Hardshrink. \n

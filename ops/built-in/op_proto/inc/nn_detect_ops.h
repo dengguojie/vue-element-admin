@@ -1799,7 +1799,7 @@ REG_OP(YoloBoxesEncode)
 *@li gt_max_assign_all: bool. whether to assign all bboxes with the same highest overlap with some gt to that gt.
 
 *@par Outputs:
-*@li assigned_gt_inds_pos: A Tensor. Support float16/float32. shape (n, ).
+* assigned_gt_inds_pos: A Tensor. Support float16/float32. shape (n, ).
 */
 REG_OP(GridAssignPositive)
     .INPUT(assigned_gt_inds, TensorType({ DT_FLOAT, DT_FLOAT16 }))

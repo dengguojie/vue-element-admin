@@ -1466,7 +1466,7 @@ REG_OP(Centralization)
 
 *@par Inputs:
 *One inputs, including:
-* @li x: A tensor . Must be one of the following types:
+* x: A tensor . Must be one of the following types:
 *     float16, float32, int32, uint32, int8, uint8. \n
 
 *@par Attributes:
@@ -1491,14 +1491,14 @@ REG_OP(Roll)
  logistic loss between input_x and input_y (containing 1 or -1). \n
 
  *@par Inputs:
- *One inputs, including:
+ *Tow inputs, including:
  * @li input_x: A tensor. Must be one of the following types:
  *     float16, float32. \n
  * @li input_y: A tensor. Must be one of the following types:
  *     float16, float32. \n
 
  *@par Attributes:
- *lambd: An optional string.Defaults to "mean". \n
+ *reduction: An optional string.Defaults to "mean". \n
 
  *@par Outputs:
  *output_z: while reduction == "none", A Tensor with the same type and shape of input_x's. \n
@@ -1525,7 +1525,7 @@ REG_OP(SoftMarginLoss)
 * @li pos_weight: An optional ND tensor of type float16, float32. \n
 
 * @par Attributes:
-* @li reduction: An optional string.Defaults to "mean". \n
+* reduction: An optional string.Defaults to "mean". \n
 
 * @par Outputs:
 * gradient: An ND tensor tensor with the same shape and type as "predict". \n
@@ -1576,14 +1576,14 @@ REG_OP(PoissonNllLoss)
 /**
  *@brief rnn_gen_mask
  * @par Inputs:
- * @li seq_length: A ND Tensor of type int32. Recoed the current length of each batch.\n
+ * seq_length: A ND Tensor of type int32. Recoed the current length of each batch.\n
  *
  * @par Attributes:
  * @li num_step: A required int.\n
  * @li hidden_size: A required int. \n
  *
  * 
- * @par Output:
+ * @par Ouputs:
  * y: A mutable Tensor of type float16, with the shape of [num_step, batch_size, hidden_size]. \n
  *
  */

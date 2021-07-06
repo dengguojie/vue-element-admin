@@ -1472,7 +1472,8 @@ coordinates as it is. If not specified, defaults to true . \n
 *@par Outputs:
 *@li nmsed_boxes:type is float
 *@li nmsed_scores:type is float
-*@li nmsed_classes:type is float  \n
+*@li nmsed_classes:type is float  
+*@li valid_detections:type is INT32 \n
 
 *@par Third-party framework compatibility
 * Compatible with tensorflow CombinedNonMaxSuppression operator.
@@ -1694,7 +1695,7 @@ REG_OP(DenseImageWarp)
 
 *@par Inputs:
 *One inputs, including:
-* @li x: A tensor. Must be one of the following types:
+* x: A tensor. Must be one of the following types:
 *     float16, float32. \n
 
 *@par Attributes:

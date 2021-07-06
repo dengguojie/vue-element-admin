@@ -2129,7 +2129,8 @@ REG_OP(FusedMulApplyMomentumExtern)
 *    otherwise the behavior is undefined, but may exhibit less contention.
 *
 *@par Outputs:
-* var: A mutable tensor. Has the same type as input "var".
+* @li var: A mutable tensor. Has the same type as input "var".
+* @li accum: A mutable tensor. Has the same type as input "accum".
 *
 *@attention Constraints:
 * @li var: A mutable tensor. Has the same type as input "var".
