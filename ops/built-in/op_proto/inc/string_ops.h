@@ -901,10 +901,10 @@ REG_OP(DecodeBase64)
 *@brief StringNormalization performs string operations for basic cleaning . \n
 
 *@par Inputs:
-*@li input: only accepts [C] or [1, C] UTF-8 strings tensor . \n
+*input: only accepts [C] or [1, C] UTF-8 strings tensor . \n
 
 *@par Outputs:
-*@li output: UTF-8 strings tensor after cleaning . \n
+*output: UTF-8 strings tensor after cleaning . \n
 
 *@par Attributes:
 *@li stopwords : list of strings (default is empty).
@@ -919,13 +919,13 @@ case-sensitive. Default is false.
 *string enum that cases output to be lowercased/uppercases/unchanged. Valid
 values are "LOWER", "UPPER", "NONE". Default is "NONE".
 
-*@li local : string (default is "en_US").
+*@li locale : string (default is "C").
 *Environment dependent string that denotes the locale according to which output
-strings needs to be upper/lowercased.Default en_US or platform specific equivalent
-as decided by the implementation . \n
+strings needs to be upper/lowercased.Default C or platform specific equivalent
+as decided by the implementation. \n
 
 *@attention Constraints:
-*@li input can be either a 1-D or 2-D tensor, the shape of 2-D tensor must be [1, C].
+*input can be either a 1-D or 2-D tensor, the shape of 2-D tensor must be [1, C].
 */
 REG_OP(StringNormalizer)
     .INPUT(input, TensorType({DT_STRING}))
@@ -933,7 +933,7 @@ REG_OP(StringNormalizer)
     .ATTR(stopwords, ListString, {})
     .ATTR(is_case_sensitive, Bool, false)
     .ATTR(case_change_action, String, "NONE")
-    .ATTR(local, String, "en_US")
+    .ATTR(locale, String, "C")
     .OP_END_FACTORY_REG(StringNormalizer)
 }  // namespace ge
 
