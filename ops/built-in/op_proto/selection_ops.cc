@@ -4731,4 +4731,57 @@ COMMON_INFER_FUNC_REG(MaskedFillRange, MaskedFillRangeInferShape);
 VERIFY_FUNC_REG(MaskedFillRange, MaskedFillRangeVerify);
 // ----------------MaskedFillRange END---------------------
 
+// ----------------InplaceTopKDistance Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(InplaceTopKDistanceInferShape) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(InplaceTopKDistance, InplaceTopKDistanceVerify) {
+  std::vector<int64_t> topk_pq_distance_dims = op.GetInputDesc("topk_pq_distance").GetShape().GetDims();
+  std::vector<int64_t> topk_pq_index_dims = op.GetInputDesc("topk_pq_index").GetShape().GetDims();
+  std::vector<int64_t> topk_pq_ivf_dims = op.GetInputDesc("topk_pq_ivf").GetShape().GetDims();
+  if (!(topk_pq_distance_dims == topk_pq_index_dims && topk_pq_index_dims == topk_pq_ivf_dims)) {
+    string msg = ConcatString("The shape of topk_pq_distance is:", DebugString(topk_pq_distance_dims),
+                              "The shape of topk_pq_index is:", DebugString(topk_pq_index_dims),
+                              "The shape of topk_pq_ivf is:", DebugString(topk_pq_ivf_dims), ". They must be same");
+    std::string err_msg = OtherErrMsg(msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (topk_pq_distance_dims != UNKNOWN_RANK && topk_pq_distance_dims.size() != 1) {
+    string msg = ConcatString("The shape of topk_pq_distance is:", DebugString(topk_pq_distance_dims),
+                              "The shape of topk_pq_index is:", DebugString(topk_pq_index_dims),
+                              "The shape of topk_pq_ivf is:", DebugString(topk_pq_ivf_dims), ". Dim must be 1");
+    std::string err_msg = OtherErrMsg(msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> pq_distance_dims = op.GetInputDesc("pq_distance").GetShape().GetDims();
+  std::vector<int64_t> pq_index_dims = op.GetInputDesc("pq_index").GetShape().GetDims();
+  if (!(pq_distance_dims == pq_index_dims)) {
+    string msg = ConcatString("The shape of pq_distance is:", DebugString(topk_pq_distance_dims),
+                              "The shape of pq_index is:", DebugString(topk_pq_index_dims),". They must be same");                 
+    std::string err_msg = OtherErrMsg(msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (pq_distance_dims != UNKNOWN_RANK && pq_distance_dims.size() != 1) {
+    string msg = ConcatString("The shape of pq_distance is:", DebugString(topk_pq_distance_dims),
+                              "The shape of pq_index is:", DebugString(topk_pq_index_dims), ". Dim must be 1");
+    std::string err_msg = OtherErrMsg(msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  OP_LOGE(op.GetName().c_str(), "GRAPH_SUCCESS.");
+  return GRAPH_SUCCESS;
+}
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(InplaceTopKDistance, InplaceTopKDistanceInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(InplaceTopKDistance, InplaceTopKDistanceVerify);
+// ----------------InplaceTopKDistance END---------------------
 }  // namespace ge

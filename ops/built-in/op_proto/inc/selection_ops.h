@@ -2340,6 +2340,16 @@ REG_OP(MaskedFillRange)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32}))
     .REQUIRED_ATTR(axis, Int)
     .OP_END_FACTORY_REG(MaskedFillRange)
+
+REG_OP(InplaceTopKDistance)
+    .INPUT(topk_pq_distance, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(topk_pq_index, TensorType({DT_INT32}))
+    .INPUT(topk_pq_ivf, TensorType({DT_INT32}))
+    .INPUT(pq_distance, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(pq_index, TensorType({DT_INT32}))
+    .INPUT(pq_ivf, TensorType({DT_INT32}))
+    .ATTR(order, String, "asc")
+    .OP_END_FACTORY_REG(InplaceTopKDistance)
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_SELECTION_OPS_H_

@@ -14,6 +14,7 @@ set(local_kernels_src_files
     kernels/normalized/get_dynamic_dims.cc
     kernels/normalized/identity.cc
     kernels/normalized/image_warp_offsets.cc
+    kernels/normalized/inplace_top_k_distance.cc
     kernels/normalized/less.cc
     kernels/normalized/logging.cc
     kernels/normalized/masked_select.cc

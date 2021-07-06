@@ -82,6 +82,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/identity.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/image_warp_offsets.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/inplace_top_k_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/less.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/logging.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/masked_select.cc
@@ -183,6 +184,7 @@ set(_cpu_kernels_ut_files
   testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
   testcase/identity/src/identity_utest.cpp
   testcase/image_warp_offsets/src/image_warp_offsets_utest.cpp
+  testcase/inplace_top_k_distance/src/inplace_top_k_distance_utest.cpp
   testcase/less/src/less_utest.cpp
   testcase/logging/src/logging_utest.cpp
   testcase/masked_select/src/masked_select_utest.cpp
