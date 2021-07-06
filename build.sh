@@ -23,6 +23,7 @@ CMAKE_HOST_PATH="${BUILD_PATH}/cann"
 CMAKE_DEVICE_PATH="${BUILD_PATH}/cann_device"
 core_nums=$(cat /proc/cpuinfo| grep "processor"| wc -l)
 star_line="###############################################"
+dotted_line="----------------------------------------------------------------"
 if [ $core_nums -ne 1 ];then
     core_nums=$((core_nums-1))
 fi
@@ -46,17 +47,15 @@ create_lib(){
     CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DUT_TEST_ALL=FALSE -DST_TEST=FALSE -DAICPU_ONLY=FALSE -DUT_NO_EXEC=FALSE -DCPU_UT=FALSE -DPASS_UT=FALSE -DTILING_UT=FALSE -DPROTO_UT=FALSE -DPLUGIN_UT=FALSE -DONNX_PLUGIN_UT=FALSE" 
     cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
     cmake --build . --target $lib -- -j $((core_nums-1))
-    echo $star_line
-    echo  "EXAMPLE cp ./build/cann/ops/built-in/op_tiling/liboptiling.so /usr/local/Ascend/opp/op_impl/built-in/ai_core/tbe/op_tiling/liboptiling.so"
-    echo $star_line
   elif [[ "$UT_TURE" =~ "$lib" ]];then
     CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DUT_TEST_ALL=TURE -DST_TEST=FALSE -DAICPU_ONLY=FALSE -DUT_NO_EXEC=FALSE -DCPU_UT=FALSE -DPASS_UT=FALSE -DTILING_UT=FALSE -DPROTO_UT=FALSE -DPLUGIN_UT=FALSE -DONNX_PLUGIN_UT=FALSE"
     cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
     cmake --build . --target $lib -- -j $((core_nums-1))
-    echo $star_line
-    echo  "EXAMPLE cp ./build/cann/ops/built-in/op_tiling/liboptiling.so /usr/local/Ascend/opp/op_impl/built-in/ai_core/tbe/op_tiling/liboptiling.so"
-    echo $star_line
   fi
+  echo $dotted_line
+  echo "TIPS"
+  echo "If you compile a shared or static lib, you can copy your lib from the subfolder of./build/cann to the corresponding folder of/usr/local/ascend"
+  echo $dotted_line  
 }
 
 set_env(){
@@ -105,6 +104,8 @@ set_env(){
 }
 
 query_env(){
+  echo $dotted_line
+  echo "ASCEND_CODE_HOME:$ASCEND_CODE_HOME"
   echo "ASCEND_HOME:$ASCEND_HOME"
   echo "OP_TEST_FRAME_INSTALL_HOME:$OP_TEST_FRAME_INSTALL_HOME"
   echo "OPS_SOURCE_PATH:$OPS_SOURCE_PATH"
@@ -114,94 +115,159 @@ query_env(){
   echo "PATH:$PATH"
 }
 
+get_libs_name(){
+  libs=("secure_c" "protobuf" "eigen" "gtest" "nlohmann_json")
+  secure_c_pack="v1.1.10.tar.gz"
+  protobuf_pack="v3.13.0.tar.gz"
+  eigen_pack="eigen-3.3.7.tar.gz"
+  gtest_pack="release-1.8.0.tar.gz"
+  nlohmann_json_pack="include.zip"
+  eigen_link=https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
+  gtest_link=https://github.com/google/googletest/archive/release-1.8.0.tar.gz
+  nlohmann_json_link=https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip
+  protobuf_link=https://github.com/protocolbuffers/protobuf/archive/v3.13.0.tar.gz
+  secure_c_link=https://gitee.com/openeuler/libboundscheck/repository/archive/v1.1.10.tar.gz
+}
+
 down_third_libs(){
-  if [ ! -d "./build" ];then
-    mkdir build
-  fi
+  set +e
+  get_libs_name
+  obs_addr="https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/thirdlibs.zip"
   if [ ! -d "./build/cann/download" ];then
     mkdir -p build/cann/download
   fi
-  if [ ! -f "./build/cann/download/thirdlibs.zip" ];then
-    wget -P build/cann/download https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/thirdlibs.zip
+  for mylib in ${libs[@]}
+    do
+      if [ ! -d "./build/cann/download/$mylib" ];then
+	    mkdir build/cann/download/$mylib
+      fi
+    done
+  echo $dotted_line
+  echo "begin to test  network..."
+  wget --no-check-certificate https://www.gitee.com
+  res_net=`echo $?`
+  if [ ! $res_net -eq 0 ];then
+    echo $dotted_line
+    echo "The network doesn't work. please check..."
+    echo "If you are in Huawei yellow area"
+    echo "EXAMPLE"
+    echo "export http_proxy=http//\$username:\$escape_pass@\${proxy:-proxy}.huawei.com:8080/"
+    echo "NOTICE:password needs to be escaped"
+    echo "export https_proxy=\$http_proxy"
+    echo "If you are not in Huawei yellow area"
+    echo "You need to configure a network proxy"
+    exit -1
+  else
+    if [ -f "index.html" ];then
+      rm index.html
+      echo $dotted_line
+      echo "Network testing completed"
+    fi
   fi
-  if [ ! -d "./build/cann/download/ascned_thirdlibs" ];then
-    unzip -d build/cann/download build/cann/download/thirdlibs.zip
+  if [ ! -f "./build/cann/download/thirdlibs.zip" ];then 
+    wget  --connect-timeout=5 -P build/cann/download $obs_addr
+    res_down=`echo $?`
+    if [  $res_down -eq 0 ];then
+      echo "download from $obs_addr success"
+    else
+      echo $dotted_line
+      echo "download from $obs_addr failed"
+      echo "begin download from github"
+      for mylib in ${libs[@]}
+        do
+          pack=${mylib}_pack
+          link=${mylib}_link
+          eval pack=$(echo \$$pack)
+          eval link=$(echo \$$link)
+          if [ ! -f "./build/cann/download/$mylib/$pack" ];then
+            wget -P build/cann/download/$mylib --debug ${link}
+          fi
+        done
+    fi
+  else
+    echo $dotted_line
+    echo "./build/cann/download/thirdlibs.zip exist, do not need download"
   fi
+  if [ ! -f "./build/cann/download/thirdlibs.zip" ];then 
+    if [ $res_down -ne 0  ];then
+      for mylib in ${libs[@]}
+        do
+          pack=${mylib}_pack
+          link=${mylib}_link
+          eval pack=$(echo \$$pack)
+          eval link=$(echo \$$link)
+          if [ -f "./build/cann/download/$mylib/$pack" ];then
+            md5=`md5sum ./build/cann/download/$mylib/$pack | cut -d" " -f1`
+            eval "${mylib}_md5=$md5"
+          else
+            echo "dwonload from $link failed"
+            exit -1
+          fi
+        done
+    fi
+  fi
+  if [ ! -d "./build/cann/download/ascend_thirdlibs" ];then
+    if [ -f "./build/cann/download/thirdlibs.zip" ];then
+      unzip -d build/cann/download build/cann/download/thirdlibs.zip
+      mv ./build/cann/download/ascned_thirdlibs ./build/cann/download/ascend_thirdlibs
+    fi
+  fi
+  if [ -d "./build/cann/download/ascend_thirdlibs" ];then
+     for mylib in ${libs[@]}
+        do
+          pack=${mylib}_pack
+          eval pack=$(echo \$$pack)
+          md5=`md5sum ./build/cann/download/ascend_thirdlibs/download/$mylib/$pack | cut -d" " -f1`
+          eval "${mylib}_md5=$md5"
+        done
+  fi
+  for mylib in ${libs[@]}
+    do
+      pack=${mylib}_pack
+      eval pack=$(echo \$$pack)
+      if [ -f build/cann/download/ascend_thirdlibs/download/$mylib/$pack ];then
+        if [ ! -f "./build/cann/download/$mylib/$pack" ];then
+          cp build/cann/download/ascend_thirdlibs/download/$mylib/$pack build/cann/download/$mylib/$pack
+        fi
+      fi
+    done
 
-  protobuf_md5=`echo -n ./build/cann/download/ascend_thirdlibs/download/protobuf/v3.13.0.tar.gz|md5sum|cut -d" " -f1`
-  eigen_md5=`echo -n ./build/cann/download/ascend_thirdlibs/download/eigen/eigen-3.3.7.tar.gz|md5sum|cut -d" " -f1`
-  gtest_md5=`echo -n ./build/cann/download/ascend_thirdlibs/download/gtest/release-1.8.0.tar.gz|md5sum|cut -d" " -f1`
-  nlohmann_json_md5=`echo -n ./build/cann/download/ascend_thirdlibs/download/nlohmann_json/include.zip|md5sum|cut -d" " -f1`
-  secure_c_md5=`echo -n ./build/cann/download/ascend_thirdlibs/download/secure_c/v1.1.10.tar.gz|md5sum|cut -d" " -f1`
-  
-  if [ ! $protobuf_md5="1a6274bc4a65b55a6fa70e264d796490" ];then
-    echo "protobuf md5 not correct"
-    exit -1
-  fi
-  if [ ! $eigen_md5="9e30f67e8531477de4117506fe44669b" ];then
-    echo "eigen md5 not correct"
-    exit -1
-  fi
-  if [ ! $gtest_md5="16877098823401d1bf2ed7891d7dce36" ];then
-    echo "gtest md5 not correct"
-    exit -1
-  fi
-  if [ ! $nlohmann_json_md5="0dc903888211db3a0f170304cd9f3a89" ];then
-    echo "nlohmann_json md5 not correct"
-    exit -1
-  fi
-  if [ ! $secure_c_md5="193f0ca5246c1dd84920db34d2d8249f" ];then
-    echo "secure_c md5 not correct"
-    exit -1
-  fi
-  
-  if [ ! -f "./build/cann/download/eigen/eigen-3.3.7.tar.gz" ];then
-      if [ ! -d "./build/cann/download/eigen" ];then
-	    mkdir build/cann/download/eigen
+  #expect_md5 [0] is secure_c, [1] is protobuf, [2] is eigen, [3] is gtest, [4] is nlohmann_json
+  expect_md5=("193f0ca5246c1dd84920db34d2d8249f"
+              "1a6274bc4a65b55a6fa70e264d796490"
+              "9e30f67e8531477de4117506fe44669b"
+              "16877098823401d1bf2ed7891d7dce36"
+              "0dc903888211db3a0f170304cd9f3a89")
+              
+  echo "check md5 begin"
+  for i in $(seq 0 4)
+    do
+      real_md5=${libs[i]}_md5
+      eval real_md5=$(echo \$$real_md5)
+      if [  $real_md5 != ${expect_md5[i]} ];then
+        echo "${libs[i]} md5 not correct"
+        exit -1
       fi
-        cp build/cann/download/ascned_thirdlibs/download/eigen/eigen-3.3.7.tar.gz build/cann/download/eigen/eigen-3.3.7.tar.gz
-  fi
-  if [ ! -f "./build/cann/download/gtest/release-1.8.0.tar.gz" ];then
-      if [ ! -d "./build/cann/download/gtest" ];then
-	    mkdir build/cann/download/gtest
-      fi
-        cp build/cann/download/ascned_thirdlibs/download/gtest/release-1.8.0.tar.gz build/cann/download/gtest/release-1.8.0.tar.gz      
-  fi
-  if [ ! -f "./build/cann/download/nlohmann_json/include.zip" ];then
-      if [ ! -d "./build/cann/download/nlohmann_json" ];then
-	    mkdir build/cann/download/nlohmann_json
-      fi
-        cp build/cann/download/ascned_thirdlibs/download/nlohmann_json/include.zip build/cann/download/nlohmann_json/include.zip      
-  fi
-  if [ ! -f "./build/cann/download/protobuf/v3.13.0.tar.gz" ];then
-      if [ ! -d "./build/cann/download/protobuf" ];then
-	    mkdir build/cann/download/protobuf
-      fi
-        cp build/cann/download/ascned_thirdlibs/download/protobuf/v3.13.0.tar.gz build/cann/download/protobuf/v3.13.0.tar.gz 
-  fi
-  if [ ! -f "./build/cann/download/secure_c/v1.1.10.tar.gz" ];then
-      if [ ! -d "./build/cann/download/secure_c" ];then
-	    mkdir build/cann/download/secure_c
-      fi
-        cp build/cann/download/ascned_thirdlibs/download/secure_c/v1.1.10.tar.gz build/cann/download/secure_c/v1.1.10.tar.gz      
-  fi
+    done 
+  echo "check md5 finish"    
+  set -e
 }
+
 check_third_libs(){
-  if [ ! -f "./build/cann/download/eigen/eigen-3.3.7.tar.gz" ];then
-	  echo "download from  https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/thirdlibs.zip failed"
-  fi
-  if [ ! -f "./build/cann/download/gtest/release-1.8.0.tar.gz" ];then
-	  echo "download from  https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/thirdlibs.zip failed"
-  fi
-  if [ ! -f "./build/cann/download/nlohmann_json/include.zip" ];then
-	  echo "download from  https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/thirdlibs.zip failed"
-  fi
-  if [ ! -f "./build/cann/download/protobuf/v3.13.0.tar.gz" ];then
-	  echo "download from  https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/thirdlibs.zip failed"
-  fi
-  if [ ! -f "./build/cann/download/secure_c/v1.1.10.tar.gz" ];then
-	  echo "download from  https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/thirdlibs.zip failed"
-  fi
+  echo "check third libs begin"
+  get_libs_name
+  for mylib in ${libs[@]}
+    do
+      pack=${mylib}_pack
+      link=${mylib}_link
+      eval pack=$(echo \$$pack)
+      eval link=$(echo \$$link)
+      if [ ! -f "./build/cann/download/$mylib/$pack" ];then
+        echo "dwonload from $link failed"
+        exit -1
+      fi      
+    done
+  echo "check third libs success"
 }
 install_python_libs(){
   python_libs=$(pip3 list)
@@ -216,6 +282,22 @@ install_python_libs(){
   fi
 }
 source scripts/util/util.sh
+
+make_clean(){
+  if [ -d $CMAKE_HOST_PATH ];then
+    cd $CMAKE_HOST_PATH
+    make clean
+  fi
+}
+
+make_clean_all(){
+  if [ -d $CMAKE_HOST_PATH ];then
+    cd ${CMAKE_HOST_PATH}
+    rm -rf ./*
+  fi
+  rm -rf $RELEASE_PATH
+  rm -rf $INSTALL_PATH
+}
 
 # print usage message
 usage() {
@@ -240,6 +322,8 @@ usage() {
   echo "    --set_env_gitee set env for ascend,use gitee download python operator code"
   echo "    --set_env_ascend set env for ascend,use /usr/local/Ascend python operato code"
   echo "    --install_python_libs install necessary python libs"
+  echo "    --make_clean make clean"
+  echo "    --make_clean_all make clean and delete related file"
   echo "    --cpu_kernels_ut Build aicpu ut"
   echo "    --pass_ut Build pass ut"
   echo "    --tiling_ut Build tiling ut"
@@ -349,6 +433,10 @@ checkopts() {
                       exit 0;;
            install_python_libs) install_python_libs
                                 exit 0;;
+           make_clean_all) make_clean_all
+                           exit 0;;
+           make_clean) make_clean
+                       exit 0;;
            sprotoc) lib="sprotoc"
                     create_lib
                     exit 0;;
@@ -630,6 +718,5 @@ main() {
   fi
   logging "---------------- CANN build finished ----------------"
 }
-
 set -o pipefail
 main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
