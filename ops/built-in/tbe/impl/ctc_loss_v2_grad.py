@@ -186,7 +186,7 @@ class CTCLossV2Grad(object):
                                             copy_ub_zero[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
              with self.tik_instance.else_scope():
                 self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C],
-                                            copy_ub_zero[0], 0, 1, self.C // BLOCK, 1, 1)
+                                            copy_ub_zero[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
         # func: get log_prob in current T
         self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx + self.N * self.C * (T_i - 1)],
                                     0, 1, self.C_BLOCK // BLOCK, 0, 0)
@@ -259,7 +259,7 @@ class CTCLossV2Grad(object):
                                         copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
         with self.tik_instance.else_scope():
             self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C], 
-                                        copy_ub_b[0], 0, 1, self.C // BLOCK, 1, 1)
+                                        copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
 
 
         with self.tik_instance.for_range(1, T_i):
@@ -453,7 +453,7 @@ class CTCLossV2Grad(object):
                                             copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
             with self.tik_instance.else_scope():
                 self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C],
-                                            copy_ub_b[0], 0, 1, self.C // BLOCK, 1, 1)
+                                            copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
                                         
             output_src.set_as(output_dst)
             output_dst.set_as(self.output_size_up - output_src)
