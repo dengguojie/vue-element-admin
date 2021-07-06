@@ -2693,39 +2693,26 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
   Tensor sizes_tensor;
   vector<int64_t> size_out;
   vector<float_t> scale_out;
-  bool const_input = false;
 
   if (op.GetInputConstData("scales", scales_tensor) != GRAPH_SUCCESS) {
-    op.SetAttr("const_input", const_input);
-    vector<int64_t> temp_scale = op.GetInputDesc("scales").GetShape().GetDims();
-    for (int64_t i = 0; i < temp_scale.size(); i++) {
-      scale_out.push_back((float)temp_scale[i]);
-    }
-  } else {
-    const_input = true;
-    op.SetAttr("const_input", const_input);
-    GetConstValueFloat(op, scales_tensor, inputs_dtype_scales, scale_out);
-  }
-  if (inputs_size == 4) {
-    if (op.GetInputConstData("sizes", sizes_tensor) != GRAPH_SUCCESS) {
-      op.SetAttr("const_input", const_input);
-      size_out = op.GetInputDesc("sizes").GetShape().GetDims();
-    } else {
-      const_input = true;
-      op.SetAttr("const_input", const_input);
-      DataType input_dtype_sizes = op.GetInputDesc("sizes").GetDataType();
-      GetConstValue(op, sizes_tensor, input_dtype_sizes, size_out);
-    }
+    OP_LOGW(op.GetName().c_str(), "Get constValue failed of [scales]");
   }
 
+  if (inputs_size == 4) {  // 4 is number of inputs
+    if (op.GetInputConstData("sizes", sizes_tensor) != GRAPH_SUCCESS) {
+      OP_LOGW(op.GetName().c_str(), "Get constValue failed of [sizes]");
+    }
+    DataType input_dtype_sizes = op.GetInputDesc("sizes").GetDataType();
+    GetConstValue(op, sizes_tensor, input_dtype_sizes, size_out);
+  }
   if (size_out.size() == 0) {
+    GetConstValueFloat(op, scales_tensor, inputs_dtype_scales, scale_out);
     if (!CalculateSizeOut(op, images_shape, scale_out, input_format, size_out)) {
       std::string  err_msg = OtherErrMsg("calculate size out failed.");
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), err_msg);
       return GRAPH_FAILED;
     }
   }
-
   HadleSizeOut(op, input_format, size_out);
 
   vector<int64_t> y_shape;
