@@ -1590,6 +1590,8 @@ class GemmSchedule(object):
             "group": 1,
             "bias_flag": bias_flag,
             "fused_double_operand_num": fused_num,
+            "shape_a_align": self.align_a,
+            "shape_b_align": self.align_b,
             "kernel_name": self.kernel_name
         }
         self._print_debug(info_dict, "info_dict")
