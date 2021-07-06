@@ -142,6 +142,38 @@ IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
 COMMON_INFER_FUNC_REG(Iou, IouInferShape);
 // ----------------Iou-------------------
 
+// ----------------GIoU-------------------
+IMPLEMT_COMMON_INFERFUNC(GIoUInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr bboxes_desc = op_desc->MutableInputDesc("bboxes");
+  auto inputType = bboxes_desc->GetDataType();
+  vector<int64_t> bboxes_shape = bboxes_desc->MutableShape().GetDims();
+  GeTensorDescPtr gtboxes_desc = op_desc->MutableInputDesc("gtboxes");
+  vector<int64_t> gtboxes_shape = gtboxes_desc->MutableShape().GetDims();
+
+  bool is_cross;
+  op.GetAttr("is_cross", is_cross);
+
+  vector<int64_t> overlap_shape;
+  if (is_cross) {
+    overlap_shape.push_back(bboxes_shape[0]);
+    overlap_shape.push_back(gtboxes_shape[0]);
+  } else {
+    overlap_shape.push_back(1);
+    overlap_shape.push_back(bboxes_shape[0]);
+  }
+
+  TensorDesc td = op.GetOutputDesc("overlap");
+  td.SetShape(Shape{overlap_shape});
+  td.SetDataType(inputType);
+  (void)op.UpdateOutputDesc("overlap", td);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(GIoU, GIoUInferShape);
+// ----------------GIoU-------------------
+
 // ----------------BoundingBoxDecode-------------------
 IMPLEMT_COMMON_INFERFUNC(BoundingBoxDecodeInferShape) {
     bool is_dynamic = true;

@@ -463,6 +463,7 @@ class InplaceIndexAdd():
         tail_ele_num = self.tik_instance.Scalar("int32", name="tail_ele_num")
         tail_ele_num.set_as(element_num % self.var_data_each_block)
         align_offset = self.tik_instance.Scalar("int32", name="align_offset")
+        align_offset.set_as(0)
         align_ele_num = self.tik_instance.Scalar("int32", name="align_ele_num")
 
         with self.tik_instance.if_scope(tik.all(tail_ele_num != 0, self.update_data_num > self.var_data_each_block)):
@@ -536,14 +537,11 @@ class InplaceIndexAdd():
                     self.var_ub, 0, 1, updates_burst_len, 0, 0)
             with self.tik_instance.else_scope():
                 self.calc_process(self.var_data_each_block, 0, 0, 0, 1, True)
-                self.tik_instance.data_move(
-                    self.var_out_gm[self.var_read_index + align_offset],
-                    self.var_tail_ub, 0, 1, 1, 0, 0)
                 self.calc_process(compute_mask, self.index_offset, self.index_offset,
                                   self.index_offset, 1, False)
                 self.tik_instance.data_move(
                     self.var_out_gm[self.var_read_index + read_index_offset],
-                    self.var_ub, 0, 1, updates_burst_len - 1, 0, 0)
+                    self.var_ub, 0, 1, updates_burst_len, 0, 0)
         with self.tik_instance.else_scope():
             self.tik_instance.data_move(
                 self.var_out_gm[self.var_read_index + read_index_offset],
@@ -702,7 +700,7 @@ class InplaceIndexAdd():
                 self.init_ub_tensor()
                 self.outer_loop_start_index_every_block.set_as(core_index * self.outer_loops_per_block)
                 self.outer_loops_ub_per_block.set_as(self.outer_loops_per_block)
-                with self.tik_instance.if_scope(core_index == self.ai_core_num - 1):
+                with self.tik_instance.if_scope(core_index == self.core_num - 1):
                     self.outer_loops_ub_per_block.set_as(self.outer_loop - self.outer_loop_start_index_every_block)
                 self.traversing_outer_loop_per_block()
 

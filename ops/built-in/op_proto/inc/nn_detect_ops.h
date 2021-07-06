@@ -153,6 +153,42 @@ REG_OP(Iou)
     .OP_END_FACTORY_REG(Iou)
 
 /**
+*@brief First calculate the minimum closure area of the two boxes, IoU,
+* the proportion of the closed area that does not belong to the two boxes in the closure area,
+* and finally subtract this proportion from IoU to get GIoU . \n
+
+*@par Inputs:
+* Two inputs, including:
+*@li bboxes: Bounding boxes, a 2D Tensor of type float16 or float32 with
+* shape (N, 4). "N" indicates the number of bounding boxes, and the value
+* "4" refers to [x1, y1, x2, y2] or [x, y, w, h].
+*@li gtboxes: Ground-truth boxes, a 2D Tensor of type float16 or float32
+* with shape (M, 4). "M" indicates the number of ground truth boxes, and
+* the value "4" refers to [x1, y1, x2, y2] or [x, y, w, h] . \n
+
+*@par Attributes:
+*@li trans: An optional bool, transform from xywh to xyxy or not.
+*@li is_cross: An optional bool, control whether the output shape is [M, N] or [1, N]
+*@li mode: Computation mode, a character string with the value range of [iou, iof] . \n
+
+*@par Outputs:
+* overlap: A 2D Tensor of type float16 or float32 with shape [M, N] or [1, N],
+* specifying the IoU or IoF ratio . \n
+
+*@attention Constraints:
+* Only computation of float16 data is supported. To avoid overflow, the input
+* length and width are scaled by 0.2 internally.
+*/
+REG_OP(GIoU)
+    .INPUT(bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(gtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(overlap, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(trans, Bool, false)
+    .ATTR(is_cross, Bool, true)
+    .ATTR(mode, String, "iou")
+    .OP_END_FACTORY_REG(GIoU)
+
+/**
 *@brief Performs the backpropagation of ROIAlign for training scenarios . \n
 
 *@par Inputs:
