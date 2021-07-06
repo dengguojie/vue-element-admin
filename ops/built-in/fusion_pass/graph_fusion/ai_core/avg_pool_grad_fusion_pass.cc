@@ -395,8 +395,9 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
     return NOT_CHANGED;
   }
   Status ret;
+  vector<ge::GeTensorPtr> avg_pool_grad_weights_vec = OpDescUtils::MutableWeights(avg_pool_grad_fused_node);
   if (!is_dynamic) {
-    GeTensorPtr avg_table_assit_ptr = nullptr;
+    ge::GeTensorPtr avg_table_assist_ptr = nullptr;
     bool is_dynamic_dim_info = false;
     for (size_t i = 0; i < avg_pool_dim_info.size(); i++) {
       if (PatternFusionUtil::IsUnknownShape(avg_pool_dim_info[i])) {
@@ -410,7 +411,6 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
         avg_pool_dim_info[3] = orig_input_shape_const_tensor_ptr[3];
         avg_pool_dim_info[1] = (orig_input_shape_const_tensor_ptr[1] + strides[1] - 1) / strides[1];
         avg_pool_dim_info[2] = (orig_input_shape_const_tensor_ptr[2] + strides[2] - 1) / strides[2];
-
       } else {
         avg_pool_dim_info[0] = orig_input_shape_const_tensor_ptr[0];
         avg_pool_dim_info[1] =
@@ -450,29 +450,19 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
     tensor_desc.SetOriginShape(avg_pool_assit_shape);
 
     FUSION_PASS_MAKE_SHARED(
-        (avg_table_assit_ptr = std::make_shared<GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(input_assit.get()),
+        (avg_table_assist_ptr = std::make_shared<GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(input_assit.get()),
                                                           value_table_size * sizeof(uint16_t))),
-        avg_table_assit_ptr = nullptr;
+        avg_table_assist_ptr = nullptr;
         return PARAM_INVALID);
-    vector<GeTensorPtr> avg_pool_grad_weights = {avg_table_assit_ptr};
-    ret = OpDescUtils::SetWeights(avg_pool_grad_fused_node, avg_pool_grad_weights);
-    FUSION_PASS_CHECK(ret != GRAPH_SUCCESS, CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add mean matrix failed."),
-                      return ret);
-    auto avg_pool_const_input_nodes = OpDescUtils::GetConstInputs(avg_pool_grad_fused_node);
-    NodePtr avg_pool_const_input = avg_pool_const_input_nodes[0];
-    auto avg_pool_const_input_desc = avg_pool_const_input->GetOpDesc();
-    FUSION_PASS_CHECK(avg_pool_const_input_desc == nullptr,
-                      CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The avg_pool_const_input_desc is NULL"),
-                      return PARAM_INVALID);
-    avg_pool_const_input_desc->SetType(kConstantOp);
+    avg_pool_grad_weights_vec.push_back(avg_table_assist_ptr);
   }
 
   // gen kernel matrix
   // orig_input_shape_v[1] must be channel
   int64_t kernel_table_size = orig_input_shape_v[3] * k_size[1] * k_size[2];
-  int64_t inputC1 = 0;  
+  int64_t inputC1 = 0;
   if (is_dynamic) {
-    inputC1 = (avg_pool_dim_info[3] + COUT - 1) / COUT;  
+    inputC1 = (avg_pool_dim_info[3] + COUT - 1) / COUT;
     kernel_table_size = COUT * inputC1 * CIN * k_size[1] * k_size[2];
     FUSION_PASS_CHECK((inputC1 != kernel_table_size / (COUT * CIN * k_size[1] * k_size[2])),
                   OP_LOGW(kFusedOpType.c_str(), "The kernel_table_size overlap , over int64"), return NOT_CHANGED);
@@ -502,7 +492,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                     return ret);
   vector<int64_t> kernel_table_assit_dim_info{k_size[1], k_size[2], orig_input_shape_v[3], 1LL};
   vector<int64_t> kernel_table_assit_dim_info_dynamic{k_size[1], k_size[2], 1LL, avg_pool_dim_info[3]};
-  GeTensorDesc kernel_table_tensor_desc(GeShape(), FORMAT_HWCN, DT_FLOAT16);  
+  GeTensorDesc kernel_table_tensor_desc(GeShape(), FORMAT_HWCN, DT_FLOAT16);
   if (!is_dynamic) {
     OP_LOGI(kFusedOpType.c_str(), "not dynamic");
     GeShape assit_shape(kernel_table_assit_dim_info);
@@ -525,17 +515,52 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                                kernel_table_size * sizeof(uint16_t))),
                           kernel_table_assit_ptr = nullptr;
                           return PARAM_INVALID);
-  vector<GeTensorPtr> kernel_weights = {kernel_table_assit_ptr};
-  ret = OpDescUtils::SetWeights(avg_pool_grad_fused_node, kernel_weights);
+
+  avg_pool_grad_weights_vec.push_back(kernel_table_assit_ptr);
+  ret = OpDescUtils::SetWeights(avg_pool_grad_fused_node, avg_pool_grad_weights_vec);
   FUSION_PASS_CHECK(ret != GRAPH_SUCCESS,
                     CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add kernel matrix failed."), return ret);
-  auto kernel_const_input_nodes = OpDescUtils::GetConstInputs(avg_pool_grad_fused_node);
-  NodePtr kernel_const_input = kernel_const_input_nodes[0];
-  auto kernel_const_input_desc = kernel_const_input->GetOpDesc();
-  FUSION_PASS_CHECK(kernel_const_input_desc == nullptr,
-                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The kernel_const_input_desc is NULL"),
-                    return PARAM_INVALID);
-  kernel_const_input_desc->SetType(kConstantOp);
+
+  auto avg_pool_const_input_nodes = OpDescUtils::GetConstInputs(avg_pool_grad_fused_node);
+  if (!is_dynamic) {
+    vector<int32_t> input_nodes_idx;
+    if (avg_pool_const_input_nodes.size() == 3) {
+      input_nodes_idx = {1, 2};
+    } else if (avg_pool_const_input_nodes.size() == 2) {
+      input_nodes_idx = {0, 1};
+    } else {
+      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGradFusionPass static branch adds assist tensor failed");
+      return NOT_CHANGED;
+    }
+    auto avg_pool_const_input = avg_pool_const_input_nodes[input_nodes_idx[0]];
+    auto kernel_const_input = avg_pool_const_input_nodes[input_nodes_idx[1]];
+    auto avg_pool_const_input_desc = avg_pool_const_input->GetOpDesc();
+    FUSION_PASS_CHECK(avg_pool_const_input_desc == nullptr,
+                      CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The avg_pool_const_input_desc is NULL"),
+                      return PARAM_INVALID);
+    avg_pool_const_input_desc->SetType(kConstantOp);
+
+    auto kernel_const_input_desc = kernel_const_input->GetOpDesc();
+    FUSION_PASS_CHECK(kernel_const_input_desc == nullptr,
+                      CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The kernel_const_input_desc is NULL"),
+                      return PARAM_INVALID);
+    kernel_const_input_desc->SetType(kConstantOp);
+  } else {
+    NodePtr kernel_const_input = nullptr;
+    if (avg_pool_const_input_nodes.size() == 2) {
+      kernel_const_input = avg_pool_const_input_nodes[1];
+    } else if (avg_pool_const_input_nodes.size() == 1) {
+      kernel_const_input = avg_pool_const_input_nodes[0];
+    } else {
+      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGradFusionPass dynamic branch adds assist tensor failed");
+      return NOT_CHANGED;
+    }
+    auto kernel_const_input_desc = kernel_const_input->GetOpDesc();
+    FUSION_PASS_CHECK(kernel_const_input_desc == nullptr,
+                      CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The kernel_const_input_desc is NULL"),
+                      return PARAM_INVALID);
+    kernel_const_input_desc->SetType(kConstantOp);
+  }
 
   if (!is_dynamic) {
     NodePtr fusion_node = nullptr;
