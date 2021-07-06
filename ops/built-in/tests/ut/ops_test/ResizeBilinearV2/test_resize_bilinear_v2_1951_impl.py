@@ -69,9 +69,9 @@ def tensor_dict(tensor_ori_shape, tensor_ori_format, tensor_type, tensor_format=
     return gen_dict
 
 
-def test_1981_fp16_small_shape(test_arg):
+def test_1951_fp16_small_shape(test_arg):
     """
-    test_1981_fp16_small_shape
+    test_1951_fp16_small_shape
 
     Parameters:
     ----------
@@ -81,7 +81,7 @@ def test_1981_fp16_small_shape(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
+    set_current_compile_soc_info('Ascend710')
     image_shape = [-1, 16, 16, 16]
     image_dtype = "float16"
     size = [16, 16]
@@ -95,9 +95,9 @@ def test_1981_fp16_small_shape(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_fp32_small_shape(test_arg):
+def test_1951_fp32_small_shape(test_arg):
     """
-    test_1981_fp16_small_shape
+    test_1951_fp16_small_shape
 
     Parameters:
     ----------
@@ -107,7 +107,7 @@ def test_1981_fp32_small_shape(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
+    set_current_compile_soc_info('Ascend710')
     image_shape = [-1, 17, 32, 22]
     image_dtype = "float32"
     size = [16, 16]
@@ -117,59 +117,20 @@ def test_1981_fp32_small_shape(test_arg):
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           True, False, "test_1981_fp32_small_shape_tf")
+                           True, False, "test_1951_fp32_small_shape_tf")
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           True, True, "test_1981_fp32_small_shape_tt")
+                           True, True, "test_1951_fp32_small_shape_tt")
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           False, False, "test_1981_fp32_small_shape_ff")
+                           False, False, "test_1951_fp32_small_shape_ff")
     set_current_compile_soc_info(test_arg)
 
 
-def test_new_performance(test_arg):
-    """
-    test_1981_fp16_small_shape
-
-    Parameters:
-    ----------
-    test_arg: may be used for te_set_version()
-
-    Returns
-    -------
-    None
-    """
-    image_shape = [-1, 17, 32, 22]
-    image_dtype = "float32"
-    size = [16, 16]
-    output_shape = [image_shape[0], image_shape[1], size[0], size[1]]
-
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
-                           tensor_dict([2], "NCHW", "int32"),
-                           tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           False, False, "test_new_performance_1")
-        resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
-                           tensor_dict([2], "NCHW", "int32"),
-                           tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           True, False, "test_new_performance_2")
-        image_dtype = "float16"
-        resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
-                           tensor_dict([2], "NCHW", "int32"),
-                           tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           True, True), "test_new_performance_3"
-        resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
-                           tensor_dict([2], "NCHW", "int32"),
-                           tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           False, False, "test_new_performance_4")
-    set_current_compile_soc_info(test_arg)
-
-
-ut_case.add_cust_test_func(test_func=test_1981_fp16_small_shape)
-ut_case.add_cust_test_func(test_func=test_1981_fp32_small_shape)
-ut_case.add_cust_test_func(test_func=test_new_performance)
+ut_case.add_cust_test_func(test_func=test_1951_fp16_small_shape)
+ut_case.add_cust_test_func(test_func=test_1951_fp32_small_shape)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):
