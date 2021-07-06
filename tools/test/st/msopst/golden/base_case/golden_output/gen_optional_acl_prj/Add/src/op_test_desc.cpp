@@ -95,6 +95,9 @@ bool OpTestDesc::AddTensorAttr(const OpTestAttr &attr)
             aclopSetAttrListListInt(opAttr, attr.name.c_str(), attr.listIntPtrAttr.size(), const_cast<const int *>(attr.listIntNumValues.data()),
                 attr.listIntPtrAttr.data());
             break;
+        case OP_DTYPE:
+            aclopSetAttrDataType(opAttr, attr.name.c_str(), attr.dtypeAttr);
+            break;
         default:
             break;
     }

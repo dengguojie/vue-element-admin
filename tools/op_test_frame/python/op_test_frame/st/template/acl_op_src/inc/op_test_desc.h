@@ -14,6 +14,7 @@
 #include <vector>
 #include <cstdint>
 #include "acl/acl.h"
+#include "acl/acl_op.h"
 enum AttrType {
     OP_BOOL,
     OP_INT,
@@ -23,7 +24,8 @@ enum AttrType {
     OP_LIST_INT,
     OP_LIST_FLOAT,
     OP_LIST_STRING,
-    OP_LIST_INT_PTR
+    OP_LIST_INT_PTR,
+    OP_DTYPE
 };
 
 struct OpTestAttr {
@@ -39,6 +41,7 @@ struct OpTestAttr {
     std::vector<const char*> listStringAttr;
     std::vector<int64_t*> listIntPtrAttr;
     std::vector<int32_t> listIntNumValues;
+    aclDataType dtypeAttr;
 };
 
 /**

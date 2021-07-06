@@ -125,6 +125,7 @@ ATTR_TYPE_MAP = {
     'float': 'float',
     'bool': 'bool',
     'str': 'string',
+    'type': 'data_type',
     'listInt': 'list_int',
     'listFloat': 'list_float',
     'listBool': 'list_bool',
@@ -137,6 +138,7 @@ OP_ATTR_TYPE_MAP = {
     'float': 'OP_FLOAT',
     'bool': 'OP_BOOL',
     'string': 'OP_STRING',
+    'data_type': 'OP_DTYPE',
     'list_int': 'OP_LIST_INT',
     'list_float': 'OP_LIST_FLOAT',
     'list_bool': 'OP_LIST_BOOL',
@@ -149,6 +151,7 @@ OP_PROTO_PARSE_ATTR_TYPE_MAP = {
     "Float": "float",
     "String": "str",
     "Bool": "bool",
+    "Type": "type",
     "ListInt": "listInt",
     "ListFloat": "listFloat",
     "ListString": "listStr",
@@ -161,11 +164,30 @@ ATTR_MEMBER_VAR_MAP = {
     'float': 'floatAttr',
     'bool': 'boolAttr',
     'string': 'stringAttr',
+    'data_type': 'dtypeAttr',
     'list_int': 'listIntAttr',
     'list_float': 'listFloatAttr',
     'list_bool': 'listBoolAttr',
     'list_string': 'listStringAttr',
     'list_list_int': 'listIntPtrAttr'
+}
+
+ATTR_TYPE_SUPPORT_TYPE_MAP = {
+    "int8": "DT_INT8",
+    "int32": "DT_INT32",
+    "int16": "DT_INT16",
+    "int64": "DT_INT64",
+    "uint8": "DT_UINT8",
+    "uint16": "DT_UINT16",
+    "uint32": "DT_UINT32",
+    "uint64": "DT_UINT64",
+    "float": "DT_FLOAT",
+    "float16": "DT_FLOAT16",
+    "float32": "DT_FLOAT",
+    "bool": "DT_BOOL",
+    "double": "DT_DOUBLE",
+    "complex64": "DT_COMPLEX64",
+    "complex128": "DT_COMPLEX128"
 }
 
 OPTIONAL_TYPE_LIST = ['UNDEFINED', 'RESERVED']
@@ -218,7 +240,10 @@ def create_attr_value_str(attr_value):
         res_str = create_attr_list_str(attr_value)
     elif isinstance(attr_value, str):
         # string
-        res_str = '"' + attr_value + '"'
+        if attr_value.startswith("ACL"):
+            res_str = attr_value
+        else:
+            res_str = '"' + attr_value + '"'
     elif isinstance(attr_value, bool):
         # bool
         if attr_value:
@@ -438,6 +463,14 @@ def check_value_valid(fe_type, value, name, prefix=""):
         value_type = str
     elif fe_type == 'float':
         value_type = float
+    elif fe_type == 'data_type':
+        if value not in ATTR_TYPE_SUPPORT_TYPE_MAP.keys():
+            print_error_log(
+                'The value (%s) is invalid. The value of "%s" for "attr" '
+                'only supports in %s. Please modify it.'
+                % (value, name, ATTR_TYPE_SUPPORT_TYPE_MAP.keys()))
+            raise OpTestGenException(OP_TEST_GEN_INVALID_DATA_ERROR)
+        value_type = str
     elif fe_type == 'list_int':
         if not isinstance(value, list):
             print_error_log(
@@ -469,19 +502,19 @@ def check_attr_value_valid(attr):
     :param attr: the attr to check
     :return:
     """
-    attr_type = attr['type']
+    attr_type = attr.get('type')
     if attr_type.startswith('list_'):
-        if not isinstance(attr['value'], list):
+        if not isinstance(attr.get('value'), list):
             print_error_log(
                 'The value (%s) is invalid. The value of "%s" for "attr" '
                 'only supports %s. Please modify it.'
-                % (attr['value'], attr['name'], attr_type))
+                % (attr.get('value'), attr.get('name'), attr_type))
             raise OpTestGenException(OP_TEST_GEN_INVALID_DATA_ERROR)
-        for value in attr['value']:
+        for value in attr.get('value'):
             check_value_valid(
-                attr_type[len('list_'):], value, attr['name'], 'list_')
+                attr_type[len('list_'):], value, attr.get('name'), 'list_')
     else:
-        check_value_valid(attr_type, attr['value'], attr['name'])
+        check_value_valid(attr_type, attr.get('value'), attr.get('name'))
 
 
 def load_json_file(json_path):

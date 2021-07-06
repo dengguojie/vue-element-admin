@@ -76,6 +76,11 @@ def _create_acl_op_json_content(testcase_list):
         if "attr" in testcase_struct.keys():
             tmp_dic['attr'] = []
             for attr_dic in testcase_struct['attr']:
+                if attr_dic.get('type') == 'data_type':
+                    if attr_dic.get(
+                            'value') in utils.ATTR_TYPE_SUPPORT_TYPE_MAP.keys():
+                        attr_dic['value'] = utils.ATTR_TYPE_SUPPORT_TYPE_MAP.get(
+                            attr_dic.get('value'))
                 tmp_dic['attr'].append(attr_dic)
 
         # only append non-repetitive json struct
@@ -209,6 +214,16 @@ def _replace_dict_list(attr_dic, attr_code_str, attr_index):
     return attr_code_str
 
 
+def _check_attr_value(attr_dic):
+    # deal with the type
+    attr_value = attr_dic.get('value')
+    if attr_dic.get('type') == 'data_type':
+        if attr_value in utils.ATTR_TYPE_SUPPORT_TYPE_MAP.keys():
+            dtype = utils.adapt_acl_datatype(attr_value)
+            attr_value = "ACL_{}".format(str(dtype).upper())
+    return attr_value
+
+
 def _get_attr_desc(testcase_struct):
     all_attr_code_snippet = ""
     if "attr" in testcase_struct.keys():
@@ -219,15 +234,16 @@ def _get_attr_desc(testcase_struct):
                                 attr_index=str(attr_index),
                                 type=utils.OP_ATTR_TYPE_MAP.get(attr_dic.get('type')),
                                 name=attr_dic.get('name'))
+            attr_value = _check_attr_value(attr_dic)
             attr_code_str += "    attr{attr_index}.{type} = {value};\n"\
                 .format(
                     attr_index=str(attr_index),
                     type=utils.ATTR_MEMBER_VAR_MAP.get(attr_dic.get('type')),
-                    value=utils.create_attr_value_str(attr_dic.get('value')))
+                    value=utils.create_attr_value_str(attr_value))
 
             # deal with the list_list_int attr
             if attr_dic.get('type') == "list_list_int":
-                if isinstance(attr_dic.get('value'), list):
+                if isinstance(attr_value, list):
                     attr_code_str = _replace_dict_list(
                         attr_dic, attr_code_str, attr_index)
             attr_code_str += "    opTestDesc.opAttrVec.push_back(" \
