@@ -6,28 +6,6 @@ import numpy as np
 
 ut_case = OpUT("GatherV2D", None, None)
 
-
-def test_op_check_supported(test_arg):
-    from impl.gather_v2_d import check_supported
-    check_supported({"shape": [20, 28], "dtype": "int8", "format": "ND", "ori_shape": [20, 28], "ori_format": "ND"},
-                     {"shape": [200], "dtype": "int32", "format": "ND", "ori_shape": [200], "ori_format": "ND"},
-                     {"shape": [200, 28], "dtype": "int8", "format": "NCHW", "ori_shape": [200, 28],"ori_format": "ND"})
-    check_supported({"shape": [20], "dtype": "float16", "format": "ND", "ori_shape": [-2], "ori_format": "ND"},
-                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [10], "ori_format": "ND"},
-                     {"shape": [10], "dtype": "float16", "format": "NCHW", "ori_shape": [10], "ori_format": "ND"})
-    check_supported({"shape": [30, 5, 61], "dtype": "int32", "format": "ND", "ori_shape": [30, 5, 61],
-                     "ori_format": "ND"},
-                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [-2], "ori_format": "ND"},
-                     {"shape": [10, 5, 61], "dtype": "int32", "format": "NCHW", "ori_shape": [10, 5, 61], "ori_format": "NCHW"},
-                     )
-    check_supported({"shape": [10, 1, 28, 16], "dtype": "int64", "format": "ND", "ori_shape": [10, 1, 28, 16],
-                     "ori_format": "ND"},
-                     {"shape": [10], "dtype": "int32", "format": "ND", "ori_shape": [10], "ori_format": "ND"},
-                     {"shape": [10, 1, 28, 16], "dtype": "int32", "format": "NCHW", "ori_shape": [10, 1, 28, 16],
-                      "ori_format": "NCHW"}
-                     )
-
-
 case1 = {"params": [{"shape": (30522, 1024), "dtype": "float32", "format": "NHWC", "ori_shape": (30522, 1024),"ori_format": "NHWC"},
                     {"shape": (512,), "dtype": "int32", "format": "NHWC", "ori_shape": (512,),"ori_format": "NHWC"},
                     {"shape": (30522, 1024), "dtype": "float32", "format": "NHWC", "ori_shape": (30522, 1024),"ori_format": "NHWC"},
@@ -120,7 +98,6 @@ precision_case3 = {"params": [{"shape": (512,1024), "dtype": "float16", "format"
                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
 
 
-ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_precision_case("Ascend910", precision_case1)
 ut_case.add_precision_case("Ascend910", precision_case2)
 ut_case.add_precision_case("Ascend910", precision_case3)
