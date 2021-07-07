@@ -380,6 +380,9 @@ def main(argv):
         if case_dir is None:
             # get relate ut failed.
             exit(-1)
+        for dir_item in case_dir:
+            if not os.path.exists(dir_item):
+                case_dir.remove(dir_item)
         if not case_dir:
             # has no relate ut, not need run ut.
             exit(0)
