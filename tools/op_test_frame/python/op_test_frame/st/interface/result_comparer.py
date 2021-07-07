@@ -149,7 +149,7 @@ def _get_error_percent(diff_list, real_data, data_compe, split_count,
         utils.print_info_log(
             'Maximum error is: %s. Tolerance threshold is: %s.' % (
                 max_error, diff_list[2]))
-    return [err_idx, err_diff], fulfill_percent
+    return result, [err_idx, err_diff], fulfill_percent
 
 
 def _check_overflows_count(data_compe):
@@ -190,7 +190,7 @@ def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
     except MemoryError:
         return result, 0.0, max_error
     _display_output(real_data, data_compe, start, end, diff_thd)
-    err_list, fulfill_percent = _get_error_percent(
+    result, err_list, fulfill_percent = _get_error_percent(
         [diff_abs, diff_thd, max_diff_hd], real_data, data_compe, split_count,
         pct_thd)
     if result == "Failed":
