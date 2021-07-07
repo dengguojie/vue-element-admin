@@ -307,7 +307,8 @@ def get_change_relate_op_type_list(changed_file_info_from_ci):
 
         def _deal_op_test_frame_change():
             case_changed_files = file_change_info.test_files
-            if not case_changed_files:
+            fram_change_files = file_change_info.op_test_frame_files
+            if not case_changed_files and not fram_change_files:
                 return
             case_changed_dirs = []
 

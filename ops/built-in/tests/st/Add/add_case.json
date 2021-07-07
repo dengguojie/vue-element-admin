@@ -24,5 +24,35 @@
         "type": ["float16"]
       }
     ]
+  },
+  {
+    "op": "Add",
+    "case_name" : "test_add_002",
+    "calc_expect_func_file": "test_add_golden.py:calc_expect_func",
+    "input_desc": [
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "data_distribute" : "uniform",
+        "name": "x1"
+        },
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "value_range": [[0, 1]],
+        "name": "x2"
+        }
+    ],
+    "output_desc": [
+        {
+        "format": "ND",
+        "shape": [[4]],
+        "type": ["float16"],
+        "name": "y1"
+        }
+    ]
   }
 ]
