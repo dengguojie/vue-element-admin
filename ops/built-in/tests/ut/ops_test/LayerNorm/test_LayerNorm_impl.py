@@ -27,6 +27,18 @@ case2 = {"params": [{"shape": (64,128,1024), "dtype": "float16", "format": "NCHW
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case21 = {"params": [{"shape": (128, 1024), "dtype": "float16", "format": "ND", "ori_shape": (128, 1024),"ori_format": "ND"},
+                    {"shape": (1024, ), "dtype": "float16", "format": "ND", "ori_shape": (1024, ),"ori_format": "ND"},
+                    {"shape": (1024, ), "dtype": "float16", "format": "ND", "ori_shape": (1024, ),"ori_format": "ND"},
+                    {"shape": (128, 1024), "dtype": "float16", "format": "ND", "ori_shape": (128, 1024),"ori_format": "ND"},
+                    {"shape": (128, 1), "dtype": "float16", "format": "ND", "ori_shape": (128, 1),"ori_format": "ND"},
+                    {"shape": (128, 1), "dtype": "float16", "format": "ND", "ori_shape": (128, 1),"ori_format": "ND"},
+                    -1, -1],
+         "addition_params": {'impl_mode': 'keep_fp16'},
+         "case_name": "layer_norm_21",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}         
 case3 = {"params": [{"shape": (11,2,1023), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1023),"ori_format": "NCHW"},
                     {"shape": (1023,), "dtype": "float16", "format": "NCHW", "ori_shape": (1023,),"ori_format": "NCHW"},
                     {"shape": (1023,), "dtype": "float16", "format": "NCHW", "ori_shape": (1023,),"ori_format": "NCHW"},
@@ -57,6 +69,18 @@ case5 = {"params": [{"shape": (64, 768, 16, 16), "dtype": "float16", "format": "
                     {"shape": (12288, 1), "dtype": "float16", "format": "ND", "ori_shape": (12288, 1),"ori_format": "ND"},
                     1, 1],
          "case_name": "layer_norm_3",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case51 = {"params": [{"shape": (64, 768, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (12288, 1024),"ori_format": "ND"},
+                    {"shape": (1024,), "dtype": "float16", "format": "ND", "ori_shape": (1024,),"ori_format": "ND"},
+                    {"shape": (1024,), "dtype": "float16", "format": "ND", "ori_shape": (1024,),"ori_format": "ND"},
+                    {"shape": (64, 768, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (12288, 1024),"ori_format": "ND"},
+                    {"shape": (12288, 1), "dtype": "float16", "format": "ND", "ori_shape": (12288, 1),"ori_format": "ND"},
+                    {"shape": (12288, 1), "dtype": "float16", "format": "ND", "ori_shape": (12288, 1),"ori_format": "ND"},
+                    1, 1],
+         "addition_params": {'impl_mode': 'keep_fp16'},
+         "case_name": "layer_norm_31",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
@@ -121,9 +145,11 @@ case10 = {"params": [{"shape": (4, 2, 16, 16), "dtype": "float32", "format": "FR
          "support_expect": True}
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case21)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend310", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend910A"], case51)
 ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
