@@ -294,11 +294,22 @@ Status Conv2DbpInputDilationFusionPass::generate_pad_node(
                     ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "add input desc to pad failed"), return FAILED);
 
   vector<vector<int64_t>> pads;
-  pads.push_back({0, 0});
-  pads.push_back({0, 0});
-  pads.push_back({0, pad_down});
-  pads.push_back({0, pad_after});
-  pads.push_back({0, 0});
+  if (fmt_str == "NHWC") {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "padding node origin shape is  NHWC");
+      pads.push_back({0, 0});
+      pads.push_back({0, pad_down});
+      pads.push_back({0, pad_after});
+      pads.push_back({0, 0});
+  } else if (fmt_str == "NCHW") {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "padding node origin shape is  NCHW");
+      pads.push_back({0, 0});
+      pads.push_back({0, 0});
+      pads.push_back({0, pad_down});
+      pads.push_back({0, pad_after});
+  } else {
+      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "pad node do not support this format, supported(NHWC, NCHW)");
+      return FAILED;
+  }
   AttrUtils::SetListListInt(pad_desc, "paddings", pads);
 
   auto new_pad_node = graph->AddNode(pad_desc);
