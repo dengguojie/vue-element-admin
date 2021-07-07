@@ -20,6 +20,7 @@ import functools
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
+from impl import trans_data_positive_source_tc
 
 # available ub size
 TOTAL_UB_MEMORY = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
@@ -4345,6 +4346,12 @@ def nd_2_nz(src, dst, src_format, dst_format, kernel_name="nd_2_nz"):
     para_check.check_shape_rule(src_shape)
     check_list = ("float16", "float32", "int8", "int32")
     para_check.check_dtype_rule(src_dtype, check_list)
+
+    white_list = [[38400, 54], [76800, 54], [153600, 54],
+                  [307200, 54], [614400, 54], [1228800, 54], [2457600, 54]]
+    if list(src_shape) in white_list:
+        trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
+        return
 
     if src_format.upper() not in {"NHWC", "NCHW", "ND"}:
         raise RuntimeError("The src_format of ND2Nz"
