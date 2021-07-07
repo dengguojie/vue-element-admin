@@ -129,10 +129,6 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "MatmulReshapeBiasAddFusion cannot be applied for unknown shape"),
                     return fe::NOT_CHANGED);
 
-  FUSION_PASS_CHECK((node_matmul->GetName().find("transformer") != string::npos),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "MatmulReshapeBiasAddFusion is not supported with transformer net."),
-                    return fe::NOT_CHANGED);
-
   // check reshape node
   auto reshape_op_desc = node_reshape->GetOpDesc();
   FUSION_PASS_CHECK((reshape_op_desc == nullptr),
