@@ -151,6 +151,16 @@ def _cube_3d_compute(fmap,
     else:
         width_out = (fmap_w + pad_left + pad_right - ((filter_w - 1) * dilation_w + 1)) // stride_w + 1
 
+    if not Conv3DParam.var_map \
+        and tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
+        and width_out < 2 \
+        and height_out != 1 \
+        and not _TENSOR_MAP["l0a_load2d_flag"]:
+        pad_right += stride_w
+        pads[5] += stride_w
+        width_out += 1
+        _TENSOR_MAP["flag_load3d_special_case"] = True
+
     config = tbe_platform.CUBE_MKN[in_dtype]
     block_size_k = config['mac'][1]
     block_size_m = config['mac'][0]
@@ -768,7 +778,16 @@ def _remove_pad(res, res_remove_pad_shape):
     """
     _NAME_INDEX[0] += 1
     with tvm.tag_scope('conv_vector_remove_pad'):
-        res_tensor = tvm.compute(res_remove_pad_shape,
+        if _TENSOR_MAP["flag_load3d_special_case"]:
+            res_remove_pad_shape[2] = res_remove_pad_shape[2] // 2
+            res_tensor = tvm.compute(res_remove_pad_shape,
+                                 lambda batch_dout, cout1, howo, cout0:
+                                 res(batch_dout, cout1, 2 * howo, cout0),
+                                 name='remove_pad' + "_cc_" +
+                                      str(_NAME_INDEX[0]))
+
+        else:
+            res_tensor = tvm.compute(res_remove_pad_shape,
                                  lambda batch_dout, cout1, howo, cout0:
                                  res(batch_dout, cout1, howo, cout0),
                                  name='remove_pad' + "_cc_" +
@@ -907,14 +926,6 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     only_fhkh_pass_flag = ((1 <= filter_dilated_h <= 11) and
                            (stride_dhw[1] == 1) and
                            (h_out == 1))
-
-    if load2d_pass_flag or only_fhkh_pass_flag:
-        pass
-    else:
-        if w_out < 2 and h_out != 1:
-            # Chip Design demand w_out must >=2 when h_out != 1
-            cube_err.raise_err_one_para('E62006', 'conv3d',
-                'Chip Design demand w_out must >=2 when h_out != 1')
 
     # check for not bigger than L1
     l1_buffer_size = tbe_platform_info.get_soc_spec("L1_SIZE")
@@ -1150,6 +1161,7 @@ def conv3d(x, filter, filter_size, para_dict):
     _TENSOR_MAP["cycle_flag_info"] = cyclebuffer_flag
     dsl_flag = para_dict.get("dsl_flag")
     _TENSOR_MAP["dsl_flag"] = dsl_flag
+    _TENSOR_MAP["flag_load3d_special_case"] = False
 
     conv_res = _cube_3d_compute(x,
                                 filter,

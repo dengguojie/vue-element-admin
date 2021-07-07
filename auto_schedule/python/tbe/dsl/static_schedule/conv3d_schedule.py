@@ -74,6 +74,7 @@ class CceConv3dOp:
         self.var_map = conv3d_compute.Conv3DParam.var_map
         self.tiling_case = {}
         self.var_range = {}
+        self.flag_load3d_special_case = self._tensor_map["flag_load3d_special_case"]
 
     def _get_value(self, ele):
         res_ele = [ele.value if isinstance(ele, tvm.expr.IntImm) else \
@@ -1369,6 +1370,9 @@ class CceConv3dOp:
             tiling["CL0_matrix"][0],
             tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]
         ]
+        
+        if self.flag_load3d_special_case:
+            c_tiling_factor[1] = c_tiling_factor[1] // 2
 
         n_0 = config["mac"][2]
         c_factor = [
@@ -1379,11 +1383,19 @@ class CceConv3dOp:
         ]
 
         c_ub_tiling_factor = tiling["CUB_matrix"]
-        c_ub_factor = [
-            compute_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
-            compute_util.int_ceil_div(c_tiling_factor[1],
-                                 c_ub_tiling_factor[1] * c_ub_tiling_factor[2])
-        ]
+       
+        if self.flag_load3d_special_case:
+            c_ub_factor = [
+                compute_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
+                compute_util.int_ceil_div(c_tiling_factor[1],
+                                    c_ub_tiling_factor[1] * c_ub_tiling_factor[2] // 2)
+            ]
+        else:
+            c_ub_factor = [
+                compute_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
+                compute_util.int_ceil_div(c_tiling_factor[1],
+                                    c_ub_tiling_factor[1] * c_ub_tiling_factor[2])
+            ]
 
         al1_factor, bl1_factor = self._factor_al1_bl1(tiling, c_factor)
 
@@ -1433,8 +1445,12 @@ class CceConv3dOp:
         c_outer_outer_outer_outer, c_outer_outer_outer_inner = sch[
             res_c].split(c_outer_outer_outer, nparts=block_dim[1])
         bl1_at_c_axis = c_outer_outer_outer_inner
+        
+        if self.flag_load3d_special_case:
+            m_outer_outer_outer_size = max(1, al1_factor[1] // 2)
+        else:
+            m_outer_outer_outer_size = al1_factor[1]
 
-        m_outer_outer_outer_size = al1_factor[1]
         block_dim[2] = tvm.min(block_dim[2], m_outer_outer_outer_size)
         m_outer_outer_outer_outer, m_outer_outer_outer_inner = sch[
             res_c].split(m_outer_outer_outer, nparts=block_dim[2])

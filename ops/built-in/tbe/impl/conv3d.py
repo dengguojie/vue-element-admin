@@ -633,14 +633,6 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
                            (stride_dhw[1] == 1) and
                            (h_out == 1))
 
-    if load2d_pass_flag or only_fhkh_pass_flag:
-        pass
-    else:
-        if w_out < 2 and h_out != 1:
-            # Chip Design demand w_out must >=2 when h_out != 1
-            error_manager_cube.raise_err_one_para('E62006', 'conv3d',
-                'Chip Design demand w_out must >=2 when h_out != 1')
-
     # check for not bigger than L1
     l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
     m_bit_ratio = {"float16": 2, "int8": 1}
