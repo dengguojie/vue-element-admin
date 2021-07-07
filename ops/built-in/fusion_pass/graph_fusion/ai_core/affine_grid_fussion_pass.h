@@ -45,9 +45,9 @@ namespace fe {
         const string FUSED_OP_TYPE = "AffineGrid";
 
         Status get_fuse_node_info(ge::NodePtr node);
-        void get_node_const_value(const Tensor &const_tensor, const DataType &dtype,
+        Status get_node_const_value(const Tensor &const_tensor, const DataType &dtype,
                                std::vector<int64_t> &const_data);
-        void init_graph_shape(vector<int64_t> &output_size,
+        Status init_graph_shape(vector<int64_t> &output_size,
                             vector<int64_t> &assist_shape,
                             vector<int64_t> &bmm_output_shape);
 
