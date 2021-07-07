@@ -1,7 +1,9 @@
 import os
+import shutil
 from absl import flags, app
 from typing import List, Dict
 
+import cube_ut_runner
 from op_test_frame.ut import op_ut_runner
 from op_test_frame.common import op_status
 
@@ -365,6 +367,49 @@ def get_change_relate_ut_dir_list(changed_file_info_from_ci):
         print("[INFO] relate ut directory list is empty")
     return relate_ut_directory_list
 
+def get_cube_case_dir(case_dir):
+    cube_case_dir = []
+    vector_case_dir = []
+    cube_ops = ['AvgPool', 'AvgPool3D', 'AvgPool3DD',
+                'AvgPool3DGrad', 'AvgPool3DGradD',
+                'AvgPoolGrad', 'AvgPoolGradD',
+                'AvgPoolV2', 'AvgPoolV2GradD', 'Avg_pool_v2_grad_d',
+                'BatchMatmul', 'BatchMatmulV2',
+                'Conv2D', 'Conv2DAipp',
+                'Conv2DBackpropFilter', 'Conv2DBackpropFilterD',
+                'Conv2DBackpropInput', 'Conv2DBackpropInputD',
+                'Conv2DBn1', 'Conv2DCompress', 'Conv2DConv', 'Conv2DDim',
+                'Conv2DErr', 'Conv2DSreadSwrite',
+                'Conv2DTranspose', 'Conv2DTransposeD',
+                'Conv2DV200', 'Conv2D_Compress',
+                'Conv2D_Lx_Fusion', 'Conv2D_Vector_Fused',
+                'Conv3D',
+                'Conv3DBackpropFilter', 'Conv3DBackpropFilterD',
+                'Conv3DBackpropInput', 'Conv3DBackpropInputD',
+                'Conv3DTranspose', 'Conv3DTransposeD',
+                'DepthwiseConv2D',
+                'DepthwiseConv2DBackpropFilter',
+                'DepthwiseConv2DBackpropFilterD',
+                'DepthwiseConv2DBackpropInput',
+                'DepthwiseConv2DBackpropInputD',
+                'DepthwiseConv2D_Fused'
+                ]
+    base_ut_dir = os.path.join(repo_root, "ops", "built-in", "tests", "ut", "ops_test")
+    if isinstance(case_dir, str):
+        for item in os.listdir(base_ut_dir):
+            if item in cube_ops:
+                cube_case_dir.append(os.path.join(base_ut_dir, item))
+            else:
+                vector_case_dir.append(os.path.join(base_ut_dir, item))
+    else:
+        for item in case_dir:
+            if os.path.basename(item) in cube_ops:
+                cube_case_dir.append(item)
+            else:
+                vector_case_dir.append(item)
+
+    return cube_case_dir, vector_case_dir
+
 
 def main(argv):
     _ = argv
@@ -386,23 +431,50 @@ def main(argv):
         if not case_dir:
             # has no relate ut, not need run ut.
             exit(0)
-    cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"
-    report_path = FLAGS.report_path if FLAGS.report_path else "./report/ops/python_report"
-    simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
-    process_num = FLAGS.process_num
-    res = op_ut_runner.run_ut(case_dir,
-                              soc_version=soc_version,
-                              test_report="json",
-                              test_report_path=report_path,
-                              cov_report="html",
-                              cov_report_path=cov_report_path,
-                              simulator_mode="pv",
-                              simulator_lib_path=simulator_lib_path,
-                              process_num=process_num)
-    if res == op_status.SUCCESS:
-        exit(0)
-    else:
-        exit(-1)
+    cube_case_dir, vector_case_dir = get_cube_case_dir(case_dir)
+
+    if vector_case_dir:
+        cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"
+        report_path = FLAGS.report_path if FLAGS.report_path else "./report/ops/python_report"
+        simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
+        process_num = FLAGS.process_num
+        res = op_ut_runner.run_ut(vector_case_dir,
+                                soc_version=soc_version,
+                                test_report="json",
+                                test_report_path=report_path,
+                                cov_report="html",
+                                cov_report_path=cov_report_path,
+                                simulator_mode="pv",
+                                simulator_lib_path=simulator_lib_path,
+                                process_num=process_num)
+        if res != op_status.SUCCESS:
+            exit(-1)
+
+    if cube_case_dir:
+        cov_report_path = FLAGS.cov_path + '_cube' if FLAGS.cov_path else "./cov_report/ops/python_utest_cube"
+        report_path = FLAGS.report_path + '_cube'  if FLAGS.report_path else "./report/ops/python_report_cube"
+        simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
+        process_num = FLAGS.process_num
+        res = cube_ut_runner.run_ut(cube_case_dir,
+                                soc_version=soc_version,
+                                test_report="json",
+                                test_report_path=report_path,
+                                cov_report="html",
+                                cov_report_path=cov_report_path,
+                                simulator_mode="pv",
+                                simulator_lib_path=simulator_lib_path,
+                                process_num=process_num)
+        if res != op_status.SUCCESS:
+            exit(-1)
+
+        cube_cov_file = os.path.join(cov_report_path, ".coverage")
+        if os.path.exists(cube_cov_file):
+            if not os.path.exists(FLAGS.cov_path):
+                os.makedirs(FLAGS.cov_path)
+            dst_path = os.path.join(FLAGS.cov_path, '.coverage.cube')
+            shutil.move(cube_cov_file, dst_path)
+
+    exit(0)
 
 
 if __name__ == "__main__":
