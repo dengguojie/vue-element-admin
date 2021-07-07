@@ -79,8 +79,6 @@ _BIT_RATIO_DICT = {
 
 # pads valid mode to be [0, 0, 0, 0]
 _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
-# If pads is string , only support "SAME" or "VALID"
-_PADDING_SUPPORT = ('SAME', 'VALID')
 
 _L1FUSION_INPUT_CTR = 2
 
@@ -363,16 +361,7 @@ def _process_input(x_dict,
             raise RuntimeError(args_dict,
                                error_manager_util.get_error_message(args_dict))
 
-        if isinstance(pads, str) and pads not in _PADDING_SUPPORT:
-            args_dict = {
-                'errCode': 'E60021',
-                'expected_pad_mode': '[{}, {}]'.format('SAME', 'VALID'),
-                'actual_pad_mode': str(pads)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
-
-        if isinstance(pads, (tuple, list)) and len(pads) != 6:
+        if isinstance(pads, (tuple, list)) and len(pads) != _PADDING_SHAPE_DIM:
             error_manager_cube.raise_err_one_para('E62501', 'conv3d_backprop_filter', 'pads')
 
     ori_shape_x = x_dict.get("ori_shape")
@@ -523,7 +512,7 @@ def conv3d_backprop_filter_d(x_dict,
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), int,
+                             (list, tuple), (list, tuple), int,
                              (list, tuple), str, str, str, str)
 def _check_conv3dbp_filter_params(
     shape_x, shape_out_backprop,
@@ -599,22 +588,6 @@ def _check_conv3dbp_filter_params(
     para_check.check_shape_rule(strides, _STRIDES_SHAPE_DIM, _STRIDES_SHAPE_DIM,
                                 _DEFAULT_MAX_SHAPE_NUM)
 
-    def _check_attr_pads():
-        # pads check
-        if isinstance(pads, (tuple, list)) and len(pads) != _PADDING_SHAPE_DIM:
-            error_manager_cube.raise_err_one_para('E62501', 'conv3d_backprop_filter', 'pads')
-
-        if isinstance(pads, str) and pads not in _PADDING_SUPPORT:
-            args_dict = {
-                'errCode': 'E60021',
-                'expected_pad_mode': '[{}]'.format(_PADDING_SUPPORT),
-                'actual_pad_mode': str(pads)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
-
-    _check_attr_pads()
-
     # dilations check
     para_check.check_shape_rule(dilations, _CONV3D_BACKPROP_SHAPE_DIM,
                                 _CONV3D_BACKPROP_SHAPE_DIM,
@@ -663,23 +636,6 @@ def _check_conv3dbp_filter_params(
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
 
-    # pads compute
-    if pads == 'SAME':
-        pad_d = util_common.align(fmap_d, stride_d) - stride_d + filter_d_dilation - fmap_d
-        pad_d = max(pad_d, 0)
-        pad_front = pad_d // 2
-        pad_back = pad_d - pad_front
-        pad_w = util_common.align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
-        pad_w = max(pad_w, 0)
-        pad_left = pad_w // 2
-        pad_right = pad_w - pad_left
-        pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
-        pad_h = max(pad_h, 0)
-        pad_up = pad_h // 2
-        pad_down = pad_h - pad_up
-        pads = [pad_front, pad_back, pad_up, pad_down, pad_left, pad_right]
-    elif pads == "VALID":
-        pads = _PADDING_VAILD
     pads = list(pads)
     pad_front, pad_back, pad_up, pad_down, pad_left, pad_right = pads
     util_common.check_pads_value_3d(pads)
@@ -820,7 +776,7 @@ def _check_conv3dbp_filter_params(
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), int,
+                             (list, tuple), (list, tuple), int,
                              (list, tuple), str, str, str, str)
 def _conv3d_backprop_filter_cce(shape_x,
                                 shape_out_backprop,

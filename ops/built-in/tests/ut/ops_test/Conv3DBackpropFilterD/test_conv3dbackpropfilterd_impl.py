@@ -49,11 +49,42 @@ def _test_op_get_op_support_info(test_arg):
     from impl.conv3d_backprop_filter_d import get_op_support_info
 
     [x_dict, out_backprop, y_input, filter_size, strides,
-     pads, dilations, groups, data_format] = _run_api_end_with_d()
+        pads, dilations, groups, data_format] = _run_api_end_with_d()
 
     get_op_support_info(
         x_dict, out_backprop, y_input, filter_size, strides,
         pads, dilations, groups, data_format)
+
+    # test wrong_out_backprop format for get_info_op
+    try:
+        wrong_out_backprop = out_backprop.copy()
+        wrong_out_backprop["ori_format"] = 'NHWC'
+        get_op_support_info(
+            x_dict, wrong_out_backprop, y_input, filter_size, strides,
+            pads, dilations, groups, data_format)
+    except Exception as e:
+        print(e)
+
+    # test wrong_y_dict format for get_info_op
+    try:
+        wrong_y_dict = y_input.copy()
+        wrong_y_dict["ori_format"] = 'NHWC'
+        get_op_support_info(
+            x_dict, out_backprop, wrong_y_dict, filter_size, strides,
+            pads, dilations, groups, data_format)
+    except Exception as e:
+        print(e)
+
+    # test wrong_fmap format for get_info_op
+    try:
+        wrong_x_dict = x_dict.copy()
+        wrong_x_dict["ori_format"] = 'NHWC'
+        get_op_support_info(
+            wrong_x_dict, out_backprop, y_input, filter_size, strides,
+            pads, dilations, groups, data_format)
+    except Exception as e:
+        print(e)
+
 
 ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
 
@@ -99,9 +130,10 @@ out_backprop = {'ori_shape': (1, 8, 60, 88, 64), 'shape': (1, 8, 60, 88, 64),
                 'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float32'}
 case9 = _run_api_end_with_d(out_backprop=out_backprop)
 
-# test_conv3dbp_filter_invalid_stride_range_pad_SAME
-padding = 'NOTSAME'
-case10 = _run_api_end_with_d(pads=padding)
+# test_wrong_x_format
+wrong_x_dict = {'ori_shape': (1, 16, 120, 176, 32), 'shape': (1, 16, 120, 176, 32),
+                'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float32'}
+case10 = _run_api_end_with_d(x_dict=wrong_x_dict)
 
 # test_conv3dbp_filter_invalid_shape_length
 out_backprop = {'ori_shape': (1, 8, 60, 88), 'shape': (1, 8, 60, 88),
@@ -139,31 +171,79 @@ case18 = _run_api_end_with_d(filter_size=filter_size)
 
 # test_conv3dbp_filter_wrong_fmap_batch
 x_dict = {'ori_shape': (2, 16, 120, 176, 32), 'shape': (2, 16, 120, 176, 32),
-        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
+          'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'}
 case19 = _run_api_end_with_d(x_dict=x_dict)
 
 
-out_backprop={'ori_shape': (1, 9, 61, 89, 64), 'shape': (1, 9, 61, 89, 64),
-              'ori_format': 'NDHWC', 'format': 'NDHWC',
-              'dtype': 'float16'}
-pads=(1, 1, 1, 1, 1, 1)
+out_backprop = {'ori_shape': (1, 9, 61, 89, 64), 'shape': (1, 9, 61, 89, 64),
+                'ori_format': 'NDHWC', 'format': 'NDHWC',
+                'dtype': 'float16'}
+pads = (1, 1, 1, 1, 1, 1)
 case20 = _run_api_end_with_d(out_backprop=out_backprop, pads=pads)
 
 # test_conv3dbp_filter Not flag all one
-x_dict={'ori_shape': (1, 32, 240, 352, 16), 'shape': (1, 32, 240, 352, 16),
-              'ori_format': 'NDHWC', 'format': 'NDHWC',
-              'dtype': 'float16'}
-out_backprop={'ori_shape': (1, 32, 240, 352, 16), 'shape': (1, 32, 240, 352, 16),
-            'ori_format': 'NDHWC', 'format': 'NDHWC',
-            'dtype': 'float16'}
+x_dict = {'ori_shape': (1, 32, 240, 352, 16), 'shape': (1, 32, 240, 352, 16),
+          'ori_format': 'NDHWC', 'format': 'NDHWC',
+          'dtype': 'float16'}
+out_backprop = {'ori_shape': (1, 32, 240, 352, 16), 'shape': (1, 32, 240, 352, 16),
+                'ori_format': 'NDHWC', 'format': 'NDHWC',
+                'dtype': 'float16'}
 y_input = {'ori_shape': (3, 3, 3, 16, 16), 'shape': (3, 3, 3, 16, 16),
-            'ori_format': 'DHWCN', 'format': 'DHWCN',
-            'dtype': 'float32'}
+           'ori_format': 'DHWCN', 'format': 'DHWCN',
+           'dtype': 'float32'}
 filter_size = (3, 3, 3, 16, 16)
-pads=(1, 1, 1, 1, 1, 1)
-strides=(1,1,1,1,1)
+pads = (1, 1, 1, 1, 1, 1)
+strides = (1,1,1,1,1)
 case21 = _run_api_end_with_d(x_dict=x_dict, out_backprop=out_backprop,
                              y_input=y_input, filter_size=filter_size, pads=pads, strides=strides)
+
+# test check range fail_stride
+strides = (1, 1, 65, 1,1)
+case22 = _run_api_end_with_d(strides=strides)
+
+# test padding larger than filter
+out_backprop = {'ori_shape': (1, 12, 60, 88, 64), 'shape': (1, 12, 60, 88, 64),
+                'ori_format': 'NDHWC', 'format': 'NDHWC',
+                'dtype': 'float16'}
+err_pads = (4, 4, 0, 0, 0, 0)
+case23 = _run_api_end_with_d(out_backprop=out_backprop, pads=err_pads)
+
+out_backprop = {'ori_shape': (1, 8, 64, 88, 64), 'shape': (1, 8, 64, 88, 64),
+                'ori_format': 'NDHWC', 'format': 'NDHWC',
+                'dtype': 'float16'}
+err_pads = (0, 0, 4, 4, 0, 0)
+case24 = _run_api_end_with_d(out_backprop=out_backprop, pads=err_pads)
+
+out_backprop = {'ori_shape': (1, 8, 60, 92, 64), 'shape': (1, 8, 60, 92, 64),
+                'ori_format': 'NDHWC', 'format': 'NDHWC',
+                'dtype': 'float16'}
+err_pads = (0, 0, 0, 0, 4, 4)
+case25 = _run_api_end_with_d(out_backprop=out_backprop, pads=err_pads)
+
+# test_wrong_dedy_h dim value check
+out_backprop = {'ori_shape': (1, 8, 233, 88, 64), 'shape': (1, 8, 233, 88, 64),
+                'ori_format': 'NDHWC', 'format': 'NDHWC',
+                'dtype': 'float16'}
+case26 = _run_api_end_with_d(out_backprop=out_backprop)
+
+# test_non_match_dedy_c
+wrong_out_backprop = {'ori_shape': (1, 8, 60, 88, 1), 'shape': (1, 8, 60, 88, 1),
+                      'ori_format': 'NDHWC', 'format': 'NDHWC',
+                      'dtype': 'float16'}
+case27 = _run_api_end_with_d(out_backprop=wrong_out_backprop)
+
+# test filter_h_dilation > fmap_h_padding
+y_input = {'ori_shape': (2, 255, 2, 32, 64), 'shape': (2, 255, 2, 32, 64),
+           'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float32'}
+case28 = _run_api_end_with_d(y_input=y_input)
+
+# test filter_w_dilation > fmap_w_padding
+y_input = {'ori_shape': (2, 2, 255, 32, 64), 'shape': (2, 2, 255, 32, 64),
+           'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float32'}
+case29 = _run_api_end_with_d(y_input=y_input)
+
+# test fmap_channel != filter_channel * groups: 
+case30 = _run_api_end_with_d(groups=2)
 
 # Add test Cases
 ut_case.add_case(["Ascend910", "Ascend310"],
@@ -229,6 +309,33 @@ ut_case.add_case(["Ascend910", "Ascend310"],
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case21, "success", "case21", True))
 
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case22, RuntimeError, "case22", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case23, RuntimeError, "case23", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case24, RuntimeError, "case24", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case25, RuntimeError, "case25", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case26, RuntimeError, "case26", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case27, RuntimeError, "case27", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case28, RuntimeError, "case28", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case29, RuntimeError, "29", True))
+
+ut_case.add_case(["Ascend910", "Ascend310"],
+                 _gen_data_case(case30, RuntimeError, "30", True))
+
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run('Ascend910')
     exit(0)
