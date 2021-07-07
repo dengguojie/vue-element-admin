@@ -109,6 +109,7 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
             "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": kernel_name
         }
         conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
+        conv2d_tranpose.get_attr_nchw(data_format)
         dy_shape_nchw = conv2d_tranpose.get_input_nchw(out_backprop.get("ori_shape"), out_backprop.get("ori_format"))
         filter_shape_nchw = conv2d_tranpose.get_input_nchw(filter.get("ori_shape"), filter.get("ori_format"))
         _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
