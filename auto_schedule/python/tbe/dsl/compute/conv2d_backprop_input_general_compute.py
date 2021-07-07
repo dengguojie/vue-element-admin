@@ -65,7 +65,8 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         kernel_name,
         group_dict,
         var_map,
-        pooling_mode
+        pooling_mode,
+        l0a_dma_flag
     ):
         super().__init__()
         _, _, kernel_h, kernel_w = kernel_sizes
@@ -86,6 +87,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         self._cin1_g = self._group_dict.get(cube_util.GroupDictKeys.dx_c1_extend)
         self._cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         self.pooling_mode = pooling_mode
+        self.l0a_dma_flag = l0a_dma_flag
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914,R0915
         """
@@ -189,6 +191,70 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
 
             return dy_vn, shape_dy_filling
 
+        def _l0a_dma_write_select():
+            """
+            In l0a dma scenes, both expands and pads done in ub.
+            """
+            padu, padd, padl, padr = dma_new_pad
+
+            if padu != 0 or padd != 0 or padl != 0 or padr != 0 or stride_h * stride_w > 1:
+                shape_dy_filling = (
+                    dy_batch,
+                    kernel_cout1,
+                    dy_h * stride_h + padu + padd,
+                    dy_w * stride_w + padl + padr,
+                    kernel_cout0
+                    )
+                if stride_h * stride_w > 1:
+                    dy_zero = _fill_zero(shape_dy_filling)
+                    dy_filling = tvm.compute(
+                        shape_dy_filling,
+                        lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: tvm.select(
+                            tvm.all((ho_idx - padu)  % stride_h == 0, (wo_idx - padl) % stride_w == 0,
+                                     ho_idx >= padu, ho_idx < shape_dy_filling[2] - padd,
+                                     wo_idx >= padl, wo_idx < shape_dy_filling[3] - padr),
+                            dy_ddr[
+                                batch_idx,
+                                kernel_cout1_idx,
+                                (ho_idx - padu) // stride_h,
+                                (wo_idx - padl) // stride_w,
+                                kernel_cout0_idx
+                            ],
+                            dy_zero[
+                                batch_idx,
+                                kernel_cout1_idx,
+                                ho_idx,
+                                wo_idx,
+                                kernel_cout0_idx
+                            ]
+                        ),
+                        name="dy_filling_dma",
+                        tag="ub_filling_dma",
+                        attrs={"stride_expand": (self._stride_h, self._stride_w),
+                               "dma_pad": dma_new_pad}
+                    )
+                else:
+                    dy_filling = tvm.compute(
+                        shape_dy_filling,
+                        lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: tvm.select(
+                            tvm.any(ho_idx < padu, ho_idx > shape_dy_filling[2] - padd - 1,
+                                    wo_idx < padl, wo_idx > shape_dy_filling[3] - padr - 1),
+                            tvm.const(self._offset_x, dy_ddr.dtype),
+                            dy_ddr[batch_idx,
+                                   kernel_cout1_idx,
+                                   (ho_idx - padu),
+                                   (wo_idx - padl),
+                                   kernel_cout0_idx],
+                        ),
+                        name="dy_pad_dma",
+                        tag="ub_pad_dma",
+                        attrs={"stride_expand": (self._stride_h, self._stride_w),
+                               "dma_pad": dma_new_pad}
+                    )
+
+            else:
+                dy_filling = dy_ddr
+            return dy_filling
         fusion_para = self._fusion_para
         DeConvPattern.fusion_para_map = fusion_para
         DeConvPattern.dedy = dy_ddr
@@ -198,11 +264,6 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
 
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
         dilate_h, dilate_w = self._dilate_h, self._dilate_w
-
-        if self._var_map:
-            dy_filling, shape_dy_filling = _write_select_dynamic()
-        else:
-            dy_filling, shape_dy_filling = _write_select()
 
         new_stride = (1, 1)
         new_hw = (dy_h * stride_h, dy_w * stride_w)
@@ -233,6 +294,26 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
         shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
         shape_right_modify = (pad_right_after - tvm_abs(pad_right_after)) // 2
+
+        pad_up_before = (pad_up_before + tvm_abs(pad_up_before)) // 2
+        pad_left_before = (pad_left_before + tvm_abs(pad_left_before)) // 2
+        pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
+        pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
+
+        new_pad = (pad_up_before, pad_down_after,
+                   pad_left_before, pad_right_after)
+
+        if self._var_map:
+            dy_filling, shape_dy_filling = _write_select_dynamic()
+        elif self.l0a_dma_flag:
+            dma_new_pad = (pad_up_before + shape_up_modify,
+                pad_down_after + shape_down_modify,
+                pad_left_before + shape_left_modify,
+                pad_right_after + shape_right_modify)
+            dy_filling = _l0a_dma_write_select()
+        else:
+            dy_filling, shape_dy_filling = _write_select()
+
         if self._var_map:
             dy_l1_shape_6d_cut = (
                 self._real_g,
@@ -255,7 +336,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 attrs={"stride_expand": (self._stride_h, self._stride_w)}
             )
             dy_filling = dy_filling_l1
-        elif stride_h > 1 or stride_w > 1:
+        elif (stride_h > 1 or stride_w > 1) and not self.l0a_dma_flag:
             if _check_pad_zero(pad_list):
                 shape_dy_filling_cut = (
                     dy_batch,
@@ -266,7 +347,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 )
 
                 # cut dy_filling
-                dy_filling_l1 = tvm.compute(
+                dy_filling = tvm.compute(
                     shape_dy_filling_cut,
                     lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: dy_filling[
                         batch_idx,
@@ -279,7 +360,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                     tag="dy_l1_cut"
                 )
             else:
-                dy_filling_l1 = tvm.compute(
+                dy_filling = tvm.compute(
                     shape_dy_filling,
                     lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: dy_filling[
                         batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx
@@ -287,7 +368,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                     name="dy_l1",
                     tag="dy_l1"
                 )
-        elif _check_pad_zero(pad_list):
+        elif _check_pad_zero(pad_list) and not self.l0a_dma_flag:
             shape_dy_filling_cut = (
                 dy_batch,
                 kernel_cout1,
@@ -308,33 +389,22 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 name="dy_l1_modify",
                 tag="dy_l1_modify"
             )
-
-        pad_up_before = (pad_up_before + tvm_abs(pad_up_before)) // 2
-        pad_left_before = (pad_left_before + tvm_abs(pad_left_before)) // 2
-        pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
-        pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
-
-        new_pad = (pad_up_before, pad_down_after,
-                   pad_left_before, pad_right_after)
-
+        new_pad = new_pad if not self.l0a_dma_flag else [0, 0, 0, 0]
         pat_conv = cube_util.ConvDslPattern(
             kernel_h,
             kernel_w,
             new_stride,
             new_pad,
             (dilate_h, dilate_w),
-            self._offset_x
+            self._offset_x,
+            self.l0a_dma_flag
         )
 
-        if stride_h > 1 or stride_w > 1:
-            dy_col = pat_conv.generate_a(dy_filling_l1, self._real_g,
-                                         self._cou1_g, self._var_map)
-        else:
-            dy_col = pat_conv.generate_a(
-                dy_filling,
-                self._real_g,
-                self._cou1_g,
-                self._var_map)
+        dy_col = pat_conv.generate_a(
+            dy_filling,
+            self._real_g,
+            self._cou1_g,
+            self._var_map)
 
         return dy_col
 

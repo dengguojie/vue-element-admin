@@ -35,18 +35,14 @@ L1FUSION_INPUT_CTR = 2
 # dilation must be in [1,255]
 DILATION_MIN = 1
 DILATION_MAX = 255
-
-# stride must be in [1,63]
+# stride must be >= 1
 STRIDE_HW_MIN = 1
-STRIDE_HW_MAX = 63
 
 # pad must be in [0,255]
 PAD_MIN = 0
 PAD_MAX = 255
-
-# filterH, filterW must be in [1,255]
+# filterH, filterW must be >= 1
 FILTER_HW_MIN = 1
-FILTER_HW_MAX = 255
 
 INOUT_HW_MIN = 1
 INOUT_H_MAX = 200000
@@ -350,11 +346,11 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     util_deconv_comm.check_attr_range("dilations's H", dilations[2], DILATION_MIN, DILATION_MAX)
     util_deconv_comm.check_attr_range("dilations's W", dilations[3], DILATION_MIN, DILATION_MAX)
-    util_deconv_comm.check_attr_range("strides's H", strides[0], STRIDE_HW_MIN, STRIDE_HW_MAX)
-    util_deconv_comm.check_attr_range("strides's W", strides[1], STRIDE_HW_MIN, STRIDE_HW_MAX)
+    util_deconv_comm.check_attr_range("strides's H", strides[0], STRIDE_HW_MIN)
+    util_deconv_comm.check_attr_range("strides's W", strides[1], STRIDE_HW_MIN)
 
-    util_deconv_comm.check_attr_range("filter's H", shape_filters[2], FILTER_HW_MIN, FILTER_HW_MAX)
-    util_deconv_comm.check_attr_range("filter's W", shape_filters[3], FILTER_HW_MIN, FILTER_HW_MAX)
+    util_deconv_comm.check_attr_range("filter's H", shape_filters[2], FILTER_HW_MIN)
+    util_deconv_comm.check_attr_range("filter's W", shape_filters[3], FILTER_HW_MIN)
 
     pads = util_deconv_comm.get_padlist(pads, shape_res, strides, shape_filters, dilations)
     pad_up, pad_down, pad_left, pad_right = pads

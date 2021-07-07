@@ -34,9 +34,7 @@ INOUT_HW_MIN = 1
 INOUT_H_MAX = 200000
 INOUT_W_MAX = 4096
 FILTER_HW_MIN = 1
-FILTER_HW_MAX = 255
 STRIDE_HW_MIN = 1
-STRIDE_HW_MAX = 63
 DILATION_HW_MIN = 1
 DILATION_HW_MAX = 255
 CONV1D_W_MAX = 2147483647
@@ -48,21 +46,6 @@ L1FUSION_INPUT_CTR = 2
 N_DIM = 0
 H_DIM = 2
 W_DIM = 3
-
-
-def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
-    """
-    check the value in the range: [attr_min, attr_max]
-    """
-    if attr_value < attr_min or attr_value > attr_max:
-        args_dict = {
-            "errCode": "E60011",
-            "range": "[{},{}]".format(attr_min, attr_max),
-            "attr_name": attr_name,
-            "value": attr_value
-        }
-        raise RuntimeError(args_dict,
-                           error_manager.get_error_message(args_dict))
 
 
 def _check_param(  # pylint: disable=invalid-name,R0913,R0914,W0613
@@ -118,14 +101,14 @@ def _check_param(  # pylint: disable=invalid-name,R0913,R0914,W0613
         }
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
-    _check_attr_range("the h of filter", shape_filters[2], FILTER_HW_MIN, FILTER_HW_MAX)
-    _check_attr_range("the w of filter", shape_filters[3], FILTER_HW_MIN, FILTER_HW_MAX)
+    util_deconv_comm.check_attr_range("the h of filter", shape_filters[2], FILTER_HW_MIN)
+    util_deconv_comm.check_attr_range("the w of filter", shape_filters[3], FILTER_HW_MIN)
 
-    _check_attr_range("the h of stride", strides[0], STRIDE_HW_MIN, STRIDE_HW_MAX)
-    _check_attr_range("the w of stride", strides[1], STRIDE_HW_MIN, STRIDE_HW_MAX)
+    util_deconv_comm.check_attr_range("the h of stride", strides[0], STRIDE_HW_MIN)
+    util_deconv_comm.check_attr_range("the w of stride", strides[1], STRIDE_HW_MIN)
 
-    _check_attr_range("the h of dilations", dilations[2], DILATION_HW_MIN, DILATION_HW_MAX)
-    _check_attr_range("the w of dilations", dilations[3], DILATION_HW_MIN, DILATION_HW_MAX)
+    util_deconv_comm.check_attr_range("the h of dilations", dilations[2], DILATION_HW_MIN, DILATION_HW_MAX)
+    util_deconv_comm.check_attr_range("the w of dilations", dilations[3], DILATION_HW_MIN, DILATION_HW_MAX)
 
     fmap_h, fmap_w = shape_res[2:]
     dedy_h, dedy_w = shape_x[2:]
@@ -149,17 +132,18 @@ def _check_param(  # pylint: disable=invalid-name,R0913,R0914,W0613
     if fmap_h_pad == 1 and filter_h_dilation == 1 and strides[0] == 1:
         inout_w_max = CONV1D_W_MAX
 
-    _check_attr_range("the h of fmap(output)", fmap_h, inout_limit_min, inout_h_max)
-    _check_attr_range("the w of fmap(output)", fmap_w, inout_limit_min, inout_w_max)
+    util_deconv_comm.check_attr_range("the h of fmap(output)", fmap_h, inout_limit_min, inout_h_max)
+    util_deconv_comm.check_attr_range("the w of fmap(output)", fmap_w, inout_limit_min, inout_w_max)
 
-    _check_attr_range("the h of dedy(input) after expands", dedy_h * strides[0], inout_limit_min, inout_h_max)
+    util_deconv_comm.check_attr_range("the h of dedy(input) after expands",
+                                      dedy_h * strides[0], inout_limit_min, inout_h_max)
 
     if filter_h == 1 and filter_w == 1:
-        _check_attr_range("the w of dedy after expands",
-                          dedy_w * strides[0] * strides[1], inout_limit_min, inout_w_max)
+        util_deconv_comm.check_attr_range("the w of dedy after expands",
+                                          dedy_w * strides[0] * strides[1], inout_limit_min, inout_w_max)
     else:
-        _check_attr_range("the w of dedy after expands",
-                          dedy_w * strides[1], inout_limit_min, inout_w_max)
+        util_deconv_comm.check_attr_range("the w of dedy after expands",
+                                          dedy_w * strides[1], inout_limit_min, inout_w_max)
 
 
 def check_supported(x,

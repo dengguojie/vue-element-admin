@@ -39,7 +39,12 @@ DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16
 OUT_OF_ORDER_SHIFT_BIT = 13
-
+UINT32_MAX = 2 ^ 32 - 1
+DTYPE_SIZE = {
+    "float32": 4,
+    "float16": 2,
+    "int32": 4,
+    "int8": 1}
 
 def _get_all_tensors(res):
     """
@@ -323,6 +328,8 @@ def general_schedule(
             tensor_map["b_ddr"] = b_ddr
             tensor_attr["padding"] = padding
             tensor_attr["dilations"] = dilations
+            tensor_attr["l0a_dma_flag"] = False
+            tensor_attr["a_filling_in_ub_flag"] = False
 
             def _fill_a_tensormap_dynamic():
                 a_l1 = a_col_before.op.input_tensors[0]
@@ -361,6 +368,7 @@ def general_schedule(
                 tensor_map["a_ddr"] = a_ddr
                 tensor_attr["stride_h"] = stride_h
                 tensor_attr["stride_w"] = stride_w
+                tensor_attr["a_filling_in_ub_flag"] = stride_h > 1 or stride_w > 1
                 if "a_avg" in tensor_map:
                     if a_avg.op.input_tensors[1].op.tag == "mean_matrix_rec":
                         mean_matrix_rec = a_avg.op.input_tensors[1]
@@ -376,24 +384,34 @@ def general_schedule(
                     sch[mean_matrix].set_scope(tbe_platform_info.scope_ubuf)
 
             def _fill_a_tensormap():  # pylint: disable=R0915
-                def _fill_a_dilate():
-                    a_l1 = a_col_before.op.input_tensors[0]
+                def _fill_a_dilate(a_col_before):
+                    if not l0a_dma_flag:
+                        a_l1 = a_col_before.op.input_tensors[0]
+                        sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
+                    else:
+                        # replace load3d by dma_copy, padding is in ub
+                        a_filling = a_col_before.op.input_tensors[0]
+                        a_l1 = a_col_before
+                        tensor_attr["dma_pad"] = list(i.value for i in a_filling.op.attrs["dma_pad"])
+                        a_col_before = tensor_map["a_col"]
+                        a_col = sch.cache_read(a_col_before, tbe_platform_info.scope_ca, [c_col])
+                        tensor_map["a_col"] = a_col
+                        tensor_map["a_col_before"] = a_col_before
+
                     a_filling = a_l1.op.input_tensors[0]
                     stride_h, stride_w = list(
                         i.value for i in a_filling.op.attrs["stride_expand"]
                     )
-                    a_zero = a_filling.op.input_tensors[1]  # dEdY_zero in ub
+                    a_zero_scope = tbe_platform_info.scope_cbuf if cube_vector_split else tbe_platform_info.scope_ubuf
+                    if stride_h > 1 or stride_w > 1:
+                        # in l0a_dma_copy scenes pad!=0 and stride=1, there is no a_zero
+                        a_zero = a_filling.op.input_tensors[1]  # dEdY_zero in ub
+                        tensor_map["a_zero"] = a_zero
+                        # generate a_zero in ub
+                        sch[a_zero].set_scope(a_zero_scope)
                     tensor_map["a_filling"] = a_filling
-                    tensor_map["a_zero"] = a_zero
-                    # generate a_zero in ub
-                    if not cube_vector_split:
-                        sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
-                        sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
-                    else:
-                        sch[a_zero].set_scope(tbe_platform_info.scope_cbuf)
-                        sch[a_filling].set_scope(tbe_platform_info.scope_cbuf)
+                    sch[a_filling].set_scope(a_zero_scope)
                     tensor_map["a_l1"] = a_l1
-                    sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
 
                     a_ddr = a_filling.op.input_tensors[0]
                     if cube_vector_split:
@@ -430,13 +448,18 @@ def general_schedule(
                     tensor_attr["stride_h"] = stride_h
                     tensor_attr["stride_w"] = stride_w
 
-                def _fill_a():
+                def _fill_a(a_col_before):
                     if a_col_before.op.input_tensors[0].op.tag == "dy_l1_modify":
                         a_l1 = a_col_before.op.input_tensors[0]
                         a_ddr = a_l1.op.input_tensors[0]
-                        stride_h = 1
-                        stride_w = 1
                         sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
+                    elif l0a_dma_flag:
+                        a_l1 = a_col_before
+                        a_ddr = a_l1.op.input_tensors[0]
+                        a_col_before = tensor_map["a_col"]
+                        a_col = sch.cache_read(a_col_before, tbe_platform_info.scope_ca, [c_col])
+                        tensor_map["a_col"] = a_col
+                        tensor_map["a_col_before"] = a_col_before
                     else:
                         a_l1 = a_col_before.op.input_tensors[0]
                         if a_l1.op.input_tensors:
@@ -446,8 +469,6 @@ def general_schedule(
                                 tensor_attr["FM_NHWC_TRANS_5HD"] = True
                         else:
                             a_ddr = a_l1
-                        stride_h = 1
-                        stride_w = 1
                         if l1_fusion_type != -1:
                             a_l1 = sch.cache_read(
                                 a_ddr, tbe_platform_info.scope_cbuf_fusion, [a_col_before]
@@ -470,26 +491,43 @@ def general_schedule(
                             (1, 1)
                         )
                     tensor_map["a_ddr"] = a_ddr
-                    tensor_attr["stride_h"] = stride_h
-                    tensor_attr["stride_w"] = stride_w
+                    tensor_attr["stride_h"] = 1
+                    tensor_attr["stride_w"] = 1
 
-                if (
-                    a_col_before.op.input_tensors[0].op.tag == "dy_l1"
-                    or a_col_before.op.input_tensors[0].op.tag == "dy_l1_cut"
-                ):
-                    _fill_a_dilate()
+                al1_tag = a_col_before.op.input_tensors[0].op.tag
+                l0a_dma_flag = a_col_before.op.attrs["l0a_dma_flag"].value
+                tensor_attr["l0a_dma_flag"] = l0a_dma_flag
+
+                # -----------------------------------------------------------------
+                #     tag         | stride | pad | l0_dma_flag | tensor
+                # -----------------------------------------------------------------
+                #   "dy_l1"       |   >1   | >=0 |    false    | a_ddr->a_ub->a_filling->a_l1->load3d
+                # "dy_l1_cut"     |   >1   |  <0 |    false    | a_ddr->a_ub->a_filling->a_filling_cut->load3d
+                # "dy_l1_modify"  |   =1   |  <0 |    false    | a_ddr->a_l1_cut->l0ad3d
+                #     ""          |   =1   | >=0 |    false    | a_ddr->(cache_read al1)->load3d
+                #     ""          |   =1   |  =0 |    true     | a_ddr->a_col_before_a_col(dma_copy)
+                # "dy_filling_dma"|   >1   | all |    true     | a_ddr->a_ub->a_filling->a_col_before_a_col(dma_copy)
+                #  "dy_pad_dma"   |   =1   | !=0 |    true     | a_ddr->a_ub->a_filling->a_col_before_a_col(dma_copy)
+                ub_tensor_tag = ["dy_l1", "dy_l1_cut", "ub_filling_dma", "ub_pad_dma"]
+                a_filling_in_ub_flag = al1_tag in ub_tensor_tag
+                tensor_attr["a_filling_in_ub_flag"] = a_filling_in_ub_flag
+
+                if a_filling_in_ub_flag:
+                    _fill_a_dilate(a_col_before)
                 else:
-                    _fill_a()
+                    _fill_a(a_col_before)
 
             if var_map:
                 _fill_a_tensormap_dynamic()
             else:
                 _fill_a_tensormap()
-
+            
             if not tensor_attr.get("WEIGHT_NHWC_TRANS_FZ"):
                 b_l1 = sch.cache_read(b_ddr, tbe_platform_info.scope_cbuf, [b_col])
             tensor_map["b_l1"] = b_l1
             # dataflow management
+            a_col = tensor_map["a_col"]
+            a_col_before = tensor_map["a_col_before"]
             sch[b_col].set_scope(tbe_platform_info.scope_cb)
             sch[a_col_before].set_scope(tbe_platform_info.scope_cbuf)
             sch[a_col].set_scope(tbe_platform_info.scope_ca)
@@ -776,13 +814,13 @@ def general_schedule(
         :return: default tiling
         """
         def _get_factors(val, val_max):
-                """
-                get the factor of val that smaller than val_max
-                """
-                factor_max = min(val, val_max)
-                for m_fac in range(factor_max, 0, -1):
-                    if val % m_fac == 0:
-                        return m_fac
+            """
+            get the factor of val that smaller than val_max
+            """
+            factor_max = min(val, val_max)
+            for m_fac in range(factor_max, 0, -1):
+                if val % m_fac == 0:
+                    return m_fac
 
         # check flag
         def _check_tiling(tiling):
@@ -811,12 +849,6 @@ def general_schedule(
                 "float16": 16,
                 "int8": 32
             }
-            dtype_size = {
-                "float32": 4,
-                "float16": 2,
-                "int32": 4,
-                "int8": 1
-            }
             if atype in bit_dir.keys():
                 k_0 = bit_dir[atype]
                 k_al1 = k_w * k_0
@@ -831,7 +863,7 @@ def general_schedule(
                 # defaut value 32
                 k_bl1 = 32
 
-            if stride_h > 1 or stride_w > 1:
+            if tensor_attr["a_filling_in_ub_flag"]:
                 tiling["AUB_shape"] = [k_w * bit_dir[atype], 1, 1, 1]
                 tiling["BUB_shape"] = None
             else:
@@ -844,7 +876,7 @@ def general_schedule(
                 group_l0 = 2
             batch_dim, n_dim, m_dim = _get_block_dim()
             l0b_size = tbe_platform_info.get_soc_spec("L0B_SIZE")
-            k_l0_max = l0b_size // (k_0 * 16 * n_l0 * dtype_size[btype])
+            k_l0_max = l0b_size // (k_0 * 16 * n_l0 * DTYPE_SIZE[btype])
             k_l0 = _get_factors(k_w, k_l0_max)
 
             tiling["AL1_shape"] = [k_al1, 1, 1, 1]
@@ -919,16 +951,38 @@ def general_schedule(
     fusion_param = tensor_attr.get("fusion_param")
     n0_32_flag = tensor_attr.get("n0_32_flag")
     group_dict = tensor_attr.get("group_dict")
+    dma_pad = tensor_attr.get("dma_pad")
+    l0a_dma_flag = tensor_attr.get("l0a_dma_flag")
 
     g_after = group_dict[cube_util.GroupDictKeys.g_extend].value
     cin1_g = group_dict[cube_util.GroupDictKeys.dx_c1_extend].value
     cou1_g = group_dict[cube_util.GroupDictKeys.dy_c1_extend].value
 
     # fetch tiling
-    padu, padd, padl, padr = padding
+    def _get_padding():
+        if not l0a_dma_flag:
+            return padding
+        elif tensor_attr["a_filling_in_ub_flag"]:
+            padu, padd, padl, padr = dma_pad
+            # if pad < 0, give tiling UINT32_MAX(pad in tiling is uint32), then tiling knows ubuf is used
+            if padu + padd < 0:
+                padu = UINT32_MAX
+                padd = 0
+            if padl + padr < 0:
+                padl = UINT32_MAX
+                padr = 0
+            pad_modify = [0 if i < 0 else i for i in [padu, padd, padl, padr]]
+            return pad_modify
+        else:
+            return (0, 0, 0, 0)
+
+    padu, padd, padl, padr = _get_padding()
     # n, howo, c1, k_h, k_w, c0
     if not var_map:
-        _, howo_mad, _, kernel_h, kernel_w, _ = cube_util.shape_to_list(a_col_before.shape)
+        if not l0a_dma_flag:
+            _, howo_mad, _, kernel_h, kernel_w, _ = cube_util.shape_to_list(a_col_before.shape)
+        else:
+            _, howo_mad, _, kernel_h, kernel_w, _ = cube_util.shape_to_list(a_l1.shape)
     else:
         kernel_h = tensor_attr.get("kernel_h")
         kernel_w = tensor_attr.get("kernel_w")
@@ -1178,7 +1232,7 @@ def general_schedule(
             _raise_dx_general_err("Illegal tiling: If split k, factor of g in buffer must be 1")
 
     def _tiling_check_load():
-        if stride_h == 1 and stride_w == 1:
+        if not tensor_attr["a_filling_in_ub_flag"]:
             if tiling.get("AUB_shape") is not None:
                 _raise_dx_general_err("stride = 1 but AUB_shape is not None.")
         elif tiling.get("AUB_shape") is None:
@@ -1607,37 +1661,44 @@ def general_schedule(
             al0_tiling_k0
         )
 
-        if ("dedy_h" in var_map or "dedy_w" in var_map) and tiling.get("AL1_shape") == []:
-            status = Compare.GREATE_EQ
-        else:
-            status = Compare.compare(
-                [al1_tiling_g, 1, l1_ma, al0_tiling_m0, l1_ka, al0_tiling_k0],
-                [cl0_tiling_g, 1, cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
-            )
+        def _get_attach_status():
+            if ("dedy_h" in var_map or "dedy_w" in var_map) and tiling.get("AL1_shape") == []:
+                status = Compare.GREATE_EQ
+            else:
+                status = Compare.compare(
+                    [al1_tiling_g, 1, l1_ma, al0_tiling_m0, l1_ka, al0_tiling_k0],
+                    [cl0_tiling_g, 1, cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
+                )
+            return status
 
+        status = _get_attach_status()
         if tensor_attr.get("FM_NHWC_TRANS_5HD"):
             l1a2out_affine_shape = [1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
         else:
             l1a2out_affine_shape = [1, 1, None, l1_ma * al0_tiling_m0, cl0_tiling_n0]
 
-        if tiling.get("AL1_shape") == [] and tiling.get("AL0_matrix") == []:
-            pass
-        elif status == Compare.EQUAL:
-            sch_agent.same_attach(a_l1, c_col)
-        elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(a_l1, c_col, affine_shape=l1a2l0c_affine_shape)
-        elif status == Compare.GREATE_EQ:
-            sch_agent.attach_at(a_l1, c_ddr, affine_shape=l1a2out_affine_shape)
-        else:
-            _raise_dx_general_err("a_l1 atach error.")
+        attach_tensor = a_l1 if not l0a_dma_flag else a_col_before
 
-        if is_conv1d_situation:
+        def _al1_attach_process():
+            if tiling.get("AL1_shape") == [] and tiling.get("AL0_matrix") == []:
+                pass
+            elif status == Compare.EQUAL:
+                sch_agent.same_attach(attach_tensor, c_col)
+            elif status == Compare.LESS_EQ:
+                sch_agent.attach_at(attach_tensor, c_col, affine_shape=l1a2l0c_affine_shape)
+            elif status == Compare.GREATE_EQ:
+                sch_agent.attach_at(attach_tensor, c_ddr, affine_shape=l1a2out_affine_shape)
+            else:
+                _raise_dx_general_err("A_L1 atach error.")
+        _al1_attach_process()
+        if is_conv1d_situation or l0a_dma_flag:
             w_align = 1
         else:
             w_align = dx_w
 
         if not var_map:
-            sch_agent.same_attach(a_col_before, a_l1)
+            if not l0a_dma_flag:
+                sch_agent.same_attach(a_col_before, a_l1)
             sch[a_col_before].buffer_align(
                 (1, 1),
                 (w_align, w_align),
@@ -1697,6 +1758,7 @@ def general_schedule(
                 [bl1_tilling_g, 1, l1_nb, bl0_tiling_n0_temp, l1_kb, bl0_tiling_k0],
                 [cl0_tiling_g, 1, cl0_tiling_nc_temp, cl0_tiling_n0_temp, c_col_k1, c_col_k0]
             )
+
             def _bl1_attach():
                 if status_ori == Compare.EQUAL:
                     # bl1 full load but tiling.get("BL1_shape") is not []
@@ -1729,7 +1791,54 @@ def general_schedule(
             sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape)
 
     def _aub_process():
-        if stride_h > 1 or stride_w > 1:
+
+        def _get_ub_shape():
+            """
+            In l0a_dma_flag scenes, attach_tensor's shape is same as al0;
+            if fmap_w % 16 is not 0, aub will load at least 2*w if mdim loads 16,
+            it may greater than ub_size, then mdim loads 1.
+            """
+            m_0, _, n_0 = tbe_platform.CUBE_MKN[a_filling.dtype]["mac"][0:3]
+            if var_map:
+                ub_shape = [
+                    al1_tiling_g,
+                    1,
+                    ub_shape_k,
+                    aub_h,
+                    aub_w + kernel_w - 1,
+                    al1_co0
+                ]
+            elif l0a_dma_flag:
+                aub_m_dim = aub_tiling_m * filling_w // 16 if not is_conv1d_situation else aub_tiling_m
+                aub_m_dim = 1 if aub_m_dim == 0 else aub_m_dim
+                shape_k = aub_tiling_k // al1_co0
+                if shape_k == 0:
+                    shape_k = 1
+                ub_shape = [
+                    1,
+                    1,
+                    aub_m_dim,
+                    shape_k,
+                    m_0,
+                    al1_co0
+                ]
+                if output_shape_g[4] % m_0 != 0:
+                    min_aub = (filling_w + img_shape_g[4]) * 2 * al1_co0 * DTYPE_SIZE[a_filling.dtype]
+                    min_cub = m_0 * n_0 * DTYPE_SIZE[c_ub.dtype]
+                    if min_aub + min_cub > tbe_platform_info.get_soc_spec("UB_SIZE"):
+                        # mdim loads 1
+                        ub_shape = [1, 1, 1, shape_k, 1, al1_co0]
+            else:
+                ub_shape = [
+                    1,
+                    ub_shape_k,
+                    aub_h,
+                    aub_w + kernel_w - 1,
+                    al1_co0
+                ]
+            return ub_shape
+
+        if tensor_attr["a_filling_in_ub_flag"]:
             aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
             filling_w = cube_util.shape_to_list(a_filling.shape)[3]
             if aub_tiling_m == 0:
@@ -1744,24 +1853,11 @@ def general_schedule(
                 ub_shape_k = aub_tiling_k // (kernel_h * kernel_w * 16)
                 if ub_shape_k == 0:
                     ub_shape_k = 1
-                if var_map:
-                    ub_shape = [
-                        al1_tiling_g,
-                        1,
-                        ub_shape_k,
-                        aub_h,
-                        aub_w + kernel_w - 1,
-                        al1_co0
-                    ]
+                ub_shape = _get_ub_shape()
+                if not l0a_dma_flag:
+                    sch_agent.attach_at(a_filling, a_l1, ub_shape)
                 else:
-                    ub_shape = [
-                        1,
-                        ub_shape_k,
-                        aub_h,
-                        aub_w + kernel_w - 1,
-                        al1_co0
-                    ]
-                sch_agent.attach_at(a_filling, a_l1, ub_shape)
+                    sch_agent.attach_at(a_filling, a_col_before, ub_shape)
             if var_map:
                 sch_agent.same_attach(dy_vn, a_filling)
                 if "a_avg" in tensor_map:
@@ -1773,7 +1869,9 @@ def general_schedule(
                         sch_agent.same_attach(mean_matrix_rec, a_filling)
             else:
                 sch_agent.same_attach(a_ub, a_filling)
-            sch_agent.same_attach(a_zero, a_filling)
+            if "a_zero" in tensor_map:
+                # l0a_dma_scenes if pad!=0 and stride=1, there is no a_zero
+                sch_agent.same_attach(a_zero, a_filling)
         else:
             filling_w = cube_util.shape_to_list(a_avg.shape)[3]
             ub_shape = [
@@ -1817,7 +1915,7 @@ def general_schedule(
                 _bl1_process()
                 _al1_process()
 
-        if not cube_vector_split and (stride_h > 1 or stride_w > 1 or "a_avg" in tensor_map):
+        if not cube_vector_split and (tensor_attr["a_filling_in_ub_flag"] or "a_avg" in tensor_map):
             _aub_process()
 
     def _do_nbuffer_split():
@@ -1849,7 +1947,6 @@ def general_schedule(
                 return [outter, inner]
         return None
 
-
     def _double_buffer():
         def _fusion_double_buffer():
             if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
@@ -1865,17 +1962,19 @@ def general_schedule(
                     sch[input_tensor_mem].double_buffer()
                     sch[input_tensor_mem].preload()
 
-        if stride_h > 1 or stride_w > 1:
-            if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2 \
-                and "a_avg" not in tensor_map \
-                and not cube_vector_split:
+        def _aub_double_buffer():
+            if tensor_attr["a_filling_in_ub_flag"] and \
+                tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2 and \
+                    "a_avg" not in tensor_map and not cube_vector_split:
                 sch[a_filling].double_buffer()
-                sch[a_zero].double_buffer()
+                if "a_zero" in tensor_map:
+                    sch[a_zero].double_buffer()
                 if var_map:
                     sch[dy_vn].double_buffer()
                 else:
                     sch[a_ub].double_buffer()
 
+        _aub_double_buffer()
         if var_map and not tiling.get("AL1_shape"):
             a_l1_db_flag = 1
         else:
@@ -2011,7 +2110,7 @@ def general_schedule(
     def _emit_l1fusion_insn(setfmatrix_dict):
         if a_l1_full is not None:
             sch[a_l1_full].emit_insn(sch[a_l1_full].op.axis[0], "dma_copy")
-        if stride_h == 1 and stride_w == 1:
+        if not tensor_attr["a_filling_in_ub_flag"]:
             if l1_fusion_type != -1 and input_mem[0] == 1:
                 sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "phony_insn")
             else:
@@ -2036,29 +2135,46 @@ def general_schedule(
             )
             sch_agent[a_filling].unroll(afill_h_inner)
             sch_agent[a_filling].unroll(afill_w_inner)
-            sch_agent[a_filling].reused_by(a_zero)
+            
             al1_insn, _, _ = sch_agent[a_l1].nlast_scopes(3)
 
             if cube_vector_split and (stride_h > 1 or stride_w > 1):
+                sch_agent[a_filling].reused_by(a_zero)
                 sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "set_2d")
                 sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
                 sch_agent[a_l1].emit_insn(al1_insn, "phony_insn")
                 sch_agent[a_l1].reused_by(a_filling)
             else:
                 sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
-                sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
-                if w_trans_flag:
-                    sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
-                else:
-                    sch_agent[a_filling].emit_insn(afill_n, "vector_muls")
+                if "a_zero" in tensor_map:
+                    sch_agent[a_filling].reused_by(a_zero)
+                    sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
+                a_filling_emit_insn = "dma_copy" if (w_trans_flag or "a_zero" not in tensor_map) else "vector_muls"
+                sch_agent[a_filling].emit_insn(afill_n, a_filling_emit_insn)
                 sch_agent[a_l1].emit_insn(al1_insn, "dma_copy")
 
         setfmatrix_dict["conv_fm_c"] = a_l1.shape[1] * a_l1.shape[4]
         setfmatrix_dict["conv_fm_h"] = a_l1.shape[2]
         setfmatrix_dict["conv_fm_w"] = a_l1.shape[3]
-        sch_agent[a_col_before].emit_insn(
-            a_col_before.op.axis[0], 'set_fmatrix', setfmatrix_dict)
-        sch_agent[a_col].emit_insn(a_col.op.axis[1], 'im2col')
+        if not l0a_dma_flag:
+            sch_agent[a_col_before].emit_insn(
+                a_col_before.op.axis[0], 'set_fmatrix', setfmatrix_dict)
+            sch_agent[a_col].emit_insn(a_col.op.axis[1], 'im2col')
+        else:
+            sch[a_l1].compute_inline()
+            sch_agent[a_col].emit_insn(a_col.op.axis[1], 'dma_copy')
+            # m0 axis should in the out of emit_insn axis
+            # m0_dim
+            #  emit_insn --> "dma_copy"
+            #   k1_dim
+            #      k0_dim
+            sch[a_col_before].reorder(
+                sch[a_col_before].leaf_iter_vars[-2], # m0_dim
+                sch[a_col_before].leaf_iter_vars[-3], # k1_dim
+                sch[a_col_before].leaf_iter_vars[-1], # k0_dim
+            )
+            sch_agent[a_col_before].emit_insn(sch[a_col_before].leaf_iter_vars[-2], 'dma_copy')
+
 
     def _dynamic_emit_insn():
         setfmatrix_dict = {
@@ -2318,7 +2434,6 @@ def general_schedule(
                 l1_tensor_map = None
         L1CommonParam.l1_fusion_tensors_map = l1_tensor_map
 
-
     def _allocate_apply():
         """
         process allocate_at
@@ -2409,7 +2524,6 @@ def general_schedule(
 
         sch_agent.apply_compute(attach_dict, compute_path)
 
-
     sch_agent = ScheduleAgent(sch)
     # split g_dim for ddr; outer is g, inner is c1
     if l0c_multi_group_flag:
@@ -2469,9 +2583,10 @@ def general_schedule(
         # expand in UB , so load3d stride is 1
         load3d_stride = 1
         w_extend = (m_axis_length_l1 - 1) * load3d_stride + kernel_w_dilation
-        sch[a_l1].buffer_tile(
-            (None, None), (None, None), (None, None), (w_offset, w_extend), (None, None)
-        )
+        if not l0a_dma_flag:
+            sch[a_l1].buffer_tile(
+                (None, None), (None, None), (None, None), (w_offset, w_extend), (None, None)
+            )
 
     def _c_col_buffer_tile():
         axis_split_list, axis_unit, axis_offset = sch_agent[c_ddr].get_axis_split_list_and_extend(2)

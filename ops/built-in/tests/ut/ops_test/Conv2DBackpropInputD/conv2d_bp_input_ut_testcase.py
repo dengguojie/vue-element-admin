@@ -62,6 +62,21 @@ conv2d_bp_input_op_testcase = [
         (1, 1, 1,1),
         (0, 0, 0, 0),
     ),
+    # l0a use dma_copy repleace l0ad3d, kernel > 255 conv2d
+    (
+        "float16",
+        "float16",
+        "float16",
+        (1, 1, 5, 512),
+        (3, 1, 2, 1),
+        (3, 1, 6, 512),
+        "NCHW",
+        "NCHW",
+        "NCHW",
+        (3, 1, 6, 512),
+        (1, 1, 1, 1),
+        (0, 0, 0, 0),
+    ),
     (
         "float16",
         "float16",
@@ -195,7 +210,6 @@ conv2d_bp_input_op_testcase = [
         (15, 15, 15, 15),
         (1, 1, 1, 1),
         1,
-        RuntimeError,
     ),
     # test_conv2d_backprop_input.py
     (
@@ -1449,7 +1463,6 @@ conv2d_bp_input_fusion_testcase = [
         (1, 1, 1, 1),
         (1, 1, 1, 1),
         1,
-        RuntimeError,
     ),
     (
         "float16",
@@ -1466,7 +1479,6 @@ conv2d_bp_input_fusion_testcase = [
         (1, 1, 1, 1),
         (1, 1, 1, 1),
         1,
-        RuntimeError,
     ),
     (
         "float16",
@@ -1483,7 +1495,6 @@ conv2d_bp_input_fusion_testcase = [
         (1, 1, 1, 1),
         (1, 1, 1, 1),
         1,
-        RuntimeError,
     ),
     (
         "float16",

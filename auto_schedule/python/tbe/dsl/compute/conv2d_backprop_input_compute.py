@@ -47,9 +47,9 @@ PAD_MAX = 255
 DILATION_MIN = 1
 DILATION_MAX = 255
 
-# filterH, filterW must be in [1,255]
+# filterH, filterW must >= 1
 FILTER_HW_MIN = 1
-FILTER_HW_MAX = 255
+FILTER_HW_LOAD3D_MAX = 255
 
 DY_FILLING_HW_MIN = 1
 DY_FILLING_H_MAX = 200000
@@ -63,9 +63,9 @@ DX_W_MAX = 4096
 # conv1d situation support w not larger than 2^31-1
 CONV1D_W_MAX = 2147483647
 
-# stride must be in [1,64]
+# stride must >= 1
 STRIDE_MIN = 1
-STRIDE_MAX = 63
+STRIDE_LOAD3D_MAX = 63
 STRIDE_MUL_MIN = 1
 
 # the bytes length of several dtype
@@ -109,18 +109,42 @@ class DeconvParam:
     var_map = {}
 
 
-def _check_variable_range(variable, mini, maxi, name):
+def _check_variable_range(attr_value, attr_name, attr_min=None, attr_max=None):
     """
     check variable range
 
     """
-    if (not isinstance(variable, int)) or variable < mini or variable > maxi:
-        dict_args = dict()
-        dict_args["errCode"] = "E65006"
-        dict_args["range"] = "[{},{}]".format(mini, maxi)
-        dict_args["attr_name"] = name
-        dict_args["value"] = str(variable)
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+    if attr_min is None and attr_max is None:
+        return
+    if attr_min is None:
+        if (not isinstance(attr_value, int)) or attr_value > attr_max:
+            args_dict = {
+                "errCode": "E60114",
+                "reason": "{} exceed max_value."
+                " max_value={}.".format(attr_name, attr_max),
+                "value": "attr_value = {}".format(attr_value)
+            }
+            raise RuntimeError(args_dict,
+                               error_manager_util.get_error_message(args_dict))
+    elif attr_max is None:
+        if (not isinstance(attr_value, int)) or attr_value < attr_min:
+            args_dict = {
+                "errCode": "E60114",
+                "reason": "{} less than min_value. "
+                "min_value={}.".format(attr_name, attr_min),
+                "value": "attr_value = {}".format(attr_value)
+            }
+            raise RuntimeError(args_dict,
+                               error_manager_util.get_error_message(args_dict))
+    elif (not isinstance(attr_value, int)) or attr_value < attr_min or attr_value > attr_max:
+        args_dict = {
+            "errCode": "E60011",
+            "range": "[{},{}]".format(attr_min, attr_max),
+            "attr_name": attr_name,
+            "value": attr_value
+        }
+        raise RuntimeError(args_dict,
+                           error_manager_util.get_error_message(args_dict))
 
 
 def _check_equal_rule(param_1, param_2, param_name1, param_name2):
@@ -374,21 +398,21 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     def _check_dy():
         _check_equal_rule(dy_c0, dedy_k0, "dy_c0", str(dedy_k0))
         _check_variable_range(
-            dy_h * stride_h, dy_filling_hw_min, dy_filling_h_max, "dy_h*stride_h"
+            dy_h * stride_h, "dy_h*stride_h", dy_filling_hw_min, dy_filling_h_max
         )
         if filter_h == 1 and filter_w == 1:
             _check_variable_range(
                 dy_w * stride_w * stride_h,
+                "dy_w*stride_w*stride_h",
                 dy_filling_hw_min,
-                dy_filling_w_max,
-                "dy_w*stride_w*stride_h"
+                dy_filling_w_max
             )
         else:
             _check_variable_range(
                 dy_w * stride_w,
+                "dy_w*stride_w",
                 dy_filling_hw_min,
-                dy_filling_w_max,
-                "dy_w*stride_w"
+                dy_filling_w_max
             )
 
     # w
@@ -401,9 +425,9 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
         _check_equal_rule(filter_cin0, w_n0, "filter_cin0", str(w_n0))
 
-        _check_variable_range(filter_h, FILTER_HW_MIN, FILTER_HW_MAX, "filter_h")
+        _check_variable_range(filter_h, "filter_h", FILTER_HW_MIN)
 
-        _check_variable_range(filter_w, FILTER_HW_MIN, FILTER_HW_MAX, "filter_w")
+        _check_variable_range(filter_w, "filter_w", FILTER_HW_MIN)
 
         def _check_max(x_1, x_2, name_1, name_2):
             if x_1 > x_2:
@@ -432,8 +456,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     # dx
     def _check_dx():
-        _check_variable_range(dx_h, dx_hw_min, dx_h_max, "dx_h")
-        _check_variable_range(dx_w, dx_hw_min, dx_w_max, "dx_w")
+        _check_variable_range(dx_h, "dx_h", dx_hw_min, dx_h_max)
+        _check_variable_range(dx_w, "dx_w", dx_hw_min, dx_w_max)
         _check_equal_rule(dx_batch, dy_batch, "dx_batch", "dy_batch")
 
         _check_equal_rule((dx_h_after_pad - filter_h_dilation) // stride_h + 1, dy_h,
@@ -446,29 +470,20 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     # strides
     def _check_strides():
-        _check_variable_range(stride_h, STRIDE_MIN, STRIDE_MAX, "stride_h")
+        _check_variable_range(stride_h, "stride_h", STRIDE_MIN)
 
-        _check_variable_range(stride_w, STRIDE_MIN, STRIDE_MAX, "stride_w")
+        _check_variable_range(stride_w, "stride_w", STRIDE_MIN)
 
     # padding
     def _check_padding():
-        def _check_border(attr_name, attr_value):
-            if attr_value < PAD_MIN or attr_value > PAD_MAX:
-                dict_args = dict()
-                dict_args["errCode"] = "E65006"
-                dict_args["range"] = "[{},{}]".format(PAD_MIN, PAD_MAX)
-                dict_args["attr_name"] = attr_name
-                dict_args["value"] = str(attr_value)
-                raise RuntimeError(
-                    dict_args, error_manager_util.get_error_message(dict_args)
-                )
-
         if fusion_para.get("l1_fusion_type") == -1:
-            _check_border("pad_up", pad_up)
-            _check_border("pad_down", pad_down)
+            _check_variable_range(pad_up, "pad_up", PAD_MIN)
 
-            _check_border("pad_left", pad_left)
-            _check_border("pad_right", pad_right)
+            _check_variable_range(pad_down, "pad_down", PAD_MIN)
+
+            _check_variable_range(pad_left, "pad_up", PAD_MIN)
+
+            _check_variable_range(pad_right, "pad_down", PAD_MIN)
 
     # dilation
     def _check_dilation():
@@ -481,9 +496,9 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                 dict_args, error_manager_util.get_error_message(dict_args)
             )
 
-        _check_variable_range(dilation_h, DILATION_MIN, DILATION_MAX, "dilation_h")
+        _check_variable_range(dilation_h, "dilation_h", DILATION_MIN, DILATION_MAX)
 
-        _check_variable_range(dilation_w, DILATION_MIN, DILATION_MAX, "dilation_w")
+        _check_variable_range(dilation_w, "dilation_w", DILATION_MIN, DILATION_MAX)
 
     # check L1 exceed buffer
     def _check_l1_buffer():
@@ -694,6 +709,16 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                 return True
         return False
 
+    def _check_l0a_dma_flag():
+        """
+        In these load3d unsupports scenes, dma_copy is used from ddr to l0a.
+        """
+        dilation_h, dilation_w = dilations[2:4]
+        if DeconvParam.var_map:
+            return False
+        return (strides[0] > STRIDE_LOAD3D_MAX or strides[1] > STRIDE_LOAD3D_MAX or filter_h > FILTER_HW_LOAD3D_MAX or
+        filter_w > FILTER_HW_LOAD3D_MAX or dilation_h > DILATION_MAX or dilation_w > DILATION_MAX)
+
     DeconvParam.var_map = _get_var_map(out_backprop)
 
     switch_to_general_scheme = _is_switch_to_general_scheme()
@@ -725,6 +750,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     dx_6gd_shape = [g_extend, shape_dx[0], dx_c1_extend] + list(shape_dx)[2:]
 
     bias_flag = False if tensor_bias is None else True
+
 
     DynamicConv2dBpInputParams.ori_tensor = para_dict.get("ori_tensors")
     DynamicConv2dBpInputParams.tiling_info_dict = {
@@ -814,6 +840,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                     name="dy_avg",
                     tag="dy_avg")
             out_backprop = dy_avg
+        l0a_dma_flag = False
+        l0a_dma_flag = _check_l0a_dma_flag()
         pattc = DeConvPattern(
             filter_sizes,
             strides=strides,
@@ -825,7 +853,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             kernel_name=kernel_name,
             group_dict=group_dict,
             var_map=DeconvParam.var_map,
-            pooling_mode=pooling_mode
+            pooling_mode=pooling_mode,
+            l0a_dma_flag=l0a_dma_flag
         )
 
     dy_col = pattc.generate_a(out_backprop)

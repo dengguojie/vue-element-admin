@@ -98,7 +98,8 @@ def im2col_row_major(  # pylint: disable=R0913
         tag="",
         dilation=(1, 1),
         offset_x=0,
-        slice_offset=0):
+        slice_offset=0,
+        l0a_dma_flag=False):
     """
     calculate im2col_row_major tensor
     Parameters
@@ -173,11 +174,12 @@ def im2col_row_major(  # pylint: disable=R0913
                        tag=tag + "im2col_row_major",
                        attrs={
                            "padding": padding,
-                           "dilation": dilation
+                           "dilation": dilation,
+                           "l0a_dma_flag": l0a_dma_flag
                        })
 
 
-def im2col_fractal(a_im2col_shape, tensor_a_row_major):
+def im2col_fractal(a_im2col_shape, tensor_a_row_major, l0a_dma_flag=False):
     """
     calculate im2col_fractal tensor
     Parameters
@@ -220,9 +222,15 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major):
         c0_index = k_axis_index % a_col_k0
 
         # dtype is compute_dtype
-        return tvm.select(
-            tvm.any(hw_index >= 0, hw_index < a_row_major_hw.value, c1_index < group_c1),
-            tensor_a_row_major(n_index, hw_index, c1_index, kh_index, kw_index, c0_index))
+        if not l0a_dma_flag:
+            return tvm.select(
+                tvm.any(hw_index < 0, hw_index > a_row_major_hw.value - 1),
+                tvm.const(0.0, tensor_a_row_major.dtype),
+                tensor_a_row_major(n_index, hw_index, c1_index, kh_index, kw_index, c0_index))
+        else:
+            return tvm.select(
+                tvm.all(hw_index >= 0, hw_index < a_row_major_hw.value),
+                tensor_a_row_major(n_index, hw_index, c1_index, kh_index, kw_index, c0_index))
 
     return tvm.compute(a_im2col_shape,
                        lambda *indices: __im2col_fractal_indices(indices, tensor_a_row_major),
@@ -479,7 +487,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
     conv_pattern_instance : instance of conv pattern
     """
     def __init__(  # pylint: disable=R0913
-            self, kernel_h, kernel_w, stride, pad, dilations, offset_x=0):
+            self, kernel_h, kernel_w, stride, pad, dilations, offset_x=0, l0a_dma_flag=False):
         super().__init__()
         self._kernel_h = kernel_h
         self._kernel_w = kernel_w
@@ -488,6 +496,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         self._dilate_h, self._dilate_w = dilations
         self._m0 = 16
         self._offset_x = offset_x
+        self.l0a_dma_flag = l0a_dma_flag
 
     def cal_howo(self, height_in, width_in):
         """
@@ -568,7 +577,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
             _, width_out = self.cal_howo(a_h, a_w)
 
         if not var_map:
-            a_im2col_row_major_shape = (a_batch, height_out * width_out, a_c1, kernel_h, kernel_w, a_c0)
+            a_im2col_row_major_shape = (a_batch, height_out * width_out, g_after * c1_extend, kernel_h, kernel_w, a_c0)
             a_row_major = im2col_row_major(a_im2col_row_major_shape,
                                            feature_map,
                                            kernel_w,
@@ -577,13 +586,14 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                                            compute_dtype=feature_map.dtype,
                                            dilation=(self._dilate_h, self._dilate_w),
                                            offset_x=self._offset_x,
-                                           slice_offset=slice_offset)
+                                           slice_offset=slice_offset,
+                                           l0a_dma_flag=self.l0a_dma_flag)
 
         howo = (height_out * width_out + self._m0 - 1) // self._m0 * self._m0
         a_im2col_fractal_shape = (g_after, a_batch, howo // self._m0, c1_extend * kernel_h * kernel_w,
                                   self._m0, a_c0)
         if not var_map:
-            a_col = im2col_fractal(a_im2col_fractal_shape, a_row_major)
+            a_col = im2col_fractal(a_im2col_fractal_shape, a_row_major, self.l0a_dma_flag)
         else:
             img2col_para = (feature_map, kernel_h, kernel_w, new_pad, stride, width_out,
                             (self._dilate_h, self._dilate_w), c1_extend)

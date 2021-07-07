@@ -46,22 +46,20 @@ DEDY_W_MAX = 4096
 # DeDyH must be in [1,200000]
 DEDY_H_MAX = 200000
 
-# filterH, filterW must be in [1,255]
+# filterH, filterW must be >= 1
 FILTER_HW_MIN = 1
-FILTER_HW_MAX = 255
 
 # conv1d situation support w not larger than 2^31-1
 CONV1D_W_MAX = 2147483647
 
-# stride must be in [1,63] and h*w not lagger than 256
+# stride must be >= 1
 STRIDE_HW_MIN = 1
-STRIDE_HW_MAX = 63
 
-# pad must be in [0,255]
+# pad must be in [0, 255]
 PAD_MIN = 0
 PAD_MAX = 255
 
-# dilation must be in [1,255]
+# dilation must be in [1, 255]
 DILATION_MIN = 1
 DILATION_MAX = 255
 
@@ -410,9 +408,9 @@ def check_attr_range(attr_name, attr_value, attr_min=None, attr_max=None):
     """
     if attr_min is None and attr_max is None:
         return
-    if attr_value == -1 or not isinstance(attr_value, int):
+    if attr_value < 0 or not isinstance(attr_value, int):
         return
-    if not attr_min is None:
+    if attr_min is None:
         if attr_value > attr_max:
             args_dict = {
                 "errCode": "E60114",
@@ -422,7 +420,7 @@ def check_attr_range(attr_name, attr_value, attr_min=None, attr_max=None):
             }
             raise RuntimeError(args_dict,
                                err_man.get_error_message(args_dict))
-    elif not attr_max is None:
+    elif attr_max is None:
         if attr_value < attr_min:
             args_dict = {
                 "errCode": "E60114",
@@ -775,16 +773,16 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                          dedy_hw_min, dedy_w_max)
 
     # filter value limit
-    check_attr_range("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
-    check_attr_range("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
+    check_attr_range("filter's H", filter_h, FILTER_HW_MIN)
+    check_attr_range("filter's W", filter_w, FILTER_HW_MIN)
 
     # Fmap value limit
     check_attr_range("y's H", fmap_h, fmap_hw_min, fmap_h_max)
     check_attr_range("y's W", fmap_w, fmap_hw_min, fmap_w_max)
 
     # stride value limit
-    check_attr_range("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
-    check_attr_range("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
+    check_attr_range("stride's H", stride_h, STRIDE_HW_MIN)
+    check_attr_range("stride's W", stride_w, STRIDE_HW_MIN)
 
     # dilation value limit
     check_attr_range("dilations's H", dilation_h, DILATION_MIN, DILATION_MAX)
