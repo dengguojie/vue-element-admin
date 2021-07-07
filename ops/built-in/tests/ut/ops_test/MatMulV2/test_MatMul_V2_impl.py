@@ -209,3 +209,17 @@ def test_matmul_cpu_validation(test_arg):
     matmul_cpu_validation(params)
 
 ut_case.add_cust_test_func(test_func=test_matmul_cpu_validation)
+
+def test_check_support(test_arg):
+    from impl.mat_mul import check_supported
+    check_supported({"shape": (0, 10), "ori_shape": (0, 10), "dtype": "float16", "format": "ND", "ori_format": "ND"},
+                    {"shape": (10, 20), "ori_shape": (10, 20), "dtype": "float16", "format": "ND", "ori_format": "ND"},
+                    None,
+                    {},
+                    {"shape": (0, 20), "ori_shape": (0, 20), "dtype": "float16", "format": "ND", "ori_format": "ND"},
+                    trans_a=False,
+                    trans_b=False,
+                    offset_x=0,
+                    kernel_name="matmul")
+
+ut_case.add_cust_test_func(test_func=test_check_support)

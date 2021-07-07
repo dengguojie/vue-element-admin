@@ -350,6 +350,12 @@ def check_supported(input_x1,
         return True, ""
     shape_a = input_x1.get("ori_shape")
     shape_b = input_x2.get("ori_shape")
+
+    if any(v == 0 for v in shape_a) or any(v == 0 for v in shape_b):
+        reason = "cannot support dim 0, shape_a:%s, shape_b:%s" \
+                 % (str(shape_a), str(shape_b))
+        return False, reason
+
     src_dtype = input_x1.get("dtype")
     dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
     if not dynamic_flag:

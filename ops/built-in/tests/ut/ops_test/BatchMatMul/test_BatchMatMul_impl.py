@@ -131,6 +131,16 @@ case9 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": "
          "expect": "success",
          "support_expect": True}
 
+case10 = {"params": [{"shape": (0, 10), "ori_shape": (0, 10), "dtype": "float16", "format": "ND", "ori_format": "ND"},
+                     {"shape": (10, 20), "ori_shape": (10, 20), "dtype": "float16", "format": "ND", "ori_format": "ND"},
+                     None,
+                     {"shape": (0, 20), "ori_shape": (0, 20), "dtype": "float16", "format": "ND", "ori_format": "ND"},
+                     False, False,
+                     ],
+         "case_name": "BatchMatmul_v1_10",
+         "expect": "success",
+         "support_expect": True}
+
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
@@ -296,6 +306,7 @@ def test_op_check_supported(test_arg):
     _test_supported(case3)
     _test_supported(case4)
     _test_supported(case5)
+    _test_supported(case10)
 
 
 ut_case.add_cust_test_func(test_func=test_batchmatmul_confusion_transpose_910)

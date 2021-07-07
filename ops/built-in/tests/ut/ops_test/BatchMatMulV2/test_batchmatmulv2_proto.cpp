@@ -130,6 +130,18 @@ vector<CASE_TUPLE> testcase_batchmatmulv2 = {
                false,
                false,
                RES_TUPLE{{-1, -1, -1, -1}, {{1, -1}, {2, 3}, {1, 2}, {3, 4}}, PASS}},
+    CASE_TUPLE{OP_TUPLE{{0, 10}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{10, 20}, DT_FLOAT16, FORMAT_ND, {}},
+               {},
+               false,
+               false,
+               RES_TUPLE{{0, 20}, {}, PASS}},
+    CASE_TUPLE{OP_TUPLE{{-3, 10}, DT_FLOAT16, FORMAT_ND, {}},
+               OP_TUPLE{{10, 20}, DT_FLOAT16, FORMAT_ND, {}},
+               {},
+               false,
+               false,
+               RES_TUPLE{{}, {}, FAILED}},
 };
 
 BatchMatMulV2 CreateBatchMatMulV2Op(OP_TUPLE a, OP_TUPLE b, OP_TUPLE bias,

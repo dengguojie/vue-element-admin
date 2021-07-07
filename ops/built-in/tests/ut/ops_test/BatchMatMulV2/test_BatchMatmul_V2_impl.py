@@ -125,6 +125,15 @@ case10 = {"params": [{"shape": (3, 32, 64), "dtype": "float16", "format": "NHWC"
                      ],
           "case_name": "BatchMatmul_support_check4"}
 
+case15 = {"params": [{"shape": (0, 10), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (0, 10),"ori_format": "ND"},
+                     {"shape": (10, 20), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (10, 20),"ori_format": "ND"},
+                     None,
+                     None,
+                     {"shape": (0, 20), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (0, 20),"ori_format": "ND"},
+                     False,False,
+                     ],
+          "case_name": "BatchMatmul_support_check5"}
+
 case11 = {"params": [{"shape": (8, 4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 4, 32, 64),"ori_format": "ND"},
                     {"shape": (8, 1, 1, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (8, 1, 64, 16),"ori_format": "ND"},
                     None,
@@ -204,6 +213,7 @@ def test_op_check_supported(test_arg):
     _test_supported(case8)
     _test_supported(case9)
     _test_supported(case10)
+    _test_supported(case15)
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 

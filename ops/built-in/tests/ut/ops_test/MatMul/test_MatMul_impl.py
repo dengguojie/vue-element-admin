@@ -57,6 +57,16 @@ case4 = {"params": [{"shape": (32, 96), "dtype": "float32", "format": "ND", "ori
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case5 = {"params": [{"shape": (0, 10), "dtype": "float16", "format": "ND", "ori_shape": (0, 10),"ori_format": "ND"},
+                    {"shape": (10, 20), "dtype": "float16", "format": "ND", "ori_shape": (10, 20),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (0, 20), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (0, 20),"ori_format": "ND"},
+                    False, False],
+         "case_name": "MatMul_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -306,8 +316,7 @@ def test_check_support(test_arg):
                 print("The case is not supported")
     _test_fuzzily_supported(case4)
     _test_supported(case1)
-
-
+    _test_supported(case5)
 ut_case.add_cust_test_func(test_func=test_check_support)
 
 

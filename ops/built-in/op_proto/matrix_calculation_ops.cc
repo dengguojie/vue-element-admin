@@ -536,7 +536,7 @@ static const std::vector<int64_t> SHAPE_GEAR = {0, 16*3, 16*7, 16*15, 16*31, 16*
                                                 16*255, 16*511, 16*767, 16*1023, MAX_RANGE};
 
 bool IsDimValid(int64_t dim) {
-  return dim >= VALUE_UNKNOWN_RANK && dim != 0;
+  return dim >= VALUE_UNKNOWN_RANK;
 }
 
 bool IsRangeValid(const std::vector<int64_t> &shape, const std::vector<std::pair<int64_t, int64_t>> &range,
@@ -898,7 +898,7 @@ bool InferShapeMatMul::NormalizeRangeOfMatMul(const vector<int64_t> &shape,
 
   auto valid_offset = infer_range.size() - preprocess_range.size();
   for (auto i = valid_offset; i < infer_range.size(); ++i) {
-    if (infer_shape[i] < VALUE_UNKNOWN_RANK || infer_shape[i] == 0) {
+    if (infer_shape[i] < VALUE_UNKNOWN_RANK) {
       OpsInputShapeErrReport(op_name.c_str(), std::to_string(i - valid_offset) + "-th dim is not supported", "dim",
                              std::to_string(infer_shape[i]));
       OP_LOGE(op_name.c_str(), "[InferShape] %d-th dim(%d) is not supported, please check the output of upper operator",
