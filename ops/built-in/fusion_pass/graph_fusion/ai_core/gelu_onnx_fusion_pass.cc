@@ -42,33 +42,35 @@ static const char* DIV = "RealDiv";
 static const char* ADD = "Add";
 static const char* MUL = "Mul";
 static const char* ERF = "Erf";
+static const std::string PATTERN_INPUT = "Input0";
 static const std::string PATTERN_DIV0 = "FusedNodeDiv0";
 static const std::string PATTERN_ERF0 = "FusedNodeErf0";
 static const std::string PATTERN_ADD0 = "FusedNodeAdd0";
 static const std::string PATTERN_MUL0 = "FusedNodeMul0";
 static const std::string PATTERN_MUL1 = "FusedNodeMul1";
 static const std::string GELU = "Gelu";
-/*                      
-        x                                           
-     /     \                                        
-    |      RealDiv                              
-    |        |                                              
-    |       Erf           x              
-    |        |            |       
-   Mul      Add   ==>    Gelu                      
-    \        /            |               
-     \      /             y
-      \    /                                                                
-       Mul
-        |
-        y
+/*
+case1: mul0 has const input       | case2:mul1 has const input                           
+        x                         |              x                  
+     /     \                      |           /     \          
+    |      RealDiv                |          |      RealDiv            
+    |        |                    |          |        |                    
+    |       Erf           x       |          |       Erf           x    
+    |        |            |       |          |        |            |
+   Mul0     Add   ==>    Gelu     |          |       Add   ==>    Gelu                
+    \        /            |       |          \        /            |        
+     \      /             y       |           \      /             y
+      \    /                      |             Mul0                        
+       Mul1                       |              |
+        |                         |             Mul1
+        y                         |              y
 */
 vector<FusionPattern*> GeluONNXFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("GeluONNXFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FusionPattern* pattern1 = new (std::nothrow) FusionPattern("GeluONNXFusionPass");
+  FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
-  pattern->AddOpDesc(PATTERN_DIV0, {DIV})
+  pattern1->AddOpDesc(PATTERN_DIV0, {DIV})
       .AddOpDesc(PATTERN_ERF0, {ERF})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_MUL0, {MUL})
@@ -77,8 +79,25 @@ vector<FusionPattern*> GeluONNXFusionPass::DefinePatterns() {
       .SetInputs(PATTERN_ADD0, {PATTERN_ERF0})
       .SetInputs(PATTERN_MUL1, {PATTERN_MUL0, PATTERN_ADD0})
       .SetOutput(PATTERN_MUL1);
+  patterns.push_back(pattern1);
 
-  patterns.push_back(pattern);
+  FusionPattern* pattern2 = new (std::nothrow) FusionPattern("GeluONNXFusionPass");
+  FUSION_PASS_CHECK(pattern2 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
+  pattern2->AddOpDesc(PATTERN_INPUT)
+      .AddOpDesc(PATTERN_DIV0, {DIV})
+      .AddOpDesc(PATTERN_ERF0, {ERF})
+      .AddOpDesc(PATTERN_ADD0, {ADD})
+      .AddOpDesc(PATTERN_MUL0, {MUL})
+      .AddOpDesc(PATTERN_MUL1, {MUL})
+      .SetInputs(PATTERN_DIV0, {PATTERN_INPUT})
+      .SetInputs(PATTERN_ERF0, {PATTERN_DIV0})
+      .SetInputs(PATTERN_ADD0, {PATTERN_ERF0})
+      .SetInputs(PATTERN_MUL0, {PATTERN_INPUT, PATTERN_ADD0})
+      .SetInputs(PATTERN_MUL1, {PATTERN_MUL0})
+      .SetOutput(PATTERN_MUL1);
+
+  patterns.push_back(pattern2);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define GeluONNXFusionPass pattern end");
   return patterns;
 }
@@ -175,16 +194,43 @@ Status GeluONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     return NOT_CHANGED);
 
   // check const input
-  float exp = 0.;
-  FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(div0_node, exp),
+  float div0_exp, add0_exp, mul0_exp, mul1_exp = 0.;
+  float div0_const_input = 1.41421;
+  FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(div0_node, div0_exp),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_DIV0.c_str()),
                     return NOT_CHANGED);
-  FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(add0_node, exp),
+  if (std::fabs(div0_exp - div0_const_input) > 0.00001) {
+      OP_LOGW("Gelu", "the exp of div0 is %f, which should be equal to 1.41421, not change", div0_exp);
+      return NOT_CHANGED;
+  }
+  FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(add0_node, add0_exp),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_ADD0.c_str()),
                     return NOT_CHANGED);
-  FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(mul0_node, exp),
+  if (std::fabs(add0_exp - 1.0) > std::numeric_limits<float>::epsilon()) {
+      OP_LOGW("Gelu", "the exp of add0 is %f, which should be equal to 1.0, not change", add0_exp);
+      return NOT_CHANGED;
+  }
+
+  Status status_mul0 = GetScalarFromOp(mul0_node, mul0_exp);
+  Status status_mul1 = GetScalarFromOp(mul1_node, mul1_exp);
+  mulConstNodeType = status_mul0 == SUCCESS ? true : false;
+  if (mulConstNodeType) {
+    FUSION_PASS_CHECK(SUCCESS != status_mul0,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_MUL0.c_str()),
                     return NOT_CHANGED);
+    if (std::fabs(mul0_exp - 0.5) > std::numeric_limits<float>::epsilon()) {
+      OP_LOGW("Gelu", "the exp of mul0 is %f, which should be equal to 0.5, not change", mul0_exp);
+      return NOT_CHANGED;
+    }
+  } else {
+    FUSION_PASS_CHECK(SUCCESS != status_mul1,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_MUL1.c_str()),
+                    return NOT_CHANGED);
+    if (std::fabs(mul1_exp - 0.5) > std::numeric_limits<float>::epsilon()) {
+      OP_LOGW("Gelu", "the exp of mul1 is %f, which should be equal to 0.5, not change", mul1_exp);
+      return NOT_CHANGED;
+    }
+  }
   // copy Opdesc
   std::shared_ptr<ge::OpDesc> gelu_desc = nullptr;
   gelu_desc = std::make_shared<ge::OpDesc>(mul1_node->GetName() + "/" + GELU, GELU);

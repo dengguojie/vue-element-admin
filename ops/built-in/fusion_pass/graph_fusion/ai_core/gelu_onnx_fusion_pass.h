@@ -31,6 +31,7 @@ class GeluONNXFusionPass : public PatternFusionBasePass {
 
  private:
   const string FUSED_OP_TYPE = "Gelu";
+  bool mulConstNodeType = false;
 };
 
 }  // namespace fe
