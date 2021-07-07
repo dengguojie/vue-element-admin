@@ -2100,7 +2100,7 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
 
     std::vector<std::pair<int64_t, int64_t>> range;
     int64_t dims_num = x_shape.GetDimNum();
-    range.emplace_back(std::make_pair(1, input_shape_size));
+    range.emplace_back(std::make_pair(0, input_shape_size));
     range.emplace_back(std::make_pair(dims_num, dims_num));
     y_desc->SetShapeRange(range);
   } else {
