@@ -92,7 +92,7 @@ Status SingleInstanceNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   size_t dimCnt = x_tensor_desc.GetShape().GetDimNum();
   auto sumShape = x_tensor_desc.GetShape();
   if (x_tensor_desc.GetFormat() == FORMAT_NCHW || x_tensor_desc.GetFormat() == FORMAT_NCDHW) {
-    for (int64_t i = 0; i < dimCnt; i++) {
+    for (size_t i = 0; i < dimCnt; i++) {
       if (i != 0 && i != 1) {
         sumShape.SetDim(i, 1);
       } else {
@@ -100,7 +100,7 @@ Status SingleInstanceNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
       }
     }
   } else {
-    for (int64_t i = 0; i < dimCnt; i++) {
+    for (size_t i = 0; i < dimCnt; i++) {
       if (i != 0 && i != (dimCnt - 1)) {
         sumShape.SetDim(i, 1);
       } else {
