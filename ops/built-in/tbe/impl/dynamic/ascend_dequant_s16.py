@@ -49,7 +49,8 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
     x0_shape = x0.shape
 
     conv_flag = 0
-    if x0.op.input_tensors and x0.op.input_tensors[0].name in ('mad1', 'convolution_c_col_bias'):
+    if len(x0.op.input_tensors) and ('mad1' in x0.op.input_tensors[0].name or \
+            'convolution_c_col_bias' in x0.op.input_tensors[0].name):
         conv_flag = 1
 
     if conv_flag:

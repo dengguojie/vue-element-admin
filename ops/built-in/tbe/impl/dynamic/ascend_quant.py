@@ -71,7 +71,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
 
     if dtype == "float32":
         cast_f16_ub = tvm.compute(read_shape, lambda *indice: shape_util.cast(input_ub(*indice), "float16"),
-                                  name="cast_f16_ub", tag="quant_cast_f16")
+                                  name="cast_f16_ub", tag="cast_f16_ub")
         cast_i8_ub = _compute_scale(cast_f16_ub, in_shape, out_shape, (scale, offset, sqrt_mode), nz_format_flag)
     else:
         cast_i8_ub = _compute_scale(input_ub, in_shape, out_shape, (scale, offset, sqrt_mode), nz_format_flag)
@@ -142,11 +142,11 @@ def _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index):
     zero = tvm.const(0, dtype=dtype)
     c1_is_var = bool(isinstance(c1_dim, tvm.expr.Var))
     if not c1_is_var and c1_dim % 2 == 0:
-        res = tvm.compute(in_shape, lambda *i: x(*i), name="input_ub", tag="quant_input", attrs={"c_out": c1_dim})
+        res = tvm.compute(in_shape, lambda *i: x(*i), name="input_ub", tag="input_ub", attrs={"c_out": c1_dim})
     else:
         input_ub = tvm.compute(read_shape,
                                lambda *indice: tvm.select(indice[c1_index] <= in_shape[c1_index] - 1, x(*indice)),
-                               name="input_ub", tag="quant_input", attrs={"c_out": c1_dim})
+                               name="input_ub", tag="input_ub", attrs={"c_out": c1_dim})
         padding_ub = tvm.compute(read_shape,
                                  lambda *indice: tvm.select(indice[c1_index] > in_shape[c1_index] - 1, zero),
                                  name="padding_ub", tag="quant_padding", attrs={"c_out": c1_dim})
@@ -220,7 +220,7 @@ def _reform_by_vadds(input_tensor, input_shape, output_shape, offset_val, nz_for
     vadds_vector = tvm.compute(output_shape,
                                _reform_compute_generate(input_tensor, input_shape, output_shape,
                                                         (True, offset_val, -1), nz_format_flag),
-                               name="reform_by_vadds", tag="quant_reform_by_vadds")
+                               name="reform_by_vadds", tag="reform_by_vadds")
 
     return vadds_vector
 
@@ -244,7 +244,7 @@ def _reform_by_vmuls(input_tensor, input_shape, output_shape, scale_val, nz_form
     vmuls_vector = tvm.compute(output_shape,
                                _reform_compute_generate(input_tensor, input_shape, output_shape,
                                                         (False, -1, scale_val), nz_format_flag),
-                               name="reform_by_vmuls", tag="quant_reform_by_vmuls")
+                               name="reform_by_vmuls", tag="reform_by_vmuls")
 
     return vmuls_vector
 
@@ -273,7 +273,7 @@ def _compute_scale(in_tensor, in_shape, out_shape, attr_list, nz_format_flag):
         scale_ub = _reform_by_vmuls(in_tensor, in_shape, out_shape, scale_value, nz_format_flag)
         if sqrt_mode:
             scale_sqrt_ub = tvm.compute(out_shape, lambda *indice: scale_ub(*indice) * scale_value,
-                                        name="scale_sqrt_ub", tag="quant_scale_sqrt")
+                                        name="scale_sqrt_ub", tag="scale_sqrt_ub")
             res = _compute_offset(scale_sqrt_ub, in_shape, out_shape, (offset, False, scale), nz_format_flag)
         else:
             res = _compute_offset(scale_ub, in_shape, out_shape, (offset, False, scale), nz_format_flag)
@@ -307,14 +307,14 @@ def _compute_offset(in_tensor, in_shape, out_shape, attr_list, nz_format_flag):
             offset_ub = _reform_by_vadds(in_tensor, in_shape, out_shape, offset_value, nz_format_flag)
         else:
             offset_ub = tvm.compute(out_shape, lambda *indice: in_tensor(*indice) + offset_value,
-                                    name="offset_ub", tag="quant_offset")
+                                    name="offset_ub", tag="offset_ub")
         cast_i8_ub = tvm.compute(out_shape,
                                  lambda *indice: shape_util.cast(offset_ub(*indice), "int8"),
-                                 name='cast_i8_ub', tag="quant_cast_i8")
+                                 name='cast_i8_ub', tag="cast_i8_ub")
     else:
         cast_i8_ub = tvm.compute(out_shape,
                                  lambda *indice: shape_util.cast(in_tensor(*indice), "int8"),
-                                 name='cast_i8_ub', tag="quant_cast_i8")
+                                 name='cast_i8_ub', tag="cast_i8_ub")
     return cast_i8_ub
 
 
