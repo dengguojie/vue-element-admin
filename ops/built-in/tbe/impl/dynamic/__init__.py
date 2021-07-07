@@ -341,6 +341,7 @@ from .wts_arq import wts_arq
 from .inplace_index_add import inplace_index_add
 from .square_sum_all import square_sum_all
 
+from .scan_pq_codes import scan_pq_codes
 from .ascend_dequant import ascend_dequant
 from .ascend_dequant_s16 import ascend_dequant_s16
 from .ascend_requant import ascend_requant

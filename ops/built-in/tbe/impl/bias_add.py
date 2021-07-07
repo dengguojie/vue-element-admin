@@ -28,21 +28,23 @@ from impl.util import util_select_op_base
 # pylint: disable=too-many-statements,too-many-branches,invalid-name
 def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     """
-    1. when the length of x's ori_shape is less than or equal
+    1.when the length of x's ori_shape is less than or equal
     to 4 and the first element of the shape of bias is a multiple
-    of 16. The Op BiasAdd can support NC1HWC0, NCHW and NHWC.\n
-    > for example:\n
-    > x : Tensor of (shape=(16, 16, 16, 16), "NHWC")\n
-    > bias : Tensor of (shape=(16, 16, 16, 16), "NHWC")\n
-    > The Op BiasAdd can process with NC1HWC0\n
-    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")\n
-    > bias : Tensor of (shape=(2), "ND")\n
+    of 16. The Op BiasAdd can support NC1HWC0, NCHW and NHWC.
 
-    2. when the length of x's ori_shape is greater then 4 and
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16), "NHWC")
+        bias : Tensor of (shape=(16, 16, 16, 16), "NHWC")
+        The Op BiasAdd can process with NC1HWC0
+        x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+        bias : Tensor of (shape=(2), "ND")
+
+    2.when the length of x's ori_shape is greater then 4 and
     the first element of the shape of bias is a multiple of 16.
-    The Op BiasAdd can support NDHWC, NCDHW, NDC1HWC0.\n
-    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NDHWC")\n
-    > bias : Tensor of (shape=(2), "ND")\n
+    The Op BiasAdd can support NDHWC, NCDHW, NDC1HWC0.
+
+        x : Tensor of (shape=(16, 1, 16, 16, 16), "NDHWC")
+        bias : Tensor of (shape=(2), "ND")
     """
     shape_bias = bias.get("ori_shape")
     ori_shape_x = x.get("ori_shape")
