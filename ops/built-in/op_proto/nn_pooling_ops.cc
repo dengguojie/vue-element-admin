@@ -1385,7 +1385,7 @@ static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
   }
   // if it is the right boundary value, use the right closed interval
   if (value == grade[last]) {
-    low = grade[last - 1];
+    low = grade[last - 1] + 1;
     high = grade[last];
     return true;
   }

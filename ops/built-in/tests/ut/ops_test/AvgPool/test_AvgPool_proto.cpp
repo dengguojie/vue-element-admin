@@ -273,6 +273,29 @@ TEST_F(avg_pool, avg_pool_fuzz_build_all_static_shape) {
     EXPECT_EQ((input_range == expect_x_range), true);
 }
 
+// fuzz build all static shape
+TEST_F(avg_pool, avg_pool_fuzz_build_all_static_shape_1) {
+    ge::op::AvgPool op;
+    op.SetAttr("_fuzz_build", true);
+    op.UpdateInputDesc("x", create_desc_with_ori(
+        {16, 3, 4096, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 3, 16, 16}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+    op.SetAttr("ksize", {1,1,3,5});
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = op.InferShapeAndType();
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    tensor_desc_x->GetShapeRange(input_range);
+    std::vector<std::pair<int64_t, int64_t>> expect_x_range = {{16, 31}, {3,3}, {1024, 4096}, {16, 31}};
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    EXPECT_EQ((input_range == expect_x_range), true);
+}
+
 // fuzz build correct left range
 TEST_F(avg_pool, avg_pool_fuzz_build_correct_left_range) {
     ge::op::AvgPool op;
