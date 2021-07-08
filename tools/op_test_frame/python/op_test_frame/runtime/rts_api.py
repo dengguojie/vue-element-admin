@@ -31,6 +31,7 @@ ONLINE_PROF_MAX_PMU_NUM = 8
 
 # pylint: disable=too-few-public-methods,too-many-instance-attributes
 # pylint: disable=invalid-name,unused-variable,no-self-use
+# pylint: disable=too-many-arguments,too-many-public-methods
 class rtDevBinary_t(ctypes.Structure):
     """
     Class rtDevBinary_t
@@ -552,7 +553,7 @@ class AscendRTSApi:
                                         rts_info.RT_MEMCPY_KIND[memcpy_kind])
         try:
             self.parse_error(rt_error, "rtMemcpy")
-        except Exception as err:
+        except RuntimeError as err:
             if retry_count < 3:
                 retry_count += 1
                 time.sleep(1)
