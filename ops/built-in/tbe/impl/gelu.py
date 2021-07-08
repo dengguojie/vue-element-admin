@@ -45,7 +45,7 @@ def _tanh_parameter_compute(placeholders):
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("gelu")
 def gelu_compute(input_x, output_y, kernel_name="gelu",
-                 impl_mode="high_precision"):
+                 impl_mode=None):
     """
     mathematical formula of gelu(x):
     gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
@@ -62,7 +62,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu",
     kernel_name: str
         cce kernel name, default value is gelu
     impl_mode: str
-        impl_mode, default value is high_precision
+        impl_mode, default value is None
 
     Returns
     -------
@@ -73,7 +73,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu",
 
     if dtype == "float16" and \
             tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
-        if impl_mode == "high_precision":
+        if impl_mode == "high_precision" or (impl_mode is None):
             has_improve_precision = True
             input_x = tbe.cast_to(input_x, "float32")
 
@@ -118,7 +118,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu",
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-def gelu(input_x, output_y, kernel_name="gelu", impl_mode="high_precision"):
+def gelu(input_x, output_y, kernel_name="gelu", impl_mode=None):
     """
     mathematical formula of gelu(x):
     gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
@@ -135,7 +135,7 @@ def gelu(input_x, output_y, kernel_name="gelu", impl_mode="high_precision"):
     kernel_name : str
         cce kernel name, default value is gelu
     impl_mode:str
-        impl_mode, default value is high_precision
+        impl_mode, default value is None
 
     Returns
     -------
