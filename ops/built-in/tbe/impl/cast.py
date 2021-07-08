@@ -24,6 +24,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
+from impl.util import util_common
 
 MAX_SUPPORT_SHAPE = 1 << 30 # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000 # Limit of one dim
@@ -126,13 +127,8 @@ def _int32_process(data, dst_type):
         data_and = dsl.vand(data, const_broad)
 
         data_fp16 = tbe.cast_to(data_and, "float16")
-        tensor_0 = tbe.vmuls(data_fp16, 0)
-        tensor_256 = tbe.vadds(tensor_0, 256)
-        result = tbe.vadds(data_fp16, 128)
-        result = tbe.vmod(result, tensor_256)
-        result = tbe.vadds(result, -128)
-        result = tbe.cast_to(result, "float16")
-        return tbe.cast_to(result, "int8", True)
+        res = util_common.uint8_int8_overflow_proc(data_fp16, "int8")
+        return res
 
     if dst_type == "uint8":
         const_ff = tvm.const(255, "int32")
