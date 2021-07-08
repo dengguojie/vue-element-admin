@@ -179,13 +179,15 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
             err_man.raise_err_specific_user("conv2d_backprop_input",
                                             "invalid out_backprop ori_shape {}, w should not larger than {}".format(
                                                 str(out_backprop.get("shape")), dy_range_nchw[3][1]))
-        dx_range_nchw, _, _ = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
+        dx_range_nchw, _, new_dy_range = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
         y["range"] = [dx_range_nchw[0], [y["shape"][1], y["shape"][1]], dx_range_nchw[2], dx_range_nchw[3],
                       [y["shape"][4], y["shape"][4]]]
         out_backprop["range"] = list(out_backprop["range"])
         out_backprop["ori_range"] = list(out_backprop["ori_range"])
-        out_backprop["range"][out_backprop.get("format").find("W") - 1] = dy_range_nchw[3]
-        out_backprop["ori_range"][out_backprop.get("ori_format").find("W")] = dy_range_nchw[3]
+        out_backprop["range"][out_backprop.get("format").find("H") - 1] = new_dy_range[2]
+        out_backprop["ori_range"][out_backprop.get("ori_format").find("H")] = new_dy_range[2]
+        out_backprop["range"][out_backprop.get("format").find("W") - 1] = new_dy_range[3]
+        out_backprop["ori_range"][out_backprop.get("ori_format").find("W")] = new_dy_range[3]
         for name, tensor in have_range.items():
             # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \

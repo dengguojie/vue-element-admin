@@ -164,22 +164,37 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
                                                              x.get("dtype").lower(),
                                                              filter.get("dtype").lower(),
                                                              "conv2d_transpose")
-        x["range"] = list(x["range"])
-        x["ori_range"] = list(x["ori_range"])
+
+        # modify dy_range
+        dy_range = x.get("range")
+        ori_data_format = x.get("ori_format")
+        ori_paras = {
+            "input_size": input_size, "x": x, "filters": filter, "bias": None, "offset_w": None,
+            "y": y,
+            "strides": strides, "pads": pads, "dilations": dilations, "data_format": data_format,
+            "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": kernel_name
+        }
+        conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
+        conv2d_tranpose.get_attr_nchw(data_format)
+        dy_shape_nchw = conv2d_tranpose.get_input_nchw(x.get("ori_shape"), x.get("ori_format"))
+        filter_shape_nchw = conv2d_tranpose.get_input_nchw(filter.get("ori_shape"), filter.get("ori_format"))
+        _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
         if is_single_point:
-            x["range"][x.get("format").find("W") - 1] = (dy_w_range_max, dy_w_range_max)
-            x["ori_range"][x.get("ori_format").find("W")] = (dy_w_range_max, dy_w_range_max)
+            dy_range_nchw[3] = [dy_w_range_max, dy_w_range_max]
         else:
-            x["range"][x.get("format").find("W") - 1] = (
-                x["range"][x.get("format").find("W") - 1][0],
-                min(dy_w_range_max, x["range"][x.get("format").find("W") - 1][1]))
-            x["ori_range"][x.get("ori_format").find("W")] = (
-                x["ori_range"][x.get("ori_format").find("W")][0],
-                min(dy_w_range_max, x["ori_range"][x.get("ori_format").find("W")][1]))
-        if x["ori_shape"][x.get("ori_format").find("W")] > x["ori_range"][x.get("ori_format").find("W")][1]:
+            dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
+        if x["ori_shape"][x.get("ori_format").find("W")] > dy_range_nchw[3][1]:
             err_man.raise_err_specific_user("conv2d_transpose",
                                             "invalid out_backprop ori_shape {}, w should not larger than {}".format(
-                                                str(x.get("shape")), x["ori_range"][x.get("ori_format").find("W")][1]))
+                                                str(x.get("shape")), dy_range_nchw[3][1]))
+        _, _, new_dy_range = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
+        x["range"] = list(x["range"])
+        x["ori_range"] = list(x["ori_range"])
+        x["range"][x.get("format").find("H") - 1] = new_dy_range[2]
+        x["ori_range"][x.get("ori_format").find("H")] = new_dy_range[2]
+        x["range"][x.get("format").find("W") - 1] = new_dy_range[3]
+        x["ori_range"][x.get("ori_format").find("W")] = new_dy_range[3]
+
         for name, tensor in have_range.items():
             # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
