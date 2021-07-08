@@ -53,7 +53,9 @@ DeviceSharder::DeviceSharder(DeviceType device) : Sharder(device) {
 DeviceSharder::~DeviceSharder() {
     if (sharder_ != nullptr) {
         (void) dlclose(sharder_);
+        sharder_ = nullptr;
     }
+    parallel_for_ = nullptr;
 }
 
 /*

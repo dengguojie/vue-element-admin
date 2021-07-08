@@ -111,7 +111,7 @@ uint32_t LessCpuKernel::LessCompute(CpuKernelContext &ctx,
 
   size_t data_num = calc_info.x_indexes.size();
   uint32_t min_core_num = 1;
-  int64_t max_core_num =
+  size_t max_core_num =
       std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
   if (max_core_num > data_num) {
     max_core_num = data_num;

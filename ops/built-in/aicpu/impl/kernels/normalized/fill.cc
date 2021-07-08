@@ -21,7 +21,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-constexpr char *kFill = "Fill";
+const char *kFill = "Fill";
 
 #define FILL_CALCULATE_DIMS_CASE(DTYPE, TYPE)                                 \
   case (DTYPE): {                                                             \

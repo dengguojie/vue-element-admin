@@ -48,7 +48,6 @@ uint32_t EqualCompute(CpuKernelContext &ctx, bool flag) {
   calc_info.output = ctx.Output(0);
   DataType input0_type = calc_info.input_0->GetDataType();
   DataType input1_type = calc_info.input_1->GetDataType();
-  DataType output_type = calc_info.output->GetDataType();
   KERNEL_CHECK_FALSE((input0_type == input1_type), KERNEL_STATUS_PARAM_INVALID,
                      "DataType of x1 [%d] should be same as x2 [%d].",
                      input0_type, input1_type)

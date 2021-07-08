@@ -21,7 +21,7 @@
 #include "cpu_kernel_utils.h"
 
 namespace {
-constexpr char *kMul = "Mul";
+const char *kMul = "Mul";
 }
 
 namespace aicpu {

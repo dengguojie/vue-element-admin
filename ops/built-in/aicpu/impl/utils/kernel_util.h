@@ -177,7 +177,7 @@ inline bool AddWithoutOverflow(const int64_t x, const int64_t y, int64_t &sum) {
   const uint64_t usum = ux + uy;
   sum = static_cast<int64_t>(usum);
 
-  return !(x >= 0 == y >= 0 && sum >= 0 != x >= 0);
+  return !(((x >= 0) == (y >= 0)) && ((sum >= 0) != (x >= 0)));
 }
 
 /**

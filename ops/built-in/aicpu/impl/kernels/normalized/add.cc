@@ -20,7 +20,7 @@
 #include "cpu_kernel_utils.h"
 
 namespace {
-constexpr char *kAdd = "Add";
+const char *kAdd = "Add";
 }
 namespace aicpu {
 uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {

@@ -68,7 +68,6 @@ uint32_t AvgPool1DAvgMatrixCpuKernel::CheckParam(CpuKernelContext &ctx){
   KERNEL_CHECK_NULLPTR(output_data_temp, KERNEL_STATUS_PARAM_INVALID,
                        "[%s] get output data failed.", kAvgPool1DAvgMatrix);
   auto input_shape = input_tensor->GetTensorShape();
-  auto input_format = input_shape->GetFormat();
   std::vector<int64_t> dims = input_shape->GetDimSizes();
   KERNEL_CHECK_FALSE((dims.size() >= kDimSize), KERNEL_STATUS_PARAM_INVALID,
                      "%s dims size [%zu] must >= 4.", kAvgPool1DAvgMatrix,

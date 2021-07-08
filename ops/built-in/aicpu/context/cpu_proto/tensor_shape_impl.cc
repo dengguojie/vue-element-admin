@@ -34,10 +34,10 @@ std::vector<int64_t> TensorShapeImpl::GetDimSizes() const {
  */
 void TensorShapeImpl::SetDimSizes(const std::vector<int64_t> &dims) {
   tensor_shape_->clear_dim();
-  for (const auto &dim : dims) {
+  for (size_t i = 0; i < dims.size(); ++i) {
     aicpuops::TensorShape_Dim *aicpu_dims = tensor_shape_->add_dim();
     KERNEL_CHECK_NULLPTR_VOID(aicpu_dims, "Protobuf add dim is null")
-    aicpu_dims->set_size(dim);
+    aicpu_dims->set_size(dims[i]);
   }
 }
 

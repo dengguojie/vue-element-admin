@@ -19,7 +19,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-constexpr char *kRandomUniform = "RandomUniform";
+const char *kRandomUniform = "RandomUniform";
 
 #define RANDOM_UNIFORM_GENERATE_CASE(DTYPE, TYPE)                     \
   case (DTYPE): {                                                     \

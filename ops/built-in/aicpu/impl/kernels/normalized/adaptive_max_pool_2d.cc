@@ -162,7 +162,7 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
 
   // These multiplications do not overflow
   int64_t output_data_num = args.out_size_h * args.out_size_w;
-  int64_t output0_data_size = output_data_num * sizeof(SCALAR_T);
+  uint64_t output0_data_size = output_data_num * sizeof(SCALAR_T);
   if (output0_data_size > ctx.Output(kFirstOutputIndex)->GetDataSize()) {
     KERNEL_LOG_ERROR("Adaptive_max_pool2d: output 0 size must big then [%llu], now size is [%llu].", output0_data_size,
                      ctx.Output(kFirstOutputIndex)->GetDataSize());
@@ -170,7 +170,7 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
   }
 
   // These multiplications do not overflow
-  int64_t output1_data_size = output_data_num * sizeof(INDICES_T);
+  uint64_t output1_data_size = output_data_num * sizeof(INDICES_T);
   if (output1_data_size > ctx.Output(kSecondOutputIndex)->GetDataSize()) {
     KERNEL_LOG_ERROR("Adaptive_max_pool2d: output 1 size must big then [%llu], now size is [%llu].", output1_data_size,
                      ctx.Output(kSecondOutputIndex)->GetDataSize());
