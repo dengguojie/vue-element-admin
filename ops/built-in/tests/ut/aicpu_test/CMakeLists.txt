@@ -92,6 +92,8 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/realdiv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reshape.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/resize_bilinear.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/resize_bilinear_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/scatter_elements.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
@@ -196,6 +198,8 @@ set(_cpu_kernels_ut_files
   testcase/random_uniform/src/random_uniform_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
+  testcase/resize_bilinear/src/resize_bilinear_utest.cpp
+  testcase/resize_bilinear/src/resize_bilinear_grad_utest.cpp
   testcase/round/src/round_utest.cpp
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp

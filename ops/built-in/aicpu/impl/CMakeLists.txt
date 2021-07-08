@@ -24,6 +24,8 @@ set(local_kernels_src_files
     kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
+    kernels/normalized/resize_bilinear.cc
+    kernels/normalized/resize_bilinear_grad.cc
     kernels/normalized/round.cc
     kernels/normalized/scatter_elements.cc
     kernels/normalized/search_sorted.cc
