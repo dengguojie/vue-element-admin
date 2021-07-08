@@ -364,7 +364,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   return true;
 }
 
-// register tiling interface of the GatherV2 op.
+// register tiling interface of the GatherElements op.
 REGISTER_OP_TILING_FUNC_BUFFERED(GatherElements, GatherElementsTiling);
 
 }  // namespace optiling

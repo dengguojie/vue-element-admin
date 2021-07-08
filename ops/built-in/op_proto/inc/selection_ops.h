@@ -258,7 +258,7 @@ REG_OP(GatherV2D)
 
 REG_OP(GatherElements)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}))
-    .INPUT(index, TensorType({DT_INT64}))
+    .INPUT(index, TensorType({DT_INT32, DT_INT64}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}))
     .ATTR(dim, Int, 0)
     .OP_END_FACTORY_REG(GatherElements)

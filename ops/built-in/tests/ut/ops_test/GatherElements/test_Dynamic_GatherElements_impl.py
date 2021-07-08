@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-Dynamic GatherV2 ut case
+Dynamic GatherElements ut case
 """
 from op_test_frame.ut import OpUT
 

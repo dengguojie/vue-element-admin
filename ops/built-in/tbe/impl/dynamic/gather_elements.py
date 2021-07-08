@@ -141,15 +141,14 @@ class GatherElements():
         self.indices_dtype = indices_dict.get("dtype").lower()
         self.y_dtype = y_dict.get("dtype").lower()
         self.tiling_dtype = INT64
-
-        self.check_params(kernel_name)
+        self.kernel_name = kernel_name
+        self.check_params()
 
         profile = tik.Dprofile()
         self.ub_size = profile.get_unified_buffer_size()
         self.l1_size = profile.get_l1_buffer_size()
         self.core_num = profile.get_aicore_num()
         self.tik_instance = tik.Tik(profile, disable_debug=True)
-        self.kernel_name = kernel_name
 
         self.x_shape = (PARAMS_SIZE,)
         self.indices_shape = (INDICES_NUM,)
@@ -180,13 +179,12 @@ class GatherElements():
         self.remaining_block_remain = None
         self.remaining_block_num = None
 
-    def check_params(self, kernel_name):
+    def check_params(self):
         """
         check params
 
         Parameters
         ----------
-        kernel_name
 
         Returns
         -------
@@ -201,7 +199,7 @@ class GatherElements():
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
 
         if self.y_dtype != self.params_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "y", "x",
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "y", "x",
                                                                   self.y_dtype, self.params_dtype)
 
     def get_tiling_args(self, tiling_ub):
@@ -1013,7 +1011,7 @@ class GatherElements():
                                         "l1_size": self.l1_size,
                                         "params_dsize": self.params_dsize,
                                         "indices_dsize": self.indices_dsize,
-                                        "attr": self.axis
+                                        "axis": self.axis
                                         })
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
