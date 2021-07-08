@@ -120,7 +120,7 @@ def set_op_pattern(all_tags, op_info):
     op_pattern = op_info["pattern"]
     if ("reduce_sum" in all_tags or "dropout_broadcast" in all_tags or
         "broadcast_reshape" in all_tags or "broadcast_mad" in all_tags):
-        op_pattern = OpPatterns.GEMM_PATTERN
+        op_pattern = OpPatterns.MATMUL_PATTERN
     return op_pattern
 
 
@@ -1023,7 +1023,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             schedule_valid = reduce_mean_mid_reduce_high_performance_schedule(outs, sch_list)
             if schedule_valid:
                 return schedule, spec_mid_list, outs
-    if 'sub_pattern' in op_info.keys() and pattern != OpPatterns.GEMM_PATTERN:
+    if 'sub_pattern' in op_info.keys() and pattern != OpPatterns.MATMUL_PATTERN:
         sub_pattern = op_info['sub_pattern']
         if sub_pattern == OpSubPatterns.REDUCE_ATOMIC_PATTERN:
             atomic_sch = ReduceAtomicSchedule()
