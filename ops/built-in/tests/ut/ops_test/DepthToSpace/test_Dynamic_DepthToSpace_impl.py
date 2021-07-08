@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 # pylint: disable=invalid-name,missing-docstring
 from op_test_frame.ut import OpUT
+from impl.dynamic.depth_to_space import get_op_support_info
 
 ut_case = OpUT("DepthToSpace", "impl.dynamic.depth_to_space", "depth_to_space")
 
@@ -35,6 +36,16 @@ def gen_dynamic_depthtospace_case(shape_x, shape_y, ori_shape_x, ori_shape_y, ra
     }
 
 
+def test_get_op_support_info_dynamic_depthtospace(test_arg):
+    x = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1), "ori_shape": (-1, -1, -1),
+         "range": ((1, 6), (16, 48), (16, 48))}
+    y = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1), "ori_shape": (-1, -1, -1),
+         "range": ((16, 48), (16, 48), (16, 16))}
+    block_size = 3
+    get_op_support_info(x, y, block_size)
+
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_depthtospace)
 ut_case.add_case(
     "all",
     gen_dynamic_depthtospace_case((-1, -1, -1, -1), (-1, -1, -1, -1), (-1, -1, -1, -1), (-1, -1, -1, -1),

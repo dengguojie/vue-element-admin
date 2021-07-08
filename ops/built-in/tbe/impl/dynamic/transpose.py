@@ -3478,10 +3478,12 @@ class Transpose(object):
         # this "global_variable_link" flag suggest ccec.py do link without "-r" option
         # which will result in global variable in cce file with wrong address
         tbe_context.get_context().add_compile_info("global_variable_link", True)
+        opt_config = {"enable_const_fold": True}
         self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
                                inputs=input_list,
                                outputs=[self.data_out],
-                               flowtable=[self.data_tiling])
+                               flowtable=[self.data_tiling],
+                               config=opt_config)
         return {"compile_info": tbe_context.get_context().get_compile_info()}
 
 

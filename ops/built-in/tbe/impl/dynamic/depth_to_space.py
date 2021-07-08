@@ -21,12 +21,33 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 BLOCK_SIZE = 32
 MAX_INT64_VALUE = 2**64 - 1
 TILING_MAX_SIZE_GM = 2048  # 16KB
+
+
+def get_op_support_info(x, y, block_size, data_format='NHWC', kernel_name="depth_to_space"):
+    """
+    get_op_support_info
+    """
+    format_x = x.get("format").upper()
+    if format_x == "NHWC":
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                             [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])],
+                             [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]]
+        axis_reduce_list = None
+
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals,protected-access
@@ -79,10 +100,11 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
     # this "global_variable_link" flag suggest ccec.py do link without "-r" option
     # which will result in global variable in cce file with wrong address
     tbe_context.get_context().add_compile_info("global_variable_link", True)
-
+    opt_config = {"enable_const_fold": True}
     obj.tik_inst.BuildCCE(kernel_name=obj.kernel_name,
                           inputs=[obj.data_in],
                           outputs=[obj.data_out],
-                          flowtable=[obj.data_tiling])
+                          flowtable=[obj.data_tiling],
+                          config=opt_config)
 
     return obj.tik_inst
