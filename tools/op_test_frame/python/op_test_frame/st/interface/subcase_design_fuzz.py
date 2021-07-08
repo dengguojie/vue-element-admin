@@ -275,6 +275,8 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
             if desc_obj.get(utils.TYPICAL_SHAPE) is not None:
                 one_desc = self._deal_with_dynamic_shape_fuzz(
                     desc_obj, desc_type, fuzz_dict, one_desc)
+            if desc_obj.get("name"):
+                one_desc.update({"name": desc_obj.get("name")})
             desc_list.append(one_desc)
         return desc_list
 
