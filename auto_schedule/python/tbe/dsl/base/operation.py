@@ -36,54 +36,6 @@ _schedules = {}
 _tiling_cases = {}
 _builds = {}
 
-_contexts = {}
-
-
-def _get_contexts():
-    # type: () -> List[OperatorContextProxy]
-    return _contexts.setdefault(threading.currentThread().ident, [])
-
-
-class OperatorContextProxy:
-    """
-    OperatorContextProxy
-    """
-
-    def __init__(self, mode, operator_context):
-        # type: (str, OperatorContext) -> None
-        """
-        :param mode:
-        :param operator_context:
-        """
-        self._operator_context = operator_context
-        self._mode = mode
-        self._op_type = None
-
-    def get_mode(self):
-        # type: () -> str
-        """
-        :return:
-        """
-        return self._mode
-
-    def set_op_type(self, op_type):
-        # type: (str) -> None
-        """
-        :param op_type:
-        :return:
-        """
-        self._op_type = op_type
-
-    def get_op_type(self):
-        # type: () -> str
-        """
-        :return:
-        """
-        return self._op_type
-
-    def __getattr__(self, item):
-        return getattr(self._operator_context, item)
-
 
 def register_schedule(pattern):
     """
@@ -282,7 +234,7 @@ def get_op_mode():
     return op_context_obj.get_op_mode() if op_context_obj else None
 
 
-def get_context() -> Union[OperatorContext, OperatorContextProxy, None]:
+def get_context() -> Union[OperatorContext, None]:
     """
     :return:
     """
