@@ -3155,11 +3155,12 @@ static bool Upasmple3dForwardInferShape(Operator& op) {
   constexpr int THREEDIMS = 3;
   std::vector<int64_t> output_shape;
   
-  if (input_dtype != DT_FLOAT && input_dtype != DT_DOUBLE)
+ if (input_dtype != DT_FLOAT16 && input_dtype != DT_FLOAT && input_dtype != DT_DOUBLE)
   {
-    OP_LOGE(op.GetName().c_str(), "input must be float or double!");
+    OP_LOGE(op.GetName().c_str(), "input datatype must be float16,float or double!");
     return false;
   }
+  
   if (input_shape_dims.size() != 5) {
     OP_LOGE(op.GetName().c_str(), "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
     return false;
@@ -3231,9 +3232,9 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
   constexpr int FIVEDIMS = 5;
   constexpr int THREEDIMS = 3;
 
-  if (input_dtype != DT_FLOAT && input_dtype != DT_DOUBLE)
+ if (input_dtype != DT_FLOAT16 && input_dtype != DT_FLOAT && input_dtype != DT_DOUBLE)
   {
-    OP_LOGE(op.GetName().c_str(), "input must be float or double!");
+    OP_LOGE(op.GetName().c_str(), "input datatype must be float16,float or double!");
     return false;
   }
 

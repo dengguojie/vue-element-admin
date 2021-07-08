@@ -1971,8 +1971,8 @@ REG_OP(GridSampler3DGrad)
 
 *@par Inputs:
 *One inputs, including:
-* @li x: A 5-D input tensor [N, C, D, H, W]. Must be one of the following types:
-*     float32, float64. \n
+*x: A 5-D input tensor [N, C, D, H, W]. Must be one of the following types:
+*     float16, float32, float64. \n
 
 *@par Attributes:
 *@li output_size: An optional listInt. Defaults to none.
@@ -1991,8 +1991,8 @@ REG_OP(GridSampler3DGrad)
 */
 
 REG_OP(UpsampleNearest3d)
-    .INPUT(x, TensorType({DT_FLOAT, DT_DOUBLE}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .ATTR(output_size, ListInt, {})
     .ATTR(scales, ListFloat, {})
     .OP_END_FACTORY_REG(UpsampleNearest3d)
@@ -2002,8 +2002,8 @@ REG_OP(UpsampleNearest3d)
 
 *@par Inputs:
 *One inputs, including:
-* @li x: A 5-D input tensor [N, C, D, H, W]. Must be one of the following types:
-*     float32, float64. \n
+*x: A 5-D input tensor [N, C, D, H, W]. Must be one of the following types:
+*     float16, float32, float64. \n
 
 *@par Attributes:
 *@li output_size: An optional listInt. Defaults to none.
@@ -2026,8 +2026,8 @@ REG_OP(UpsampleNearest3d)
 */
 
 REG_OP(UpsampleTrilinear3d)
-    .INPUT(x, TensorType({DT_FLOAT, DT_DOUBLE}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .ATTR(output_size, ListInt, {})
     .ATTR(scales, ListFloat, {})
     .ATTR(align_corners, Bool, false)
@@ -2038,8 +2038,8 @@ REG_OP(UpsampleTrilinear3d)
 
 *@par Inputs:
 *One inputs, including:
-* @li grad_output: A 5-D input tensor [N, C, D, H, W]. Must be one of the following types:
-*     float32, float64. \n
+*grad_output: A 5-D input tensor [N, C, D, H, W]. Must be one of the following types:
+*     float16, float32, float64. \n
 
 *@par Attributes:
 *@li input_size: An required listInt.
@@ -2065,8 +2065,8 @@ REG_OP(UpsampleTrilinear3d)
 */
 
 REG_OP(UpsampleNearest3dGrad)
-    .INPUT(grad_output, TensorType({DT_FLOAT, DT_DOUBLE}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .INPUT(grad_output, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .REQUIRED_ATTR(input_size, ListInt)
     .ATTR(output_size, ListInt, {})
     .ATTR(scales, ListFloat, {})
@@ -2077,8 +2077,8 @@ REG_OP(UpsampleNearest3dGrad)
 
 *@par Inputs:
 *One inputs, including:
-* @li grad_output: A 5-D input tensor [N, C, D, H, W]. Must be one of the following types:
-*     float32, float64. \n
+*grad_output: A 5-D input tensor [N, C, D, H, W]. Must be one of the following types:
+*     float16, float32, float64. \n
 
 *@par Attributes:
 *@li input_size: An required listInt.
@@ -2098,15 +2098,15 @@ REG_OP(UpsampleNearest3dGrad)
 
 *@par Outputs:
 *y: A Tensor with shape depends on intput_size and output_size/scales. Must be one of the following
-    types: float16, float32. \n
+    types: float16, float32, float64. \n
 
 *@par Restrictions:
 *Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 
 REG_OP(UpsampleTrilinear3dGrad)
-    .INPUT(grad_output, TensorType({DT_FLOAT, DT_DOUBLE}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .INPUT(grad_output, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .REQUIRED_ATTR(input_size, ListInt)
     .ATTR(output_size, ListInt, {})
     .ATTR(scales, ListFloat, {})
