@@ -813,6 +813,9 @@ REG_OP(SoftplusV2Grad)
  * one input including:
  * x: input A Tensor. Must be one of the following types: float32, float16
  * 
+ * @par Attributes:
+ * alpha: An optional float. Defaults to 1.0. \n
+
  * @par Outputs:
  * one output including:
  * y:A Tensor of the same type as x

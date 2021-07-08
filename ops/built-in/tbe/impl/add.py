@@ -173,25 +173,28 @@ def op_sub_select_format(x1, x2, y, kernel_name="add"):
 def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     """
     select format dynamically \n
-    op_select_format support desc: \n
-    1. when input x's ori_shape is 4, and bias's shape is not 1. \n
-        The Op Bias can support \n
-        ND + ND = ND, \n
-        NC1HWC0 + NC1HWC0 = NC1HWC0, \n
-        for example: \n
-        inputs: \n
-            x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0" \n
-            bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0" \n
-        outputs: \n
-            y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0" \n
+    op_select_format support desc:
 
-    2. In other scenes, all input(x, bias) only support ND. \n
-        for example: \n
-        inputs: \n
-            x        ori shape = [2] ori_format = "ND" \n
-            bias     ori shape = [2] ori_format = "ND" \n
-        outputs: \n
-            y        ori shape = [2] ori_format = "ND" \n
+    1.when input x's ori_shape is 4, and bias's shape is not 1. \n
+    The Op Bias can support
+    ND + ND = ND,
+    NC1HWC0 + NC1HWC0 = NC1HWC0.
+
+        for example:
+        inputs:
+            x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0" 
+            bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0" 
+        outputs:
+            y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+
+    2.In other scenes, all input(x, bias) only support ND.
+ 
+        for example:
+        inputs:
+            x        ori shape = [2] ori_format = "ND"
+            bias     ori shape = [2] ori_format = "ND" 
+        outputs:
+            y        ori shape = [2] ori_format = "ND"
 
     """
     # do this scene like:input_x shape=[2,3,4] input_y shape=[1,] 
