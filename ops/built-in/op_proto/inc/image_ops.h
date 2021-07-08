@@ -1572,6 +1572,26 @@ REG_OP(SpatialTransformerD)
     .ATTR(use_default_theta, ListBool, {})
     .OP_END_FACTORY_REG(SpatialTransformerD)
 
+/**
+*@brief Function spatial transformer . \n
+
+*@par Inputs:
+*@li x: A Tensor dtype of float16, float32, double, uint8, int8, uint16, int16, int32, uint32, uint64, int64.
+*@li theta: A Tensor dtype of float16, float32, double, uint8, int8, uint16, int16, int32, uint32, uint64, int64, 
+     auxiliary coefficients . \n
+
+*@par Attributes:
+*@li output_size: A tuple output size.
+*@li default_theta: A tuple default theta
+*@li use_default_theta: List use default theta
+
+*@par Outputs:
+*y: A Tensor dtype of float16, float32, double, uint8, int8, uint16, int16, int32, uint32, uint64, int64, 
+    should be same shape and type as x.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
 REG_OP(SpatialTransformer)
     .INPUT(x, TensorType({DT_FLOAT,DT_FLOAT16,DT_DOUBLE,DT_UINT8,DT_INT8,DT_UINT16,
                           DT_INT16,DT_INT32,DT_UINT32,DT_UINT64,DT_INT64}))
