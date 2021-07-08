@@ -584,7 +584,7 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeIneferFuzzyCompile) {
     ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{32, 2147483647}, {512, 512}, {4, 16}, {4, 16}};
+    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{32, 2147483647}, {512, 512}, {4, 15}, {4, 15}};
     EXPECT_EQ((input_range == expect_input_range), true);
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
@@ -633,7 +633,7 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeIneferFuzzyCompilePartialStatic)
     ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{5, 15}, {512, 512}, {4, 16}, {4, 16}};
+    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{5, 15}, {512, 512}, {4, 15}, {4, 15}};
     EXPECT_EQ((input_range == expect_input_range), true);
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

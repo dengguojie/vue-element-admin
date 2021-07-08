@@ -432,7 +432,7 @@ TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputFuzzyCompile) {
     ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("out_backprop");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{1, 2}, {32, 32}, {16, 32}, {16, 32}};
+    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{1, 1}, {32, 32}, {16, 31}, {16, 31}};
     EXPECT_EQ((input_range == expect_input_range), true);
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

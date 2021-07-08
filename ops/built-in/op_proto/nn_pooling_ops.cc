@@ -1390,10 +1390,10 @@ static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
     return true;
   }
   for (auto n : grade) {
-    if (value >= n) {
-      low = n;
+    if (value > n) {
+      low = n + 1;
     }
-    if (value < n) {
+    if (value <= n) {
       high = n;
       break;
     }
@@ -1422,9 +1422,9 @@ static bool GenFuzzyCompileShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_t
     idx_h = 2;
     idx_w = 3;
   }
-  std::vector<int64_t> grade_n = {1, 2, 4, 8, 16, 32, ((1 << 31) - 1)};
-  std::vector<int64_t> grade_w = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
-  std::vector<int64_t> grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
+  std::vector<int64_t> grade_n = {0, 1, 3, 7, 15, 31, ((1 << 31) - 1)};
+  std::vector<int64_t> grade_w = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
+  std::vector<int64_t> grade_h = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
   // init empty range
   // shape -1 without set range call "GetShapeRange" will return [1,-1]
   input_range = {{}, {}, {}, {}};

@@ -479,7 +479,7 @@ TEST_F(Conv2DBackpropFilterProtoTest, Conv2DBackpropFilterFuzzyCompile) {
     ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{32, 2147483647}, {256, 256}, {4, 16}, {4, 16}};
+    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{32, 2147483647}, {256, 256}, {4, 15}, {4, 15}};
     EXPECT_EQ((input_range == expect_input_range), true);
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
@@ -537,7 +537,7 @@ TEST_F(Conv2DBackpropFilterProtoTest, Conv2DBackpropFilterFuzzyCompilePartialSta
     ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{5, 15}, {4, 16}, {4, 16}, {256, 256}};
+    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{5, 15}, {4, 15}, {4, 15}, {256, 256}};
     EXPECT_EQ((input_range == expect_input_range), true);
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

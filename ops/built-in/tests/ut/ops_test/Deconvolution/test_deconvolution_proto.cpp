@@ -473,7 +473,7 @@ TEST_F(DeconvProtoTest, deconvBaseFuzzyCompileTest) {
     ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{1, 2}, {16, 16}, {4, 16}, {4, 16}};
+    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{1, 1}, {16, 16}, {4, 15}, {4, 15}};
     EXPECT_EQ((input_range == expect_input_range), true);
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
@@ -506,7 +506,7 @@ TEST_F(DeconvProtoTest, deconvBaseFuzzyCompilePartialStaticTest) {
     ge::GeTensorDescPtr tesor_desc_x = op_desc->MutableInputDesc("x");
     std::vector<std::pair<int64_t, int64_t>> input_range;
     tesor_desc_x->GetShapeRange(input_range);
-    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{1, 5}, {16, 16}, {4, 16}, {4, 16}};
+    std::vector<std::pair<int64_t, int64_t>> expect_input_range = {{1, 5}, {16, 16}, {4, 15}, {4, 15}};
     EXPECT_EQ((input_range == expect_input_range), true);
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
