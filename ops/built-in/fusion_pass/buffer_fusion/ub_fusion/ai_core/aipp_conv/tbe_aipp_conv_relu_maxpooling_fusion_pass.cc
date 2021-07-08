@@ -85,6 +85,9 @@ vector<BufferFusionPattern*> TbeAippConvReluMaxpoolingFusionPass::DefinePatterns
  * @return bool: fusion status ok or not.
  */
 bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::NodePtr& conv_node) {
+  FUSION_PASS_CHECK(conv_node->GetOpDesc() == nullptr,
+                    OP_LOGD(fused_op_type_.c_str(), "get desc failed"),
+                    return false);
   FUSION_PASS_CHECK(conv_node->GetOpDesc()->GetInputDesc(1).GetFormat() != ge::FORMAT_FRACTAL_Z_C04,
                     OP_LOGD(fused_op_type_.c_str(), "The format of node[%s]'s second input is not FORMAT_FRACTAL_Z_C04",
                             conv_node->GetName().c_str()),
@@ -201,6 +204,9 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckMaxpoolNodeValidation(const ge::N
   int64_t windowSize = 0;
   std::vector<std::string> support_type = {kOpTypePooling, kOpTypeMaxPool};
   bool is_support = false;
+  FUSION_PASS_CHECK((max_pool_node == nullptr || max_pool_node->GetOpDesc() == nullptr),
+                    OP_LOGD(fused_op_type_.c_str(), "get desc failed"),
+                    return false);
   std::string op_type = max_pool_node->GetOpDesc()->GetType();
   for (auto type : support_type) {
     if (type == op_type) {
@@ -315,6 +321,12 @@ void TbeAippConvReluMaxpoolingFusionPass::PoolingValidationAndFormatSet(const ge
   first_output_dims_aipp = aipp_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
   first_input_dims_conv = conv_node->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
   first_input_dims_pool = max_pool_node->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
+  bool invalid = aipp_node->GetOpDesc() == nullptr || conv_node->GetOpDesc() == nullptr ||
+                 max_pool_node->GetOpDesc() == nullptr;
+  if (invalid) {
+    OP_LOGD(fused_op_type_.c_str(), "get desc failed");
+    return;
+  }
 
   OP_LOGD(fused_op_type_.c_str(), "pooling input witdh of TbeAippConvReluMaxpoolingFusionPass is [%d]", first_input_dims_pool[3]);
 

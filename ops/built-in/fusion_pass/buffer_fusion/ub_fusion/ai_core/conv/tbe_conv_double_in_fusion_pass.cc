@@ -81,6 +81,9 @@ static Status AddReadSelectFromGraph(const BufferFusionMapping &mapping, vector<
 static void EraseNodeFromMapping(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes,
                                  const string &matched_pattern) {
   for (auto &item : mapping) {
+    if (item.first == nullptr) {
+      continue;
+    }
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), matched_pattern);
     if (opdesc != item.first->types.end()) {
       for (auto &node : item.second) {

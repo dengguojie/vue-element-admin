@@ -149,19 +149,7 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
       }
     }
   }
-  OpCalcInfo op_calc_info;
-  if (!op_calc_info.Initialize()) {
-    OP_LOGD(fused_op_type_.c_str(), "init op_calc_info failed");
-    return;
-  }
-  op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
-  op_calc_info.SetAxisSplitMaps(split_maps);
-  std::string op_slice_info_str = "";
-  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
-  for (auto fusion_node : fusion_nodes) {
-    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
-  }
-  OP_LOGD(fused_op_type_.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
+  SetSplitMap(split_maps, fusion_nodes, fused_op_type_);
 }
 
 /*

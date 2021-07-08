@@ -127,10 +127,12 @@ bool SplitConv2dConcatPass::AnalyzeMidLayer(ge::Node::Vistor<NodePtr>& spt_outpu
     auto outputs = out_node->GetOutDataNodes();
     FUSION_PASS_CHECK(outputs.size() != 1, OP_LOGW(fused_op_type_.c_str(), "middle layer's output is multi-refer"),
                       return false);
+    FUSION_PASS_CHECK(outputs.at(0) == nullptr, OP_LOGD(fused_op_type_.c_str(), "get node failed"),
+                      return false);
     FUSION_PASS_CHECK(outputs.at(0)->GetType() != kConcatv2Type && outputs.at(0)->GetType() != kConcatType,
                       OP_LOGW(fused_op_type_.c_str(), "bottom layer is not ConcatV2 or Concat"), return false);
     for (size_t j = 1; j < count; ++j) {
-      FUSION_PASS_CHECK(kNewCcatIn.find(inputs.at(j)->GetType()) == kNewCcatIn.end(),
+      FUSION_PASS_CHECK((inputs.at(j) == nullptr || kNewCcatIn.find(inputs.at(j)->GetType()) == kNewCcatIn.end()),
                         OP_LOGW(fused_op_type_.c_str(), "middle layer's other input is not const type"), return false);
     }
     OpDescPtr desc = out_node->GetOpDesc();

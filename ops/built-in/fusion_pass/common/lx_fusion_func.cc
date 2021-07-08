@@ -61,6 +61,10 @@ void DelSplitInfoByInputAxis(std::vector<AxisSplitMap>& split_maps, int axis) {
 
 bool GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node, const string& fused_op_type) {
   string op_slice_info_str = "";
+  if (cube_node->GetOpDesc() == nullptr) {
+    OP_LOGD(fused_op_type.c_str(), "get desc failed");
+    return false;
+  }
   ge::AttrUtils::GetStr(cube_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
   OP_LOGD(fused_op_type.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
   if (op_slice_info_str.empty()) {
@@ -85,6 +89,9 @@ void SetSplitMap(std::vector<AxisSplitMap>& split_maps, std::vector<ge::NodePtr>
   op_calc_info.SetAxisSplitMaps(split_maps);
   SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   for (auto fusion_node : fusionNodes) {
+    if (fusion_node == nullptr) {
+      continue;
+    }
     ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
   }
   OP_LOGD(fused_op_type.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());

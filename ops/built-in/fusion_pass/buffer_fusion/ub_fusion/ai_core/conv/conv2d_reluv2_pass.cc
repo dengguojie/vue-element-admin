@@ -60,7 +60,7 @@ vector<BufferFusionPattern*> TbeConv2DReluv2Pass::DefinePatterns() {
 
   return patterns;
 }
- 
+
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
@@ -72,35 +72,24 @@ Status TbeConv2DReluv2Pass::GetFusionNodes(const BufferFusionMapping& mapping, v
   if (mapping.size() != 2) {
     OP_LOGD(fused_op_type_.c_str(), "mapping size should be 2");
   }
+  auto conv2d_node = GetMatchedNodesByDescName(g_kPatternConv, mapping);
+  auto reluv2_node = GetMatchedNodesByDescName(g_kPatternReluv2, mapping);
+  FUSION_PASS_CHECK(conv2d_node.size() != 1,
+                    OP_LOGD(fused_op_type_.c_str(), "conv2d node should be matched only once!"),
+                    return SUCCESS);
+  FUSION_PASS_CHECK(conv2d_node[0]->GetOpDesc() == nullptr,
+                    OP_LOGD(fused_op_type_.c_str(), "get desc failed"),
+                    return SUCCESS);
+  FUSION_PASS_CHECK(reluv2_node.size() != 1,
+                    OP_LOGD(fused_op_type_.c_str(), "reluv2 node should match only once!"),
+                    return SUCCESS);
+  FUSION_PASS_CHECK(conv2d_node[0]->GetOpDesc()->GetOutputDesc(0).GetDataType() != DT_FLOAT16,
+                    OP_LOGD(fused_op_type_.c_str(), "conv2d node only supports float16!"),
+                    return SUCCESS);
+  FUSION_PASS_CHECK((reluv2_node[0]->GetAllOutAnchors().size() != 2 || reluv2_node[0]->GetType() != "RelV2"),
+                    OP_LOGD(fused_op_type_.c_str(), "reluv2 should have two output anchors"),
+                    return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
-  // the outputData can't be fusd
-  for (auto& item : mapping) {
-    if (item.first->desc_name == g_kPatternConv) {
-      if (item.second.size() != 1) {
-        OP_LOGD(fused_op_type_.c_str(), "conv2d node should be matched only once!");
-        fusion_nodes.clear();
-        return SUCCESS;
-      }
-      auto conv2d_node_ptr = item.second[0];
-      if (conv2d_node_ptr->GetOpDesc()->GetOutputDesc(0).GetDataType() != DT_FLOAT16) {
-        OP_LOGD(fused_op_type_.c_str(), "conv2d node only supports float16!");
-        fusion_nodes.clear();
-        return SUCCESS;
-      }
-    } else {
-      if (item.second.size() != 1) {
-        OP_LOGD(fused_op_type_.c_str(), "reluv2 node should match only once!");
-        fusion_nodes.clear();
-        return SUCCESS;
-      }
-      auto reluv2_node_ptr = item.second[0];
-      if (reluv2_node_ptr->GetAllOutAnchors().size() != 2 || reluv2_node_ptr->GetType() != "RelV2") {
-        OP_LOGD(fused_op_type_.c_str(), "reluv2 should have two output anchors");
-        fusion_nodes.clear();
-        return SUCCESS;
-      }
-    }
-  }
 
   OP_LOGD(fused_op_type_.c_str(), "End to do Conv2DReluv2Fusion!");
   return SUCCESS;

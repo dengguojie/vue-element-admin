@@ -247,6 +247,9 @@ static Status AddReadSelectFromGraph(const BufferFusionMapping &mapping, vector<
 static void EraseNodeFromMapping(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes,
                                  const string &matched_pattern) {
   for (auto &item : mapping) {
+    if (item.first == nullptr) {
+      continue;
+    }
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), matched_pattern);
     if (opdesc != item.first->types.end()) {
       for (auto &node : item.second) {
@@ -321,80 +324,82 @@ static bool IsShapeEqual(const NodePtr a_node, uint32_t id_in, uint32_t id_out) 
   return in_size == out_size;
 }
 
-static void SetMemoryReuse(const BufferFusionMapping &mapping) {
+void ConvDequantVaddReluQuantFusionPass::SetMemoryReuse(const BufferFusionMapping &mapping) {
   size_t in_pre = 0;
   std::string deq_name;
   uint32_t in_pos = 0;
-  for (auto &item : mapping) {
-    if (item.first->desc_name == kPatternConvolution) {
-      auto &node = item.second.at(0);
-      auto inputs = node->GetInDataNodes();
-      in_pre += inputs.size() - 1;
-    }
-    if (item.first->desc_name == kPatternDequant) {
-      auto &node = item.second.at(0);
-      auto inputs = node->GetInDataNodes();
-      in_pre += inputs.size() - 1;
-      deq_name = node->GetName();
-    }
+  vector<ge::NodePtr> conv_node = GetMatchedNodesByDescName(kPatternConvolution, mapping);
+  vector<ge::NodePtr> dequant_node = GetMatchedNodesByDescName(kPatternDequant, mapping);
+  vector<ge::NodePtr> vadd_node = GetMatchedNodesByDescName(kPatternVadd, mapping);
+  vector<ge::NodePtr> relu_node = GetMatchedNodesByDescName(kPatternRelu, mapping);
+  bool invalid = conv_node.empty() || dequant_node.empty() || vadd_node.empty() || relu_node.empty();
+  if (invalid) {
+    return;
   }
-  for (auto &item : mapping) {
-    if (item.first->desc_name == kPatternVadd) {
-      auto &vadd_node = item.second.at(0);
-      auto all_in_node = vadd_node->GetInDataNodes();
-      in_pre += 1;
-      OP_LOGD(fused_op_type_.c_str(), "dequant node name: %s", deq_name.c_str());
-      if (all_in_node.at(0)->GetName() == deq_name) {
-        in_pos = 1;
-      }
-      if (!IsShapeEqual(vadd_node, in_pos, 0)) {
-        OP_LOGD(fused_op_type_.c_str(),
-                "[Node:%s type:%s] input memory size is not equal with output",
-                vadd_node->GetName().c_str(), vadd_node->GetType().c_str());
-        return;
-      }
-      auto input_out = vadd_node->GetInDataAnchor(in_pos)->GetPeerOutAnchor();
-      size_t peer_inputs = input_out->GetPeerInDataAnchors().size();
-      if (peer_inputs > 1) {
-        OP_LOGD(fused_op_type_.c_str(),
-                "[Node:%s type:%s] has %zu output, but supports only single-output and single-refer in memory reuse.",
-                vadd_node->GetName().c_str(), vadd_node->GetType().c_str(), peer_inputs);
-        return;
-      }
-      break;
-    }
+  auto conv_inputs = conv_node[0]->GetInDataNodes();
+  in_pre += conv_inputs.size() - 1;
+  auto dequant_inputs = dequant_node[0]->GetInDataNodes();
+  in_pre += dequant_inputs.size() - 1;
+  deq_name = dequant_node[0]->GetName();
+  auto all_in_node = vadd_node[0]->GetInDataNodes();
+  invalid = all_in_node.empty() || all_in_node.at(0) == nullptr;
+  if (invalid) {
+    OP_LOGD(fused_op_type_.c_str(), "get node failed");
+    return;
   }
-  for (auto &item : mapping) {
-    if (item.first->desc_name == kPatternRelu) {
-      // pre request check
-      auto &relu_node = item.second.at(0);
-      auto out_peer_in = relu_node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
-      if (out_peer_in.size() == 1) {
-        OP_LOGD(fused_op_type_.c_str(), "[Node:%s type:%s] has %zu output, but supports only single-output and multi-refer in memory reuse.",
-                relu_node->GetName().c_str(), relu_node->GetType().c_str(), out_peer_in.size());
-        return;
-      }
-      OP_LOGD(fused_op_type_.c_str(), "get reuse input over, fuse index is: %zu, single index is %u", in_pre, in_pos);
-      OpDescPtr relu_desc = relu_node->GetOpDesc();
-      auto out_desc = relu_desc->MutableOutputDesc(0);
-      if(out_desc == nullptr) {
-        OP_LOGD(fused_op_type_.c_str(), "out_desc %d is null", 0);
-        break;
-      }
-      // reuse rollback if compile failed
-      std::vector<string> roll_back_attrs = {"reuse_input"};
-      bool ret = ge::AttrUtils::SetListStr(relu_desc, "_rollback_if_failed", roll_back_attrs);
-      if (!ret) {
-        OP_LOGD(fused_op_type_.c_str(), "set reuse rollback attr failed");
-        break;
-      }
-      // bind output reuse tensor desc with input
-      TensorUtils::SetReuseInput(*out_desc.get(), true);
-      TensorUtils::SetReuseInputIndex(*out_desc.get(), in_pre);
-      OP_LOGD(fused_op_type_.c_str(), "set reuse tags over, output position is %d, index is: %zu", 0, in_pre);
-      break;
-    }
+  in_pre += 1;
+  OP_LOGD(fused_op_type_.c_str(), "dequant node name: %s", deq_name.c_str());
+  in_pos = all_in_node.at(0)->GetName() == deq_name ? 1 : 0;
+  if (!IsShapeEqual(vadd_node[0], in_pos, 0)) {
+    OP_LOGD(fused_op_type_.c_str(), "[Node:%s type:%s] input memory size is not equal with output",
+            vadd_node[0]->GetName().c_str(), vadd_node[0]->GetType().c_str());
+    return;
   }
+  invalid = vadd_node[0]->GetInDataAnchor(in_pos) == nullptr ||
+            vadd_node[0]->GetInDataAnchor(in_pos)->GetPeerOutAnchor() == nullptr;
+  if (invalid) {
+    OP_LOGD(fused_op_type_.c_str(), "get anchor failed");
+    return;
+  }
+  auto input_out = vadd_node[0]->GetInDataAnchor(in_pos)->GetPeerOutAnchor();
+  size_t peer_inputs = input_out->GetPeerInDataAnchors().size();
+  if (peer_inputs > 1) {
+    OP_LOGD(fused_op_type_.c_str(),
+            "[Node:%s type:%s] has %zu output, but supports only single-output and single-refer in memory reuse.",
+            vadd_node[0]->GetName().c_str(), vadd_node[0]->GetType().c_str(), peer_inputs);
+    return;
+  }
+  // pre request check
+  if (relu_node[0]->GetOutDataAnchor(0) == nullptr) {
+    OP_LOGD(fused_op_type_.c_str(), "get anchor failed");
+    return;
+  }
+  if (relu_node[0]->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() <= 1) {
+    OP_LOGD(fused_op_type_.c_str(), "[Node:%s type:%s] has %zu output, but supports only single-output and multi-refer in memory reuse.",
+            relu_node[0]->GetName().c_str(), relu_node[0]->GetType().c_str(), relu_node[0]->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
+    return;
+  }
+  OP_LOGD(fused_op_type_.c_str(), "get reuse input over, fuse index is: %zu, single index is %u", in_pre, in_pos);
+  OpDescPtr relu_desc = relu_node[0]->GetOpDesc();
+  if (relu_desc == nullptr) {
+    OP_LOGD(fused_op_type_.c_str(), "get desc failed");
+    return;
+  }
+  auto out_desc = relu_desc->MutableOutputDesc(0);
+  if (out_desc == nullptr) {
+    OP_LOGD(fused_op_type_.c_str(), "out_desc 0 is null");
+    return;
+  }
+  // reuse rollback if compile failed
+  std::vector<string> roll_back_attrs = {"reuse_input"};
+  if (!ge::AttrUtils::SetListStr(relu_desc, "_rollback_if_failed", roll_back_attrs)) {
+    OP_LOGD(fused_op_type_.c_str(), "set reuse rollback attr failed");
+    return;
+  }
+  // bind output reuse tensor desc with input
+  TensorUtils::SetReuseInput(*out_desc.get(), true);
+  TensorUtils::SetReuseInputIndex(*out_desc.get(), in_pre);
+  OP_LOGD(fused_op_type_.c_str(), "set reuse tags over, output position is %d, index is: %zu", 0, in_pre);
 }
 
 static void GetQuantAndConvNodes(vector<ge::NodePtr> &matched_elem_node, vector<ge::NodePtr> &dequant_nodes,

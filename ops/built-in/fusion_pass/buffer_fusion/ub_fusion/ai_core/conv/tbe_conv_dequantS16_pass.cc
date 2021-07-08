@@ -147,46 +147,53 @@ Status ConvDequantS16FusionPass::GetFusionNodes(const BufferFusionMapping &mappi
   OP_LOGD(fused_op_type_.c_str(), "Begin to do TbeConvDequantS16FusionPass!");
   fusion_nodes = GetMatchedNodes(mapping);
   auto req_matched = GetMatchedNodesByDescName(kPatternRequantS16, mapping);
-  if (req_matched.size() == 1) {
+  if (!req_matched.empty()) {
     size_t in_pre = 0;
     std::string deq_name;
     auto conv_matched = GetMatchedNodesByDescName(kPatternConv, mapping);
-    in_pre += conv_matched.at(0)->GetInDataNodes().size() - 1;
     auto deq_matched = GetMatchedNodesByDescName(kPatternDequantS16, mapping);
-    in_pre += deq_matched.at(0)->GetInDataNodes().size() - 1;
-    deq_name = deq_matched.at(0)->GetName();
+    FUSION_PASS_CHECK((conv_matched.empty() || deq_matched.empty()),
+                      OP_LOGD(fused_op_type_.c_str(), "get node failed."),
+                      return SUCCESS);
+    in_pre += conv_matched[0]->GetInDataNodes().size() - 1;
+    in_pre += deq_matched[0]->GetInDataNodes().size() - 1;
+    deq_name = deq_matched[0]->GetName();
     // pre request check
-    auto &req_s16_node = req_matched.at(0);
+    auto &req_s16_node = req_matched[0];
     auto all_in_node = req_s16_node->GetInDataNodes();
+    FUSION_PASS_CHECK(all_in_node.empty(),
+                      OP_LOGD(fused_op_type_.c_str(), "get node failed."),
+                      return SUCCESS);
     OpDescPtr req_s16_desc = req_s16_node->GetOpDesc();
+    FUSION_PASS_CHECK(req_s16_desc == nullptr,
+                      OP_LOGD(fused_op_type_.c_str(), "get desc failed."),
+                      return SUCCESS);
 
     for (auto node_ptr : req_s16_node->GetInAllNodes()) {
-      if (node_ptr->GetType() == kOpTypeReadSelect) {
+      if (node_ptr != nullptr && node_ptr->GetType() == kOpTypeReadSelect) {
         fusion_nodes.push_back(node_ptr);
       }
     }
 
     uint32_t in_pos = 0;
     OP_LOGD(fused_op_type_.c_str(), "dequants16 node name: %s", deq_name.c_str());
-    if (all_in_node.at(0)->GetName() == deq_name) {
-      in_pos = 2;
-    }
+    in_pos = all_in_node.at(0)->GetName() == deq_name ? 2 : 0;
     in_pre += in_pos == 0 ? 1 : 2;
-    OP_LOGD(fused_op_type_.c_str(), "get reuse input over, fuse index is:: %zu, single index is %u",
-            in_pre, in_pos);
+    OP_LOGD(fused_op_type_.c_str(), "get reuse input over, fuse index is: %zu, single index is: %u", in_pre, in_pos);
+    FUSION_PASS_CHECK(req_s16_node->GetInDataAnchor(in_pos)  == nullptr,
+                      OP_LOGD(fused_op_type_.c_str(), "get anchor failed"),
+                      return SUCCESS);
     auto input_out = req_s16_node->GetInDataAnchor(in_pos)->GetPeerOutAnchor();
     FUSION_PASS_CHECK(input_out == nullptr,
                       OP_LOGD(fused_op_type_.c_str(), "node %s input is null", req_s16_node->GetName().c_str()),
                       return SUCCESS);
     size_t peer_inputs = input_out->GetPeerInDataAnchors().size();
-    if (peer_inputs > 1) {
-      OP_LOGD(fused_op_type_.c_str(), "memory reuse only support requants16 input single-refer scene");
-      return SUCCESS;
-    }
-    if (req_s16_desc->GetOutputsSize() < 2) {
-      OP_LOGD(fused_op_type_.c_str(), "memory reuse only support requants16 double-out scene");
-      return SUCCESS;
-    }
+    FUSION_PASS_CHECK(peer_inputs > 1,
+                      OP_LOGD(fused_op_type_.c_str(), "memory reuse only support requants16 input single-refer scene"),
+                      return SUCCESS);
+    FUSION_PASS_CHECK(req_s16_desc->GetOutputsSize() < 2,
+                      OP_LOGD(fused_op_type_.c_str(), "memory reuse only support requants16 double-out scene"),
+                      return SUCCESS);
     // bind output reuse tensor desc with input
     for (uint32_t out_pos = 0; out_pos < req_s16_desc->GetOutputsSize(); ++out_pos) {
       auto out_desc = req_s16_desc->MutableOutputDesc(out_pos);
@@ -203,8 +210,7 @@ Status ConvDequantS16FusionPass::GetFusionNodes(const BufferFusionMapping &mappi
         }
         // reuse rollback if compile failed
         std::vector<string> roll_back_attrs = {"reuse_input"};
-        bool ret = ge::AttrUtils::SetListStr(req_s16_desc, "_rollback_if_failed", roll_back_attrs);
-        if (!ret) {
+        if (!ge::AttrUtils::SetListStr(req_s16_desc, "_rollback_if_failed", roll_back_attrs)) {
           OP_LOGD(fused_op_type_.c_str(), "set reuse rollback attr failed");
           break;
         }

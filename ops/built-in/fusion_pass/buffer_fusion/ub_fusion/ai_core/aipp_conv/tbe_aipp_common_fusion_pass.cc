@@ -87,6 +87,8 @@ Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
 
   for (auto aipp_node : aipp_nodes) {
     string aipp_config_str = "";
+    FUSION_PASS_CHECK(aipp_node->GetOpDesc() == nullptr, OP_LOGD(fused_op_type_.c_str(), "get desc failed."),
+                      return FAILED);
     FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(aipp_node->GetOpDesc(), "aipp_config_path", aipp_config_str),
                       OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s aipp_config_path attr not success.",
                               aipp_node->GetName().c_str()),

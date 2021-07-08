@@ -52,6 +52,12 @@ class ConvDequantVaddReluQuantFusionPass : public BufferFusionPassBase {
    * @return bool: fusion status ok or not.
    */
   Status GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
+
+private:
+  /*
+   * @brief: reuse vadd output with input buffer
+   */
+  void SetMemoryReuse(const BufferFusionMapping &mapping);
 };
 }  // namespace fe
 
