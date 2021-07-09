@@ -58,6 +58,13 @@ CONST = "const"
 ZERO = "zero"
 DEFAULT = "default"
 
+BlkOuter = "block_outer"
+BlkInner = "block_inner"
+UbOuter = "ub_outer"
+UbInner = "ub_inner"
+A = "A"
+R = "R"
+
 
 class CalcReduceTilingCase(Computation):
     def __init__(self, outs, option):
@@ -281,6 +288,54 @@ class ReduceTilingCase(TilingCaseBase):
         condition5 = other.multi_core != self.multi_core
         return (type(other) != type(self)
                 or condition0 or condition1 or condition2 or condition3 or condition4 or condition5)
+
+
+class Dim:
+    def __init__(self, axis_type, idx, var_type=None):
+        self.axis_type = axis_type
+        self.var_type = var_type
+        self.idx = idx
+
+    @staticmethod
+    def split(in_shape, split_idx, model=None):
+        if model == "UBSplit":
+            outer, inner = UbOuter, UbInner
+        else:
+            outer, inner = BlkOuter, BlkInner
+
+        # update index
+        for item in in_shape[split_idx + 1:]:
+            item.idx += 1
+
+        # insert split
+        in_shape[split_idx].var_type = outer
+        in_shape.insert(split_idx + 1, Dim(in_shape[split_idx].axis_type, split_idx + 1, inner))
+
+    @staticmethod
+    def rfactor(in_shape, axis, factor_axis=0):
+        temp_shape, a_shape, r_shape = [], [], []
+        for item in in_shape:
+            if item not in axis:
+                temp_shape.append(item)
+
+        for item in reversed(axis):
+            item.axis_type = A
+            temp_shape.insert(factor_axis, item)
+
+        for item in temp_shape:
+            if item.axis_type == A:
+                a_shape.append(item)
+            else:
+                r_shape.append(item)
+
+        return a_shape, r_shape
+
+    @staticmethod
+    def group(nums):
+        nums = sorted(set(nums))
+        gaps = [[s, e] for s, e in zip(nums, nums[1:]) if s + 1 < e]
+        edges = iter(nums[:1] + sum(gaps, []) + nums[-1:])
+        return list(zip(edges, edges))
 
 
 @register_build_pointcut(pattern=Pattern.REDUCE)

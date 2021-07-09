@@ -32,7 +32,7 @@ from .constants import INSN_MAPPING
 from .constants import ReducePattern
 from .constants import Pattern
 from .reduce_atomic_schedule import ReduceAtomicSchedule
-from .reduce_tilingcase import ReduceTilingCase
+from .reduce_tilingcase import ReduceTilingCase, Dim, R, A
 from .reduce_tilingcase import SingleReduceInfo
 from .util import get_dsl_insn
 from .util import get_reduce_axis_indexes
@@ -109,6 +109,7 @@ class ReduceSchedule(VectorSchedule):
 
         self.reduce_rf = None
         self.rf_tiling_result_pair = None
+        self._serial_group = None
 
     def _calc_reduced_axis_indexes(self):
         last_input_tensor = None
@@ -658,6 +659,42 @@ class ReduceSchedule(VectorSchedule):
         # For rf compute mode, skip pragma stage
         if self._last_reduction_rf_optimization():
             return
+
+        # create virtual mapping
+        _shape = [Dim(R, _idx) if _idx in self.reduce_info.reduce_axis_indexes else Dim(A, _idx)
+                  for _idx in range(len(self.reduce_info.shape_before_reduce))]
+
+        # split
+        blk_split_idx = self.tiling_case.block_split_axis_index
+        ub_split_idx = self.tiling_case.ub_split_axis_index
+        if blk_split_idx <= ub_split_idx:
+            Dim.split(_shape, blk_split_idx)
+            ub_split_idx += 1
+            Dim.split(_shape, ub_split_idx, model="UBSplit")
+        else:
+            Dim.split(_shape, ub_split_idx, model="UBSplit")
+            blk_split_idx += 1
+            Dim.split(_shape, blk_split_idx,)
+
+        # reorder
+        _a_shape, _r_shape = [], []
+        for item in _shape:
+            if item.axis_type == A:
+                _a_shape.append(item)
+            else:
+                _r_shape.append(item)
+        target_shape = _a_shape + _r_shape
+        if not self.reduce_info.is_reduce_last_axis():
+            _r_shape.append(_a_shape.pop(-1))
+            target_shape = _a_shape + _r_shape
+
+        # find serial axis
+        idx_ub_outer = target_shape.index(_shape[ub_split_idx])
+        axis_in_ub = target_shape[idx_ub_outer+1:]
+        axis_in_ub.sort(key=lambda x: x.idx, reverse=True)
+        self._serial_group = Dim.group([x.idx for x in axis_in_ub])
+        self._serial_group.sort(key=lambda x: x[1]-x[0], reverse=True)
+
         # Initialization
         reduce_ub_tensor = self.get_buffers_of(self.reduce_info.reduce_tensor)[0]
         before_reduce_tensors = self.get_all_producer_stages(reduce_ub_tensor)
@@ -678,18 +715,14 @@ class ReduceSchedule(VectorSchedule):
                 self.pragma(tensor, len(self.reduce_info.shape_before_reduce) - 1, "axis_group", 0)
             else:
                 # For dma tensor
+                extend = self._serial_group[0][1] - self._serial_group[0][0] + 1
+                length = len(self.reduce_info.shape_before_reduce)
+                axis_range = range(length-1, length-1-extend, -1) if extend != 1 else range(length-1, length-3, -1)
+
                 for axis_idx in range(self.ub_tiling_info.tiling_axis_index,
                                       len(self.reduce_info.shape_before_reduce)):
-                    # Simple last two axis
-                    if self.tiling_case.tiling_key == -900:
-                        if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
-                                        len(self.reduce_info.shape_before_reduce) - 2,
-                                        len(self.reduce_info.shape_before_reduce) - 3):
-                            self.pragma(tensor, axis_idx, "axis_group", 0)
-                    else:
-                        if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
-                                        len(self.reduce_info.shape_before_reduce) - 2):
-                            self.pragma(tensor, axis_idx, "axis_group", 0)
+                    if axis_idx in axis_range:
+                        self.pragma(tensor, axis_idx, "axis_group", 0)
 
         # For reduce tensor
         # ub_tiling_axis inner needs to be in the axis_group if it is reduce axis

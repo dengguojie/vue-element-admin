@@ -25,7 +25,7 @@ from tbe.dsl.base import operation
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import INSN_MAPPING
 
-from .reduce_tilingcase import ReduceTilingCase
+from .reduce_tilingcase import ReduceTilingCase, Dim, R, A
 from .vector_info import ComputeGraphInfo
 from .util import get_dsl_insn
 
@@ -178,6 +178,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
         self._storage_align_para = {}
         self._axis_offset = 0
         self._reduce_case = 0
+        self._serial_group = None
 
     def do_schedule(self, outs, tiling_case):
         self.tiling_case = tiling_case
@@ -203,6 +204,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         self._calculate_emit_insn()
         self._do_emit_insn()
+
+        self._calculate_pragma()
         self._do_pragma()
 
         self._calculate_db()
@@ -639,6 +642,41 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         return reordered_shape, reorder_to_orignal_axis_map, orignal_to_reorder_axis_map
 
+    def _calculate_pragma(self):
+        """
+        Determine continues axises
+        """
+        # create virtual mapping
+        _shape = [Dim(R, _idx) if _idx in self.reduce_info.reduce_axis_indexes else Dim(A, _idx)
+                  for _idx in range(len(self.reduce_info.shape_before_reduce))]
+
+        # split
+        blk_split_idx, ub_split_idx = self.block_tiling_result_pair[1], self.ub_tiling_result_pair[1]
+        if blk_split_idx <= ub_split_idx:
+            Dim.split(_shape, blk_split_idx)
+            ub_split_idx += 1
+            Dim.split(_shape, ub_split_idx, model="UBSplit")
+        else:
+            Dim.split(_shape, ub_split_idx, model="UBSplit")
+            blk_split_idx += 1
+            Dim.split(_shape, blk_split_idx,)
+
+        # rfactor
+        axis = [item for item in _shape[: blk_split_idx+1] if item.axis_type == R]
+        _a_shape, _r_shape = Dim.rfactor(_shape, axis, factor_axis=0)
+
+        # reorder
+        if self._reduce_case == 2:
+            _r_shape.append(_a_shape.pop(-1))
+        _rf_shape = _a_shape + _r_shape
+
+        # find serial axis
+        idx_ub_outer = _rf_shape.index(_shape[ub_split_idx])
+        axis_in_ub = _rf_shape[idx_ub_outer+1:]
+        axis_in_ub.sort(key=lambda x: x.idx, reverse=True)
+        self._serial_group = Dim.group([x.idx for x in axis_in_ub])
+        self._serial_group.sort(key=lambda x: x[1]-x[0], reverse=True)
+
     def _do_pragma(self):
         # Initialization
         reduce_ub_tensor = self.reduce_rfs
@@ -661,18 +699,14 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 stage.pragma(stage.op.axis[len(self.reduce_info.shape_before_reduce) - 1], "axis_group", 0)
             else:
                 # For dma tensor
+                extend = self._serial_group[0][1] - self._serial_group[0][0] + 1
+                length = len(self.reduce_info.shape_before_reduce)
+                axis_range = range(length-1, length-1-extend, -1) if extend != 1 else range(length-1, length-3, -1)
+
                 for axis_idx in range(self.ub_tiling_result_pair[1],
                                       len(self.reduce_info.shape_before_reduce)):
-                    # Simple last two axis
-                    if self.tiling_case.tiling_key == 1204100:
-                        if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
-                                        len(self.reduce_info.shape_before_reduce) - 2,
-                                        len(self.reduce_info.shape_before_reduce) - 3,):
-                            stage.pragma(stage.op.axis[axis_idx], "axis_group", 0)
-                    else:
-                        if axis_idx in (len(self.reduce_info.shape_before_reduce) - 1,
-                                        len(self.reduce_info.shape_before_reduce) - 2):
-                            stage.pragma(stage.op.axis[axis_idx], "axis_group", 0)
+                    if axis_idx in axis_range:
+                        stage.pragma(stage.op.axis[axis_idx], "axis_group", 0)
 
     def _need_storage_align(self):
         """
