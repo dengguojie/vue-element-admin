@@ -41,8 +41,8 @@ class TbeConv3dDxElemwisePass : public BufferFusionPassBase {
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
   const std::string FUSED_OP_TYPE = "FusedOp";
+  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
 };
 
 }  // namespace fe

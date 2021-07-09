@@ -1589,7 +1589,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
       reset_conv2d_backprop_input_out_shape(op, dy_sizes, dy_format, input_sizes, input_format);
     }
   }
-  
+
   if (!is_dynamic && is_input_size_const) {
     // NC1HWC0(NCHW)
     in_h = input_sizes[h_position];
@@ -2941,7 +2941,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     std::vector<std::pair<int64_t, int64_t>> dy_range;
     x_desc->GetShapeRange(dy_range);
     if (dy_range.size() != dy_sizes.size() && dy_range.size() != 0 && !unknown_rank) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), 
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
         "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
         dy_range.size(), dy_sizes.size());
       return GRAPH_FAILED;
@@ -3677,7 +3677,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
       OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
     }
   }
-  
+
   // fuzz_build switch
   bool fuzz_build = false;
   op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
@@ -7621,7 +7621,7 @@ static void InferHWConv3dBackpropInput(int32_t kernel,
   int32_t kernel_size = (kernel - 1) * dilation + 1;
   int32_t pad_out = kernel_size - pad_list[pad_idx] - 1;
   if (input_size > 0) {
-    input[0] = std::min(std::max(static_cast<int64_t>( 
+    input[0] = std::min(std::max(static_cast<int64_t>(
                                  std::ceil(
                                   static_cast<float>(output[0] - pad_out) /
                                   static_cast<float>(stride))),
@@ -9824,7 +9824,7 @@ template <typename T1>
 static bool CheckVectorLessZero(const std::vector<T1>& input_list) {
   for (uint32_t i = 0; i < input_list.size(); i++) {
     if (input_list[i] < 0) {
-      return true;                                                              
+      return true;
     }
   }
   return false;
@@ -9857,8 +9857,8 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
   }
 
   // dynamic shape scenario, no need process
-  if (CheckVectorLessZero(x_sizes) || CheckVectorLessZero(filter_sizes) || 
-      CheckVectorLessZero(output_shape_list) || CheckVectorLessZero(stride_list) || 
+  if (CheckVectorLessZero(x_sizes) || CheckVectorLessZero(filter_sizes) ||
+      CheckVectorLessZero(output_shape_list) || CheckVectorLessZero(stride_list) ||
       CheckVectorLessZero(dilations_list)) {
     OP_LOGD(op.GetName().c_str(), "no need process with dynamic shape scenario.");
     return;
@@ -9936,7 +9936,7 @@ static void ProcessOnnxAttr(ge::Operator& op, const std::vector<T1>& x_sizes, Fo
     }
 
     OP_LOGD(op.GetName().c_str(), "result: oPadH[%d], oPadW[%d]", output_padding_h, output_padding_w);
-    
+
     std::vector<int32_t> pads_list = {0, 0, 0, 0};
     std::vector<int32_t> output_padding_list = {0, 0, 0, 0};
     output_padding_list[h_input_position] = output_padding_h;

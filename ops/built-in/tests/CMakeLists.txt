@@ -22,6 +22,7 @@ set(OP_TEST_PLUFIN_AND_PROTO_INCLUDE
         )
 set(OP_TEST_FUSION_PASS_SOURCE
         ${OPS_BUILTIN_TEST_DIR}/common/src/fusion_pass_utils/fusion_pass_test_utils.cpp
+        ${OPS_BUILTIN_TEST_DIR}/common/src/fusion_pass_utils/fusion_pass_test_slice_utils.cpp
         )
 set(OP_TEST_FUSION_PASS_INCLUDE
         ${OPS_BUILTIN_TEST_DIR}/common/src/inc
@@ -53,8 +54,8 @@ if (ENABLE_TEST STREQUAL UT)
         set(depend_module ${depend_module} ops_cpp_plugin_utest)
     endif()
     if(UT_TEST_ALL AND NOT AICPU_ONLY)
-        set(depend_module ops_cpp_proto_utest 
-            ops_cpp_op_tiling_utest 
+        set(depend_module ops_cpp_proto_utest
+            ops_cpp_op_tiling_utest
             ops_cpp_fusion_pass_aicore_utest
             cpu_kernels_ut
             ops_cpp_plugin_utest
@@ -71,6 +72,6 @@ if (ENABLE_TEST STREQUAL UT)
         add_custom_command(
                 TARGET generate_ops_cpp_cov
                 COMMAND ${GENERATE_CPP_COV} ${_ops_builtin_bin_path} ${_ops_cov_data} ${_ops_cov_html}
-        )   
+        )
     endif()
 endif ()
