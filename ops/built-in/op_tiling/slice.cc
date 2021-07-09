@@ -120,6 +120,9 @@ bool SliceTiling(const std::string& opType, const TeOpParas& opParas, const nloh
   OP_LOGD(opType.c_str(), "origin slice params: %s", slice_params_output.to_string().c_str());
 
   int32_t core_num = GetCompileInfo<int32_t>(opCompileInfo, "block_dim");
+  OP_TILING_CHECK(core_num == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "core_num cannot be zero."),
+                  return false);
   int32_t ub_size = GetCompileInfo<int32_t>(opCompileInfo, "ub_size");
   SetSliceTilingData(opType, slice_params_output, runInfo, opParas, core_num, ub_size);
 

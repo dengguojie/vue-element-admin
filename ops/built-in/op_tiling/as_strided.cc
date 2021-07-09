@@ -35,7 +35,7 @@ static void Serialize(OpRunInfo& runInfo, const AsStridedInfo& asInfo) {
     vector<int64_t> tilingData;
     tilingData.push_back(asInfo.axisLen);
     tilingData.push_back(asInfo.stride);
-    for (int64_t i = 0; i < tilingData.size(); i++) {
+    for (int64_t i = 0; i < static_cast<int64_t>(tilingData.size()); i++) {
         ByteBufferPut(runInfo.tiling_data, tilingData[i]);
     }
     runInfo.block_dim = 96;

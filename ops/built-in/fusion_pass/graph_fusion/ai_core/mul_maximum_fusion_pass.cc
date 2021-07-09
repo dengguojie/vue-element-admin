@@ -197,6 +197,8 @@ Status MulMaximumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
 
   ge::DataType alphaType = alpha->GetTensorDesc().GetDataType();
+  FUSION_PASS_CHECK(alpha->GetData().data() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "alpha->GetData().data() is null, fusion failed."),
+                    return FAILED);
   if (alphaType == ge::DT_FLOAT) {
     float negative_slope = (*((float*)alpha->GetData().data()));
     if (negative_slope >= 1.0) {

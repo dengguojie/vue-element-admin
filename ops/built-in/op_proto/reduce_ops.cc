@@ -498,7 +498,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
   }
 
   // Special Branch for if axis has redundant axis value
-  if (!axis_shape.empty() && axis_shape[0] > input_length && (!keep_dims)) {
+  if (!axis_shape.empty() && axis_shape[0] > static_cast<int64_t>(input_length) && (!keep_dims)) {
     OP_LOGD(op.GetName().c_str(), "[Special Branch]: axis_shape[0] is more than input_length,"
             "if axis has redundant axis value");
     std::vector<int64_t> output_shape;
@@ -1564,7 +1564,6 @@ IMPLEMT_COMMON_INFERFUNC(INTrainingReduceV2InferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_shape = input_desc->MutableShape();
-  auto input_dtype = input_desc->GetDataType();
 
   // x dims
   std::vector<int64_t> dims_input = input_shape.GetDims();
@@ -1603,11 +1602,9 @@ IMPLEMT_COMMON_INFERFUNC(INTrainingUpdateV2InferShape) {
   auto input_dtype = input_desc->GetDataType();
   auto sum_desc = op_info->MutableInputDesc("sum");
   auto sum_shape = sum_desc->MutableShape();
-  auto sum_dtype = sum_desc->GetDataType();
 
   // x dims
   std::vector<int64_t> dims_input = input_shape.GetDims();
-  int64_t dim_num = input_shape.GetDimNum();
 
   // update y output desc
   auto y_desc = op_info->MutableOutputDesc("y");
@@ -1853,7 +1850,7 @@ IMPLEMT_INFERFUNC(ReduceStd, ReduceStdInferShape) {
     return GRAPH_FAILED;
   }
 
-  for (int i = 0; i < axis.size(); i++) {
+  for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
       axis[i] = axis[i] + dim_num;
     }
@@ -1913,7 +1910,7 @@ IMPLEMT_INFERFUNC(ReduceStdWithMean, ReduceStdWithMeanInferShape) {
     return GRAPH_FAILED;
   }
 
-  for (int i = 0; i < axis.size(); i++) {
+  for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
       axis[i] = axis[i] + dim_num;
     }

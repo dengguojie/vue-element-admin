@@ -122,7 +122,8 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   int32_t* dataSeqNewData = NewDataSeq.get();
   int32_t* dataSeqOldData = (int32_t*)(dataSeqTensorPtr->GetData().data());
-
+  FUSION_PASS_CHECK(dataSeqOldData == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "dataSeqOldData is null ptr!"),
+                    return PARAM_INVALID);
   int64_t i = 0;
   int64_t j = 0;
   for (i = 0; i < dataSeqLength; i++) {

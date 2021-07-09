@@ -336,6 +336,8 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
   }
 
   ge::DataType epsType = eps_w->GetTensorDesc().GetDataType();
+  FUSION_PASS_CHECK(eps_w->GetData().data() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "eps_w->GetData().data() is null."),
+                    return FAILED);
   if (epsType == ge::DT_FLOAT) {
     float eps = (*((float*)eps_w->GetData().data()));
     OP_LOGI(FUSED_OP_TYPE.c_str(), "L2_norm eps = %f.", eps);

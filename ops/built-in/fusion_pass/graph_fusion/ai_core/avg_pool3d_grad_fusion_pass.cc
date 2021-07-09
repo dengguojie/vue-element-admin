@@ -108,7 +108,7 @@ void GenFilter(int64_t filter_size, float val, uint16_t *data)
   fp16_t tmp_val;
   for (uint64_t i = 0, idx = 0; i < block_num; ++i) {
     for (uint64_t j = 0; j < kC0; ++j) {
-      for (uint64_t k = 0; k < kC0 && idx < filter_size; ++k) {
+      for (uint64_t k = 0; k < kC0 && idx < (static_cast<uint64_t>(filter_size)); ++k) {
         float tmp = j == k ? val: 0;
         tmp_val = tmp;
         data[idx++] = tmp_val.val;

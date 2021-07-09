@@ -31,7 +31,6 @@ namespace ge {
 IMPLEMT_INFERFUNC(LookupTableFind, LookupTableFindInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
 
-  const char *op_name = op_desc->GetName().c_str();
 
   auto handle_desc = op_desc->MutableInputDesc(0);
   GeShape handle_shape;

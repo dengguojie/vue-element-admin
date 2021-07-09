@@ -521,8 +521,8 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
     outTensorDesc.SetDataType(op.GetInputDesc("send_data").GetDataType());
     op.UpdateOutputDesc("recv_data", outTensorDesc);
 
-    int64_t addrLen;
-    int64_t addrLenAttr;
+    int64_t addrLen = 0;
+    int64_t addrLenAttr = 0;
     if (op.GetAttr("addr_length", addrLenAttr) == GRAPH_SUCCESS) {
         const int64_t attrAddrLengthMin = -2;
         const int64_t attrAddrLengthSameLen = -2;

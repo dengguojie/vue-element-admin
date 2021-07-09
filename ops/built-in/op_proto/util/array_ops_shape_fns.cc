@@ -36,14 +36,14 @@ static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const i
   data.reserve(element_num);
   if (data_type == DT_INT32) {
     const int32_t* paddings_data = reinterpret_cast<const int32_t*>(paddings_tensor.GetData());
-    CHECK(paddings_tensor.GetSize() / sizeof(int32_t) < element_num,
+    CHECK(static_cast<int64_t>(paddings_tensor.GetSize() / sizeof(int32_t)) < element_num,
           OP_LOGE(op.GetName().c_str(), "invalid padding data."), return GRAPH_FAILED);
     for (int64_t i = 0; i < element_num; ++i) {
       data.push_back(static_cast<int64_t>(paddings_data[i]));
     }
   } else if (data_type == DT_INT64) {
     const int64_t* paddings_data = reinterpret_cast<const int64_t*>(paddings_tensor.GetData());
-    CHECK(paddings_tensor.GetSize() / sizeof(int64_t) < element_num,
+    CHECK(static_cast<int64_t>(paddings_tensor.GetSize() / sizeof(int64_t)) < element_num,
           OP_LOGE(op.GetName().c_str(), "invalid padding data."), return GRAPH_FAILED);
     for (int64_t i = 0; i < element_num; ++i) {
       data.push_back(paddings_data[i]);

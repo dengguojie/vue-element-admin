@@ -55,7 +55,7 @@ vector<FusionPattern*> IMGWarpFusionPass::DefinePatterns() {
 int64_t IMGWarpFusionPass::GetDimNum(const vector<int64_t>& shapes) const {
   auto shape_lens = shapes.size();
   int64_t dim_num = 1;
-  for (auto i = 0; i < shape_lens; i++) {
+  for (size_t i = 0; i < shape_lens; i++) {
     dim_num = dim_num * shapes[i];
   }
   return dim_num;

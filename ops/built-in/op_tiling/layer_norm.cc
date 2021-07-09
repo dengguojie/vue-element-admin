@@ -297,7 +297,7 @@ std::vector<int32_t> GetUbTilingData(int32_t block_inner, size_t i,
 int32_t GetUbReduceAxis(std::vector<int64_t> input_x, const int32_t max_ub_size,
                         std::vector<int32_t> reduce_axis) {
   int32_t reduce_shape_size = 1;
-  for (size_t i = reduce_axis.size() - 1; i >= 0; i--) {
+  for (size_t i = static_cast<int32_t>(reduce_axis.size()) - 1; i >= 0; i--) {
     reduce_shape_size *= input_x[reduce_axis[i]];
     if (reduce_shape_size > max_ub_size) {
       OP_LOGI("In workspace case, ub axis must be reduce axis--> true");
@@ -312,7 +312,7 @@ int32_t GetUnblockAxisOutputMul(int32_t block_axis,
                                 std::vector<int64_t> input_x,
                                 std::vector<int32_t> reduce_axis) {
   int32_t mul_num = 1;
-  for (int32_t i = 0; i < input_x.size(); i++) {
+  for (size_t i = 0; i < input_x.size(); i++) {
     if (!IsInVector(reduce_axis, i) && (block_axis != i)) {
       mul_num *= input_x[i];
     }
@@ -382,7 +382,6 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
   // std::vector<int32_t> tiling_params;
 
   int32_t block = 1;
-  int32_t fuse_axis_num = 1;
   if (input_dtype == "float32") {
     block = 8;
   } else {

@@ -1608,7 +1608,6 @@ bool TilingDataScenario3(const CompilerInfo & compilerInfo,
 
 static void CalcStrideS4(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
-    int64_t srcIdx = borrowInfo.srcIndexIn[0].idx_in;
 
     for (int i = borrowInfo.dstNumNoDup - 1, j = 0; i >= 0; i--) {
         int64_t idx = borrowInfo.dstIndexInNoDup[i].idx_in;
@@ -1928,7 +1927,7 @@ static void MakeDiscreteBeContiguous(const ShapeInfo& shapeInfo, RuntimeInfo& ru
 
 static void CalcPermInUb(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
-    for (int64_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
+    for (size_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
         bool exist = false;
         int64_t p = shapeInfo.reducedPerm[i];
         for (int64_t j = 0; j < borrowInfo.srcNum; j++) {
@@ -2128,7 +2127,7 @@ static void ReorderIndexInfo(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInf
 }
 
 static void CalcOtherAxisIndex(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
-    for (int i = 0; i < shapeInfo.reducedPerm.size(); i++) {
+    for (size_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
         bool borrowed = false;
         for (int j = 0; j < runtimeInfo.borrowInfo.srcNum; j++) {
             if (i == runtimeInfo.borrowInfo.srcIndexIn[j].idx_in) {
@@ -2241,7 +2240,6 @@ static void RepeatStride3210(const CompilerInfo& compilerInfo,
                              RuntimeInfo& runtimeInfo,
                              int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t * perm = bi.ubPerm;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
     int64_t epb = shapeInfo.elePerBlock;
@@ -2262,7 +2260,6 @@ static void RepeatStride3201(const CompilerInfo& compilerInfo,
                              RuntimeInfo& runtimeInfo,
                              int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t * perm = bi.ubPerm;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
     int64_t epb = shapeInfo.elePerBlock;
@@ -2282,7 +2279,6 @@ static void RepeatStride2301(const CompilerInfo& compilerInfo,
                              RuntimeInfo& runtimeInfo,
                              int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t * perm = bi.ubPerm;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
     int64_t epb = shapeInfo.elePerBlock;
@@ -2301,7 +2297,6 @@ static void RepeatStride2310(const CompilerInfo& compilerInfo,
                              RuntimeInfo& runtimeInfo,
                              int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t * perm = bi.ubPerm;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
     int64_t epb = shapeInfo.elePerBlock;
@@ -2321,7 +2316,6 @@ static void RepeatStride210(const CompilerInfo& compilerInfo,
                              RuntimeInfo& runtimeInfo,
                              int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t * perm = bi.ubPerm;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
     int64_t epb = shapeInfo.elePerBlock;
@@ -2341,7 +2335,6 @@ static void RepeatStride201(const CompilerInfo& compilerInfo,
                              RuntimeInfo& runtimeInfo,
                              int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t * perm = bi.ubPerm;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
     int64_t epb = shapeInfo.elePerBlock;
@@ -2360,7 +2353,6 @@ static void RepeatStride120(const CompilerInfo& compilerInfo,
                              RuntimeInfo& runtimeInfo,
                              int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t * perm = bi.ubPerm;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
     int64_t epb = shapeInfo.elePerBlock;
@@ -2379,7 +2371,6 @@ static void RepeatStride10(const CompilerInfo& compilerInfo,
                              RuntimeInfo& runtimeInfo,
                              int64_t step[UB_REORDER_COMBINATION][BORROW_MAX_AXIS_NUM]) {
     BorrowInfo& bi = runtimeInfo.borrowInfo;
-    int64_t * perm = bi.ubPerm;
     int64_t bl = shapeInfo.alignElement == 0 ? shapeInfo.lastAxisBurstLen :\
                                                shapeInfo.lastAxisLen * compilerInfo.fp16Times;
     int64_t epb = shapeInfo.elePerBlock;

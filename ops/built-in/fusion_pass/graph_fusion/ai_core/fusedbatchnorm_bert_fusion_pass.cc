@@ -42,6 +42,8 @@ static const string PASS_OP_TYPE_BATCHNORM = "BatchNorm";
 vector<FusionPattern*> FusedBatchNormBertFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("FusedBatchNormBertFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDBATCHNORM, {PASS_OP_TYPE_BATCHNORM}).SetOutput(PATTERN_FUSEDBATCHNORM);
   patterns.push_back(pattern);
   return patterns;

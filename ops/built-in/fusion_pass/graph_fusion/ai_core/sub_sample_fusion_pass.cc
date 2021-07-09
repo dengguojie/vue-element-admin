@@ -50,7 +50,6 @@ vector<FusionPattern*> SubSamplePass::DefinePatterns() {
 
 // gen shuffle matrix
 void shuffle_matrix_gen(int64_t labels_size,vector<int32_t> &shuffle_matrix) {
-  int32_t size = static_cast<int32_t>(labels_size);
   for (int32_t i = 0; i < labels_size; i++) {
     shuffle_matrix.push_back(i);
   }
@@ -79,7 +78,7 @@ Status assist_data_gen(vector<int32_t> data, int32_t *output) {
     return FAILED;
   }
   auto size_data = data.size();
-  for (int64_t i = 0; i < size_data; i++) {
+  for (size_t i = 0; i < size_data; i++) {
     output[i] = data[i];
   }
   return SUCCESS;

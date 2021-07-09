@@ -55,7 +55,6 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInputGradInferShape) {
 }
 
 IMPLEMT_VERIFIER(ActsULQInputGrad, ActsULQInputGradVerify) {
-    DataType y_grad_type = op.GetInputDesc("y_grad").GetDataType();
     DataType clamp_min_mask_type = op.GetInputDesc("clamp_min_mask").GetDataType();
     DataType clamp_max_mask_type = op.GetInputDesc("clamp_max_mask").GetDataType();
 

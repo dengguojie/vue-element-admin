@@ -48,7 +48,7 @@ static const string BATCHMATMUL = "BatchMatMul";
 */
 
 static void AssistIntHelp(const vector<int64_t>& const_vec, int32_t* output) {
-  for (int32_t i = 0; i < const_vec.size(); ++i) {
+  for (size_t i = 0; i < const_vec.size(); ++i) {
     output[i] = const_vec[i];
   }
 }

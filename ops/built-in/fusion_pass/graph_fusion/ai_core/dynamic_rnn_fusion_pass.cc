@@ -108,7 +108,7 @@ ge::OpDescPtr DynamicRNNFusionPass::CreateRNNDesc(ge::OpDescPtr RNNDesc, ge::OpD
   tensorYDesc.SetOriginShape(tensorYShape);
   tensorYDesc.SetOriginFormat(ge::FORMAT_ND);
 
-  for (int64_t index = 0; index < outputs.size(); index++) {
+  for (size_t index = 0; index < outputs.size(); index++) {
     RNNDesc->AddOutputDesc(outputs[index], tensorYDesc);
   }
 
@@ -423,7 +423,7 @@ Status DynamicRNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   OP_LOGD(FUSED_OP_TYPE.c_str(), "DynamicRNN AddSplitEdge finished");
 
   vector<string> concatNodes = {"y", "output_h", "output_c", "i", "j", "f", "o", "tanhc"};
-  for (int64_t index = 0; index < concatNodes.size(); index++) {
+  for (size_t index = 0; index < concatNodes.size(); index++) {
     ge::OpDescPtr concatDesc = nullptr;
     OP_LOGD(FUSED_OP_TYPE.c_str(), "DynamicRNN concatDesc of %s created", concatNodes[index].c_str());
     FUSION_PASS_MAKE_SHARED((concatDesc = std::make_shared<ge::OpDesc>(

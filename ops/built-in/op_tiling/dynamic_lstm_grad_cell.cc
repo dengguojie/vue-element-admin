@@ -136,7 +136,7 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
   int64_t shapeSize = dhShape[0];
   GELOGD("op [%s] Enter DynamicLSTMGradCellTilling check input pass2.1", op_type.c_str());
   GELOGD("op [DynamicLSTMGradCellTilling] : i %d=%d.", 0, dhShape[0]);
-  for (int i = 1; i < dhShape.size(); i++) {
+  for (size_t i = 1; i < dhShape.size(); i++) {
     GELOGD("op [DynamicLSTMGradCellTilling] : i %d=%d.", i, dhShape[i]);
     shapeSize *= dhShape[i];
   }

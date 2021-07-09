@@ -48,7 +48,7 @@ typedef float (*CalcOp)(int, int, GruCalcParam&);
 
 float FindBestCalc(CalcOp func, GruCalcParam& param) {
   float best = -1.0;
-  for (int core_num = 1; core_num <= param.core_num; core_num++) {
+  for (int core_num = 1; static_cast<uint32_t>(core_num) <= param.core_num; core_num++) {
     int m_cut = 1;
     while (m_cut <= core_num) {
       if (core_num % m_cut != 0) {
@@ -280,7 +280,6 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
   ge::GeTensorDesc x_desc = gru_desc->GetInputDesc(0).Clone();
   int64_t t_size = x_desc.GetOriginShape().GetDim(0);
   int64_t m_size = x_desc.GetOriginShape().GetDim(1);
-  int64_t x_size = x_desc.GetOriginShape().GetDim(2);
   matmul_desc->UpdateInputDesc("x1", x_desc);
   matmul_desc->UpdateInputDesc("x2", gru_desc->GetInputDesc(1));
   bool has_bias = gru_desc->MutableInputDesc("bias_input") != nullptr;
@@ -404,7 +403,6 @@ Status DynamicGRUV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   // get gru_node
   ge::NodePtr gru_node = GetNodeFromMapping(PATTERN_GRUV2_NODE, mapping);
 
-  int t_size = gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(0);
   float m_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(1));
   float x_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(2));
   float h_size = static_cast<float>(gru_node->GetOpDesc()->GetInputDesc(2).GetOriginShape().GetDim(0));

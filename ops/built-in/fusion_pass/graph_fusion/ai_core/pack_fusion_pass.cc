@@ -66,12 +66,12 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     NeedTangent = 48;
   }
   const int64_t max_inputs = static_cast<int64_t>(NeedTangent);
-  FUSION_PASS_CHECK(inputs_num <= max_inputs,
+  FUSION_PASS_CHECK(static_cast<int64_t>(inputs_num) <= max_inputs,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of input of Pack node is less than %lld.",
                             max_inputs),
                     return NOT_CHANGED);
 
-  if (inputs_num > max_inputs) {
+  if (static_cast<int64_t>(inputs_num) > max_inputs) {
     size_t nodes_num, nodes_num1;
     nodes_num1 = inputs_num % max_inputs;
     if (nodes_num1 == 0) {
@@ -226,7 +226,7 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
                     pack_base_node->GetName().c_str(), i, pack_node->GetName().c_str(), i),
             return FAILED);
 
-        for (size_t m = 0; m < max_inputs; m++) {
+        for (size_t m = 0; static_cast<int64_t>(m) < max_inputs; m++) {
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(m + i * max_inputs)->GetPeerOutAnchor(),
                                                  pack_node->GetInDataAnchor(m)),

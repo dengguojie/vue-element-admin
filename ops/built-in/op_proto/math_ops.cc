@@ -177,7 +177,7 @@ IMPLEMT_INFERFUNC(Bincount, BincountInfer) {
   }
 
   Tensor tensor;
-  int64_t bins;
+  int64_t bins = 0;
   if (op.GetInputConstData("size", tensor) != GRAPH_SUCCESS) {
     bins = UNKNOWN_DIM;
   }
@@ -624,7 +624,7 @@ IMPLEMT_INFERFUNC(NextAfter, NextAfterInfer) {
   // To compute the broadcast dimensions, zip together x_shape and y_shape
   // and pad with 1 to make them the same length.
   std::vector<int64_t> dims;
-  int64_t dim_one;
+  int64_t dim_one = 1;
   if (rank_x != rank_y) {
     OP_LOGI(op.GetName().c_str(), "x1 shape is not equal to x2 shape!");
     dim_one = 1;
@@ -910,16 +910,16 @@ IMPLEMT_COMMON_INFERFUNC(LpNormInfer) {
     OP_LOGI(op.GetName().c_str(), "axes will use default value");
   }
   if (x_axes.empty()) {
-    for (int32_t i = 0; i < dim_num; i++) {
-      new_axes.push_back(i);
+    for (size_t i = 0; i < dim_num; i++) {
+      new_axes.push_back(static_cast<int64_t>(i));
     }
   } else {
-    for (int32_t i = 0; i < x_axes.size(); i++) {
+    for (size_t i = 0; i < x_axes.size(); i++) {
       indice = (x_axes[i] < 0) ? (x_axes[i] + dim_num) : x_axes[i];
       new_axes.push_back(indice);
     }
   }
-  for (int32_t i = 0; i < x_shape.GetDimNum(); i++) {
+  for (size_t i = 0; i < x_shape.GetDimNum(); i++) {
     if (find(new_axes.begin(), new_axes.end(), i) != new_axes.end()) {
       if (keep_dim == true) {
         y_vec.push_back(1);
@@ -1310,7 +1310,7 @@ bool infer_shape_cdist(Operator& op,
         return false;
     }
 
-    for (int index = 0; index < dims_x.size(); index++) {
+    for(size_t index = 0; index < dims_x.size(); index++) {
         if (dims_x[index] != dims_y[index]) {
             OP_LOGE(op.GetName().c_str(), "the two inputs value not equal!\n");
             return false;

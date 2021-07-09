@@ -98,7 +98,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
      int64_t Repeatnum = 0;
      ge::GeTensorDesc selectInputDesc = fused_node->GetOpDesc()->GetInputDesc(i);
      vector<int64_t> selectInputShape = selectInputDesc.GetShape().GetDims();
-     for (int j=0; j<selectInputShape.size(); j++){
+     for (size_t j=0; j<selectInputShape.size(); j++){
          if (selectInputShape[j] == 0){
              Repeatnum +=1;
          }
@@ -110,7 +110,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   }
   int64_t zero_num = whereI.size();
   if (zero_num > 0){
-      for (int i=0; i<whereI.size(); i++){
+      for (size_t i=0; i<whereI.size(); i++){
           FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(whereI[i] - i)->GetPeerOutAnchor(),
                                                        fused_node->GetInDataAnchor(whereI[i] - i)) != SUCCESS,
 

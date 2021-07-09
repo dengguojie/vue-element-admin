@@ -110,7 +110,7 @@ bool AvgPool1DTiling(const std::string& op_type, const TeOpParas& op_paras, cons
     }
   }
 
-  int32_t block_dim;
+  int32_t block_dim = 0;
   vector<int32_t> tiling_data = GetTilingData(fmap_nc1h, wo, max_w_in_ub, core_num, block_dim);
   ByteBufferPut(run_info.tiling_data, fmap_nc1h);
   ByteBufferPut(run_info.tiling_data, fmap_w);

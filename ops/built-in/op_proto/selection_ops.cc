@@ -251,7 +251,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
     if (no_mask && begin_len > 0 && begin_len < dim_vector[0]) {
       OP_LOGD("OP[SSGInferShape]", "Enter the special branch when shape is not const.");
       vector<int64_t> shape(shape_dy.GetDims());
-      for (size_t dim = 0; dim < begin_len; dim++) {
+      for (int64_t  dim = 0; dim < begin_len; dim++) {
         shape[dim] = -1;
       }
 
@@ -1207,7 +1207,6 @@ COMMON_INFER_FUNC_REG(GatherElements, GatherElementsInferShape);
 bool InferShapeAndTypeLogSpaceD(Operator& op, const string& input_name, const string& output_name,
                                     const string& attr_name) {
     TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-    DataType output_dtype = op.GetInputDesc(input_name).GetDataType();
     Format output_format = op.GetInputDesc(input_name).GetFormat();
     ge::Shape shape = op.GetInputDesc(input_name).GetShape();
     ge::Shape outshape = ge::Shape(shape);
@@ -1486,7 +1485,6 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceDInferShape) {
   // Get input shape
   ge::Shape shape = op.GetInputDesc("x").GetShape();
   DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  size_t dim_num = shape.GetDimNum();
 
   // Get 'begin_list','end_list','stride_list' from const node
   struct SliceParameters slice_params;
@@ -1809,7 +1807,6 @@ IMPLEMT_COMMON_INFERFUNC(SelectV2InferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto condition_desc = op_info->MutableInputDesc("condition");
   vector<int64_t> condition_shape = condition_desc->MutableShape().GetDims();
-  DataType condition_dtype = condition_desc->GetDataType();
   std::vector<std::pair<int64_t, int64_t>> condition_range;
   condition_desc->GetShapeRange(condition_range);
 
@@ -1821,7 +1818,6 @@ IMPLEMT_COMMON_INFERFUNC(SelectV2InferShape) {
 
   auto else_desc = op_info->MutableInputDesc("else");
   vector<int64_t> else_shape = else_desc->MutableShape().GetDims();
-  DataType else_dtype = else_desc->GetDataType();
   std::vector<std::pair<int64_t, int64_t>> else_range;
   else_desc->GetShapeRange(else_range);
 
@@ -2413,7 +2409,7 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
   std::vector<std::pair<int64_t, int64_t>> shape_range;
   input_desc->GetShapeRange(shape_range);
   if (shape_range.size() > 0) {
-    if (k > 0 && sorted_axis < shape_range.size()) {
+    if (k > 0 && static_cast<int64_t>(sorted_axis) < static_cast<int64_t>(shape_range.size())) {
       shape_range[sorted_axis].first = k;
       shape_range[sorted_axis].second = k;
     }
@@ -3586,7 +3582,7 @@ IMPLEMT_INFERFUNC(TileWithAxis, TileWithAxisInferShape) {
   inputDesc.GetShapeRange(inputRange);
   std::vector<std::pair<int64_t, int64_t>> outputRange;
   for (size_t i = 0; i < inputRange.size(); i++) {
-    if (i == axis) {
+    if (static_cast<int64_t>(i) == axis) {
       auto range = std::make_pair(inputRange[axis].first * tiles, inputRange[axis].second * tiles);
       outputRange.push_back(range);
     } else {
@@ -3705,7 +3701,7 @@ IMPLEMT_INFER_DATA_SLICE(StridedWrite, StridedWriteInferDataSlice) {
     return GRAPH_FAILED;
   }
   bool have_slice = false;
-  for (int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       // c1 axis split tensor, ignore stride
@@ -3986,12 +3982,12 @@ static void GetBeginAndEndListPartOne1(const ge::Shape &shape,
   size_t begin_len = slice_params.begin_list.size();
   int64_t pow_val = 0;
   pow_val = pow_table[i];
-  if ((slice_masks.ellipsis_mask & pow_val) == pow_val) {
+  if ((slice_masks.ellipsis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
     size_t ellipsis_dim = i;
     slice_params.begin_list[i] = 0;
     slice_params.end_list[i] = shape.GetDim(i);
     slice_params.stride_list[i] = 1;
-    if ((slice_masks.shrink_axis_mask & pow_val) == pow_val) {
+    if ((slice_masks.shrink_axis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
       slice_masks.shrink_axis_mask -= pow_val;
     }
     if (begin_len < dim_num) {
@@ -4018,12 +4014,12 @@ static void GetBeginAndEndListPartOne2(const ge::Shape &shape,
   size_t begin_len = slice_params.begin_list.size();
   int64_t pow_val = 0;
   pow_val = pow_table[i];
-  if ((slice_masks.ellipsis_mask & pow_val) == pow_val) {
+  if ((slice_masks.ellipsis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
     size_t ellipsis_dim = i;
     slice_params.begin_list[i] = 0;
     slice_params.end_list[i] = shape.GetDim(i);
     slice_params.stride_list[i] = 1;
-    if ((slice_masks.shrink_axis_mask & pow_val) == pow_val) {
+    if ((slice_masks.shrink_axis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
       slice_masks.shrink_axis_mask -= pow_val;
     }
     if (begin_len < dim_num) {
@@ -4076,7 +4072,7 @@ static void GetBeginAndEndListPartOne3(const ge::Shape &shape,
   int64_t pow_val = 0;
   for (size_t i = 0; i < dim_num; i++) {
     pow_val = pow_table[i];
-    if ((slice_masks.begin_mask & pow_val) == pow_val) {
+    if ((slice_masks.begin_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
       if (slice_params.stride_list[i] > 0) {
         slice_params.begin_list[i] = 0;
       }
@@ -4085,7 +4081,7 @@ static void GetBeginAndEndListPartOne3(const ge::Shape &shape,
       }
     }
 
-    if ((slice_masks.end_mask & pow_val) == pow_val) {
+    if ((slice_masks.end_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
       if (slice_params.stride_list[i] > 0) {
         slice_params.end_list[i] = slice_params.input[i];
       }
@@ -4093,7 +4089,7 @@ static void GetBeginAndEndListPartOne3(const ge::Shape &shape,
         slice_params.end_list[i] = 0;
       }
     }
-    if ((slice_masks.ellipsis_mask & pow_val) == pow_val) {
+    if ((slice_masks.ellipsis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
       slice_params.begin_list[i] = 0;
       slice_params.end_list[i] = shape.GetDim(i);
       slice_params.stride_list[i] = 1;
@@ -4112,7 +4108,7 @@ static void GetBeginAndEndListPartOne4(const ge::Shape &shape,
   if (slice_masks.new_axis_mask != 0) {
     for (size_t i = 0; i < dim_num; i++) {
       pow_val = pow_table[i];
-      if ((slice_masks.new_axis_mask & pow_val) == pow_val) {
+      if ((slice_masks.new_axis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
         slice_params.begin_list[i] = 0;
         slice_params.end_list[i] = 1;
         slice_params.stride_list[i] = 1;
@@ -4128,7 +4124,7 @@ static void GetBeginAndEndListPartOne4(const ge::Shape &shape,
   if (slice_masks.shrink_axis_mask != 0) {
     for (size_t i = 0; i < dim_num; i++) {
       pow_val = pow_table[i];
-      if ((slice_masks.shrink_axis_mask & pow_val) == pow_val) {
+      if ((slice_masks.shrink_axis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
         tmp_shrink = (begin_len > i) ? (tmp_shrink + pow_val) : tmp_shrink;
       }
     }
@@ -4179,7 +4175,7 @@ static void GetBeginAndend_listInferPart1(const ge::Shape &shape,
 
   for (size_t i = 0; i < dim_num; i++) {
     pow_val = pow_table[i];
-    if ((slice_masks.new_axis_mask & pow_val) == pow_val) {
+    if ((slice_masks.new_axis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val)) {
       slice_params.input.insert(slice_params.input.begin() + i, 1);
     }
   }
@@ -4227,13 +4223,13 @@ static void GetBeginAndend_listInferPart2(const ge::Shape &shape,
   size_t new_axis_flag = 0;
 
   for (size_t i = 0; i < dim_num; i++) {
-    if ((slice_masks.new_axis_mask & pow_table[i]) == pow_table[i]) {
+    if ((slice_masks.new_axis_mask & static_cast<uint64_t>(pow_table[i])) == static_cast<uint64_t>(pow_table[i])) {
       new_axis_flag += 1;
     }
   }
 
   for (size_t i = 0; i < slice_params.input.size(); i++) {
-    if ((slice_masks.shrink_axis_mask & pow_table[i]) == pow_table[i]) {
+    if ((slice_masks.shrink_axis_mask & static_cast<uint64_t>(pow_table[i])) == static_cast<uint64_t>(pow_table[i])) {
       slice_params.end_list[i] = slice_params.begin_list[i] + 1;
     }
   }
@@ -4334,11 +4330,11 @@ static graphStatus UpdateParams1(
     std::vector<int64_t> new_strides(dim_num, 1);
     // begin_list  end_list  stride_list
     int64_t indice = 0;
-    for (int32_t i = 0; i < axes_list.size(); i++) {
+    for (size_t i = 0; i < axes_list.size(); i++) {
       indice = (axes_list[i] < 0) ? (axes_list[i] + dim_num) : axes_list[i];
       if (indice < 0) {
         indice = 0;
-      } else if (indice > dim_num - 1) {
+      } else if (indice > static_cast<int64_t>(dim_num) - 1) {
         indice = dim_num - 1;
       }
       new_axes[indice] = axes_list[i];
@@ -4348,8 +4344,8 @@ static graphStatus UpdateParams1(
     }
 
     std::vector<int64_t> input_shape = shape.GetDims();
-    for (int32_t i = 0; i < new_axes.size(); i++) {
-      if (new_axes[i] == dim_num) {
+    for (size_t i = 0; i < new_axes.size(); i++) {
+      if (new_axes[i] == static_cast<int64_t>(dim_num)) {
         new_ends[i] = input_shape[i];
       }
       if (new_ends[i] > input_shape[i]) {
@@ -4392,9 +4388,10 @@ static void UpdateParams2(struct SliceMasks slice_masks_output,
         (slice_params_output.end_list[i] - slice_params_output.begin_list[i]) /
         (slice_params_output.stride_list[i] * change_to_double)));
     dim = std::max<int64_t>(dim, int64_t(0));
-    if (((slice_masks_output.shrink_axis_mask & pow_table[i]) !=
-         pow_table[i]) ||
-        ((slice_masks_output.new_axis_mask & pow_table[i]) != pow_table[i])) {
+    if (((slice_masks_output.shrink_axis_mask & static_cast<uint64_t>(pow_table[i])) !=
+         static_cast<uint64_t>(pow_table[i])) ||
+        ((slice_masks_output.new_axis_mask & static_cast<uint64_t>(pow_table[i])) !=
+         static_cast<uint64_t>(pow_table[i]))) {
       // get outputshape
       output_shape_list.push_back(dim);
       if (dim != 1)
@@ -4418,8 +4415,8 @@ static void UpdateParams2(struct SliceMasks slice_masks_output,
   if (slice_masks_output.shrink_axis_mask > 0) {
     size_t shrink_flag = 0;
     for (size_t i = 0; i < dim_num; i++) {
-      if ((slice_masks_output.shrink_axis_mask & pow_table[i]) ==
-          pow_table[i]) {
+      if ((slice_masks_output.shrink_axis_mask & static_cast<uint64_t>(pow_table[i])) ==
+          static_cast<uint64_t>(pow_table[i])) {
         output_shape_list.erase(output_shape_list.begin() + i - shrink_flag);
         shrink_flag += 1;
       }
@@ -4560,9 +4557,6 @@ bool InferShapeAndTypeSliceLastDim(Operator& op, const string& x_name,
 }
 
 IMPLEMT_VERIFIER(SliceLastDim, SliceLastDimVerify) {
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
-  DataType out_dtype = op.GetInputDesc("y").GetDataType();
-
   return GRAPH_SUCCESS;
 }
 
@@ -4683,8 +4677,8 @@ IMPLEMT_COMMON_INFERFUNC(MaskedFillRangeInferShape)
   auto input_dim = input_shape.GetDims().size();
 
   std::vector<int64_t> vec_dims;
-  for (int i = 0; i < input_dim; i++) {
-    vec_dims.push_back(input_shape.GetDim(i));
+  for (size_t i = 0; i < input_dim; i++) {
+    vec_dims.push_back(input_shape.GetDim(static_cast<int64_t>(i)));
   }
 
   ge::Shape output_shape(vec_dims);

@@ -43,6 +43,8 @@ static const char AXIS[] = "axes";
 vector<FusionPattern*> ReduceMaxDFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ReduceMaxDFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
   pattern->AddOpDesc(PATTERN_MAXD, {MAXD}).SetOutput(PATTERN_MAXD);
   patterns.push_back(pattern);
   return patterns;

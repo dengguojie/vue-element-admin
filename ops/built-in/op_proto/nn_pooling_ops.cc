@@ -772,20 +772,13 @@ IMPLEMT_INFERFUNC(Dilation2DBackpropFilter, Dilation2DBackpropFilterInfer) {
   auto rates = op.get_attr_rates();
   auto padding_mode = op.get_attr_padding_mode();
   auto pads = op.get_attr_pads();
-  auto ceil_mode = op.get_attr_ceil_mode();
   auto data_format = op.get_attr_data_format();
   Shape x_shape = op.GetInputDesc("x").GetShape();
   Shape filter_shape = op.GetInputDesc("filter").GetShape();
   auto data_type = op.GetInputDesc("x").GetDataType();
   TensorDesc output_desc = op.GetOutputDesc("y");
 
-  int32_t stride_rows;
-  int32_t stride_cols;
-  int32_t rate_rows;
-  int32_t rate_cols;
   int64_t batch_size_dim;
-  int64_t in_rows_dim;
-  int64_t in_cols_dim;
   int64_t filter_rows_dim;
   int64_t filter_cols_dim;
   int64_t output_depth_dim;
@@ -796,13 +789,7 @@ IMPLEMT_INFERFUNC(Dilation2DBackpropFilter, Dilation2DBackpropFilterInfer) {
   int32_t filter_w_dim;
 
   if (data_format == "NHWC") {
-    stride_rows = strides[1];
-    stride_cols = strides[2];
-    rate_rows = rates[1];
-    rate_cols = rates[2];
     batch_size_dim = 1;
-    in_rows_dim = x_shape.GetDim(1);
-    in_cols_dim = x_shape.GetDim(2);
     filter_rows_dim = filter_shape.GetDim(0);
     filter_cols_dim = filter_shape.GetDim(1);
     output_depth_dim = filter_shape.GetDim(2);
@@ -812,13 +799,7 @@ IMPLEMT_INFERFUNC(Dilation2DBackpropFilter, Dilation2DBackpropFilterInfer) {
     filter_h_dim = 0;
     filter_w_dim = 1;
   } else {
-    stride_rows = strides[2];
-    stride_cols = strides[3];
-    rate_rows = rates[2];
-    rate_cols = rates[3];
     batch_size_dim = 1;
-    in_rows_dim = x_shape.GetDim(2);
-    in_cols_dim = x_shape.GetDim(3);
     filter_rows_dim = filter_shape.GetDim(1);
     filter_cols_dim = filter_shape.GetDim(2);
     output_depth_dim = filter_shape.GetDim(0);
@@ -1009,22 +990,15 @@ IMPLEMT_INFERFUNC(Dilation2DBackpropInput, Dilation2DBackpropInputInfer) {
   auto rates = op.get_attr_rates();
   auto padding_mode = op.get_attr_padding_mode();
   auto pads = op.get_attr_pads();
-  auto ceil_mode = op.get_attr_ceil_mode();
   auto data_format = op.get_attr_data_format();
   Shape x_shape = op.GetInputDesc("x").GetShape();
   Shape filter_shape = op.GetInputDesc("filter").GetShape();
   auto data_type = op.GetInputDesc("x").GetDataType();
   TensorDesc output_desc = op.GetOutputDesc("y");
 
-  int32_t stride_rows;
-  int32_t stride_cols;
-  int32_t rate_rows;
-  int32_t rate_cols;
   int64_t batch_size_dim;
   int64_t in_rows_dim;
   int64_t in_cols_dim;
-  int64_t filter_rows_dim;
-  int64_t filter_cols_dim;
   int64_t output_depth_dim;
   int64_t unused;
   int32_t x_h_dim;
@@ -1033,15 +1007,9 @@ IMPLEMT_INFERFUNC(Dilation2DBackpropInput, Dilation2DBackpropInputInfer) {
   int32_t filter_w_dim;
 
   if (data_format == "NHWC") {
-    stride_rows = strides[1];
-    stride_cols = strides[2];
-    rate_rows = rates[1];
-    rate_cols = rates[2];
     batch_size_dim = x_shape.GetDim(0);
     in_rows_dim = x_shape.GetDim(1);
     in_cols_dim = x_shape.GetDim(2);
-    filter_rows_dim = filter_shape.GetDim(0);
-    filter_cols_dim = filter_shape.GetDim(1);
     output_depth_dim = filter_shape.GetDim(2);
     unused = x_shape.GetDim(3);
     x_h_dim = 1;
@@ -1049,15 +1017,9 @@ IMPLEMT_INFERFUNC(Dilation2DBackpropInput, Dilation2DBackpropInputInfer) {
     filter_h_dim = 0;
     filter_w_dim = 1;
   } else {
-    stride_rows = strides[2];
-    stride_cols = strides[3];
-    rate_rows = rates[2];
-    rate_cols = rates[3];
     batch_size_dim = x_shape.GetDim(0);
     in_rows_dim = x_shape.GetDim(2);
     in_cols_dim = x_shape.GetDim(3);
-    filter_rows_dim = filter_shape.GetDim(1);
-    filter_cols_dim = filter_shape.GetDim(2);
     output_depth_dim = filter_shape.GetDim(0);
     unused = x_shape.GetDim(1);
     x_h_dim = 2;
@@ -1291,42 +1253,6 @@ IMPLEMT_INFERFORMAT_FUNC(Pooling, PoolingInferFormat) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
-}
-
-static void InferHWPooling(int64_t kernel, int64_t dilation, int64_t& pad_pre, int64_t& pad_after,
-                           int64_t stride, vector<int64_t>& output, vector<int64_t>& input,
-                           int64_t& ori_input, int64_t& ori_output) {
-  if (kernel != 1) {
-    int64_t first_start = 0;
-    int64_t second_start = 0;
-    int64_t first_end = 0;
-    int64_t second_end = 0;
-    int64_t start = 0;
-    int64_t end = 0;
-    first_start = output[0] * stride - pad_pre;
-    second_start = output[1] * stride - pad_pre;
-    first_end = std::min(first_start + kernel, ori_input + pad_pre);
-    second_end = std::min(second_start + kernel, ori_input);
-
-    start = std::max(first_start, int64_t(0));
-    end = second_end - 1;
-    input = {start, end};
-
-    if (output[0] == 0) {
-       if (output[0] != ori_output - 1) {
-         pad_after = 0;
-       }
-    } else {
-      if (output[0] != ori_output - 1) {
-         pad_pre = 0;
-         pad_after = 0;
-       } else {
-         pad_pre = 0;
-       }
-    }
-  } else {
-    input = output;
-  }
 }
 
 IMPLEMT_INFER_DATA_SLICE(Pooling, PoolingInferDataSlice) {
@@ -3543,9 +3469,9 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
   for (size_t i = 0; i < input_dims.size(); i++) {
     int64_t dim_size = input_dims[i];
     auto dim_range = input_range[i];
-    if (i == input_h_dim) {
+    if (static_cast<int64_t>(i) == input_h_dim) {
       UpdateDimAndRange(ksize[strides_h_dim], strides[strides_h_dim], dim_size, dim_range);
-    } else if (i == input_w_dim) {
+    } else if (static_cast<int64_t>(i) == input_w_dim) {
       UpdateDimAndRange(ksize[strides_w_dim], strides[strides_w_dim], dim_size, dim_range);
     }
     output_dims.push_back(dim_size);
@@ -3630,13 +3556,11 @@ static void InferHWMaxPool(int64_t kernel, int64_t stride, vector<int64_t>& outp
                            int64_t& ori_input) {
   int64_t first_start = 0;
   int64_t second_start = 0;
-  int64_t first_end = 0;
   int64_t second_end = 0;
   int64_t start = 0;
   int64_t end = 0;
   first_start = output[0] * stride;
   second_start = output[1] * stride;
-  first_end = std::min(first_start + kernel, ori_input);
   second_end = std::min(second_start + kernel, ori_input);
   start = std::max(first_start, int64_t(0));
   end = second_end - 1;
@@ -3660,25 +3584,16 @@ IMPLEMT_INFER_DATA_SLICE(MaxPool, MaxPoolInferDataSlice) {
   int64_t inputH = 0;
   int64_t inputW = 0;
   int64_t windowH = 0;
-  int64_t windowW = 0;
   int64_t strideH = 0;
-  int64_t strideW = 0;
-  int64_t dilationH = 0;
 
   if (dataFormat == "NHWC") {
     inputH = dims_input[1];
     inputW = dims_input[2];
     windowH = ksizeList[1];
-    windowW = ksizeList[2];
-    strideH = stridesList[1];
-    strideW = stridesList[2];
   } else if (dataFormat == "NCHW") {
     inputH = dims_input[2];
     inputW = dims_input[3];
     windowH = ksizeList[2];
-    windowW = ksizeList[3];
-    strideH = stridesList[2];
-    strideW = stridesList[3];
   }
 
   if (dataFormat == "NHWC" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
@@ -4588,13 +4503,11 @@ static void InferHWMaxPoolExt2(int64_t kernel,int64_t stride, vector<int64_t>& o
                            int64_t& ori_input) {
     int64_t first_start = 0;
     int64_t second_start = 0;
-    int64_t first_end = 0;
     int64_t second_end = 0;
     int64_t start = 0;
     int64_t end = 0;
     first_start = output[0] * stride;
     second_start = output[1] * stride;
-    first_end = std::min(first_start + kernel, ori_input);
     second_end = std::min(second_start + kernel, ori_input);
     start = std::max(first_start, int64_t(0));
     end = second_end - 1;
@@ -4618,25 +4531,18 @@ IMPLEMT_INFER_DATA_SLICE(MaxPoolExt2, MaxPoolExt2InferDataSlice){
   int64_t inputH = 0;
   int64_t inputW = 0;
   int64_t windowH = 0;
-  int64_t windowW = 0;
   int64_t strideH = 0;
-  int64_t strideW = 0;
-  int64_t dilationH = 0;
 
   if (dataFormat == "NHWC") {
     inputH = dims_input[1];
     inputW = dims_input[2];
     windowH = ksizeList[1];
-    windowW = ksizeList[2];
     strideH = stridesList[1];
-    strideW = stridesList[2];
   } else if(dataFormat == "NCHW") {
     inputH = dims_input[2];
     inputW = dims_input[3];
     windowH = ksizeList[2];
-    windowW = ksizeList[3];
     strideH = stridesList[2];
-    strideW = stridesList[3];
   }
 
   if (dataFormat == "NHWC" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
@@ -5108,15 +5014,6 @@ IMPLEMT_INFERFUNC(Mask2Argmax, Mask2ArgmaxInferShape) {
   ge::TensorDesc inputTensorDesc = op.GetInputDesc(0);
   Format input_format = inputTensorDesc.GetFormat();
   ge::Shape shape = inputTensorDesc.GetShape();
-  int32_t in_size_h = 0;
-  int32_t in_size_w = 0;
-  if (input_format == FORMAT_NHWC) {
-    in_size_h = shape.GetDim(1);
-    in_size_w = shape.GetDim(2);
-  } else {
-    in_size_h = shape.GetDim(2);
-    in_size_w = shape.GetDim(3);
-  }
   // get input ksize
   std::vector<int32_t> ksizeList;
   if (op.GetAttr("ksize", ksizeList) != ge::GRAPH_SUCCESS) {
@@ -5277,7 +5174,7 @@ IMPLEMT_INFERFUNC(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxInferShape
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  for (auto i = 0; i < strides_list.size(); i++) {
+  for (size_t i = 0; i < strides_list.size(); i++) {
     if (strides_list[i] == 0) {
       string excepted_value = ConcatString("not equal to 0");
       std::string err_msg = GetAttrValueErrMsg(ConcatString("strides_list[", i, "]"), ConcatString(strides_list[i]), excepted_value);
@@ -5678,7 +5575,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
     std::vector<int64_t> pre_op_range;
     ge::AttrUtils::GetListInt(*input_sizes_desc, kPreOpInputShapeRange, pre_op_range);
     output_range.resize(pre_op_range.size()/2);
-    for (int i = 0; i < pre_op_range.size(); i = i + 2) {
+    for (size_t i = 0; i < pre_op_range.size(); i = i + 2) {
       output_range[i/2].first = pre_op_range[i];
       output_range[i/2].second = pre_op_range[i+1];
     }
@@ -7625,13 +7522,9 @@ VERIFY_FUNC_REG(AdaptiveMaxPool2d, AdaptiveMaxPool2dVerify);
 // ------------AdaptiveAvgPool2d Op Begin----------------
 IMPLEMT_INFERFUNC(AdaptiveAvgPool2d, AdaptiveAvgPool2dInferShape) {
   OP_LOGI(op.GetName().c_str(), " AdaptiveAvgPool2d inferShape begin!");
-  const size_t DIM_SIZE1 = 1;
   const size_t DIM_SIZE2 = 2;
-  const size_t DIM_SIZE3 = 3;
-  const size_t DIM_SIZE4 = 4;
   auto input_tensor_desc = op.GetInputDesc("x");
   auto shape = input_tensor_desc.GetShape();
-  Format input_format = input_tensor_desc.GetFormat();
   // get output_size
   std::vector<int64_t> ouput_size_list;
   if (GRAPH_SUCCESS != op.GetAttr("output_size", ouput_size_list)) {

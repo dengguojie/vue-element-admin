@@ -148,7 +148,7 @@ Status ArrToTensor(vector<float> &arr_tensor, vector<vector<float>> arr) {
     return FAILED;
   }
   auto arr_size = size_m * size_n;
-  for (int64_t i = 0; i < tensor_size; i++) {
+  for (int64_t i = 0; i < (static_cast<int64_t>(tensor_size)); i++) {
     int64_t temp_index = i % arr_size;
     int64_t m = temp_index / size_m;
     int64_t n = temp_index % size_m;
@@ -248,7 +248,7 @@ Status GetTensorShape(vector<int64_t> &input_shape,
 int64_t GetDimNum(const vector<int64_t> &shapes) {
   auto shape_lens = shapes.size();
   int64_t dim_num = 1;
-  for (auto i = 0; i < shape_lens; i++) {
+  for (size_t i = 0; i < shape_lens; i++) {
     dim_num = dim_num * shapes[i];
   }
   return dim_num;
@@ -260,7 +260,7 @@ Status AssistDataGen(vector<float> data, uint16_t *output) {
     return FAILED;
   }
   auto size_data = data.size();
-  for (int64_t i = 0; i < size_data; i++) {
+  for (size_t i = 0; i < size_data; i++) {
     fp16_t tmp;
     tmp = data[i];
     output[i] = tmp.val;

@@ -196,6 +196,9 @@ void GetTilingData(TilingParams& param,
   }
 
   int32_t dtype_size = GetBlockSize(input_dtype);
+  OP_TILING_CHECK(dtype_size == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("AscendQuant", "dtype_size cannot be zero."),
+                  return);
   int64_t max_ub_size = compile_info.max_ub_count / dtype_size;
   GetUbTilingData(param, block_tiling_axis, block_factor, out_shape, max_ub_size);
 }

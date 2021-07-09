@@ -267,6 +267,9 @@ Status MeanGradFusionPass::ParseParaFromConst(ge::NodePtr node, int32_t& param, 
       FUSION_PASS_CHECK(tensor->GetData().size() < (sizeof(int32_t) * (index + 1)),
                         OP_LOGI(FUSED_OP_TYPE.c_str(), "data size too small, may not support, just not changed."),
                         return PARAM_INVALID);
+      FUSION_PASS_CHECK(tensor->GetData().data() == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "tensor->GetData().data() is a null."),
+                        return FAILED);
       param = *((int32_t*)tensor->GetData().data() + index);
     } else {
       OP_LOGE(FUSED_OP_TYPE.c_str(), "data type not supported");

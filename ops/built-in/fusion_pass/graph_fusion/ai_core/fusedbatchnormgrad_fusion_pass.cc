@@ -39,6 +39,8 @@ namespace fe {
 vector<FusionPattern*> FusedBatchNormGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern(PATTERN_FUSEDBATCHNORMGRAD);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDBATCHNORMGRAD, {PASS_OP_TYPE_BATCHNORMGRAD}).SetOutput(PATTERN_FUSEDBATCHNORMGRAD);
   patterns.push_back(pattern);
   return patterns;

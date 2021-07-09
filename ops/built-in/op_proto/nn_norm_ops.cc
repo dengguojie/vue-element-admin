@@ -386,8 +386,8 @@ IMPLEMT_COMMON_INFERFUNC(RenormInferShape) {
     ge::Shape output_shape = op.GetInputDesc("x").GetShape();
     int64_t dim;
     op.GetAttr("dim", dim);
-    for (int64_t i = 0; i < output_shape.GetDimNum(); i++) {
-        if (i != dim) {
+    for (size_t i = 0; i < output_shape.GetDimNum(); i++) {
+        if (static_cast<int64_t>(i) != dim) {
             output_shape.SetDim(i, 1);
         }
     }
@@ -1420,7 +1420,7 @@ bool InferShapeAndTypeSoftMarginLoss(Operator& op, const string& input_name1, co
     Format input_format = op.GetInputDesc(input_name1).GetFormat();
     ge::Shape output_shape;
     std::string attr_value = "none";
-    graphStatus attr = op.GetAttr("reduction", attr_value);
+    op.GetAttr("reduction", attr_value);
 
     if(attr_value == "none") {
         ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
@@ -1541,7 +1541,6 @@ IMPLEMT_INFERFUNC(SmoothL1LossV2, SmoothL1LossV2InferShape) {
 
   TensorDesc tensordesc_input2 = op.GetInputDesc("label");
   Shape input_shape2 = tensordesc_input2.GetShape();
-  DataType input_dtype2 = tensordesc_input2.GetDataType();
   std::vector<int64_t> dims_input2 = input_shape2.GetDims();
 
   if (dims_input1.size() != dims_input2.size()) {

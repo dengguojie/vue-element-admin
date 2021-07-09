@@ -338,7 +338,7 @@ Status GRUFusionPass::CreateSliceNode(ge::ComputeGraph& graph, ge::NodePtr& gru_
   }
   ge::GeShape origin_output_shape(origin_output_dims);
   std::vector<int64_t> output_dims = {1};
-  for (int i = 1; i < dims.size(); ++i) {
+  for (size_t i = 1; i < dims.size(); ++i) {
     output_dims.push_back(dims[i]);
   }
   ge::GeShape output_shape(output_dims);
@@ -411,7 +411,7 @@ std::vector<int64_t> GRUFusionPass::RemoveNumDirectionsDim(const std::vector<int
     }
     return res;
   }
-  for (int i = 1; i < dims.size(); ++i) {
+  for (size_t i = 1; i < dims.size(); ++i) {
     res.push_back(dims[i]);
   }
   return res;

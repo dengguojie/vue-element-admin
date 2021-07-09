@@ -173,7 +173,6 @@ IMPLEMT_COMMON_INFER_DATA_SLICE(ElewiseTwoInputInferDataSlice) {
     return GRAPH_FAILED;
   }
   auto y_shape = tensor_desc_out_y->MutableShape();
-  auto y_format = tensor_desc_out_y->GetFormat();
   std::vector<int64_t> y_dims = y_shape.GetDims();
 
   vector<vector<int64_t>> y_data_slice = {};
@@ -1490,7 +1489,7 @@ IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
         if (!shape_vector.empty() && !IsUnknownRankShape(shape_vector)) {
             if (!IsUnknownRankShape(temp_vector)) {
                 shape_vector = Broadcast(shape_vector, temp_vector);
-                for (int64_t j = 0; j < shape_vector.size(); j++) {
+                for (size_t j = 0; j < shape_vector.size(); j++) {
                     if (shape_vector[j] == -1) {
                         std::string err_msg = OtherErrMsg("Operands could not be broadcast together with these shapes.");
                         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -1625,7 +1624,7 @@ COMMON_INFER_FUNC_REG(LogicalAnd, LogicalAndInferShape);
 
 // ----------------FakeQuantWithMinMaxVarsPerChannel----------------------------
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsPerChannel, FakeQuantWithMinMaxVarsPerChannelVerify) {
-  int64_t num_bits;
+  int64_t num_bits = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("num_bits", num_bits)) {
     std::string err_msg = GetInputInvalidErrMsg("num_bits");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -1765,19 +1764,19 @@ COMMON_INFER_FUNC_REG(BitwiseXor, BitwiseXorInferShape);
 
 // ----------------FakeQuantWithMinMaxArgs------------------
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxArgs, FakeQuantWithMinMaxArgsVerify) {
-  float min;
+  float min = 0.0;
   if (GetConstValue(op, "min", min) == false) {
     std::string err_msg = GetInputInvalidErrMsg("min");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  float max;
+  float max = 0.0;
   if (GetConstValue(op, "max", max) == false) {
     std::string err_msg = GetInputInvalidErrMsg("max");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  int64_t numBits;
+  int64_t numBits = 0;
   if (GetConstValue(op, "num_bits", numBits) == false) {
     std::string err_msg = GetInputInvalidErrMsg("mub_bits");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -1821,19 +1820,19 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxArgs, FakeQuantWithMinMaxArgsVerify);
 
 // ----------------FakeQuantWithMinMaxArgsGradient-----------------
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxArgsGradient, FakeQuantWithMinMaxArgsGradientVerify) {
-  float min;
+  float min = 0.0;
   if (GetConstValue(op, "min", min) == false) {
     std::string err_msg = GetInputInvalidErrMsg("min");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  float max;
+  float max = 0.0;
   if (GetConstValue(op, "max", max) == false) {
     std::string err_msg = GetInputInvalidErrMsg("max");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  int64_t num_bits;
+  int64_t num_bits = 0;
   if (GetConstValue(op, "num_bits", num_bits) == false) {
     std::string err_msg = GetInputInvalidErrMsg("num_bits");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -1899,7 +1898,7 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxArgsGradient, FakeQuantWithMinMaxArgsGradient
 
 // ----------------FakeQuantWithMinMaxVars---------------------------
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxVars, FakeQuantWithMinMaxVarsVerify) {
-  int64_t num_bits;
+  int64_t num_bits = 0;
   if (GetConstValue(op, "num_bits", num_bits) == false) {
     std::string err_msg = GetInputInvalidErrMsg("num_bits");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -1942,7 +1941,7 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxVars, FakeQuantWithMinMaxVarsVerify);
 
 // ----------------FakeQuantWithMinMaxVarsGradient------------------------------
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsGradient, FakeQuantWithMinMaxVarsGradientVerify) {
-  int64_t num_bits;
+  int64_t num_bits = 0;
   if (GetConstValue(op, "num_bits", num_bits) == false) {
     std::string err_msg = GetInputInvalidErrMsg("num_bits");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -2018,7 +2017,7 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxVarsGradient, FakeQuantWithMinMaxVarsGradient
 
 // ----------------FakeQuantWithMinMaxVarsPerChannelGradient---------------
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsPerChannelGradient, FakeQuantWithMinMaxVarsPerChannelGradientVerify) {
-  int64_t num_bits;
+  int64_t num_bits = 0;
   if (GetConstValue(op, "num_bits", num_bits) == false) {
     std::string err_msg = GetInputInvalidErrMsg("num_bits");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -2223,7 +2222,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
       return GRAPH_FAILED;
     }
     int64_t dimension = dimension_value[0] < 0 ? dimension_value[0] + x_shape.size() : dimension_value[0];
-    if (dimension >= x_shape.size()) {
+    if (dimension >= static_cast<int64_t>(x_shape.size())) {
       string error_msg = ConcatString(
           "the value of input[dimension] must be range at input shape size,",
           " but get input[dimension] value ", dimension_value[0],
@@ -2250,7 +2249,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   // dimension is not const, set all output is -1, range is [1, -1]
   std::vector<std::pair<int64_t, int64_t>> output_range;
   vector<int64_t> output_shape;
-  for (int64_t item = 0; item < (x_shape.size() - 1); ++item) {
+  for (size_t item = 0; item < (x_shape.size() - 1); ++item) {
     output_shape.push_back(-1);
   }
   MakeUpShapeRange(output_shape, output_range);
@@ -2365,7 +2364,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
       return GRAPH_FAILED;
     }
     int64_t dimension = dimension_value[0] < 0 ? dimension_value[0] + x_shape.size() : dimension_value[0];
-    if (dimension >= x_shape.size()) {
+    if (dimension >= static_cast<int64_t>(x_shape.size())) {
       OP_LOGE(op.GetName().c_str(),
               "The dimension value must be range at input shape size, but got dimension value %d, input shape size %d.",
               dimension_value[0], x_shape.size());
@@ -2390,7 +2389,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   // dimension is not const, set all output is -1, range is [1, -1]
   vector<int64_t> output_shape;
   std::vector<std::pair<int64_t, int64_t>> output_range;
-  for (int64_t item = 0; item < (x_shape.size() - 1); ++item) {
+  for (size_t item = 0; item < (x_shape.size() - 1); ++item) {
     output_shape.push_back(-1);
   }
   MakeUpShapeRange(output_shape, output_range);
@@ -2485,7 +2484,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxWithValueInferShape) {
   if (dimension < 0) {
     dimension += input_shape.size();
   }
-  if (dimension >= input_shape.size()) {
+  if (dimension >= static_cast<int64_t>(input_shape.size())) {
     std::string err_msg = GetInputInvalidErrMsg(std::to_string(input_shape.size()));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -2555,7 +2554,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinWithValueInferShape) {
   if (dimension < 0) {
     dimension += input_shape.size();
   }
-  if (dimension >= input_shape.size()) {
+  if (dimension >= static_cast<int64_t>(input_shape.size())) {
     std::string err_msg = GetInputInvalidErrMsg(std::to_string(input_shape.size()));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -3998,7 +3997,6 @@ bool InferShapeAndTypeTensorEqual(Operator &op, const string &input_name1,
                                   const string &output_name) {
   TensorDesc v_output_desc = op.GetOutputDesc(output_name);
 
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
   Format input_format = op.GetInputDesc(input_name1).GetFormat();
 
   ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
@@ -4312,8 +4310,7 @@ IMPLEMT_COMMON_INFERFUNC(MaskedScaleInferShape) {
 	
     TensorDesc mask_tensordesc = op.GetInputDesc("mask");
     ge::Shape mask_shape = mask_tensordesc.GetShape();
-    DataType mask_dtype = mask_tensordesc.GetDataType();
-	
+
     if (input_shape.GetShapeSize() != mask_shape.GetShapeSize()) {
         OP_LOGE(op.GetName().c_str(), "shapesize of x not match mask");
         return GRAPH_FAILED;
@@ -4981,8 +4978,8 @@ bool IsArgMaxGradCheckPass(Operator& op,
 
     if (shape_var_list.size() > 1) {
         for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
-            if (((i < dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i))) ||
-                ((i >= dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i + 1)))) {
+            if (((static_cast<int32_t>(i) < dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i))) ||
+                ((static_cast<int32_t>(i) >= dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i + 1)))) {
                 OP_LOGE("The dim value of var and updates not match.");
                 return false;
             }
@@ -5120,8 +5117,8 @@ bool IsArgMaxGradDCheckPass(Operator& op,
 
     if (shape_var_list.size() > 1) {
         for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
-            if (((i < dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i))) ||
-                ((i >= dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i + 1)))) {
+            if (((static_cast<int32_t>(i) < dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i))) ||
+                ((static_cast<int32_t>(i) >= dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i + 1)))) {
                 OP_LOGE("The dim value of var and updates not match.");
                 return false;
             }
@@ -5176,7 +5173,7 @@ bool InferShapeAndTypeCosineSimilarity(Operator &op,
     //Shape of input [2,3,4,5], dim = 0, then shape of output is [3,4,5]
     for (size_t i = 0; i < dims_x.size(); i++)
     {
-        if (i != attr_dim)
+        if (static_cast<int64_t>(i) != attr_dim)
         {
             dim_vec.push_back(dims_x[i]);
         }

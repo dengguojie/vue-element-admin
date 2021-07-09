@@ -233,7 +233,7 @@ graphStatus MergePrefix(const Shape& s, const Shape& prefix, Shape &s_out,
   std::vector<int64_t> dims;
   dims.reserve(std::max(rank,rank_s));
   dims.resize(rank);
-  for (int i = 0; i< rank; ++i){
+  for (size_t i = 0; i < rank; ++i){
     if (Merge(s.GetDim(i), prefix.GetDim(i), dims[i]) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString(i, "th dim of first shape",
           DebugString(s.GetDims()), " is not same as that of prefix shape",
@@ -243,7 +243,7 @@ graphStatus MergePrefix(const Shape& s, const Shape& prefix, Shape &s_out,
     }
   }
   prefix_out = Shape(dims);
-  for (int i= rank; i < rank_s; ++i) {
+  for (size_t i = rank; i < rank_s; ++i) {
     dims.push_back(s.GetDim(i));
   }
   s_out = Shape(dims);

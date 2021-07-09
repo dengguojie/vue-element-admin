@@ -169,6 +169,9 @@ void GetTilingData(TilingParams& param,
   }
   param.block_factor = 1;
   int32_t dtype_size = GetBlockSize(input_dtype);
+  OP_TILING_CHECK(dtype_size == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("AscendAntiQuant", "dtype_size cannot be zero."),
+                  return);
   int64_t max_ub_size = compile_info.max_ub_count / dtype_size;
   GetUbTilingParam(param, block_tiling_axis, block_factor, out_shape, max_ub_size);
 }
@@ -177,7 +180,7 @@ int32_t CalcPatternKey(std::vector<int64_t> shape,
                        int32_t block_tiling_axis,
                        int32_t ub_tiling_axis) {
   int32_t pattern = 0;
-  for (int64_t i = 0; i < shape.size(); i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(shape.size()); i++) {
     pattern += pow(2, (shape.size() - 1 - i));
   }
   pattern += block_tiling_axis * 100 + ub_tiling_axis * 10;
@@ -194,7 +197,7 @@ int32_t CalcTilingKey(std::vector<int64_t> shape,
   int32_t pattern = CalcPatternKey(shape, block_tiling_axis, ub_tiling_axis);
   std::vector<int32_t> val = {1000000000, 10000000, 1000000, 100000, 10000, 1000};
   std::vector<int32_t> pos = {0, is_fuse_block, 0, block_tiling_axis, ub_tiling_axis, pattern};
-  for (int64_t i = 0; i < pos.size(); i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(pos.size()); i++) {
     key += pos[i] * val[i];
   }
 
@@ -247,7 +250,7 @@ bool AscendAntiQuantTiling(const std::string &op_type,
   run_info.block_dim = tiling_params.block_dim;
   run_info.tiling_key = tiling_key;
 
-  for (int64_t i = 0; i < input_x_new.size() - 1; i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(input_x_new.size()) - 1; i++) {
     ByteBufferPut(run_info.tiling_data, (int32_t)input_x_new[i]);
     OP_LOGD(op_type.c_str(), "input_x_new shape:%d", input_x_new[i]);
   }

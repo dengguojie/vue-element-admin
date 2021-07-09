@@ -128,10 +128,10 @@ Status ConstToAttrStridedSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& map
   }
 
   for (size_t i = 0; i < dim_num; i++) {
-    if ((newmask & ((int64_t)pow(base_number, i))) == ((int64_t)pow(base_number, i))) {
+    if ((static_cast<uint64_t>(newmask) & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
       new_axis_flag += 1;
     }
-    if ((shrinkmask & ((int64_t)pow(base_number, i))) == ((int64_t)pow(base_number, i))) {
+    if ((static_cast<uint64_t>(shrinkmask) & ((uint64_t)pow(base_number, i))) == ((uint64_t)pow(base_number, i))) {
       delete_flag += 1;
       if (i == dim_num - 1) {
         shrink_last_dim_flag = true;

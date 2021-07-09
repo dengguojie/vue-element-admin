@@ -49,28 +49,29 @@ namespace ge {
 
 bool InferFC5HD(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
                 vector<vector<int64_t>>& y_data_slice, int32_t& infer_x, int32_t& infer_w) {
-  for (int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
-      if (i == 0) {
+      if (static_cast<int64_t>(i) == 0) {
         x_data_slice[i] = y_data_slice[i];
         infer_x = 1;
-      } else if (i == 1) {
+      } else if (static_cast<int64_t>(i) == 1) {
         w_data_slice[i] = y_data_slice[i];
         infer_w = 1;
       }
     }
   }
+  return true;
 }
 
 bool InferFC5HD2NZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
                    vector<vector<int64_t>>& y_data_slice, int32_t& infer_x, int32_t& infer_w,
                    const vector<int64_t>& x_shape) {
-  for (int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
-      if (i == 0) {
+      if (static_cast<int64_t>(i) == 0) {
         w_data_slice[1] = y_data_slice[i];
         infer_w = 1;
-      } else if (i == 1 && y_data_slice[i].size() == 2) {
+      } else if (static_cast<int64_t>(i) == 1 && y_data_slice[i].size() == 2) {
         int64_t m_start = y_data_slice[i][0] * 16;
         int64_t m_end = std::min(y_data_slice[i][1]*16 + 15, x_shape[0] - 1);
         x_data_slice[0] = {m_start, m_end};
@@ -78,32 +79,34 @@ bool InferFC5HD2NZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>
       }
     }
   }
+  return true;
 }
 
 bool InferFCNZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w_data_slice,
               vector<vector<int64_t>>& y_data_slice, int32_t& infer_x, int32_t& infer_w,
               const int64_t axis) {
-  for (int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       if (axis == 2) {
-        if (i == 0 || i == 2){
+        if (static_cast<int64_t>(i) == 0 || static_cast<int64_t>(i) == 2){
           x_data_slice[i] = y_data_slice[i];
           infer_x = 1;
-        } else if (i == 1) {
+        } else if (static_cast<int64_t>(i) == 1) {
           w_data_slice[i] = y_data_slice[i];
           infer_w = 1;
         }
       } else {
-        if (i == 0) {
+        if (static_cast<int64_t>(i) == 0) {
           w_data_slice[1] = y_data_slice[i];
           infer_w = 1;
-        } else if (i == 1) {
+        } else if (static_cast<int64_t>(i) == 1) {
           x_data_slice[i] = y_data_slice[i];
           infer_x = 1;
         }
       }
     }
   }
+  return true;
 }
 
 
@@ -3454,7 +3457,7 @@ static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape)
 {
     std::vector<int64_t> batch_shape;
     op.GetAttr(attr_batch_shape, batch_shape);
-    for (int i = 0; i < batch_shape.size(); ++i) {
+    for (size_t i = 0; i < batch_shape.size(); ++i) {
         if (batch_shape[i] <= 0) {
             OP_LOGE(op.GetName().c_str(), "the value of batch_shape less than 0.\n");
             return false;
@@ -3479,7 +3482,7 @@ IMPLEMT_COMMON_INFERFUNC(EyeInferShape)
         num_columns = num_rows;
     }
     std::vector<int64_t> dim_vec;
-    for (int i = 0; i < batch_shape.size(); ++i) {
+    for (size_t i = 0; i < batch_shape.size(); ++i) {
         dim_vec.push_back(batch_shape[i]);
     }
     dim_vec.push_back(num_rows);

@@ -69,7 +69,7 @@ namespace fe {
     int64_t GetNmsDims(const vector<int64_t> &shapes) {
         auto shapeLens = shapes.size();
         int64_t dimNum = 1;
-        for (auto i = 0; i < shapeLens; i++) {
+        for (size_t i = 0; i < shapeLens; i++) {
             dimNum = dimNum * shapes[i];
         }
         return dimNum;
@@ -80,7 +80,7 @@ namespace fe {
             return FAILED;
         }
         auto size_data = data.size();
-        for (int64_t i = 0; i < size_data; i++) {
+        for (size_t i = 0; i < size_data; i++) {
             fp16_t tmp;
             tmp = data[i];
             output[i] = tmp.val;

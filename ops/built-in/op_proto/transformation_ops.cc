@@ -352,7 +352,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
   int64_t range_max = (input_range[0].second == -1 || !block_done) ? -1 : input_range[0].second * block_total;
   output_dims.push_back(dim);
   output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
-  for (size_t i = 1; i <= block_size_max; i++) {
+  for (int64_t i = 1; i <= block_size_max; i++) {
     dim = (input_dims[i] == -1 || !block_done || !padding_done)
               ? -1
               : (input_dims[i] + paddings[2 * i - 2] + paddings[2 * i - 1]) / block_shape[i - 1];
@@ -645,7 +645,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
     }
   }
 
-  for (size_t i = 1; i <= block_size_max; i++) {
+  for (int64_t i = 1; i <= block_size_max; i++) {
     dim = (input_dims[i] == -1 || !block_done || !crops_done)
               ? -1
               : input_dims[i] * block_shape[i - 1] - crops[2 * i - 2] - crops[2 * i - 1];
@@ -797,7 +797,7 @@ static void FlattenSetDynamicRange(int startIndex, int endIndex, int dim,
 
   std::vector<int64_t> range_min;
   std::vector<int64_t> range_max;
-  for (size_t i = startIndex; i < endIndex; ++i) {
+  for (int i = startIndex; i < endIndex; ++i) {
     range_min.push_back(x_range[i].first);
     range_max.push_back(x_range[i].second);
   }
@@ -932,7 +932,7 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
   int64_t perm_value = 0;
   for (size_t i = 0; i < perm_list.size(); ++i) {
     perm_value = perm_list[i] < 0 ? perm_list[i] + input_shape.size() : perm_list[i];
-    if (perm_value >= input_shape.size()) {
+    if (perm_value >= static_cast<int64_t>(input_shape.size())) {
       std::string err_msg = GetAttrValueErrMsg("perm", ConcatString(perm_value),
                                                ConcatString("less than input shape size[",
                                                input_shape.size(), "]"));
@@ -3434,7 +3434,7 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
   if (weights.empty()) {
     OP_LOGW(op.GetName().c_str(), "get attr::weights is not provided, default is empty.");
   } else {
-    if (weights.size() != col_size) {
+    if (static_cast<int64_t>(weights.size()) != col_size) {
       OP_LOGE(op.GetName().c_str(), 
               "attr::weights size should be %lld,equal Max(ngram_indexes)+1,but get %d.", 
               col_size, weights.size());

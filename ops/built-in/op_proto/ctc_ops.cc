@@ -237,7 +237,6 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
 
   int64_t T = dims_log_probs[0];
   int64_t N = dims_log_probs[1];
-  int64_t C = dims_log_probs[2];
   int64_t S = dims_targets[1];
 
   TensorDesc tensordesc_log_alpha = op.get_output_desc_log_alpha();
@@ -273,7 +272,6 @@ IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
   
   TensorDesc tensordesc_targets = op.get_input_desc_targets();
   Shape shape_targets = tensordesc_targets.GetShape();
-  DataType dtype_targets = tensordesc_targets.GetDataType();
   std::vector<int64_t> dims_targets = shape_targets.GetDims();
 
   if (dims_log_probs.size() != 3){
@@ -284,7 +282,6 @@ IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
   int64_t T = dims_log_probs[0];
   int64_t N = dims_log_probs[1];
   int64_t C = dims_log_probs[2];
-  int64_t S = dims_targets[1];
 
   if (dtype != dtype_grad_out){
     OP_LOGE(op.GetName().c_str(), "The dtype of log_probs and grad_out is unmatch");

@@ -210,10 +210,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       float score_threshold_new = 0.0;
 
       ge::AttrUtils::GetFloat(score_thresholdnode, "score_threshold", score_threshold_value);
-      FUSION_PASS_CHECK((65536/65535) - score_threshold_value < 1e-6,
+      FUSION_PASS_CHECK((65536.0/65535.0) - score_threshold_value < 1e-6,
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "score threshold should not be zero!"),
                         return FAILED);
-      score_threshold_new = (1 + score_threshold_value) / ((65536/65535) - score_threshold_value);
+      score_threshold_new = (1 + score_threshold_value) / ((65536.0/65535.0) - score_threshold_value);
       ge::AttrUtils::SetFloat(score_thresholdnode, "score_threshold", score_threshold_new);
       vector<int64_t> oriNmsScorceShape = nmsScorceDesc.GetShape().GetDims();
       FUSION_PASS_CHECK(oriNmsScorceShape.empty(),
@@ -379,7 +379,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for Adds_mul after valid num is null, fusion failed."),
                       return FAILED);
       Adds_mul->AddOutputDesc("y", tensorDescadd_mul);
-      ge::AttrUtils::SetFloat(Adds_mul, "value", 65535/65534);
+      ge::AttrUtils::SetFloat(Adds_mul, "value", 65535.0/65534.0);
 
       // add node add_mul to graph
       ge::NodePtr add_mulNode = graph.AddNode(Adds_mul);

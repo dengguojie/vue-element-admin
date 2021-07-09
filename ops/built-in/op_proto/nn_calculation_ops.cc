@@ -10516,7 +10516,7 @@ IMPLEMT_COMMON_INFERFUNC(DilationInferShape)
     std::vector<int64_t> out_shape;
     std::vector<int64_t> pads;
     pads = GetAttrValue(op, "pads");
-    for (int i = 0; i < x_shape.size(); i++) {
+    for (size_t i = 0; i < x_shape.size(); i++) {
         int shape_value = (x_shape[i] - 1) * dilations[i] + 1;
         if (!pads.empty()) {
             shape_value += pads[i] * 2;
@@ -10548,7 +10548,7 @@ IMPLEMT_VERIFIER(Dilation, DilationVerify)
         ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
         return GRAPH_FAILED;
     }
-    for (int i = 0; i < dilations.size(); i++) {
+    for (size_t i = 0; i < dilations.size(); i++) {
         if (dilations[i] <= 0) {
             map<string, string> err_map;
             err_map["op_name"] = op.GetName().c_str();

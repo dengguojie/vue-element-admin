@@ -44,7 +44,7 @@ static const string kConstantOp = "Constant";
 constexpr int64_t kC0{16};
 
 bool IsVectorImpl(int fmap_h, int fmap_w, int kh, int kw, const vector<int>& pads) {
-  for (int i = 0; i < pads.size(); i++) {
+  for (size_t i = 0; i < pads.size(); i++) {
     if (pads[i] != 0) {
       return false;
     }
@@ -57,7 +57,7 @@ bool IsVectorImpl(int fmap_h, int fmap_w, int kh, int kw, const vector<int>& pad
 
 bool IsZeroPads(const vector<int>& pads) {
   bool all_zero = true;
-  for (int i = 0; i < pads.size(); i++) {
+  for (size_t i = 0; i < pads.size(); i++) {
     if (pads[i] != 0) {
       all_zero = false;
     }
@@ -124,6 +124,8 @@ void GenMultiplier(int fmap_n, int fmap_c1, int fmap_d, int fmap_h, int fmap_w, 
             int valid_kernel = v_kd * v_kh * v_kw;
             fp16_t t;
             t.val = 0;
+            FUSION_PASS_CHECK(valid_data == 0,
+                              OP_LOGE(kPatternAvgPool3D.c_str(), "valid_data cannot be zero."), return);
             float val = count_include_pad ? 1.0 / valid_kernel : 1.0 / valid_data;
             t = val;
             for (int c = 0; c < kC0; c++) {
@@ -367,7 +369,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   FUSION_PASS_CHECK(OpDescUtils::SetWeights(op_node, weights) != GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "SetWeights failed"), return FAILED);
   auto const_input_nodes = OpDescUtils::GetConstInputs(op_node);
-  FUSION_PASS_CHECK(const_input_nodes.size() <= 0,
+  FUSION_PASS_CHECK(const_input_nodes.empty(),
                     OP_LOGE(kFusedOpType.c_str(), "GetConstInputs Error Size: %u", const_input_nodes.size()),
                     return PARAM_INVALID);
 

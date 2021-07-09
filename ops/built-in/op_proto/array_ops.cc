@@ -1382,7 +1382,6 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
       td->SetShape(output_shape);
       td->SetOriginShape(output_shape);
       td->SetDataType(op_desc->MutableInputDesc("x")->GetDataType());
-      auto max_input_dims = 1;
       // If last op does not set shape range ,do not set shape range
       if (x_range.empty()) {
         GE_OP_LOGI(op.GetName().c_str(), "input x doesnot have shape range!");

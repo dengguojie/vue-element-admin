@@ -146,7 +146,7 @@ Status CommonLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, const InputIn
   SetTensorDescription(weightTensorDesc, dimsIn, ge::FORMAT_HWCN, dataType);
 
   std::vector<int32_t> inputDims{wRow, wCol, rRow, rCol};
-  Status ret;
+  Status ret = SUCCESS;
   if (num_directions == 1) {
     std::vector<int32_t> start_size = {0, 0};
     if (dataType == ge::DT_FLOAT16) {
@@ -250,7 +250,7 @@ Status CommonLSTMFusionPass::ProcessLSTMBias(ge::NodePtr fusedNode, const InputI
                       return FAILED);
     srcTensorPtr = biasT[0];
   }
-  Status ret;
+  Status ret = SUCCESS;
   if (num_directions == 1) {
     int32_t starts_size = 0;
     if (dataType == ge::DT_FLOAT16) {
@@ -347,7 +347,7 @@ Status CommonLSTMFusionPass::ProcessLSTMInitH(ge::NodePtr fusedNode, const Input
   initHDesc.SetShape(init_shape);
   initHDesc.SetOriginShape(init_shape);
 
-  Status ret;
+  Status ret = SUCCESS;
   DataType dataType = fusedDesc->GetInputDesc(0).GetDataType();
   if (dataType == ge::DT_FLOAT16) {
     ret = SetInitHCTensorData<uint16_t>(initHPtr, initHDesc, init_size, tensorPtr);

@@ -86,8 +86,8 @@ static int32_t GetLog2Floor(uint32_t n) {
   uint32_t value = n;
   // 4: shift for calc Log2Floor
   for (int32_t i = 4; i >= 0; --i) {
-    int32_t shift = (1 << i);
-    uint32_t x = value >> shift;
+    int32_t shift = (1 << static_cast<uint64_t>(i));
+    uint32_t x = value >> static_cast<uint32_t>(shift);
     if (x != 0) {
       value = x;
       log += shift;
@@ -107,7 +107,7 @@ static int32_t GetLog2Ceiling(uint32_t n) {
 
 static uint32_t CalcNextPowerOfTwo(uint32_t value) {
   int32_t exponent = GetLog2Ceiling(value);
-  return 1 << exponent;
+  return 1 << static_cast<uint32_t>(exponent);
 }
 
 IMPLEMT_INFERFUNC(AudioSpectrogram, AudioSpectrogramInfer) {

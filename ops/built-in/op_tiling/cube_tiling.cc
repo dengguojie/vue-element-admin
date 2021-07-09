@@ -69,7 +69,7 @@ namespace {
     const std::vector<int32_t> shape_dim = {0, 2, 3};
     const std::vector<int32_t> range_dim = {0, 1, 2, 3, 4, 5};
     if (range.size() == range_dim.size()) {
-      for (int32_t i = 0; i < shape_dim.size(); ++i) {
+      for (size_t i = 0; i < shape_dim.size(); ++i) {
         if (shape[shape_dim[i]] < range[range_dim[i * 2]] || shape[shape_dim[i]] > range[range_dim[i * 2 + 1]]) {
           return false;
         }
@@ -184,7 +184,7 @@ namespace {
   }
 
   void update_run_info_cube(const std::vector<int64_t>& var_value, optiling::utils::OpRunInfo& run_info) {
-    for (int64_t i = 0; i < var_value.size(); ++i) {
+    for (size_t i = 0; i < var_value.size(); ++i) {
       run_info.AddTilingData(static_cast<int32_t>(var_value[i]));
     }
   }

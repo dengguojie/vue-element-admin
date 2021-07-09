@@ -129,7 +129,7 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
 
   GeTensorDesc input_desc = fused_desc->GetInputDesc(0);
   vector<int64_t> input_shape = input_desc.GetShape().GetDims();
-  for (int idx = 0; idx < input_shape.size(); idx++) {
+  for (size_t idx = 0; idx < input_shape.size(); idx++) {
     FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(input_shape[idx]),
                       OP_LOGW(kFusedOpType.c_str(), "UnpackFusionPass cannot be applied for unknown shape."),
                       return NOT_CHANGED);

@@ -95,7 +95,7 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     outputShape.push_back(inputShape[i]);
   }
   int64_t dimVal = 1;
-  FUSION_PASS_CHECK(inputShape.size() < flattenV2EndAxis + 1,
+  FUSION_PASS_CHECK(static_cast<int64_t>(inputShape.size()) < flattenV2EndAxis + 1,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid inputShape."), return FAILED);
   for (int64_t i = flattenV2Axis; i < flattenV2EndAxis + 1; i++) {
     if (PatternFusionUtil::IsUnknownShape(inputShape[i])) {

@@ -139,9 +139,7 @@ Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
         "fusedDesc OpDesc is null, fusion failed."), return PARAM_INVALID);
-  int64_t wciIndex = 6;
-  int64_t wcfIndex = 7;
-  int64_t wcoIndex = 8;
+
   int64_t batchSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(1);
   int64_t hiddenSize = fusedDesc->GetInputDesc(1).GetShape().GetDim(1) / 4;
   int64_t stateSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(0);

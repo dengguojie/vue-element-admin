@@ -963,8 +963,6 @@ COMMON_INFER_FUNC_REG(LogSigmoid, LogSigmoidInferShape);
 // ----------------HardSigmoidLossGrad--------------------
 IMPLEMT_COMMON_INFERFUNC(HardSigmoidGradInferShape) {
     TensorDesc output_desc = op.GetOutputDesc("y");
-    DataType dtype_x = op.GetInputDesc("input_x").GetDataType();
-    Format format_x = op.GetInputDesc("input_x").GetFormat();
     ge::Shape shape_x = op.GetInputDesc("input_x").GetShape();
     DataType dtype_grad = op.GetInputDesc("grads").GetDataType();
     Format formatGrad = op.GetInputDesc("grads").GetFormat();

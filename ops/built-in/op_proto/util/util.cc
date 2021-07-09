@@ -1506,7 +1506,6 @@ void ReshapeRangeInferAllDims(const Operator &op, const std::vector<std::pair<in
   }
 
   // step 2, deal with empty tensor. if no value range cannot infer empty tensor.
-  bool is_probable_empty_tensor = false;
   std::vector<std::pair<int64_t, int64_t>> value_range = shape_value_range;
   bool has_zero_in_range = RepairAndCheckRange(x_shape_range, value_range);
   if (IsEmptyTensor(x_shape) || has_zero_in_range) {

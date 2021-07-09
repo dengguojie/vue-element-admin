@@ -256,7 +256,7 @@ bool TbeFusionPassUtil::UpdateAttrIsInputConst(const ge::NodePtr& fuse_node) {
                             "The node(%s) have no input desc, will not update is_input_const.",
                             fuse_op.GetName().c_str()),
                     return true);
-  for (auto i = 0; i < input_size; i++) {
+  for (size_t i = 0; i < input_size; i++) {
     auto peer_node = fuse_node->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode();
     auto peer_op_type = peer_node->GetType();
     bool is_const = false;

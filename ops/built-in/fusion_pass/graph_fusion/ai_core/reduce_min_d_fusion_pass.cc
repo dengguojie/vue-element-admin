@@ -46,6 +46,8 @@ static const std::string AXIS = "axes";
 vector<FusionPattern*> ReduceMinDFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ReduceMinDFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+                    return patterns);
   pattern->AddOpDesc(PATTERN_MIND, {MIND}).SetOutput(PATTERN_MIND);
   patterns.push_back(pattern);
   return patterns;

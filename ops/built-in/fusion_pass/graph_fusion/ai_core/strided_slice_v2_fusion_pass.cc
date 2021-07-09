@@ -41,11 +41,11 @@ bool ConstToAttrStridedSliceV2Pass::CheckMask(const int64_t new_mask,
   bool shrink_last_dim_flag = false;
 
   for (size_t i = 0; i < dim_num; i++) {
-    if ((new_mask & (static_cast<int64_t>(pow(base_number, i)))) ==
+    if ((static_cast<uint64_t>(new_mask) & (static_cast<uint64_t>(pow(base_number, i)))) ==
         (static_cast<int64_t>(pow(base_number, i)))) {
       new_axis_flag += 1;
     }
-    if ((shrink_mask & (static_cast<int64_t>(pow(base_number, i)))) ==
+    if ((static_cast<uint64_t>(shrink_mask) & (static_cast<uint64_t>(pow(base_number, i)))) ==
         (static_cast<int64_t>(pow(base_number, i)))) {
       delete_flag += 1;
       if (i == dim_num - 1) {

@@ -333,7 +333,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   if (is_split_dim_const != GRAPH_SUCCESS) {
     // input split_dim and size_splits is not const
     OP_LOGD(op.GetName().c_str(), "SplitVInferShape first");
-    for (size_t i = 0; i < xDimNum; ++i) {
+    for (int64_t i = 0; i < xDimNum; ++i) {
       x_shape.SetDim(i, -1);
     }
     for (size_t i = 0; i < x_shape_range.size(); ++i) {
@@ -748,7 +748,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int6
         MakeUpShapeRange(input_desc->MutableShape().GetDims(), input_shape_ranges);
       }
 
-      if (input_shape_ranges.size() > non_negative_axis) {
+      if (static_cast<int64_t>(input_shape_ranges.size()) > non_negative_axis) {
         output_concat_dim_range.first += input_shape_ranges[non_negative_axis].first;
         if (input_shape_ranges[non_negative_axis].second == -1 || output_concat_dim_range.second == -1) {
           output_concat_dim_range.second = -1;
@@ -1017,15 +1017,6 @@ INFER_DATA_SLICE_FUNC_REG(ConcatD, ConcatDInferDataSlice);
 // ----------------ConcatD OP End-------------------
 
 // ----------------Concat OP Begin-------------------
-static void CalcConcat(const Tensor& data, const DataType& dtype, std::vector<int64_t>& const_vec) {
-  const uint8_t* constData = data.GetData();
-  if (dtype == ge::DT_INT32) {
-    const_vec.push_back(*((int32_t*)constData));
-  } else {
-    const_vec.push_back(*((int64_t*)constData));
-  }
-}
-
 IMPLEMT_COMMON_INFERFUNC(ConcatInferShape) {
   const vector<string> depend_names = {"concat_dim"};
   PREPARE_DYNAMIC_SHAPE(depend_names);

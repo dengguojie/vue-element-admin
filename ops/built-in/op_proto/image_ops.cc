@@ -1933,6 +1933,8 @@ IMPLEMT_COMMON_INFERFUNC(ResizeGradDInferShape) {
 
         return GRAPH_SUCCESS;
     }
+
+    return GRAPH_FAILED;
 }
 
 IMPLEMT_VERIFIER(ResizeGradD, ResizeGradDVerify)
@@ -2659,7 +2661,7 @@ static bool CalculateSizeOut(const Operator& op,
 static graphStatus HadleSizeOut(const Operator& op,
                                 const ge::Format& input_format,
                                 std::vector<int64_t>& size_out) {
-  if (size_out.size() == DIM_SIZE4) {
+  if (static_cast<int64_t>(size_out.size()) == DIM_SIZE4) {
     if (input_format == FORMAT_NHWC) {
       size_out.erase(size_out.begin() + 3);  // 3 is index
       size_out.erase(size_out.begin() + 0);  // 0 is index
@@ -3151,7 +3153,6 @@ static bool Upasmple3dForwardInferShape(Operator& op) {
   TensorDesc input_desc = op.GetInputDesc("x");
   auto input_shape_dims = input_desc.GetShape().GetDims();
   DataType input_dtype = input_desc.GetDataType();
-  constexpr int FIVEDIMS = 5;
   constexpr int THREEDIMS = 3;
   std::vector<int64_t> output_shape;
   

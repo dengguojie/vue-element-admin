@@ -181,13 +181,13 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
     runParams.blockNum = (runParams.outerLoop - 1) / runParams.outerLoopPerBlock + 1;
   }
 
-  for (int32_t i = axis; i < updatesShape.size(); i++) {
+  for (size_t i = axis; i < updatesShape.size(); i++) {
     runParams.axisAndAfterDataNumOfUpdates = runParams.axisAndAfterDataNumOfUpdates * updatesShape[i];
   }
-  for (int32_t i = axis; i < varShape.size(); i++) {
+  for (size_t i = axis; i < varShape.size(); i++) {
     runParams.axisAndAfterDataNumOfVar = runParams.axisAndAfterDataNumOfVar * varShape[i];
   }
-  for (int32_t i = axis+1; i < varShape.size(); i++) {
+  for (size_t i = axis+1; i < varShape.size(); i++) {
     runParams.updateDataNum = runParams.updateDataNum * varShape[i];
   }
 

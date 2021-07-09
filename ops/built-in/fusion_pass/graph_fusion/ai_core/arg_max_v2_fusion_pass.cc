@@ -94,7 +94,7 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     if (aixs_const_val < 0) {
       aixs_const_val += x_dim;
     }
-    FUSION_PASS_CHECK((aixs_const_val > x_dim - 1 || aixs_const_val < 0),
+    FUSION_PASS_CHECK((aixs_const_val > static_cast<int64_t>(x_dim) - 1 || aixs_const_val < 0),
                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's dimension is invalid.",
                        in_op_desc_ptr->GetName().c_str()), return PARAM_INVALID);
     if (x_input_shape.at(aixs_const_val) != -1) {
@@ -109,7 +109,7 @@ Status ArgMaxV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                         in_op_desc_ptr->GetName().c_str()),
                         return NOT_CHANGED);
       auto range_size = range.size();
-      FUSION_PASS_CHECK(range_size <= aixs_const_val,
+      FUSION_PASS_CHECK(static_cast<int64_t>(range_size) <= aixs_const_val,
                         OP_LOGW(FUSED_OP_TYPE.c_str(), "Node:%s shape range is invalid.",
                         in_op_desc_ptr->GetName().c_str()),
                         return NOT_CHANGED);

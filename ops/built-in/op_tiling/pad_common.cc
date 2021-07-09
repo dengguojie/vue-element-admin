@@ -456,7 +456,7 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
   params.loop_1 = (params.div_core + 1 != params.total_core) ? params.loop_0 - 1 : params.loop_0;
   params.address = _accumulate(depth, &params.top_vol, 0);
   params.gap_1 = ptrR * _prod(depth, outShape);
-  params.gap_0 = (depth - 1 >= 0) ? _prod(depth - 1, outShape) : 0;
+  params.gap_0 = (depth >= 1) ? _prod(depth - 1, outShape) : 0;
   params.in_vol = ptrR * _prod(depth, inShape);
 
   // Return recur_inShape, recur_padding, recur_outShape.
