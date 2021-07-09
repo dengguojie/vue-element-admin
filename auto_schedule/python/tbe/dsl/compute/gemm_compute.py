@@ -549,7 +549,11 @@ def gemm(tensor_a, tensor_b, para_dict):
     use_old_code = cube_vector_split or is_dynamic or is_confusion_transpose
     use_old_code = filter_case(use_old_code, tensor_a, tensor_b, kernel_name)
 
-    if not use_old_code:
+    alpha = para_dict.get("alpha")
+    beta = para_dict.get("beta")
+    is_gemm = (alpha is not None) and (beta is not None)
+
+    if is_gemm:
         result = gemm_integrated(tensor_a, tensor_b, para_dict)
     else:
         gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)
