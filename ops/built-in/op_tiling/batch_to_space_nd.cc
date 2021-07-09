@@ -143,9 +143,11 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   }
 
   // select tiling mode
-  if (param.input_h * param.input_w * param.block_w * param.channel_zero <= ub_ele / 4) {
+  if (param.input_h * param.input_w * param.block_w * param.channel_zero <= ub_ele / 4 &&
+      (param.block_h - 1) * param.output_w * 2 <= 65535) {
     param.tiling_mode = input_format == "NC1HWC0" ? 0 : 6;
-  } else if (param.input_h * param.input_w * param.block_w * param.channel_zero <= ub_ele / 2) {
+  } else if (param.input_h * param.input_w * param.block_w * param.channel_zero <= ub_ele / 2 &&
+             (param.block_h - 1) * param.output_w * 2 <= 65535) {
     param.tiling_mode = input_format == "NC1HWC0" ? 1 : 7;
   } else if (param.input_w * param.block_w * param.channel_zero <= ub_ele / 4) {
     param.tiling_mode = input_format == "NC1HWC0" ? 2 : 8;
@@ -384,7 +386,7 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
   }
 
   // if input_h and block_h is one, can swap h and w
-  if (input_format == "NC1HWC0" && input_shape[2] == 1 && block_vec[0] == 1) {
+  if (input_format == "NC1HWC0" && input_shape[2] == 1 && block_vec[0] == 1 & crops_vec[0] == 0 && crops_vec[1] == 0) {
     std::swap(input_shape[2], input_shape[3]);
     std::swap(block_vec[0], block_vec[1]);
     std::swap(crops_vec[0], crops_vec[2]);

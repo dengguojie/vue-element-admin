@@ -208,9 +208,17 @@ REGISTER_CONST2ATTR("BroadcastToD")
     .NeedCheckSupported(true)
     .SetConstToAttr(1, "shape", "SetListInt");
 
-// REGISTER_CONST2ATTR("BNInferenceD")
-//  .OriginOpType("BNInference")
-//  .SetConstToAttr(3, "momentum", "SetFloat");
+REGISTER_CONST2ATTR("BatchToSpaceNDD")
+    .OriginOpType("BatchToSpaceND")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(1, "block_shape", "SetListInt")
+    .SetConstToAttr(2, "crops", "SetListInt");
+
+REGISTER_CONST2ATTR("SpaceToBatchNDD")
+    .OriginOpType("SpaceToBatchND")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(1, "block_shape", "SetListInt")
+    .SetConstToAttr(2, "paddings", "SetListInt");
 
 REGISTER_CONST2ATTR("Conv2DBackpropFilterD")
     .OriginOpType("Conv2DBackpropFilter")

@@ -670,6 +670,25 @@ class SpaceToBatchNdSix(object):
         return self.tik_instance
 
 
+def check_supported(x, y, block_shape, paddings, kernel_name="space_to_batch_nd_d"):
+    """
+    dynamic is not selected when any condition is true: \n
+        ori shape must be [?,1168,?], block_shape length must be 1, paddings length must be 2 \n
+    """
+    ori_format = x.get("ori_format")
+    ori_shape = x.get("ori_shape")
+    block_shape = list(block_shape)
+    paddings = list(paddings)
+    if ori_format in ("NHWC",) and len(ori_shape) == 3 and len(block_shape) == 1 and len(paddings) == 2:
+        if ori_shape[1] == 1168:
+            return True, ""
+    if ori_format in ("NHWC",) and len(ori_shape) == 4 and len(block_shape) == 2 and len(paddings) == 4:
+        if (ori_shape[1], ori_shape[2]) in ((66, 66),):
+            return True, ""
+
+    return False, ""
+
+
 def get_op_support_info(x, y, block_shape, paddings, kernel_name="space_to_batch_nd_d"):
     """get op support info.
     """

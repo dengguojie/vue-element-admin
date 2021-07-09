@@ -500,6 +500,25 @@ class BatchToSpaceNdSix(object):
         return self.tik_instance
 
 
+def check_supported(x, y, block_shape, crops, kernel_name="batch_to_space_nd_d"):
+    """
+    dynamic is not selected when any condition is true: \n
+        ori shape must be [?,584,?], block_shape length must be 1, crops length must be 2 \n
+    """
+    ori_format = x.get("ori_format")
+    ori_shape = x.get("ori_shape")
+    block_shape = list(block_shape)
+    crops = list(crops)
+    if ori_format in ("NHWC",) and len(ori_shape) == 3 and len(block_shape) == 1 and len(crops) == 2:
+        if ori_shape[1] == 584:
+            return True, ""
+    if ori_format in ("NHWC",) and len(ori_shape) == 4 and len(block_shape) == 2 and len(crops) == 4:
+        if (ori_shape[1], ori_shape[2]) in ((33, 33), (22, 22), (11, 11), (8, 8), (6, 6), (5, 5), (4, 4)):
+            return True, ""
+
+    return False, ""
+
+
 def get_op_support_info(x, y, block_shape, crops, kernel_name="batch_to_space_nd_d"):
     """get op support info."""
     format_x = x.get("format").upper()
