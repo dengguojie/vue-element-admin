@@ -291,7 +291,7 @@ bool ScatterSubTiling(const std::string& opType, const TeOpParas& opParas, const
   }
   if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(
-        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %d, %d, %d, %d", coreNum, ubSize,
+        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum, ubSize,
         varSize, indicesSize);
     return false;
   }

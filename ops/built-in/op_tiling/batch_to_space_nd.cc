@@ -221,13 +221,13 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
   }
   if ((input_format == "NC1HWC0") && (input_shape.size() != 5)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-            "Get input shape failed at format NC1HWC0, the length of input shape must be 5, but got %d.",
+            "Get input shape failed at format NC1HWC0, the length of input shape must be 5, but got %lu.",
             input_shape.size());
     return false;
   }
   if ((input_format == "NDC1HWC0") && (input_shape.size() != 6)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-            "Get input shape failed at format NDC1HWC0, the length of input shape must be 6, but got %d.",
+            "Get input shape failed at format NDC1HWC0, the length of input shape must be 6, but got %lu.",
             input_shape.size());
     return false;
   }
@@ -301,8 +301,8 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
       crops_vec.erase(crops_vec.begin(), crops_vec.begin() + 2);
     } else {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-              "Input with format NC1HWC0 which does not meet the rules, ori_format is %s, block size is %d, crops size "
-              "is %d",
+              "Input with format NC1HWC0 which does not meet the rules, ori_format is %s, block size is %lu, crops size "
+              "is %lu",
               ori_format.c_str(), block_vec.size(), crops_vec.size());
       return false;
     }
@@ -315,8 +315,8 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
       crops_vec.erase(crops_vec.begin(), crops_vec.begin() + 2);
     } else {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-              "Input with format NDC1HWC0 which does not meet the rules, ori_format is %s, block size is %d, crops "
-              "size is %d",
+              "Input with format NDC1HWC0 which does not meet the rules, ori_format is %s, block size is %lu, crops "
+              "size is %lu",
               ori_format.c_str(), block_vec.size(), crops_vec.size());
       return false;
     }
@@ -327,28 +327,28 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     if ((block_vec[0] <= 0) || (block_vec[1] <= 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
               "Get block_shape failed at format NC1HWC0, the value of block_shape must be greater to 0, but "
-              "got [%d, %d].",
+              "got [%ld, %ld].",
               block_vec[0], block_vec[1]);
       return false;
     }
     if ((crops_vec[0] < 0) || (crops_vec[1] < 0) || (crops_vec[2] < 0) || (crops_vec[3] < 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
               "Get crops failed at format NC1HWC0, the value of crops must be greater and equal 0, but "
-              "got [%d, %d, %d, %d].",
+              "got [%ld, %ld, %ld, %ld].",
               crops_vec[0], crops_vec[1], crops_vec[2], crops_vec[3]);
       return false;
     }
     if ((crops_vec[0] + crops_vec[1] >= input_shape[2] * block_vec[0]) ||
         (crops_vec[2] + crops_vec[3] >= input_shape[3] * block_vec[1])) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-              "The crops should less than (input_shape)*(block_shape), but got input:[%d, %d], block:[%d, %d], "
-              "crops:[%d, %d, %d, %d]",
+              "The crops should less than (input_shape)*(block_shape), but got input:[%ld, %ld], block:[%ld, %ld], "
+              "crops:[%ld, %ld, %ld, %ld]",
               input_shape[2], input_shape[3], block_vec[0], block_vec[1], crops_vec[0], crops_vec[1], crops_vec[2],
               crops_vec[3]);
       return false;
     }
     if (input_shape[0] % (block_vec[0] * block_vec[1]) != 0) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The batch/(block_shape) should be integer, but got input:[%d], block:[%d, %d]",
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The batch/(block_shape) should be integer, but got input:[%ld], block:[%ld, %ld]",
               input_shape[0], block_vec[0], block_vec[1]);
       return false;
     }
@@ -356,7 +356,7 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     if ((block_vec[0] <= 0) || (block_vec[1] <= 0) || (block_vec[2] <= 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
               "Get block_shape failed at format NDC1HWC0, the value of block_shape must be greater to 0, but "
-              "got [%d, %d, %d].",
+              "got [%ld, %ld, %ld].",
               block_vec[0], block_vec[1], block_vec[2]);
       return false;
     }
@@ -364,7 +364,7 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
         (crops_vec[5] < 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
               "Get crops failed at format NDC1HWC0, the value of crops must be greater and equal 0, but "
-              "got [%d, %d, %d, %d, %d, %d].",
+              "got[%ld, %ld, %ld, %ld, %ld, %ld].",
               crops_vec[0], crops_vec[1], crops_vec[2], crops_vec[3], crops_vec[4], crops_vec[5]);
       return false;
     }
@@ -372,14 +372,14 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
         (crops_vec[2] + crops_vec[3] >= input_shape[3] * block_vec[1]) ||
         (crops_vec[4] + crops_vec[5] >= input_shape[4] * block_vec[2])) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-              "The crops should less than (input_shape)*(block_shape), but got input:[%d, %d, %d], block:[%d, %d, %d], "
-              "pads:[%d, %d, %d, %d, %d, %d]",
+              "The crops should less than (input_shape)*(block_shape), but got input:[%ld, %ld, %ld], block:[%ld, %ld, %ld], "
+              "pads:[%ld, %ld, %ld, %ld, %ld, %ld]",
               input_shape[1], input_shape[3], input_shape[4], block_vec[0], block_vec[1], block_vec[2], crops_vec[0],
               crops_vec[1], crops_vec[2], crops_vec[3], crops_vec[4], crops_vec[5]);
       return false;
     }
     if (input_shape[0] % (block_vec[0] * block_vec[1] * block_vec[2]) != 0) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The batch/(block_shape) should be integer, but got input:[%d], block:[%d, %d, %d]",
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The batch/(block_shape) should be integer, but got input:[%ld], block:[%ld, %ld, %ld]",
               input_shape[0], block_vec[0], block_vec[1], block_vec[2]);
       return false;
     }

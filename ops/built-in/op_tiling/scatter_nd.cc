@@ -452,7 +452,7 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   }
   if (coreNum <= ZERO || ubSize <= ZERO || updatesSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(
-        opType, "coreNum, ubSize, updatesSize, indicesSize must be greater to 0, but got %d, %d, %d, %d", coreNum, ubSize,
+        opType, "coreNum, ubSize, updatesSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum, ubSize,
         updatesSize, indicesSize);
     return false;
   }

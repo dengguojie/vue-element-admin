@@ -143,7 +143,7 @@ bool Eletwise::DoBlockTiling() {
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output shape cannot be empty"),
                     return false);
   V_CHECK_GT(core_num, 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "baseInfo core_num error, it is [%d]", core_num),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "baseInfo core_num error, it is [%ld]", core_num),
              return false);
   block_factor = std::ceil(output_shape[0] * 1.0 / cur_core);
   block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
@@ -160,7 +160,7 @@ bool Eletwise::DoUbTiling() {
     bool outs_uint1 = op_info.at("_outs_uint1");
     int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
     V_CHECK_GT(limit, 0,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub limit error, it is [%d]",limit),
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub limit error, it is [%ld]",limit),
                return false);
     int64_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
     int64_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);

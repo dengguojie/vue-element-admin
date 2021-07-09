@@ -260,7 +260,7 @@ bool BNReduce::GetCompileInfo() {
   std::vector<int32_t> info = op_info["_common_info"];
   const uint32_t info_item_count = 6;
   if (info.size() < info_item_count) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "common info item count = %d, is not equal to %d.", info.size(), info_item_count);
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "common info item count = %lu, is not equal to %d.", info.size(), info_item_count);
     return false;
   }
 
@@ -274,7 +274,7 @@ bool BNReduce::GetCompileInfo() {
   block_size = compileInfo.reduce_block_size;
 
   if (compileInfo.max_ub_count <= 0 || compileInfo.core_num <= 0 || compileInfo.reduce_block_size <= 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "invalid compile info: max_ub_count = %lld, core_num = %d, reduce_block_size = %d ",
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "invalid compile info: max_ub_count = %ld, core_num = %d, reduce_block_size = %d ",
           compileInfo.max_ub_count, compileInfo.core_num, compileInfo.reduce_block_size);
     return false;
   }
@@ -609,7 +609,7 @@ bool BNReduce::WriteTilingData() {
       if (var_str.compare(0, dim_index_pos, dim_flag) == 0) {
         uint32_t dim_index = std::atoi(var_str.substr(dim_index_pos, 1).c_str());
         if (dim_index >= input_shape_ori.size()) {
-          VECTOR_INNER_ERR_REPORT_TILIING(op_type, " write tiling data dim index = %d, is out of input shape size[%d]",
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type, " write tiling data dim index = %d, is out of input shape size[%lu]",
                   dim_index, input_shape_ori.size());
           return false;
         }

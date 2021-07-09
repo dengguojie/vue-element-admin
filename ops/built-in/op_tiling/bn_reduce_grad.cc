@@ -41,7 +41,7 @@ bool BnTrainingReduceGradTiling(const std::string& op_type, const TeOpParas& op_
     float reduce_mean_cof = 1.0;
     int64_t num = input_x_shapes[0] * input_x_shapes[2] * input_x_shapes[3];
     if (num == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad invalid dim value 0. (%lld,%lld,%lld,%lld,%lld)",
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad invalid dim value 0. (%ld,%ld,%ld,%ld,%ld)",
                 input_x_shapes[0], input_x_shapes[1], input_x_shapes[2], input_x_shapes[3], input_x_shapes[4]);
         return false;
     }

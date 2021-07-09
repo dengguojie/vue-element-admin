@@ -243,7 +243,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
   OP_LOGI(op_type, "tiling run begin.");
 
   if (op_paras.inputs.size() != 2) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the num of inputs must be 2. but is %d", op_paras.inputs.size());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the num of inputs must be 2. but is %lu", op_paras.inputs.size());
     return false;
   }
   if (op_paras.outputs.empty()) {

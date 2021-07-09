@@ -102,7 +102,7 @@ static bool CheckParams(const string& op, const vector<vector<int64_t>>& input_s
   for (size_t i = 1; i < input_shapes.size(); i++) {
     for (size_t j = 0; j < shape_length; j++) {
       if (j != new_dims && input_shapes[i][j] != shape[j]) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op, "dims must equal except concat dim[%zu], input_values[%s]", dim,
+        VECTOR_INNER_ERR_REPORT_TILIING(op, "dims must equal except concat dim[%d], input_values[%s]", dim,
                 to_string(input_shapes).c_str());
         return false;
       }
@@ -259,7 +259,7 @@ bool ConcatV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   if (input_size != static_cast<int32_t>(input_shapes.size())) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType,
             "check input size failed. "
-            "Input_size in compile is %zd, but in params is %zd",
+            "Input_size in compile is %d, but in params is %zd",
             input_size, input_shapes.size());
     return false;
   }

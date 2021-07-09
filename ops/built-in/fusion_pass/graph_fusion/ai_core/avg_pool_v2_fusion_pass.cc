@@ -278,7 +278,7 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
     coffeDimInfoOrigin = {outputN, outputC, outputH, outputW};
   } else {
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-      "format is wrong, please check!expect is NHWC or NCHW, actual is %s", inputDesc0OriginFormat);
+      "format is wrong, please check!expect is NHWC or NCHW, actual is %d", inputDesc0OriginFormat);
     return PARAM_INVALID;
   }
 

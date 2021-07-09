@@ -281,7 +281,7 @@ bool StridedSliceTiling(const std::string& opType, const TeOpParas& opParas, con
     }
 
     if (slice_params.stride_list[i] != 1) {
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: stride[%zu] must be 1, but it is %lld", i,
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "StridedSliceTiling: stride[%zu] must be 1, but it is %ld", i,
               slice_params.stride_list[i]);
       return false;
     }

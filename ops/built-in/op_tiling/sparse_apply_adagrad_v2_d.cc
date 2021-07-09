@@ -39,7 +39,7 @@ bool CheckSparseApplyAdagradV2DTensorShape(const std::string& op_type,
     std::vector<int64_t> indices_shape = op_paras.inputs[3].tensor[0].shape;
     if (var_shape.size() == 0 || accum_shape.size() == 0 || grad_shape.size() == 0 || indices_shape.size() == 0) {
 
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Size of var_shape, accum_shape, grad_shape, indices_shape is %u, %u, %u, %u",
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Size of var_shape, accum_shape, grad_shape, indices_shape is %lu, %lu, %lu, %lu",
                                       var_shape.size(), accum_shape.size(), grad_shape.size(), indices_shape.size());
         return false;
     }

@@ -204,7 +204,7 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
   vector<int64_t> input_shape = op_paras.GetInputDesc(0).GetShape().GetDims();
   OP_TILING_CHECK(
     input_shape.size() != 5,
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, the length of input shape must be 5, but got %d",
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, the length of input shape must be 5, but got %lu",
             op_paras.GetInputDesc(0).GetShape().GetDimNum()),
     return false);
 

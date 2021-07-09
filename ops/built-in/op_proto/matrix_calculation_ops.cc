@@ -556,7 +556,7 @@ bool IsRangeValid(const std::vector<int64_t> &shape, const std::vector<std::pair
     for (size_t i = 0; i < range.size(); ++i) {
       if (shape[i] == -1 && range[i].second != -1 && range[i].first > range[i].second) {
         CUBE_CALL_ERR_REPORT(op_name.c_str(),
-                "%zu-th range(%lld, %lld) is invalid.", i, range[i].first, range[i].second);
+                "%zu-th range(%ld, %ld) is invalid.", i, range[i].first, range[i].second);
         return false;
       }
     }

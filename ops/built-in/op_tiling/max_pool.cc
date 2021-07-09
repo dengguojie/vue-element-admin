@@ -212,7 +212,7 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
       return false);
   vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   OP_TILING_CHECK(input_shape.size() != 5,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, the length of input shape must be 5, but got %d.",
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, the length of input shape must be 5, but got %lu.",
                           input_shape.size()),
                   return false);
 

@@ -334,7 +334,7 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
   vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   int64_t input_dims = input_shape.size();
   if (axis < -input_dims || axis >= input_dims) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis is invalid, axis:%d, dims:%d", axis, input_dims);
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis is invalid, axis:%d, dims:%ld", axis, input_dims);
     return false;
   }
   axis = (axis + input_dims) % input_dims;

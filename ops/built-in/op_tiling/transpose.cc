@@ -363,13 +363,13 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
 
     if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
         VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                        "inputs.size=%u, outputs.size=%u,",
+                                        "inputs.size=%ld, outputs.size=%ld,",
                                         paras.inputs.size(), paras.outputs.size());
         return false;
     } 
     if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
         VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                        "inputs tensor size=%u, outputs tensor size=%u,",
+                                        "inputs tensor size=%ld, outputs tensor size=%ld,",
                                         paras.inputs[0].tensor.size(), paras.outputs[0].tensor.size());
         return false;
     }
@@ -384,13 +384,13 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
 
     if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
         VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                        "inputs.size=%u, outputs.size=%u,",
+                                        "inputs.size=%ld, outputs.size=%ld,",
                                         paras.inputs.size(), paras.outputs.size());
         return false;
     }
     if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
         VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                        "inputs tensor size=%u, outputs tensor size=%u,",
+                                        "inputs tensor size=%ld, outputs tensor size=%ld,",
                                         paras.inputs[0].tensor.size(), paras.outputs[0].tensor.size());
         return false;
     }
@@ -402,13 +402,13 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
         // check input and block
         if (shapeInfo.inShape.size() != 4) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                            "The length of input shape must be 4, but got %u.",
+                                            "The length of input shape must be 4, but got %lu.",
                                             shapeInfo.inShape.size());
             return false;
         }
         if (shapeInfo.inShape[3] % (info.blockSize * info.blockSize) != 0) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                           "Depth size must be divisible by block size, but got depth[%u], block[%u].",
+                                           "Depth size must be divisible by block size, but got depth[%ld], block[%ld].",
                                            shapeInfo.inShape[3], info.blockSize);
             return false;
         }
@@ -437,19 +437,19 @@ static bool AddShapePerm(const string& opType, const TeOpParas& paras, const Com
         // check input and block
         if (shapeInfo.inShape.size() != 4) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                            "The length of input shape must be 4, but got %u,",
+                                            "The length of input shape must be 4, but got %lu,",
                                             shapeInfo.inShape.size());
             return false;
         }
         if (shapeInfo.inShape[1] % info.blockSize != 0) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                        "Height size must be divisible by block size, but got height[%u], block[%u].",
+                                        "Height size must be divisible by block size, but got height[%ld], block[%ld].",
                                         shapeInfo.inShape[1], info.blockSize);
             return false;
         }
         if (shapeInfo.inShape[2] % info.blockSize != 0) {
             VECTOR_INNER_ERR_REPORT_TILIING(opType,
-                                       "Width size must be divisible by block size, but got width[%u], block[%u].",
+                                       "Width size must be divisible by block size, but got width[%ld], block[%ld].",
                                        shapeInfo.inShape[2], info.blockSize);
             return false;
         }
@@ -499,7 +499,7 @@ static bool CheckTensorShape(const string & opType,
 
     for (int64_t i = 0; i < inDims; i++) {
         if (shapeInfo.inShape[shapeInfo.perm[i]] != shapeInfo.outShape[i]) {
-            VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim of inputs or outputs conflict with perm.", opType.c_str());
+            VECTOR_INNER_ERR_REPORT_TILIING(opType, "The dim of inputs or outputs conflict with perm.");
             return false;
         }
     }

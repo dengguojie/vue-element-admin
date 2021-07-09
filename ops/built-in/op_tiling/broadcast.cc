@@ -563,7 +563,7 @@ int64_t CalcAlignCore(const int64_t& shape, const int64_t& core,
 bool Broadcast::DoBlockTiling() {
   int64_t cur_core = compileInfo.core_num;
   V_CHECK_GT(compileInfo.core_num, 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compileInfo core_num error, it is [%d]", compileInfo.core_num),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compileInfo core_num error, it is [%ld]", compileInfo.core_num),
              return false);
   // multi core need more than half of cores
   int64_t half_core = compileInfo.core_num / 2;
@@ -906,7 +906,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
   run_info.tiling_key = static_cast<int32_t>(key);
 
   V_CHECK_GE(key, 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Tiling key error, it is [%d], please check it", key),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Tiling key error, it is [%lu], please check it", key),
              return false);
   int64_t cur_key = key;
   int64_t key_len = cur_key == 0 ? 7 : 8;

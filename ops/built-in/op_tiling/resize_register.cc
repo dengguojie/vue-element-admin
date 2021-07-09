@@ -59,11 +59,11 @@ static bool ResizeCommonTiling(const std::string& op_type, const TeOpParas& op_p
   const std::vector<int64_t>& output_shape = op_paras.outputs[0].tensor[0].shape;
   OP_TILING_CHECK(
       input_shape.size() != 5,
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the input shape size must be 5(NC1HWC0) but %d.", input_shape.size()),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the input shape size must be 5(NC1HWC0) but %lu.", input_shape.size()),
       return false);
   OP_TILING_CHECK(
       output_shape.size() != 5,
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the output shape size must be 5(NC1HWC0) but %d.", output_shape.size()),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the output shape size must be 5(NC1HWC0) but %lu.", output_shape.size()),
       return false);
 
   // get compile data begin

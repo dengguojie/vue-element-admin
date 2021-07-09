@@ -184,10 +184,10 @@ bool Norm::GetCompileInfo() {
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal", compileInfo.min_block_size),
                       return false);
     V_OP_TILING_CHECK(compileInfo.max_ub_count > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_ub_count is %d that is illegal", compileInfo.max_ub_count),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_ub_count is %ld that is illegal", compileInfo.max_ub_count),
                       return false);
     V_OP_TILING_CHECK(compileInfo.workspace_max_ub_count > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_max_ub_count is %d that is illegal",
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_max_ub_count is %ld that is illegal",
                               compileInfo.workspace_max_ub_count),
                       return false);
 

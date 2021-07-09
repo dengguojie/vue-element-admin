@@ -757,7 +757,7 @@ bool Reduce::FineTuning() {
 
   V_OP_TILING_CHECK(!(ub_factor <= 0 || blk_factor <= 0),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_factor and blk_factor must bigger than 0,"
-                            "while ub_factor is %d, blk_factor is %d", op_type.c_str(), ub_factor, blk_factor),
+                            "while ub_factor is %d, blk_factor is %d", ub_factor, blk_factor),
                     return false);
 
   bool split_same_dim = ub_axis == blk_axis;
