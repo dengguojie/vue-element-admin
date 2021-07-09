@@ -2318,6 +2318,48 @@ IMPLEMT_COMMON_INFERFUNC(LruCacheInferShape) {
 COMMON_INFER_FUNC_REG(LruCache, LruCacheInferShape); 
 // ---------------------LruCache END-------------------------------------
 
+// ----------------LRUCacheV2 Op Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(LRUCacheV2InferShape) {
+  OP_LOGD("OP[LRUCacheV2]", "LRUCacheV2InferShape Begin.");
+
+  // first get the ivf_cur_count const
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto index_list_desc = op_info->MutableInputDesc("index_list");
+  auto data_desc = op_info->MutableInputDesc("data");
+  auto tag_desc = op_info->MutableInputDesc("tag");
+  auto cache_desc = op_info->MutableInputDesc("cache");
+  auto data_shape = data_desc->GetShape();
+  auto index_list_shape = index_list_desc->GetShape();
+  auto tag_shape = tag_desc->GetShape();
+  auto cache_shape = cache_desc->GetShape();
+  DataType index_list_dtype = index_list_desc->GetDataType();
+  DataType data_dtype = data_desc->GetDataType();
+  DataType tag_dtype = tag_desc->GetDataType();
+  auto output_desc_data = op_info->MutableOutputDesc("data");
+  auto output_desc_cache = op_info->MutableOutputDesc("cache");
+  auto output_desc_tag = op_info->MutableOutputDesc("tag");
+  auto output_desc_index_offset_list = op_info->MutableOutputDesc("index_offset_list");
+  auto output_desc_not_in_cache_index_list = op_info->MutableOutputDesc("not_in_cache_index_list");
+  auto output_desc_not_in_cache_number = op_info->MutableOutputDesc("not_in_cache_number");
+  output_desc_data->SetDataType(data_dtype);
+  output_desc_cache->SetDataType(data_dtype);
+  output_desc_tag->SetDataType(tag_dtype);
+  output_desc_index_offset_list->SetDataType(index_list_dtype);
+  output_desc_not_in_cache_index_list->SetDataType(index_list_dtype);
+  output_desc_not_in_cache_number->SetDataType(index_list_dtype);
+  output_desc_data->SetShape(data_shape);
+  output_desc_cache->SetShape(cache_shape);
+  output_desc_tag->SetShape(tag_shape);
+  output_desc_index_offset_list->SetShape(index_list_shape);
+  output_desc_not_in_cache_index_list->SetShape(index_list_shape);
+  vector<int64_t> out_scalar_shape={1};
+  output_desc_not_in_cache_number->SetShape(GeShape(out_scalar_shape));
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(LRUCacheV2, LRUCacheV2InferShape);
+// ---------------- Op LRUCacheV2 End-------------------
+
 // --------------------------------CacheAdd-------------------------------------
 IMPLEMT_COMMON_INFERFUNC(CacheAddInferShape) {
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
