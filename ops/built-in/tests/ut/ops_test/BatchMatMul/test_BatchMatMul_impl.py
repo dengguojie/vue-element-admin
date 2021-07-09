@@ -367,6 +367,7 @@ precision_case1 = {"params": [{"shape": (16,1,1,16, 2,1,16,16), "dtype": "float1
 
 ut_case.add_precision_case("Ascend910", precision_case1)
 
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])
     exit(0)
