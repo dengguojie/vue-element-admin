@@ -54,26 +54,28 @@ def _can_division_sixteen(shape):
 def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
     """
     select format dynamically\n
-    op_select_format support desc:\n
-        1. when input x's ori_shape is 4, and bias's shape is not 1.
-           The Op Bias can support\n
-           ND/ND = ND,\n
-           NC1HWC0/NC1HWC0 = NC1HWC0,\n
+    op_select_format support desc:
 
-           for example:\n
-           inputs:\n
-             x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"\n
-             bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"\n
-           outputs:\n
-             y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"\n
+    1.when input x's ori_shape is 4, and bias's shape is not 1.\n
+    The Op Bias can support
+    ND/ND = ND,
+    NC1HWC0/NC1HWC0 = NC1HWC0.
 
-        2. In other scenes, all input(x, bias) only support ND.\n
-           for example:\n
-           inputs:\n
-             x        ori shape = [2] ori_format = "ND"\n
-             bias     ori shape = [2] ori_format = "ND"\n
-           outputs:\n
-             y        ori shape = [2] ori_format = "ND"\n
+        for example:
+        inputs:
+            x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+            bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+        outputs:
+            y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+
+    2.In other scenes, all input(x, bias) only support ND.
+
+        for example:
+        inputs:
+            x        ori shape = [2] ori_format = "ND"
+            bias     ori shape = [2] ori_format = "ND"
+        outputs:
+            y        ori shape = [2] ori_format = "ND"
     """
     shape_x = input_x.get("ori_shape")
     shape_y = input_y.get("ori_shape")

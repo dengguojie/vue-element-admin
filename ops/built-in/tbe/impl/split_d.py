@@ -465,20 +465,22 @@ def split_d_compute(input_value, output_data, split_dim, num_split, kernel_name=
 
 def op_select_format(input_value, output_data, split_dim, num_split, kernel_name="split_d"):
     """
-    1. when input x's ori_shape in ["NCHW", "NHWC"] and split_d by
+    1.when input x's ori_shape in ["NCHW", "NHWC"] and split_d by
     dim N, H, W and dim C of x's ori_shape can be divisible by 16(32
     when dtype is int8). the Op SplitD can support ND and NC1HWC0.
-    > for example:
-    > x : Tensor of (shape=(2, 16, 32), "ND")
-    > the Op Select can process with NC1HWC0:
-    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
 
-    2. when input x's ori_shape dimension is greater then 2 and
+        for example:
+        x : Tensor of (shape=(2, 16, 32), "ND")
+        the Op Select can process with NC1HWC0:
+        x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+
+    2.when input x's ori_shape dimension is greater then 2 and
     do not split with last 2 dim. the Op SplitD can support ND and FRACTAL_NZ.
-    > for example:
-    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
-    > the Op Select can process with NC1HWC0:
-    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+        the Op Select can process with NC1HWC0:
+        x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     """
     dtype = input_value.get("dtype").lower()
     if dtype == "int8":

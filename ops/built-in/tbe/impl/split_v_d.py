@@ -338,25 +338,28 @@ def split_v_d_compute(input_value, output_data, size_splits, split_dim, num_spli
 
 def op_select_format(input_value, output_data, size_splits, split_dim, num_split, kernel_name="split_v_d"):
     """
-    1. when input x's ori_shape in ["NHWC"] and split_d by dim N,H,W, and
+    1.when input x's ori_shape in ["NHWC"] and split_d by dim N,H,W, and
     the dim C of x's ori_shape can be divisible by 16(32 when dtype is int8).
     the Op SplitVD can support ND and NC1HWC0
-    > for example:
-    > x : Tensor of (shape=(16, 16, 16, 16), "NHWC")
-    > the Op Select can process with NC1HWC0:
-    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16), "NHWC")
+        the Op Select can process with NC1HWC0:
+        x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
 
     2. when input x's ori_shape in ["NDHWC"] and split_d by dim N,D,H,W, and
     the dim C of x's ori_shape can be divisible by 16(32 when dtype is int8).
     the Op SplitVD can support ND and NDC1HWC0.
-    > for example:
-    > x : Tensor of (shape=(16, 1, 1, 16, 16, 16), "NDC1HWC0")
 
-    3. when input x's original shape dimension is greater than two and
+        for example:
+        x : Tensor of (shape=(16, 1, 1, 16, 16, 16), "NDC1HWC0")
+
+    3.when input x's original shape dimension is greater than two and
     split_dim is 0 and the first dim of x's ori_shape is N, the Op
     SplitVD can support ND and FRACTAL_NZ.
-    > for example:
-    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
     """
     dtype = input_value.get("dtype").lower()
     if dtype == "int8":

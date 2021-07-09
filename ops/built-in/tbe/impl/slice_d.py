@@ -7323,19 +7323,21 @@ def get_fused_str(format_char_list):
 
 def op_select_format(x, y, begin, size, kernel_name="slice_d"):
     """
-    1. when length of input x's ori_shape is equal to length of
+    1.when length of input x's ori_shape is equal to length of
     input x's ori_format, and ori_shape in ["NCHW", “NDCHW”], and
     the dim C can be divisible by 16. the Op Select can support
     ND, NC1HWC0 and NDC1HWC0.
-    > for example:
-    > x : Tensor of (shape=(16, 16), "ND")
-    > the Op Select can process with NC1HWC0:
-    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
 
-    2. when x's ori_format dim C and dim N can be divisible by 16.
+        for example:
+        x : Tensor of (shape=(16, 16), "ND")
+        the Op Select can process with NC1HWC0:
+        x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+
+    2.when x's ori_format dim C and dim N can be divisible by 16.
     the Op Select can support ND, FRACTAL_Z and FRACTAL_Z_3D.
-    > for example:
-    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
     """
     input_ori_shape = x.get("ori_shape")
     input_ori_format = x.get("ori_format")

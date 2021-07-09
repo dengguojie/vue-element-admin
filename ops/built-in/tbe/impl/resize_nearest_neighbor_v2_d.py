@@ -922,9 +922,13 @@ def check_supported(images,
                     kernel_name="resize_nearest_neighbor"):
     """
     To check whether the AICORE operator can support
+
     1. when the shape of input images is unrank shape or dim size not equal 4, will change to aicpu
+
     2. when the format of input images is not in "NHWC,NCHW", AICORE do not support, will change to aicpu
+
     3. when the height of input images or output images is more than 7680, will change to aicpu
+
     3. when the weight of input images or output images is more than 4320, will change to aicpu
     """
     images_shape = images.get("ori_shape")

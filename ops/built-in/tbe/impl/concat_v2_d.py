@@ -86,26 +86,29 @@ def op_select_format(input_values,
                      axis,
                      kernel_name="concat_v2_d"):
     """
-    1. When input ori_format is in ["NDCHW", "HWCN", "NCHW"], and
-       ori_format indexed by concat_dim is not C or N. When all
-       of input's shape is same, and C axis is in [2, 4, 8]. Or
-       all of input's shape is not same, C axis of output is
-       greater then or equal to 16. The Op ConcatV2D can support
-       NC1HWC0 and NDC1HWC0.
-    > for example:
-    > x : Tensor of (shape=(16, 16, 16, 16, 16), "NC1HWC0")
+    1.When input ori_format is in ["NDCHW", "HWCN", "NCHW"], and
+    ori_format indexed by concat_dim is not C or N. When all
+    of input's shape is same, and C axis is in [2, 4, 8]. Or
+    all of input's shape is not same, C axis of output is
+    greater then or equal to 16. The Op ConcatV2D can support
+    NC1HWC0 and NDC1HWC0.
 
-    2. When input ori_format is in ["NDCHW", "HWCN", "NCHW"], and
-       ori_format indexed by concat_dim is not C. The Op
-       ConcatD can support HWCN, NCHW and NDCHW.
-    > for example:
-    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16, 16), "NC1HWC0")
 
-    3. When length of input is greater then or equal to 2,
+    2.When input ori_format is in ["NDCHW", "HWCN", "NCHW"], and
+    ori_format indexed by concat_dim is not C. The Op
+    ConcatD can support HWCN, NCHW and NDCHW.
+
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+
+    3.When length of input is greater then or equal to 2,
     concat_dim is the last dimension or second-to-last index.
     The Op ConcatD can support ND.
-    > for example:
-    > x : Tensor of (shape=(16, 16, 16, 16), "ND")
+
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16), "ND")
     """
     shape_len = 1
     data_list = []
