@@ -303,7 +303,7 @@ include:
 *@li replace_global:An optional bool. Defaults to True. If True, the replacement is global,
 otherwise the replacement is done only on the first match.
 
-*@par output:
+*@par Outputs:
 *output::A Tensor of type string.
 */
 REG_OP(StaticRegexReplace)
@@ -327,7 +327,7 @@ include:
 *@par Attributes:
 *pattern:A string. The regular expression to match the input.
 
-*@par output:
+*@par Outputs:
 *output::A bool tensor with the same shape as `input`.
 */
 REG_OP(StaticRegexFullMatch)
@@ -349,7 +349,7 @@ include:
 *@par Attributes:
 *separator:An optional string. Defaults to "". The separator to use when joining.
 
-*@par OutPut:
+*@par Outputs:
 *output::A Tensor of type string..
 */
 REG_OP(UnsortedSegmentJoin)
@@ -371,7 +371,7 @@ include:
 *@par Attributes:
 *encoding:An optional string. Defaults to "". 
 
-*@par output:
+*@par Outputs:
 *output::A Tensor of type string..
 */
 REG_OP(StringLower)
@@ -391,7 +391,7 @@ include:
 *@par Attributes:
 *encoding:An optional string. Defaults to "". 
 
-*@par output:
+*@par Outputs:
 *output::A Tensor of type string..
 */
 REG_OP(StringUpper)

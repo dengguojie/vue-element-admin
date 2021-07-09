@@ -110,7 +110,7 @@ REG_OP(TensorListPopBack)
 *@brief The number of tensors in the input tensor list. \n
 
 *@par Inputs:
-*@li input_handle: The input list. \n
+*input_handle: The input list. \n
 
 *@par Outputs:
 *length:The number of tensors in the list. \n

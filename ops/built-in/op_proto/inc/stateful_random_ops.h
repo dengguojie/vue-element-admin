@@ -34,6 +34,9 @@ namespace ge {
 *so each execution will give different results. Inputs included:
 *shape: The shape of the output tensor . \n
 
+*@par Attributes:
+*dtype: required, type. \n
+
 *@par Outputs:
 *y:A Returns Non-deterministic integer values with specified shape . \n
 
@@ -85,6 +88,9 @@ smaller than the range of the output (either `2^32` or `2^64`) . \n
 distribution.  Must be broadcastable with the leftmost dimension defined by `shape`.
 *@li probs: A 0/1-D Tensor or Python value. The probability of success for the
 binomial distribution.  Must be broadcastable with the leftmost dimension defined by `shape`.\n
+
+*@par Attributes:
+*dtype: required, type. \n
 
 *@par Outputs:
 *y:A Returns Random values with specified shape . \n

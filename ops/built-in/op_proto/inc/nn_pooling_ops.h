@@ -629,7 +629,7 @@ REG_OP(MaxPoolGradGrad)
 *@brief Performs max_pool_ext2 on the input . \n
 
 *@par Inputs:
-* Two inputs:
+* Three inputs:
 *@li x: An NC1HWC0 Tensor of type float16.
 *@li strides: A required type of int32 values, specifying the stride of the sliding window for each dimension of the input tensor. No default value.
 *@li ksize: A required type of int32 values, specifying the size of the window for each dimension of the input tensor. No default value.

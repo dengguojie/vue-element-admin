@@ -54,7 +54,7 @@ REG_OP(StringToNumber)
 /**
 *@brief Convert serialized tensorflow.TensorProto prototype to Tensor.
 *@brief Parse an Example prototype. 
-*@par Input:
+*@par Inputs:
 *@li serialized: A Tensor of type string.
 *@li dense_defaults:  DYNAMIC INPUT Tensor type as string, float, int64. \n
 
@@ -154,7 +154,7 @@ REG_OP(ParseTensor)
 
 *@par Attributes:
 *@li OUT_TYPE: The numeric type to interpret each string in string_tensor as . \n
-*field_delim: char delimiter to separate fields in a record. \n
+*@li field_delim: char delimiter to separate fields in a record. \n
 *@li use_quote_delim: If false, treats double quotation marks as regular characters
 *inside of the string fields (ignoring RFC 4180, Section 2, Bullet 5). \n
 *@li na_value: Additional string to recognize as NA/NaN. \n
@@ -187,7 +187,7 @@ REG_OP(DecodeCSV)
 /**
 *@brief Convert serialized tensorflow.TensorProto prototype to Tensor.
 *@brief Parse an Example prototype.
-*@par Input:
+*@par Inputs:
 *@li serialized: A Tensor of type string. \n
 *@li name:A Tensor of type string. \n
 *@li sparse_keys: Dynamic input tensor of string. \n
@@ -229,7 +229,7 @@ REG_OP(ParseExample)
 /**
 *@brief Transforms a scalar brain.SequenceExample proto (as strings) into typed
 *tensors.
-*@par Input:
+*@par Inputs:
 *@li serialized: A Tensor of type string. \n
 *@li feature_list_dense_missing_assumed_empty:A Tensor of type string. \n
 *@li context_sparse_keys: Dynamic input tensor of string. \n

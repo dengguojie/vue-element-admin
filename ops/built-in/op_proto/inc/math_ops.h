@@ -636,6 +636,9 @@ REG_OP(IsNan)
  *@par Inputs:
  *input:A Tensor. Must have numeric type.
 
+ *@par Attributes:
+ *Tout: Type of outputs. \n
+
  *@par Outputs:
  *output:A Tensor. Has the same shape as input.
 
@@ -945,7 +948,7 @@ REG_OP(LpNorm)
 * @par Attributes:
 * Tout: representing the output of type. 
 * @par Outputs:
-* @li out: An ND tensor of type complex64, complex128 \n
+* out: An ND tensor of type complex64, complex128 \n
 */
 REG_OP(Complex)
     .INPUT(real, TensorType({DT_FLOAT, DT_DOUBLE}))
@@ -958,10 +961,13 @@ REG_OP(Complex)
 * @brief  deal complex.
 
 * @par Inputs:
-*input: An ND tensor of type complex64, complex128 \n
-*
+* input: An ND tensor of type complex64, complex128 \n
+
+* @par Attributes:
+* Tout: representing the output of type. 
+
 * @par Outputs:
-*output: An ND tensor of type float32. double \n
+* output: An ND tensor of type float32. double \n
 */
 REG_OP(Imag)
     .INPUT(input, TensorType({DT_COMPLEX64, DT_COMPLEX128}))

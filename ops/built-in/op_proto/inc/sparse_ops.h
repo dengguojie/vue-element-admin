@@ -403,6 +403,10 @@ REG_OP(SparseTensorDenseMatMul)
 or a scalar value to be used for all sparse indices.
 * @li default_value: A Tensor of the same type as "sparse_values" . \n
 
+*@par Attributes:
+*validate_indices: If true, indices are checked to make sure they are sorted in
+lexicographic order and that there are no repeats. \n
+
 *@par Outputs:
 *y: A Tensor. Has the same type as "values" . \n
 

@@ -59,7 +59,7 @@ REG_OP(VarHandleOp)
 *@li value:The value to set the new tensor to use. \n
 
 *@par Attributes:
-* @li dtype: required, type. \n
+* dtype: required, type. \n
 
 *@see AssignVariableOp.
 */
@@ -75,11 +75,11 @@ REG_OP(AssignVariableOp)
 *@brief Adds a value to the current value of a variable. \n
 
 *@par Inputs:
-*resource:Handle to the resource in which to store the variable.
-*value:The value by which the variable will be incremented. \n
+*@li resource:Handle to the resource in which to store the variable.
+*@li value:The value by which the variable will be incremented. \n
 
 *@par Attributes:
-* @li dtype: required, type. \n
+* dtype: required, type. \n
 
 *@see AssignAddVariableOp.
 */
@@ -95,11 +95,11 @@ REG_OP(AssignAddVariableOp)
 *@brief Subtracts a value to the current value of a variable. \n
 
 *@par Inputs:
-*resource:Handle to the resource in which to store the variable.
-*value:The value by which the variable will be incremented. \n
+*@li resource:Handle to the resource in which to store the variable.
+*@li value:The value by which the variable will be incremented. \n
 
 *@par Attributes:
-* @li dtype: required, type. \n
+* dtype: required, type. \n
 
 *@see AssignSubVariableOp.
 */

@@ -970,11 +970,10 @@ REG_OP(TopKV2)
 * for matrices) . \n
 
 * @par Attributes:
-* @li sorted: An optional bool. Defaults to true.
+* @li sorted: Defaults to true.
 * If true, the resulting "k" elements will be sorted by the values in descending
 * order.
 * @li largest:If true the resulting `k` elements will be sorted by the values in descending order.
-* @li sorted:If true the resulting `k` elements will be sorted by the values in descending order.
 * @li dim:0-D. Number of top elements to look for along the last dimension (along each row for matrices). \n
 
 * @par Outputs:
@@ -984,7 +983,7 @@ REG_OP(TopKV2)
 
 * @see TopK()
 * @par Third-party framework compatibility
-* @li Compatible with the TensorFlow operator TopKV2.
+* Compatible with the TensorFlow operator TopKV2.
 */
 REG_OP(TopK)
     .INPUT(x, TensorType::RealNumberType())
@@ -2206,11 +2205,8 @@ REG_OP(SliceLastDim)
 *     complex64, int64, qint8, quint8, qint32, qint16, quint16, uint16,
 *     complex128, float16, uint32, uint64, complex64, complex128. 
 * @li begin: A Tensor of type int32 or int64, for the index of the first value to select.
-*
 * @li end: A Tensor of type int32 or int64, for the index of the last value to select.
-*
 * @li axes: A Tensor of type int32 or int64, indicate axis to be select.
-*
 * @li strides: A Tensor of type int32 or int64, for the increment. \n
 *
 * @par Attributes:

@@ -1218,7 +1218,7 @@ include:
 *@li keep_dims:A bool, An optional bool. Defaults to False. If True, retain reduced dimensions with length 1..
 *@li separator:string.
 
-*@par output:
+*@par Outputs:
 *output:A Tensor of type string.
 */
 REG_OP(ReduceJoin)
