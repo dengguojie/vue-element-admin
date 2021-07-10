@@ -616,7 +616,7 @@ bool JoinShapes(vector<int64_t>& dst_shape, const vector<int64_t>& src_shape, in
         continue;
       }
 
-      if (axis != i && dst_shape[i] != UNKNOWN_DIM && src_shape[i] != UNKNOWN_DIM) {
+      if (axis != static_cast<int64_t>(i) && dst_shape[i] != UNKNOWN_DIM && src_shape[i] != UNKNOWN_DIM) {
         return false;
       }
 

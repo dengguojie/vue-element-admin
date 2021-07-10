@@ -1122,7 +1122,6 @@ IMPLEMT_COMMON_INFERFUNC(InstanceNormInferShape) {
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_shape = input_desc->MutableShape();
   auto input_dtype = input_desc->GetDataType();
-  auto input_format = input_desc->GetFormat();
 
   // x dims
   std::vector<int64_t> dims_input = input_shape.GetDims();

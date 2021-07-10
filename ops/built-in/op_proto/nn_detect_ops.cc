@@ -1522,7 +1522,7 @@ COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
     std::int64_t GetNmsDimN(const vector<int64_t> &shapes) {
         auto shapeLens = shapes.size();
         std::int64_t dimNum = 1;
-        for (auto i = 0; i < shapeLens; i++) {
+        for (size_t i = 0; i < shapeLens; i++) {
             dimNum = dimNum * shapes[i];
         }
         return dimNum;

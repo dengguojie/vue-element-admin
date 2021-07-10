@@ -180,28 +180,28 @@ Status AdaptiveMaxPool2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add poolingNode input desc failed."), return FAILED);
   FUSION_PASS_CHECK(poolingOpdesc->AddOutputDesc(outputTensorDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add poolingNode output desc failed."), return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetInt(poolingOpdesc, "mode", modeValue) == ge::GRAPH_FAILED,
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(poolingOpdesc, "mode", modeValue),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "mode", poolingOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetListInt(poolingOpdesc, "window", windowValue) == ge::GRAPH_FAILED,
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(poolingOpdesc, "window", windowValue),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "window", poolingOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetListInt(poolingOpdesc, "stride", strideValue) == ge::GRAPH_FAILED,
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(poolingOpdesc, "stride", strideValue),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "stride", poolingOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetListInt(poolingOpdesc, "pad", padValue) == ge::GRAPH_FAILED,
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(poolingOpdesc, "pad", padValue),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "pad", poolingOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetInt(poolingOpdesc, "ceil_mode", ceilmodeValue) == ge::GRAPH_FAILED,
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(poolingOpdesc, "ceil_mode", ceilmodeValue),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "ceil_mode", poolingOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetStr(poolingOpdesc, "data_format", data_format) == ge::GRAPH_FAILED,
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(poolingOpdesc, "data_format", data_format),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "data_format", poolingOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetBool(poolingOpdesc, "global_pooling", false) == ge::GRAPH_FAILED,
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(poolingOpdesc, "global_pooling", false),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "global_pooling", poolingOpdesc->GetName().c_str()),
                     return FAILED);
-  FUSION_PASS_CHECK(ge::AttrUtils::SetListInt(poolingOpdesc, "dilation", dilationValue) == ge::GRAPH_FAILED,
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(poolingOpdesc, "dilation", dilationValue),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set attr %s to node %s error", "dilation", poolingOpdesc->GetName().c_str()),
                     return FAILED);
 

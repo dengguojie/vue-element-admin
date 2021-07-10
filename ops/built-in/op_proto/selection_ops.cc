@@ -4113,7 +4113,7 @@ static void GetBeginAndEndListPartOne4(const ge::Shape &shape,
         slice_params.end_list[i] = 1;
         slice_params.stride_list[i] = 1;
         slice_masks.shrink_axis_mask =
-            ((slice_masks.shrink_axis_mask & pow_val) == pow_val)
+            ((slice_masks.shrink_axis_mask & static_cast<uint64_t>(pow_val)) == static_cast<uint64_t>(pow_val))
                 ? (slice_masks.shrink_axis_mask - pow_val)
                 : slice_masks.shrink_axis_mask;
       }
