@@ -2337,6 +2337,24 @@ REG_OP(MaskedFillRange)
     .REQUIRED_ATTR(axis, Int)
     .OP_END_FACTORY_REG(MaskedFillRange)
 
+/**
+* @brief After a set of sorted data and a new set of data are re-sorted, get the first k data. \n
+*
+* @par Inputs:
+* Six inputs, including:
+* @li topk_pq_distance: A sorted Tensor, Will be updated after calculation. Must be one of the following types: float32, float16. 
+* @li topk_pq_index: A Tensor of type int32, index corresponding to topk_pq_distance.
+* @li topk_pq_ivf: A Tensor of type int32 , the bucket number corresponding to topk_pq_distance.
+* @li pq_distance: A Tensor of type float32 or float16, the new data set will be reordered with topk_pq_distance and updated to topk_pq_distance.
+* @li pq_index: A Tensor of type int32, index corresponding to pq_distance. 
+* @li pq_ivf: A scalar of type int32 , the bucket number corresponding to pq_distance. \n
+*
+* @par Attributes:
+* @li order: A string, indicates the sorting method of topk_pq_distance. \n
+*
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
 REG_OP(InplaceTopKDistance)
     .INPUT(topk_pq_distance, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(topk_pq_index, TensorType({DT_INT32}))
