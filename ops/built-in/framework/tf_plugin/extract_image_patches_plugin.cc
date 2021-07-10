@@ -23,13 +23,6 @@
 #include "op_log.h"
 
 namespace domi {
-
-namespace {
-  const size_t kKsizeLength = 4;
-  const size_t kStridesLength = 4;
-  const size_t kRatesLength = 4;
-}
-
 Status ExtractImagePatchesMappingFn(const Message* op_src, ge::Operator& op) {
   if (AutoMappingFn(op_src, op) != SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
@@ -53,57 +46,10 @@ Status ExtractImagePatchesMappingFn(const Message* op_src, ge::Operator& op) {
     return FAILED;
   }
 
-  std::vector<int64_t> ksize;
-  if (op.GetAttr("ksizes", ksize) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get ksizes attr failed.");
-    return FAILED;
-  }
-  if (ksize.size() != kKsizeLength) {
-    OP_LOGE(op.GetName().c_str(), "Ksize has an incorrected length.");
-    return FAILED;
-  }
-  vector<int64_t> ksize_hw = {ksize[1], ksize[2]};
-  op.SetAttr("ksizes", ksize_hw);
-
-  vector<int64_t> strides;
-  if (op.GetAttr("strides", strides) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get strides attr failed.");
-    return FAILED;
-  }
-  if (strides.size() != kStridesLength) {
-    OP_LOGE(op.GetName().c_str(), "Strides has an incorrected length.");
-    return FAILED;
-  }
-  vector<int64_t> strides_hw = {strides[1], strides[2]};
-  op.SetAttr("strides", strides_hw);
-
-  vector<int64_t> rates;
-  if (op.GetAttr("rates", rates) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get rates attr failed.");
-    return FAILED;
-  }
-  if (rates.size() != kRatesLength) {
-    OP_LOGE(op.GetName().c_str(), "rates has an incorrected length.");
-    return FAILED;
-  }
-  vector<int64_t> rates_hw = {rates[1], rates[2]};
-  op.SetAttr("dilations", rates_hw);
-
-  std::string padding = "";
-  if (op.GetAttr("padding", padding) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get padding attr failed.");
-    return FAILED;
-  }
-  if (padding != "SAME" && padding != "VALID") {
-    OP_LOGE(op.GetName().c_str(), "TF padding pattern is incorrected.");
-    return FAILED;
-  }
-  op.SetAttr("padding_mode", padding);
-
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("Im2col")
+REGISTER_CUSTOM_OP("ExtractImagePatches")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("ExtractImagePatches")
     .ParseParamsFn(ExtractImagePatchesMappingFn)
