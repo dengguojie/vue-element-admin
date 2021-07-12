@@ -21,7 +21,6 @@ import math
 import re
 import copy
 import warnings
-import te.lang.dynamic as dynamic
 import tbe.dsl as tbe_base
 from tbe import tvm
 from tbe.dsl import auto_schedule
@@ -318,7 +317,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
 
 @register_operator("Conv2D")
 @para_check.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
-                             (tuple, list), (tuple, list, str), (tuple, list),
+                             (tuple, list), (tuple, list), (tuple, list),
                              int, str, int, str, str)
 def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
            groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d"):
@@ -345,7 +344,6 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
         stride on H/W, format sensitive
     pads: tuple/list of 4 integers
         [pad_top, pad_bottom, pad_left, pad_right]
-        when string, it supports "SAME", "VALID"
     dilations: tuple/list of 4 integers
         dilation on H/W, format sensitive
     groups: int

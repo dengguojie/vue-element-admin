@@ -25,13 +25,15 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
-from impl.dynamic.conv2d import conv2d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_register
+from impl.util.util_cube_dynamic import Conv2dParaProcess
+from tbe.dsl.compute.conv_compute import conv
+from tbe.dsl.compute.conv_compute import ConvParam
 
 
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
@@ -49,6 +51,8 @@ MASK = 128
 MIN_FP16 = 0
 INPUT_DIM = 4
 SHAPE_LEN = 5
+H_DIM = 2
+W_DIM = 3
 ORI_SHAPE_LEN = 4
 
 class AvgPool:
@@ -1012,6 +1016,34 @@ def get_op_support_info(x, filter, bias, y, ksize, strides,
     return op_cal_info_in_json
 
 
+def set_default_para():
+    """
+    set default parameter value
+    """
+    default_para = {}
+    default_para["res_dtype"] = "float16"
+    default_para["optim_dict"] = {"c0_optim_flg": False}
+    default_para["fusion_para"] = {"input_memory_type": 0, "output_memory_type": 0,
+                                   "valid_shape": (), "slice_offset": (),
+                                   "l1_fusion_type": -1}
+    default_para["ori_shape"] = [0, 0, 0, 0]
+    return default_para
+
+
+def _collect_org_tensors(ori_paras):
+    """
+    get valid tensors
+    """
+    ori_tensors = {}
+    for key, value in ori_paras.items():
+        valid_tensor = isinstance(value, dict) \
+                       and isinstance(value.get("ori_shape"), (list, tuple)) \
+                       and len(value.get("ori_shape")) > 0
+        if valid_tensor:
+            ori_tensors[key] = value
+    return ori_tensors
+
+
 # pylint: disable=locally-disabled,too-many-arguments,too-many-statements
 # pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 def _check_window_rule(ksize, strides, padding, data_format, offset_x):
@@ -1153,6 +1185,9 @@ def _avg_pool_check_rule(input_shape, input_dtype, output_dtype,
 
 
 def _check_filter_window(fmap, filter, window, stride):
+    """
+    check filter window size
+    """
     fmap_shape = fmap.get("ori_shape")
     filter_shape = filter.get("ori_shape")
     filter_format = filter.get("ori_format")
@@ -1179,6 +1214,147 @@ def _check_filter_window(fmap, filter, window, stride):
         raise RuntimeError("In op[%s], the N shape of filter "
                                        "should be equal with C shape of fmap,"
                            % ('avgpool'))
+
+
+def _avgpool_compute(x, filters, bias, offset_w, y, strides, padding, dilations,
+                    groups=1, data_format='NHWC', offset_x=0, kernel_name="avg_pool",
+                    dsl_flag=True):
+
+    """
+    avg_pool compute
+
+    Notice
+    ------
+    only used by framework combine with IR
+
+    Parameters
+    ----------
+    x: dict with keys(shape and dtype)
+        input 4d feature map tensor
+    filters: dict with keys(shape and dtype)
+        input 4d weight tensor
+    bias: dict with keys(shape and dtype) or None
+        input bias tensor
+    offset_w: keys(shape and dtype) or None
+        input offset_w tensor
+    y: dict with keys(shape and dtype)
+        output tensor, dtype must be assigned
+    strides: tuple/list of 4 integers
+        stride on H/W, format sensitive
+    padding:  "SAME", "VALID"
+    dilations: tuple/list of 4 integers
+        dilation on H/W, format sensitive
+    groups: int
+        param for group covolution
+    data_format: string
+        input data format
+    offset_x: int
+        offset for fmap
+
+    Returns
+    -------
+    tvm compute
+    """
+
+    default_para = set_default_para()
+    if not y.get("ori_shape"):
+        y["ori_shape"] = default_para["ori_shape"]
+    if padding == "SAME":
+        pads = [-1, -1, -1, -1]
+    else:
+        pads = [0, 0, 0, 0]
+    ori_paras = {
+        "inputs": x, "weights": filters, "bias": bias, "offset_w": offset_w,
+        "outputs": y, "strides": strides, "pads": pads, "dilations": dilations,
+        "groups": groups, "data_format": data_format, "offset_x": offset_x,
+        "kernel_name": kernel_name, "optim_dict": default_para.get("optim_dict"),
+    }
+
+    avgpool_para = Conv2dParaProcess(ori_paras)
+    paras = avgpool_para.config_paras()
+
+    pad_t, pad_b, pad_l, pad_r = avgpool_para.pads
+    op_res = conv(paras.get("input_tensor"), paras.get("weight_tensor"),
+                  {"bias_tensor": paras.get("bias_tensor"),
+                   "offset_w_tensor": offset_w,
+                   "pad_h": [pad_t, pad_b], "pad_w": [pad_l, pad_r],
+                   "stride_h": avgpool_para.strides[H_DIM], "stride_w": avgpool_para.strides[W_DIM],
+                   "dilate_h": avgpool_para.dilations[H_DIM], "dilate_w": avgpool_para.dilations[W_DIM],
+                   "filter_h": paras.get("w_shape")[H_DIM],
+                   "filter_w": paras.get("w_shape")[W_DIM],
+                   "offset_x": offset_x,
+                   "res_dtype": default_para.get("res_dtype"),
+                   "fusion_para": default_para.get("fusion_para"),
+                   "kernel_name": kernel_name,
+                   "group": avgpool_para.groups,
+                   "enlarge": paras.get("group_para").get("enlarge"),
+                   "c1_opt": paras.get("group_para").get("c1_opt"),
+                   "cout1_opt": paras.get("group_para").get("cout1_opt"),
+                   "group_opt": paras.get("group_para").get("group_opt"),
+                   "a_shape": paras.get("in_shape_nc1hwc0"),
+                   "weight_fracz_shape": paras.get("w_shape_frac_z"),
+                   "weight_ori_shape_nchw": paras.get("w_shape"),
+                   "correct_range_flag": paras.get("correct_range_flag", False),
+                   "new_in_range": paras.get("new_in_range"),
+                   "ori_tensors": _collect_org_tensors(ori_paras)},
+                  optim_dict=default_para.get("optim_dict"),
+                  dsl_flag=dsl_flag)
+
+    if avgpool_para.is_tensor == True:
+        return op_res
+    return {"op_placeholder": [paras.get("input_tensor"), paras.get("weight_tensor")], "op_res": [op_res]}
+
+
+def assist_matrix_compute(res):
+    """
+    construnt assist_matrix
+    """
+    out_h = ConvParam.h_out
+    out_w = ConvParam.w_out
+    pad_t, _, pad_l, _ = ConvParam.padding
+    input_h, input_w = ConvParam.h_in, ConvParam.w_in
+    filter_h, filter_w = ConvParam.filter_h, ConvParam.filter_w
+    stride_h, stride_w = ConvParam.stride_h, ConvParam.stride_w
+    c_ub = res.get("op_res")[0]
+    res_dtype = c_ub.dtype
+    conv_shape = c_ub.shape
+    if res["padding_mode"] == "VALID":
+        c_ub_avg = tvm.compute(conv_shape,
+                                lambda n, c1, m, c0:
+                                tvm.div(c_ub(n, c1, m, c0), filter_h * filter_w).astype(res_dtype),
+                                name="c_ub_avg",
+                                tag="elewise_binary_mul")
+    else:
+        mean_matrix_shape = c_ub.shape[2:4]
+        mean_matrix = tvm.compute(mean_matrix_shape, lambda m, c0:
+                                  tvm.max(
+                                      (tvm.min((m // out_w) * stride_h - pad_t + filter_h, input_h) -
+                                      tvm.max((m // out_w) * stride_h - pad_t, 0)) * \
+                                      (tvm.min((m % out_w) * stride_w - pad_l + filter_w, input_w) -
+                                      tvm.max((m % out_w) * stride_w - pad_l, 0)), 1
+                                  ).astype("int"),
+                                  name="mean_matrix")
+        mean_matrix_fp16 = tvm.compute(mean_matrix_shape, lambda *index:
+                                       mean_matrix(*index).astype(res_dtype),
+                                       name="mean_matrix_fp16",
+                                       tag="elewise_single_cast")
+        if "Ascend310" in tbe_platform.get_soc_spec("SOC_VERSION"):
+            mean_matrix_rec = tvm.compute(mean_matrix_shape, lambda *index:
+                                          1 / mean_matrix_fp16(*index),
+                                          name="mean_matrix_rec",
+                                          tag="elewise_single_rec")
+            c_ub_avg = tvm.compute(conv_shape, lambda n, c1, m, c0:
+                                   c_ub(n, c1, m, c0) * mean_matrix_rec(m, c0),
+                                   name="c_ub_avg",
+                                   tag="elewise_binary_mul")
+        else:
+            c_ub_avg = tvm.compute(conv_shape, lambda n, c1, m, c0:
+                                   tvm.div(c_ub(n, c1, m, c0), mean_matrix_fp16(m, c0)).astype(res_dtype),
+                                   name="c_ub_avg",
+                                   tag="elewise_binary_div")
+        ConvParam.tensor_map["mean_matrix"] = mean_matrix
+        
+    return c_ub_avg
 
 
 @register_operator("AvgPool")
@@ -1257,9 +1433,22 @@ def avg_pool(x, filter, bias, y, ksize, strides,
         dilations = (1, 1, 1, 1)
         _check_filter_window(x, filter, window, stride)
         offset_w = None
-        pad = padding
-        conv2d(x, filter, bias, offset_w, y, stride, pad, dilations,
-               groups=input_c, data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
+        with tbe.compute():
+            res = _avgpool_compute(
+                x, filter, bias, offset_w, y, stride, padding, dilations,
+                input_c, data_format, offset_x, kernel_name, dsl_flag=True)
+        res["padding_mode"] = padding
+        c_ub_avg = assist_matrix_compute(res)
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(c_ub_avg)
+        tensor_list = res.get("op_placeholder") + [c_ub_avg]
+        config = {
+            "print_ir": False,
+            "name": kernel_name,
+            "tensor_list": tensor_list,
+            "build_args": {"constant_realize_extent_in_infer_bound": False, "dummy_placeholder": True}
+        }
+        tbe.build(sch, config)
     else:
         if filter is None:
             obj = AvgPool(input_dtype, window, [strides_h, strides_w], padding, kernel_name)

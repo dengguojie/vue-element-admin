@@ -246,8 +246,6 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     in_dtype = input_fm.get('dtype')
     dedy_dtype = out_backprop.get('dtype')
     dedw_dtype = filter_grad.get('dtype')
-    in_range = list(input_fm.get('range'))
-    dedy_range = list(out_backprop.get('range'))
 
     input_ori_format = input_fm.get('ori_format')
     dedy_ori_format = out_backprop.get('ori_format')
@@ -284,6 +282,11 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     elif input_ori_format == 'NHWC':
         shape_in = [shape_in[dim_n], shape_in[dim_c], shape_in[dim_h], shape_in[dim_w]]
         shape_dedy = [shape_dedy[dim_n], shape_dedy[dim_c], shape_dedy[dim_h], shape_dedy[dim_w]]
+        in_range = list(input_fm.get('range'))
+        dedy_range = list(out_backprop.get('range'))
+    else:
+        in_range = list(input_fm.get('range'))
+        dedy_range = list(out_backprop.get('range'))
     shape_in, shape_dedy = _get_dynamic_shape(shape_in, shape_dedy, shape_dedw, in_range, dedy_range, 
                                               [strides[dim_h], strides[dim_w]], pads, dilations)
 

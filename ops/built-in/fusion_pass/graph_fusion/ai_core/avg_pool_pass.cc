@@ -939,6 +939,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       return NOT_CHANGED;
     }
     constInput->GetOpDesc()->SetType(CONSTANTOP);
+    fusionNodes.push_back(avgPoolNode);
   }
 
   return SUCCESS;
