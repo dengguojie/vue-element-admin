@@ -82,7 +82,7 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
     } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
       // in onnx pads=[top, left, bottomm, right] -> [top, bottom, left, right]
       // in onnx pads=[head, top, left, tail, bottomm, right] -> [head, tail, top, bottom, left, right]
-      int len = attr.ints_size();
+      unsigned int len = attr.ints_size();
       if (len & 1) {
         OP_LOGE("Conv", "The value lenth of pads is odd, transform failed.");
         return FAILED;
@@ -92,7 +92,7 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
         pad_list.push_back(0);
         is_trans_2d = true;
       }
-      for (int i = 0; i < len / 2; i++) {
+      for (unsigned int i = 0; i < len / 2; i++) {
         pad_list.push_back(attr.ints(i));
         pad_list.push_back(attr.ints(i + len / 2));
       }
