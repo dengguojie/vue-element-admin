@@ -24,6 +24,8 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from tbe.dsl.compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from tbe.dsl.static_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_input_d_schedule
+import te.lang.cce as tbe
+from te import tvm
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -99,9 +101,9 @@ def _check_data_format(data_format, expect_format_list):
     """
     if data_format not in expect_format_list:
         dict_args = {
-            'errCode': 'E60004',
+            'errCode': 'E50002',
             'op_name': 'depthwise_conv2d',
-            'param_name': 'featuremap',
+            'param': 'featuremap',
             'expected_format_list': str(expect_format_list),
             'format': data_format
         }
@@ -112,21 +114,14 @@ def _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c):
     """
     check stride type and dim
     """
-    if strides[dim_s_h] != strides[dim_s_w]:
+    if strides[dim_s_n] != 1 or strides[dim_s_c] != 1:
         dict_args = {
-            'errCode': 'E60002',
+            'errCode': 'E60023',
             'op_name': 'depthwise_conv2d_backprop_input',
-            'attr_name': 'strides value',
-            'param1_name': 'strides[dim_s_h]',
-            'param2_name': 'strides[dim_s_w]',
-            'param1_value': str(strides[dim_s_h]),
-            'param2_value': str(strides[dim_s_w])
+            'strides': str(strides[dim_s_n]),
+            'strides': str(strides[dim_s_c])
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-
-    if (strides[dim_s_n] != 1) or (strides[dim_s_c] != 1):
-        error_manager_cube.raise_err_specific_user("depthwise_backprob_input",
-                                                   "the N-dim and C-dim of stride must be equal to 1.")
 
 
 # pylint: disable=locally-disabled, too-many-arguments
@@ -143,33 +138,13 @@ def _check_input_filter_shape(input_shape, output_shape, filter_shape, dim_n, di
             'actual_value': str(input_shape[dim_n])
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-    if input_shape[dim_c] != output_shape[dim_c]:
+    if filter_shape[2] * filter_shape[3] != output_shape[dim_c]:
         dict_args = {
             'errCode': 'E64002',
             'op_name': 'depthwise_conv2d_backprop_input',
-            'param1': 'input_shape[dim_c]',
+            'param1': 'filter_shape[2] * filter_shape[3]',
             'param2': 'output_shape[dim_c]',
-            'actual_value': str(input_shape[dim_c])
-        }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-
-    if (_ceil(input_shape[dim_c]) // BLOCK_SIZE) != (_ceil(filter_shape[dim_w_c]) // BLOCK_SIZE):
-
-        dict_args = {
-            'errCode': 'E64002',
-            'op_name': 'depthwise_conv2d_backprop_input',
-            'param1': '_ceil(input_shape[dim_c])',
-            'param2': '(_ceil(filter_shape[dim_w_c]) // BLOCK_SIZE)',
-            'actual_value': str(_ceil(input_shape[dim_c]))
-        }
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-    if filter_shape[dim_w_k] != 1:
-        dict_args = {
-            'errCode': 'E64002',
-            'op_name': 'depthwise_conv2d_backprop_input',
-            'param1': 'filter_shape[dim_w_k]',
-            'param2': '1',
-            'actual_value': str(filter_shape[dim_w_k])
+            'actual_value': str(filter_shape[2] * filter_shape[3])
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
@@ -221,7 +196,7 @@ def _check_pad(pads):
     if len(pads) != 4:
         dict_args = {
             'errCode': 'E60006',
-            'param_name': 'pads',
+            'param': 'pads',
             'op_name': 'depthwise_conv2d_backprop_input',
             'expected_length': "4",
             'length': str(len(pads))
@@ -346,13 +321,13 @@ def depthwise_conv2d_backprop_input_d(filter,
     _check_pad(pads)
 
     # input parameters
-    batch, input_channel, input_height, input_width = input_shape
-    filter_height, filter_width, filter_channel, _ = filter_shape
-    input_c1 = (input_channel + BLOCK_SIZE - 1) // BLOCK_SIZE
+    batch, channel_in, input_height, input_width = input_shape
+    filter_height, filter_width, _, channel_out = filter_shape
+    input_c1 = (channel_in + BLOCK_SIZE - 1) // BLOCK_SIZE
     stride_h, stride_w = strides[dim_s_h], strides[dim_s_w]
     dilation_h, dilation_w = dilations[dim_d_h], dilations[dim_d_w]
     strides = (stride_h, stride_w)
-    dilations = (dilation_h, dilation_w)
+    dilations = (1, 1, dilation_h, dilation_w)
 
     # output parameters
     batch, output_channel, output_height, output_width = output_shape
@@ -369,16 +344,44 @@ def depthwise_conv2d_backprop_input_d(filter,
 
     _check_output_backprop(output_height, output_width, out_backprop_height, out_backprop_width)
 
-    filter_shape = [_ceil(filter_channel) // BLOCK_SIZE, filter_height * filter_width, 1, BLOCK_SIZE, BLOCK_SIZE]
+    filter_shape = [_ceil(channel_in * channel_out) // BLOCK_SIZE * filter_height * filter_width,
+                    1, BLOCK_SIZE, BLOCK_SIZE]
     filter_init = tvm.placeholder(filter_shape, dtype=filter_dtype, name='filter')
 
-    output_shape = [batch, output_c1, 1, output_height, output_width, BLOCK_SIZE]
+    output_shape = [batch, output_c1, output_height, output_width, BLOCK_SIZE]
     dout = tvm.placeholder(output_shape, dtype=output_dtype, name='dout')
 
-    input_shape = [batch, input_c1, 1, input_height, input_width, BLOCK_SIZE]
-    res = depthwise_conv2d_backprop_input_d_compute(input_shape, filter_init, dout, [filter_height, filter_width],
-                                                    strides, pads, kernel_name)
-
-    sch = depthwise_conv2d_backprop_input_d_schedule(res)
-    with tbe_build.build_config():
-        tvm.build_module.build(sch, [filter_init, dout, res], "cce", name=kernel_name)
+    input_shape = [batch, input_c1 * BLOCK_SIZE, input_height, input_width]
+    filter_size = [1, input_c1 * BLOCK_SIZE, filter_height, filter_width]
+    group_dict = {
+        "dx_c1_extend": 1,
+        "dx_c_ori": 1,
+        "dy_c1_extend": 1,
+        "dy_c_ori": 1,
+        "filter_batch_ori": 1,
+        "filter_c_ori": 1,
+        "filter_ori_format": "HWCN",
+        "g_extend": output_c1,
+        "groups": output_c1 * BLOCK_SIZE,
+        "multiple_extend": 16
+    }
+    para_dict = {
+        "strides": strides,
+        "padding": pads,
+        "dilations": dilations,
+        "res_dtype": filter_dtype,
+        "kernel_name": kernel_name,
+        "group_dict": group_dict
+    }
+    dedx = tbe.conv2d_backprop_input_compute(
+        filters=filter_init,
+        out_backprop=dout,
+        filter_sizes=filter_size,
+        input_sizes=input_shape,
+        para_dict=para_dict
+    )
+    tensor_list = [filter_init, dout, dedx]
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(dedx)
+    config = {"name": kernel_name, "tensor_list": tensor_list}
+    tbe.cce_build_code(sch, config)

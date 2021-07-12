@@ -168,6 +168,7 @@ Status DepthwiseDfFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   OP_LOGI("Enter DepthwiseDfFusionPass");
   ge::NodePtr depthwise_node = GetNodeFromMapping(PATTERN_DEPTHWISE_DF, mapping);
   OpDescPtr depthwise_desc = depthwise_node->GetOpDesc();
+  OP_LOGD(depthwise_desc->GetName().c_str(), "dealing with df fusion");
 
   FUSION_PASS_CHECK(SwapNumChn(depthwise_desc, true, 0, false) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);

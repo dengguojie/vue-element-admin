@@ -55,7 +55,7 @@ TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2dBackpropInputFix){
     op.SetAttr("data_format", "NCHW");
 
     auto status = op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_FAILED);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

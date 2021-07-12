@@ -62,16 +62,10 @@ Status GenerateConstFP16Dynamic(const vector<int64_t> shape, const float areaFac
   float* output = &output1;
   float area_factor = static_cast<float>(areaFactor);
   for (int64_t i = 0; i < shape[0]; i++) {
-    for (int64_t j = 0; j < shape[1]; j++) {
-      for (int64_t m = 0; m < shape[2]; m++) {
-        for (int64_t k = 0; k < shape[4]; k++) {
-          for (int64_t l = 0; l < shape[5]; l++) {
-            if (k == l) {
-              output[i * (shape[1] * shape[2] * shape[4] * shape[5]) + j *
-                    (shape[2] * shape[4] * shape[5]) + m * (shape[4] * shape[5]) +
-                    k * shape[5] + l] = area_factor;
-            }
-          }
+    for (int64_t k = 0; k < shape[2]; k++) {
+      for (int64_t l = 0; l < shape[3]; l++) {
+        if (k == l) {
+          output[i * (shape[2] * shape[3]) + k * shape[3] + l] = area_factor;
         }
       }
     }
@@ -159,17 +153,17 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
                   OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul_desc output failed."), return nullptr);
   } else {
     ge::GeTensorDesc input_desc_mul;
-    vector<int64_t> mul_dim_info = {mul_c1, mul_h, mul_w, 1, COUT*multiplier, COUT};
+    vector<int64_t> mul_dim_info = {mul_c1 * mul_h * mul_w, 1, COUT, COUT};
     ge::GeShape mulInputShape(mul_dim_info);
     input_desc_mul.SetShape(mulInputShape);
     input_desc_mul.SetOriginShape(mul_shape);
-    input_desc_mul.SetFormat(ge::FORMAT_C1HWNCoC0);
+    input_desc_mul.SetFormat(ge::FORMAT_FRACTAL_Z);
     input_desc_mul.SetOriginFormat(input_origin_format);
     input_desc_mul.SetDataType(ge::DT_FLOAT);
     input_desc_mul.SetOriginDataType(ge::DT_FLOAT);
     output_desc.SetShape(mulInputShape);
     output_desc.SetOriginShape(mul_shape);
-    output_desc.SetFormat(ge::FORMAT_C1HWNCoC0);
+    output_desc.SetFormat(ge::FORMAT_FRACTAL_Z);
     output_desc.SetOriginFormat(input_origin_format);
     output_desc.SetDataType(ge::DT_FLOAT);
     output_desc.SetOriginDataType(ge::DT_FLOAT);
@@ -252,7 +246,7 @@ Status DepthwiseDwMulFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& 
   } else{
     int64_t multiplier = output_n;
     int64_t output_c1 = (output_c + COUT - 1) / COUT;
-    mul_dim_info = {output_c1, output_h, output_w, 1, COUT*multiplier, COUT};
+    mul_dim_info = {output_c1 * output_h * output_w, 1, COUT, COUT};
     Status ret = GenerateConstFP16Dynamic(mul_dim_info, FLOAT_NUM_ONE, *reinterpret_cast<float*>(inputAssit.get()));
     OP_LOGI("in AddCoffe after fusion_pass_check");
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "CoffeFP16 is failed."), return ret);
@@ -287,7 +281,7 @@ Status DepthwiseDwMulFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& 
   } else {
     coffe_desc.SetShape(ge::GeShape(mul_dim_info));
     coffe_desc.SetDataType(ge::DT_FLOAT);
-    coffe_desc.SetFormat(ge::FORMAT_C1HWNCoC0);
+    coffe_desc.SetFormat(ge::FORMAT_FRACTAL_Z);
     coffe_desc.SetOriginFormat(input_desc0_origin_format);
     coffe_desc.SetOriginShape(ge::GeShape(out_dim_info));
     coffe_desc.SetOriginDataType(ge::DT_FLOAT);
@@ -322,24 +316,24 @@ Status DepthwiseDwMulFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& 
 
 vector<FusionPattern*> DepthwiseDwMulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-
+  OP_LOGI("Enter DepthwiseDwMulFusionPass Patterns");
   // define AvgPoolFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DepthwiseDwMulFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
-  pattern->AddOpDesc(PATTERN_DEPTHWISEDW, {DEPTHWISEDW_DYN}).SetOutput(PATTERN_DEPTHWISEDW);
+  pattern->AddOpDesc(PATTERN_DEPTHWISEDW, {DEPTHWISEDW_DYN, DEPTHWISEDW}).SetOutput(PATTERN_DEPTHWISEDW);
 
   patterns.push_back(pattern);
-
+  OP_LOGI("Leave DepthwiseDwMulFusionPass Patterns");
   return patterns;
 }
 
 Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
-  OP_LOGI("Enter DepthwiseDwMulFusionPass");
+  OP_LOGI("Enter DepthwiseDwMulFusionPass Fusion");
   // avgpool node
   ge::NodePtr depthwise_dw_node = GetNodeFromMapping(PATTERN_DEPTHWISEDW, mapping);
-  FUSION_PASS_CHECK(depthwise_dw_node == nullptr, 
+  FUSION_PASS_CHECK(depthwise_dw_node == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "depthwise_dw_node is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr depthwise_dw_desc = depthwise_dw_node->GetOpDesc();
@@ -347,8 +341,8 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "depthwise_dw_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   OP_LOGD("After get depthwise_dw_desc");
-  ge::GeTensorDesc depthwise_dw_input_tensor = depthwise_dw_desc->GetInputDesc(0);
-  ge::GeTensorDesc depthwise_dw_output_tensor = depthwise_dw_desc->GetOutputDesc(0);
+  ge::GeTensorDesc depthwise_dw_input_tensor = depthwise_dw_node->GetOpDesc()->GetInputDesc(0);
+  ge::GeTensorDesc depthwise_dw_output_tensor = depthwise_dw_node->GetOpDesc()->GetOutputDesc(0);
   OP_LOGD("After get depthwise_dw_input_tensor and depthwise_dw_output_tensor");
   // get shape
   ge::GeShape depthwise_dw_input_shape = depthwise_dw_input_tensor.GetShape();
@@ -359,45 +353,77 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   OP_LOGD("After get depthwise_dw_input_shape, depthwise_dw_output_shape, input_origin_format, output_origin_format");
   vector<int64_t> dim_info = depthwise_dw_input_shape.GetDims();
   vector<int64_t> out_dim_info = depthwise_dw_output_shape.GetDims();
+  bool is_dynamic = false;
+  bool is_fuzz_build = false;
+  std::vector<int64_t> filter_size;
+  std::vector<int64_t> filter_size_reset(4);
+  ge::AttrUtils::GetBool(depthwise_dw_desc, ge::ATTR_NAME_FUZZ_BUILD, is_fuzz_build);
+  if (std::find(dim_info.begin(), dim_info.end(), -1) != dim_info.end() || is_fuzz_build) {
+    is_dynamic = true;
+    filter_size = out_dim_info;
+  } else if (!ge::AttrUtils::GetListInt(depthwise_dw_desc, "filter_size", filter_size)) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "can't get filter size");
+    return NOT_CHANGED;
+  } else {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "DepthwiseDwMulFusionPass static shape");
+  }
+
   int64_t output_c1 = 0;
   int64_t output_n = 0;
   int64_t output_c = 0;
   int64_t output_h = 0;
   int64_t output_w = 0;
+  int64_t filter_n = 0;
+  int64_t filter_c = 0;
+  int64_t filter_h = 0;
+  int64_t filter_w = 0;
   int64_t groups = 0;
   int64_t multiplier = 0;
-  if (out_dim_info.size() == 4) {
+  if (out_dim_info.size() == 4 && filter_size.size() == 4) {
     if (output_origin_format == FORMAT_NHWC) {
       output_n = out_dim_info[0];
       output_h = out_dim_info[1];
       output_w = out_dim_info[2];
       output_c = out_dim_info[3];
+      filter_size_reset[0] = filter_size[0] * filter_size[3];
+      filter_size_reset[1] = filter_size[1];
+      filter_size_reset[2] = filter_size[2];
+      filter_size_reset[3] = 1;
     } else if (output_origin_format == FORMAT_NCHW) {
       output_n = out_dim_info[0];
       output_h = out_dim_info[2];
       output_w = out_dim_info[3];
       output_c = out_dim_info[1];
+      filter_size_reset[0] = filter_size[0] * filter_size[1];
+      filter_size_reset[2] = filter_size[2];
+      filter_size_reset[3] = filter_size[3];
+      filter_size_reset[1] = 1;
     } else if (output_origin_format == FORMAT_HWCN) {
       output_n = out_dim_info[3];
       output_h = out_dim_info[0];
       output_w = out_dim_info[1];
       output_c = out_dim_info[2];
+      filter_size_reset[3] = filter_size[3] * filter_size[2];
+      filter_size_reset[0] = filter_size[0];
+      filter_size_reset[1] = filter_size[1];
+      filter_size_reset[2] = 1;
     } 
   } else {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "dim_info is not right, please check!");
     return NOT_CHANGED;
   }
-  bool is_dynamic = false;
-  bool is_fuzz_build = false;
-  ge::AttrUtils::GetBool(depthwise_dw_desc, ge::ATTR_NAME_FUZZ_BUILD, is_fuzz_build);
   // when static op or dynamic op phase_running, is_dynamic = false
-  if (std::find(dim_info.begin(),dim_info.end(), -1) != dim_info.end() || is_fuzz_build) {
-    is_dynamic = true;
-  } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "DepthwiseDwMulFusionPass not support static shape");
-    return NOT_CHANGED;
-  }
   OP_LOGD("After get output n, H, W, C");
+  graphStatus ret_res;
+  vector<int64_t> dim_info2;
+  if (!is_dynamic) {
+    ge::AttrUtils::SetListInt(depthwise_dw_desc, "filter_size", filter_size_reset);
+    depthwise_dw_output_tensor.SetOriginShape(ge::GeShape(filter_size_reset));
+    ret_res = depthwise_dw_desc->UpdateOutputDesc(0, depthwise_dw_output_tensor);
+    dim_info2 = depthwise_dw_output_tensor.GetOriginShape().GetDims();
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "GetOriginShape [%d, %d, %d, %d]", (int)dim_info2[0], 
+		    (int)dim_info2[1], (int)dim_info2[2], (int)dim_info2[3]);
+  }
 
   OP_LOGD("After UpdateOutputDesc filter_grad, groups");
   ge::AttrUtils::GetInt(depthwise_dw_node->GetOpDesc(), "groups", groups);
@@ -413,21 +439,16 @@ Status DepthwiseDwMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   int64_t matrix_size = output_n * output_h * output_w * output_c;
   if (is_dynamic) {
     matrix_size = output_c1 * output_h * output_w * COUT*multiplier * COUT;
-  } 
+  }
   FUSION_PASS_CHECK(matrix_size <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrix_size is Invalid"), return PARAM_INVALID);
   vector<int64_t> assit_dim_info_origin = {output_c1 * output_h * output_w, 1, COUT*multiplier, COUT};
 
-  vector<int64_t>::iterator iter = assit_dim_info_origin.begin();
-  for (; iter != assit_dim_info_origin.end(); iter++) {
-    cout << *iter;
-  }
-  cout << endl;
   ge::NodePtr mul_node = AddMul(graph, depthwise_dw_node, output_origin_format, is_dynamic);
   FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_node is null, AddMul failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(AddCoffe(graph, mul_node, matrix_size, assit_dim_info_origin, is_dynamic) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return PARAM_INVALID);
-  OP_LOGI("Leave DepthwiseDwMulFusionPass");
+  OP_LOGI("Leave DepthwiseDwMulFusionPass Fusion");
   return SUCCESS;
 }
 REGISTER_PASS("DepthwiseDwMulFusionPass", BUILT_IN_GRAPH_PASS, DepthwiseDwMulFusionPass);

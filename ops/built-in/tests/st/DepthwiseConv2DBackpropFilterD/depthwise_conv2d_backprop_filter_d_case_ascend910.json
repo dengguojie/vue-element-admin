@@ -5,20 +5,20 @@
     "calc_expect_func_file" : "test_depthwise_conv2d_backprop_filter_d_golden.py:calc_expect_func",
     "input_desc": [
       {
-        "format": "NCHW",
-        "ori_format": "NCHW",
-        "shape": [4,16,1,1],
-        "ori_shape": [4,16,1,1],
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [4,1,1,16],
+        "ori_shape": [4,1,1,16],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
         "name": "x"
       },
       {
-        "format": "NCHW",
-        "ori_format": "NCHW",
-        "shape": [4,16,1,1],
-        "ori_shape": [4,16,1,1],
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [4,1,1,16],
+        "ori_shape": [4,1,1,16],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",
@@ -27,10 +27,10 @@
     ],
     "output_desc": [
       {
-        "format": "NCHW",
-        "ori_format": "NCHW",
-        "shape": [1,16,5,5],
-        "ori_shape": [1,16,5,5],
+        "format": "HWCN",
+        "ori_format": "HWCN",
+        "shape": [5,5,1,16],
+        "ori_shape": [5,5,1,16],
         "type": "float32",
         "name": "filter_grad"
       }
@@ -38,7 +38,7 @@
     "attr": [
       {
         "name": "filter_size",
-        "value": [1,16,5,5],
+        "value": [5,5,1,16],
         "type": "list_int"
       },
       {
@@ -63,204 +63,7 @@
       },
       {
         "name": "data_format",
-        "value": "NCHW",
-        "type": "string"
-      }
-    ]
-  },
-  {
-    "op": "DepthwiseConv2DBackpropFilterD",
-    "case_name" : "test_depthwise_conv2d_backprop_filter_d_002",
-    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_filter_d_golden.py:calc_expect_func",
-    "input_desc": [
-      {
-        "format": "NHWC",
-        "ori_format": "NHWC",
-        "shape": [17,101,101,17],
-        "ori_shape": [17,101,101,17],
-        "type": "float16",
-        "value_range": [[0, 0.001]],
-        "data_distribute" : "uniform",
-        "name": "x"
-      },
-      {
-        "format": "NHWC",
-        "ori_format": "NHWC",
-        "shape": [17,49,49,17],
-        "ori_shape": [17,49,49,17],
-        "type": "float16",
-        "value_range": [[0, 0.001]],
-        "data_distribute" : "uniform",
-        "name": "out_backprop"
-      }
-    ],
-    "output_desc": [
-      {
-        "format": "HWCN",
-        "ori_format": "HWCN",
-        "shape": [5,5,17,1],
-        "ori_shape": [5,5,17,1],
-        "type": "float32",
-        "name": "filter_grad"
-      }
-    ],
-    "attr": [
-      {
-        "name": "filter_size",
-        "value": [5,5,17,1],
-        "type": "list_int"
-      },
-      {
-        "name": "strides",
-        "value": [1,2,2,1],
-        "type": "list_int"
-      },
-      {
-        "name": "padding",
-        "value": "VALID",
-        "type": "string"
-      },
-      {
-        "name": "pads",
-        "value": [0,0,0,0],
-        "type": "list_int"
-      },
-      {
-        "name": "dilations",
-        "value": [1,1,1,1],
-        "type": "list_int"
-      },
-      {
-        "name": "data_format",
         "value": "NHWC",
-        "type": "string"
-      }
-    ]
-  },
-  {
-    "op": "DepthwiseConv2DBackpropFilterD",
-    "case_name" : "test_depthwise_conv2d_backprop_filter_d_006",
-    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_filter_d_golden.py:calc_expect_func",
-    "input_desc": [
-      {
-        "format": "NHWC",
-        "ori_format": "NHWC",
-        "shape": [4,1,1,7],
-        "ori_shape": [4,1,1,7],
-        "type": "float16",
-        "value_range": [[0, 0.001]],
-        "data_distribute" : "uniform",
-        "name": "x"
-      },
-      {
-        "format": "NHWC",
-        "ori_format": "NHWC",
-        "shape": [4,1,1,7],
-        "ori_shape": [4,1,1,7],
-        "type": "float16",
-        "value_range": [[0, 0.001]],
-        "data_distribute" : "uniform",
-        "name": "out_backprop"
-      }
-    ],
-    "output_desc": [
-      {
-        "format": "HWCN",
-        "ori_format": "HWCN",
-        "shape": [1,1,7,1],
-        "ori_shape": [1,1,7,1],
-        "type": "float32",
-        "name": "filter_grad"
-      }
-    ],
-    "attr": [
-      {
-        "name": "filter_size",
-        "value": [1,1,7,1],
-        "type": "list_int"
-      },
-      {
-        "name": "strides",
-        "value": [1,1,1,1],
-        "type": "list_int"
-      },
-      {
-        "name": "pads",
-        "value": [0,0,0,0],
-        "type": "list_int"
-      },
-      {
-        "name": "dilations",
-        "value": [1,1,1,1],
-        "type": "list_int"
-      },
-      {
-        "name": "data_format",
-        "value": "NHWC",
-        "type": "string"
-      }
-    ]
-  },
-  {
-    "op": "DepthwiseConv2DBackpropFilterD",
-    "case_name" : "test_depthwise_conv2d_backprop_filter_d_008",
-    "calc_expect_func_file" : "test_depthwise_conv2d_backprop_filter_d_golden.py:calc_expect_func",
-    "input_desc": [
-      {
-        "format": "NCHW",
-        "ori_format": "NCHW",
-        "shape": [4,7,4,2],
-        "ori_shape": [4,7,4,2],
-        "type": "float16",
-        "value_range": [[0, 0.001]],
-        "data_distribute" : "uniform",
-        "name": "x"
-      },
-      {
-        "format": "NCHW",
-        "ori_format": "NCHW",
-        "shape": [4,7,2,1],
-        "ori_shape": [4,7,2,1],
-        "type": "float16",
-        "value_range": [[0, 0.001]],
-        "data_distribute" : "uniform",
-        "name": "out_backprop"
-      }
-    ],
-    "output_desc": [
-      {
-        "format": "NCHW",
-        "ori_format": "NCHW",
-        "shape": [1,7,1,1],
-        "ori_shape": [1,7,1,1],
-        "type": "float32",
-        "name": "filter_grad"
-      }
-    ],
-    "attr": [
-      {
-        "name": "filter_size",
-        "value": [1,7,1,1],
-        "type": "list_int"
-      },
-      {
-        "name": "strides",
-        "value": [1,1,2,2],
-        "type": "list_int"
-      },
-      {
-        "name": "pads",
-        "value": [0,0,0,0],
-        "type": "list_int"
-      },
-      {
-        "name": "dilations",
-        "value": [1,1,1,1],
-        "type": "list_int"
-      },
-      {
-        "name": "data_format",
-        "value": "NCHW",
         "type": "string"
       }
     ]

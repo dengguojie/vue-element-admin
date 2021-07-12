@@ -48,7 +48,7 @@ def _shape_to_C1HWNCoC0(shape, data_format, dtype):
         n, c, h, w = shape
     c0 = 16 if dtype.lower() == "float16" else 32
     c1 = (c + c0 - 1) // c0
-    return (c1, h, w, n, c0, c0)
+    return (c1*h*w*n, 1, c0, c0)
 
 
 def _gen_trans_data_case(param):

@@ -181,16 +181,28 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       OP_LOGI(FUSED_OP_TYPE.c_str(), "ConvNode[%s]: GetConvFilterInputIndex not success.", convNodeName.c_str()),
       return NOT_CHANGED);
   ge::GeTensorDesc filterInputDesc = convNode->GetOpDesc()->GetInputDesc(filterInputIndex);
-  size_t kernerlIndex = 0;
+  size_t kernelIndex = 0;
+  size_t channelIndex = 0;
   ge::Format filterFormat;
-  FUSION_PASS_CHECK(GetConvKernelIndex(convNode->GetOpDesc(), filterInputDesc, filterFormat, kernerlIndex) != SUCCESS,
+  FUSION_PASS_CHECK(GetConvKernelIndex(convNode->GetOpDesc(), filterInputDesc, filterFormat, kernelIndex) != SUCCESS,
                     OP_LOGI(FUSED_OP_TYPE.c_str(),
                             "ConvNode[%s]: GetConvKernelIndex not succeess, "
                             "filterInputIndex=[%d].",
                             convNodeName.c_str(), filterInputIndex),
                     return NOT_CHANGED);
+  FUSION_PASS_CHECK(GetConvChannelIndex(convNode->GetOpDesc(), filterInputDesc, filterFormat, channelIndex) != SUCCESS,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(),
+                            "ConvNode[%s]: GetConvChannelIndex not succeess, "
+                            "filterInputIndex=[%d].",
+                            convNodeName.c_str(), filterInputIndex),
+                    return NOT_CHANGED);
   ge::GeShape filterShape = filterInputDesc.GetShape();
-  int64_t kernelNum = filterShape.GetDim(kernerlIndex);
+  int64_t kernelNum = 0;
+  if (convNode->GetType() == "DepthwiseConv2D") {
+    kernelNum = filterInputDesc.GetShape().GetDim(kernelIndex) * filterInputDesc.GetShape().GetDim(channelIndex);
+  } else {
+    kernelNum = filterInputDesc.GetShape().GetDim(kernelIndex);
+  }
 
   // create host op
   bool hasBias = true;

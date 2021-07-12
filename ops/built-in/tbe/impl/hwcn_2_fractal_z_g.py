@@ -35,7 +35,7 @@ MAX_CORE_NUM = 32
 #                 K  20   20   5    20   3    5    2    20   2    3     2     5     1     2     1     20
 #                    320  320  240  320  240  240  224  320  288  240   352   240   208   224   240   320
 src_n_unit_dict = {1:320, 2:320, 3:240, 4:320, 5:240, 6:240, 7:224, 8:320,
-                   9:288, 10:240, 11:352, 12:240, 13:208, 14:224, 15:240, 16:320}
+                   9:288, 10:240, 11:352, 12:240, 13:208, 14:224, 15:240, 16:320, 17:112}
 
 #eg, left_zero_cycle(3) eq 16
 #  3 3 3 3 3 1
@@ -201,8 +201,11 @@ class Hwcn2Fractalzg(object):
         def _calc_src_n_unit(self):
             if self.src_c <= EPB:
                 self.src_n_unit = src_n_unit_dict[self.src_c]
-                if self.src_n_unit > self.src_n:
-                    self.src_n_unit = self.src_n
+                if self.src_n != 17:
+                    if self.src_n_unit > self.src_n:
+                        self.src_n_unit = self.src_n
+                else:
+                    pass
             else:
                 pass
 
@@ -412,16 +415,17 @@ class Hwcn2Fractalzg(object):
                 dst_stride = 16
             tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
         with tik_inst.else_scope():
-            src_addr_list = [ub_input[tp.src_n_tail * i] for i in range(EPB)]
-            dst_addr_list = [ub_input[OFFSET_1 + EPB * i] for i in range(EPB)]
-            repeat_cnt = tik_inst.Scalar("int64", init_value=tp.burst_len_tail)
-            with tik_inst.if_scope(repeat_cnt == 1):
-                src_stride = 0
-                dst_stride = 0
-            with tik_inst.else_scope():
-                src_stride = 1
-                dst_stride = 16
-            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+            if tp.src_n != 17:
+                src_addr_list = [ub_input[tp.src_n_tail * i] for i in range(EPB)]
+                dst_addr_list = [ub_input[OFFSET_1 + EPB * i] for i in range(EPB)]
+                repeat_cnt = tik_inst.Scalar("int64", init_value=tp.burst_len_tail)
+                with tik_inst.if_scope(repeat_cnt == 1):
+                    src_stride = 0
+                    dst_stride = 0
+                with tik_inst.else_scope():
+                    src_stride = 1
+                    dst_stride = 16
+                tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
     def _copy_out_ws(self, tp, ub_input, dst_addr, is_tail):
         tik_inst = self.tik_inst
@@ -620,7 +624,7 @@ class Hwcn2Fractalzg(object):
                          left_zero_tail, top_distance_tail, nc0_counter_tail,
                          left_zero_bk, top_distance_bk, nc0_counter_bk,
                          left_zero_tail_bk, top_distance_tail_bk, nc0_counter_tail_bk)
-
+            
             self._zero_offset_1(self.ub_input)
             self._zero_offset_2(self.ub_input)
 
@@ -633,13 +637,14 @@ class Hwcn2Fractalzg(object):
                 with tik_inst.for_range(pc_src_n_base, pc_src_n_base + pc_src_n_repeat) as lsn:
                     is_tail.set_as(0)
                     self._prepare_by_workspace(tp, self.ub_input, ub_offset, lk, lsn, is_tail)
-
-                with tik_inst.if_scope(src_n_tail != 0):
-                    self._zero_offset_1(self.ub_input)
-                    self._zero_offset_2(self.ub_input)
-                    is_tail.set_as(1)
-                    self._prepare_by_workspace(tp, self.ub_input, ub_offset,
-                                               lk, pc_src_n_base + pc_src_n_repeat, is_tail)
+                
+                if tp.src_n != 17:
+                    with tik_inst.if_scope(src_n_tail != 0):
+                        self._zero_offset_1(self.ub_input)
+                        self._zero_offset_2(self.ub_input)
+                        is_tail.set_as(1)
+                        self._prepare_by_workspace(tp, self.ub_input, ub_offset,
+                                                   lk, pc_src_n_base + pc_src_n_repeat, is_tail)
 
             with tik_inst.for_range(pc_kernel_base, pc_kernel_base + pc_kernel_repeat) as lk:
             #with tik_inst.for_range(1, 2) as lk:

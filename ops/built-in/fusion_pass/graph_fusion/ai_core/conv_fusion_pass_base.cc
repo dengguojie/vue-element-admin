@@ -157,29 +157,13 @@ Status ConvFusionPassBase::GetConvKernelIndex(ge::OpDescPtr convOpdesc, const ge
                                               ge::Format& filterFormat, size_t& kernerlIndex) {
   filterFormat = constInputDesc.GetOriginFormat();
   if (filterFormat == ge::FORMAT_NCHW) {
-    if (convOpdesc->GetType() == DEPTHWISECONV2D) {
-      kernerlIndex = NCHW_DIM_C;
-    } else {
-      kernerlIndex = NCHW_DIM_N;
-    }
+    kernerlIndex = NCHW_DIM_N;
   } else if (filterFormat == ge::FORMAT_NHWC) {
-    if (convOpdesc->GetType() == DEPTHWISECONV2D) {
-      kernerlIndex = NHWC_DIM_C;
-    } else {
-      kernerlIndex = NHWC_DIM_N;
-    }
+    kernerlIndex = NHWC_DIM_N;
   } else if (filterFormat == ge::FORMAT_HWCN) {
-    if (convOpdesc->GetType() == DEPTHWISECONV2D) {
-      kernerlIndex = HWCN_DIM_C;
-    } else {
-      kernerlIndex = HWCN_DIM_N;
-    }
+    kernerlIndex = HWCN_DIM_N;
   } else if (filterFormat == ge::FORMAT_CHWN) {
-    if (convOpdesc->GetType() == DEPTHWISECONV2D) {
-      kernerlIndex = CHWN_DIM_C;
-    } else {
-      kernerlIndex = CHWN_DIM_N;
-    }
+    kernerlIndex = CHWN_DIM_N;
   } else if (filterFormat == ge::FORMAT_DHWCN) {
     kernerlIndex = DHWCN_DIM_N;
   } else {
@@ -190,4 +174,24 @@ Status ConvFusionPassBase::GetConvKernelIndex(ge::OpDescPtr convOpdesc, const ge
   return SUCCESS;
 }
 
+Status ConvFusionPassBase::GetConvChannelIndex(ge::OpDescPtr convOpdesc, const ge::GeTensorDesc& constInputDesc,
+                                               ge::Format& filterFormat, size_t& channelIndex) {
+  filterFormat = constInputDesc.GetOriginFormat();
+  if (filterFormat == ge::FORMAT_NCHW) {
+    channelIndex = NCHW_DIM_C;
+  } else if (filterFormat == ge::FORMAT_NHWC) {
+    channelIndex = NHWC_DIM_C;
+  } else if (filterFormat == ge::FORMAT_HWCN) {
+    channelIndex = HWCN_DIM_C;
+  } else if (filterFormat == ge::FORMAT_CHWN) {
+    channelIndex = CHWN_DIM_C;
+  } else if (filterFormat == ge::FORMAT_DHWCN) {
+    channelIndex = DHWCN_DIM_C;
+  } else {
+    OP_LOGD(convOpdesc->GetType().c_str(), "ConvNode[%s]: the filter format [%d] is not supported.",
+            convOpdesc->GetName().c_str(), filterFormat);
+    return FAILED;
+  }
+  return SUCCESS;
+}
 }  // namespace fe

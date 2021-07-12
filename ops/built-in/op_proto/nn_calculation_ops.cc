@@ -342,10 +342,10 @@ static bool GetPadDepthwiseConv2D(ge::Operator& op, int64_t inH, int64_t inW, in
       int64_t effective_filter_w = (filterW - 1) * dilationW + 1;
       CHECK(strideH == 0 || strideW == 0,  CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "stride is 0."),
         return GRAPH_FAILED);
-      int64_t out_h = (inH + strideH - 1) / strideH;
-      int64_t out_w = (inW + strideW - 1) / strideW;
-      int64_t pad_h = std::max((out_h - 1) * strideH + effective_filter_h - inH, (int64_t)0);
-      int64_t pad_w = std::max((out_w - 1) * strideW + effective_filter_w - inW, (int64_t)0);
+      int64_t tails_h = inH % strideH;
+      int64_t tails_w = inW % strideW;
+      int64_t pad_h = std::max((tails_h > 0 ? effective_filter_h - tails_h : effective_filter_h -strideH), (int64_t)0);
+      int64_t pad_w = std::max((tails_w > 0 ? effective_filter_w - tails_w : effective_filter_w -strideW), (int64_t)0);
       padList.push_back(pad_h / 2);
       padList.push_back(pad_h / 2 + pad_h % 2);
       padList.push_back(pad_w / 2);
@@ -384,8 +384,8 @@ static bool GetPadDepthwiseConv2D(ge::Operator& op, int64_t inH, int64_t inW, in
   if (padtop < 0 || padbottom < 0 || padleft < 0 || padright < 0) {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
                           "pads should be positive, "
-                          " actual is [%ld,%ld,%ld,%ld].",
-                          padtop, padbottom, padleft, padright);
+                          " actual is [%d,%d,%d,%d].",
+                          (int)padtop, (int)padbottom, (int)padleft, (int)padright);
     return false;
   }
 
@@ -670,8 +670,8 @@ static bool GetDimInFormat(const std::string& opName, const std::string& formatS
                            int64_t& dimPosition) {
   dimPosition = formatStr.find(dimName);
   if (dimPosition < 0) {
-    CUBE_INNER_ERR_REPORT(opName.c_str(), "Position(%s) is invalid: %ld, which format is %s.",
-      dimName.c_str(), dimPosition, formatStr.c_str());
+    CUBE_INNER_ERR_REPORT(opName.c_str(), "Position(%s) is invalid: %d, which format is %s.",
+      dimName.c_str(), (int)dimPosition, formatStr.c_str());
     return false;
   }
   return true;
@@ -895,6 +895,10 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   filterH = shapeW.GetDim(fhPosition);
   filterW = shapeW.GetDim(fwPosition);
 
+  int64_t groups = 0;
+  groups = tensorDescW.GetOriginShape().GetDim(fcPosition) * tensorDescW.GetOriginShape().GetDim(fnPosition);
+  op.SetAttr("groups", groups);
+
   dilationH = dilation.at(hPosition);
   dilationW = dilation.at(wPosition);
   strideH = stride.at(hPosition);
@@ -936,8 +940,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   } else {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
                           "output y format should be NCHW or NHWC."
-                          " actual is: %d",
-                          (int)formatOut);
+                          " actual is: %d", (int)formatOut);
     return GRAPH_FAILED;
   }
 
@@ -1054,6 +1057,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInputD, DepthwiseConv2DBackpropInputDVer
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter DepthwiseConv2DBackpropInputD inferfunction!");
   std::vector<int64_t> input_size;
+  int64_t groups = 0;
   input_size = GetAttrValue(op, "input_size");
 
   DataType output_dtype = op.GetInputDesc("out_backprop").GetDataType();
@@ -1092,10 +1096,13 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
   int64_t wPosition = 0;
   int64_t fhPosition = 0;
   int64_t fwPosition = 0;
+  int64_t fcPosition = 0;
+  int64_t fnPosition = 0;
   int64_t inH = 0;
   int64_t inW = 0;
   int64_t filterH = 0;
   int64_t filterW = 0;
+  int64_t filterC = 0;
   int64_t dilationH = 0;
   int64_t dilationW = 0;
   int64_t strideH = 0;
@@ -1116,9 +1123,18 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
   if (!GetDimInFormat(op.GetName(), filterFormatStr, "W", fwPosition)) {
     return GRAPH_FAILED;
   }
+  if (!GetDimInFormat(op.GetName(), filterFormatStr, "C", fcPosition)) {
+    return GRAPH_FAILED;
+  }
+  if (!GetDimInFormat(op.GetName(), filterFormatStr, "N", fnPosition)) {
+    return GRAPH_FAILED;
+  }
 
   filterH = shapeW.GetDim(fhPosition);
   filterW = shapeW.GetDim(fwPosition);
+  filterC = shapeW.GetDim(fcPosition);
+  groups = tensorDescW.GetOriginShape().GetDim(fcPosition) * tensorDescW.GetOriginShape().GetDim(fnPosition);
+  op.SetAttr("groups", groups);
 
   if (!GetDimInFormat(op.GetName(), dataFormat, "H", hPosition)) {
     return GRAPH_FAILED;
@@ -1386,17 +1402,6 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerif
   auto input_grad_shape = tensordesc_input.GetShape().GetDims();
   Tensor input_size_tensor;
   std::vector<int64_t> input_size;
-  if (!IsUnKnownShape(input_grad_shape) && !IsUnknownRankShape(input_grad_shape)) {
-    if (op.GetInputConstData("input_size", input_size_tensor) != GRAPH_SUCCESS) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Get constdata filed");
-      return GRAPH_FAILED;
-    }
-    DataType dtype = op.GetInputDesc("input_size").GetDataType();
-    GetConstValue(input_size_tensor, dtype, input_size);
-    if (!CheckListEmpty(op.GetName(), input_size, "input_size")) {
-      return GRAPH_FAILED;
-    }
-  }
 
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
@@ -1441,6 +1446,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropInput, DepthwiseConv2DBackpropInputVerif
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter DepthwiseConv2DBackpropInput inferfunction!");
+  int64_t groups = 0;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   std::vector<std::string> input_infer_depends = {"input_size"};
   op_desc->SetOpInferDepends(input_infer_depends);
@@ -1504,10 +1510,13 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   int64_t w_position = 0;
   int64_t fh_position = 0;
   int64_t fw_position = 0;
+  int64_t fc_position = 0;
+  int64_t fn_position = 0;
   int64_t in_h = 0;
   int64_t in_w = 0;
   int64_t filter_h = 0;
   int64_t filter_w = 0;
+  int64_t filter_c = 0;
   int64_t dilation_h = 0;
   int64_t dilation_w = 0;
   int64_t stride_h = 0;
@@ -1528,9 +1537,18 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   if (!GetDimInFormat(op.GetName(), filterFormatStr, "W", fw_position)) {
     return GRAPH_FAILED;
   }
+  if (!GetDimInFormat(op.GetName(), filterFormatStr, "C", fc_position)) {
+    return GRAPH_FAILED;
+  }
+  if (!GetDimInFormat(op.GetName(), filterFormatStr, "N", fn_position)) {
+    return GRAPH_FAILED;
+  }
 
   filter_h = shapeW.GetDim(fh_position);
   filter_w = shapeW.GetDim(fw_position);
+  filter_c = shapeW.GetDim(fc_position);
+  groups = tensorDescW.GetOriginShape().GetDim(fc_position) * tensorDescW.GetOriginShape().GetDim(fn_position);
+  op.SetAttr("groups", groups);
 
   if (!GetDimInFormat(op.GetName(), dataFormat, "H", h_position)) {
     return GRAPH_FAILED;
@@ -1657,7 +1675,7 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDV
     return GRAPH_FAILED;
   }
   if (filter_size.size() != DIM_SIZE4) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Filter_size must be HWCK!");
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Filter_size's dim must be 4!");
     return GRAPH_FAILED;
   }
 
@@ -1703,6 +1721,9 @@ IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDV
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   std::vector<int64_t> filter_size;
   filter_size = GetAttrValue(op, "filter_size");
+  int64_t groups = 0;
+  groups = filter_size[2] * filter_size[3];
+  op.SetAttr("groups", groups);
 
   DataType output_dtype = op.GetInputDesc("out_backprop").GetDataType();
   TensorDesc tensordesc_output = op.GetOutputDesc("filter_grad");
@@ -1801,20 +1822,8 @@ VERIFY_FUNC_REG(DepthwiseConv2DBackpropFilterD, DepthwiseConv2DBackpropFilterDVe
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVerify) {
   Tensor filter_size_tensor;
-  if (GRAPH_SUCCESS != op.GetInputConstData("filter_size", filter_size_tensor)) {
-    OP_LOGD(op.GetName().c_str(), "Get constdata failed");
-  } else {
-    DataType dtype = op.GetInputDesc("filter_size").GetDataType();
-    std::vector<int64_t> filter_size;
-    GetConstValue(filter_size_tensor, dtype, filter_size);
-    if (!CheckListEmpty(op.GetName(), filter_size, "filter_size")) {
-      return GRAPH_FAILED;
-    }
-    if (filter_size.size() != DIM_SIZE4) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Filter_size must be 4!");
-      return GRAPH_FAILED;
-    }
-  }
+  DataType dtype = op.GetInputDesc("filter_size").GetDataType();
+  std::vector<int64_t> filter_size;
 
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
@@ -1932,10 +1941,14 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   int64_t w_position = 0;
   int64_t fh_position = 0;
   int64_t fw_position = 0;
+  int64_t fc_position = 0;
+  int64_t fn_position = 0;
   int64_t in_h = 0;
   int64_t in_w = 0;
   int64_t filter_h = 0;
   int64_t filter_w = 0;
+  int64_t filter_c = 0;
+  int64_t filter_n = 0;
   int64_t dilation_h = 0;
   int64_t dilation_w = 0;
   int64_t stride_h = 0;
@@ -1951,8 +1964,19 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   if (!GetDimInFormat(op.GetName(), filter_format_str, "W", fw_position)) {
     return GRAPH_FAILED;
   }
+  if (!GetDimInFormat(op.GetName(), filter_format_str, "C", fc_position)) {
+    return GRAPH_FAILED;
+  }
+  if (!GetDimInFormat(op.GetName(), filter_format_str, "N", fn_position)) {
+    return GRAPH_FAILED;
+  }
   filter_h = filter_size[fh_position];
   filter_w = filter_size[fw_position];
+  filter_c = filter_size[fc_position];
+  filter_n = filter_size[fn_position];
+  int64_t groups = 0;
+  groups = filter_c * filter_n;
+  op.SetAttr("groups", groups);
 
   auto tensorDescIn = op.GetInputDesc(0);
   auto shapeIn = tensorDescIn.GetShape();
@@ -10516,7 +10540,7 @@ IMPLEMT_COMMON_INFERFUNC(DilationInferShape)
     std::vector<int64_t> out_shape;
     std::vector<int64_t> pads;
     pads = GetAttrValue(op, "pads");
-    for (size_t i = 0; i < x_shape.size(); i++) {
+    for (int i = 0; i < x_shape.size(); i++) {
         int shape_value = (x_shape[i] - 1) * dilations[i] + 1;
         if (!pads.empty()) {
             shape_value += pads[i] * 2;
@@ -10548,7 +10572,7 @@ IMPLEMT_VERIFIER(Dilation, DilationVerify)
         ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
         return GRAPH_FAILED;
     }
-    for (size_t i = 0; i < dilations.size(); i++) {
+    for (int i = 0; i < dilations.size(); i++) {
         if (dilations[i] <= 0) {
             map<string, string> err_map;
             err_map["op_name"] = op.GetName().c_str();

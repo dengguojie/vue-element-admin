@@ -50,13 +50,13 @@ def calc_expect_func(x, out_backprop, filter_grad, filter_size, strides,
         kh, kw, Ci, k = filter_shape
 
     if strideh == stridew:
-        if padding is None:
-            padding = _getPadding(pads, x.shape, [kh, kw, Ci, k], dy.shape,
-                                  (strideh, stridew), [dilationh, dilationw])
+        cpu_Ci, cpu_k = k, Ci
+        padding = _getPadding(pads, x.shape, [kh, kw, cpu_Ci, cpu_k], dy.shape,
+                              (strideh, stridew), [dilationh, dilationw])
         tensor_x = tf.compat.v1.placeholder(x.dtype, shape=x.shape)
         tensor_dy = tf.compat.v1.placeholder(dy.dtype, shape=dy.shape)
         tf_dw_result = tf.nn.depthwise_conv2d_backprop_filter(tensor_x,
-                                                              [kh, kw, Ci, k],
+                                                              [kh, kw, cpu_Ci, cpu_k],
                                                               tensor_dy,
                                                               strides=[
                                                                   1, strideh, stridew, 1],

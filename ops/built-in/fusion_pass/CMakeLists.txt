@@ -87,6 +87,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_bnreduce_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_requant_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_dequant_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_clipByValue_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/depthwiseconv/tbe_depthwiseconv_elemwise_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_confusiontranspose_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_confusiontranspose_ub_fusion.cc
@@ -153,6 +154,9 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
   graph_fusion/ai_core/deformable_offsets_grad_fusion_pass.cc
   graph_fusion/ai_core/deformable_offsets_fusion_pass.cc
+  graph_fusion/ai_core/a_depthwise_fusion_pass.cc
+  graph_fusion/ai_core/depthwise_dw_mul_fusion_pass.cc
+  graph_fusion/ai_core/depthwise_df_fusion_pass.cc
   graph_fusion/ai_core/derelu_fusion_pass.cc
   graph_fusion/ai_core/diag_fusion_pass.cc
   graph_fusion/ai_core/diag_part_fusion_pass.cc
@@ -313,6 +317,8 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.cc
   graph_fusion/ai_core/logsoftmax_fusion_pass.cc
   graph_fusion/ai_core/im2col_fusion_pass.cc
+  graph_fusion/ai_core/expand_cast_fusion_pass.cc
+  graph_fusion/ai_core/softmax_with_drop_out_do_mask_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

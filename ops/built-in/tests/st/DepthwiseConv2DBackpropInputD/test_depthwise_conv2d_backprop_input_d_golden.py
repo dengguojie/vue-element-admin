@@ -37,12 +37,18 @@ def calc_expect_func(weight, out_backprop, input_grad, input_size, strides,
     if dy_dtype == 'float16':
         dy_dtype = 'float32'
     if data_format == 'NHWC':
-        w = filter_data.astype(filter_dtype)
+        kernel_h, kernel_w, _, total_channel = filter_shape
+        _, _, _, channel_in = input_size
+        channel_out = total_channel // channel_in
+        w = filter_data.astype(filter_dtype).reshape([kernel_h, kernel_w, channel_in, channel_out])
         dy = dy_data.astype(dy_dtype)
     else:
-        w = filter_data.transpose(2, 3, 1, 0).astype(
+        total_channel, _, kernel_h, kernel_w = filter_shape
+        _, channel_in, _, _ = input_size
+        channel_out = total_channel // channel_in
+        w = filter_data.reshape([channel_out, channel_in, kernel_h, kernel_w]).transpose(2, 3, 1, 0).astype(
             filter_dtype)  # NCHW->HWCN
-        dy = dy_data.transpose(0, 2, 3, 1).astype(dy_dtype)
+        dy = dy_data.rehape([0, 2, 3, 1]).astype(dy_dtype)
 
     if y_format == 'NCHW':
         Ni, Ci, Hi, Wi = input_size_shape

@@ -599,6 +599,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
                     util_common.is_support_fractal_z_inputs(list_input):
                 if format_x == format_y and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y):
                     format_list.append("FRACTAL_Z")
+            if x_cdim == 1 and y_cdim == 1 and format_x == format_y and format_x.upper() in ("NCHW", "HWCN"):
+                format_list.append("FRACTAL_Z")
             if list(shape_x) == list(shape_y) and -1 not in shape_x:
                 format_list.append("NC1HWC0")
             if format_x == format_y and list(shape_x) == list(shape_y) and \

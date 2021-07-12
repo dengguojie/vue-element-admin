@@ -75,17 +75,18 @@ namespace fe{
     int64_t w = 0;
     if (dim_info.size() == 4) {
       if (origin_format == FORMAT_NHWC) {
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "in FORMAT_NHWC, before swap N, H, W, C: [%d, %d, %d, %d]", (int)dim_info[3],
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "in FORMAT_NHWC, before swap N, H, W, C: [%d, %d, %d, %d]", (int)dim_info[3],
                 (int)dim_info[0], (int)dim_info[1], (int)dim_info[2]);
         return NOT_CHANGED;
       } else if (origin_format == FORMAT_HWCN) {
-        OP_LOGD(FUSED_OP_TYPE.c_str(), "in FORMAT_HWCN, before swap H, W, C, N: [%d, %d, %d, %d]", (int)dim_info[0],
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "in FORMAT_HWCN, before swap H, W, C, N: [%d, %d, %d, %d]", (int)dim_info[0],
                 (int)dim_info[1], (int)dim_info[2], (int)dim_info[3]);
         n = dim_info[3];
         h = dim_info[0];
         w = dim_info[1];
         c = dim_info[2];
         if (c == ALREADY_CHANGED_C) {
+          OP_LOGI(FUSED_OP_TYPE.c_str(), "in c == ALREADY_CHANGED_C, return NOT_CHANGED");
           return NOT_CHANGED;
         }
         tensor_desc.SetShape(ge::GeShape({h, w, 1, n * c}));
@@ -114,7 +115,7 @@ namespace fe{
     if (b_input) {
       if (index == -1) {
         if (!get_all_input_candidate_desc.empty()) {
-          OP_LOGD("in swap all input num channel and get_all_input_candidate_desc not empty");
+          OP_LOGI("in swap all input num channel and get_all_input_candidate_desc not empty");
           int count = 0;
           for (auto iter = get_all_input_candidate_desc.begin(); iter != get_all_input_candidate_desc.end(); ++iter) {
             tensor_desc = *iter;
@@ -124,7 +125,7 @@ namespace fe{
                 return NOT_CHANGED;
               }
               FUSION_PASS_CHECK(result != SUCCESS,
-                                OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+                                OP_LOGE(op_desc->GetName().c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
               ret_res = op_desc->UpdateInputDesc(count, tensor_desc);
               origin_format = tensor_desc.GetOriginFormat();
               dim_info = tensor_desc.GetShape().GetDims();
@@ -133,6 +134,7 @@ namespace fe{
             count += 1;
           }
           if (!flag) {
+            OP_LOGI(op_desc->GetName().c_str(), "!flag, return NOT_CHANGED");
             return NOT_CHANGED;
           }
         } else {
@@ -144,12 +146,12 @@ namespace fe{
         tensor_desc = op_desc->GetInputDesc(index);
         auto result = SwapNumChnImpl(tensor_desc);
         FUSION_PASS_CHECK(result == FAILED,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+                          OP_LOGE(op_desc->GetName().c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
         ret_res = op_desc->UpdateInputDesc(index, tensor_desc);
 
         ge::Format origin_format = tensor_desc.GetOriginFormat();
         vector<int64_t> dim_info = tensor_desc.GetShape().GetDims();
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "after swap: [%d, %d, %d, %d]", (int)dim_info[0],
+        OP_LOGI(op_desc->GetName().c_str(), "after swap: [%d, %d, %d, %d]", (int)dim_info[0],
                 (int)dim_info[1], (int)dim_info[2], (int)dim_info[3]);
         flag = true;
       }
@@ -166,7 +168,7 @@ namespace fe{
                 return NOT_CHANGED;
               }
               FUSION_PASS_CHECK(result != SUCCESS,
-                                OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+                                OP_LOGE(op_desc->GetName().c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
               ret_res = op_desc->UpdateOutputDesc(count, tensor_desc);
               origin_format = tensor_desc.GetOriginFormat();
               dim_info = tensor_desc.GetShape().GetDims();
@@ -186,7 +188,7 @@ namespace fe{
         tensor_desc = op_desc->GetOutputDesc(index);
         auto result = SwapNumChnImpl(tensor_desc);
         FUSION_PASS_CHECK(result == FAILED,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+                          OP_LOGE(op_desc->GetName().c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
         ret_res = op_desc->UpdateOutputDesc(index, tensor_desc);
 
         ge::Format origin_format = tensor_desc.GetOriginFormat();
@@ -195,7 +197,7 @@ namespace fe{
       }
     }
     if (flag) {
-      FUSION_PASS_CHECK(ret_res != ge::GRAPH_SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Update matmul variable failed"),
+      FUSION_PASS_CHECK(ret_res != ge::GRAPH_SUCCESS, OP_LOGE(op_desc->GetName().c_str(), "Update matmul variable failed"),
                         return PARAM_INVALID);
     }
     return SUCCESS;
@@ -207,7 +209,7 @@ namespace fe{
       if (!tmp_node->GetInDataNodes().empty()) {
         auto result = SwapNumChn(tmp_node_desc, true, -1);
         FUSION_PASS_CHECK(result == FAILED,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+                          OP_LOGE(tmp_node_desc->GetName().c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
         if (result == NOT_CHANGED) {
           OP_LOGI(tmp_node_desc->GetName().c_str(), "input return is NOT_CHANGED");
           return NOT_CHANGED;
@@ -219,7 +221,7 @@ namespace fe{
             upperNode = *iter;
             auto upper_node_result = GetNodeInSameLevel(upperNode, b_input, index, level_left-1);
             FUSION_PASS_CHECK(upper_node_result == FAILED,
-                              OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+                              OP_LOGE(tmp_node_desc->GetName().c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
           }
         }
       }
@@ -227,7 +229,7 @@ namespace fe{
         OP_LOGI(tmp_node_desc->GetName().c_str(), "begin change output, index: %d", index);
         auto result = SwapNumChn(tmp_node_desc, false, -1);
         FUSION_PASS_CHECK(result == FAILED,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+                          OP_LOGE(tmp_node_desc->GetName().c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
         if (result == NOT_CHANGED) {
           OP_LOGI(tmp_node_desc->GetName().c_str(), "output return is NOT_CHANGED");
           return NOT_CHANGED;
@@ -239,7 +241,7 @@ namespace fe{
             lower_node = *iter;
             auto lower_node_result = GetNodeInSameLevel(lower_node, b_input, index, level_left-1);
             FUSION_PASS_CHECK(lower_node_result == FAILED,
-                              OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
+                              OP_LOGE(tmp_node_desc->GetName().c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
           }
         }
       }
@@ -252,19 +254,14 @@ namespace fe{
     OP_LOGI("Enter DepthwiseFusionPass");
     ge::NodePtr depthwise_node = GetNodeFromMapping(PATTERN_DEPTHWISE, mapping);
     OpDescPtr depthwise_desc = depthwise_node->GetOpDesc();
-
+    OP_LOGI(depthwise_desc->GetName().c_str(), "dealing with");
     auto result = SwapNumChn(depthwise_desc, true, 1);
     FUSION_PASS_CHECK(result == FAILED,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Conv parent const node out 0 change nc failed"), return FAILED);
     ge::NodePtr filter_node = depthwise_node->GetInDataNodes().at(1);
     OpDescPtr filterDesc = filter_node->GetOpDesc();
 
-    if (!filterDesc->GetAllInputsDesc().empty()) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "filter node has upper node");
-      GetNodeInSameLevel(filter_node, true, -1, 12);
-    } else {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "filter node have no upper node");
-    }
+    GetNodeInSameLevel(filter_node, true, -1, 12);
     OP_LOGI("Leave DepthwiseFusionPass");
     return SUCCESS;
   }

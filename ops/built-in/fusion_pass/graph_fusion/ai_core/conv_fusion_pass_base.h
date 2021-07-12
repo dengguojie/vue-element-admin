@@ -53,6 +53,7 @@ const int32_t CHWN_DIM_C = 0;
 const int32_t CHWN_DIM_H = 1;
 const int32_t CHWN_DIM_W = 2;
 const int32_t CHWN_DIM_N = 3;
+const int32_t DHWCN_DIM_C = 3;
 const int32_t DHWCN_DIM_N = 4;
 class ConvFusionPassBase : public PatternFusionBasePass {
  public:
@@ -69,6 +70,8 @@ class ConvFusionPassBase : public PatternFusionBasePass {
 
   Status GetConvKernelIndex(ge::OpDescPtr convOpdesc, const ge::GeTensorDesc& constInputDesc, ge::Format& filterFormat,
                             size_t& kernerlIndex);
+  Status GetConvChannelIndex(ge::OpDescPtr convOpdesc, const ge::GeTensorDesc& constInputDesc, ge::Format& filterFormat,
+                            size_t& channelIndex);
   const float FLOAT_NUM_ZERO = 0.;
 };
 }  // namespace fe
