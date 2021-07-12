@@ -169,6 +169,7 @@ class LayerNormXBackpropScheduleV2:
 
         self._calc_compute_at()
         self._do_compute_at()
+        self._calc_multi_core()
         self._do_multi_core()
 
         self._calc_double_buffer()
@@ -347,7 +348,7 @@ class LayerNormXBackpropScheduleV2:
             block_split_axis, nparts=core_num
         )
         self._is_split_ub = True
-        ub_factor = 1
+        ub_factor = BLOCK_SIZE_BYTE // self._max_dtype_bytes
         self._ub_split_axis_index = 1
         if self._is_split_ub:
             ub_outer, ub_inner = self._schedule[res].split(
