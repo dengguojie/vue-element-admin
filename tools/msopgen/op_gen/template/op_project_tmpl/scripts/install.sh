@@ -5,7 +5,7 @@ target_custom=0
 
 sourcedir=$PWD/packages
 
-QUIET="n"
+QUIET="y"
 
 for i in "$@"
 do
