@@ -1859,10 +1859,10 @@ REG_OP(GridAssignPositive)
 *@li dy : data of grad increment, a 1D Tensor of type float16 or float32 with
 * shape (N,).
 *@li bboxes: Bounding boxes, a 2D Tensor of type float16 or float32 with
-* shape (N, 4). "N" indicates the number of bounding boxes, and the value
+* shape (4, N). "N" indicates the number of bounding boxes, and the value
 * "4" refers to [x1, y1, x2, y2] or [x, y, w, h].
 *@li gtboxes: Ground-truth boxes, a 2D Tensor of type float16 or float32
-* with shape (M, 4). "M" indicates the number of ground truth boxes, and
+* with shape (4, M). "M" indicates the number of ground truth boxes, and
 * the value "4" refers to [x1, y1, x2, y2] or [x, y, w, h] . \n
 
 *@par Attributes:
@@ -1872,8 +1872,8 @@ REG_OP(GridAssignPositive)
 *          only support 'iou' now. \n
 
 *@par Outputs:
-*@li dbboxes: A 2D Tensor of type float16 or float32 with shape [N, 4].
-*@li dgtboxes: A 2D Tensor of type float16 or float32 with shape [M, 4].
+*@li dbboxes: A 2D Tensor of type float16 or float32 with shape [4, N].
+*@li dgtboxes: A 2D Tensor of type float16 or float32 with shape [4, M].
 */
 REG_OP(GIoUGrad)
     .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))

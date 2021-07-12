@@ -20,33 +20,48 @@ ut_case = OpUT("GIoUGrad","impl.giou_grad","giou_grad")
 ut_case.add_case(["Ascend710", "Ascend910A"], {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1,),  "ori_shape": (1,),
                 "param_type": "input"},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 1), "ori_shape": (4, 1),
                 "param_type": "input"},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 1), "ori_shape": (4, 1),
                 "param_type": "input"},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 1), "ori_shape": (4, 1),
                 "param_type": "output"},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
-                "param_type": "output"},
-                False, False, "iou"],
-     "case_name": "test0",
-     "expect": "success"})
-
-ut_case.add_case(["Ascend710", "Ascend910A"], {
-    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (15360,),  "ori_shape": (15360,),
-                "param_type": "input"},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (15360, 4), "ori_shape": (15360, 4),
-                "param_type": "input"},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (15360, 4), "ori_shape": (15360, 4),
-                "param_type": "input"},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (15360, 4), "ori_shape": (15360, 4),
-                "param_type": "output"},
-                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (15360, 4), "ori_shape": (15360, 4),
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 1), "ori_shape": (4, 1),
                 "param_type": "output"},
                 False, False, "iou"],
      "case_name": "test1",
      "expect": "success"})
 
+ut_case.add_case(["Ascend710", "Ascend910A"], {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (15360,),  "ori_shape": (15360,),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "output"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "output"},
+                False, False, "iou"],
+     "case_name": "test2",
+     "expect": "success"})
+
+ut_case.add_case(["Ascend710", "Ascend910A"], {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1,),  "ori_shape": (1,),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
+                "param_type": "output"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
+                "param_type": "output"},
+                False, False, "iou"],
+     "case_name": "test3",
+     "expect": "failed"})
+     
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     exit(0)

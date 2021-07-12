@@ -37,15 +37,15 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_1) {
   ge::op::GIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({1,}, ge::DT_FLOAT));
-  op.UpdateInputDesc("bboxes", create_desc({1, 4}, ge::DT_FLOAT));
-  op.UpdateInputDesc("gtboxes", create_desc({1, 4}, ge::DT_FLOAT));
+  op.UpdateInputDesc("bboxes", create_desc({4, 1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("gtboxes", create_desc({4, 1}, ge::DT_FLOAT));
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   
   auto output_desc_0 = op.GetOutputDesc("dbboxes");
   EXPECT_EQ(output_desc_0.GetDataType(), ge::DT_FLOAT);
-  std::vector<int64_t> expected_output_shape = {1, 4};
+  std::vector<int64_t> expected_output_shape = {4, 1};
   EXPECT_EQ(output_desc_0.GetShape().GetDims(), expected_output_shape);
   
   auto output_desc_1 = op.GetOutputDesc("dgtboxes");
@@ -57,18 +57,30 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_2) {
   ge::op::GIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({15360,}, ge::DT_FLOAT));
-  op.UpdateInputDesc("bboxes", create_desc({15360, 4}, ge::DT_FLOAT));
-  op.UpdateInputDesc("gtboxes", create_desc({15360, 4}, ge::DT_FLOAT));
+  op.UpdateInputDesc("bboxes", create_desc({4, 15360}, ge::DT_FLOAT));
+  op.UpdateInputDesc("gtboxes", create_desc({4, 15360}, ge::DT_FLOAT));
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   
   auto output_desc_0 = op.GetOutputDesc("dbboxes");
   EXPECT_EQ(output_desc_0.GetDataType(), ge::DT_FLOAT);
-  std::vector<int64_t> expected_output_shape = {15360, 4};
+  std::vector<int64_t> expected_output_shape = {4, 15360};
   EXPECT_EQ(output_desc_0.GetShape().GetDims(), expected_output_shape);
   
   auto output_desc_1 = op.GetOutputDesc("dgtboxes");
   EXPECT_EQ(output_desc_1.GetDataType(), ge::DT_FLOAT);
   EXPECT_EQ(output_desc_1.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_3) {
+  ge::op::GIoUGrad op;
+
+  op.UpdateInputDesc("dy", create_desc({1,}, ge::DT_FLOAT));
+  op.UpdateInputDesc("bboxes", create_desc({4, 1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("gtboxes", create_desc({1, 4}, ge::DT_FLOAT));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+ 
 }
