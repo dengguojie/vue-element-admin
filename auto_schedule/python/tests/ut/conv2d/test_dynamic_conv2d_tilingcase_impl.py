@@ -7,7 +7,7 @@ import tbe
 from te import tvm
 from impl.util.platform_adapter import operation
 from impl.dynamic.conv2d import conv2d_fusion_compute
-from impl.ascend_quant import ascend_quant_compute
+from impl.dynamic.ascend_quant import ascend_quant_compute
 
 ut_case = OpUT("conv2d_tilingcase", "conv2d_tilingcase.test_dynamic_conv2d_tilingcase_impl")
 
@@ -40,7 +40,7 @@ def test_h_out_1_case(test_arg):
                 }
                 tbe.dsl.unify_schedule.build.build(sch, config)
 
-    except (RuntimeError, ValueError, TypeError):
+    except (RuntimeError, ValueError, TypeError, AttributeError):
         msg = traceback.format_exc()
         print(msg)
         return False

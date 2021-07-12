@@ -2008,7 +2008,7 @@ class CceConvOp:
                         sch[bias_l0c].double_buffer()
                         sch[c_col_bias].double_buffer()
                         sch[bias_l0c].preload()
-                        if is_support_v200() and not ConvParam.l0a_dma_flag and not self._dynamic_flag:
+                        if is_support_v200() and not ConvParam.l0a_dma_flag:
                             sch[fmap_col_before].double_buffer()
                             sch[fmap_col_before].preload()
                         if bias_optimize_flag:
@@ -4282,7 +4282,7 @@ class CceConvOp:
             """
             sch.tbe_compile_para = {}
             sch.tbe_compile_para, self._preload = util.parse_tbe_compile_para(compile_para)
-            if double_buffer_flag["CL0_pbuffer"] == 2 and self._preload:
+            if double_buffer_flag["CL0_pbuffer"] == 2 and self._preload and not self._dynamic_flag:
                 sch[c_col].preload()
 
         def _pragma_for_convbn():
@@ -4620,7 +4620,7 @@ class CceConvOp:
             c04_row_major_reshape_compute(tensor_map)
 
         bias_preload_flag = False
-        if "int32_bias" in tensor_map.keys():
+        if "int32_bias" in tensor_map.keys() and not self._dynamic_flag:
             bias_preload_flag = True
 
         kernel_h = ConvParam.filter_h
