@@ -70,6 +70,7 @@ install_sch_stest() {
 
 install_all_stest() {
   cp -rf "${OPS_ST_SOURCE_DIR}/" "${TEST_INSTALL_PATH}"
+  rm -rf "${TEST_INSTALL_PATH}/aicpu*"
 }
 
 install_script() {
