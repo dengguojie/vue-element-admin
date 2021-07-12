@@ -770,11 +770,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     pads = list(pads)
     pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
 
-    if fmap_h != 1 and fmap_w == 1:
-        # Chip Design demand fmap_w must larger than 2 when fmap != 1
-        error_manager_cube.raise_err_one_para('E62006', 'conv3d',
-            'Chip Design demand input_size_w must >=2 when input_size_h != 1')
-
     # filter value limit
     _check_attr_range("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)
     _check_attr_range("filter's W", filter_w, _FILTER_HW_MIN, _FILTER_HW_MAX)

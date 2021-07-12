@@ -25,12 +25,14 @@ from tbe.common import utils as tbe_utils
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.dsl.compute import cube_util
+from tbe.common.platform import platform_info as tbe_platform_info
 
 from tbe.tvm.expr import Var
 from tbe.tvm.expr import IntImm
 from tbe.tvm.tensor import Tensor
 
-
+# for load3d_special_case, fmap width must be in [1,63]
+_FMAP_W_MAX = 63
 # fractal size, only support 16 for now
 _BLOCK_SIZE = 16
 # maximum of int64 (2**63 - 1)
@@ -256,14 +258,14 @@ class Conv3dBackpropFilter:
             "dynamic_shape_flag": True
         }
 
-        # special cases
-        if not self.dynamic_mode:
-            dedy_h = self.shape_grads_6hd[3]
-            dedy_w = self.shape_grads_6hd[4]
-            if dedy_w < 2 and dedy_h != 1:
-                # Chip Design demand dedy_w must >=2 when dedy_h != 1
-                cube_err.raise_err_specific("conv3d_backprop_filter",
-                    "Chip Design demand dedy_w must >=2 when dedy_h != 1.")
+        self.flag_load3d_special_case = False
+        dedy_ho = self.shape_grads_6hd[3]
+        dedy_wo = self.shape_grads_6hd[4]
+        if not self.var_map \
+            and tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
+            and dedy_ho != 1 \
+            and dedy_wo == 1:
+            self.flag_load3d_special_case = True
 
     def _get_dynamic_mode(self):
         mode = 0
@@ -307,6 +309,10 @@ class Conv3dBackpropFilter:
         _, grads_depth, _, grads_height, grads_width, _ = self.shape_grads_6hd
         _, fmap_depth, _, fmap_height, fmap_width, _ = self.shape_x_6hd
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
+
+        if self.flag_load3d_special_case and (fmap_width + self.pad[4] + self.pad[5]) > _FMAP_W_MAX:
+            cube_err.raise_err_one_para('E62006', 'conv3d_backprop_filter',
+                    'fmap width > 63 is not support when w_out == 1 and h_out != 1')
 
         if compute_util.int_ceil_div(self.weight_shape[0], 16) != self.shape_grads_6hd[2]:
             cube_err.raise_err_two_paras('E62504', 'conv3d_backprop_filter',
@@ -562,6 +568,15 @@ class Conv3dBackpropFilter:
         grads_channel_g = self.group_dict['cout_g']
         cin_ori = self.group_dict['cin_ori']
         cout_ori = self.group_dict['cout_ori']
+
+        if self.flag_load3d_special_case:
+            dilation_w = self.dilation[4]
+            self.stride[2] = fmap_width + self.pad[4] + self.pad[5]
+            self.pad[5] += (kernel_width - 1) * dilation_w + 1
+            # add a blank line
+            grads_width = grads_width * 2
+            self.shape_grads_6hd[-2] = grads_width
+            
         # align to 16
         hw_ori = grads_height * grads_width
         hw_mad_1 = (hw_ori + _BLOCK_SIZE - 1) // _BLOCK_SIZE
@@ -711,6 +726,8 @@ class Conv3dBackpropFilter:
             grads_width_index = (hw_indices % grads_width)
             grads_c0_index = grads_c0_indices
 
+            if self.flag_load3d_special_case:
+                grads_width_index = hw_indices % (grads_width // 2)
             return grads(batch_size_index, grads_depth_index,
                          grads_channel_1_index, grads_height_index,
                          grads_width_index, grads_c0_index)
@@ -814,7 +831,8 @@ class Conv3dBackpropFilter:
                 'dilation': self.dilation,
                 'kernel_size': self.weight_shape,
                 'load2d_flag': False,
-                'group_dict': self.group_dict
+                'group_dict': self.group_dict,
+                'flag_load3d_special_case': self.flag_load3d_special_case
             })
 
     def _fmap_2_matrix_load2d(self, fmap_shape_matrix, fmap):
@@ -868,7 +886,8 @@ class Conv3dBackpropFilter:
                 'dilation': self.dilation,
                 'kernel_size': self.weight_shape,
                 "load2d_flag": True,
-                'group_dict': self.group_dict
+                'group_dict': self.group_dict,
+                'flag_load3d_special_case': self.flag_load3d_special_case
             })
 
     def _fmap_2_fractal(self, fmap_shape_fmap_matrix, fmap_2_col_matrix,

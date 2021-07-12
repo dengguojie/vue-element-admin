@@ -81,6 +81,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         _, self._dilate_d, self._dilate_h, self._dilate_w, _ = dilations
         self.op_tag = "conv3d_backprop_input_"
         self.dsl_flag = dsl_flag
+        self._flag_load3d_special_case = False
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914
         """
@@ -256,6 +257,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             dy_col = pat_conv.generate_a(dy_filling_l1, self._group_dict, self._var_map, self.op_tag)
         else:
             dy_col = pat_conv.generate_a(dy_filling, self._group_dict, self._var_map, self.op_tag)
+        
+        self._flag_load3d_special_case = pat_conv.flag_load3d_special_case
 
         return dy_col
 
@@ -417,19 +420,35 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
             return dx_ub_out
 
-        dx_ddr = tvm.compute(
-            out_shape,
-            lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
-            dx_ub_vn[dx_batch_idx, dx_deep_idx,
-                     dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
-            name="c_ddr",
-            tag="c_ddr",
-            attrs={"output_shape": self.output_shape,
-                   "stride_d": self._stride_d,
-                   'depth_pad': (self._pad_head, self._pad_tail),
-                   'kernels': (self._kernel_d,
-                               self._kernel_h, self._kernel_w),
-                   "kernel_name": self._kernel_name,
-                   "group_dict": self._group_dict})
+        if self._flag_load3d_special_case:
+            dx_ddr = tvm.compute(
+                out_shape,
+                lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                dx_ub_vn[dx_batch_idx, dx_deep_idx,
+                         dx_cin1_idx, 2 * dx_hw_idx, dx_cin0_idx],
+                name="c_ddr",
+                tag="c_ddr",
+                attrs={"output_shape": self.output_shape,
+                       "stride_d": self._stride_d,
+                       'depth_pad': (self._pad_head, self._pad_tail),
+                       'kernels': (self._kernel_d,
+                                   self._kernel_h, self._kernel_w),
+                       "kernel_name": self._kernel_name,
+                       "group_dict": self._group_dict})
+        else:
+            dx_ddr = tvm.compute(
+                out_shape,
+                lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
+                dx_ub_vn[dx_batch_idx, dx_deep_idx,
+                         dx_cin1_idx, dx_hw_idx, dx_cin0_idx],
+                name="c_ddr",
+                tag="c_ddr",
+                attrs={"output_shape": self.output_shape,
+                       "stride_d": self._stride_d,
+                       'depth_pad': (self._pad_head, self._pad_tail),
+                       'kernels': (self._kernel_d,
+                                   self._kernel_h, self._kernel_w),
+                       "kernel_name": self._kernel_name,
+                       "group_dict": self._group_dict})
 
         return dx_ddr

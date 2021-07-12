@@ -388,9 +388,10 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
         dedy_batch_upper, dedx_batch_upper = dedy_batch, fmap_batch
 
     # Chip Design demand fmap_w must larger than 2 when fmap_h != 1
-    if dedx_h_upper != 1 and dedx_w_upper == 1:
+    if var_map and dedx_h_upper != 1 and dedx_w_upper == 1:
         cube_err.raise_err_one_para(
-            'E62006', 'conv3d_backprop_input', 'Chip Design demand input_size_w must >=2 when input_size_h != 1')
+            'E62006', 'conv3d_backprop_input', 
+            'Dynamic mode only support input_size_w must >=2 when input_size_h != 1')
 
     # filter value limit
     _check_attr_range("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)

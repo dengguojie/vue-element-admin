@@ -422,6 +422,9 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             else:  # both fully loaded
                 dw_k = compute_util.int_ceil_div(hw_pad_1, block_dim_hw)
 
+            if flag_load3d_special_case:
+                dw_k = max(1, dw_k // 2)
+
             tiling_patrs_dict = dict()
             tiling_patrs_dict["dw_tiling_factor"] = dw_tiling_factor
             tiling_patrs_dict["dw_tiling_nparts"] = dw_tiling_nparts
@@ -642,7 +645,10 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             setfmatrix_dict_0["conv_dilation_h"] = dilation_height
             setfmatrix_dict_0["conv_dilation_w"] = dilation_width
 
-            sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy')
+            if flag_load3d_special_case:
+                sch[grads_matrix].emit_insn(grads_matrix.op.axis[3], 'dma_copy')
+            else:
+                sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy')
             # move grads from L1 to L0A
             sch[grads_fractal].emit_insn(grads_fractal.op.axis[0], 'dma_copy')
 
@@ -787,6 +793,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         fmap_matrix = fmap_fractal.op.input_tensors[0]
         load2d_flag = fmap_matrix.op.attrs['load2d_flag'].value
         group_dict = fmap_matrix.op.attrs['group_dict']
+        flag_load3d_special_case = fmap_matrix.op.attrs['flag_load3d_special_case'].value
+
         if load2d_flag:
             fmap = fmap_matrix.op.input_tensors[0]
         else:

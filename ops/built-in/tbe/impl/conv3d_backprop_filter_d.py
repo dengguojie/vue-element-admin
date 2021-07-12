@@ -668,12 +668,6 @@ def _check_conv3dbp_filter_params(
     fmap_w_padding = fmap_w + pad_left + pad_right
     fmap_h_padding = fmap_h + pad_up + pad_down
 
-    # special cases
-    if dedy_w < 2 and dedy_h != 1:
-        # Chip Design demand dedy_w must >=2 when dedy_h != 1
-        error_manager_cube.raise_err_specific("conv3d_backprop_filter",
-            "Chip Design demand dedy_w must >=2 when dedy_h != 1.")
-
     # Dedy value limit
     _check_attr_range_dw("Dedy's H", dedy_h, _DEDY_HW_MIN, _DEDY_HW_MAX)
     _check_attr_range_dw("Dedy's W", dedy_w, _DEDY_HW_MIN, _DEDY_HW_MAX)

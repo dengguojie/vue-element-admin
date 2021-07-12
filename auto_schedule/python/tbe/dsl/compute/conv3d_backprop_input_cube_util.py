@@ -16,6 +16,7 @@
 cube util.
 """
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.dsl.compute import cube_util
 from tbe import tvm
 
@@ -29,6 +30,7 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
                       compute_dtype,
                       var_map,
                       tag='',
+                      special_load3d_flag=False,
                       dilation=(1, 1, 1)):
     """
     calculate im2col_row_major tensor
@@ -121,7 +123,8 @@ def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101
                        name='im2col_row_major',
                        tag=tag + 'im2col_row_major',
                        attrs={'padding': padding, "dilation":dilation,
-                              'padding_var': padding_var, 'width_out_var': width_out})
+                              'padding_var': padding_var, 'width_out_var': width_out,
+                              'special_load3d_flag': special_load3d_flag})
 
 def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
     """
@@ -464,6 +467,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         self._pad_head, self._pad_tail, self._pad_up, self._pad_down, self._pad_left, self._pad_right = pad
         self._dilate_d, self._dilate_h, self._dilate_w = dilation
         self._m0 = 16
+        self.flag_load3d_special_case = False 
 
     def _cal_howo(self, height_in, width_in):
         """
@@ -498,6 +502,31 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                 stride,
                 dilation))
         return height_out, width_out
+
+    def _get_special_load3d_flag(self, var_map, h_out, w_out):
+        """
+        get special_load3d_flag
+
+        Parameters
+        ----------
+        var_map : the parameters for dynamic shape, {} by default
+
+        h_out : height of output tensor
+
+        w_out : width of output tensor
+
+        Returns
+        ----------
+        w_out : width of output tensor
+        """
+        if tbe_platform_info.get_soc_spec("SOC_VERSION") not in ("Hi3796CV300CS", "Ascend310") \
+            and not var_map \
+            and int(h_out) != 1 \
+            and int(w_out) == 1:
+            w_out += 1
+            self._pad_right += 1
+            self.flag_load3d_special_case = True 
+        return w_out
 
     def generate_a(self, feature_map, group_dict, var_map={}, tag=""):  # pylint: disable=R0914
         """
@@ -538,6 +567,10 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         else:
             height_out = var_map.get("dedx_h")
 
+        width_out = self._get_special_load3d_flag(var_map, height_out, width_out)
+        new_pad = [self._pad_up, self._pad_down,
+                    self._pad_left, self._pad_right]
+
         a_im2col_row_major_shape = (a_group,
                                     a_batch,
                                     a_deep,
@@ -564,7 +597,8 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                                         compute_dtype=feature_map.dtype,
                                         var_map=var_map,
                                         dilation=dilation,
-                                        tag=tag)
+                                        tag=tag,
+                                        special_load3d_flag=self.flag_load3d_special_case)
 
         a_col = _im2col_fractal(a_im2col_fractal_shape, a_row_major, tag=tag)
 

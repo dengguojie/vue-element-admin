@@ -23,6 +23,7 @@ from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.dsl.compute import util as compute_util
 from tbe.dsl.compute import cube_util
+from tbe.common.buildcfg import build_config
 
 
 _NUM_3 = 3
@@ -358,6 +359,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         padding = cube_util.shape_to_list(a_col_before.op.attrs["padding"])
         padding_var = a_col_before.op.attrs["padding_var"]
         weight_out_var = a_col_before.op.attrs["width_out_var"]
+        special_load3d_flag = a_col_before.op.attrs["special_load3d_flag"]
 
         tensor_map['c_fill_zero'] = c_fill_zero
         tensor_map['c_ub_vn'] = c_ub_vn
@@ -468,6 +470,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         tensor_attr['kernel_d'] = kernel_d
         tensor_attr['kernel_h'] = kernel_h
         tensor_attr['kernel_w'] = kernel_w
+        tensor_attr["special_load3d_flag"] = special_load3d_flag
 
         return tensor_attr, group_dict
 
@@ -1092,6 +1095,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     bias_add_vector = tensor_map.get("bias_add_vector")
     c_fill_zero = tensor_map.get("c_fill_zero")
     _, dilation_h, dilation_w = tensor_map.get("dilation")
+    special_load3d_flag = tensor_attr.get("special_load3d_flag")
 
     # =========================tiling_query======================#
     real_g = group_dict["real_g"].value
@@ -1184,6 +1188,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
     # tiling_check
     _tiling_check()
+    if special_load3d_flag.value:
+        cub_tiling_mc_factor = cub_tiling_mc_factor / 2
+        cl0_tiling_mc = cl0_tiling_mc / 2
+        al1_tiling_m = al1_tiling_m * 2
+        cddr_w = 2
 
     if cub_fusion_flag:
         batch_after_multicore, d_after_multicore = \
