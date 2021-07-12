@@ -15,6 +15,8 @@
 """
 avg_pool_grad_d
 """
+import math
+
 import te.platform as tbe_platform
 from te import tvm
 from te.lang import cce as tbe
@@ -314,6 +316,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kern
     # than max_h_in_ub, so max_h_in_ub one time
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
     max_tile_input_h = l1_size // (input_w * BLOCK_SIZE * 2)
+    max_tile_dh = l1_size // (dila_w * BLOCK_SIZE * data_size) + 1 - k_height
     dout_l1_size = input_w * (k_height + stride[0]) * BLOCK_SIZE * 2
     tile_k_o = dout_l1_size // l1_size + 1 if dout_l1_size > l1_size else 0
 
@@ -335,7 +338,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kern
         # if tile_input_h > input_h, input_h no tiling
         if tile_input_h >= input_h:
             tile_input_h = input_h
-            tile_dile_h_ub = tile_input_h - 1 + k_height - dilated_pad_top - dilated_pad_bottom
+            tile_dile_h_ub = min(tile_input_h - 1 + k_height - dilated_pad_top - dilated_pad_bottom, tile_dile_h_ub)
 
         return tile_input_h, tile_dile_h_ub
 
@@ -344,12 +347,22 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kern
     dila_h = tile_input_h + k_height - 1
     if dila_h * dila_w * BLOCK_SIZE * data_size > l1_size:
         tile_input_h, tile_dile_h_ub = _compute_tile_h(1)
+    tile_input_h = min(tile_input_h, max_tile_dh)
+    tile_input_h = max(tile_input_h, 1)
 
     # tiling in L0;
     tile_m = min(max_l0a_m, _ceil(tile_input_h * input_w))
     tile_k = 1
     tile_n = 1
     res_l1 = tile_input_h * input_w
+
+    # axis cut below will enlarge inferred bound, to avoid exceeding buffer, need calculating new tile h
+    for k in range(tile_input_h, 0, -1):
+        res_l1 = k * input_w
+        tile_input_h = math.ceil(math.ceil(res_l1 / tile_m) * tile_m / input_w)
+        if tile_input_h <= max_tile_dh:
+            break
+
     # when res_l1 > 16, return a rounded integer down to a multiple of BLOCK_SIZE
     if res_l1 < input_h * input_w:
         res_l1 = max(res_l1 // BLOCK_SIZE * BLOCK_SIZE, BLOCK_SIZE)
@@ -357,6 +370,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kern
     dila_h = tile_input_h + k_height - 1
     if (k_height * w_height * BLOCK_SIZE * BLOCK_SIZE * data_size + dila_h * dila_w * BLOCK_SIZE * data_size) > l1_size:
         l1_load_kernel = False
+    tile_dile_h_ub = min(tile_dile_h_ub, ub_size // (dila_w * BLOCK_SIZE * data_size) + dilated_pad_top -1)
 
     return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o, l1_load_kernel
 

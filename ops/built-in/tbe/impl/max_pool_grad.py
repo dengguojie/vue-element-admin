@@ -443,8 +443,10 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
             temp_size = ((kernel_h - stride_h), fmap_w, C0)
         else:
             temp_size = (1, 16, C0)
+        # fixed_used_ub referred to 5 fixed small tensors.
+        fixed_used_ub = 512 * 3 + 256 * 2
         total_used_ub = _cal_shape_ele(col2img_ub_shape) * (fp16_data_size + fp32_data_size) + _cal_shape_ele(
-            temp_size) * fp32_data_size
+            temp_size) * fp32_data_size + fixed_used_ub
         remain_hi = (fmap_h - (ho - 1) * stride_h - pad_top) - max(kernel_h, stride_h)
         if remain_hi > 0:
             total_used_ub += _cal_shape_ele((remain_hi, fmap_w * C0)) * fp16_data_size
