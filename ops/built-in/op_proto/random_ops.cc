@@ -653,4 +653,16 @@ IMPLEMT_COMMON_INFERFUNC(BernoulliInferShape)
 
 COMMON_INFER_FUNC_REG(Bernoulli, BernoulliInferShape);
 // ------------------Bernoulli End-------------------------------
+
+// ----------------------Uniform----------------------
+IMPLEMT_COMMON_INFERFUNC(UniformInferShape) {
+
+    TensorDesc tensordesc_input = op.GetInputDesc("x");
+    (void)op.UpdateOutputDesc("y", tensordesc_input);
+
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Uniform, UniformInferShape);
+//-----------------------Uniform END---------------------
 }  // namespace ge
