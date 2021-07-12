@@ -2200,7 +2200,7 @@ REG_OP(SliceLastDim)
 *   adding stride to the index until all dimensions are not less than end. \n
 *
 * @par Inputs:
-* Four inputs, including:
+* Five inputs, including:
 * @li x: A Tensor. Must be one of the following types: float32, float64, int32, uint8, int16, int8, 
 *     complex64, int64, qint8, quint8, qint32, qint16, quint16, uint16,
 *     complex128, float16, uint32, uint64, complex64, complex128. 

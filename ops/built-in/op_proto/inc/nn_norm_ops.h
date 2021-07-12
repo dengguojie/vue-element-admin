@@ -812,7 +812,7 @@ REG_OP(LayerNormBetaGammaBackpropV2)
 *     shape of "keep_prob" should be (1,) or [1,].
 *     Has the same type as "x" . \n
 
-*@par Output:
+*@par Outputs:
 *y: A mutable Tensor. Has the same type as "x".
 */
 REG_OP(DropOutDoMask)
@@ -840,7 +840,7 @@ REG_OP(DropOutDoMask)
 *     shape of "keep_prob" should be (1,) or [1,].
 *     Has the same type as "x" . \n
 
-*@par Output:
+*@par Outputs:
 *y: A mutable Tensor. Has the same type as "x".
 *@par Restrictions:
 *Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
