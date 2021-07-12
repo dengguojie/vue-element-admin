@@ -21,6 +21,15 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Flatten", "impl.dynamic.flatten", "flatten")
 
+
+# pylint: disable = unused-argument,
+def test_get_op_support_info(test_arg):
+    from impl.dynamic.flatten import get_op_support_info
+    x = {'ori_shape': (-1, -1), 'shape': (2, 1), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    y = {'ori_shape': (-1, -1), 'shape': (5, 3), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    get_op_support_info(x, y)
+
+
 case1 = {
     "params": [{
         "shape": (255, 8, 33),
@@ -168,6 +177,7 @@ case7 = {
     "format_expect": [],
     "support_expect": True
 }
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)

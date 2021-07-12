@@ -22,6 +22,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.util_select_op_base import get_op_cal_info
 
 # max int32
 MAX_INT32 = 2**31 - 1
@@ -39,6 +40,16 @@ def _get_ceil_int(int1, int2):
     if int1 % int2 == 0:
         return _result
     return _result + 1
+
+
+def get_op_support_info(x, y, axis=1, kernel_name="flatten"):
+    """
+    get_op_support_info
+    """
+    axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 class Flatten:
@@ -144,15 +155,16 @@ class Flatten:
         # build cce
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                    inputs=[self.src_gm],
-                                    outputs=[self.dst_gm],
-                                    flowtable=[self.tiling_gm],
-                                    config=opt_config)
+                                   inputs=[self.src_gm],
+                                   outputs=[self.dst_gm],
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
         return self.tik_instance
 
 
 @register_operator("Flatten")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def flatten(x, y, axis=1, kernel_name="flatten"):
     """return a copy of the tensor collapsed into one dimension.
 
