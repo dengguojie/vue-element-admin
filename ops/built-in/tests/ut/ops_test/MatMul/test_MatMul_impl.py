@@ -248,6 +248,7 @@ ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_1)
 ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_2)
 
 
+
 def test_split_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
     x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (1, 2, 16, 16), "ori_shape": (32, 16)}

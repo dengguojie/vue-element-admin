@@ -34,6 +34,7 @@ NoneType = type(None)
 # 2 means L1 enable
 L1FUSION_INPUT_CTR = 2
 
+cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches, too-many-statements, too-many-locals,
 def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
@@ -461,12 +462,12 @@ def mat_mul_compute(input_x1,
     """
     format_a = input_x1.op.attrs["format"].value
     format_b = input_x2.op.attrs["format"].value
-    if format_a == 'FRACTAL_NZ':
+    if format_a == 'FRACTAL_NZ' and not cube_vector_split:
         trans_a_local = False if trans_a else True
     else:
         trans_a_local = trans_a
 
-    if format_b == 'FRACTAL_NZ':
+    if format_b == 'FRACTAL_NZ' and not cube_vector_split:
         trans_b_local = False if trans_b else True
     else:
         trans_b_local = trans_b
@@ -537,7 +538,6 @@ def mat_mul_compute_self(input_x1,
     -------
     None
     """
-    cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
     format_a = input_x1.op.attrs["format"].value
     format_b = input_x2.op.attrs["format"].value
     if format_a == 'FRACTAL_NZ' and not cube_vector_split:
@@ -780,7 +780,7 @@ def mat_mul(input_x1,
     shape_a_temp = input_x1.get("shape")
     shape_b_temp = input_x2.get("shape")
     tensor_bias = None
-    if src_dtype == "int8":
+    if src_dtype == "int8" and not cube_vector_split:
         format_a = "FRACTAL_NZ"
         format_b = "FRACTAL_Z"
     else:
