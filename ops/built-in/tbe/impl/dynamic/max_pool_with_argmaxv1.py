@@ -17,7 +17,6 @@
 max_pool_with_argmaxv1
 """
 
-import te
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
@@ -357,17 +356,18 @@ class MaxPoolWithargmaxPytorch(object):
         """
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
             self.get_tiling_params()
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE0):
-                with self.tik_instance.new_stmt_scope():
-                    self.compute_no_cut(block_index)
+            with self.tik_instance.if_scope(block_index < self.need_core_num):
+                with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE0):
+                    with self.tik_instance.new_stmt_scope():
+                        self.compute_no_cut(block_index)
 
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE1):
-                with self.tik_instance.new_stmt_scope():
-                    self.compute_cut_h(block_index)
+                with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE1):
+                    with self.tik_instance.new_stmt_scope():
+                        self.compute_cut_h(block_index)
 
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE2):
-                with self.tik_instance.new_stmt_scope():
-                    self.compute_cut_h_w(block_index)
+                with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE2):
+                    with self.tik_instance.new_stmt_scope():
+                        self.compute_cut_h_w(block_index)
 
         self.tik_instance.BuildCCE(kernel_name=kernel_name, inputs=self.input_fmap_gm,
                                    outputs=(self.output_max_gm, self.output_mask_gm), flowtable=[self.tiling_gm])
