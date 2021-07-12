@@ -26,8 +26,8 @@
 #include "util/util.h"
 #include "util/error_util.h"
 #include "op_log.h"
-#include "strided_slice_infer_shape.h"
 #include "graph/utils/op_desc_utils.h"
+
 namespace ge {
 bool InTopKV2CheckInput(const Operator& op) {
   Shape shape_prediction = op.GetInputDesc("predictions").GetShape();
