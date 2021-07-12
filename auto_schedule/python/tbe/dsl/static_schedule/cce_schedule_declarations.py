@@ -134,6 +134,5 @@ class OpSpecTypes(Enum):
     NORMALIZE_SCALE = "normalize_scale"
     ONLY_BROADCAST_TYPE = "only_broadcast_type"
     MVN = "mvn"
-    MVN_V2 = "mvn_v2"
     BN_EXT2 = "bn_ext2"
     REDUCE_MEAN_2D_ALIGNED_MID_REDUCE_NO_CAST = "reduce_mean_2d_aligned_mid_reduce_no_cast"

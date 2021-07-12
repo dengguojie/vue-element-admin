@@ -269,11 +269,6 @@
         "reduce_max",
         "reduce_min",
         "reduce_prod"
-    ],
-    "auto_schedule/python/tbe/dsl/static_schedule/cce_schedule.py":[
-        "vadd",
-        "vrsqrt",
-        "vabs"
     ]
 
 }

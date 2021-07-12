@@ -995,7 +995,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
     is_reduce_multi_pattern = not tuple_reduce_flag and len(
         outs[0].shape) != 1 and pattern != OpPatterns.POOL2D_PATTERN \
         and pattern != OpPatterns.ELEMWISE_PATTERN  \
-        and op_info.get('type') != OpSpecTypes.MVN_V2
+        and op_info.get('type') != OpSpecTypes.MVN
 
     if is_reduce_multi_pattern:
         # try use multi reduce template
