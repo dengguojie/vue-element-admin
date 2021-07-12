@@ -251,6 +251,15 @@ class Test_OpConfig(unittest.TestCase):
                             check_valid = False
                     op_type = line[line.index("[") + 1: line.index("]")]
                     op_key_info = []
+                elif line_num==len(lines):
+                    if op_type is not None:
+                        if op_type not in op_types:
+                            op_types.append(op_type)
+                        else:
+                            raise AssertionError("check op cfg failed! error file: %s msg: %s is not unique" % (
+                                c_f_file_path, op_type))
+                        if not check_op_key_info(c_f_file_path, op_type, op_key_info):
+                            check_valid = False
                 else:
                     op_key_info.append(line)
             return check_valid
