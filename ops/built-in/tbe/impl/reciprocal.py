@@ -23,6 +23,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from impl.util import util_select_op_base
+from impl.util import util_common
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -70,8 +71,10 @@ def op_select_format(input_x, output_y, kernel_name="reciprocal"):
             support_format.append("NC1HWC0")
         # whether support format FRACTAL_Z and C1HWNCoC0
         if n_dim % 16 == 0 and c_dim % 16 == 0:
-            support_format.append("FRACTAL_Z")
             support_format.append("C1HWNCoC0")
+        if util_common.is_support_fractal_z_input(input_x) and n_dim % 16 == 0 and \
+                c_dim % 16 == 0:
+            support_format.append("FRACTAL_Z")
 
     dtype_total = []
     for dtype in dtype_list:

@@ -7385,7 +7385,8 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
         # one: both N and C dim in start is c0 align
         # two: C dim in size is c0 align or size_c = shape_c - start_c
         # three: N dim in size is n0 align or size_n = shape_n - start_n
-        if begin_c_align_flag and begin_n_align_flag and is_size_c_support and is_size_n_support:
+        if begin_c_align_flag and begin_n_align_flag and util_common.is_support_fractal_z_input(x) and \
+                is_size_c_support and is_size_n_support:
             is_support_fz = True
 
     # charge whether support FRACTAL_NZ

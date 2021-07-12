@@ -39,11 +39,32 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+case6 = {"params": [{"shape": (3, 3, 2, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 2, 128),"ori_format": "HWCN", "sub_format" : 32},
+                    {"shape": (3, 3, 2, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 2, 128),"ori_format": "HWCN", "sub_format" : 32}],
+         "case_name": "reciprocal_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
+
+
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.reciprocal import op_select_format
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),"ori_format": "HWCN", "sub_format" : 1},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),"ori_format": "HWCN", "sub_format" : 1},
+                     "test_add_op_select_format_1")
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),"ori_format": "HWCN"},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),"ori_format": "HWCN"},
+                     "test_add_op_select_format_2")
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def calc_expect_func(x, y):
     x_shape = x["shape"]

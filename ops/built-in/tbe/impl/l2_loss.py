@@ -47,7 +47,7 @@ def op_select_format(x, y, kernel_name="l2_loss"):
         is_shape_n_align = input_ori_shape[input_ori_format.index("N")] % align_len == 0
         if is_shape_c_align:
             is_support_hd = True
-        if is_shape_n_align and is_shape_c_align:
+        if is_shape_n_align and is_shape_c_align and util_common.is_support_fractal_z_input(x):
             is_support_fz = True
     # charge whether support FRACTAL_NZ
     # current support all foramt

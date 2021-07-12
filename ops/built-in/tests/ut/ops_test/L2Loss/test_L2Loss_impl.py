@@ -86,6 +86,18 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 
 # ============ auto gen ["Ascend910"] test cases end =================
 
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.l2_loss import op_select_format
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     "test_add_op_select_format_1")
+ut_case.add_cust_test_func(test_func=test_op_select_format)
+
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")

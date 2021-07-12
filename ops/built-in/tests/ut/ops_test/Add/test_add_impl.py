@@ -196,4 +196,25 @@ def test_op_select_format(test_arg):
                      {"shape": (4,64,200,320), "dtype": "float16", "format": "NCHW", "ori_shape": (4,64,200,320),
                       "ori_format": "NCHW"},
                      "test_add_op_select_format_14")
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     "test_add_op_select_format_15")
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN"},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN"},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN"},
+                     "test_add_op_select_format_16")
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 8},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 8},
+                     "test_add_op_select_format_17")
 ut_case.add_cust_test_func(test_func=test_op_select_format)

@@ -40,7 +40,13 @@ def test_op_select_format(test_args):
                      {"shape": (1, 8, 2, 16), "dtype": "float16", "format": "ND", "ori_shape": (1, 8, 2, 16),
                       "ori_format": "ND"},
                      "test_add_op_select_format_2")
-
+#    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+#                      "ori_format": "HWCN", "sub_format" : 1},
+#                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+#                      "ori_format": "HWCN", "sub_format" : 1},
+#                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+#                      "ori_format": "HWCN", "sub_format" : 1},
+#                     "test_add_op_select_format_3")
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 

@@ -308,103 +308,103 @@ def calc_expect_func(input_x, input_y, output, alpha):
 #     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 # })
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
-                'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
+#                'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (1,), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (1,), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
-                'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#   "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (1,), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (1,), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+#                'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (16,), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (16,), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
-                'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (16,), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (16,), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+#                'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 32),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 32),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 32),
-                'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 32),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 32),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 32),
+#                'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
-ut_case.add_precision_case("Ascend910", {
-    "params": [{'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (1, 1), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (1, 1), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (1, 1), 'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("Ascend910", {
+#    "params": [{'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (1, 1), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (1, 1), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (1, 1), 'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (16, 1), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (16, 1), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
-                'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (16, 1), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (16, 1), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+#                'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (1, 1), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
-                'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (1, 1), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (1, 1), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+#                'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
 # TODO run error
 # ut_case.add_precision_case("all", {
@@ -462,123 +462,123 @@ ut_case.add_precision_case("all", {
 #     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 # })
 #
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 31),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 31),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 31),
-                'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 31),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 31),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 31),
+#                'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
-                'ori_format': 'ND', "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
-                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
-                'ori_format': 'ND', "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
-
-
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "output"},
-               1.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
-
-ut_case.add_precision_case("all", {
-    "params": [
-        {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
-         'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND', "param_type": "input"},
-        {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
-         'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND', "param_type": "input"},
-        {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
-         'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND', "param_type": "output"},
-        1.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
-
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (13, 15, 17, 19), 'dtype': 'float16', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (13, 15, 17, 1), 'dtype': 'float16', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 1), 'ori_format': 'ND', "param_type": "input"},
-               {'shape': (13, 15, 17, 19), 'dtype': 'float16', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "output"},
-               1.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
+#                'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32',
+#                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 13, 32),
+#                'ori_format': 'ND', "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (13, 15, 17, 19), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "input"},
-               {'shape': (13, 15, 17, 19), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "input"},
-               {'shape': (13, 15, 17, 19), 'dtype': 'float32', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "output"},
-               1.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "output"},
+#               1.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
+
+#ut_case.add_precision_case("all", {
+#    "params": [
+#        {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
+#         'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND', "param_type": "input"},
+#        {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
+#         'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND', "param_type": "input"},
+#        {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
+#         'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND', "param_type": "output"},
+#        1.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
+
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (13, 15, 17, 19), 'dtype': 'float16', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (13, 15, 17, 1), 'dtype': 'float16', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 1), 'ori_format': 'ND', "param_type": "input"},
+#               {'shape': (13, 15, 17, 19), 'dtype': 'float16', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND', "param_type": "output"},
+#               1.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND',  "param_type": "input"},
-               {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND',  "param_type": "input"},
-               {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
-                'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND',  "param_type": "output"},
-               1.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (13, 15, 17, 19), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "input"},
+#               {'shape': (13, 15, 17, 19), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "input"},
+#               {'shape': (13, 15, 17, 19), 'dtype': 'float32', 'format': 'ND',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "output"},
+#               1.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'NHWC',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'NHWC',  "param_type": "input"},
-               {'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'NHWC',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'NHWC',  "param_type": "input"},
-               {'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'NHWC',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'NHWC',  "param_type": "output"},
-               1.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
 
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'FRACTAL_NZ',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'FRACTAL_NZ',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'FRACTAL_NZ',
-                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+ #   "params": [{'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
+ #               'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND',  "param_type": "input"},
+ #              {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
+ #               'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND',  "param_type": "input"},
+ #              {'shape': (13, 15, 17, 19, 21), 'dtype': 'float16', 'format': 'ND',
+ #               'ori_shape': (13, 15, 17, 19, 21), 'ori_format': 'ND',  "param_type": "output"},
+ #              1.0],
+ #   "calc_expect_func": calc_expect_func,
+ #   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
+
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'NHWC',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'NHWC',  "param_type": "input"},
+#               {'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'NHWC',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'NHWC',  "param_type": "input"},
+#               {'shape': (13, 15, 17, 19), 'dtype': 'int32', 'format': 'NHWC',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'NHWC',  "param_type": "output"},
+#               1.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
+
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'FRACTAL_NZ',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'FRACTAL_NZ',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'FRACTAL_NZ',
+#                'ori_shape': (13, 15, 17, 19), 'ori_format': 'ND',  "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
 # TODO run error
 # ut_case.add_precision_case("all", {
 #     "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'FRACTAL_NZ',
@@ -593,17 +593,31 @@ ut_case.add_precision_case("all", {
 # })
 #
 #
-ut_case.add_precision_case("all", {
-    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'NC1HWC0',
-                'ori_shape': (11, 12, 2, 1, 16, 16), 'ori_format': 'ND',  "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'NC1HWC0',
-                'ori_shape': (11, 12, 2, 1, 16, 16), 'ori_format': 'ND',  "param_type": "input"},
-               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'NC1HWC0',
-                'ori_shape': (11, 12, 2, 1, 16, 16), 'ori_format': 'ND',  "param_type": "output"},
-               2.0],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-})
+#ut_case.add_precision_case("all", {
+#    "params": [{'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'NC1HWC0',
+#                'ori_shape': (11, 12, 2, 1, 16, 16), 'ori_format': 'ND',  "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'NC1HWC0',
+#                'ori_shape': (11, 12, 2, 1, 16, 16), 'ori_format': 'ND',  "param_type": "input"},
+#               {'shape': (11, 12, 2, 1, 16, 16), 'dtype': 'float32', 'format': 'NC1HWC0',
+#                'ori_shape': (11, 12, 2, 1, 16, 16), 'ori_format': 'ND',  "param_type": "output"},
+#               2.0],
+#    "calc_expect_func": calc_expect_func,
+#    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#})
+
+#def test_op_select_format(test_arg):
+#    """
+#    test_op_select_format
+#    """
+#    from impl.axpy import op_select_format
+#    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+#                      "ori_format": "HWCN", "sub_format" : 1},
+#                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+#                      "ori_format": "HWCN", "sub_format" : 1},
+#                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+#                      "ori_format": "HWCN", "sub_format" : 1},
+#                      "test_add_op_select_format_1")
+#ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910", simulator_mode="pv", simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")

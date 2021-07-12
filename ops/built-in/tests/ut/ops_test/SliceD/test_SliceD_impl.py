@@ -285,7 +285,7 @@ def test_op_select_format(test_arg):
         {"shape": (16, 16, 16, 16), "dtype": "int32", "format": "NCHW", "ori_shape": (16, 16, 16, 16),
          "ori_format": "NCHW"},
         (0, 0, 0, 0), (16, 16, -1, -1), )
-    check_format(support_all_dtype, {'FRACTAL_Z', 'NC1HWC0', 'ND', 'FRACTAL_NZ'}, result)
+    check_format(support_all_dtype, {'NC1HWC0', 'ND', 'FRACTAL_NZ'}, result)
 
     result = op_select_format(
         {"shape": (16, 3, 32, 16, 16), "dtype": "int32", "format": "NDCHW", "ori_shape": (16, 3, 32, 16, 16),
@@ -293,7 +293,7 @@ def test_op_select_format(test_arg):
         {"shape": (16, 3, 16, 16, 16), "dtype": "int32", "format": "NDCHW", "ori_shape": (16, 3, 16, 16, 16),
          "ori_format": "NDCHW"},
         (0, 0, 0, 0, 0), (16, 0, 16, -1, -1), )
-    check_format(support_all_dtype, {'FRACTAL_Z_3D', 'NDC1HWC0', 'ND', 'FRACTAL_NZ'}, result)
+    check_format(support_all_dtype, {'NDC1HWC0', 'ND', 'FRACTAL_NZ'}, result)
 
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)

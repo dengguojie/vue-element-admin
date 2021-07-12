@@ -560,3 +560,92 @@ def cal_mini_l1_size_matmul(dtype_w):
     block_out = tbe_platform.CUBE_MKN[dtype_w]["mac"][2]
     mini_l1space = block_out * block_reduce * BIT_RATIO_DICT.get(dtype_w)
     return mini_l1space
+
+
+def is_support_fractal_z_input(_input):
+    """
+    is_unknown:check whether the operator supports FRACTAL_Z
+               return True else False
+
+    Parameters
+    ----------
+    _input:dict
+
+    Returns
+    -------
+    bool
+    """
+    groups = _input.get("sub_format")
+    if groups is None:
+        return False
+    ori_format = _input.get("ori_format")
+    shape = _input.get("ori_shape")
+    n_dim = shape[ori_format.index("N")]
+    support_format = get_fused_str(["N", "C", "H", "W"])
+
+    if groups == 0 or ori_format not in support_format or len(ori_format) != len(shape) or \
+            (n_dim % groups != 0) or ((n_dim // groups) % 16 != 0):
+        return False
+
+    return True
+
+
+def is_support_fractal_z_inputs(_inputs):
+    """
+    is_unknown:check whether the operator supports FRACTAL_Z
+               return True else False
+
+    Parameters
+    ----------
+    _inputs:list of dict/tuple of dict/dict
+
+    Returns
+    -------
+    bool
+    """
+    groups_first = _inputs[0].get("sub_format")
+    if groups_first is None:
+        return False
+    for _input in _inputs:
+        is_support_fractal = is_support_fractal_z_input(_input)
+        groups = _input.get("sub_format")
+        if not is_support_fractal or groups_first != groups:
+            return False
+
+    return True
+
+
+def get_fused_str(format_char_list):
+    """
+        get_fused_str for format
+    """
+    format_iter = itertools.permutations(format_char_list, len(format_char_list))
+    format_char_list = list(format_iter)
+    format_str_list = []
+    for i, char_list in enumerate(format_char_list):
+        format_str_list.append(''.join(list(char_list)))
+
+    return format_str_list
+
+
+def is_same_group(_inputs):
+    """
+    is_unknown:check whether the operator supports same group
+               return True else False
+
+    Parameters
+    ----------
+    _inputs:list of dict/tuple of dict/dict
+
+    Returns
+    -------
+    bool
+    """
+    groups_first =  _inputs[0].get("sub_format")
+    if groups_first is None:
+        return False
+    for _input in _inputs:
+        groups = _input.get("sub_format")
+        if groups_first != groups:
+            return False
+    return True

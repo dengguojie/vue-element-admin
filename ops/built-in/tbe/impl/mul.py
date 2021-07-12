@@ -533,6 +533,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
     format_list = ["ND"]
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
+    list_input = [x, y]
     if (len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list) or \
             (len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list):
         x_cdim = shape_x[format_x.index("C")]
@@ -594,12 +595,14 @@ def op_select_format(x, y, output, kernel_name="mul"):
                         format_list.append("NC1HWC0")
                     if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
                         format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0 and \
+                    util_common.is_support_fractal_z_inputs(list_input):
                 if format_x == format_y and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y):
                     format_list.append("FRACTAL_Z")
             if list(shape_x) == list(shape_y) and -1 not in shape_x:
                 format_list.append("NC1HWC0")
-            if format_x == format_y and list(shape_x) == list(shape_y):
+            if format_x == format_y and list(shape_x) == list(shape_y) and \
+                    util_common.is_same_group(list_input):
                 format_list.append("FRACTAL_Z")
 
         for dtype in dtype_list:
@@ -644,7 +647,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                 if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
                     format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and \
+                    util_common.is_support_fractal_z_inputs(list_input):
                 if format_x == format_y and _broadcast_zn_rule(shape_x, shape_y, format_x, format_y):
                     format_list.append("FRACTAL_Z")
 

@@ -121,7 +121,8 @@ def op_select_format(input_x, output_x, multiples, kernel_name="tile_d"):
         if is_shape_c_align or multiples[input_format.index("C")] == 1:
             is_support_hd = True
 
-        if is_support_hd and (is_shape_n_align or multiples[input_format.index("N")] == 1):
+        if is_support_hd and (is_shape_n_align or multiples[input_format.index("N")] == 1) and \
+                util_common.is_support_fractal_z_input(input_x):
             is_support_fz = True
 
     is_support_nz = False

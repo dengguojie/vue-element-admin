@@ -22,6 +22,7 @@ from te.utils import shape_util
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
+from impl.util import util_common
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
@@ -103,6 +104,7 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
     format_list = ["ND"]
     format_nz = ["FRACTAL_NZ"]
     len_format_list = len(dtype_list)
+    list_input = [input_x, input_y]
 
     # if shape is same, then all formats are supported.
     if list(shape_x) == list(shape_y):
@@ -170,7 +172,8 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
                         format_list.append("NC1HWC0")
                     if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
                         format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0 and \
+                    util_common.is_support_fractal_z_inputs(list_input):
                 if (format_x == format_y == "NHWC" and list(shape_x) == list(shape_y)) \
                         or (format_x == format_y == "NCHW" and list(shape_x) == list(shape_y)):
                     format_list.append("FRACTAL_Z")
@@ -178,6 +181,7 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
                     format_list.append("FRACTAL_Z")
             if list(shape_x) == list(shape_y):
                 format_list.append("NC1HWC0")
+            if list(shape_x) == list(shape_y) and util_common.is_same_group(list_input):
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
@@ -198,7 +202,8 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                 if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
                     format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and \
+                    util_common.is_support_fractal_z_inputs(list_input):
                 if format_x == format_y == "NCHW" and x_hdim * x_wdim == y_hdim * y_wdim \
                         and x_cdim == y_cdim:
                     if x_ndim == y_ndim:
@@ -242,7 +247,7 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
         if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
             if x_cdim % 16 == 0:
                 format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and util_common.is_support_fractal_z_inputs(list_input):
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
@@ -266,7 +271,7 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
         if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
             if y_cdim % 16 == 0:
                 format_list.append("NC1HWC0")
-            if y_cdim % 16 == 0 and y_ndim % 16 == 0:
+            if y_cdim % 16 == 0 and y_ndim % 16 == 0 and util_common.is_support_fractal_z_inputs(list_input):
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)

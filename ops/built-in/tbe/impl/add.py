@@ -224,6 +224,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     format_list = ["ND"]
     format_nz = ["FRACTAL_NZ"]
     format_5hd = ["NC1HWC0"]
+    list_input = [input_x, input_y]
     # 2dims add (3|4)dims,fe regards 2dims as HW, actually is WC
     if (len(shape_x) == 2 and (len(shape_y) == 3 or len(shape_y) == 4)) \
             or (len(shape_y) == 2 and (len(shape_x) == 3 or len(shape_x) == 4)):
@@ -304,7 +305,8 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                         format_list += format_5hd
                     if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
                         format_list += format_5hd
-            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0 and \
+                    util_common.is_support_fractal_z_inputs(list_input):
                 if (format_x == format_y == "NHWC" and list(shape_x) == list(shape_y)) or \
                         (format_x == format_y == "NCHW" and list(shape_x) == list(shape_y)):
                     format_list.append("FRACTAL_Z")
@@ -312,6 +314,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                     format_list.append("FRACTAL_Z")
             if list(shape_x) == list(shape_y):
                 format_list += format_5hd
+            if list(shape_x) == list(shape_y) and util_common.is_same_group(list_input):
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
@@ -330,7 +333,8 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                 if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
                     format_list += format_5hd
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and \
+                    util_common.is_support_fractal_z_inputs(list_input):
                 if format_x == format_y == "NCHW" and x_hdim * x_wdim == y_hdim * y_wdim and x_cdim == y_cdim:
                     if x_ndim == y_ndim:
                         format_list.append("FRACTAL_Z")
@@ -384,7 +388,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                 shape_y) == 1 and format_x in format_4d_list:
             if x_cdim % 16 == 0:
                 format_list += format_5hd
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0:
+            if x_cdim % 16 == 0 and x_ndim % 16 == 0 and util_common.is_support_fractal_z_inputs(list_input):
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
@@ -403,7 +407,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
             if y_cdim % 16 == 0:
                 format_list += format_5hd
-            if y_cdim % 16 == 0 and y_ndim % 16 == 0:
+            if y_cdim % 16 == 0 and y_ndim % 16 == 0 and util_common.is_support_fractal_z_inputs(list_input):
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
