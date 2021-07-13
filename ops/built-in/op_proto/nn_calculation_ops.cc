@@ -202,9 +202,7 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
   int32_t dilh = 0;
   int32_t dilw = 0;
   int32_t padt = pad_list[0];
-  int32_t padb = pad_list[1];
   int32_t padl = pad_list[2];
-  int32_t padr = pad_list[3];
 
   if (x_format == FORMAT_NCHW) {
     ih = x_shape[2];
@@ -244,7 +242,7 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
   }
   bool have_slice = false;
   vector<int> new_pad_lists = pad_list;
-  for(int i=0; i < y_data_slice.size(); i++) {
+  for(size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {
@@ -530,7 +528,7 @@ static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
     idx_h = 2;
     idx_w = 3;
   }
-  std::vector<int64_t> grade_n = {0, 1, 3, 7, 15, 31, ((1 << 31) - 1)};
+  std::vector<int64_t> grade_n = {0, 1, 3, 7, 15, 31, MAX_RANGE};
   std::vector<int64_t> grade_w = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
   std::vector<int64_t> grade_h = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
   // init empty range
@@ -724,7 +722,6 @@ static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
   int64_t kh = attr_params[idx++];
   int64_t kw = attr_params[idx++];
 
-  size_t idx_n = 0;
   size_t idx_h = 0;
   size_t idx_w = 0;
   size_t idx_c = 0;
@@ -4180,7 +4177,6 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
   int32_t kh = attr_params[idx++];
   int32_t kw = attr_params[idx++];
 
-  size_t idx_n = 0;
   size_t idx_h = 0;
   size_t idx_w = 0;
   size_t idx_c = 0;
@@ -4691,9 +4687,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   int32_t dilh = 0;
   int32_t dilw = 0;
   int32_t padt = pad_list[0];
-  int32_t padb = pad_list[1];
   int32_t padl = pad_list[2];
-  int32_t padr = pad_list[3];
 
   if (x_format == FORMAT_NCHW) {
     ih = x_shape[2];
@@ -4739,7 +4733,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   }
   bool have_slice = false;
   vector<int> new_pad_lists = pad_list;
-  for(int i=0; i < y_data_slice.size(); i++) {
+  for(size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {
