@@ -936,14 +936,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     c_t_tmp2 = vmul(j_t_tanh_ub, i_t_sigmoid_ub)
     update_c = vadd(c_t_tmp1, c_t_tmp2)
 
-    if bias_dtype == 'float16':
-        update_c_fp16_back_fp32 = tvm.compute(shape_i,
-                                              lambda *indices: update_c(*indices).astype('float32'),
-                                              name="update_c_fp16_back_fp32_drnn_cast",
-                                              tag="elewise_single_cast")
-        c_t_tanh = tanh_compute(update_c_fp16_back_fp32)
-    else:
-        c_t_tanh = tanh_compute(update_c)
+    c_t_tanh = tanh_compute(update_c)
 
     # c_t_tanh_ub = c_t_tanh
     if wci_gm is not None:
@@ -1021,7 +1014,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                               tag="elewise_single_cast")
         c_t_tanh_fake = tvm.compute(shape_i, lambda *indices: update_c_fp16_back_fp32_fake(*indices) + c_t_tanh(*indices),
                                     name="c_t_tanh_fake",
-                                    tag="elewise_binary_add")
+                                    tag="phony_insn")
     else:
         c_t_tanh_fake = vadd(c_t_tanh, update_c_gm)
 
@@ -1249,7 +1242,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     # fp16 in
     if bias_dtype == 'float16':
         s[update_c_fp16].set_scope(scope_ubuf)
-        s[update_c_fp16_back_fp32].set_scope(scope_ubuf)
         s[update_h_fp16].set_scope(scope_ubuf)
     else:
         s[update_h_fp16_cast].set_scope(scope_ubuf)
@@ -1411,7 +1403,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[update_c_gm].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
         if bias_dtype == 'float16':
             s[update_c_fp16].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
-            s[update_c_fp16_back_fp32].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
             s[update_h_fp16].compute_at(s[update_h_gm], vn_o_inner)
         else:
             s[update_c].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
@@ -1453,6 +1444,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             s[i_t_sigmoid_ub].reused_by(reuse_data=True)
             s[o_t_sigmoid_ub].reused_by(reuse_data=True)
             s[c_t_tanh_ub].reused_by(reuse_data=True)
+            s[j_t_tanh_ub].reused_by(reuse_data=True)
         s[pjc_c_ub].compute_at(s[update_h_gm], vn_o_inner)
         for tensor in elewise_after_tensors:
             if tensor not in elewise_before_barrier_tensors:
@@ -1467,7 +1459,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         # fp16 in
         if bias_dtype == 'float16':
             s[update_c_fp16].compute_at(s[update_h_gm], vn_o_inner)
-            s[update_c_fp16_back_fp32].compute_at(s[update_h_gm], vn_o_inner)
             s[update_h_fp16].compute_at(s[update_h_gm], vn_o_inner)
         else:
             s[update_c].compute_at(s[update_h_gm], vn_o_inner)
@@ -1513,10 +1504,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             s[o_t_sigmoid_ub].reused_by(reuse_data=True)
             s[j_t_tanh_ub].reused_by(reuse_data=True)
             s[c_t_tanh_ub].reused_by(reuse_data=True)
+            s[j_t_tanh_ub].reused_by(reuse_data=True)
 
     if bias_dtype == 'float16':
-        s[update_c].reused_by(update_c_fp16_back_fp32)
-        s[update_c_fp16_back_fp32].reused_by(reuse_data=True)
         s[update_h_fp16].reused_by(update_h_gm_as_y_back)
         s[update_h_gm_as_y_back].reused_by(reuse_data=True)
     else:
@@ -1562,7 +1552,12 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[c_ub].emit_insn(ub_n_inner, 'dma_copy')
 
     s[bias_bc_ub].emit_insn(bias_bc_ub.op.axis[0], 'unified_broadcast')
+    s[a_l1].emit_insn(a_l1.op.axis[0], 'dma_copy')
+    s[b_l1].emit_insn(b_l1.op.axis[0], 'dma_copy')
+    s[a_l0a].emit_insn(a_l0a.op.axis[0], 'dma_copy')
+    s[b_l0b].emit_insn(b_l0b.op.axis[0], 'dma_copy')
 
+    s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')
     if is_first_round:
         if is_global_init:
             s[s_state_h_ub].emit_insn(s_state_h_ub.op.axis[0], 'dma_copy')
@@ -1624,6 +1619,13 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                       'phony_insn')
         s[j_t_tanh_back].emit_insn(s[j_t_tanh_back].op.axis[1], 'phony_insn')
         s[c_t_tanh_back].emit_insn(s[c_t_tanh_back].op.axis[1], 'phony_insn')
+
+        s[f_t_sigmoid_gm].emit_insn(s[f_t_sigmoid_gm].op.axis[1], 'dma_copy')
+        s[i_t_sigmoid_gm].emit_insn(s[i_t_sigmoid_gm].op.axis[1], 'dma_copy')
+        s[o_t_sigmoid_gm].emit_insn(s[o_t_sigmoid_gm].op.axis[1], 'dma_copy')
+        s[j_t_tanh_gm].emit_insn(s[j_t_tanh_gm].op.axis[1], 'dma_copy')
+        s[c_t_tanh_gm].emit_insn(s[c_t_tanh_gm].op.axis[1], 'dma_copy')
+
     if bias_dtype == "float16":
         s[update_c_fp16_back_fake].emit_insn(s[update_c_fp16_back_fake].op.axis[0], 'phony_insn')
         s[update_c_fp16_back_fp32_fake].emit_insn(s[update_c_fp16_back_fp32_fake].op.axis[0], 'phony_insn')
@@ -1631,9 +1633,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     # fp16 in
     if bias_dtype == 'float16':
         s[update_c_fp16].emit_insn(update_c_fp16.op.axis[0], 'vector_conv')
-
-        s[update_c_fp16_back_fp32].emit_insn(
-            update_c_fp16_back_fp32.op.axis[0], 'phony_insn')
         s[update_h_fp16].emit_insn(update_h_fp16.op.axis[0], 'vector_conv')
     else:
         s[update_h_fp16_cast].emit_insn(update_h_fp16_cast.op.axis[0],
