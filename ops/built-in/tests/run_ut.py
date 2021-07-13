@@ -397,10 +397,11 @@ def get_cube_case_dir(case_dir):
     base_ut_dir = os.path.join(repo_root, "ops", "built-in", "tests", "ut", "ops_test")
     if isinstance(case_dir, str):
         for item in os.listdir(base_ut_dir):
+            item_dir = os.path.join(base_ut_dir, item)
             if item in cube_ops:
-                cube_case_dir.append(os.path.join(base_ut_dir, item))
-            else:
-                vector_case_dir.append(os.path.join(base_ut_dir, item))
+                cube_case_dir.append(item_dir)
+            elif os.path.isdir(item_dir):
+                vector_case_dir.append(item_dir)
     else:
         for item in case_dir:
             if os.path.basename(item) in cube_ops:
@@ -439,41 +440,43 @@ def main(argv):
         simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
         process_num = FLAGS.process_num
         res = op_ut_runner.run_ut(vector_case_dir,
-                                soc_version=soc_version,
-                                test_report="json",
-                                test_report_path=report_path,
-                                cov_report="html",
-                                cov_report_path=cov_report_path,
-                                simulator_mode="pv",
-                                simulator_lib_path=simulator_lib_path,
-                                process_num=process_num)
+                                  soc_version=soc_version,
+                                  test_report="json",
+                                  test_report_path=report_path,
+                                  cov_report="html",
+                                  cov_report_path=cov_report_path,
+                                  simulator_mode="pv",
+                                  simulator_lib_path=simulator_lib_path,
+                                  process_num=process_num)
         if res != op_status.SUCCESS:
-            exit(-1)
+            if pr_changed_file and str(pr_changed_file).strip():
+                exit(-1)
 
     if cube_case_dir:
         cov_report_path = FLAGS.cov_path + '_cube' if FLAGS.cov_path else "./cov_report/ops/python_utest_cube"
         report_path = FLAGS.report_path + '_cube'  if FLAGS.report_path else "./report/ops/python_report_cube"
         simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
         process_num = FLAGS.process_num
-        res = cube_ut_runner.run_ut(cube_case_dir,
-                                soc_version=soc_version,
-                                test_report="json",
-                                test_report_path=report_path,
-                                cov_report="html",
-                                cov_report_path=cov_report_path,
-                                simulator_mode="pv",
-                                simulator_lib_path=simulator_lib_path,
-                                process_num=process_num)
-        if res != op_status.SUCCESS:
-            exit(-1)
-
+        cube_res = cube_ut_runner.run_ut(cube_case_dir,
+                                         soc_version=soc_version,
+                                         test_report="json",
+                                         test_report_path=report_path,
+                                         cov_report="html",
+                                         cov_report_path=cov_report_path,
+                                         simulator_mode="pv",
+                                         simulator_lib_path=simulator_lib_path,
+                                         process_num=process_num)
         cube_cov_file = os.path.join(cov_report_path, ".coverage")
         if os.path.exists(cube_cov_file):
             if not os.path.exists(FLAGS.cov_path):
                 os.makedirs(FLAGS.cov_path)
             dst_path = os.path.join(FLAGS.cov_path, '.coverage.cube')
             shutil.move(cube_cov_file, dst_path)
+        if cube_res != op_status.SUCCESS:
+            exit(-1)
 
+    if vector_case_dir and res != op_status.SUCCESS:
+        exit(-1)
     exit(0)
 
 
