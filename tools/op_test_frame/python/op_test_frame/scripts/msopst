@@ -40,7 +40,7 @@ def _check_device_id(device_id):
 def _generate_op_project(args, report, machine_type):
     # design test case list from json file
     design = CaseDesign(args.input_file, args.case_name, report)
-    case_list = design.design()
+    case_list, compile_flag = design.design()
     output_path = os.path.realpath(args.output_path)
     # create op project path and generate op test case code
     path_and_device_id = (output_path, args.device_id)
@@ -50,7 +50,7 @@ def _generate_op_project(args, report, machine_type):
         ms_op_generator_instance.generate()
     else:
         acl_op_generator_instance = AclOpGenerator(
-            case_list, path_and_device_id, machine_type, report)
+            case_list, path_and_device_id, machine_type, report, compile_flag)
         acl_op_generator_instance.generate()
 
     # generate data

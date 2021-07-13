@@ -88,6 +88,7 @@ class CaseDesign:
         :return: the list of test case
         """
         total_case_in_file = []
+        compile_flag = None
         for json_path in self.json_path_list:
             utils.print_info_log('Start to create sub test cases for %s.'
                                  % json_path)
@@ -96,6 +97,9 @@ class CaseDesign:
             json_object = utils.load_json_file(json_path)
             # parse json object
             for json_obj in json_object:
+                if json_obj.get("compile_flag"):
+                    compile_flag = json_obj.get("compile_flag")
+                    continue
                 check_required_key_valid(json_obj, REQUIRED_KEYS, 'case',
                                          self.current_json_path)
                 # skip the case name not in case_name_list
@@ -122,7 +126,7 @@ class CaseDesign:
                                                        total_case_in_file,
                                                        self.report)
                 total_case_in_file = subcase_parse.subcase_generate()
-        return total_case_in_file
+        return total_case_in_file, compile_flag
 
     def design(self):
         """

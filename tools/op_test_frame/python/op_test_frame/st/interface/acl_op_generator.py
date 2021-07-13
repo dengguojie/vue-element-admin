@@ -61,8 +61,11 @@ def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
         tmp_dic[key_desc].append(res_desc_dic)
 
 
-def _create_acl_op_json_content(testcase_list):
+def _create_acl_op_json_content(testcase_list, compile_flag):
     content = []
+    if compile_flag is not None:
+        compile_dic = {'compile_flag': compile_flag}
+        content.append(compile_dic)
     for testcase_struct in testcase_list:
         # init dic with op name
         tmp_dic = {'op': testcase_struct['op']}
@@ -314,12 +317,13 @@ class AclOpGenerator:
     """
 
     def __init__(self, testcase_list, path_and_device_id, machine_type,
-                 report):
+                 report, compile_flag):
         self.testcase_list = testcase_list
         self.machine_type = machine_type
         self._check_output_path(path_and_device_id[0], testcase_list)
         self.report = report
         self.device_id = path_and_device_id[1]
+        self.compile_flag = compile_flag
 
     def _check_output_path(self, output_path, testcase_list):
         formalized_path = os.path.realpath(output_path)
@@ -374,7 +378,7 @@ class AclOpGenerator:
                                 output_testcase_cpp_path)
 
         ## f3.prepare acl json content and write file
-        acl_json_content = _create_acl_op_json_content(self.testcase_list)
+        acl_json_content = _create_acl_op_json_content(self.testcase_list, self.compile_flag)
         output_acl_op_json_path = self.output_path + \
                                   utils.ACL_OP_JSON_RELATIVE_PATH
         _write_content_to_file(acl_json_content,
