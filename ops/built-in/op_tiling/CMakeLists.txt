@@ -74,8 +74,10 @@ set(_optiling_files
   nms_with_mask.cc
   pad_common.cc
   pad_d.cc
+  batch_multi_class_non_max_suppression.cc
   pad.cc
   pad_v3.cc
+  reflection_pad_v3.cc
   prelu.cc
   reverse.cc
   reduce_tiling.cc

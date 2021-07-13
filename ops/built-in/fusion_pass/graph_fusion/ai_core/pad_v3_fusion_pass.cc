@@ -194,7 +194,6 @@ Status PadV3FusionPass::PadMoveConsttoAttr(ge::ComputeGraph &graph, ge::NodePtr 
 Status PadV3FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes)
 {
   bool is_dynamic_shape = false;
-
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PAD, mapping);
   FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_v3_node is null, fusion failed."),
                     return PARAM_INVALID);

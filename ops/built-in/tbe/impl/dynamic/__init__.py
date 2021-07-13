@@ -178,6 +178,7 @@ from .as_strided import as_strided
 from .trans_data import trans_data
 from .trans_data_rnn import trans_data_rnn
 from .unpack import unpack
+from .batch_multi_class_non_max_suppression import batch_multi_class_non_max_suppression
 from .top_k_d import top_k_d
 from .in_top_k import in_top_k
 from .apply_adagrad_d import apply_adagrad_d

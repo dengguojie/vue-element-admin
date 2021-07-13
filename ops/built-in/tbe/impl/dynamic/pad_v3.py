@@ -22,6 +22,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 from impl import constant_util as constant
+from impl.dynamic.reflection_pad_v3 import reflection_pad_v3
 
 
 # max int64
@@ -336,8 +337,10 @@ class PadV3Init(object):
         '''
         self.max_numel_vec_dup_one_loop = self.max_repeat_time * self.dump_mask_max_x
         total_output_tensor = self.tik_instance.Scalar(dtype='int32', name='total_output_tensor', init_value=1)
-        total_output_tensor_each_core = self.tik_instance.Scalar(dtype='int32', name='total_output_tensor_each_core')
-        total_output_tensor_last_core = self.tik_instance.Scalar(dtype='int32', name='total_output_tensor_last_core')
+        total_output_tensor_each_core = self.tik_instance.Scalar(dtype='int32',
+                                                                 name='total_output_tensor_each_core')
+        total_output_tensor_last_core = self.tik_instance.Scalar(dtype='int32',
+                                                                 name='total_output_tensor_last_core')
         offset_gm = self.tik_instance.Scalar(dtype='int32', name='offset_gm')
         for ele in self.tiling_output_shape:
             total_output_tensor.set_as(total_output_tensor * ele)
@@ -1320,7 +1323,7 @@ class PadV3Init(object):
         wr_compile_info["ub_size"] = self.ub_number
         wr_compile_info["core_num"] = self.core_nums
         wr_compile_info["dtype_rate"] = dtype_rate
-        # for StridedSliceGrad add attr to compile info
+        wr_compile_info["mode"] = self.mode
         if outer_compile_info is not None:
             for key in outer_compile_info.keys():
                 wr_compile_info[key] = outer_compile_info[key]
@@ -1364,15 +1367,18 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
     -------
     None.
     """
-    src_dtype = x.get("dtype").lower()
-    paddings_dtype = paddings.get("dtype").lower()
+    if mode == 'constant':
+        src_dtype = x.get("dtype").lower()
+        paddings_dtype = paddings.get("dtype").lower()
 
-    supported_dtype = ("float16",)
-    para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
-    para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
+        supported_dtype = ("float16",)
+        para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
+        para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")
 
-    obj = PadV3Init(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
-    obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
+        obj = PadV3Init(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
+        obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
 
-    return obj.pad_compute()
+        return obj.pad_compute()
+    elif mode == 'reflect':
+        return reflection_pad_v3(x, paddings, constant_values, y, mode, True, kernel_name)
 

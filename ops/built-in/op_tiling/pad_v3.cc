@@ -23,6 +23,7 @@
 
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
+#include "reflection_pad_v3.h"
 #include "../op_proto/util/util.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
@@ -294,51 +295,55 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
 
 bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
                OpRunInfo& run_info) {
-  using namespace ge;
+  auto allVars = op_compile_info["vars"];
+  auto mode = allVars["mode"];
+  if (mode == "constant") {
+    using namespace ge;
+    OP_LOGD("begin to run tiling.");
+    if (op_compile_info == nullptr) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadV3Tiling] : op_compile_info json error.");
+        return false;
+    }
 
-  OP_LOGD("begin to run tiling.");
-  if (op_compile_info == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadV3Tiling] : op_compile_info json error.");
-    return false;
+    if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() ||
+        op_paras.inputs[1].tensor.empty()) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadV3Tiling] : input shape error");
+        return false;
+    }
+    // begin to get compile data
+    PadV3CompileParams compile_params;
+    compile_params.op_type = op_type;
+    if (!GetPadV3CompileParams(op_compile_info, compile_params)) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
+        return false;
+    }
+    int64_t pad_input_idx = 0;
+    const std::vector<int64_t>& input_shape_const = op_paras.inputs[pad_input_idx].tensor[0].shape;
+    std::vector<int64_t> input_shape = input_shape_const;
+    std::vector<int64_t> paddings_const_values;
+    GetPaddingsConstValue(op_paras, "paddings", op_paras.inputs[1].tensor[0].dtype, paddings_const_values);
+
+    _printTensorValue(compile_params, input_shape, "input_shape");
+    _printTensorValue(compile_params, paddings_const_values, "paddings");
+
+    // end to get compile data
+    PadV3TilingParams run_params;
+    InitRunningParams(run_params);
+    GetTilingParam(input_shape, paddings_const_values, compile_params, run_params);
+    SetRuningParams(run_params, run_info);
+
+    PrintTilingParams(run_params, op_type);
+
+    run_info.block_dim = compile_params.core_num;
+    std::vector<int64_t> workspace;
+    workspace.push_back(1024);
+    run_info.workspaces = workspace;
+
+    OP_LOGI(op_type, "end to run tiling, succ!");
   }
-
-  if (op_paras.inputs.empty() || op_paras.inputs[0].tensor.empty() ||
-      op_paras.inputs[1].tensor.empty()) {
-
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [PadV3Tiling] : input shape error");
-    return false;
+  if (mode == "reflect") {
+    ReflectionPadV3Tiling(op_type, op_paras, op_compile_info, run_info);
   }
-  // begin to get compile data
-  PadV3CompileParams compile_params;
-  compile_params.op_type = op_type;
-  if (!GetPadV3CompileParams(op_compile_info, compile_params)) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed.");
-    return false;
-  }
-  int64_t pad_input_idx = 0;
-  const std::vector<int64_t>& input_shape_const = op_paras.inputs[pad_input_idx].tensor[0].shape;
-  std::vector<int64_t> input_shape = input_shape_const;
-  std::vector<int64_t> paddings_const_values;
-  GetPaddingsConstValue(op_paras, "paddings", op_paras.inputs[1].tensor[0].dtype, paddings_const_values);
-
-  _printTensorValue(compile_params, input_shape, "input_shape");
-  _printTensorValue(compile_params, paddings_const_values, "paddings");
-
-  // end to get compile data
-  PadV3TilingParams run_params;
-  InitRunningParams(run_params);
-  GetTilingParam(input_shape, paddings_const_values, compile_params, run_params);
-  SetRuningParams(run_params, run_info);
-
-  PrintTilingParams(run_params, op_type);
-
-  run_info.block_dim = compile_params.core_num;
-  std::vector<int64_t> workspace;
-  workspace.push_back(1024);
-  run_info.workspaces = workspace;
-
-  OP_LOGI(op_type, "end to run tiling, succ!");
-
   return true;
 }
 
