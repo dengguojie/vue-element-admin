@@ -44,6 +44,9 @@ void DynamicApplyInferShapeRange(Operator& op, const string& input_name, const s
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr input_tensor_desc = op_desc->MutableInputDesc(input_name);
   GeTensorDescPtr output_tensor_desc = op_desc->MutableOutputDesc(output_name);
+  if (output_tensor_desc == nullptr){
+    return;
+  }
   std::vector<std::pair<int64_t, int64_t>> input_shape_range;
   if (input_tensor_desc->GetShapeRange(input_shape_range) == GRAPH_SUCCESS) {
     output_tensor_desc->SetShapeRange(input_shape_range);
@@ -251,7 +254,7 @@ IMPLEMT_VERIFIER(SparseApplyAdagradV2D, SparseApplyAdagradV2DVerify) {
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(SparseApplyAdagradV2D, SparseApplyAdagradV2DInferShape);
+COMMON_INFER_FUNC_REG(SparseApplyAdagradV2D, SparseApplyAdagradV2DInferShape);
 VERIFY_FUNC_REG(SparseApplyAdagradV2D, SparseApplyAdagradV2DVerify);
 // ----------------SparseApplyAdagradV2D END------------
 
@@ -1443,6 +1446,19 @@ IMPLEMT_VERIFIER(SparseApplyRMSPropD, SparseApplyRMSPropDVerify) {
 
   return GRAPH_SUCCESS;
 }
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(SparseApplyRMSPropDInferShape) {
+  ApplyInferShapeAndDtype(op, "var", "var");
+  ApplyInferShapeAndDtype(op, "accum", "accum");
+  DynamicApplyInferShapeRange(op, "var", "var");
+  DynamicApplyInferShapeRange(op, "accum", "accum");
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SparseApplyRMSPropD, SparseApplyRMSPropDInferShape);
+VERIFY_FUNC_REG(SparseApplyRMSPropD, SparseApplyRMSPropDVerify);
+
 // ----------------SparseApplyRMSPropD Op End-------------------
 
 // ----------------SparseApplyAdadelta Op Begin-------------------
@@ -1533,6 +1549,9 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdadeltaDInferShape) {
   ApplyInferShapeAndDtype(op, "var", "var");
   ApplyInferShapeAndDtype(op, "accum", "accum");
   ApplyInferShapeAndDtype(op, "accum", "accum_update");
+  DynamicApplyInferShapeRange(op, "var", "var");
+  DynamicApplyInferShapeRange(op, "accum", "accum");
+  DynamicApplyInferShapeRange(op, "accum", "accum_update");
   return GRAPH_SUCCESS;
 }
 
@@ -1858,6 +1877,9 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlV2DInferShape) {
   ApplyInferShapeAndDtype(op, "var", "var");
   ApplyInferShapeAndDtype(op, "accum", "accum");
   ApplyInferShapeAndDtype(op, "linear", "linear");
+  DynamicApplyInferShapeRange(op, "var", "var");
+  DynamicApplyInferShapeRange(op, "accum", "accum");
+  DynamicApplyInferShapeRange(op, "linear", "linear");
   return GRAPH_SUCCESS;
 }
 
@@ -1923,7 +1945,7 @@ IMPLEMT_VERIFIER(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify) {
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(SparseApplyFtrlV2D, SparseApplyFtrlV2DInferShape);
+COMMON_INFER_FUNC_REG(SparseApplyFtrlV2D, SparseApplyFtrlV2DInferShape);
 VERIFY_FUNC_REG(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify);
 
 IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlV2InferShape) {

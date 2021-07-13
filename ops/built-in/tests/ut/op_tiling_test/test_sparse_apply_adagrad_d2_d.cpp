@@ -9,42 +9,40 @@ using namespace std;
 class SparseApplyAdagradV2DTiling : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "SparseApplyAdagradV2DTiling SetUp" << std::endl;
+    cout << "SparseApplyAdagradV2DTiling SetUp" << endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "SparseApplyAdagradV2DTiling TearDown" << std::endl;
+    cout << "SparseApplyAdagradV2DTiling TearDown" << endl;
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const stringstream &tiling_data) {
   auto data = tiling_data.str();
   string result;
   int32_t tmp = 0;
   for (size_t i = 0; i < data.length(); i += sizeof(int32_t)) {
     memcpy(&tmp, data.c_str() + i, sizeof(tmp));
-    result += std::to_string(tmp);
+    result += to_string(tmp);
     result += " ";
   }
-  std::cout << "to_string" << std::endl;
-  std::cout << result << std::endl;
   return result;
 }
 
 TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_0) {
   using namespace optiling;
-  std::string op_name = "SparseApplyAdagradV2D";
+  string op_name = "SparseApplyAdagradV2D";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
+  string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
-  std::vector<int64_t> input1{12, 16, 32};
-  std::vector<int64_t> input2{12, 16, 32};
-  std::vector<int64_t> input3{12, 16, 32};
-  std::vector<int64_t> input4{12,};
-  std::vector<int64_t> output1{12, 16, 32};
-  std::vector<int64_t> output2{12, 16, 32};
+  vector<int64_t> input1{12, 16, 32};
+  vector<int64_t> input2{12, 16, 32};
+  vector<int64_t> input3{12, 16, 32};
+  vector<int64_t> input4{12,};
+  vector<int64_t> output1{12, 16, 32};
+  vector<int64_t> output2{12, 16, 32};
 
   TeOpTensor tensor_input1;
   tensor_input1.shape = input1;
@@ -104,18 +102,18 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_0) {
 
 TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_1) {
   using namespace optiling;
-  std::string op_name = "SparseApplyAdagradV2D";
+  string op_name = "SparseApplyAdagradV2D";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
+  string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
-  std::vector<int64_t> input1{12, 4, 16, 32};
-  std::vector<int64_t> input2{12, 4, 16, 32};
-  std::vector<int64_t> input3{12, 4, 16, 32};
-  std::vector<int64_t> input4{12,};
-  std::vector<int64_t> output1{12, 4, 16, 32};
-  std::vector<int64_t> output2{12, 4, 16, 32};
+  vector<int64_t> input1{12, 4, 16, 32};
+  vector<int64_t> input2{12, 4, 16, 32};
+  vector<int64_t> input3{12, 4, 16, 32};
+  vector<int64_t> input4{12,};
+  vector<int64_t> output1{12, 4, 16, 32};
+  vector<int64_t> output2{12, 4, 16, 32};
 
   TeOpTensor tensor_input1;
   tensor_input1.shape = input1;
@@ -176,18 +174,18 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_1) {
 
 TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_2) {
   using namespace optiling;
-  std::string op_name = "SparseApplyAdagradV2D";
+  string op_name = "SparseApplyAdagradV2D";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 0, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
+  string compileInfo = "{\"vars\": {\"core_num\": 0, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
-  std::vector<int64_t> input1{12, 4, 16, 32};
-  std::vector<int64_t> input2{12, 4, 16, 32};
-  std::vector<int64_t> input3{12, 4, 16, 32};
-  std::vector<int64_t> input4{12,};
-  std::vector<int64_t> output1{12, 4, 16, 32};
-  std::vector<int64_t> output2{12, 4, 16, 32};
+  vector<int64_t> input1{12, 4, 16, 32};
+  vector<int64_t> input2{12, 4, 16, 32};
+  vector<int64_t> input3{12, 4, 16, 32};
+  vector<int64_t> input4{12,};
+  vector<int64_t> output1{12, 4, 16, 32};
+  vector<int64_t> output2{12, 4, 16, 32};
 
   TeOpTensor tensor_input1;
   tensor_input1.shape = input1;
@@ -246,18 +244,18 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_2) {
 
 TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_3) {
   using namespace optiling;
-  std::string op_name = "SparseApplyAdagradV2D";
+  string op_name = "SparseApplyAdagradV2D";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":0}}";
+  string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":0}}";
 
-  std::vector<int64_t> input1{12, 4, 16, 32};
-  std::vector<int64_t> input2{12, 4, 16, 32};
-  std::vector<int64_t> input3{12, 4, 16, 32};
-  std::vector<int64_t> input4{12,};
-  std::vector<int64_t> output1{12, 4, 16, 32};
-  std::vector<int64_t> output2{12, 4, 16, 32};
+  vector<int64_t> input1{12, 4, 16, 32};
+  vector<int64_t> input2{12, 4, 16, 32};
+  vector<int64_t> input3{12, 4, 16, 32};
+  vector<int64_t> input4{12,};
+  vector<int64_t> output1{12, 4, 16, 32};
+  vector<int64_t> output2{12, 4, 16, 32};
 
   TeOpTensor tensor_input1;
   tensor_input1.shape = input1;
@@ -311,74 +309,4 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_3) {
   OpRunInfo runInfo;
 
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-}
-
-
-TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_4) {
-  using namespace optiling;
-  std::string op_name = "SparseApplyAdagradV2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
-
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
-
-  std::vector<int64_t> input1{12, 4, 16, 32};
-  std::vector<int64_t> input2{12, 4, 16, 32};
-  std::vector<int64_t> input3{12, 4, 16, 32};
-  std::vector<int64_t> input4{17,};
-  std::vector<int64_t> output1{12, 4, 16, 32};
-  std::vector<int64_t> output2{12, 4, 16, 32};
-
-  TeOpTensor tensor_input1;
-  tensor_input1.shape = input1;
-  tensor_input1.dtype = "float32";
-  TeOpTensor tensor_input2;
-  tensor_input2.shape = input2;
-  tensor_input2.dtype = "float32";
-  TeOpTensor tensor_input3;
-  tensor_input3.shape = input3;
-  tensor_input3.dtype = "float32";
-  TeOpTensor tensor_input4;
-  tensor_input4.shape = input4;
-  tensor_input4.dtype = "int32";
-  TeOpTensor tensor_output1;
-  tensor_output1.shape = output1;
-  tensor_output1.dtype = "float32";
-  TeOpTensor tensor_output2;
-  tensor_output2.shape = output2;
-  tensor_output2.dtype = "float32";
-
-  TeOpTensorArg tensor_arg1;
-  tensor_arg1.tensor.push_back(tensor_input1);
-  tensor_arg1.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg2;
-  tensor_arg2.tensor.push_back(tensor_input2);
-  tensor_arg2.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg3;
-  tensor_arg3.tensor.push_back(tensor_input3);
-  tensor_arg3.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg4;
-  tensor_arg4.tensor.push_back(tensor_input4);
-  tensor_arg4.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg_output1;
-  tensor_arg_output1.tensor.push_back(tensor_output1);
-  tensor_arg_output1.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg_output2;
-  tensor_arg_output2.tensor.push_back(tensor_output2);
-  tensor_arg_output2.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_arg1);
-  opParas.inputs.push_back(tensor_arg2);
-  opParas.inputs.push_back(tensor_arg3);
-  opParas.inputs.push_back(tensor_arg4);
-  opParas.outputs.push_back(tensor_arg_output1);
-  opParas.outputs.push_back(tensor_arg_output2);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "aa";
-  OpRunInfo runInfo;
-
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
 }

@@ -104,7 +104,7 @@ set(_optiling_files
   softmax_cross_entropy_with_logits.cc
   sparse_apply_ftrl_d.cc
   sparse_apply_proximal_adagrad_d.cc
-  sparse_apply_adagrad_v2_d.cc
+  sparse_apply_common.cc
   split_d.cc
   split_v.cc
   expand.cc

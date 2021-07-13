@@ -13,16 +13,16 @@
 # limitations under the License.
 # ============================================================================
 """
-sparse_apply_adagrad_v2_d
+sparse_apply_adagrad_d
 """
+
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 
-
-class SparseApplyAdagradV2D(SparseApplyDynamic):
+class SparseApplyAdagrad(SparseApplyDynamic):
     """
-    Sub class inherited form SparseApply for sparse_apply_adagrad_v2_d op
+    Sub class inherited form SparseApply for sparse_apply_adagrad op
     """
 
     # pylint: disable=invalid-name,too-many-arguments
@@ -64,7 +64,6 @@ class SparseApplyAdagradV2D(SparseApplyDynamic):
         -------
         None
         """
-
         para_check.check_dtype(self.var_dtype, ("float32", ), param_name="var")
         para_check.check_dtype(self.accum_dtype, ("float32", ), param_name="accum")
 
@@ -102,6 +101,7 @@ class SparseApplyAdagradV2D(SparseApplyDynamic):
             self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, self.lr, repeat_times, 1, 1, 8, 8)
             self.tik_instance.vsub(mask, var_ub, var_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
+
         with self.tik_instance.if_scope(self.each_row_data_num <= self.cache_threshold_col):
             var_ub = self._get_ub("var_align_ub")[offset]
             accum_ub = self._get_ub("accum_align_ub")[offset]
@@ -113,24 +113,23 @@ class SparseApplyAdagradV2D(SparseApplyDynamic):
             accum_ub = self._get_ub("accum_ub")[offset]
             _func()
 
+
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@register_operator("SparseApplyAdagradV2D")
+@register_operator("SparseApplyAdagradD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
-                            (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT), para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def sparse_apply_adagrad_v2_d(var,
-                              accum,
-                              grad,
-                              indices,
-                              var_out,
-                              accum_out,
-                              lr,
-                              epsilon,
-                              use_locking=False,
-                              update_slots=True,
-                              kernel_name="sparse_apply_adagrad_v2_d"):
+                            para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
+def sparse_apply_adagrad_d(var,
+                           accum,
+                           grad,
+                           indices,
+                           var_out,
+                           accum_out,
+                           lr,
+                           use_locking=False,
+                           update_slots=True,
+                           kernel_name="sparse_apply_adagrad_d"):
     """
     Adds sparse updates to the variable referenced by resource.
 
@@ -159,7 +158,7 @@ def sparse_apply_adagrad_v2_d(var,
     Returns:
     None
     """
-    apply_adagrad = SparseApplyAdagradV2D(var, accum, grad, indices, lr, epsilon, update_slots, kernel_name)
+    apply_adagrad = SparseApplyAdagrad(var, accum, grad, indices, lr, 0, update_slots, kernel_name)
 
     apply_adagrad.add_input("var_in_gm", "float32")
     apply_adagrad.add_input("accum_in_gm", "float32")
