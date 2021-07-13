@@ -47,7 +47,7 @@ class GIoUGrad(object):
 
         self.task_num = (self.all_num + MINI_BATCH - 1) // MINI_BATCH
 
-        self.all_num_align = (self.all_num + MINI_BATCH - 1) // MINI_BATCH * MINI_BATCH
+        self.all_num_align = self.task_num * MINI_BATCH
         self.move_rep = self.all_num_align // BLOCK
 
         self.move_flag = True
@@ -693,14 +693,19 @@ class GIoUGrad(object):
 
     def move_out(self):
         """move_out"""
-        tmp = self.tik_instance.Tensor(self.dtype, [self.all_num_align], name="tmp", scope=tik.scope_ubuf)
-        # func: Address fallback
-        with self.tik_instance.for_range(0, BOX_LOC) as idx:
-            self.tik_instance.data_move(tmp, self.dbboxes_[idx * self.all_num_align], 0, 1, self.move_rep, 0, 0)
-            self.tik_instance.data_move(self.dbboxes[idx * self.all_num], tmp, 0, 1, self.move_rep, 0, 0)
-
-            self.tik_instance.data_move(tmp, self.dgtboxes_[idx * self.all_num_align], 0, 1, self.move_rep, 0, 0)
-            self.tik_instance.data_move(self.dgtboxes[idx * self.all_num], tmp, 0, 1, self.move_rep, 0, 0)
+        dbboxes_tmp = self.tik_instance.Tensor(self.dtype, [self.all_num_align], name="dbboxes_tmp",
+                                               scope=tik.scope_ubuf)
+        dgtboxes_tmp = self.tik_instance.Tensor(self.dtype, [self.all_num_align], name="dgtboxes_tmp",
+                                                scope=tik.scope_ubuf)
+        # func: Address fallback for dbboxes
+        with self.tik_instance.for_range(0, BOX_LOC, thread_num=2) as idx:
+            self.tik_instance.data_move(dbboxes_tmp, self.dbboxes_[idx * self.all_num_align], 0, 1, self.move_rep, 0, 0)
+            self.tik_instance.data_move(self.dbboxes[idx * self.all_num], dbboxes_tmp, 0, 1, self.move_rep, 0, 0)
+        # func: Address fallback for dgtboxes
+        with self.tik_instance.for_range(0, BOX_LOC, thread_num=2) as idx:
+            self.tik_instance.data_move(dgtboxes_tmp, self.dgtboxes_[idx * self.all_num_align], 0, 1, self.move_rep, 0,
+                                        0)
+            self.tik_instance.data_move(self.dgtboxes[idx * self.all_num], dgtboxes_tmp, 0, 1, self.move_rep, 0, 0)
 
 
 # pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
