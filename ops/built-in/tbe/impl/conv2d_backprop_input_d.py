@@ -424,8 +424,11 @@ def check_supported(
     | Dilation         | H or W   | [1, 255]
 
     batch_input_size == batch_out_backprop
+
     batch_filter == channel_out_backprop
+
     channel_filter == channel_input_size * groups
+
     out_backprop_height == (fmap_height + pad_top + pad_bottom -
                           (dilation_h * (filter_height - 1) + 1))
                            / stride_h + 1

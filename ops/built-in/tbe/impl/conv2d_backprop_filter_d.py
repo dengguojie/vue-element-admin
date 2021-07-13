@@ -312,9 +312,13 @@ def check_supported(x,
 
     In Ascend910, out_backprop's H and W not support 1
     when fmap_h + pad_top + pad_bottom != (filter_height - 1) * dilation_h + 1
+
     batch_x == batch_out_backprop
+
     batch_filter == channel_out_backprop
+
     channel_filter == channel_x * groups
+
     out_backprop_height == (fmap_height + pad_top + pad_bottom -
                           (dilation_h * (filter_height - 1) + 1))
                            / stride_h + 1
