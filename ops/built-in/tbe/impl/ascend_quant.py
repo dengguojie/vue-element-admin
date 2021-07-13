@@ -27,7 +27,7 @@ from impl import ascend_quant_util as util
 
 
 # pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
-def _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name):
+def _check_params(x, y, scale, offset, sqrt_mode, round_mode, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr
     """
@@ -54,7 +54,7 @@ def _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_n
         rule = "round_mode only support [Round, Ceil, Floor, Trunc]"
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "round_mode", round_mode)
 
-    y_dtype = _dst_type_conversion(dst_type)
+    y_dtype = _dst_type_conversion(dst_type=2)
     y_check_list = ["int8", "int4"]
     para_check.check_dtype(y_dtype, y_check_list, param_name="dst_type")
 
@@ -318,7 +318,7 @@ def _get_out_l1_info(y):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("ascend_quant")
-def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_type=2,
+def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round",
                          kernel_name="ascend_quant"):
     """
     float16/float32 -> int8/int4
@@ -336,8 +336,6 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     sqrt_mode : the sqrt mode when true the result to do sqrt
 
     round_mode : the data conversion mode
-
-    dst_type : the dtype of output, default value is 2
 
     kernel_name : cce kernel name, default value is "ascend_quant"
 
@@ -362,7 +360,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
         c1_index = len(in_shape) - 4
         c1_dim = in_shape[c1_index]
 
-    y_dtype = _dst_type_conversion(dst_type)
+    y_dtype = _dst_type_conversion(dst_type=2)
     c1_transform = 2
     if y_dtype == "int4":
         c1_transform = 4
@@ -411,8 +409,8 @@ def _dst_type_conversion(dst_type):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
-                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_type=2, kernel_name="ascend_quant"):
+                            para_check.KERNEL_NAME)
+def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kernel_name="ascend_quant"):
     """
     float16/float32 -> int8/int4
 
@@ -430,15 +428,13 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_t
 
     round_mode : the data conversion mode
 
-    dst_type : the dtype of output, default value is 2
-
     kernel_name : cce kernel name, default value is "ascend_quant"
 
     Returns:
     -------
     None
     """
-    _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name)
+    _check_params(x, y, scale, offset, sqrt_mode, round_mode, kernel_name)
     shape = x.get("shape")
     input_dtype = x.get("dtype").lower()
     input_format = x.get("format")
@@ -460,7 +456,7 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_t
         input_shape = (batch, shape[-4], shape[-3] * shape[-2], shape[-1])
     input_x = tvm.placeholder(input_shape, name="input_x", dtype=input_dtype, attrs=attr)
 
-    res = ascend_quant_compute(input_x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name)
+    res = ascend_quant_compute(input_x, y, scale, offset, sqrt_mode, round_mode, kernel_name)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 

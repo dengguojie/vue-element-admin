@@ -103,12 +103,11 @@ REG_OP(Quantize)
 */
 REG_OP(AscendQuant)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32}))
-    .OUTPUT(y, TensorType({DT_INT8, DT_INT4}))
+    .OUTPUT(y, TensorType({DT_INT8}))
     .REQUIRED_ATTR(scale, Float)
     .REQUIRED_ATTR(offset, Float)
     .ATTR(sqrt_mode, Bool, false)
     .ATTR(round_mode, String, "Round")
-    .ATTR(dst_type, Int, DT_INT8)
     .OP_END_FACTORY_REG(AscendQuant)
 
 /**
