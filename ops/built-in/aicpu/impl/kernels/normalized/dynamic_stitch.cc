@@ -97,7 +97,7 @@ uint32_t DynamicStitchKernel::GetInputAndCheck(CpuKernelContext &ctx,
 
 template <typename T>
 uint32_t CalDynamicStitch(CpuKernelContext &ctx, int first_dim_size,
-                          int data_elements_size, uint32_t n) {
+                          int data_elements_size, int n) {
   Tensor *merged = ctx.Output(0);
   if (first_dim_size > 0) {
     // compute flat_outer_dims shape
@@ -105,16 +105,18 @@ uint32_t CalDynamicStitch(CpuKernelContext &ctx, int first_dim_size,
     int64_t num_out_dims = 2;
     std::vector<int64_t> out_dims(num_out_dims, 0);
     for (int64_t out_dim = 0; out_dim <= num_out_dims - 1; ++out_dim) {
-      out_dims[out_dim] = out_dim >= orig.size() ? 1 : orig[out_dim];
+      out_dims[out_dim] =
+          out_dim >= static_cast<int64_t>(orig.size()) ? 1 : orig[out_dim];
     }
-    for (int64_t in_dim = num_out_dims; in_dim < orig.size(); ++in_dim) {
+    for (int64_t in_dim = num_out_dims;
+         in_dim < static_cast<int64_t>(orig.size()); ++in_dim) {
       out_dims[num_out_dims - 1] *= orig[in_dim];
     }
     Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor>> merged_flat(
         (T*)merged->GetData(), out_dims[0], out_dims[1]);
     const auto slice_size = merged_flat.dimension(1);
     const size_t slice_bytes = slice_size * sizeof(T);
-    auto OnInputNumber = [&](int input_num) {
+    for (int input_num = 0; input_num < n; input_num++) {
       Tensor *indices_ms = ctx.Input(input_num);
       EigenTensor indices(indices_ms, indices_ms->GetData());
 
@@ -125,9 +127,9 @@ uint32_t CalDynamicStitch(CpuKernelContext &ctx, int first_dim_size,
       T *merged_base = merged_flat.data();
       const T *data_base = data_flat.data();
       uint64_t merged_size = merged->GetDataSize();
-      for (size_t i = 0; i < indices_vec.size(); i++) {
+      for (size_t i = 0; i < static_cast<size_t>(indices_vec.size()); i++) {
         int index = SubtleMustCopy(indices_vec(i));
-        KERNEL_CHECK_FALSE(index <= data_elements_size * kExpandMax,
+        KERNEL_CHECK_FALSE(index <= static_cast<int>(data_elements_size * kExpandMax),
                            KERNEL_STATUS_PARAM_INVALID,
                            "The value of indices[%zu]: [%d] is too big that"
                            "greater than [%zu] * total size of input[0]:[%d]",
@@ -139,11 +141,8 @@ uint32_t CalDynamicStitch(CpuKernelContext &ctx, int first_dim_size,
                             data_base + i * slice_size, slice_bytes);
         merged_size -= slice_bytes;
         KERNEL_CHECK_FALSE((ret == EOK), KERNEL_STATUS_INNER_ERROR,
-            "Memcpy to output[0] failed, return = [%d]", ret);
+                           "Memcpy to output[0] failed, return = [%d]", ret);
       }
-    };
-    for (int input_num = 0; input_num < n; input_num++) {
-      OnInputNumber(input_num);
     }
   }
   return KERNEL_STATUS_OK;
@@ -156,7 +155,7 @@ uint32_t DynamicStitchKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), res,
                      "GetInputAndCheck failed.");
 
-  std::map<int, std::function<uint32_t(CpuKernelContext &, int, int, uint32_t)>>
+  std::map<int, std::function<uint32_t(CpuKernelContext &, int, int, int)>>
       calls;
   calls[DT_FLOAT16] = CalDynamicStitch<Eigen::half>;
   calls[DT_FLOAT] = CalDynamicStitch<float>;

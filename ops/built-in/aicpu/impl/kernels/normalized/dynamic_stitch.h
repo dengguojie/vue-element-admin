@@ -68,7 +68,7 @@ class DynamicStitchKernel : public CpuKernel {
 
   uint32_t GetInputAndCheck(CpuKernelContext &ctx, int *first_dim_size,
                             int *data_elements_size);
-  uint32_t n_ = 1;
+  int n_ = 1;
   DataType input_dtype_ = DT_INT32;
 };
 }  // namespace aicpu

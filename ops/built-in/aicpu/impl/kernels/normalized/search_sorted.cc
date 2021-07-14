@@ -38,7 +38,7 @@ std::pair<bool, const S *>CustomizedLowerBound(const S *seq_start,
                                                uint64_t sequence_len) {
   while (seq_start < seq_end) {
     auto offset = (seq_end - seq_start) >> 1;
-    if (offset > sequence_len) {
+    if (static_cast<uint64_t>(offset) > sequence_len) {
       return std::make_pair(false, seq_start);
     }
     const S *mid = seq_start + offset;
@@ -173,6 +173,7 @@ uint32_t CalSearchSorted(bool right, Tensor *sequence_t, Tensor *values_t,
                      "The last dim in the shape of input[0] must be > [0].");
   uint64_t sequence_len = sequence_t->NumElements();
 
+  std::atomic<bool> task_flag(true);
   auto task = [&](size_t start, size_t end) {
     for (size_t i = start; i < end; i++) {
       auto seq_start = (seq_dim == 1)
@@ -181,9 +182,11 @@ uint32_t CalSearchSorted(bool right, Tensor *sequence_t, Tensor *values_t,
       auto bound = CustomizedLowerBound(seq_start,
                                         seq_start + search_len,
                                         values[i], sequence_len);
-      KERNEL_CHECK_FALSE(bound.first, KERNEL_STATUS_INNER_ERROR,
-                         "Indices of input[0] is out of range: [%u].",
+      if (!bound.first) {
+        task_flag.store(false);
+        KERNEL_LOG_ERROR("Indices of input[0] is out of range: [%u].",
                          sequence_len);
+      }
       output[i] = right ? std::upper_bound(seq_start, seq_start + search_len,
                             values[i]) - seq_start
                         : bound.second - seq_start;
@@ -191,7 +194,7 @@ uint32_t CalSearchSorted(bool right, Tensor *sequence_t, Tensor *values_t,
   };
 
   uint32_t ret = CpuKernelUtils::ParallelFor(ctx, elem_num, 1, task);
-  if (ret != KERNEL_STATUS_OK) {
+  if (ret != KERNEL_STATUS_OK || !task_flag.load()) {
     KERNEL_LOG_ERROR("CpuKernelUtils::ParallelFor failed.");
     return KERNEL_STATUS_INNER_ERROR;
   }

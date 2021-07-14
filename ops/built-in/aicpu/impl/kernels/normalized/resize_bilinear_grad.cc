@@ -33,7 +33,6 @@ namespace aicpu {
 uint32_t ResizeBilinearGradCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   Tensor *input_tensor = ctx.Input(0);
   Tensor *size_tensor = ctx.Input(1);
-  Tensor *output_tensor = ctx.Output(0);
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "ResizeBilinearGrad check params failed.");
 
