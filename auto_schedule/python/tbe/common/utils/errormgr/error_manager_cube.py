@@ -767,3 +767,9 @@ def raise_err_return_value_invalid(expect_value, real_value):
     }
     msg = get_error_message(args_dict)
     raise_runtime_error_cube(args_dict, msg)
+
+def raise_err_message_cube(msg):
+    args_dict = {
+        "errCode": "E69999"
+    }
+    raise_runtime_error_cube(args_dict, msg)
