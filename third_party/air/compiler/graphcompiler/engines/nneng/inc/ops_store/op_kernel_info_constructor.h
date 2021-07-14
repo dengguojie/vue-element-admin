@@ -1,0 +1,111 @@
+/**
+ * Copyright 2019-2020 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef FUSION_ENGINE_INC_OPS_STORE_OP_KERNEL_INFO_CONSTRUCTOR_H_
+#define FUSION_ENGINE_INC_OPS_STORE_OP_KERNEL_INFO_CONSTRUCTOR_H_
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+#include "graph_optimizer/graph_optimize_register_error_codes.h"
+#include "ops_store/op_kernel_info.h"
+
+namespace fe {
+using InputOrOutputInfoPtr = std::shared_ptr<InputOrOutputInfo>;
+using AttrInfoPtr = std::shared_ptr<AttrInfo>;
+
+struct OpContent {
+  // optype
+  std::string op_type_;
+
+  // opType content map
+  std::map<std::string, std::map<std::string, std::string>> map_kernel_info_;
+};
+
+class OpKernelInfoConstructor {
+ public:
+  OpKernelInfoConstructor();
+  ~OpKernelInfoConstructor();
+  Status InitializeOpKernelInfo(std::string engine_name, const OpContent &op_content, OpKernelInfoPtr op_kernel_info);
+  Status FinalizeOpKernelInfo(OpKernelInfoPtr op_kernel_info);
+
+  Status InitializePluginOp(OpKernelInfoPtr &op_kernel_ptr);
+  Status GetStrFromOpContent(const OpContent &op_content, std::string key1, std::string key2, std::string &value);
+
+ private:
+  Status ParseBasicParameter(const OpContent &op_content, OpKernelInfoPtr op_kernel_info);
+
+  Status ParseInputAndOutputFromOpContent(const OpContent &op_content, OpKernelInfoPtr op_kernel_info);
+
+  Status InitFormatAndDtypeForSingleInputAndOutput(OpPattern op_pattren, const map<string, string> &map_info,
+                                                   const InputOrOutputInfoPtr &input_or_output_info,
+                                                   OpKernelInfoPtr op_kernel_info,
+                                                   uint32_t &dtype_and_format_size_of_first_input);
+
+  Status InitializeInputAndOutput(OpPattern op_pattren, const std::string &op_type,
+                                  const std::map<std::string, std::string> &map_info, uint32_t index,
+                                  InputOrOutputInfoPtr input_or_output_info,
+                                  uint32_t &dtype_and_format_size_of_first_input, OpKernelInfoPtr op_kernel_info);
+  Status FinalizeInputAndOutput(InputOrOutputInfoPtr input_or_output_info);
+
+  Status InitDtypeAndFormat(const map<string, string> &map_info, InputOrOutputInfoPtr input_or_output_info,
+                            uint32_t &dtype_and_format_size_of_first_input);
+
+  Status InitUnknownFormatAndDtype(const map<string, string> &map_info, InputOrOutputInfoPtr input_or_output_info,
+                                   uint32_t &dtype_and_format_size_of_first_input);
+
+  Status InitDtypeAndAllFormat(const map<string, string> &map_info, InputOrOutputInfoPtr input_or_output_info,
+                               uint32_t &dtype_of_first_input, OpKernelInfoPtr op_kernel_info);
+
+  Status InitDtype(const map<string, string> &map_info, InputOrOutputInfoPtr input_or_output_info,
+                   uint32_t &dtype_of_first_input);
+
+  Status GetStrFormMap(const std::map<std::string, std::string> &map_info, std::string key, std::string &value);
+
+  /* Convert listed attribute value from a long string to a 2D-Vector */
+  template <typename T>
+  Status ConvertListAttrValue(const OpContent &op_content, std::string attr_name,
+                              std::vector<std::vector<T>> &list_attr_vec, AttrInfoPtr attr_info);
+
+  template <typename T>
+  Status InitAttrTemplate(const OpContent &op_content, std::string attr, AttrInfoPtr attr_info);
+
+  template <typename T>
+  Status InitAttrListTemplate(const OpContent &op_content, std::string attr, AttrInfoPtr attr_info);
+
+  Status InitAttrValue(const OpContent &op_content, OpKernelInfoPtr op_kernel_info);
+  Status InitAttrValueSub(const OpContent &op_content, OpKernelInfoPtr op_kernel_info);
+
+  Status InitOpInfo(std::string engine_name, const OpContent &op_content, OpKernelInfoPtr op_kernel_info);
+
+  Status GetPrecisionPolicyFromOpContent(const OpContent &op_content, OpKernelInfoPtr &op_kernel_info);
+
+  Status InitShape(const string &op_type, const map<string, string> &map_info,
+                   InputOrOutputInfoPtr input_or_output_info);
+
+  Status CheckFormatAgnosticOp(OpKernelInfoPtr op_kernel_info);
+
+  void SetUniqueName(InputOrOutputInfoPtr input_or_output_info_ptr);
+
+  Status InitDtypeByPattern(const map<string, string> &map_info, InputOrOutputInfoPtr input_or_output_info,
+                            uint32_t &dtype_and_format_size_of_first_input, OpPattern &op_pattern);
+
+  Status InitSlicePattern(const OpContent &op_content, OpKernelInfoPtr op_kernel_info);
+};
+
+}  // namespace fe
+
+#endif  // FUSION_ENGINE_INC_OPS_STORE_OP_KERNEL_INFO_CONSTRUCTOR_H_
