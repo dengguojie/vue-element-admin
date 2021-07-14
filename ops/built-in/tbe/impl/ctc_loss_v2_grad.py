@@ -59,9 +59,9 @@ class CTCLossV2Grad(object):
                                                            scope=tik.scope_gm)
         self.log_alpha = self.tik_instance.Tensor("float32", [self.N, self.T, self.output_size], name="log_alpha",
                                                   scope=tik.scope_gm)
-        self.grad = self.tik_instance.Tensor("float32", [self.N, self.T, self.C], name="grad",
+        self.grad = self.tik_instance.Tensor("float32", [self.T, self.N, self.C], name="grad",
                                              scope=tik.scope_gm)
-        self.grad_ = self.tik_instance.Tensor("float32", [self.N, self.T, self.C_BLOCK], name="grad_",
+        self.grad_ = self.tik_instance.Tensor("float32", [self.T, self.N, self.C_BLOCK], name="grad_",
                                               scope=tik.scope_gm, is_workspace=True)
 
         self.available_aicore_num = tik.Dprofile().get_aicore_num()
@@ -182,10 +182,10 @@ class CTCLossV2Grad(object):
 
         with self.tik_instance.for_range(T_i, self.T) as t:
              with self.tik_instance.if_scope(self.C % BLOCK != 0):
-                self.tik_instance.data_move(self.grad_[task_idx * self.T * self.C_BLOCK + t * self.C_BLOCK],
+                self.tik_instance.data_move(self.grad_[t * self.N * self.C_BLOCK + task_idx * self.C_BLOCK],
                                             copy_ub_zero[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
              with self.tik_instance.else_scope():
-                self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C],
+                self.tik_instance.data_move(self.grad[t * self.N * self.C + task_idx * self.C],
                                             copy_ub_zero[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
         # func: get log_prob in current T
         self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx + self.N * self.C * (T_i - 1)],
@@ -255,12 +255,11 @@ class CTCLossV2Grad(object):
                                    (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
 
         with self.tik_instance.if_scope(self.C % BLOCK != 0):
-            self.tik_instance.data_move(self.grad_[task_idx * self.T * self.C_BLOCK + t * self.C_BLOCK], 
+            self.tik_instance.data_move(self.grad_[t * self.N * self.C_BLOCK + task_idx * self.C_BLOCK], 
                                         copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
         with self.tik_instance.else_scope():
-            self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C], 
+            self.tik_instance.data_move(self.grad[t * self.N * self.C + task_idx * self.C], 
                                         copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
-
 
         with self.tik_instance.for_range(1, T_i):
             t.set_as(t - 1)
@@ -448,10 +447,10 @@ class CTCLossV2Grad(object):
                                        (self.C_BLOCK % (BLOCK * REPEAT_OFFSET)) // BLOCK, 1, 1)
 
             with self.tik_instance.if_scope(self.C % BLOCK != 0):
-                self.tik_instance.data_move(self.grad_[task_idx * self.T * self.C_BLOCK + t * self.C_BLOCK],
+                self.tik_instance.data_move(self.grad_[t * self.N * self.C_BLOCK + task_idx * self.C_BLOCK],
                                             copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
             with self.tik_instance.else_scope():
-                self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t * self.C],
+                self.tik_instance.data_move(self.grad[t * self.N * self.C + task_idx * self.C],
                                             copy_ub_b[0], 0, 1, self.C_BLOCK // BLOCK, 1, 1)
 
             output_src.set_as(output_dst)
@@ -508,14 +507,13 @@ class CTCLossV2Grad(object):
     def move_out(self):
         """move_out"""
         temp_ub = self.tik_instance.Tensor("float32", [self.C_BLOCK], name="temp_ub", scope=tik.scope_ubuf)
-
-        with self.tik_instance.for_range(0, self.N) as task_idx:
-            with self.tik_instance.for_range(0, self.T) as t_idx:           
+        
+        with self.tik_instance.for_range(0, self.T) as t_idx:      
+            with self.tik_instance.for_range(0, self.N) as n_idx:
                 self.tik_instance.data_move(temp_ub,
-                                            self.grad_[task_idx * self.T * self.C_BLOCK + t_idx * self.C_BLOCK], 0,
+                                            self.grad_[t_idx * self.N * self.C_BLOCK + n_idx * self.C_BLOCK], 0,
                                             1, self.C_BLOCK // BLOCK, 1, 1)
-
-                self.tik_instance.data_move(self.grad[task_idx * self.T * self.C + t_idx * self.C], temp_ub, 0, 1,
+                self.tik_instance.data_move(self.grad[t_idx * self.N * self.C + n_idx * self.C], temp_ub, 0, 1,
                                             self.C_BLOCK // BLOCK, 1, 1)
 
 

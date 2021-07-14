@@ -289,7 +289,7 @@ IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
   }
 
   TensorDesc tensordesc_grad = op.get_output_desc_grad();
-  std::vector<int64_t> dims_grad = {N, T, C};
+  std::vector<int64_t> dims_grad = {T, N, C};
 
   tensordesc_grad.SetShape(ge::Shape(dims_grad));
   tensordesc_grad.SetDataType(dtype);

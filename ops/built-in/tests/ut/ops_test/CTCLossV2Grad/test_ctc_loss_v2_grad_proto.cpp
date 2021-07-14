@@ -64,7 +64,7 @@ TEST_F(CTCLossV2GradProtoTest, ctc_loss_v2_grad_infer_shape_test_1) {
 
     auto output_desc = rnn_op.GetOutputDesc("grad");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
-    std::vector<int64_t> expected_output_shape = {N, T, C};
+    std::vector<int64_t> expected_output_shape = {T, N, C};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
