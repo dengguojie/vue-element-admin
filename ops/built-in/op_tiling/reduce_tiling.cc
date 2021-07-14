@@ -385,7 +385,7 @@ bool Reduce::ChooseAtomic() {
   // Check if outermost reduce axis is larger than or equal to core_num
   bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * 4;
   // Check nlast_reduce again
-  bool n_last_reduce_shape_limitation = ((pattern & 1) == 1) && (input_shape[input_shape.size() - 1] < ubSizeB);
+  bool n_last_reduce_shape_limitation = (((uint32_t)pattern & 1) == 1) && (input_shape[input_shape.size() - 1] < ubSizeB);
   // AND expression for all checks
   bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
   // check extracted here because of 120 characters per line static check rule
