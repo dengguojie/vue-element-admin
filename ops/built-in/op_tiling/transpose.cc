@@ -2127,7 +2127,7 @@ static void ReorderIndexInfo(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInf
 }
 
 static void CalcOtherAxisIndex(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
-    for (size_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
+    for (int64_t i = 0; i < static_cast<int64_t>(shapeInfo.reducedPerm.size()); i++) {
         bool borrowed = false;
         for (int j = 0; j < runtimeInfo.borrowInfo.srcNum; j++) {
             if (i == runtimeInfo.borrowInfo.srcIndexIn[j].idx_in) {

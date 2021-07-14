@@ -93,9 +93,9 @@ namespace fe {
         const int64_t batchLen = shape[0];
         const int64_t classLen = shape[1];
         const int64_t scoreLen = shape[2];
-        for (size_t i = 0; i < batchLen; i++) {
-            for (size_t j = 0; j < classLen; j++) {
-                for (size_t k = 0; k < scoreLen; k++) {
+        for (int64_t i = 0; i < batchLen; i++) {
+            for (int64_t j = 0; j < classLen; j++) {
+                for (int64_t k = 0; k < scoreLen; k++) {
                     int64_t iIdx = i * classLen * scoreLen * CHANNEL + j * scoreLen * CHANNEL + k * CHANNEL;
                     int64_t jIdx = i * classLen * scoreLen * CHANNEL + j * scoreLen * CHANNEL + k * CHANNEL + 1;
                     int64_t kIdx = i * classLen * scoreLen * CHANNEL + j * scoreLen * CHANNEL + k * CHANNEL + 2;
