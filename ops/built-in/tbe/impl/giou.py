@@ -13,14 +13,15 @@
 # limitations under the License.
 # ============================================================================
 """
-g_io_u
+giou
 """
 from os import read
-from te import tik
-from te import platform as tbe_platform
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -36,7 +37,7 @@ BBOX_SEGMENT = 4096 * 2
 
 
 # pylint: disable = unused-argument
-def get_op_support_info(bboxes, gtboxes, overlap, trans, is_cross, mode="iou", kernel_name="g_io_u"):
+def get_op_support_info(bboxes, gtboxes, overlap, trans, is_cross, mode="iou", kernel_name="giou"):
     """
     get_op_support_info
     """
@@ -153,10 +154,8 @@ class GIoU():
             self.giou_shape = [self.gtboxes_shape[0], self.bboxes_shape[0]]
 
         self.tik_instance = tik.Tik()
-        self.core_num = \
-            tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.product = tbe_platform.cce_conf.api_check_support(
-            "tik.vdiv", "float32")
+        self.core_num = tik.Dprofile().get_aicore_num()
+        self.product = tbe_platform.api_check_support("tik.vdiv", "float32")
         # input and output tensor in gm
         self.bboxes_gm = self.tik_instance.Tensor(
             self.bboxes_dtype,
@@ -267,45 +266,21 @@ class GIoU():
             # calcu gt area
             self.bboxes_x0 = _apply_mem(self.tik_instance, self.dtype,
                                       [self.area_x0_size], "bboxes_x0")
-            self.tik_instance.vector_dup(self.max_eliments,
-                                         self.bboxes_x0, 0.0,
-                                         _repeat, 1, 8)
             self.bboxes_x1 = _apply_mem(self.tik_instance, self.dtype,
                                       [self.area_x0_size], "bboxes_x1")
-            self.tik_instance.vector_dup(self.max_eliments,
-                                         self.bboxes_x1, 0.0,
-                                         _repeat, 1, 8)
             self.bboxes_y0 = _apply_mem(self.tik_instance, self.dtype,
                                       [self.area_x0_size], "bboxes_y0")
-            self.tik_instance.vector_dup(self.max_eliments,
-                                         self.bboxes_y0, 0.0,
-                                         _repeat, 1, 8)
             self.bboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
                                       [self.area_x0_size], "bboxes_y1")
-            self.tik_instance.vector_dup(self.max_eliments,
-                                         self.bboxes_y1, 0.0,
-                                         _repeat, 1, 8)
 
             self.gtboxes_x0 = _apply_mem(self.tik_instance, self.dtype,
                                       [self.area_x0_size], "gtboxes_x0")
-            self.tik_instance.vector_dup(self.max_eliments,
-                                         self.gtboxes_x0, 0.0,
-                                         _repeat, 1, 8)
             self.gtboxes_x1 = _apply_mem(self.tik_instance, self.dtype,
                                       [self.area_x0_size], "gtboxes_x1")
-            self.tik_instance.vector_dup(self.max_eliments,
-                                         self.gtboxes_x1, 0.0,
-                                         _repeat, 1, 8)
             self.gtboxes_y0 = _apply_mem(self.tik_instance, self.dtype,
                                       [self.area_x0_size], "gtboxes_y0")
-            self.tik_instance.vector_dup(self.max_eliments,
-                                         self.gtboxes_y0, 0.0,
-                                         _repeat, 1, 8)
             self.gtboxes_y1 = _apply_mem(self.tik_instance, self.dtype,
                                       [self.area_x0_size], "gtboxes_y1")
-            self.tik_instance.vector_dup(self.max_eliments,
-                                         self.gtboxes_y1, 0.0,
-                                         _repeat, 1, 8)
 
             self.inter_area_x0 = _apply_mem(self.tik_instance, self.dtype,
                                             [self.area_x0_size],
@@ -755,8 +730,8 @@ class GIoU():
                     self.max_eliments, self.out_ub, self.out_ub,
                     self.inter_area_ub, repeat_time, 1, 1, 1, 8, 8, 8)
             elif self.mode == "iof":
-                self.tik_instance.vector_dup(self.max_eliments, self.out_ub,
-                                             self.gt_boxes_area_ub, repeat_time, 1, 8)
+                self.tik_instance.data_move(self.out_ub, self.gt_boxes_area_ub,
+                                            0, 1, (nbust - 1) // 4 + 1, 0, 0)
             
             self.tik_instance.vsub(self.max_eliments, self.other_ub,
                                    self.outer_area_ub,
@@ -767,7 +742,7 @@ class GIoU():
                     self.max_eliments, self.out_ub, self.inter_area_ub,
                     self.out_ub, repeat_time, 1, 1, 1, 8, 8, 8)
                 self.tik_instance.vdiv(
-                    self.max_eliments, self.other_ub, self.other_ub,
+                    self.max_eliments, self.outer_area_ub, self.other_ub,
                     self.outer_area_ub, repeat_time, 1, 1, 1, 8, 8, 8)
             else:
                 # for mini
@@ -948,7 +923,7 @@ class GIoU():
                         self.max_eliments, self.out_ub, self.inter_area_ub,
                         self.out_ub, repeat_time, 1, 1, 1, 8, 8, 8)
                     self.tik_instance.vdiv(
-                        self.max_eliments, self.other_ub, self.other_ub,
+                        self.max_eliments, self.outer_area_ub, self.other_ub,
                         self.outer_area_ub, repeat_time, 1, 1, 1, 8, 8, 8)
                 else:
                     # for mini
@@ -1233,7 +1208,7 @@ def _box_shape_check(input_name, shape):
 
 
 # pylint: disable=unused-argument
-@tbe_platform.fusion_manager.fusion_manager.register("g_io_u")
+@register_operator("giou")
 def giou_compute(bboxes, gtboxes, overlap, trans, is_cross, mode, kernel_name):
     """
     calculating data
@@ -1261,7 +1236,7 @@ def giou_compute(bboxes, gtboxes, overlap, trans, is_cross, mode, kernel_name):
         iou : the output is inter_area / total_area
         iof : the output is inter_area / gtboxes_area
     kernel_name : str
-        kernel name, default value is "g_io_u"
+        kernel name, default value is "giou"
 
     Returns
     -------
@@ -1276,7 +1251,7 @@ def giou_compute(bboxes, gtboxes, overlap, trans, is_cross, mode, kernel_name):
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
-def g_io_u(bboxes, gtboxes, overlap, trans=False, is_cross=True, mode="iou", kernel_name="g_io_u"):
+def giou(bboxes, gtboxes, overlap, trans=False, is_cross=True, mode="iou", kernel_name="giou"):
     """
     calculating data
 
@@ -1303,7 +1278,7 @@ def g_io_u(bboxes, gtboxes, overlap, trans=False, is_cross=True, mode="iou", ker
         iou : the output is inter_area / total_area
         iof : the output is inter_area / gtboxes_area
     kernel_name : str
-        kernel name, default value is "g_io_u"
+        kernel name, default value is "giou"
 
     Returns
     -------

@@ -14,7 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 GIoU ut case
 """
 from op_test_frame.ut import OpUT
-ut_case = OpUT("GIoU", None, None)
+ut_case = OpUT("GIoU", "impl.giou", "giou")
 
 case1 = {"params": [{"shape": (1, 4), "dtype": "float32", "format": "ND", "ori_shape": (1, 4), "ori_format": "ND"},
                     {"shape": (1, 4), "dtype": "float32", "format": "ND", "ori_shape": (1, 4), "ori_format": "ND"},
