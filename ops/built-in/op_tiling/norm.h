@@ -60,8 +60,8 @@ struct CompileInfoNorm {
 
 class Norm {
   public:
-    explicit Norm(const std::string& _op_type, const TeOpParas& _op_paras, const nlohmann::json& _op_info,
-                  OpRunInfo& _run_info)
+    explicit Norm(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _op_info,
+                  utils::OpRunInfo& _run_info)
         : op_type(_op_type), op_paras(_op_paras), op_info(_op_info), run_info(_run_info) {
     }
     ~Norm() {
@@ -94,9 +94,9 @@ class Norm {
 
   private:
     const std::string& op_type;
-    const TeOpParas& op_paras;
+    const ge::Operator& op_paras;
     const nlohmann::json& op_info;
-    OpRunInfo& run_info;
+    utils::OpRunInfo& run_info;
     CompileInfoNorm compileInfo;
     TilingInfoNorm tilingInfo;
     ReorderInfoNorm reorderInfo;

@@ -58,7 +58,9 @@ set(_optiling_files
   deconvolution.cc
   dynamic_atomic_addr_clean.cc
   eletwise.cc
+  eletwise_v2.cc
   broadcast.cc
+  broadcast_v2.cc
   fill.cc
   gather.cc
   gather_nd.cc
@@ -81,6 +83,7 @@ set(_optiling_files
   prelu.cc
   reverse.cc
   reduce_tiling.cc
+  reduce_tiling_v2.cc
   norm.cc
   resize_common.cc
   resize_nearest_neighbor_v2.cc

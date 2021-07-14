@@ -38,7 +38,8 @@ namespace optiling {
  */
 bool ReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                   OpRunInfo& run_info);
-
+bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                  utils::OpRunInfo& run_info);
 /*
  * @brief: tiling function of elementwise operator
  * @param [in] op_type: op_type of the elementwise operator
@@ -49,7 +50,8 @@ bool ReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const n
  */
 bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                     OpRunInfo& run_info);
-
+bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                    utils::OpRunInfo& run_info);
 /*
  * @brief: tiling function of norm operator
  * @param [in] op_type: op_type of the norm operator
@@ -58,8 +60,8 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool NormTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                OpRunInfo& run_info);
+bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                utils::OpRunInfo& run_info);
 
 #define REGISTER_OP_TILING_FUNC_BUFFERED_CUSTOM(optype, opfunc, parserfunc)                                       \
 bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo, OpRunInfo& rinfo) {              \

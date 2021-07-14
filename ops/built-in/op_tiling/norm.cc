@@ -59,17 +59,14 @@ bool Norm::Init() {
     int64_t max_product = 1;
     std::size_t max_product_index = 0;
     // find before reduce shape
-    for (std::size_t i = 0; i < op_paras.inputs.size(); i++) {
-      int64_t current_product = std::accumulate(op_paras.inputs[i].tensor[0].shape.begin(),
-                                                op_paras.inputs[i].tensor[0].shape.end(),
-                                                1,
-                                                std::multiplies<int64_t>());
+    for (std::size_t i = 0; i < op_paras.GetInputsSize(); i++) {
+      int64_t current_product = op_paras.GetInputDesc((uint32_t)i).GetShape().GetShapeSize();
       if (current_product > max_product) {
         max_product = current_product;
         max_product_index = i;
       }
     }
-    input_shape_ori = op_paras.inputs[max_product_index].tensor[0].shape;
+    input_shape_ori = op_paras.GetInputDesc((uint32_t)max_product_index).GetShape().GetDims();
     reduce_axis_ori = op_info.at("_ori_axis").get<std::vector<int32_t>>();
 
     // Convert reduce axis (-1 -> length+1)
@@ -178,17 +175,20 @@ bool Norm::GetCompileInfo() {
 
     // CHECK VALUE
     V_OP_TILING_CHECK(compileInfo.core_num > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal", compileInfo.core_num),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal",
+                                                      compileInfo.core_num),
                       return false);
     V_OP_TILING_CHECK(compileInfo.min_block_size > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal", compileInfo.min_block_size),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal",
+                                                      compileInfo.min_block_size),
                       return false);
     V_OP_TILING_CHECK(compileInfo.max_ub_count > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_ub_count is %ld that is illegal", compileInfo.max_ub_count),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_ub_count is %ld that is illegal",
+                                                      compileInfo.max_ub_count),
                       return false);
     V_OP_TILING_CHECK(compileInfo.workspace_max_ub_count > 0,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_max_ub_count is %ld that is illegal",
-                              compileInfo.workspace_max_ub_count),
+                                                      compileInfo.workspace_max_ub_count),
                       return false);
 
   } catch (const std::exception &e) {
@@ -765,15 +765,18 @@ bool Norm::ConstInputProcPost() {
   try {
     tilingInfo.block_tiling_axis = op_info.at("_const_block_axis").get<std::int32_t>();
     tilingInfo.ub_tiling_axis = op_info.at("_const_ub_axis").get<std::int32_t>();
-    run_info.block_dim = op_info.at("_block_dims").get<std::int32_t>();
+    run_info.SetBlockDim(op_info.at("_block_dims").get<std::int32_t>());
     // const sch
     sch_type = is_partial_reorder ? 3 : 1;
-    run_info.tiling_key = CalcTilingKey();
+    run_info.SetTilingKey(CalcTilingKey());
     if (is_need_workspace && compileInfo.workspace_type.size() != 0) {
-      run_info.workspaces = CalcWorkspace();
+      for (auto item : CalcWorkspace()) {
+        run_info.AddWorkspace(item);
+      }
     }
   } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: ConstInputProcPost get error message. Error message: %s", e.what());
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: ConstInputProcPost get error message. Error message: %s", 
+                                    e.what());
     return false;
   }
 
@@ -788,17 +791,17 @@ bool Norm::WriteTilingData() {
 
   if (compileInfo.is_const) {
     // compile
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_axis);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_axis);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
-    run_info.block_dim = tilingInfo.block_dim;
+    run_info.AddTilingData((int32_t)tilingInfo.block_tiling_axis);
+    run_info.AddTilingData((int32_t)tilingInfo.block_tiling_factor);
+    run_info.AddTilingData((int32_t)tilingInfo.ub_tiling_axis);
+    run_info.AddTilingData((int32_t)tilingInfo.ub_tiling_factor);
+    run_info.SetBlockDim(tilingInfo.block_dim);
     return true;
   }
 
   // tiling_key
   int32_t tiling_key = CalcTilingKey();
-  run_info.tiling_key = tiling_key;
+  run_info.SetTilingKey(tiling_key);
   try {
     compileInfo.var_list = op_info.at("_vars").at(std::to_string(tiling_key)).get<std::vector<std::string>>();
   } catch (const std::exception &e) {
@@ -811,24 +814,27 @@ bool Norm::WriteTilingData() {
     if (std::find(compileInfo.var_list.begin(),
                   compileInfo.var_list.end(),
                   concat_var) != compileInfo.var_list.end()) {
-      ByteBufferPut(run_info.tiling_data, (int32_t)input_shape[i]);
+      run_info.AddTilingData((int32_t)input_shape[i]);
       OP_LOGD(op_type.c_str(), "the %dth of input shape:%d", i, (int32_t)input_shape[i]);
     }
   }
 
-  run_info.block_dim = tilingInfo.block_dim;
+  run_info.SetBlockDim(tilingInfo.block_dim);
   if (compileInfo.workspace_type.size() != 0) {
     if (is_need_workspace) {
-      run_info.workspaces = CalcWorkspace();
+      for (auto item : CalcWorkspace()) {
+        run_info.AddWorkspace(item);
+      }
     } else {
       // fake workspace
-      std::vector<int64_t> workspace(compileInfo.workspace_type.size(), 32);
-      run_info.workspaces = workspace;
+      for (std::size_t i = 0; i < compileInfo.workspace_type.size(); i++) {
+        run_info.AddWorkspace((int64_t)32);
+      }
     }
   }
 
-  ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
-  ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+  run_info.AddTilingData((int32_t)tilingInfo.block_tiling_factor);
+  run_info.AddTilingData((int32_t)tilingInfo.ub_tiling_factor);
   OP_LOGD(op_type.c_str(), "block tilling axis:%d", tilingInfo.block_tiling_axis);
   OP_LOGD(op_type.c_str(), "block tilling factor:%d", tilingInfo.block_tiling_factor);
   OP_LOGD(op_type.c_str(), "ub tilling axis:%d", tilingInfo.ub_tiling_axis);
@@ -837,8 +843,8 @@ bool Norm::WriteTilingData() {
   return true;
 }
 
-bool NormTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                OpRunInfo& run_info) {
+bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                utils::OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "norm tiling running");
   Norm norm(op_type, op_paras, op_info, run_info);
   bool ret = norm.DoTiling();

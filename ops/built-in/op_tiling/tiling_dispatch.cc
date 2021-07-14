@@ -37,8 +37,8 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool AutoTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                OpRunInfo& run_info) {
+bool AutoTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                utils::OpRunInfo& run_info) {
   GELOGI("op[%s] tiling running.", op_type.c_str());
 
   CHECK((op_info.find("_pattern") != op_info.end()), "op [%s] : compile info not contain [_pattern]",
@@ -65,6 +65,6 @@ bool AutoTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
 }
 
 // register autoTiling
-REGISTER_OP_TILING_FUNC_BUFFERED(AutoTiling, AutoTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(AutoTiling, AutoTiling);
 
 }  // namespace optiling
