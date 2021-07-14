@@ -169,6 +169,17 @@ static bool GetSquareSumAllCompileParams(const nlohmann::json& op_info, int64_t&
   return true;
 }
 
+bool CheckTensorShape(const std::vector<int64_t>& input_x_shape, const std::vector<int64_t>& input_y_shape) {
+  int32_t input_x_dims = input_x_shape.size();
+  int32_t input_y_dims = input_y_shape.size();
+  CHECK(input_x_dims == input_y_dims, "op[SquareSumAllTiling] : two input tensor must have the same dimension.");
+  for (int32_t i = 0; i < input_x_dims; ++i) {
+    CHECK(input_x_shape[i] == input_y_shape[i], "op[SquareSumAllTiling] : two input tensor must have the same shape.");
+    CHECK(input_x_shape[i] > 0, "op[SquareSumAllTiling] : invalid input tensor shape.");
+  }
+  return true;
+}
+
 // tiling function
 bool SquareSumAllTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                         OpRunInfo& run_info) {
@@ -179,6 +190,9 @@ bool SquareSumAllTiling(const std::string& op_type, const TeOpParas& op_paras, c
 
   const std::vector<int64_t>& input_x_shape = op_paras.inputs[0].tensor[0].shape;
   const std::vector<int64_t>& input_y_shape = op_paras.inputs[1].tensor[0].shape;
+  if (!CheckTensorShape(input_x_shape, input_y_shape)) {
+    return false;
+  }
 
   const std::string input_x_dtype = op_paras.inputs[0].tensor[0].dtype;
   const std::string input_y_dtype = op_paras.inputs[1].tensor[0].dtype;
@@ -206,7 +220,7 @@ bool SquareSumAllTiling(const std::string& op_type, const TeOpParas& op_paras, c
     core_num = 1;
   } else {
     int64_t temp_num = GetCeilInt(input_x_num, MINIMUM_DATA_NUM_EACH_CORE);
-    core_num = (temp_num < 32) ? temp_num : device_core_num;
+    core_num = (temp_num < device_core_num) ? temp_num : device_core_num;
   }
 
   SquareSumAllTilingParams params;
