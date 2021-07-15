@@ -40,7 +40,8 @@ target_link_libraries(ops_cpp_fusion_pass_aicore_utest PRIVATE
         ops_fusion_pass_aicore_llt
         opsproto_llt
         -Wl,--no-as-needed
-        runtime_compile
+        runtime
+        ascend_hal
         mmpa
         error_manager
         c_sec
