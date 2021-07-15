@@ -1156,22 +1156,24 @@ def gather_v2_compute(tensor_params,
 
 def op_select_format(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     """
-    1. when input x's ori_shape length is greater than 2 and the
+    1.when input x's ori_shape length is greater than 2 and the
     input_ori_shape's length - 1 or input_ori_shape's length - 2
     is not equal to axis. the Op Select can support ND and FRACTAL_NZ.
-    > for example:
-    > input_value : Tensor of (shape=(16, 16, 16, 16), "NCHW")
-    > the Op Select can process with NC1HWC0:
-    > input_value : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+
+        for example:
+        input_value : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+        the Op Select can process with NC1HWC0:
+        input_value : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
 
     2.when x's ori_format in ["NDHWC", "NHWC"] and the ori_format's
     length is identical with ori_shape length and the ori_format
     axis is not equal to dim C's index, the Op Select can support
     ND and FRACTAL_NZ.
-    > for example:
-    > input_value : Tensor of (shape=(16, 16, 16, 16), "NCHW")
-    > the Op Select can process with NC1HWC0:
-    > input_value : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+
+        for example:
+        input_value : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+        the Op Select can process with NC1HWC0:
+        input_value : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     """
     input_ori_format = x.get("ori_format")
     input_ori_shape = x.get("ori_shape")

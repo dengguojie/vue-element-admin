@@ -347,7 +347,7 @@ def op_select_format(input_value, output_data, size_splits, split_dim, num_split
         the Op Select can process with NC1HWC0:
         x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
 
-    2. when input x's ori_shape in ["NDHWC"] and split_d by dim N,D,H,W, and
+    2.when input x's ori_shape in ["NDHWC"] and split_d by dim N,D,H,W, and
     the dim C of x's ori_shape can be divisible by 16(32 when dtype is int8).
     the Op SplitVD can support ND and NDC1HWC0.
 
