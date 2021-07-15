@@ -45,6 +45,9 @@ from .constants import Pattern
 CUBE_INFO = {'type_size':{'int8': 1, 'float16': 2, 'float32': 4, 'int32': 4},
              'reduce_k0':{'int8': 32, 'float16': 16, 'float32': 8, 'int32': 8}}
 
+TILING_REPO_MODE = 0
+TILING_COST_MODE = 1
+
 
 def parse_fuzz_build_range(info_list):
     """
@@ -400,6 +403,7 @@ class Conv2dTiling(CubeTilingOp):
         if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
            ("virtual_res" in res.op.name or res.dtype == "int8"):
             self._quant_fusion_muti_groups_in_cl0 = True
+        self._tiling_type = TILING_REPO_MODE
 
     def get_repo_tiling(self):
         tiling_list = get_tiling(self.tiling_info)
@@ -439,6 +443,8 @@ class Conv2dTiling(CubeTilingOp):
             else:
                 self.tiling_info["pad"] = self._calc_pads(shape[0], shape[1])
         self.tiling_info["tiling_type"] = "cost_model_tiling"
+        self._tiling_type = TILING_COST_MODE
+
         tiling = get_tiling(self.tiling_info)[0]
         return tiling
 
@@ -539,6 +545,9 @@ class Conv2dTiling(CubeTilingOp):
         tiling_range = [n_range_min, n_range_max]
         # check tiling covering itself situation
         if not self.check_tiling_match(tiling, fmap_w, fmap_h) or fmap_h > utils.NHW_MAX or fmap_w > utils.NHW_MAX:
+            if self._tiling_type == TILING_COST_MODE:
+                raise RuntimeError("current cost tiling exceed L1_Buffer, input_shape is {}".format(a_shape),
+                                   "tiling is {}".format(tiling))
             return tiling_range + [0, 0, 0, 0]
         h_range_min, h_range_max = self.get_h_range(fmap_h, tiling, paras)
         tiling_range += [h_range_min, h_range_max]
@@ -638,9 +647,8 @@ class Conv2dTiling(CubeTilingOp):
         else:
             # other situations need 2 extra lines in case
             extend_h = 2
-        l1_ho = al1_m_data // out_w + extend_h
         # consistent with tiling processing logic
-        l1_ho = min(l1_ho, self.get_output_h(self.tiling_info["a_shape"][2]))
+        l1_ho = min((al1_m_data // out_w + extend_h), self.get_output_h(h_i))
 
         # calculate input lines (hi) from output lines (ho)
         if not strideh_opti_flag:

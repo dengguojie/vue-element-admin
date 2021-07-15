@@ -51,8 +51,8 @@ vector<BufferFusionPattern*> TbeConv2DReluv2Pass::DefinePatterns() {
   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(fused_op_type_.c_str(), "create new pattern failed."),
                     return patterns);
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", passName.c_str());
-  pattern->AddOpDesc(g_kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(g_kPatternReluv2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+  pattern->AddOpDesc(g_kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+      .AddOpDesc(g_kPatternReluv2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .SetHead({g_kPatternConv})
       .SetOutputs(g_kPatternConv, {g_kPatternReluv2});
   patterns.push_back(pattern);

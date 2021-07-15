@@ -3841,7 +3841,7 @@ class CceConvOp:
 
             def modify_m_for_load3d(l1_m, w_in, w_out, additional_rows):
                 stride_update = 1 if strideh_opti_flag else ConvParam.stride_h
-                ho_len = tvm.floordiv(l1_m, w_out) + additional_rows
+                ho_len = tvm.min(tvm.floordiv(l1_m, w_out) + additional_rows, ConvParam.h_out)
                 hi_max = tvm.min(ConvParam.filter_h + (ho_len - 1) * stride_update, ConvParam.h_in)
                 return hi_max * w_in
 
