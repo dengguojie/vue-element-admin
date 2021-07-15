@@ -24,8 +24,6 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "../op_proto/strided_slice_infer_shape.h"
-#include "../op_proto/util/util.h"
-#include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "error_log.h"
 

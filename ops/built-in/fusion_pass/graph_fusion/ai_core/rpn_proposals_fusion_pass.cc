@@ -203,8 +203,6 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
       return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's 1st index to fusion node:%s's 1st index.",
           scoreFilterPreSortNode->GetName().c_str(), rpnProposalPostProcessingNode->GetName().c_str());
-  // OP_LOGE(FUSED_OP_TYPE.c_str(), "duiduan node name %s.",
-  // rpnProposalPostProcessingNode->GetInDataAnchor(1)->GetOwnerNode()->GetName()->c_str());
 
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(scoreFilterPreSortNode->GetOutDataAnchor(1),

@@ -40,7 +40,7 @@ IMPLEMT_COMMON_INFERFUNC(YoloInferShape) {
   OP_LOGI("yolo", "infer shape begin---");
   auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
   CHECK(inputShape.size() < 4,
-        std::string err_msg = GetAttrSizeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 4"));
+        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 4"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg),
         return GRAPH_FAILED);
   int64_t batchNum = (int64_t)inputShape[0];
@@ -93,7 +93,7 @@ IMPLEMT_VERIFIER(Yolo, YoloVerify) {
   int64_t classNum = 0;
   auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
   CHECK(inputShape.size() < 2,
-        std::string err_msg = GetAttrSizeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 2"));
+        std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 2"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg),
         return GRAPH_FAILED);
   int64_t channelNum = (int64_t)inputShape[1];

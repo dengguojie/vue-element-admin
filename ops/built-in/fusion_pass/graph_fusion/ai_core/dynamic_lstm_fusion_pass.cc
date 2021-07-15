@@ -209,6 +209,10 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
         // the wx + wh matrix
         unique_ptr<float[]> wxhMergeData(new (std::nothrow) float[targetCol * wxRow]());
         FUSION_PASS_CHECK(wxhMergeData.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "wxhMergeData is NULL"), return nullptr);
+        FUSION_PASS_CHECK(wxTensorPtr->GetData().data() == nullptr,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "wxTensorPtr->GetData().data() is NULL"), return nullptr);
+        FUSION_PASS_CHECK(whTensorPtr->GetData().data() == nullptr,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "whTensorPtr->GetData().data() is NULL"), return nullptr);
         float *wxData = (float *)wxTensorPtr->GetData().data();
         float *whData = (float *)whTensorPtr->GetData().data();
 

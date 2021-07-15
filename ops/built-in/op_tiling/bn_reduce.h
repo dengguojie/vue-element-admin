@@ -125,8 +125,8 @@ private:
   std::vector<int32_t> normalize_axis{std::vector<int32_t>(10, 0)};
   std::vector<int32_t> reduce_flag{std::vector<int32_t>(10, 0)};
 
-  int32_t pattern;
-  int32_t block_size;
+  int32_t pattern{-1};
+  int32_t block_size{-1};
   bool is_customised;
   bool is_fuse_hn;
   int32_t saved_customised_ub_axis;

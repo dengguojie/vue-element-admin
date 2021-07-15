@@ -121,8 +121,6 @@ void ProposalFusionPass::GenerateShifts(int height, int width, float feat_stride
       shift_x[k] = j * feat_stride;
       shift_y[k] = i * feat_stride;
       k++;
-      // shift_x.push_back(j * feat_stride);
-      // shift_y.push_back(i * feat_stride);
     }
   }
   OP_LOGI(FUSED_OP_TYPE.c_str(), "ProposalFusionPass GenerateShifts1");
@@ -131,12 +129,10 @@ void ProposalFusionPass::GenerateShifts(int height, int width, float feat_stride
     for (j = 0; j < height * width; j++) {
       shifts_tmp[k] = shift_x[j];
       k++;
-      // shifts_tmp.push_back(shift_x[j]);
     }
     for (j = 0; j < height * width; j++) {
       shifts_tmp[k] = shift_y[j];
       k++;
-      // shifts_tmp.push_back(shift_y[j]);
     }
   }
   OP_LOGI(FUSED_OP_TYPE.c_str(), "ProposalFusionPass GenerateShifts2");

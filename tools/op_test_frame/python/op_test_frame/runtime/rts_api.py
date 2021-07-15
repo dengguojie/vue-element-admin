@@ -476,7 +476,7 @@ class AscendRTSApi:
 
         try:
             c_memory_p = self.malloc(int(math.ceil(len(data) / 32) * 32 + 32), "RT_MEMORY_HBM")
-        except:
+        except BaseException as e:
             logger.log_err("rtMalloc on HBM failed, HBM memory info:  %s"
                            % str(self.get_memory_info_ex("RT_MEMORYINFO_HBM")))
             raise
@@ -514,6 +514,7 @@ class AscendRTSApi:
         else:
             c_buffer = ctypes.string_at(c_buffer_p, data_size)
         return c_buffer, c_buffer_p
+
     # pylint: disable=unused-argument
     def memcpy(self, c_memory_p: ctypes.c_void_p, memory_size: int,
                data: Union[bytes, ctypes.c_void_p], data_size: int,

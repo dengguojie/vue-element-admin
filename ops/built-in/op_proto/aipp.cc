@@ -129,7 +129,7 @@ uint64_t GetSrcImageSizeDtype(::domi::AippOpParams* aipp_op_params, uint64_t bat
       size = batch * src_image_size_h * src_image_size_w * 4;
       *src_img_dtype = DT_UINT32;
     } else {
-      // USER_GE_LOGE("Input format of AIPP conf is undefined!");
+      OP_LOGE("Aipp", "Input format of AIPP conf is undefined!");
     }
   }
 
@@ -183,7 +183,7 @@ std::vector<int32_t> GetAclInputDims(::domi::AippOpParams* aipp_op_params, uint6
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24_IR) {
       channel = 4;
     } else {
-      // USER_GE_LOGE("Input format of AIPP conf is undefined!");
+      OP_LOGE("Aipp", "Input format of AIPP conf is undefined!");
     }
   }
 
@@ -234,7 +234,7 @@ void SetAippMode(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) {
     } else if (aipp_op_params->aipp_mode() == ::domi::AippOpParams_AippMode_dynamic) {
       root["aipp_mode"] = "dynamic";
     } else {
-      // USER_GE_LOGE("aipp_mode must be configured as static or dynamic!");
+      OP_LOGE("Aipp", "aipp_mode must be configured as static or dynamic!");
     }
   }
 }
@@ -282,7 +282,7 @@ void SetInputFormat(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) 
     } else if (aipp_op_params->input_format() == ::domi::AippOpParams_InputFormat_RGB24_IR) {
       root["input_format"] = "RGB24_IR";
     } else {
-      // USER_GE_LOGE("Input format of AIPP conf is undefined!");
+      OP_LOGE("Aipp", "Input format of AIPP conf is undefined!");
     }
   }
 }
@@ -651,14 +651,12 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
   }
   if (images_desc.GetFormat() == FORMAT_NCHW) {
     batch = images_shape[0];
-    // channel = images_shape[1];
     height = images_shape[2];
     width = images_shape[3];
   } else if (images_desc.GetFormat() == FORMAT_NHWC) {
     batch = images_shape[0];
     height = images_shape[1];
     width = images_shape[2];
-    // channel = images_shape[3];
   } else if (images_desc.GetFormat() == FORMAT_NC1HWC0_C04) {
     batch = images_shape[0];
     c1 = images_shape[1];

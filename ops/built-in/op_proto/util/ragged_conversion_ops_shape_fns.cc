@@ -58,11 +58,13 @@ graphStatus GetRowPartitionTypes(Operator& op, std::vector<RowPartitionType>& ro
   for (const std::string& type_str : partition_types) {
     const auto iter = string_to_type->find(type_str);
     if (iter == string_to_type->end()) {
+      delete string_to_type;
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("Unknown string for partition info type."));
       return GRAPH_FAILED;
     }
     row_partition_types.push_back(iter->second);
   }
+  delete string_to_type;
   return GRAPH_SUCCESS;
 }
 

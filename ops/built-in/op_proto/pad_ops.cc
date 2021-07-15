@@ -378,7 +378,6 @@ IMPLEMT_COMMON_INFERFUNC(PadV2InferShape) {
   OP_LOGD("OP[PadV2]", "PadV2InferShape Begin.");
   Tensor paddings_tensor;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  //op_desc->SetOpInferDepends({"paddings"});
 
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", paddings_tensor)) {
     Shape shape_x = op.GetInputDesc("x").GetShape();

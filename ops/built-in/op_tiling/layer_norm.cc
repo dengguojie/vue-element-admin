@@ -315,7 +315,7 @@ int32_t GetUnblockAxisOutputMul(int32_t block_axis,
                                 std::vector<int32_t> reduce_axis) {
   int32_t mul_num = 1;
   for (size_t i = 0; i < input_x.size(); i++) {
-    if (!IsInVector(reduce_axis, i) && (block_axis != i)) {
+    if (!IsInVector(reduce_axis, i) && (static_cast<size_t>(block_axis) != i)) {
       mul_num *= input_x[i];
     }
   }
@@ -506,7 +506,7 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
               tilingparams.block_tiling_axis_1 = i;
               tilingparams.block_factor_1 = 1;
               tilingparams.block_factor = input_x[i];
-            } else if (tilingparams.ub_tiling_axis != i) {
+            } else if (tilingparams.ub_tiling_axis != static_cast<int32_t>(i)) {
               std::vector<int32_t> blocktilingdata = GetBlockTilingData(
                   i, block_inner, ubtilingdata[0], ubtilingdata[4], input_x,
                   reduce_axis, core_num);
@@ -585,7 +585,7 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
               tilingparams.block_tiling_axis_1 = i;
               tilingparams.block_factor_1 = 1;
               tilingparams.block_factor = input_x[i];
-            } else if (tilingparams.ub_tiling_axis != i) {
+            } else if (tilingparams.ub_tiling_axis != static_cast<int32_t>(i)) {
               std::vector<int32_t> blocktilingdata = GetBlockTilingData(
                   i, block_inner, ubtilingdata[0], ubtilingdata[4], input_x,
                   reduce_axis, core_num);

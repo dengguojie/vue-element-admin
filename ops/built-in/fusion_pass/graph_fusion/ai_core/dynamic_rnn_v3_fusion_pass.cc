@@ -110,6 +110,9 @@ ge::GeTensorPtr DynamicRNNV3FusionPass::ProcessDynamicRnnV3Wdate(ge::NodePtr fus
     wcTensorPtr = wcT[0];
 
     float *wcData = (float *)wcTensorPtr->GetData().data();
+    FUSION_PASS_CHECK(wcData == nullptr,
+                      OP_LOGE("DynamicRnnV3", "wcTensorPtr->GetData().data is null, fusion failed."), return nullptr);
+
     unique_ptr<float[]> dstWcData(new (std::nothrow) float[batchSize * hiddenSize]());
 
     auto retMem = memset_s(dstWcData.get(), batchSize*hiddenSize, 0, batchSize * hiddenSize);

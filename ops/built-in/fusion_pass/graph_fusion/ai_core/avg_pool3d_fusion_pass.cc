@@ -373,7 +373,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
                     OP_LOGE(kFusedOpType.c_str(), "GetConstInputs Error Size: %u", const_input_nodes.size()),
                     return PARAM_INVALID);
 
-  for (int i = 0; i < const_input_nodes.size(); i++) {
+  for (size_t i = 0; i < const_input_nodes.size(); i++) {
     NodePtr const_input = const_input_nodes[i];
     const_input->GetOpDesc()->SetType(kConstantOp);
   }

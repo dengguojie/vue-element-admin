@@ -47,6 +47,8 @@ class FusedBatchNormGradFusionPass : public PatternFusionBasePass {
         BATCHNORMGRAD_ATTR_TRAINING = "is_training";
         STREAM_LABEL = "_stream_label";
     }
+    ~FusedBatchNormGradFusionPass() {
+    }
     protected:
     vector<FusionPattern*> DefinePatterns() override;
     Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;

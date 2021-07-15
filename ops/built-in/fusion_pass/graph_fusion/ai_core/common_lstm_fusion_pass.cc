@@ -298,10 +298,14 @@ static Status SetInitHCTensorData(ge::GeTensorPtr initTensorPtr, ge::GeTensorDes
                     OP_LOGE(FUSED_NODE, "failed to operate memset_s function!"),
   return FAILED);
 
+  FUSION_PASS_CHECK(initData.get() == nullptr, OP_LOGE(FUSED_NODE, "initData is NULL"),
+                    return FAILED);
+  FUSION_PASS_CHECK(initDataReverse.get() == nullptr, OP_LOGE(FUSED_NODE, "initDataReverse is NULL"),
+                    return FAILED);
+
   T *dstData = initData.get();
   T *dstDataR = initDataReverse.get();
 
-  //init_h(2, batch, hidden) -> (1, batch, hidden) * 2
   for (int32_t i = 0; i < init_size; i++) {
     *(dstData + i) = *(srcData + i);
     *(dstDataR + i) = *(srcData + i + init_size);

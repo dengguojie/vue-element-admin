@@ -15,7 +15,7 @@
 """
 shape utils module
 """
-from functools import reduce
+import functools
 
 
 def calc_shape_size(shape):
@@ -26,4 +26,4 @@ def calc_shape_size(shape):
     """
     if not shape:
         return 0
-    return reduce(lambda x, y: x * y, shape)
+    return functools.reduce(lambda x, y: x * y, shape)

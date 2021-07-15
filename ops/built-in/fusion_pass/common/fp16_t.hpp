@@ -407,7 +407,6 @@ typedef enum {
  *@ingroup print switch
  *@brief   print an error if input fp16 is overflow
  */
-//#define PRINT_INPUT_OVERFLOW_ERROR
 
 /**
  *@ingroup fp16_t enum

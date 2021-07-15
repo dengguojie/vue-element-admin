@@ -311,7 +311,6 @@ bool BNReduce::ChooseAtomic() {
   // Layer 1
   compileInfo.atomic = total_output_count <= compileInfo.max_ub_count &&
                          total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
-                         // total_output_count < static_cast<int64_t>(compileInfo.core_num * block_size / 2) &&
                          total_reduce_count > static_cast<int64_t>(compileInfo.core_num / 2);
   // Layer 2
   compileInfo.atomic = compileInfo.atomic ||

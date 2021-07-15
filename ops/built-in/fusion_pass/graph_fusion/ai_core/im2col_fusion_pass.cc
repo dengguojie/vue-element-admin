@@ -50,7 +50,7 @@ vector<FusionPattern*> Im2colFusionPass::DefinePatterns() {
 }
 
 static void AssistInit(const vector<int64_t>& const_vec, int32_t* output) {
-  for (int32_t i = 0; i < const_vec.size(); ++i) {
+  for (size_t i = 0; i < const_vec.size(); ++i) {
     output[i] = const_vec[i];
   }
 }
@@ -66,7 +66,6 @@ Status Im2colFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
 
   ge::GeTensorDesc im2colInputOpDesc = im2colOpDesc->GetInputDesc(0);
   ge::GeTensorDesc im2colOutputOpDesc = im2colOpDesc->GetOutputDesc(0);
-  ge::Format inputOriginFormat = im2colInputOpDesc.GetOriginFormat();
   ge::Format outputOriginFormat = im2colOutputOpDesc.GetOriginFormat();
 
   ge::GeShape im2colOutputShape = im2colOutputOpDesc.GetOriginShape();

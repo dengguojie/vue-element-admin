@@ -416,7 +416,6 @@ Status RemapFusionPass::CreateRemapOffsetsNode(ge::NodePtr& offsets_node, ge::No
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "add output warp_images for offsets_node fail, fusion failed."),
                     return NOT_CHANGED);
   offsets_node = graph.AddNode(offsets_desc);
-  // offsets_node->GetOpDesc()->InferShapeAndType();
   new_nodes.push_back(offsets_node);
 
   return SUCCESS;

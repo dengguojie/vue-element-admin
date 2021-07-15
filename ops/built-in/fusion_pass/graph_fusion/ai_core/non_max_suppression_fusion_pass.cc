@@ -117,9 +117,6 @@ namespace fe {
         int64_t IdxValueDimNum = GetNmsDims(IdxValueTensorShape);
         vector<float> index_id(IdxValueDimNum);
         AssistIndexGen(IdxValueTensorShape, index_id);
-        // for (int64_t i = 0; i<IdxValueDimNum; i++) {
-        //     OP_LOGD("NonMaxSuppressionPass", "index_d:%f", index_id[i]);    
-        // }
         Status ret = SetConstDesc(IdxValueTensorShape, IdxValueTensorDesc, inputDesc1);
         unique_ptr<uint16_t[]> IdxValueAssit(new (std::nothrow) uint16_t[IdxValueDimNum]());
         FUSION_PASS_CHECK(IdxValueAssit.get() == nullptr,

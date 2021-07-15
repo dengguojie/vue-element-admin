@@ -912,7 +912,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         err_trace = None
         try:
             import tbe # pylint: disable=import-outside-toplevel
-            # import tbe.common.context.op_info as operator_info #pylint:disable=import-outside-toplevel
             with tbe.common.context.op_context.OpContext("pre-static"):
                 case_info.test_func(run_soc_version)
         except BaseException as _:  # pylint: disable=broad-except

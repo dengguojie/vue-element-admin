@@ -16,4 +16,7 @@
 op_test_frame.ut module
 """
 
-from .op_ut import OpUT, BroadcastOpUT, ElementwiseOpUT, ReduceOpUT
+from .op_ut import OpUT
+from .op_ut import BroadcastOpUT
+from .op_ut import ElementwiseOpUT
+from .op_ut import ReduceOpUT

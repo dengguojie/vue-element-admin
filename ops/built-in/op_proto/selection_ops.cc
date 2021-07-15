@@ -2316,7 +2316,6 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
     return GRAPH_SUCCESS;
   }
   // update axis to positive number
-  // axis = input_shape.size() == 0 ? 0 : axis % (input_shape.size() + 1);
 
   // get depth const value
   GeTensorPtr depth_tensor = nullptr;

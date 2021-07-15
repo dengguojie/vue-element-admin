@@ -3283,8 +3283,8 @@ void map_with_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
             equ_key[0] = equ_temp[i];
             equ_map[equ_key] = equ_tensor_temp[i];
         }
-        for (int64_t j = start_index; j < (start_index+ell_size); j++) {
-            ell_list.push_back(equ_tensor_temp[j]);
+        for (int64_t j = 0; j < (start_index+ell_size-start_index); j++) {
+            ell_list.push_back(equ_tensor_temp[j + start_index]);
             ellipsis_map[dot] = ell_list;
         }
         for (int64_t k = 0; k < (equ_tensor_temp_size - ell_size - start_index); k++) {

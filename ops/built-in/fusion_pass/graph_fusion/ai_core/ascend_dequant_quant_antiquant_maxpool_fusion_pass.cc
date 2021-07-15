@@ -100,10 +100,6 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::IsMatch(ge::NodePtr& deqNod
       CheckPeerAllInDataAnchors(antiqNode->GetOutDataAnchor(0), 1) != SUCCESS,
       OP_LOGI(FUSED_OP_TYPE.c_str(), "%s contains more than one peer input", antiqNode->GetName().c_str()),
       return NOT_CHANGED);
-  // FUSION_PASS_CHECK(
-  //     CheckPeerAllInDataAnchors(maxpoolNode->GetOutDataAnchor(0), 1) != SUCCESS,
-  //     OP_LOGI(FUSED_OP_TYPE.c_str(), "%s contains more than one peer input", maxpoolNode->GetName().c_str()),
-  //     return NOT_CHANGED);
 
   ge::DataType deq_out_dtype = deqNode->GetOpDesc()->GetOutputDesc(0).GetDataType();
   ge::DataType antiq_out_dtype = antiqNode->GetOpDesc()->GetOutputDesc(0).GetDataType();

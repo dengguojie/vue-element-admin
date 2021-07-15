@@ -631,7 +631,7 @@ bool JoinShapes(vector<int64_t>& dst_shape, const vector<int64_t>& src_shape, in
 
 static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int64_t axis, bool unknown_axis) {
   if (num_concat <= 0) {
-    std::string err_msg = GetAttrValueErrMsg("num_concat", std::to_string(num_concat), ConcatString('num_concat > 0'));
+    std::string err_msg = GetAttrValueErrMsg("num_concat", std::to_string(num_concat), ConcatString("num_concat > 0"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -656,7 +656,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int6
   bool all_unknown_rank_shape = true;
   for (const auto& desc : input_x_desc) {
     dim_num = std::max(dim_num, desc->MutableShape().GetDimNum());
-    all_unknown_rank_shape &= IsUnknownRankShape(desc->MutableShape().GetDims());
+    all_unknown_rank_shape = IsUnknownRankShape(desc->MutableShape().GetDims()) && all_unknown_rank_shape;
   }
 
   if (all_unknown_rank_shape) {

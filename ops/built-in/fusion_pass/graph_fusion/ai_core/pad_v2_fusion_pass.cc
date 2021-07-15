@@ -46,6 +46,8 @@ bool PadV2FusionPass::GetConstValue(const Operator& op, const Tensor& const_tens
   size_t size = 0;
   if (dtype == ge::DT_INT32) {
     int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
+    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op.GetName().c_str(), "Get const data failed."),
+                      return false);
     if (const_data_ptr == nullptr) {
       OP_LOGE(op.GetName().c_str(), "const_data_ptr is null");
     }
@@ -56,6 +58,8 @@ bool PadV2FusionPass::GetConstValue(const Operator& op, const Tensor& const_tens
     }
   } else if (dtype == ge::DT_INT64) {
     int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
+    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op.GetName().c_str(), "Get const data failed."),
+                      return false);
     size = const_tensor.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back(((int64_t)(*(const_data_ptr + i))));

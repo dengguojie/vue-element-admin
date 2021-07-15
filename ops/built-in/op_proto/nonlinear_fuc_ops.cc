@@ -490,7 +490,6 @@ COMMON_INFER_FUNC_REG(LeakyReluGrad, LeakyReluGradInferShape);
 // ----------------ThresholdGradV2D-------------------
 bool InferShapeAndTypeThresholdGradV2D(Operator& op, const string& input_name1, const string& input_name2,
                                        const string& output_name) {
-  // vOutputDesc.push_back(op.GetInputDesc(0));
   TensorDesc vOutputDesc = op.GetOutputDesc(output_name);
 
   DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();

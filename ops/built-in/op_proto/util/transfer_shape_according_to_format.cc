@@ -217,7 +217,11 @@ bool ShapeTransferAccordingToFormat::GetShapeAccordingToFormat(ShapeAndFormat& s
   }
   LOG_INFO("Original format %u, new format %u", shapeAndFormatInfo.oldFormat, shapeAndFormatInfo.newFormat);
   GetNewShapeByAxisValueAndFormatPtr getNewShapeFunc = iterGetNewShapeFunc->second;
-  CHECK_NOTNULL(getNewShapeFunc);
+  if (getNewShapeFunc == nullptr) {
+    LOG_ERROR("getNewShapeFunc is nullptr return false.");
+    delete axisutil_object;
+    return false;
+  }
   std::vector<int64_t> axisValue;
   for (uint32_t i = 0; i < AXIS_BOTTOM; i++) {
     axisValue.push_back(1);

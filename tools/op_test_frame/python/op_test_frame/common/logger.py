@@ -38,11 +38,11 @@ def set_logger_level(level):
     LOG_LEVEL = level
 
 
-def log(level, file, line, msg):
+def log(level, file_name, line, msg):
     """
     print log
     :param level: level
-    :param file: file
+    :param file: file_name
     :param line: line
     :param msg: msg
     :return: None
@@ -51,7 +51,7 @@ def log(level, file, line, msg):
     def _get_time_str():
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
-    print("[%s] %s [File \"%s\", line %d] %s" % (level, _get_time_str(), file, line, msg))
+    print("[%s] %s [File \"%s\", line %d] %s" % (level, _get_time_str(), file_name, line, msg))
 
 
 def log_warn(msg):

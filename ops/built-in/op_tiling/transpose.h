@@ -573,6 +573,9 @@ struct BorrowInfo {
         for (int i = 0; i < BORROW_MAX_AXIS_NUM; i++) {
             ubPerm[i] = 0;
         }
+        for (int i = 0; i < BORROW_MAX_AXIS_NUM; i++) {
+            ubPermRaw[i] = 0;
+        }
     }
 };
 

@@ -148,7 +148,6 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::NodePtr const0 = peerOutDataAnchor->GetOwnerNode();
   ge::OpDescUtils::SetWeights(const0, weights);*/
 
-  // inputDesc1.SetOriginFormat(ge::FORMAT_ND);
   return SUCCESS;
 }
 

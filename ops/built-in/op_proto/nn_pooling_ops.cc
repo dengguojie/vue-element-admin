@@ -1145,7 +1145,6 @@ IMPLEMT_INFERFUNC(Pooling, PoolingInferShape) {
       --outputW;
     }
 
-    // CHECK_LT((pooled_height_ - 1) * stride_h_, height_ + pad_h_);
     bool conditionH = ((outputH - 1) * strH) <= inputH + padT;
     if (!conditionH) {
       std::string err_msg = OtherErrMsg("CHECK_LT((pooled_height_ - 1) * stride_h_, height_ + pad_h_) failed!");
@@ -1153,7 +1152,6 @@ IMPLEMT_INFERFUNC(Pooling, PoolingInferShape) {
       return GRAPH_FAILED;
     }
 
-    // CHECK_LT((pooled_width_ - 1) * stride_w_, width_ + pad_w_);
     bool conditionW = ((outputW - 1) * strW) <= inputW + padL;
     if (!conditionW) {
       std::string err_msg = OtherErrMsg("CHECK_LT((pooled_width_ - 1) * stride_w_, width_ + pad_w_) failed!");

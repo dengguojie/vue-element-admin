@@ -156,7 +156,6 @@ bool AdaptiveAvgPoolGradFusionPass::GenVectorMulAssistMatrix(uint16_t &matrix) c
                 CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "coefficient is invalid.");
                 return false;
             }
-            // float value = 1.0 / coefficient;
             tmp = 1.0 / coefficient;
             int position = i * input_dims[INDEX_W] + j;
             UpdataAvgPoolGradAssistValue(matrix, tmp.val, batch, mat_hw_size, position);

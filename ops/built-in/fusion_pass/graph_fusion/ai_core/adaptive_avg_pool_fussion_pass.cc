@@ -174,7 +174,9 @@ Status AdaptiveAvgPool2dPass::AdaptiveValueGen(
   vector<int64_t> h_list;
   vector<int64_t> w_list;
   // 获取kernel切分矩阵
-  Status ker_ret = KernelSegment(input_size, output_size, h_list, w_list);
+  FUSION_PASS_CHECK(KernelSegment(input_size, output_size, h_list, w_list) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get KernelSegment failed."),
+                    return FAILED);
   // 定义两个辅助矩阵
   int n_left = output_size[0];
   int m_left = input_size[0];
@@ -185,13 +187,25 @@ Status AdaptiveAvgPool2dPass::AdaptiveValueGen(
   // 构造乘法矩阵
   vector<vector<float>> arr_mul(n_left, vector<float>(m_right));
   // 处理左右辅助矩阵得到二维的矩阵
-  Status left_ret = ProcessMatrixLeft(arr_left, h_list);
-  Status right_ret = ProcessMatrixRight(arr_right, w_list);
-  Status mul_ret = ProcessMatrixMul(arr_mul, h_list, w_list);
+  FUSION_PASS_CHECK(ProcessMatrixLeft(arr_left, h_list) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get ProcessMatrixLeft failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(ProcessMatrixRight(arr_right, w_list) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get ProcessMatrixRight failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(ProcessMatrixMul(arr_mul, h_list, w_list) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get ProcessMatrixMul failed."),
+                    return FAILED);
   // 将辅助矩阵转成tensor
-  Status left_ten_ret = ArrToTensor(left_tensor, arr_left);
-  Status right_ten_ret = ArrToTensor(right_tensor, arr_right);
-  Status mul_ten_ret = ArrToTensor(mul_tensor, arr_mul);
+  FUSION_PASS_CHECK(ArrToTensor(left_tensor, arr_left) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get left_tensor failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(ArrToTensor(right_tensor, arr_right) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get right_tensor failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(ArrToTensor(mul_tensor, arr_mul) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get mul_tensor failed."),
+                    return FAILED);
   return SUCCESS;
 }
 
@@ -458,9 +472,13 @@ Status AdaptiveAvgPool2dPass::CreatFuseNode(
   vector<int64_t> output_size;
   ge::AttrUtils::GetListInt(fuse_node->GetOpDesc(), "output_size", output_size);
   // get output_shape
-  Status ret = GetOutputShape(input_shape, output_size, output_shape);
+  FUSION_PASS_CHECK(GetOutputShape(input_shape, output_size, output_shape) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get OutputShape failed."),
+                    return FAILED);
   // 计算batone输出的shape
-  ret = GetBatOneShape(input_shape, output_shape, bat_one_shape);
+  FUSION_PASS_CHECK(GetBatOneShape(input_shape, output_shape, bat_one_shape) != SUCCESS,
+                    OP_LOGE("AdaptiveAvgPool2d", "get BatOneShape failed."),
+                    return FAILED);
   return SUCCESS;
 }
 
@@ -633,7 +651,6 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   // get assist lens
   int64_t left_dim_num = GetDimNum(left_tensor_shape);
   int64_t right_dim_num = GetDimNum(right_tensor_shape);
-  int64_t mid_dim_num = GetDimNum(input_shape);
   int64_t mul_dim_num = GetDimNum(output_shape);
   vector<float> left_tensor(left_dim_num);
   vector<float> right_tensor(right_dim_num);
@@ -707,6 +724,9 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   ret = Bridge(adaptive_node, batmm_one_node, batmm_two_node, mul_node);
   // remove adaptive_node
   ret = RemoveNodes(adaptive_node, graph);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion end");
   return SUCCESS;
 }

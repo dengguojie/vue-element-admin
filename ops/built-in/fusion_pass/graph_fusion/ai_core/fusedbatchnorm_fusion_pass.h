@@ -62,6 +62,9 @@ class FusedBatchnormFusionPass : public PatternFusionBasePass {
         PASS_OP_TYPE_BNUPDATE = "BNTrainingUpdate";
         STREAM_LABEL = "_stream_label";
     }
+
+    ~FusedBatchnormFusionPass() {
+    }
     protected:
     std::vector<FusionPattern*> DefinePatterns() override;
     Status Run(ge::ComputeGraph& graph) override;

@@ -9,7 +9,6 @@ dir_path = os.path.dirname(os.path.abspath(__file__))
 
 def parse_ini_files(ini_files):
     tbe_ops_info = {}
-    #for ini_file in ini_files:
     parse_ini_to_obj(ini_files, tbe_ops_info)
     return tbe_ops_info
 

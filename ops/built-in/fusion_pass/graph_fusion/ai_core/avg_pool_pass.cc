@@ -551,6 +551,8 @@ Status AvgPoolFusionPass::UpdateDequantConst(ge::ComputeGraph& graph, ge::NodePt
   FUSION_PASS_CHECK(const_ptr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "const_ptr is null ptr!"),
                     return PARAM_INVALID);
   float* const_data = (float*)(const_ptr->GetData().GetData());
+  FUSION_PASS_CHECK(const_data == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "const_data is null ptr!"),
+                    return PARAM_INVALID);
   const_data[0] = area_factor * const_data[0];
   OP_LOGD(FUSED_OP_TYPE.c_str(), "const_data is %f", const_data[0]);
   const_ptr->SetData(reinterpret_cast<uint8_t*>(const_data), 2 * sizeof(float));
