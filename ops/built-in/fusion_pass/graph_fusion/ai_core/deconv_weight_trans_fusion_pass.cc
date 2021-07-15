@@ -215,6 +215,9 @@ void DeconvWeightTransFusionPass::
 Status DeconvWeightTransFusionPass::GenerateTransposeNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
                                                           ge::GeTensorDesc& next_in_desc, const vector<int64_t>& perm,
                                                           ge::NodePtr& transpose_node, const std::string& basename) {
+  FUSION_PASS_CHECK((perm.size() > CONST_VECTOR_LEN),
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "the param perm is error."),
+                    return FAILED);
   vector<int64_t> next_in_shape(CONST_VECTOR_LEN);
   for (size_t i = 0; i < perm.size(); ++i) {
     next_in_shape[i] = previous_out_desc.GetShape().GetDim(perm[i]);
@@ -409,8 +412,11 @@ Status DeconvWeightTransFusionPass::Relink(
                 "fail to add edge between reshape_out_node and deconv_node"),
         return FAILED);
   }
-  FUSION_PASS_CHECK(
-      deconv_node->GetOpDesc()->UpdateInputDesc(
+  ge::OpDescPtr deconvNodeDescPtr = deconv_node->GetOpDesc();
+  FUSION_PASS_CHECK(deconvNodeDescPtr == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "deconvNodeDescPtr is null"),
+                    return FAILED);
+  FUSION_PASS_CHECK(deconvNodeDescPtr->UpdateInputDesc(
           filter_anchor, reshape_out_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
               "fail to update input description of deconv"),
@@ -467,9 +473,16 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                     CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get peer out node of filter"),
                     return NOT_CHANGED);
   int filter_index = GetPeerOutAnchorWithInDataAnchor(deconv_node, filter_anchor)->GetIdx();
-  if (filter_node->GetOpDesc()->GetOutputDesc(filter_index).GetDataType() !=
-          ge::DT_INT8 ||
-      input_node->GetOpDesc()->GetOutputDesc(input_index).GetDataType() != ge::DT_INT8) {
+  ge::ConstGeTensorDescPtr filterNodeDescPtr = GetCurrNodeOutputDesc(filter_node, filter_index);
+  FUSION_PASS_CHECK(filterNodeDescPtr == nullptr,
+                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "filterNodeDescPtr is null"),
+                    return NOT_CHANGED);
+  ge::ConstGeTensorDescPtr inputNodeDescPtr = GetCurrNodeOutputDesc(input_node, input_index);
+  FUSION_PASS_CHECK(inputNodeDescPtr == nullptr,
+                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "inputNodeDescPtr is null"),
+                    return NOT_CHANGED);
+  if (filterNodeDescPtr->GetDataType() != ge::DT_INT8 ||
+      inputNodeDescPtr->GetDataType() != ge::DT_INT8) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The dtype of weight or x is not int8.");
     return NOT_CHANGED;
   }
@@ -481,6 +494,9 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
 
   int64_t number = 0, channel = 0, height = 0, weight = 0;
   auto op_desc = deconv_node->GetOpDesc();
+  FUSION_PASS_CHECK(op_desc == nullptr,
+                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "op_desc is null"),
+                    return NOT_CHANGED);
   int64_t groups = GetGroups(op_desc);
   FUSION_PASS_CHECK(groups == 0,
                     OP_LOGW(FUSED_OP_TYPE.c_str(),

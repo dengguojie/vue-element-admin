@@ -46,6 +46,9 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
         return FAILED);
 
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_dsc == nullptr,
+        CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "op_dsc is null. auto mapping failed."),
+        return FAILED);
   ge::Format data_format = ge::FORMAT_NDHWC;
   std::string data_format_attr;
   if (op.GetAttr("data_format", data_format_attr) == ge::GRAPH_SUCCESS) {

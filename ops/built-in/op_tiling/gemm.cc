@@ -174,6 +174,10 @@ std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb");
     return tiling_id;
   }
+  if (op_paras.GetInputsSize() < 2) {
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "op_paras is null");
+    return tiling_id;
+  }
   auto tensor_a = op_paras.GetInputDesc(0);
   auto tensor_b = op_paras.GetInputDesc(1);
   int64_t m, k, n, batch;
@@ -249,26 +253,31 @@ std::string GEMMTilingSelect(const std::string &op_type, const ge::Operator &op_
  */
 bool GEMMTiling(const std::string &op_type, const ge::Operator &op_paras, const json &compile_info,
                 utils::OpRunInfo& run_info) {
-  OP_LOGD(op_type.c_str(), "%s", DebugInfoGEMM(op_paras, compile_info).c_str());
-  std::string tiling_id("-1");
-  if (compile_info.type() == json::value_t::object) {
-    tiling_id = GEMMTilingSelect(op_type, op_paras, compile_info, run_info);
-  }else {
-    for (std::size_t i = 0; i < compile_info.size(); i++) {
-      tiling_id = GEMMTilingSelect(op_type, op_paras, compile_info[i], run_info);
-      if (tiling_id != "-1") {
-        break;
+  try {
+    OP_LOGD(op_type.c_str(), "%s", DebugInfoGEMM(op_paras, compile_info).c_str());
+    std::string tiling_id("-1");
+    if (compile_info.type() == json::value_t::object) {
+      tiling_id = GEMMTilingSelect(op_type, op_paras, compile_info, run_info);
+    } else {
+      for (std::size_t i = 0; i < compile_info.size(); i++) {
+        tiling_id = GEMMTilingSelect(op_type, op_paras, compile_info[i], run_info);
+        if (tiling_id != "-1") {
+          break;
+        }
       }
     }
-  }
 
-  if (tiling_id == "-1") {
-    CUBE_INNER_ERR_REPORT(op_type.c_str(), "This shape is not covered by any tiling, "
-      "please modify range and recompile");
+    if (tiling_id == "-1") {
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "This shape is not covered by any tiling, "
+        "please modify range and recompile");
+      return false;
+    }
+
+    return true;
+  } catch (...) {
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "get unknown exception, please check compile info json.");
     return false;
   }
-
-  return true;
 }
 
 // register tiling interface of the gemm

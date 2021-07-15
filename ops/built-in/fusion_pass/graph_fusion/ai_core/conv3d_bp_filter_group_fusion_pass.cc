@@ -36,6 +36,7 @@
 #include "pattern_fusion_util.h"
 #include "common/util/error_manager/error_manager.h"
 #include "../../../op_proto/util/error_util.h"
+#include "anchor_util.h"
 
 using namespace std;
 using namespace ge;
@@ -66,6 +67,9 @@ vector<FusionPattern*> Conv3DBpFilterGroupFusionPass::DefinePatterns() {
 
 Status Conv3DBpFilterGroupFusionPass::GetChannelValue(const ge::OpDescPtr& dw_desc,
                                                       const std::string& name, int64_t& channel) {
+  FUSION_PASS_CHECK(dw_desc == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dw_desc is NULL."),
+                    return FAILED);
   GeTensorDesc in_desc = dw_desc->GetInputDesc(name);
   auto format = in_desc.GetOriginFormat();
   auto dims = in_desc.GetOriginShape().GetDims();
@@ -278,6 +282,9 @@ bool Conv3DBpFilterGroupFusionPass::GenerateMulNode(ge::ComputeGraph& graph,
   GeTensorDesc mul_out_desc = conv_out_desc;
 
   FUSION_PASS_MAKE_SHARED((mul_desc = std::make_shared<ge::OpDesc>(conv_name + "_mul", "Mul")), return false);
+  FUSION_PASS_CHECK(mul_desc == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul_desc is null."),
+                    return false);
   mul_desc->AddInputDesc(mul_in_desc);
   mul_desc->AddInputDesc(mul_in_desc);
   mul_desc->AddOutputDesc(mul_out_desc);
@@ -291,8 +298,20 @@ bool Conv3DBpFilterGroupFusionPass::Relink(ge::NodePtr& conv_node,
   ge::NodePtr& mul_node, ge::NodePtr& const_node) {
   Node::Vistor<NodePtr> out_nodes = conv_node->GetOutAllNodes();
   std::vector<int> outAnchorIndexes;
+  ge::OutDataAnchorPtr convNodePtr = conv_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(convNodePtr == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "convNodePtr is null."),
+                    return false);
+  FUSION_PASS_CHECK(convNodePtr->GetPeerInDataAnchors().size() < out_nodes.size(),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "in data is null."),
+                    return false);
+  ge::InDataAnchorPtr inDataPtr = nullptr;
   for (size_t i = 0; i < out_nodes.size(); ++i) {
-    outAnchorIndexes.push_back(conv_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(i)->GetIdx());
+    inDataPtr = convNodePtr->GetPeerInDataAnchors().at(i);
+    FUSION_PASS_CHECK(inDataPtr == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inDataPtr is null."),
+                    return false);
+    outAnchorIndexes.push_back(inDataPtr->GetIdx());
   }
   for (auto out_anchor : conv_node->GetAllOutDataAnchors()) {
     if (out_anchor != nullptr) {
@@ -323,7 +342,13 @@ Status Conv3DBpFilterGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
                                            vector<ge::NodePtr>& new_nodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter Conv3DBpFilterGroupFusionPass::Fusion");
   NodePtr dw_node = GetNodeFromMapping(PATTERN_CONV3D_DW_GROUP, mapping);
+  FUSION_PASS_CHECK(dw_node == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dw_node is null."),
+                    return FAILED);
   auto dw_desc = dw_node->GetOpDesc();
+  FUSION_PASS_CHECK(dw_desc == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dw_desc is null."),
+                    return FAILED);
 
   int64_t groups =1;
   bool has_group_flag = ge::AttrUtils::GetInt(dw_desc, "groups", groups);

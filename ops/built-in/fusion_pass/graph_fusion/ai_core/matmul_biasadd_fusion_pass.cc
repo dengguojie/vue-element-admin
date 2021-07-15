@@ -19,20 +19,20 @@
  * \brief matmul biasadd fusion pass(matmul --> biasadd)
  */
 #include "matmul_biasadd_fusion_pass.h"
-#include <vector>
-#include <string>
 
+#include <string>
+#include <vector>
+
+#include "anchor_util.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
-
 #include "op_log.h"
 #include "pattern_fusion_util.h"
-
-#include "error_util.h"
 
 namespace fe {
 static const string HAS_BIAS = "has_bias";
@@ -103,11 +103,21 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     string nodeType = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(nodeBias);
     FUSION_PASS_CHECK(nodeType != CONSTANT && nodeType != CONSTANTOP,
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "bias is not const node"), return NOT_CHANGED);
-    ge::GeShape inputShape = nodeBiasAdd->GetOpDesc()->GetInputDesc(0).GetShape();
-    ge::GeShape biasShape = nodeBiasAdd->GetOpDesc()->GetInputDesc(1).GetShape();
-    FUSION_PASS_CHECK(biasShape.GetDimNum() != 1 && inputShape.GetDimNum() != 1,
+    auto input0desc = GetCurrNodeInputDesc(nodeBiasAdd, 0);
+    auto input1desc = GetCurrNodeInputDesc(nodeBiasAdd, 1);
+    FUSION_PASS_CHECK(input0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                  return FAILED);
+    FUSION_PASS_CHECK(input1desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                  return FAILED);
+    ge::GeShape inputShape = input0desc->GetShape();
+    ge::GeShape biasShape = input1desc->GetShape();
+    FUSION_PASS_CHECK(biasShape.GetDims().size() != 1 && inputShape.GetDims().size() != 1,
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "Add input is not scalar"), return NOT_CHANGED);
-    if (biasShape.GetDimNum() == 1) {
+    if (biasShape.GetDims().size() == 1) {
+      FUSION_PASS_CHECK(inputShape.GetDims().size() != 2,
+                        OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul output shape not martch."), return NOT_CHANGED);
       if (PatternFusionUtil::IsUnknownShape(biasShape.GetDim(0)) ||
           PatternFusionUtil::IsUnknownShape(inputShape.GetDim(1))) {
         OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMulBiasAddFusionPass cannot be applied for unknown shape.");
@@ -118,6 +128,8 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                         OP_LOGI(FUSED_OP_TYPE.c_str(), "bias shape is not equal to input second dim."),
                         return NOT_CHANGED);
     } else {
+      FUSION_PASS_CHECK(biasShape.GetDims().size() != 2,
+                        OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul output shape not martch."), return NOT_CHANGED);
       if (PatternFusionUtil::IsUnknownShape(biasShape.GetDim(1)) ||
           PatternFusionUtil::IsUnknownShape(inputShape.GetDim(0))) {
         OP_LOGW(FUSED_OP_TYPE.c_str(), "MatMulBiasAddFusionPass cannot be applied for unknown shape.");

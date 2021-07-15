@@ -24,6 +24,7 @@
 #include "op_log.h"
 #include "register/register.h"
 #include "../../op_proto/util/error_util.h"
+#include "../../op_proto/util/util.h"
 
 namespace domi {
 
@@ -36,6 +37,7 @@ Status ParseParamsConv2DBackpropInput(const Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
 
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_dsc, "op desc", return FAILED);
   ge::GeTensorDesc org_tensor_w = op_dsc->GetInputDesc(CV_NUM_1);
   org_tensor_w.SetOriginFormat(ge::FORMAT_HWCN);
   org_tensor_w.SetFormat(ge::FORMAT_HWCN);

@@ -40,6 +40,7 @@
 #include "securec.h"
 #include "common/util/error_manager/error_manager.h"
 #include "../../../op_proto/util/error_util.h"
+#include "anchor_util.h"
 
 using namespace std;
 using namespace ge;
@@ -47,7 +48,7 @@ using namespace ge;
 namespace fe {
 static const float FLOAT_NUM_ONE = 1;
 static const std::string PATTERN_CONV2DBPFILTER = "Conv2DBackpropFilterD";
-static const std::string CONSTATNOP = "Const";
+static const std::string CONSTANTOP = "Const";
 static const std::string CONV2DBPFILTER = "Conv2DBackpropFilterD";
 
 /*!
@@ -67,7 +68,11 @@ NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
   FUSION_PASS_MAKE_SHARED(mulDesc = std::make_shared<ge::OpDesc>(dwOutNode->GetName() + "_mul_layer", "Mul"),
                           return nullptr);
   // get and set mulDesc's inputDesc
-  ge::GeTensorDesc inputDesc = dwOutNode->GetOpDesc()->GetOutputDesc(0);
+  auto dwOutNodePtr = dwOutNode->GetOpDesc();
+  FUSION_PASS_CHECK(dwOutNodePtr == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dwOutNodePtr is null"),
+                    return nullptr);
+  ge::GeTensorDesc inputDesc = dwOutNodePtr->GetOutputDesc(0);
   ge::GeShape mulShape = inputDesc.GetShape();
   inputDesc.SetShape(mulShape);
   inputDesc.SetOriginShape(mulShape);
@@ -139,9 +144,12 @@ Status Conv2DbpFilterMulFusionPass::AddAssit(ge::ComputeGraph& graph,
                                              ge::NodePtr& mulNode,
                                              const int64_t matrixSize) {
   // get OriginDesc info
-  ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
-  ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
-  ge::GeShape inputDesc0Shape = inputDesc0.GetOriginShape();
+  ge::ConstGeTensorDescPtr inputDesc0 = GetCurrNodeInputDesc(mulNode, 0);
+  FUSION_PASS_CHECK(inputDesc0 == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                    return FAILED);
+  ge::Format inputDesc0OriginFormat = inputDesc0->GetOriginFormat();
+  ge::GeShape inputDesc0Shape = inputDesc0->GetOriginShape();
   vector<int64_t> inDimInfo  = inputDesc0Shape.GetDims();
 
   // create inputAssit & fill data by NnSet
@@ -185,7 +193,11 @@ Status Conv2DbpFilterMulFusionPass::AddAssit(ge::ComputeGraph& graph,
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is null, fusion failed");
     return PARAM_INVALID;
   }
-  constInput->GetOpDesc()->SetType(CONSTATNOP);
+  auto const_op_desc = constInput->GetOpDesc();
+  FUSION_PASS_CHECK(const_op_desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dwOutNodePtr is null"),
+                  return FAILED);
+  constInput->GetOpDesc()->SetType(CONSTANTOP);
 
   return SUCCESS;
 }

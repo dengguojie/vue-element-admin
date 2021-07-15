@@ -68,7 +68,9 @@ Status GemmTransFusionPass::GenerateTransposeNode(ge::ComputeGraph* graph, const
   FUSION_PASS_CHECK(next_in_desc == nullptr,
                     ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "next_in_desc is null"),
                     return FAILED);
-
+  FUSION_PASS_CHECK(perm.size() > 2,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "perm is error"),
+                    return FAILED);
   vector<int64_t> next_in_shape(2);
   for (size_t i = 0; i < perm.size(); ++i) {
     next_in_shape[i] = prev_out_desc.GetShape().GetDim(perm[i]);

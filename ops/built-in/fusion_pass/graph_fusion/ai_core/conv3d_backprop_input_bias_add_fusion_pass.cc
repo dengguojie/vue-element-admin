@@ -32,7 +32,7 @@
 #include "pattern_fusion_util.h"
 #include "common/util/error_manager/error_manager.h"
 #include "../../../op_proto/util/error_util.h"
-
+#include "anchor_util.h"
 
 namespace fe {
 static const string OP_CONV3D_BACKPROP_INPUT_D = "Conv3DBackpropInputD";
@@ -97,12 +97,18 @@ Status Conv3DbpInputBiasAddFusionPass::ConvertDxToTranspose(ge::ComputeGraph &gr
 
   // build a new node named Conv3DTransposeD
   auto conv_op = conv_node->GetOpDesc();
+  FUSION_PASS_CHECK(conv_op == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get conv3d_transpose_d_op failed."),
+                    return PARAM_INVALID);
   ge::OpDescPtr conv3d_transpose_d_op = nullptr;
   FUSION_PASS_MAKE_SHARED(
     conv3d_transpose_d_op = std::make_shared<ge::OpDesc>(conv_op->GetName(), "Conv3DTransposeD"),
     return FAILED);
 
   auto bias_const_op = bias_const_node->GetOpDesc();
+  FUSION_PASS_CHECK(bias_const_op == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias_const_op is null."),
+                    return FAILED);
 
   SetOpAttr(conv_op, bias_const_op, conv3d_transpose_d_op);
 
@@ -138,6 +144,15 @@ void Conv3DbpInputBiasAddFusionPass::SetOpAttr(ge::OpDescPtr &conv_op,
   * Conv3DTransposeD: input0 (x), input1 (filter), input2 (bias), input3 (offset_w)
   *   attr_list: input_size, strides, pads, dilations, groups, data_format, output_padding, offset_x
   */
+  FUSION_PASS_CHECK(conv_op == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "conv_op is null."),
+                    return);
+  FUSION_PASS_CHECK(bias_const_op == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias_const_op is null."),
+                    return);
+  FUSION_PASS_CHECK(conv3d_transpose_d_op == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "conv3d_transpose_d_op is null."),
+                    return);
   ge::GeTensorDesc conv3d_transpose_d_in_desc_0 = conv_op->GetInputDesc(1);
   ge::GeTensorDesc conv3d_transpose_d_in_desc_1 = conv_op->GetInputDesc(0);
   ge::GeTensorDesc conv3d_transpose_d_in_desc_2 = bias_const_op->GetOutputDesc(0);
@@ -219,15 +234,21 @@ Status Conv3DbpInputBiasAddFusionPass::ConnectEdges(ge::NodePtr &conv_node,
   *
   * ========================================
   */
+  ge::OutDataAnchorPtr outDataPtr0 = GetPeerOutAnchorWithInDataAnchor(conv_node, 0);
+  FUSION_PASS_CHECK(outDataPtr0 == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outDataPtr0 is null."),
+                    return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(conv_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                            conv3d_transpose_d->GetInDataAnchor(1)) != SUCCESS,
+    ge::GraphUtils::AddEdge(outDataPtr0, conv3d_transpose_d->GetInDataAnchor(1)) != SUCCESS,
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[0] to fusion node: %s's index[1] is failed.",
             conv_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
     return FAILED);
+  ge::OutDataAnchorPtr outDataPtr1 = GetPeerOutAnchorWithInDataAnchor(conv_node, 1);
+  FUSION_PASS_CHECK(outDataPtr1 == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outDataPtr1 is null."),
+                    return FAILED);
   FUSION_PASS_CHECK(
-    ge::GraphUtils::AddEdge(conv_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
-                            conv3d_transpose_d->GetInDataAnchor(0)) != SUCCESS,
+    ge::GraphUtils::AddEdge(outDataPtr1, conv3d_transpose_d->GetInDataAnchor(0)) != SUCCESS,
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[1] to fusion node: %s's index[0] is failed.",
             conv_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
     return FAILED);
@@ -236,7 +257,11 @@ Status Conv3DbpInputBiasAddFusionPass::ConnectEdges(ge::NodePtr &conv_node,
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding edge from fused node: %s's index[0] to fusion node: %s's index[2] is failed.",
             bias_const_node->GetName().c_str(), conv3d_transpose_d->GetName().c_str()),
     return FAILED);
-  auto in_anchors = bias_node->GetOutDataAnchor(0)->GetPeerInDataAnchors();
+  ge::OutDataAnchorPtr biasNodePtr = bias_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(biasNodePtr == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "biasNodePtr is null."),
+                    return FAILED);
+  auto in_anchors = biasNodePtr->GetPeerInDataAnchors();
   for (auto in_anchor : in_anchors) {
     in_anchor->UnlinkAll();
     FUSION_PASS_CHECK(

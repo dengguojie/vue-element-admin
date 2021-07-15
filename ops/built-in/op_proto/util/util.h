@@ -27,6 +27,7 @@
 #include <map>
 #include <algorithm>
 
+#include "error_util.h"
 #include "framework/omg/omg_inner_types.h"
 #include "graph/operator.h"
 #include "graph/operator_reg.h"
@@ -42,6 +43,19 @@
 #include "op_log.h"
 
 #define LOG_ERROR(format, args...) printf(format, ##args)
+
+#define CHECK_KEY_IN_MAP(map, key, name, re_expr)                                 \
+  if(map.find(key) == map.end()) {                                                  \
+    CUBE_INNER_ERR_REPORT("", "not found %s in %s", name, #map);  \
+    re_expr;                                                                    \
+  }
+
+#define CHECK_PTR_NULL(ptr, name, re_expr)                             \
+  if (ptr == nullptr) {                                                    \
+    CUBE_INNER_ERR_REPORT("", "Get %s failed.", name);                     \
+    re_expr;                                                           \
+  }
+
 namespace ge {
 
 // enum type and string type mapping
@@ -409,7 +423,7 @@ void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, 
                        std::vector<std::pair<int64_t, int64_t>>& y_range, GeShape& output_shape);
 
 void FixRangeMaxToInt32max(GeShape &shape, std::vector<std::pair<int64_t, int64_t>> &shape_range);
-}    
+}
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_UTIL_H_

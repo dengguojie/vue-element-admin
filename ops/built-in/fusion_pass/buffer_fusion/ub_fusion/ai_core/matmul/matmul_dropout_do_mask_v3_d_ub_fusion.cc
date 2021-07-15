@@ -27,6 +27,7 @@
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
+#include "anchor_util.h"
 
 namespace fe {
 namespace {
@@ -143,8 +144,16 @@ Status MatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionMappin
 
   // buffer fusion do not support dynamic shape now
   for (const auto& matmul_node : matmul_nodes) {
-    vector<int64_t> input0_dims = matmul_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-    vector<int64_t> input1_dims = matmul_node->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    auto input0desc = GetCurrNodeInputDesc(matmul_node, 0);
+    auto input1desc = GetCurrNodeInputDesc(matmul_node, 1);
+    FUSION_PASS_CHECK(input0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                  return FAILED);
+    FUSION_PASS_CHECK(input1desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                  return FAILED);
+    vector<int64_t> input0_dims = input0desc->GetOriginShape().GetDims();
+    vector<int64_t> input1_dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> all_dims;
     all_dims.resize(input0_dims.size() + input1_dims.size());
     merge(input0_dims.begin(), input0_dims.end(), input1_dims.begin(), input1_dims.end(), all_dims.begin());

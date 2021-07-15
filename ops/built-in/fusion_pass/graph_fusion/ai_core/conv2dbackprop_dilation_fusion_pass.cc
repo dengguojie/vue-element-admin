@@ -354,9 +354,17 @@ Status Conv2DbpInputDilationFusionPass::Relink(
         "fail to add edge between dilation_node and conv2dbp_input_node"),
       return FAILED);
 
+    auto dilation_out_desc = GetCurrNodeOutputDesc(dilation_node, 0);
+    FUSION_PASS_CHECK(dilation_out_desc == nullptr,
+              CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dilation_out_desc is null"),
+              return FAILED);
+    auto conv2dbp_input_op_desc = conv2dbp_input_node->GetOpDesc();;
+    FUSION_PASS_CHECK(conv2dbp_input_op_desc == nullptr,
+          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dilation_out_desc is null"),
+          return FAILED);
     FUSION_PASS_CHECK(
-      conv2dbp_input_node->GetOpDesc()->UpdateInputDesc(
-        pre_anchor, dilation_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
+      conv2dbp_input_op_desc->UpdateInputDesc(
+        pre_anchor, *(dilation_out_desc.get())) != SUCCESS,
       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
         "fail to update input description of conv2dbp_input_node"),
       return FAILED);
@@ -403,20 +411,28 @@ Status Conv2DbpInputDilationFusionPass::Relink(
                                 "fail to add edge between conv2dbp_input_node and dilation_node"),
                                 return FAILED);
    }
-
-   FUSION_PASS_CHECK(conv2dbp_input_node->GetOpDesc()->UpdateOutputDesc(sub_anchor,
-                   dilation_node->GetOpDesc()->GetInputDesc(0)) !=  SUCCESS,
+   auto dilation_in_desc = GetCurrNodeInputDesc(dilation_node, 0);
+   FUSION_PASS_CHECK(dilation_in_desc == nullptr,
+                CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dilation_in_desc is null"),
+                return FAILED);
+   auto conv2dbp_input_op_desc = conv2dbp_input_node->GetOpDesc();;
+   FUSION_PASS_CHECK(conv2dbp_input_op_desc->UpdateOutputDesc(sub_anchor,
+                   *(dilation_in_desc.get())) !=  SUCCESS,
                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
                    "fail to update output description of conv2dbp_input_node"),
                    return FAILED);
 
    if (pad_node != nullptr) {
-        FUSION_PASS_CHECK(dilation_node->GetOpDesc()->UpdateOutputDesc(
-                                0, pad_node->GetOpDesc()->GetInputDesc(0)) !=  SUCCESS,
-                                ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
-                                "fail to update output description of dilation_node "),
-                                return FAILED);
-   
+        auto dilation_op_desc = dilation_node->GetOpDesc();
+        auto pad_in_desc = GetCurrNodeInputDesc(pad_node, 0);
+        FUSION_PASS_CHECK(pad_in_desc == nullptr,
+            CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_in_desc is null"),
+            return FAILED);
+        FUSION_PASS_CHECK(dilation_op_desc->UpdateOutputDesc(0,
+                          *(pad_in_desc.get())) !=  SUCCESS,
+                          ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
+                          "fail to update output description of dilation_node "),
+                          return FAILED);
    }
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "finish  relink");
@@ -477,7 +493,11 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
                     return FAILED);
 
   int out_backprop_idx = peer_out_anchor->GetIdx();
-  ge::GeTensorDesc out_backprop_out_desc = out_backprop_node->GetOpDesc()->GetOutputDesc(out_backprop_idx);
+  auto out_desc_ptr = GetCurrNodeOutputDesc(out_backprop_node, out_backprop_idx);
+  FUSION_PASS_CHECK(out_desc_ptr == nullptr,
+            CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_desc_ptr is null"),
+            return FAILED);
+  ge::GeTensorDesc out_backprop_out_desc = *(out_desc_ptr.get());
   vector<int> y_idxs;
 
   auto outdata_anchor = conv2dbp_input_node->GetOutDataAnchor(y_anchor);
@@ -498,12 +518,22 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   ge::NodePtr y_node = GetPeerInNodeByOutDataAnchor(outdata_anchor, 0);
   FUSION_PASS_CHECK(y_node == nullptr, ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to get node of y"),
                     return FAILED);
-  ge::GeTensorDesc y_desc = y_node->GetOpDesc()->GetInputDesc(y_idx);
-  ge::GeTensorDesc filter_desc = conv2dbp_input_node->GetOpDesc()->GetInputDesc(filter_anchor);
-  ge::GeTensorDesc conv2dbp_input_outbackprop_desc = conv2dbp_input_node\
-                                                     ->GetOpDesc()->GetInputDesc(out_bp_anchor);
-  ge::GeTensorDesc conv2dbp_input_y_desc = conv2dbp_input_node->GetOpDesc()->GetOutputDesc(y_anchor);
-
+  ge::GeTensorDesc y_desc = *(GetCurrNodeInputDesc(y_node, y_idx).get());
+  ge::GeTensorDesc filter_desc = *(GetCurrNodeInputDesc(conv2dbp_input_node, filter_anchor).get());
+  ge::GeTensorDesc conv2dbp_input_outbackprop_desc = *(GetCurrNodeInputDesc(conv2dbp_input_node, out_bp_anchor).get());
+  ge::GeTensorDesc conv2dbp_input_y_desc = *(GetCurrNodeInputDesc(conv2dbp_input_node, y_anchor).get());
+  FUSION_PASS_CHECK(GetCurrNodeInputDesc(y_node, y_idx) == nullptr,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "y_desc is null"),
+      return FAILED);
+  FUSION_PASS_CHECK(GetCurrNodeInputDesc(conv2dbp_input_node, filter_anchor) == nullptr,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filter_desc is null"),
+      return FAILED);
+  FUSION_PASS_CHECK(GetCurrNodeInputDesc(conv2dbp_input_node, out_bp_anchor) == nullptr,
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outbackprop_desc is null"),
+    return FAILED);
+  FUSION_PASS_CHECK(GetCurrNodeInputDesc(conv2dbp_input_node, y_anchor) == nullptr,
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "y_desc is null"),
+    return FAILED);
   // get shape
   auto filter_ori_shape = filter_desc.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(filter_ori_shape.size() != 4,
@@ -601,8 +631,11 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
         &dilation_node, strides, pad_hw, basename) != SUCCESS,
       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate dilation node"),
       return FAILED);
-
-    ge::GeTensorDesc dilation_y_desc = dilation_node->GetOpDesc()->GetOutputDesc(0);
+    auto y_desc_ptr = GetCurrNodeOutputDesc(dilation_node, 0);
+    FUSION_PASS_CHECK(y_desc_ptr == nullptr,
+            CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "y_desc is null"),
+            return FAILED);
+    ge::GeTensorDesc dilation_y_desc = *(y_desc_ptr.get());
     if (pad_hw[0] != 0 || pad_hw[1] != 0) {
         FUSION_PASS_CHECK(generate_pad_node(&graph, &dilation_y_desc,
         &y_desc, &pad_node, pad_hw, basename) != SUCCESS, 

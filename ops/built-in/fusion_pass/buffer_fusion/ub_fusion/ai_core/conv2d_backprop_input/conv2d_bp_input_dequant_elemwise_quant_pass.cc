@@ -27,6 +27,7 @@
 #include "common/op_slice_info.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
+#include "anchor_util.h"
 
 namespace fe {
 
@@ -153,7 +154,7 @@ void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Dequant node not matched");
     return;
   } else {
-    auto deq_scale = dequant_nodes[0]->GetOpDesc()->MutableInputDesc("deq_scale");
+    auto deq_scale = GetCurrNodeMutableInputDesc(dequant_nodes[0], "deq_scale");
     vector<int64_t> scalar = {1};
     cut_cout_flag = deq_scale != nullptr && deq_scale->GetOriginShape().GetDims() != scalar;
   }
@@ -241,8 +242,16 @@ Status TbeDxDeqElemQuantPass::GetFusionNodes(const BufferFusionMapping& mapping,
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> dxNodes = GetMatchedNodesByDescName(PATTERN_DX, mapping);
   for (const auto& dxNode : dxNodes){
-    vector<int64_t> input0Dims = dxNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-    vector<int64_t> input1Dims = dxNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    auto input0desc = GetCurrNodeInputDesc(dxNode, 0);
+    auto input1desc = GetCurrNodeInputDesc(dxNode, 1);
+    FUSION_PASS_CHECK(input0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input0desc is null"),
+                  return FAILED);
+    FUSION_PASS_CHECK(input1desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input1desc is null"),
+                  return FAILED);
+    vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
     allDims.resize(input0Dims.size() + input1Dims.size());
     merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());

@@ -24,6 +24,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph/operator.h"
 #include "common/util/error_manager/error_manager.h"
+#include "../../op_proto/util/util.h"
 
 #include "op_log.h"
 
@@ -37,6 +38,7 @@ namespace {
 Status ParseParamsConv3D(const Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_dsc, "op desc", return FAILED);
   ge::GeTensorDesc org_tensor_w = op_dsc->GetInputDesc(kPos1);
   org_tensor_w.SetOriginFormat(ge::FORMAT_DHWCN);
   org_tensor_w.SetFormat(ge::FORMAT_DHWCN);

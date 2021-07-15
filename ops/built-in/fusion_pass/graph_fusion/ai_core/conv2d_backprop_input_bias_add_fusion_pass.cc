@@ -98,12 +98,18 @@ Status Conv2DbpInputBiasAddFusionPass::convert_dx_to_transpose(ge::ComputeGraph 
 
   // build a new node named Conv2DTransposeD
   auto conv_op = conv_node->GetOpDesc();
+  FUSION_PASS_CHECK(conv_op == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "conv_op is null."),
+                    return FAILED);
   ge::OpDescPtr conv2d_transpose_d_op = nullptr;
   FUSION_PASS_MAKE_SHARED(
     conv2d_transpose_d_op = std::make_shared<ge::OpDesc>(conv_op->GetName(), "Conv2DTransposeD"),
     return FAILED);
 
   auto bias_const_op = bias_const_node->GetOpDesc();
+  FUSION_PASS_CHECK(bias_const_op == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias_const_op is null."),
+                    return FAILED);
 
   set_in_out_op_and_attr(conv_op, bias_const_op, conv2d_transpose_d_op);
 
@@ -139,6 +145,9 @@ void Conv2DbpInputBiasAddFusionPass::set_in_out_op_and_attr(ge::OpDescPtr &conv_
   * Conv2DTransposeD: input0 (x), input1 (filter), input2 (bias), input3 (offset_w)
   *   attr_list: input_size, strides, pads, dilations, groups, data_format, output_padding, offset_x
   */
+  FUSION_PASS_CHECK(conv_op->GetAllInputNames().size() < 2,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get InputDesc of conv2d_transposefailed."),
+                    return);
   ge::GeTensorDesc conv2d_transpose_d_in_desc_0 = conv_op->GetInputDesc(1);
   ge::GeTensorDesc conv2d_transpose_d_in_desc_1 = conv_op->GetInputDesc(0);
   ge::GeTensorDesc conv2d_transpose_d_in_desc_2 = bias_const_op->GetOutputDesc(0);

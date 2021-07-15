@@ -23,6 +23,7 @@
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 #include "common/util/error_manager/error_manager.h"
+#include "../../op_proto/util/util.h"
 
 #include "op_log.h"
 
@@ -47,6 +48,7 @@ Status ParseParamsConv3DBackpropFilter(const Message* op_src, ge::Operator& op) 
   }
 
   auto opDsc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(opDsc, "op desc", return FAILED);
   ge::GeTensorDesc org_tensor_x = opDsc->GetInputDesc(kInputIdx0);
   org_tensor_x.SetOriginFormat(data_format);
   org_tensor_x.SetFormat(data_format);

@@ -24,6 +24,7 @@
 #include "pattern_fusion_util.h"
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "anchor_util.h"
 
 namespace fe {
 
@@ -136,8 +137,16 @@ Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionM
 
   // buffer fusion do not support dynamic shape now
   for (const auto& matmulNode : matmulNodes){
-    vector<int64_t> input0Dims = matmulNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-    vector<int64_t> input1Dims = matmulNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
+    auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
+    FUSION_PASS_CHECK(input0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                  return FAILED);
+    FUSION_PASS_CHECK(input1desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                  return FAILED);
+    vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
     allDims.resize(input0Dims.size() + input1Dims.size());
     merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());

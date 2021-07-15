@@ -18,6 +18,7 @@
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
+#include "anchor_util.h"
 
 namespace fe {
 
@@ -86,9 +87,13 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
                 fcNode->GetName().c_str(), fcNode->GetType().c_str());
         return;
       }
+      auto input0desc = GetCurrNodeInputDesc(fcNode, 0);
+      FUSION_PASS_CHECK(input0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                  return);
       if (axis == 2) {
         n_axis = 1;
-      } else if(fcNode->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_FRACTAL_NZ) {
+      } else if(input0desc->GetFormat() == ge::FORMAT_FRACTAL_NZ) {
         n_axis = 0;
       } else {
         n_axis = 1;
@@ -110,7 +115,7 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   bool tensor_mode = false;
   if (!dequantNodes.empty()) {
     pre += 1;
-    auto deq_scale = dequantNodes[0]->GetOpDesc()->MutableInputDesc("deq_scale");
+    auto deq_scale = GetCurrNodeMutableInputDesc(dequantNodes[0], "deq_scale");
     vector<int64_t> scalar = {1};
     tensor_mode = deq_scale != nullptr && deq_scale->GetOriginShape().GetDims() != scalar;
   }
@@ -142,8 +147,16 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
   for (const auto& matmulNode : matmulNodes){
-    vector<int64_t> input0Dims = matmulNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-    vector<int64_t> input1Dims = matmulNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
+    auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
+    FUSION_PASS_CHECK(input0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                  return FAILED);
+    FUSION_PASS_CHECK(input1desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                  return FAILED);
+    vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
     allDims.resize(input0Dims.size() + input1Dims.size());
     merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());

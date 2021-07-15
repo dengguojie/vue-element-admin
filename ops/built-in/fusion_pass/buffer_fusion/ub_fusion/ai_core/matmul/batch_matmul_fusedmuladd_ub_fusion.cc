@@ -27,6 +27,7 @@
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
+#include "anchor_util.h"
 
 namespace fe {
 namespace {
@@ -92,7 +93,8 @@ void TbeBatchMatmulFusedMulAddFusionPass::SetSplitInfo(const BufferFusionMapping
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Elemwise node not matched");
     return;
   }
-
+  FUSION_PASS_CHECK(matmulNodes[0]->GetInDataNodes().size() <= 0,
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "matmulNodes's input can not <= 0."), return);
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
   if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
@@ -134,8 +136,16 @@ Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMap
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   for (const auto& matmulNode : matmulNodes){
-    vector<int64_t> input0Dims = matmulNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-    vector<int64_t> input1Dims = matmulNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
+    auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
+    FUSION_PASS_CHECK(input0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
+                  return FAILED);
+    FUSION_PASS_CHECK(input1desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
+                  return FAILED);
+    vector<int64_t> input0Dims = input0desc->GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = input1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
     allDims.resize(input0Dims.size() + input1Dims.size());
     merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());

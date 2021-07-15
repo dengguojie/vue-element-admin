@@ -27,6 +27,7 @@
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
+#include "anchor_util.h"
 
 namespace fe {
 
@@ -78,8 +79,14 @@ void MatmulReduceSumUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, s
   if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
     return;
   }
+  auto output0desc = GetCurrNodeOutputDesc(matmulNodes[0], 0);
+  FUSION_PASS_CHECK(output0desc == nullptr,
+              CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "output0desc is null"),
+              return);
+  FUSION_PASS_CHECK(output0desc->GetOriginShape().GetDims().size() < 2,
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Matmul output shape dims < 2."), return);
+  int batch_lenth = output0desc->GetOriginShape().GetDims().size() - 2;
 
-  int batch_lenth = matmulNodes[0]->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDims().size() - 2;
   for (int batch_index = 0; batch_index < batch_lenth; batch_index++){
     DelSplitInfoByOutputAxis(split_maps, batch_index);
   }
@@ -109,8 +116,11 @@ Status MatmulReduceSumUbFusion::GetFusionNodes(const BufferFusionMapping& mappin
       OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support this OP, skip fusion.");
       return SUCCESS;
     }
-
-    if (reduceNode->GetOpDesc()->GetOutputDesc(0).GetDataType() != ge::DT_FLOAT) {
+    auto output0desc = GetCurrNodeOutputDesc(reduceNode, 0);
+    FUSION_PASS_CHECK(output0desc == nullptr,
+              CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "output0desc is null"),
+              return FAILED);    
+    if (output0desc->GetDataType() != ge::DT_FLOAT) {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support reduce output type not fp32, skip fusion.");
       return SUCCESS;
     }

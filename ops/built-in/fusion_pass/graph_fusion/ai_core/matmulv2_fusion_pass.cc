@@ -69,6 +69,10 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     return PARAM_INVALID);
 
   bool transposeB = false;
+  ge::OpDescPtr matMulV2NodeDescPtr = matMulV2Node->GetOpDesc();
+  FUSION_PASS_CHECK(matMulV2NodeDescPtr == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matMulV2NodeDescPtr is null."),
+                    return PARAM_INVALID);
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(matMulV2Node->GetOpDesc(), TRANSPOSEB, transposeB),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Get transpose_b attr failed."), return NOT_CHANGED);
 

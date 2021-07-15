@@ -19,6 +19,7 @@
  * \brief
  */
 /* reslove the complexity of pooling fuction. */
+
 #include "inc/nn_pooling_ops.h"
 #include <string.h>
 #include <cmath>
@@ -1527,7 +1528,9 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
                                     const std::vector<int32_t>& pad_list, const std::vector<int64_t>& dims_input,
                                     std::vector<int64_t> dim_vector, const bool& ceil_mode, const bool& global_pooling,
                                     const std::string& padding_mode) {
+  CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return false);
   std::string input_format_str = format2str[input_format];
+
   if (input_format_str != "NHWC") {
     input_format_str = "NCHW";
   }
@@ -2176,6 +2179,7 @@ bool GetAvgPool3DOutputRange(ge::OpDescPtr &op_desc, const vector<int64_t> &ksiz
   CHECK(fmap_format != FORMAT_NDHWC && fmap_format != FORMAT_NCDHW,
         OP_LOGE("AvgPool3D", "unsupport fmap desc format."),
         return false);
+  CHECK_KEY_IN_MAP(format2str, fmap_desc->GetFormat(), "fmap_format", return false);
   string fmap_format_str = format2str[fmap_desc->GetFormat()];
   vector<pair<int64_t, int64_t>> fmap_range;
   fmap_desc->GetShapeRange(fmap_range);
@@ -2294,7 +2298,10 @@ IMPLEMT_INFERFUNC(AvgPool3D, AvgPool3DInferShape) {
     std::vector<std::pair<int64_t, int64_t>> output_range(kAvgPool3DOriShapeDim);
     std::vector<int64_t> ksize_dhw = {kd, kh, kw};
     std::vector<int64_t> strides_dhw = {strd, strh, strw};
-    CHECK(!GetAvgPool3DOutputRange(op_desc, ksize_dhw, strides_dhw, padding, format2str[input_format],
+
+    CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return GRAPH_FAILED);
+    std::string dx_format_str = format2str[input_format];
+    CHECK(!GetAvgPool3DOutputRange(op_desc, ksize_dhw, strides_dhw, padding, dx_format_str,
                             output_shape, output_range),
           OP_LOGE(op.GetName().c_str(), "Set dynamic output shape and range failed."),
           return GRAPH_FAILED);
@@ -2956,9 +2963,12 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
   }
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("output");
   GeTensorDescPtr tensor_desc_grads = op_desc->MutableInputDesc("grads");
   GeTensorDescPtr tensor_desc_multiplier = op_desc->MutableInputDesc("multiplier");
+  CHECK_PTR_NULL(tensor_desc_y, "tensor y desc", return GRAPH_FAILED);
+  CHECK_PTR_NULL(tensor_desc_grads, "tensor grads desc", return GRAPH_FAILED);
 
   vector<vector<int64_t>> y_data_slice(6, vector<int64_t>(0));
   vector<vector<int64_t>> grads_data_slice(6, vector<int64_t>(0));
@@ -2979,7 +2989,10 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
 
   auto x_format = tensor_desc_grads->GetOriginFormat();
   auto x_shape = op.get_input_desc_grads().GetShape().GetDims();
+
+  CHECK_KEY_IN_MAP(format2str, x_format, "x_format", return GRAPH_FAILED);
   std::string x_format_str = format2str[x_format];
+
   int32_t d_input_position = x_format_str.find("D");
   int32_t h_input_position = x_format_str.find("H");
   int32_t w_input_position = x_format_str.find("W");
@@ -3050,6 +3063,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DGradD, AvgPool3DGradDInferDataSlice) {
       CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set grads data slice attr failed.");
       return GRAPH_FAILED;
     }
+    CHECK_PTR_NULL(tensor_desc_multiplier, "tensor multipiler desc", return GRAPH_FAILED);
     if(!AttrUtils::SetListListInt(tensor_desc_multiplier, ge::ATTR_NAME_DATA_SLICE, multiplier_data_slice)) {
       CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "set multiplier data slice attr failed.");
       return GRAPH_FAILED;
@@ -3095,7 +3109,9 @@ IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
   }
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   auto orig_shape_desc = op_desc->MutableInputDesc("orig_input_shape");
+  CHECK_PTR_NULL(orig_shape_desc, "orig_shape desc", return GRAPH_FAILED);
   vector<int64_t> orig_input_dim = orig_shape_desc->MutableShape().GetDims();
   if (orig_input_dim.size() != kAvgPool3DGradOriShapeDim &&
         orig_input_dim.size() != 1) {
@@ -3105,6 +3121,7 @@ IMPLEMT_VERIFIER(AvgPool3DGrad, AvgPool3DGradVerify) {
   }
 
   auto grads_desc = op_desc->MutableInputDesc("grads");
+  CHECK_PTR_NULL(grads_desc, "grads desc", return GRAPH_FAILED);
   vector<int64_t> grads_shape = grads_desc->MutableShape().GetDims();
   if (grads_shape.size() != kAvgPool3DGradOriShapeDim &&
         !IsUnknownRankShape(grads_shape)) {
@@ -3187,6 +3204,9 @@ bool SetAvgPool3DGradOutputRange(ge::OpDescPtr &op_desc,
   auto orig_input_desc = op_desc->MutableInputDesc("orig_input_shape");
   auto grads_desc = op_desc->MutableInputDesc("grads");
   auto output_desc = op_desc->MutableOutputDesc("output");
+  CHECK_PTR_NULL(orig_input_desc, "input desc", return false);
+  CHECK_PTR_NULL(grads_desc, "grad desc", return false);
+  CHECK_PTR_NULL(output_desc, "output desc", return false);
 
   std::vector<std::pair<int64_t, int64_t>> grads_range;
   std::vector<int64_t> grads_shape = grads_desc->MutableShape().GetDims();
@@ -3204,8 +3224,9 @@ bool SetAvgPool3DGradOutputRange(ge::OpDescPtr &op_desc,
             grads_range.size());
     return false;
   }
-
+  CHECK_KEY_IN_MAP(format2str, grads_desc->GetFormat(), "grad_format", return false);
   string grads_format = format2str[grads_desc->GetFormat()];
+
   std::vector<std::pair<int64_t, int64_t>> fmap_range(kAvgPool3DGradOriShapeDim);
 
   std::vector<int64_t> pre_op_range;
@@ -3264,6 +3285,9 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto grads_desc = op_info->MutableInputDesc("grads");
   auto orig_shape_desc = op_info->MutableInputDesc("orig_input_shape");
+  CHECK_PTR_NULL(op_info, "op desc", return GRAPH_FAILED);
+  CHECK_PTR_NULL(grads_desc, "grads desc", return GRAPH_FAILED);
+  CHECK_PTR_NULL(orig_shape_desc, "orig_shape desc", return GRAPH_FAILED);
   auto grads_dtype = grads_desc->GetDataType();
 
   std::vector<std::string> const_inputs = {"orig_input_shape"};
@@ -3287,6 +3311,7 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   }
 
   auto output_desc = op_info->MutableOutputDesc("output");
+  CHECK_PTR_NULL(output_desc, "output desc", return GRAPH_FAILED);
   auto output_shape = output_desc->MutableShape();
   output_desc->SetDataType(grads_dtype);
   // get ksize attr
@@ -3331,8 +3356,8 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
     has_padding_attr = false;
     padding = IsAllVal(pads, 0) ? "VALID" : "SAME";
   }
-
-  string orig_shape_format_str = format2str[orig_shape_desc->GetFormat()];
+  Format orig_shape_format = orig_shape_desc->GetFormat();
+  string orig_shape_format_str = format2str[orig_shape_format];
   // set range
   if (is_dynamic && !SetAvgPool3DGradOutputRange(op_info, ksize, strides, padding,
                                                  data_format, fmap_shape)) {

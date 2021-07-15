@@ -1179,6 +1179,7 @@ bool InferMatmulInputNZ(const Operator &op,
                         vector<vector<int64_t>> &output,
                         bool trans_a, bool trans_b) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return false);
   GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   vector<vector<int64_t>> x1_data_slice = {{}, {}, {}, {}};
@@ -1258,7 +1259,9 @@ bool InferMatmulInputND(const Operator &op,
 
 bool InferMatmul(const Operator &op) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return false);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  CHECK_PTR_NULL(tensor_desc_y, "tensor y desc", return false);
 
   bool trans_a = false;
   if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", trans_a)) {
@@ -1309,6 +1312,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
                              bool trans_a, bool trans_b,
                              size_t x1_dims, size_t x2_dims) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return false);
   GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
   GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   vector<vector<int64_t>> x1_data_slice(x1_dims);
@@ -1488,7 +1492,9 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   auto tensordesc_output = op_desc->MutableOutputDesc("y");
+  CHECK_PTR_NULL(tensordesc_output, "tensor output desc", return GRAPH_FAILED);
   auto tensordesc_x1 = op_desc->GetInputDesc("x1");
   auto tensordesc_x2 = op_desc->GetInputDesc("x2");
 

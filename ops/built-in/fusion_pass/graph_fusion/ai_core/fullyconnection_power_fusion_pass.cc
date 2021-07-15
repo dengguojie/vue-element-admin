@@ -64,7 +64,8 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
     std::stringstream opNameTemp;
     // the atomic id of trans nodes must be unique.(start from 0)
     opNameTemp << opType << "_" << GetHostCpuAtomicId();
-    ge::OpDescPtr fcPowerHostOp = std::make_shared<ge::OpDesc>(opNameTemp.str(), opType);
+    ge::OpDescPtr fcPowerHostOp = nullptr;
+    FUSION_PASS_MAKE_SHARED((fcPowerHostOp = std::make_shared<ge::OpDesc>(opNameTemp.str(), opType)), return FAILED);
     FUSION_PASS_CHECK(fcPowerHostOp == nullptr, OP_LOGE(FUSED_OP_TYPE, "create new host op failed"), return FAILED);
     // add input and output desc of new host op
     vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(fcNode);
@@ -74,12 +75,18 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
 
     FUSION_PASS_CHECK(fcPowerHostOp->AddInputDesc(FC_POWER_OP_INPUT, biasTensorDesc) != GRAPH_SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE, "failed to add input desc to fcPowerHostOp."), return FAILED);
+    FUSION_PASS_CHECK(fcPowerHostOp->MutableInputDesc(0) == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE, "get input desc 0 failed"),
+                      return FAILED);
     fcPowerHostOp->MutableInputDesc(0)->SetOriginDataType(biasTensorDesc.GetDataType());
     fcPowerHostOp->MutableInputDesc(0)->SetOriginFormat(static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
     fcPowerHostOp->MutableInputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
 
     FUSION_PASS_CHECK(fcPowerHostOp->AddOutputDesc(FC_POWER_OP_OUTPUT, biasTensorDesc) != GRAPH_SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE, "failed to add output desc to fcPowerHostOp."), return FAILED);
+    FUSION_PASS_CHECK(fcPowerHostOp->MutableOutputDesc(0) == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE, "get output desc 0 failed"),
+                      return FAILED);
     fcPowerHostOp->MutableOutputDesc(0)->SetOriginFormat(static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
     fcPowerHostOp->MutableOutputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
     fcPowerHostOp->MutableOutputDesc(0)->SetDataType(biasTensorDesc.GetDataType());
@@ -110,7 +117,10 @@ Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNod
       return FAILED;
     }
 
-    (void)ge::AttrUtils::SetFloat(fcPowerNode->GetOpDesc(), POWER_SHIFT, shift);
+    if (!ge::AttrUtils::SetFloat(fcPowerNode->GetOpDesc(), POWER_SHIFT, shift)) {
+      OP_LOGE(FUSED_OP_TYPE, "set float failed.");
+      return FAILED;
+    }
     return SUCCESS;
 }
 
@@ -153,7 +163,12 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   if (fullyConnectionNode->GetOutDataNodes().size() > 1) {
     return SUCCESS;
   }
-  ge::DataType inputType = fullyConnectionNode->GetOpDesc()->GetInputDesc(0).GetDataType();
+
+  ge::ConstGeTensorDescPtr fullyConnectionNodeDescPtr = GetCurrNodeInputDesc(fullyConnectionNode, 0);
+  FUSION_PASS_CHECK(fullyConnectionNodeDescPtr == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE, "fcNode's OpDesc is null, fusion failed."),
+                    return FAILED);
+  ge::DataType inputType = fullyConnectionNodeDescPtr->GetDataType();
   if (inputType == ge::DT_INT8 || inputType == ge::DT_UINT8) {
     OP_LOGI(FUSED_OP_TYPE, "fc dataType is not float16 , graph not changed.");
     return NOT_CHANGED;
@@ -168,10 +183,7 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
       OP_LOGE(FUSED_OP_TYPE, "FcNode[%s]: LinkControlEdge not success.", fullyConnectionNodeName.c_str()),
       return ret);
 
-  // Find fc and power operation
-  ge::OpDescPtr fullyConnectionDesc = fullyConnectionNode->GetOpDesc();
-  FUSION_PASS_CHECK(fullyConnectionDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE, "fcNode's OpDesc is null, fusion failed."), return PARAM_INVALID);
+  
 
   ge::OpDescPtr powerDesc = powerNode->GetOpDesc();
   FUSION_PASS_CHECK(powerDesc == nullptr, OP_LOGE(FUSED_OP_TYPE, "powerNode's OpDesc is null, fusion failed."),
@@ -194,7 +206,7 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   }
 
   // Get size for fc, check it
-  int64_t inputs_num = fullyConnectionDesc->GetInputsSize();
+  int64_t inputs_num = fullyConnectionNode->GetOpDesc()->GetInputsSize();
   // create bias node
   bool hasBias = true;
   if (inputs_num == 2) {
@@ -277,7 +289,10 @@ Status FullyConnectionPowerPass::AddBiasNode(ge::ComputeGraph& graph, ge::NodePt
     return PARAM_INVALID;
   }
   vector<ge::GeTensorPtr> tensorVec = {biasPtr};
-  ge::OpDescUtils::SetWeights(constNode, tensorVec);
+  if ((ge::OpDescUtils::SetWeights(constNode, tensorVec)) != GRAPH_SUCCESS) {
+    OP_LOGE(FUSED_OP_TYPE, "set weight failed!");
+    return FAILED;
+  }
   fusionNodes.push_back(constNode);
   // bias is the name of the third input of fc in IR fc.h
   ret = fcNode->AddLinkFrom("b", constNode);

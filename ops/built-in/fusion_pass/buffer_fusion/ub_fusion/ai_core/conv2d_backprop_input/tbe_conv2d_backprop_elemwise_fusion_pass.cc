@@ -20,6 +20,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "anchor_util.h"
 
 namespace fe {
 using std::vector;
@@ -104,19 +105,28 @@ Status Conv2DBackpropElemwiseFusionPass::GetFusionNodes(const BufferFusionMappin
     return SUCCESS;
   }
   if (!elem1_node.empty()) {
+    auto input0desc = GetCurrNodeInputDesc(elem_node[0], 0);
+    auto input1desc = GetCurrNodeInputDesc(elem_node[0], 1);
+    FUSION_PASS_CHECK(input0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "inputDesc0 is null"),
+                  return FAILED);
+    FUSION_PASS_CHECK(input1desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "inputDesc1 is null"),
+                  return FAILED);
+    auto input0Dims = input0desc->GetShape().GetDims();
+    auto input1Dims = input1desc->GetShape().GetDims();
     bool check_elemwise = elem1_node[0]->GetType() == "ReluGradV2" && elem_node[0]->GetType() == "AddN" &&
-                          (elem_node[0]->GetOpDesc()->GetInputDesc(0).GetDataType() ==
-                           elem_node[0]->GetOpDesc()->GetInputDesc(1).GetDataType()) &&
-                          (elem_node[0]->GetOpDesc()->GetInputDesc(0).GetShape().GetDims() ==
-                           elem_node[0]->GetOpDesc()->GetInputDesc(1).GetShape().GetDims());
+                          (input0desc->GetDataType() ==
+                           input1desc->GetDataType()) &&
+                          (input0Dims == input1Dims);
     if (!check_elemwise) {
       OP_LOGD(kFusedOpType.c_str(),
           "The optype of node[%s] and [%s] should be AddN and ReluGradV2,but actually is [%s] and [%s]."
           "The datatype of node[%s]'s two inputs should be equal, but actually is [%d] and [%d], no need to do fusion.",
           elem_node[0]->GetName().c_str(), elem1_node[0]->GetName().c_str(), elem_node[0]->GetType().c_str(),
           elem1_node[0]->GetType().c_str(), elem_node[0]->GetName().c_str(),
-          elem_node[0]->GetOpDesc()->GetInputDesc(0).GetDataType(),
-          elem_node[0]->GetOpDesc()->GetInputDesc(1).GetDataType());
+          input0desc->GetDataType(),
+          input1desc->GetDataType());
       return SUCCESS;
     }
   } else {

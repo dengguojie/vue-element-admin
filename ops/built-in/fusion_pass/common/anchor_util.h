@@ -1,6 +1,7 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_UTIL_ANCHOR_UTIL_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_UTIL_ANCHOR_UTIL_H_
 
+#include <string.h>
 #include "error_util.h"
 #include "graph/anchor.h"
 #include "graph/node.h"
@@ -38,6 +39,25 @@ inline ge::NodePtr GetPeerInNodeByOutDataAnchor(ge::OutDataAnchorPtr out_anchor_
 
   // assert: anchor in peer_in_anchors != nullptr
   return peer_in_anchor->GetOwnerNode();
+}
+
+inline ge::ConstGeTensorDescPtr GetCurrNodeInputDesc(ge::NodePtr curr_node, size_t idx) {
+  auto curr_desc = curr_node->GetOpDesc();
+  FUSION_PASS_CHECK(curr_desc == nullptr, ge::CommonRuntimeErrLog("", "current opdesc is null."), return nullptr);
+  return curr_desc->GetInputDescPtr(idx);
+}
+
+inline ge::ConstGeTensorDescPtr GetCurrNodeOutputDesc(ge::NodePtr curr_node, size_t idx) {
+  auto curr_desc = curr_node->GetOpDesc();
+  FUSION_PASS_CHECK(curr_desc == nullptr, ge::CommonRuntimeErrLog("", "current opdesc is null."), return nullptr);
+  return curr_desc->GetOutputDescPtr(idx);
+}
+
+template<typename T>
+inline ge::GeTensorDescPtr GetCurrNodeMutableInputDesc(ge::NodePtr curr_node, T idx) {
+  auto curr_desc = curr_node->GetOpDesc();
+  FUSION_PASS_CHECK(curr_desc == nullptr, ge::CommonRuntimeErrLog("", "current opdesc is null."), return nullptr);
+  return curr_desc->MutableOutputDesc(idx);
 }
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_UTIL_ANCHOR_UTIL_H_

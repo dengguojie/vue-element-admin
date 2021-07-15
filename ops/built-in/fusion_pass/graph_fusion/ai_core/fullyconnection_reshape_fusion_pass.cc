@@ -77,6 +77,10 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     return SUCCESS;
   }
 
+  ge::OpDescPtr fullyConnectionDesc = fullyConnectionNode->GetOpDesc();
+  FUSION_PASS_CHECK(fullyConnectionDesc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fullyConnectionNode's OpDesc is null."),
+                    return PARAM_INVALID);
   int64_t axis = 0;
   FUSION_PASS_CHECK(
       !ge::AttrUtils::GetInt(fullyConnectionNode->GetOpDesc(), "axis", axis),
@@ -91,10 +95,6 @@ Status FullyConnectionReshapePass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::OpDescPtr reshapeDesc = reshapeNode->GetOpDesc();
   FUSION_PASS_CHECK(reshapeDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "reshapeNode's OpDesc is null."),
                     return PARAM_INVALID);
-
-  ge::OpDescPtr fullyConnectionDesc = fullyConnectionNode->GetOpDesc();
-  FUSION_PASS_CHECK(fullyConnectionDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fullyConnectionNode's OpDesc is null."), return PARAM_INVALID);
 
   // reshape input shape dim0 need same with reshape output shape dim0 or dim0 is zero
   ge::GeTensorDesc reshapeInput0Desc = reshapeDesc->GetInputDesc(0);

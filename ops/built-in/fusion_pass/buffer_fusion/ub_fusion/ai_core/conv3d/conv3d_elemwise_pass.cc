@@ -26,6 +26,7 @@
 #include "common/lxfusion_json_util.h"
 #include "graph/utils/attr_utils.h"
 #include "lx_fusion_func.h"
+#include "anchor_util.h"
 
 namespace fe {
 
@@ -72,7 +73,8 @@ void TbeConv3dElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std
   FUSION_PASS_CHECK(elemwise_node.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "elemwise node not matched"), return);
 
   vector<int64_t> split_flag = {-1};
-
+  FUSION_PASS_CHECK(conv3d_nodes[0]->GetInDataNodes().size() <= 0,
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "conv3d_nodes's input can not <= 0."), return);
   int inpre = conv3d_nodes[0]->GetInDataNodes().size() - 1;
   int fusion_inpre = inpre + 1;
 
@@ -121,14 +123,24 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
                     return SUCCESS);
 
+  FUSION_PASS_CHECK(elemNode[0]->GetOpDesc() == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(),
+                    "ElemWise node not match!"),
+                    return NOT_CHANGED);
   auto inputs = elemNode[0]->GetOpDesc()->GetAllInputsDesc();
   FUSION_PASS_CHECK(inputs.size() != 2,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
                     return SUCCESS);
 
-  auto dims0 = elemNode[0]->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
-  auto dims1 = elemNode[0]->GetOpDesc()->GetInputDesc(1).GetShape().GetDims();
-
+  auto input0desc = GetCurrNodeInputDesc(elemNode[0], 0);
+  auto input1desc = GetCurrNodeInputDesc(elemNode[0], 1);
+  FUSION_PASS_CHECK(input0desc == nullptr,
+                CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input0desc is null"),
+                return FAILED);
+  FUSION_PASS_CHECK(input1desc == nullptr,
+                CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input1desc is null"),
+                return FAILED);
+  auto dims0 = input0desc->GetShape().GetDims();
+  auto dims1 = input1desc->GetShape().GetDims();
   FUSION_PASS_CHECK(dims0.size() != dims1.size(),
                     OP_LOGW(FUSED_OP_TYPE.c_str(),
                             "the dim sizes of two inputs not equal!"),
@@ -152,8 +164,16 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> conv3dNodes = GetMatchedNodesByDescName(PATTERN_CONV3D, mapping);
   for (const auto& conv3dNode : conv3dNodes){
-    vector<int64_t> input0Dims = conv3dNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-    vector<int64_t> input1Dims = conv3dNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    auto conv3dinput0desc = GetCurrNodeInputDesc(conv3dNode, 0);
+    auto conv3dinput1desc = GetCurrNodeInputDesc(conv3dNode, 1);
+    FUSION_PASS_CHECK(conv3dinput0desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input0desc is null"),
+                  return FAILED);
+    FUSION_PASS_CHECK(conv3dinput1desc == nullptr,
+                  CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input1desc is null"),
+                  return FAILED);
+    vector<int64_t> input0Dims = conv3dinput0desc->GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = conv3dinput1desc->GetOriginShape().GetDims();
     vector<int64_t> allDims;
     allDims.resize(input0Dims.size() + input1Dims.size());
     merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
