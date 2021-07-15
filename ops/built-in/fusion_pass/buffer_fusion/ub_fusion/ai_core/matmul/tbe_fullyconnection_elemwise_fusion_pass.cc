@@ -77,7 +77,7 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);
   vector<ge::NodePtr> dequantNodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
 
-  int n_axis;
+  int n_axis = 0;
   for (const auto& fcNode : fcNodes) {
     if (fcNode->GetType() == "FullyConnection") {
       int axis;

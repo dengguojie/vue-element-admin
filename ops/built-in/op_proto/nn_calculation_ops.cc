@@ -1183,13 +1183,13 @@ static void GetConstValue(const Tensor& const_tensor, const DataType& dtype, std
 
 static void set_conv2d_backprop_input_out_range(const std::string& pad_str,
                                                 size_t idx,
-                                                const vector<int32_t>& attrParams,
+                                                const vector<int64_t>& attrParams,
                                                 const std::vector<std::pair<int64_t, int64_t>>& dy_range,
                                                 std::vector<std::pair<int64_t, int64_t>>& dx_range) {
   size_t attrIdx = 0;
-  int32_t stride = attrParams[attrIdx++];
-  int32_t kernel = attrParams[attrIdx++];
-  int32_t pad = attrParams[attrIdx++];
+  int64_t stride = attrParams[attrIdx++];
+  int64_t kernel = attrParams[attrIdx++];
+  int64_t pad = attrParams[attrIdx++];
   int64_t low = dy_range[idx].first;
   int64_t high = dy_range[idx].second;
   if (pad_str == "SAME") {
@@ -1214,7 +1214,7 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const st
                                                       Format dx_format,
                                                       std::vector<std::pair<int64_t, int64_t>>& dx_range,
                                                       ge::GeTensorDescPtr& y_desc, const int64_t& groups,
-                                                      bool& unknown_rank, const std::vector<int32_t>& attr_params) {
+                                                      bool& unknown_rank, const std::vector<int64_t>& attr_params) {
   std::vector<int64_t> dx_sizes = y_desc->MutableShape().GetDims();
   if (dx_sizes.empty() || dx_sizes.size() != 4) {
     OP_LOGE(op.GetName().c_str(), "dx_sizes list should be 4D. actual is: %u.", dx_sizes.size());
@@ -1228,10 +1228,10 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const st
     return false;
   }
   size_t idx = 0;
-  int32_t stride_h = attr_params[idx++];
-  int32_t stride_w = attr_params[idx++];
-  int32_t dilation_h = attr_params[idx++];
-  int32_t dilation_w = attr_params[idx++];
+  int64_t stride_h = attr_params[idx++];
+  int64_t stride_w = attr_params[idx++];
+  int64_t dilation_h = attr_params[idx++];
+  int64_t dilation_w = attr_params[idx++];
   std::vector<int32_t> pads_list;
   op.GetAttr("pads", pads_list);
   int32_t pad_up = pads_list[0];
@@ -1272,8 +1272,8 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const st
   int64_t dx_h = dx_sizes[h_input_position];
   int64_t dx_w = dx_sizes[w_input_position];
 
-  int32_t khext = (filter_h - 1) * dilation_h + 1;
-  int32_t kwext = (filter_w - 1) * dilation_w + 1;
+  int64_t khext = (filter_h - 1) * dilation_h + 1;
+  int64_t kwext = (filter_w - 1) * dilation_w + 1;
 
   if(op.GetOpType() == "Conv2DTranspose") {
     std::vector<int32_t> output_padding_list;
@@ -1292,11 +1292,11 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const st
   if (!dy_range.empty() && dy_range.size() == dy_sizes.size()) {
     dx_range[n_input_position] = dy_range[n_dy_position];
     if (dx_h == -1) {
-      vector<int32_t> attr_params_h = {stride_h, khext, pad_up + pad_down};
+      vector<int64_t> attr_params_h = {stride_h, khext, static_cast<int64_t>(pad_up + pad_down)};
       set_conv2d_backprop_input_out_range(pad_str, h_input_position, attr_params_h, dy_range, dx_range);
     }
     if (dx_w == -1) {
-      vector<int32_t> attr_params_w = {stride_w, kwext, pad_left + pad_right};
+      vector<int64_t> attr_params_w = {stride_w, kwext, static_cast<int64_t>(pad_left + pad_right)};
       set_conv2d_backprop_input_out_range(pad_str, w_input_position, attr_params_w, dy_range, dx_range);
     }
     y_desc->SetShapeRange(dx_range);
@@ -1460,7 +1460,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   // set dtype of output desc
   auto out_backprop_dtype = x_desc->GetDataType();
   y_desc->SetDataType(out_backprop_dtype);
-  auto y_dtype = y_desc->GetDataType();
   bool is_dynamic = false;
   bool unknown_rank = IsUnknownRankShape(dy_sizes);
   bool is_input_size_const = false;
@@ -1582,11 +1581,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
       OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
     } else {
       int64_t groups = 1;
-      stride_h = static_cast<int32_t>(stride_h);
-      stride_w = static_cast<int32_t>(stride_w);
-      dilation_h = static_cast<int32_t>(dilation_h);
-      dilation_w = static_cast<int32_t>(dilation_w);
-      vector<int32_t> attr_params = {stride_h, stride_w, dilation_h, dilation_w};
+      vector<int64_t> attr_params = {stride_h, stride_w, dilation_h, dilation_w};
       if (!set_conv2d_backprop_input_out_shape_range(op, pad_str, dy_sizes, dy_format, dy_range, filter_sizes,
                                                      filter_format, input_format, dx_range, y_desc,
                                                      groups, unknown_rank, attr_params)) {
@@ -2606,7 +2601,6 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
   // get dedy shape, stride and dilation
   auto dedy_desc = op.GetInputDesc("out_backprop");
   auto dedy_shape = dedy_desc.GetOriginShape().GetDims();
-  auto dedy_dtype = dedy_desc.GetDataType();
   auto dedy_format = dedy_desc.GetOriginFormat();
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
@@ -2718,7 +2712,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
     return GRAPH_FAILED;
   }
 
-  for(int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
@@ -2780,26 +2774,6 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
 
   OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
   return GRAPH_FAILED;
-}
-
-static void GetConstValue(const GeTensorPtr& const_tensor,
-                   const DataType& dtype, std::vector<int64_t>& const_data) {
-  size_t size = const_tensor->GetData().GetSize();
-  void* data_ptr = (void*)const_tensor->GetData().GetData();
-
-  if (dtype == ge::DT_INT32){
-    int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
-    size = size / sizeof(int32_t);
-    for (size_t i=0; i < size; i++) {
-      const_data.push_back((int64_t)((int32_t) ((*(const_data_ptr + i)))));
-    }
-  } else {
-    int64_t* const_data_ptr = reinterpret_cast<int64_t*>(data_ptr);
-    size = size / sizeof(int64_t);
-    for (size_t i=0; i < size; i++) {
-      const_data.push_back((int64_t)((int64_t) ((*(const_data_ptr + i)))));
-    }
-  }
 }
 
 static bool get_attrs_conv2d_backprop_input(ge::Operator& op, Format refer, int32_t& strh,
@@ -2913,7 +2887,10 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   if(!get_attrs_conv2d_backprop_input(op, dy_format, stride_h, stride_w, dilation_h, dilation_w)) {
     return GRAPH_FAILED;
   }
-  vector<int32_t> attr_params = {stride_h, stride_w, dilation_h, dilation_w};
+  vector<int64_t> attr_params = {static_cast<int64_t>(stride_h),
+                                 static_cast<int64_t>(stride_w),
+                                 static_cast<int64_t>(dilation_h),
+                                 static_cast<int64_t>(dilation_w)};
   // set dtype of output desc
   auto out_backprop_dtype = x_desc->GetDataType();
   if (out_backprop_dtype == DT_INT8) {
@@ -2921,7 +2898,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   } else {
     y_desc->SetDataType(out_backprop_dtype);
   }
-  auto y_dtype = y_desc->GetDataType();
+
   bool is_dynamic = false;
   bool unknown_rank = IsUnknownRankShape(dy_sizes);
   bool is_input_size_const = false;
@@ -2969,7 +2946,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     }
     if (dy_range.size() == 0 && !unknown_rank) {
       dy_range.resize(dy_sizes.size());
-      for (int i = 0; i < dy_sizes.size(); i++) {
+      for (size_t i = 0; i < dy_sizes.size(); i++) {
         dy_range[i].first = std::max(dy_sizes[i], kDynamicRangeLowerBound);
         dy_range[i].second = dy_sizes[i];
       }
@@ -3125,7 +3102,6 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
   // get dedy shape, stride and dilation
   auto dedy_desc = op.GetInputDesc("out_backprop");
   auto dedy_shape = dedy_desc.GetOriginShape().GetDims();
-  auto dedy_dtype = dedy_desc.GetDataType();
   auto dedy_format = dedy_desc.GetOriginFormat();
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
@@ -3237,7 +3213,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
     return GRAPH_FAILED;
   }
 
-  for(int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
@@ -3438,7 +3414,7 @@ bool InferConv2DBackpropFilter(ge::Operator& op) {
     return false;
   }
 
-  for(int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
@@ -3630,8 +3606,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     filter_sizes[filter_ci_position] = x_c / groups_ori;
   }
 
-  // set dtype of output desc
-  auto out_backprop_dtype = dy_desc->GetDataType();
   // set shape of output desc, filter_size should match the format of y
   std::vector<int64_t> y_shape;
   y_shape.push_back(filter_sizes[0]);
@@ -5679,7 +5653,7 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
     return GRAPH_FAILED;
   }
 
-  for(int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       if (i == 1) {
         if (x_dtype != DT_INT8) {
@@ -6304,11 +6278,9 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
                                    TensorDesc& y_tensor) {
   auto x_tensor = op.get_input_desc_x();
   auto x_shape = x_tensor.GetShape().GetDims();
-  bool unknown_rank = IsUnknownRankShape(x_shape);
   bool unknown_shape = IsUnKnownShape(x_shape);
 
   // default format: NDHWC
-  size_t idx_n = DIM_INDEX0;
   size_t idx_d = DIM_INDEX1;
   size_t idx_h = DIM_INDEX2;
   size_t idx_w = DIM_INDEX3;
@@ -6546,7 +6518,7 @@ static void GetShapeGear(int64_t dim_val,
                          const std::vector<int64_t> &shape_gear,
                          std::pair<int64_t, int64_t> &range)
 {
-  int pos = 1;
+  size_t pos = 1;
   while (pos < shape_gear.size() && shape_gear[pos] < dim_val) {
     pos++;
   }
@@ -7350,13 +7322,13 @@ static graphStatus VerifyConv3dbpPads(const ge::Operator& op, bool is_dynamic = 
 
 static void SetConv3dBpInputOutShapeDimRange(const std::string& pad_str,
                                              size_t idx,
-                                             const vector<int32_t>& attrParams,
+                                             const vector<int64_t>& attrParams,
                                              const std::vector<std::pair<int64_t, int64_t>>& dy_range,
                                              std::vector<std::pair<int64_t, int64_t>>& dx_range) {
   size_t attrIdx = 0;
-  int32_t stride = attrParams[attrIdx++];
-  int32_t kernel = attrParams[attrIdx++];
-  int32_t pad = attrParams[attrIdx++];
+  int64_t stride = attrParams[attrIdx++];
+  int64_t kernel = attrParams[attrIdx++];
+  int64_t pad = attrParams[attrIdx++];
   int64_t low = dy_range[idx].first;
   int64_t high = dy_range[idx].second;
 
@@ -7544,15 +7516,21 @@ static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
     std::string pad_str;
     op.GetAttr("padding", pad_str);
     if (dx_d == -1) {
-      vector<int32_t> attr_params_d = {stride_d, kdext, pad_front + pad_back};
+      vector<int64_t> attr_params_d = {static_cast<int64_t>(stride_d),
+                                       kdext,
+                                       static_cast<int64_t>(pad_front + pad_back)};
       SetConv3dBpInputOutShapeDimRange(pad_str, d_input_position, attr_params_d, dy_range, dx_range);
     }
     if (dx_h == -1) {
-      vector<int32_t> attr_params_h = {stride_h, khext, pad_up + pad_down};
+      vector<int64_t> attr_params_h = {static_cast<int64_t>(stride_h),
+                                       khext,
+                                       static_cast<int64_t>(pad_up + pad_down)};
       SetConv3dBpInputOutShapeDimRange(pad_str, h_input_position, attr_params_h, dy_range, dx_range);
     }
     if (dx_w == -1) {
-      vector<int32_t> attr_params_w = {stride_w, kwext, pad_left + pad_right};
+      vector<int64_t> attr_params_w = {static_cast<int64_t>(stride_w),
+                                       kwext,
+                                       static_cast<int64_t>(pad_left + pad_right)};
       SetConv3dBpInputOutShapeDimRange(pad_str, w_input_position, attr_params_w, dy_range, dx_range);
     }
     y_desc->SetShapeRange(dx_range);
@@ -8334,7 +8312,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfereDataS
     return GRAPH_FAILED;
   }
 
- for(int i = 0; i < y_data_slice.size(); i++) {
+ for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 1) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
@@ -9555,7 +9533,7 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
     OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
     return false;
   }
-  for(int i = 0; i < y_data_slice.size(); i++) {
+  for (size_t i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
@@ -9625,7 +9603,6 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
 // ----------------Conv2DTranspose-------------------
 IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   OP_LOGI(op.GetName().c_str(),"Enter Conv2DTranspose inferfunction!");
-  const int32_t dimSizeLimit = 4;
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   std::vector<std::string> inputInferDepends = {"input_size"};
   opDesc->SetOpInferDepends(inputInferDepends);
@@ -9655,7 +9632,10 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   if(!get_attrs_conv2d_backprop_input(op, xFormat, strideH, strideW, dilationH, dilationW)) {
     return GRAPH_FAILED;
   }
-  vector<int32_t> attrParams = {strideH, strideW, dilationH, dilationW};
+  vector<int64_t> attrParams = {static_cast<int64_t>(strideH),
+                                static_cast<int64_t>(strideW),
+                                static_cast<int64_t>(dilationH),
+                                static_cast<int64_t>(dilationW)};
   bool isDynamic = false;
   bool isInputSizeConst = false;
   bool unknownRank = IsUnknownRankShape(dySizes);
