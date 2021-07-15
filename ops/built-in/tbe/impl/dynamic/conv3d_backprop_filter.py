@@ -112,24 +112,11 @@ def _check_dimensions(shape, name, dimension):
                            error_manager_util.get_error_message(dict_args))
 
 
-def _check_type(shape, name, type_set):
-    if not isinstance(shape, type_set):
-        dict_args = dict()
-        dict_args["errCode"] = "E60037"
-        dict_args["param_name"] = name
-        dict_args["type_list"] = "[tuple, list]"
-        dict_args["type"] = "{}".format(type(shape))
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
-
 def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_format, groups):
     def _check_shape_rules():
-        _check_type(dedy_shape, "out_backprop", (tuple, list))
         if list(dedy_shape) != _DYNAMIC_RANK_FLAG:
             _check_dimensions(dedy_shape, "out_backprop", _CONV_BACKPROP_SHAPE_DIM)
 
-        _check_type(x_shape, "x", (tuple, list))
         if list(x_shape) != _DYNAMIC_RANK_FLAG:
             _check_dimensions(x_shape, "x", _CONV_BACKPROP_SHAPE_DIM)
 
@@ -208,7 +195,6 @@ def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_forma
 
 
 def _check_pads_value(fmap_shape, pads):
-    _check_type(pads, "pads", (tuple, list))
     _check_dimensions(pads, "pads", _PADDING_SHAPE_DIM)
 
     if -1 not in fmap_shape[1:4]:
@@ -530,18 +516,6 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                          fmap_shape, dedw_ndhwc)
     pad_front, pad_back, pad_up, pad_down, pad_left, pad_right = pad
 
-    upper_pad = _get_pads_attr(strides, pads, dilations,
-                               upper_bound, dedw_ndhwc)
-    upper_pad_front, upper_pad_back, \
-    upper_pad_up, upper_pad_down, upper_pad_left, upper_pad_right = upper_pad
-    upper_fmap_d_padding, upper_fmap_h_padding, upper_fmap_w_padding = None, None, None
-    if upper_fmap_d:
-        upper_fmap_d_padding = upper_fmap_d + upper_pad_front + upper_pad_back
-    if upper_fmap_w:
-        upper_fmap_w_padding = upper_fmap_w + upper_pad_left + upper_pad_right
-    if upper_fmap_h:
-        upper_fmap_h_padding = upper_fmap_h + upper_pad_up + upper_pad_down
-
     # special cases
     fmap_hw_max = _FMAP_HW_MAX
     fmap_h_min, fmap_w_min = _FMAP_HW_MIN, _FMAP_HW_MIN
@@ -588,13 +562,6 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
         _check_equal(dedy_c, filter_n, "Dedy's C", "Filter's N")
         _check_equal(fmap_c, filter_c*groups, "Fmap's C", "Filter's C")
         if -1 not in pads[:2]:
-            if upper_fmap_d_padding and filter_d_dilation > upper_fmap_d_padding:
-                dict_args = dict()
-                dict_args["errCode"] = "E60013"
-                dict_args["d_of_x"] = str(upper_fmap_d_padding)
-                dict_args["d_of_filter"] = str(filter_d_dilation)
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
             if (isinstance(fmap_d, int) and \
                 ((fmap_d - filter_d_dilation + int(pad_front) + int(pad_back)) // stride_d + 1) != dedy_d):
                 dict_args = {}
@@ -603,13 +570,6 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                                    error_manager_util.get_error_message(dict_args))
 
         if -1 not in pads[2:4]:
-            if upper_fmap_h_padding and filter_h_dilation > upper_fmap_h_padding:
-                dict_args = dict()
-                dict_args["errCode"] = "E60014"
-                dict_args["h_of_x"] = str(upper_fmap_h_padding)
-                dict_args["h_of_filter"] = str(filter_h_dilation)
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
             if (isinstance(fmap_h, int) and \
                 ((fmap_h - filter_h_dilation + int(pad_up) + int(pad_down)) // stride_h + 1) != dedy_h):
                 dict_args = {}
@@ -617,14 +577,6 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
         if -1 not in pads[4:]:
-            if upper_fmap_w_padding and filter_w_dilation > upper_fmap_w_padding:
-                dict_args = dict()
-                dict_args["errCode"] = "E60015"
-                dict_args["w_of_x"] = str(upper_fmap_w_padding)
-                dict_args["w_of_filter"] = str(filter_w_dilation)
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
-
             # Third : value check, Mainly required by the convolution rule
             if (isinstance(fmap_w, int) and \
                 ((fmap_w - filter_w_dilation + int(pad_left) + int(pad_right)) // stride_w + 1) != dedy_w):

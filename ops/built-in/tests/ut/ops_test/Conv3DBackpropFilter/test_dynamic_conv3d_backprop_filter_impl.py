@@ -38,6 +38,23 @@ def _run_api(x_shape, x_format, x_dtype, x_range,
 
     return [x, filter_size, out_backprop, filter, strides, pads, dilations, groups, data_format]
 
+def _run_api_v2(
+    x=None, filter=None, out_backprop=None, strides=(1, 1, 1, 1, 1),
+    pads=[0, 0, 0, 0, 0, 0], dilations=(1, 1, 1, 1, 1), groups=1, data_format="NDHWC"):
+    if x is None:
+        x = {'ori_shape': (1, -1, -1, -1, 256), 'shape': (1, -1, -1, -1, 256),
+             'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+             "range": [(1, 1), (21, 53), (1, 64), (20, 20), (256,256)]}
+    if filter is None:
+        filter = {'ori_shape': (3, 3, 3, 256, 256), 'shape': (3, 3, 3, 256, 256),
+                  'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float32', 
+                  "range": [(3, 3), (3, 3), (3, 3), (256, 256), (256,256)]}
+    if out_backprop is None:
+        out_backprop = {'ori_shape': (1, -1, -1, -1, 256), 'shape': (1, -1, -1, -1, 256),
+                        'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+                        "range": [(1, 1), (26, 38), (1, 152), (10, 10), (256, 256)]}
+    filter_size = filter
+    return [x, filter_size, out_backprop, filter, strides, pads, dilations, groups, data_format]
 
 # test_conv3dbp_succ_dynamic
 case1 = _run_api((1, -1, -1, -1, 256), "NDHWC", "float16",
@@ -139,6 +156,80 @@ case11 = _run_api((-2,), "NDHWC", "float16",
                  [1, 2, 2, 2, 1], [-1, -1, -1, -1, -1, -1],
                  groups=1)
 
+# test pad_d < filter_d constraint
+invalid_pads = [4, 4, 0, 0, 0, 0]
+case12 = _run_api_v2(pads=invalid_pads)
+
+# test pad_h < filter_h constraint
+invalid_pads = [0, 0, 0, 4, 0, 0]
+case13 = _run_api_v2(pads=invalid_pads)
+
+# test pad_w < filter_w constraint
+invalid_pads = [0, 0, 0, 0, 4, 4]
+case14 = _run_api_v2(pads=invalid_pads)
+
+# test convolution result Failed in D direction
+x = {'ori_shape': (1, 3, -1, -1, 256), 'shape': (1, 3, -1, -1, 256),
+     'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+     "range": [(1, 1), (3, 3), (1, 64), (20, 20), (256,256)]}
+out_backprop = {'ori_shape': (1, 2, -1, -1, 256), 'shape': (1, 2, -1, -1, 256),
+                'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+                "range": [(1, 1), (2, 2), (1, 152), (10, 10), (256, 256)]}
+case15 = _run_api_v2(x=x,out_backprop=out_backprop)
+
+# test convolution result Failed in H direction
+x = {'ori_shape': (1, -1, 3, -1, 256), 'shape': (1, -1, 3, -1, 256),
+     'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+     "range": [(1, 1), (21, 53), (3, 3), (20, 20), (256,256)]}
+out_backprop = {'ori_shape': (1, -1, 2, -1, 256), 'shape': (1, -1, 2, -1, 256),
+                'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+                "range": [(1, 1), (26, 38), (2, 2), (10, 10), (256, 256)]}
+case16 = _run_api_v2(x=x,out_backprop=out_backprop)
+
+# test convolution result Failed in W direction
+x = {'ori_shape': (1, -1, -1, 4, 256), 'shape': (1, -1, -1, 4, 256),
+     'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+     "range": [(1, 1), (21, 53), (1, 64), (4, 4), (256,256)]}
+out_backprop = {'ori_shape': (1, -1, -1, 5, 256), 'shape': (1, -1, -1, 5, 256),
+                'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+                "range": [(1, 1), (26, 38), (1, 152), (5, 5), (256, 256)]}
+case17 = _run_api_v2(x=x,out_backprop=out_backprop)
+
+# test Chip Design demand dedy_w must >=2 when dedy_h != 1
+x = {'ori_shape': (1, -1, -1, 3, 256), 'shape': (1, -1, -1, 3, 256),
+     'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+     "range": [(1, 1), (21, 53), (1, 64), (3, 3), (256,256)]}
+out_backprop = {'ori_shape': (1, -1, -1, 2, 256), 'shape': (1, -1, -1, 2, 256),
+                'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+                "range": [(1, 1), (26, 38), (70, 152), (2, 2), (256, 256)]}
+case18 = _run_api_v2(x=x,out_backprop=out_backprop)
+
+# test_fail fmap h_lower too small
+x = {'ori_shape': (1, -1, 2, -1, 256), 'shape': (1, -1, 2, -1, 256),
+     'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+     "range": [(1, 1), (21, 53), (2, 2), (20, 20), (256,256)]}
+out_backprop = {'ori_shape': (1, -1, -1, 2, 256), 'shape': (1, -1, -1, 2, 256),
+                'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+                "range": [(1, 1), (26, 38), (70, 152), (2, 2), (256, 256)]}
+case19 = _run_api_v2(x=x,out_backprop=out_backprop)
+
+# test h and w range correction for Fmap
+x = {'ori_shape': (1, -1, 3, -1, 256), 'shape': (1, -1, 3, -1, 256),
+     'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+     "range": [(1, 1), (2, 10), (3, 3), (2, 10), (256,256)]}
+out_backprop = {'ori_shape': (1, -1, 1, -1, 256), 'shape': (1, -1, 1, -1, 256),
+                'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+                "range": [(1, 1), (26, 38), (3, 3), (10, 10), (256, 256)]}
+case20 = _run_api_v2(x=x,out_backprop=out_backprop)
+
+# NDC1HWC0 and fmap_n != dedy_n
+x = {'ori_shape': (1, -1, -1, -1, 256), 'shape': (1, -1, 16, -1, -1, 16),
+     'ori_format': "NDHWC", 'format': "NDC1HWC0", 'dtype': "float16", 
+     "range": [(1, 1), (21, 53), (16, 16), (1, 64), (20, 20), (16,16)]}
+out_backprop = {'ori_shape': (2, -1, -1, -1, 256), 'shape': (2, -1, -1, -1, 256),
+                'ori_format': "NDHWC", 'format': "NDHWC", 'dtype': "float16", 
+                "range": [(2, 2), (26, 38), (1, 152), (10, 10), (256, 256)]}
+case21 = _run_api_v2(x=x,out_backprop=out_backprop)
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A"],
@@ -163,6 +254,25 @@ ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case10, RuntimeError, "dynamic_invalid_groups_case", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case11, "success", "dynamic_shape_2_case", True))
-
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case12, RuntimeError, "dynamic_case12", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case13, RuntimeError, "dynamic_case13", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case14, RuntimeError, "dynamic_case14", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case15, RuntimeError, "dynamic_case15", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case16, RuntimeError, "dynamic_case16", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case17, RuntimeError, "dynamic_case17", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case18, RuntimeError, "dynamic_case18", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case19, RuntimeError, "dynamic_case19", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case20, "success", "dynamic_case20", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case21, RuntimeError, "dynamic_case21", True))
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])

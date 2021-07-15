@@ -468,13 +468,6 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
     return shape_fm, shape_filter, stride_dhw, dilation_dhw
 
 
-def _ceil(x_1, x_2):
-    if x_2 == 0:
-        error_manager_cube.raise_err_specific("conv3d", "Division by zero")
-
-    return (x_1 + x_2 - 1) // x_2
-
-
 def _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype):
     """
     algorithm: Check the input params of conv3d
@@ -523,29 +516,29 @@ def _get_out_range(fmap_range, w_shape, pads, strides):
     correct_range_flag = False
     if -1 in pads:
         # calculate output range for pad is SAME
-        y_d_lower = _ceil(fmap_range_d[0], strides[0])
+        y_d_lower = util_common.ceil(fmap_range_d[0], strides[0])
         if fmap_range_d[1]:
-            y_d_upper = _ceil(fmap_range_d[1], strides[0])
+            y_d_upper = util_common.ceil(fmap_range_d[1], strides[0])
         else:
             y_d_upper = None
-        y_h_lower = _ceil(fmap_range_h[0], strides[1])
+        y_h_lower = util_common.ceil(fmap_range_h[0], strides[1])
         if fmap_range_h[1]:
-            y_h_upper = _ceil(fmap_range_h[1], strides[1])
+            y_h_upper = util_common.ceil(fmap_range_h[1], strides[1])
         else:
             y_h_upper = HW_MAX
-        y_w_lower = _ceil(fmap_range_w[0], strides[2])
+        y_w_lower = util_common.ceil(fmap_range_w[0], strides[2])
         # the lower limit of w_out is 2
         if y_w_lower < 2:
             lower_new = strides[2] + 1
             fmap_range_w_lower = min(lower_new, fmap_range_w[1]) if fmap_range_w[1] else lower_new
             fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
-            y_w_lower = _ceil(fmap_range_w[0], strides[2])
+            y_w_lower = util_common.ceil(fmap_range_w[0], strides[2])
             correct_range_flag = True
             warnings.warn("The output calculated based on the lower limit of the input w \
                 range is less than 2, and the lower limit of the input w range is corrected \
                 as {}".format(fmap_range_w_lower))
         if fmap_range_w[1]:
-            y_w_upper = _ceil(fmap_range_w[1], strides[2])
+            y_w_upper = util_common.ceil(fmap_range_w[1], strides[2])
         else:
             y_w_upper = HW_MAX
         pad_check_load2d_flag = True
@@ -802,17 +795,17 @@ def _calc_pads(fmap_shape_ndc1hwc0, shape_filter, stride_dhw, dilation_dhw, pads
         if list(stride_dhw) == [1, 1, 1] and [filter_d, filter_h, filter_w] == [1, 1, 1]:
             return [0, 0, 0, 0, 0, 0]
         pad_d = \
-            _ceil(fmap_d, stride_d) * stride_d - stride_d + filter_d_dilation - fmap_d
+            util_common.ceil(fmap_d, stride_d) * stride_d - stride_d + filter_d_dilation - fmap_d
         pad_d = tvm.max(pad_d, 0)
         pad_head = pad_d // 2
         pad_tail = pad_d - pad_head
         pad_h = \
-            _ceil(fmap_h, stride_h) * stride_h - stride_h + filter_h_dilation - fmap_h
+            util_common.ceil(fmap_h, stride_h) * stride_h - stride_h + filter_h_dilation - fmap_h
         pad_h = tvm.max(pad_h, 0)
         pad_up = pad_h // 2
         pad_down = pad_h - pad_up
         pad_w = \
-            _ceil(fmap_w, stride_w) * stride_w - stride_w + filter_w_dilation - fmap_w
+            util_common.ceil(fmap_w, stride_w) * stride_w - stride_w + filter_w_dilation - fmap_w
         pad_w = tvm.max(pad_w, 0)
         pad_left = pad_w // 2
         pad_right = pad_w - pad_left

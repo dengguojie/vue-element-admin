@@ -66,6 +66,11 @@ def _test_op_get_op_support_info(test_arg):
     get_op_support_info(
         fmap, weight, bias, offset_w, output, strides,
         pads, dilations, groups, data_format, offset_x)
+    # Test Else branch
+    fmap['format'] = 'NDHWC'
+    get_op_support_info(
+        fmap, weight, bias, offset_w, output, strides,
+        pads, dilations, groups, data_format, offset_x)
 
 def _test_op_get_op_support_info_bias(test_arg):
     from impl.dynamic.conv3d import get_op_support_info
@@ -77,8 +82,35 @@ def _test_op_get_op_support_info_bias(test_arg):
         fmap, weight, bias, offset_w, output, strides,
         pads, dilations, groups, data_format, offset_x)
 
+def _test_op_get_op_support_info_wrong_format(test_arg):
+    from impl.dynamic.conv3d import get_op_support_info
+    [fmap, weight, bias, offset_w, output, strides,
+     pads, dilations, groups, data_format, offset_x] = _run_api_end_with_d()
+    fmap['format'] = 'NDC1HWC0'
+    # wrong filter
+    wrong_filter = weight.copy()
+    wrong_filter['ori_format'] = 'NDDDD'
+    wrong_filter['format'] = 'NDDDD'
+    try:
+        get_op_support_info(
+            fmap, wrong_filter, bias, offset_w, output, strides,
+            pads, dilations, groups, data_format, offset_x)
+    except Exception as e:
+        print(e)
+    # wrong strides format
+    wrong_fmap = fmap.copy()
+    wrong_fmap['ori_format'] = 'NDDDD'
+    wrong_fmap['format'] = 'NDDDD'
+    try:
+        get_op_support_info(
+            wrong_fmap, weight, bias, offset_w, output, strides,
+            pads, dilations, groups, data_format, offset_x)
+    except Exception as e:
+        print(e)
+
 ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
 ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info_bias)
+ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info_wrong_format)
 
 # test_conv3dbp_succ_d
 case1 = _run_api_end_with_d()
@@ -114,7 +146,7 @@ case6 = _run_api_end_with_d(dilations=dilations)
 
 # test_conv3d_invalid_fmap_shape
 fmap = {'ori_shape': (1, 8, 60, 88), 'shape': (1, 8, 60, 88),
-      'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 10), (8, 8), (60, 60), (88, 88)]}
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 10), (8, 8), (60, 60), (88, 88)]}
 case7 = _run_api_end_with_d(fmap=fmap)
 
 # test_conv3d_invalid_pad_length
@@ -128,20 +160,20 @@ case9 = _run_api_end_with_d(weight=weight)
 
 # test_conv3d_invalid_weight_D
 weight = {'ori_shape': (2, 2, 354, 32, 64), 'shape': (2, 2, 354, 32, 64),
-        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+          'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
 case10 = _run_api_end_with_d(weight=weight)
 
 # test_conv3d_invalid_big_fmap
 fmap = {'ori_shape': (-1, 3000, 4000, 4000, 3000),
-      'shape': (-1, 3000, 4000, 4000, 3000),
-      'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 200), (3000, 3000), (4000, 4000), (4000, 4000), (3000,3000)]}
+        'shape': (-1, 3000, 4000, 4000, 3000),
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 200), (3000, 3000), (4000, 4000), (4000, 4000), (3000,3000)]}
 case11 = _run_api_end_with_d(fmap=fmap)
 
 # test_conv3d_invalid_bias_dtype
 bias = {'ori_shape': (1,), "dtype": "float32"}
 case12 = _run_api_end_with_d(bias=bias)
 
-# test_conv3d_invalid_pads
+# test_conv3d_invalid_pads_w
 pads = (1, 1, 1, 1, 3, 1)
 case13 = _run_api_end_with_d(pads=pads)
 
@@ -151,12 +183,12 @@ case14 = _run_api_end_with_d(strides=strides)
 
 # test_conv3d_invalid_fmap_format
 fmap = {'ori_shape': (-1, 32, 8, 60, 88), 'shape': (1, 32, 8, 60, 88),
-      'ori_format': 'NDCHW', 'format': 'NDCHW', 'dtype': 'float16', "range": [(1, 10), (32, 32), (8, 8), (60, 60), (88,88)]}
+        'ori_format': 'NDCHW', 'format': 'NDCHW', 'dtype': 'float16', "range": [(1, 10), (32, 32), (8, 8), (60, 60), (88,88)]}
 case15 = _run_api_end_with_d(fmap=fmap)
 
 # test_conv3d_invalid_weight
 weight = {'ori_shape': (2, 2, 2, 32, 64), 'shape': (2, 2, 2, 32, 64),
-        'ori_format': 'NDCHW', 'format': 'NDCHW', 'dtype': 'float16'}
+          'ori_format': 'NDCHW', 'format': 'NDCHW', 'dtype': 'float16'}
 case16 = _run_api_end_with_d(weight=weight)
 
 # test_conv3d_load2d_dhw
@@ -180,7 +212,7 @@ output = {'ori_shape': (1, 32, -1, -1, -1), 'shape': (1, 32, -1, -1, -1),
           'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (32, 32), (10, 20), (10, 20), (10, 20)]}
 strides = (1, 1, 1, 2, 1)
 pads=[-1, -1, -1, -1, -1, -1]
-data_format="NCDHW"
+data_format = "NCDHW"
 case18 = _run_api_end_with_d(fmap=fmap, weight=weight, output=output, strides=strides, pads=pads, data_format=data_format)
 
 # test_conv3d_invalid_stride_shape
@@ -197,12 +229,12 @@ case21 = _run_api_end_with_d(strides=strides)
 
 # test_conv3d_invalid_weight
 weight = {'ori_shape': (257, 2, 2, 32, 64), 'shape': (257, 2, 2, 32, 64),
-        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+          'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
 case22 = _run_api_end_with_d(weight=weight)
 
 # test_conv3d_invalid_weight
 weight = {'ori_shape': (2, 257, 2, 32, 64), 'shape': (2, 257, 2, 32, 64),
-        'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
+          'ori_format': 'DHWCN', 'format': 'DHWCN', 'dtype': 'float16'}
 case23 = _run_api_end_with_d(weight=weight)
 
 # test_conv3d_invalid_dilations
@@ -231,9 +263,58 @@ weight = {'ori_shape': (4, 7, 7, 3, 64), 'shape': (4, 7, 7, 3, 64),
 bias = {'ori_shape': (64,), 'shape': (64,),
         'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16', 'range':[(64, 64),]}
 strides = (1, 2, 2, 2, 1)
-pads=[-1, -1, -1, -1, -1, -1]
+pads = [-1, -1, -1, -1, -1, -1]
 case28 = _run_api_end_with_d(fmap=fmap, weight=weight, strides=strides, pads=pads)
 
+# test y_w_lower smaller than 2 in SAME PADDING
+fmap={'ori_shape': (1, -1, -1, -1, 32), 'shape': (1, -1, -1, -1, 32),
+      'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (2, 18), (50, 70), (1, 10), (32,32)]}
+pads = [-1, -1 ,-1, -1, -1, -1]
+case29 = _run_api_end_with_d(fmap=fmap,pads=pads)
+
+# test y_d_lower smaller than 2
+# test y_h_lower smaller than 2
+# test y_w_lower smaller than 2
+fmap={'ori_shape': (1, -1, -1, -1, 32), 'shape': (1, -1, -1, -1, 32),
+      'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (1, 18), (1, 10), (1, 10), (32,32)]}
+case30 = _run_api_end_with_d(fmap=fmap)
+
+# test fmap_h + padding < filter_h constraint
+fmap = {'ori_shape': (1, -1, 1, -1, 32), 'shape': (1, -1, 1, -1, 32),
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (2, 18), (1, 1), (78, 98), (32,32)]}
+case31 = _run_api_end_with_d(fmap=fmap)
+
+# Test padding H invalid constraint
+fmap = {'ori_shape': (1, -1, -1, -1, 32), 'shape': (1, -1, -1, -1, 32),
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (2, 18), (50, 70), (78, 98), (32,32)]}
+invalid_pads = [0, 0, 270, 270, 0, 0]
+case32 = _run_api_end_with_d(fmap=fmap,pads=invalid_pads)
+
+# test NO_UPPER_LIMIT range in No pad Mode
+fmap={'ori_shape': (1, -1, -1, -1, 32), 'shape': (1, -1, -1, -1, 32),
+      'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (4000, None), (4000, None), (4000, None), (32,32)]}
+case33 = _run_api_end_with_d(fmap=fmap)
+
+# test NO_UPPER_LIMIT range in pad same Mode
+fmap={'ori_shape': (1, -1, -1, -1, 32), 'shape': (1, -1, -1, -1, 32),
+      'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (4000, None), (4000, None), (4000, None), (32,32)]}
+pads = [-1, -1, -1, -1, -1, -1]
+case34 = _run_api_end_with_d(fmap=fmap,pads=pads)
+
+# Test padding w invalid constraint
+fmap = {'ori_shape': (1, -1, -1, -1, 32), 'shape': (1, -1, -1, -1, 32),
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (2, 18), (50, 70), (78, 98), (32,32)]}
+invalid_pads = [0, 0, 0, 0, 999, 999]
+case35 = _run_api_end_with_d(fmap=fmap,pads=invalid_pads)
+
+# test_conv3d_invalid_pads h dim
+pads = (1, 1, 3, 3, 1, 1)
+case36 = _run_api_end_with_d(pads=pads)
+
+# test fmap_w + padding < filter_w constraint
+fmap = {'ori_shape': (1, -1, -1, 1, 32), 'shape': (1, -1, -1, 1, 32),
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (2, 18), (50, 70), (1, 1), (32,32)]}
+case37 = _run_api_end_with_d(fmap=fmap)
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A", "Ascend310"],
@@ -320,9 +401,36 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case28, "success", "dynamic_case28_test_bias_reused", True))
 
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case29, "success", "dynamic_case29", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case30, "success", "dynamic_case30", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case31, RuntimeError, "dynamic_case31", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case32, RuntimeError, "dynamic_case32", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case33, "success", "dynamic_case33", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case34, "success", "dynamic_case34", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case35, RuntimeError, "dynamic_case35", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case36, RuntimeError, "dynamic_case36", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case37, RuntimeError, "dynamic_case37", True))
+
 # test_conv3d_fuzzy_build_generalization
 print("adding conv3d test_conv3d_fuzzy_build_generalization testcase")
 ut_case.add_cust_test_func(test_func=test_conv3d_fuzzy_build_generalization)
 
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run("Ascend910A")
