@@ -4152,60 +4152,73 @@ class CceConvOp:
             -------
             None
             """
-            def get_max_out_for_dynamic():
+            def get_h_out_max():
                 if "ho" in self._dyn_var_map:
                     if self._var_range['ho'][1]:
                         h_out_max = self._var_range['ho'][1]
                     else:
-                        h_out_max = math.ceil((DYNAMIC_FMAP_MAX_HEIGHT + ConvParam.padding[0] +
-                                               ConvParam.padding[1] - (ConvParam.dilate_h * (
-                                                   ConvParam.filter_h - 1) + 1))\
-                                                   / ConvParam.stride_h + 1)
+                        h_out_max = math.ceil((DYNAMIC_FMAP_MAX_HEIGHT + ConvParam.padding[0] + ConvParam.padding[1] -
+                                               (ConvParam.dilate_h * (ConvParam.filter_h - 1) + 1))\
+                                               / ConvParam.stride_h + 1)
                 else:
                     h_out_max = ConvParam.h_out
+                return h_out_max
+
+            def get_w_out_range():
                 if "wo" in self._dyn_var_map:
                     if self._var_range['wo'][1]:
-                        w_out_max = self._var_range['wo'][1]
+                        w_out_range = [self._var_range['wo'][0], self._var_range['wo'][1] + 1]
                     else:
-                        w_out_max = math.ceil((DYNAMIC_FMAP_MAX_WIDTH + ConvParam.padding[2] +
-                                               ConvParam.padding[3] - (ConvParam.dilate_w * (
-                                                   ConvParam.filter_w - 1) + 1))\
-                                                   / ConvParam.stride_w + 1)
+                        w_out_range = [self._var_range['wo'][0], math.ceil((DYNAMIC_FMAP_MAX_WIDTH +
+                                                                            ConvParam.padding[2] +
+                                                                            ConvParam.padding[3] -
+                                                                            (ConvParam.dilate_w * (ConvParam.filter_w
+                                                                                                   - 1) + 1)) / \
+                                                                                                   ConvParam.stride_w
+                                                                           + 1) + 1]
                 else:
-                    w_out_max = ConvParam.w_out
-                return h_out_max, w_out_max
+                    w_out_range = [ConvParam.w_out, ConvParam.w_out + 1]
+                return w_out_range
 
             if self._pre_relu_fused_flag:
-                h_out, w_out = get_max_out_for_dynamic()
-                if ("ho" in self._dyn_var_map or "wo" in self._dyn_var_map) and tiling["AL1_shape"]:
-                    no2_al1_factor = int_ceil_div(int_ceil_div(h_out * w_out, int(
-                        tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2])), tiling["AL1_shape"][1])
-                else:
-                    no2_al1_factor = al1_factor[1]
-                out_row_num = int_ceil_div(h_out, no2_al1_factor)
-                shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
-                in_row_num = (out_row_num - 1)*ConvParam.stride_h + shape_w_nc1hwc0[2] + \
-                                                (ConvParam.dilate_h - 1) - ConvParam.pad_h[0]
-                fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
-                if "fmap_w" in self._dyn_var_map:
-                    fmap_width = self._var_range['fmap_w'][1] if self._var_range['fmap_w'][1]\
-                        else DYNAMIC_FMAP_MAX_WIDTH
-                else:
-                    fmap_width = fmap_shape_nc1hwc0[3]
-                need_buffer_size = int(in_row_num * fmap_width * 16) # 16 is c0
-                if aub_factor == [1, 1] and need_buffer_size > PRE_BUFFER_SIZE_MAX:
+                w_out_range = get_w_out_range()
+                max_need_buffer_size = 0
+                max_in_row_num = 0
+                tail_size = 0
+                # prefuse: calucate the used ub buffer size
+                for w_out in range(w_out_range[0], w_out_range[1]):
+                    if tiling["AL1_shape"]:
+                        out_row_num = int_ceil_div(tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2] *
+                                                   tiling["AL1_shape"][1], w_out) + 2 # 2 is additional_rows
+                    else:
+                        out_row_num = get_h_out_max()
+                    shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
+                    # extend in_row_num, normal infer is (h_out - 1) * stride + (k_h - 1) * dilate_h + 1 - pad_t - pad_b
+                    in_row_num = (out_row_num - 1) * ConvParam.stride_h + (shape_w_nc1hwc0[2] - 1) *\
+                        ConvParam.dilate_h + 1
+                    fmap_shape_nc1hwc0 = ConvParam.tiling_query_param.get("fmap_shape_nc1hwc0")
+                    fmap_width = (w_out - 1) * ConvParam.stride_w + (shape_w_nc1hwc0[3] - 1) * ConvParam.dilate_w + 1
+                    # 16 is c0
+                    need_buffer_size = int(int_ceil_div(in_row_num, aub_factor[1]) *
+                                           int_ceil_div(fmap_shape_nc1hwc0[1], aub_factor[0]) * fmap_width * 16)
+                    if need_buffer_size > max_need_buffer_size:
+                        max_need_buffer_size = need_buffer_size
+                        max_in_row_num = in_row_num
+                        # tail_size is the later part of need_buffer_size
+                        tail_size = int_ceil_div(fmap_shape_nc1hwc0[1], aub_factor[0]) * fmap_width * 16
+                if max_need_buffer_size > PRE_BUFFER_SIZE_MAX:
                     if "fmap_h" in self._dyn_var_map:
                         aub_factor[1] = self._var_range['fmap_h'][1] if self._var_range['fmap_h'][1]\
                             else DYNAMIC_FMAP_MAX_HEIGHT
                     else:
                         aub_factor[1] = fmap_shape_nc1hwc0[2]
 
-                set_prefusion_sch(need_buffer_size)
+                set_prefusion_sch(max_in_row_num, tail_size)
 
             if self._l0a_dma_flag and "fmap_ub_for_dma_im2col" in tensor_map:
                 sch[fmap_ub_for_dma_im2col].compute_at(sch[fmap_col_before], fmap_col_before.op.axis[4])
 
-        def set_prefusion_sch(need_buffer_size):
+        def set_prefusion_sch(max_in_row_num, tail_size):
             """
             config pre relu fusion sch
             """
@@ -4224,12 +4237,12 @@ class CceConvOp:
                 sch[fmap].compute_at(sch[al1], al1_h_outer)
                 sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_h_outer)
             if self._dynamic_flag:
-                set_attrs_prefusion_dynamic(al1_k_inner, need_buffer_size)
+                set_attrs_prefusion_dynamic(al1_k_inner, max_in_row_num, tail_size)
             else:
                 sch[al1].emit_insn(al1_k_inner, 'dma_copy')
             self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
 
-        def set_attrs_prefusion_dynamic(al1_k_inner, need_buffer_size):
+        def set_attrs_prefusion_dynamic(al1_k_inner, max_in_row_num, tail_size):
             """
             set sch insn for prefusion in dynamic
             """
@@ -4258,9 +4271,9 @@ class CceConvOp:
             else:
                 # load 2d does not set_fmatrix
                 sch[al1].emit_insn(al1_k_inner, 'dma_copy')
-            sch[fmap].set_storage_bound(int_ceil_div(need_buffer_size, aub_factor[0] * aub_factor[1]))
-            sch[tensor_map['fmap_ub']].set_storage_bound(int_ceil_div(need_buffer_size,
-                                                                      aub_factor[0] * aub_factor[1]))
+            sch[fmap].set_storage_bound(int(int_ceil_div(max_in_row_num, aub_factor[1]) * tail_size))
+            sch[tensor_map['fmap_ub']].set_storage_bound(int(int_ceil_div(max_in_row_num,
+                                                                          aub_factor[1]) * tail_size))
 
         def set_attrs_conv1d_split_w(al1_k_outer, al1_k_inner):
             """

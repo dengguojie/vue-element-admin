@@ -53,6 +53,8 @@ def test_leakyrelu_depthwise_fusion_testcase(test_arg):
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
     dynamic_depthwise_testcase.append([[168, 168, -1, -1], (3, 3, 168, 168), (0, 0, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), None, [(168, 168), (168, 168), (3, None), (1, None)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
+    dynamic_depthwise_testcase.append([[-1, 512, 28, 24], (3, 3, 512, 512), (0, 0, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), None, [(9, 109), (512, 512), (28, 28), (24, 24)],
+                                    "leakyrelu_depthwise", None, "NCHW", "float16"])
     # with bias
     dynamic_depthwise_testcase.append([[-1, 64, -1, -1], (3, 3, 64, 64), (1, 1, 1, 1), (1, 1, 1, 1), (1, 1, 1, 1), (1, 960, 1, 1), [(1, 10), (64, 64), (20, 40), (20, 40)],
                                     "leakyrelu_depthwise", None, "NCHW", "float16"])
