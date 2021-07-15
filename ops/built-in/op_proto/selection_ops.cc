@@ -3776,26 +3776,30 @@ VERIFY_FUNC_REG(CumulativeLogsumexpD, CumulativeLogsumexpDVerify);
 
 // ----------------InplaceIndexAdd Begin-------------------
 IMPLEMT_INFERFUNC(InplaceIndexAdd, InplaceIndexAddInferShape) {
-  auto tensor_var = op.GetInputDesc("var");
-  auto var_type = tensor_var.GetDataType();
-  auto tensor_indices = op.GetInputDesc("indices");
-  auto indices_type = tensor_indices.GetDataType();
-  auto tensor_updates = op.GetInputDesc("updates");
-  auto updates_type = tensor_updates.GetDataType();
+  DataType var_type = op.GetInputDescByName("var").GetDataType();
+  DataType indices_type = op.GetInputDescByName("indices").GetDataType();
+  DataType updates_type = op.GetInputDescByName("updates").GetDataType();
+
+  AscendString op_name;
+  if (GRAPH_SUCCESS != op.GetName(op_name)) {
+    OP_LOGE("InplaceIndexAdd", "op_name get failed.");
+    return GRAPH_FAILED;
+  }
+  const char* op_name_c = op_name.GetString();
 
   if (var_type != updates_type) {
-    OP_LOGE(op.GetName().c_str(), "var'dtype is not same as updates'dtype.");
+    OP_LOGE(op_name_c, "var'dtype is not same as updates'dtype.");
     return GRAPH_FAILED;
   }
   if (indices_type != DT_INT32) {
-    OP_LOGE(op.GetName().c_str(), "indices dtype is not int32, please check!");
+    OP_LOGE(op_name_c, "indices dtype is not int32, please check!");
     return GRAPH_FAILED;
   }
   if (OneInOneOutDynamicInfer(op, "var", {"var"})) {
     return GRAPH_SUCCESS;
   }
 
-  OP_LOGE(op.GetName().c_str(), "shape of var_out is not same as shape of var.");
+  OP_LOGE(op_name_c, "shape of var_out is not same as shape of var.");
   return GRAPH_FAILED;
 }
 INFER_FUNC_REG(InplaceIndexAdd, InplaceIndexAddInferShape);

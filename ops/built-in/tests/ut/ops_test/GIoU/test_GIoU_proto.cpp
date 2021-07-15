@@ -41,7 +41,7 @@ TEST_F(GIoUTest, GIoUTest_infershape_test_1) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   
-  auto output_desc = op.GetOutputDesc("overlap");
+  auto output_desc = op.GetOutputDescByName("overlap");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
 
   std::vector<int64_t> expected_output_shape = {32, 32};

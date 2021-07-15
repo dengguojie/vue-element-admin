@@ -49,7 +49,7 @@ TEST_F(hardtanh_grad, hardtanh_grad_infershape_diff_test){
     op.SetAttr("max_val", max_val);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-    auto output_desc = op.GetOutputDesc("y");
+    auto output_desc = op.GetOutputDescByName("y");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {-1, 8, 375};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);

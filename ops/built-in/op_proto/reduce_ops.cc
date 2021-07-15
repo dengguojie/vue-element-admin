@@ -1829,16 +1829,23 @@ INFER_FUNC_REG(ReduceJoin, ReduceJoinInfer);
 // ----------------ReduceStd Begin-------------------
 using std::find;
 IMPLEMT_INFERFUNC(ReduceStd, ReduceStdInferShape) {
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
-  Shape input_shape = tensordesc_input.GetShape();
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
+  ge::Shape input_shape = tensordesc_input.GetShape();
   DataType input_dtype = tensordesc_input.GetDataType();
   std::vector<int64_t> dims_input = input_shape.GetDims();
   int64_t dim_num = input_shape.GetDimNum();
 
-  TensorDesc tensordesc_output1 = op.GetOutputDesc("y1");
-  TensorDesc tensordesc_output2 = op.GetOutputDesc("y2");
+  TensorDesc tensordesc_output1 = op.GetOutputDescByName("y1");
+  TensorDesc tensordesc_output2 = op.GetOutputDescByName("y2");
   tensordesc_output1.SetDataType(input_dtype);
   tensordesc_output2.SetDataType(input_dtype);
+
+  AscendString op_name;
+  if (GRAPH_SUCCESS != op.GetName(op_name)) {
+    OP_LOGE("ReduceStd", "op_name get failed.");
+    return GRAPH_FAILED;
+  }
+  const char* op_name_c = op_name.GetString();
 
   bool keepdim;
   (void)op.GetAttr("keepdim", keepdim);
@@ -1846,7 +1853,7 @@ IMPLEMT_INFERFUNC(ReduceStd, ReduceStdInferShape) {
   // check parameter dim and keepdim
   std::vector<int64_t> axis;
   if (GRAPH_SUCCESS != op.GetAttr("dim", axis)) {
-    OP_LOGE(op.GetName().c_str(), "GE get dim failed");
+    OP_LOGE(op_name_c, "GE get dim failed");
     return GRAPH_FAILED;
   }
 
@@ -1890,15 +1897,22 @@ INFER_FUNC_REG(ReduceStd, ReduceStdInferShape);
 // ----------------ReduceStdWithMean Begin-------------------
 using std::find;
 IMPLEMT_INFERFUNC(ReduceStdWithMean, ReduceStdWithMeanInferShape) {
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
-  Shape input_shape = tensordesc_input.GetShape();
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
+  ge::Shape input_shape = tensordesc_input.GetShape();
   DataType input_dtype = tensordesc_input.GetDataType();
   std::vector<int64_t> dims_input = input_shape.GetDims();
   int64_t dim_num = input_shape.GetDimNum();
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetDataType(input_dtype);
   tensordesc_output.SetFormat(tensordesc_input.GetFormat());
+
+  AscendString op_name;
+  if (GRAPH_SUCCESS != op.GetName(op_name)) {
+    OP_LOGE("ReduceStdWithMean", "op_name get failed.");
+    return GRAPH_FAILED;
+  }
+  const char* op_name_c = op_name.GetString();
 
   bool keepdim;
   (void)op.GetAttr("keepdim", keepdim);
@@ -1906,7 +1920,7 @@ IMPLEMT_INFERFUNC(ReduceStdWithMean, ReduceStdWithMeanInferShape) {
   // check parameter dim and keepdim
   std::vector<int64_t> axis;
   if (GRAPH_SUCCESS != op.GetAttr("dim", axis)) {
-    OP_LOGE(op.GetName().c_str(), "GE get dim failed");
+    OP_LOGE(op_name_c, "GE get dim failed");
     return GRAPH_FAILED;
   }
 
@@ -1937,7 +1951,7 @@ IMPLEMT_INFERFUNC(ReduceStdWithMean, ReduceStdWithMeanInferShape) {
   }
 
   std::vector<std::pair<int64_t, int64_t>> input_mean_range;
-  op.GetInputDesc("mean").GetShapeRange(input_mean_range);
+  op.GetInputDescByName("mean").GetShapeRange(input_mean_range);
 
   tensordesc_output.SetShapeRange(input_mean_range);
 

@@ -57,8 +57,7 @@ TEST_F(inplace_index_add, inplace_index_add_infershape_diff_test){
     op.SetAttr("axis", axis);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-    std::cout<<"inplace_index_add Proto 111111"<<std::endl;
-    auto output_desc = op.GetOutputDesc("var");
+    auto output_desc = op.GetOutputDescByName("var");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
     std::vector<int64_t> expected_output_shape = {-1, 8, 375};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);

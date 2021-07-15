@@ -75,14 +75,14 @@ void SetRunningParam(const InplaceIndexAddTilingParam& params, OpRunInfo& runInf
 }
 
 void PrintTilingParams(const std::string& opType, const InplaceIndexAddTilingParam& params) {
-  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : tilingMode=%ld.", params.tilingMode);
-  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : blockNum=%ld.", params.blockNum);
-  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : indicesNum=%ld.", params.indicesNum);
-  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : outerLoop=%ld.", params.outerLoop);
-  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : outerLoopPerBlock=%ld.", params.outerLoopPerBlock);
-  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : axisAndAfterDataNumOfUpdates=%ld.", params.axisAndAfterDataNumOfUpdates);
-  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : axisAndAfterDataNumOfVar=%ld.", params.axisAndAfterDataNumOfVar);
-  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : updateDataNum=%ld.", params.updateDataNum);
+  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : tilingMode=%d.", params.tilingMode);
+  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : blockNum=%d.", params.blockNum);
+  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : indicesNum=%d.", params.indicesNum);
+  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : outerLoop=%d.", params.outerLoop);
+  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : outerLoopPerBlock=%d.", params.outerLoopPerBlock);
+  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : axisAndAfterDataNumOfUpdates=%d.", params.axisAndAfterDataNumOfUpdates);
+  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : axisAndAfterDataNumOfVar=%d.", params.axisAndAfterDataNumOfVar);
+  OP_LOGD(opType.c_str(), "op [InplaceIndexAddTiling] : updateDataNum=%d.", params.updateDataNum);
 }
 
 bool GetInplaceIndexAddCompileParams(const std::string& opType, const nlohmann::json& opCompileInfo, int32_t& coreNum,

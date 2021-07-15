@@ -51,12 +51,12 @@ TEST_F(ReduceStdTest, reduce_std_test_case_1) {
     auto ret = reduce_std_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto output_desc1 = reduce_std_op.GetOutputDesc("y1");
+    auto output_desc1 = reduce_std_op.GetOutputDescByName("y1");
     EXPECT_EQ(output_desc1.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape1 = {3, 5};
     EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape1);
 
-    auto output_desc2 = reduce_std_op.GetOutputDesc("y2");
+    auto output_desc2 = reduce_std_op.GetOutputDescByName("y2");
     EXPECT_EQ(output_desc2.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape2 = {3, 5};
     EXPECT_EQ(output_desc2.GetShape().GetDims(), expected_output_shape2);

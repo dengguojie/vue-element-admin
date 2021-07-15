@@ -598,13 +598,18 @@ COMMON_INFER_FUNC_REG(MishGrad, MishGradInferShape);
 
 // ----------------HardtanhGrad Begin-------------------
 IMPLEMT_INFERFUNC(HardtanhGrad, HardtanhGradInferShape) {
-  auto tensor_result = op.GetInputDesc("result");
-  auto result_type = tensor_result.GetDataType();
-  auto tensor_grad = op.GetInputDesc("grad");
-  auto grad_type = tensor_grad.GetDataType();
+  DataType result_type = op.GetInputDescByName("result").GetDataType();
+  DataType grad_type = op.GetInputDescByName("grad").GetDataType();
+
+  AscendString op_name;
+  if (GRAPH_SUCCESS != op.GetName(op_name)) {
+    OP_LOGE("HardtanhGrad", "op_name get failed.");
+    return GRAPH_FAILED;
+  }
+  const char* op_name_c = op_name.GetString();
 
   if (result_type != grad_type) {
-    OP_LOGE(op.GetName().c_str(), "result'dtype is not same as grad'dtype.");
+    OP_LOGE(op_name_c, "result'dtype is not same as grad'dtype.");
     return GRAPH_FAILED;
   }
 
@@ -612,7 +617,7 @@ IMPLEMT_INFERFUNC(HardtanhGrad, HardtanhGradInferShape) {
     return GRAPH_SUCCESS;
   }
 
-  OP_LOGE(op.GetName().c_str(), "shape of y is not same as shape of result.");
+  OP_LOGE(op_name_c, "shape of y is not same as shape of result.");
   return GRAPH_FAILED;
 }
 INFER_FUNC_REG(HardtanhGrad, HardtanhGradInferShape);

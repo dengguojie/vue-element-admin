@@ -53,7 +53,7 @@ TEST_F(ReduceStdWithMeanTest, reduce_std_with_meantest_case_1) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   
-  auto output_desc_y = op.GetOutputDesc("y");
+  auto output_desc_y = op.GetOutputDescByName("y");
   EXPECT_EQ(output_desc_y.GetDataType(), ge::DT_FLOAT);
   
   std::vector<int64_t> expected_output_shape = { -1 };
