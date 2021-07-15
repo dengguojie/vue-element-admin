@@ -1589,9 +1589,6 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
 
 IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   OP_LOGD(op.GetName().c_str(), "Enter AvgPoolInferShape");
-  const size_t DIM_SIZE1 = 1;
-  const size_t DIM_SIZE2 = 2;
-  const size_t DIM_SIZE3 = 3;
   const size_t DIM_SIZE4 = 4;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_tensor_desc = op_desc->MutableInputDesc("x");
@@ -1605,6 +1602,7 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
     is_dynamic = true;
     reset_range(op, "x");
   }
+
   // get input ksize
   std::vector<int32_t> ksize_list;
   if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize_list)) {
@@ -1657,13 +1655,6 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
     return GRAPH_FAILED;
   }
 
-  // set output shape
-  std::vector<int64_t> output_shape;
-  output_shape.resize(4);
-  int32_t n_output_position = data_format.find("N");
-  int32_t c_output_position = data_format.find("C");
-  int32_t w_output_position = data_format.find("W");
-  int32_t h_output_position = data_format.find("H");
   std::string input_format_str = format2str[input_format];
   if (input_format_str != "NHWC") {
     input_format_str = "NCHW";
@@ -1672,6 +1663,14 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   int32_t c_input_position = input_format_str.find("C");
   int32_t w_input_position = input_format_str.find("W");
   int32_t h_input_position = input_format_str.find("H");
+  // set output shape
+  std::vector<int64_t> output_shape;
+  output_shape.resize(4);
+  int32_t n_output_position = data_format.find("N");
+  int32_t c_output_position = data_format.find("C");
+  int32_t w_output_position = data_format.find("W");
+  int32_t h_output_position = data_format.find("H");
+  
   if (!unknown_rank) {
     int64_t input_w = dims_input[w_input_position];
     int64_t input_h = dims_input[h_input_position];
@@ -1774,25 +1773,18 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool, AvgPoolInferDataSlice){
   int64_t inputH = 0;
   int64_t inputW = 0;
   int64_t windowH = 0;
-  int64_t windowW = 0;
   int64_t strideH = 0;
-  int64_t strideW = 0;
-  int64_t dilationH = 0;
 
   if (dataFormat == "NHWC") {
     inputH = dims_input[1];
     inputW = dims_input[2];
     windowH = ksizeList[1];
-    windowW = ksizeList[2];
     strideH = stridesList[1];
-    strideW = stridesList[2];
   } else if(dataFormat == "NCHW") {
     inputH = dims_input[2];
     inputW = dims_input[3];
     windowH = ksizeList[2];
-    windowW = ksizeList[3];
     strideH = stridesList[2];
-    strideW = stridesList[3];
   }
 
   if (dataFormat == "NHWC" && ksizeList[0] == inputH && ksizeList[1] == inputW) {
@@ -1971,9 +1963,7 @@ IMPLEMT_VERIFIER(AvgPoolV2, AvgPoolV2Verify) {
 
 
 IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
-  const size_t DIM_SIZE1 = 1;
-  const size_t DIM_SIZE2 = 2;
-  const size_t DIM_SIZE3 = 3;
+  const size_t DIM_SIZE4 = 4;
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   auto inputTensorDesc = opDesc->MutableInputDesc("x");
   auto shape = inputTensorDesc->MutableShape();
@@ -3180,8 +3170,8 @@ void AvgPool3DGradCalcPads(const vector<int64_t> &fmap_shape,
 void AvgPool3DGradCalDedxRange(int64_t ksize, int64_t stride, const string &padding,
                                std::pair<int64_t, int64_t> &grads_range,
                                std::pair<int64_t, int64_t> &fmap_range) {
-  grads_range.first == grads_range.first == -1 ? kDynamicRangeUpperBound : grads_range.first;
-  grads_range.second == grads_range.second == -1 ? kDynamicRangeUpperBound : grads_range.second;
+  grads_range.first = grads_range.first == -1 ? kDynamicRangeUpperBound : grads_range.first;
+  grads_range.second = grads_range.second == -1 ? kDynamicRangeUpperBound : grads_range.second;
   if (padding == "SAME") {
     fmap_range.first = std::max(stride * (grads_range.first - 1) + 1, kDynamicRangeLowerBound);
     fmap_range.second = std::min(stride * grads_range.second, kDynamicRangeUpperBound);
@@ -3276,7 +3266,6 @@ IMPLEMT_INFERFUNC(AvgPool3DGrad, AvgPool3DGradInferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto grads_desc = op_info->MutableInputDesc("grads");
   auto orig_shape_desc = op_info->MutableInputDesc("orig_input_shape");
-  auto grads_format = grads_desc->GetFormat();
   auto grads_dtype = grads_desc->GetDataType();
 
   std::vector<std::string> const_inputs = {"orig_input_shape"};

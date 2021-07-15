@@ -496,31 +496,31 @@ string GetMatMulInfo(const Operator &op, const std::string &name_attr) {
 
   std::ostringstream oss;
   oss << "shape of a: ";
-  for (int i = 0; i < shape_a.GetDimNum(); i++) {
+  for (auto i = 0; i < shape_a.GetDimNum(); i++) {
       oss << shape_a.GetDim(i) << ", ";
   }
   oss << "ori shape of a: ";
-  for (int i = 0; i < ori_shape_a.GetDimNum(); i++) {
+  for (auto i = 0; i < ori_shape_a.GetDimNum(); i++) {
       oss << ori_shape_a.GetDim(i) << ", ";
   }
   oss << std::endl;
   oss << "shape of b: ";
-  for (int i = 0; i < shape_b.GetDimNum(); i++) {
+  for (auto i = 0; i < shape_b.GetDimNum(); i++) {
       oss << shape_b.GetDim(i) << ", ";
   }
   oss << "ori shape of b: ";
-  for (int i = 0; i < ori_shape_b.GetDimNum(); i++) {
+  for (auto i = 0; i < ori_shape_b.GetDimNum(); i++) {
       oss << ori_shape_b.GetDim(i) << ", ";
   }
   oss << std::endl;
   oss << "trans_a " << trans_a << " trans_b " << trans_b << std::endl;
   oss << "range of a: (";
-  for (int i = 0; i < range_a.size(); i++) {
+  for (auto i = 0; i < range_a.size(); i++) {
       oss << "(" << range_a[i].first << ", " << range_a[i].second << ") ";
   }
   oss << ")" << std::endl;
   oss << "range of b: (";
-  for (int i = 0; i < range_b.size(); i++) {
+  for (auto i = 0; i < range_b.size(); i++) {
       oss << "(" << range_b[i].first << ", " << range_b[i].second << "), ";
   }
   oss << ")" << std::endl;
@@ -1018,7 +1018,7 @@ void InferShapeMatMul::SimplifyShapeAndRange() {
     return;
   }
 
-  for (int i = 0; i < range_out.size(); i++) {
+  for (auto i = 0; i < range_out.size(); i++) {
     if (range_out[i].first == range_out[i].second) {
       shape_out[i] = range_out[i].first;
     }
@@ -1069,7 +1069,7 @@ bool InferShapeMatMul::GetShapeRangeOfOutput() {
 void GetMatmulShapeGear(int64_t dim_size,
                         const std::vector<int64_t> &shape_gear,
                         std::pair<int64_t, int64_t> &range) {
-  int position = 1;
+  auto position = 1;
   while (position < shape_gear.size() && shape_gear[position] < dim_size) {
     position++;
   }
@@ -1078,13 +1078,13 @@ void GetMatmulShapeGear(int64_t dim_size,
 
 int32_t CalculateMatmulShapeRange(const std::vector<int64_t> &shape,
                                   std::vector<std::pair<int64_t, int64_t>> &single_point_range) {
-  for (int i = 0; i < shape.size() - 2; i++) {
+  for (auto i = 0; i < shape.size() - 2; i++) {
     if (shape[i] > MAX_RANGE) {
       return -1;
     }
     GetMatmulShapeGear(shape[i], BATCH_GRAR, single_point_range[i]);
   }
-  for (int i = shape.size() - 2; i < shape.size(); i++) {
+  for (auto i = shape.size() - 2; i < shape.size(); i++) {
     if (shape[i] > MAX_RANGE) {
       return -1;
     }
@@ -1140,8 +1140,8 @@ graphStatus GetMatMulOutputShape(Operator &op,
   bool fuzzy_flag = false;
   bool is_static_shape = !IsUnKnownShape(shape_a) && !IsUnKnownShape(shape_b) && !IsUnknownShape(shape_bias);
   if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzzy_flag) && fuzzy_flag && is_static_shape) {
-    int shape_a_length = shape_a.size();
-    int shape_b_length = shape_b.size();
+    auto shape_a_length = shape_a.size();
+    auto shape_b_length = shape_b.size();
     std::vector<std::pair<int64_t, int64_t>> single_point_range_a(shape_a_length);
     std::vector<std::pair<int64_t, int64_t>> single_point_range_b(shape_b_length);
     int32_t calc_range_a = CalculateMatmulShapeRange(shape_a, single_point_range_a);
@@ -1183,7 +1183,7 @@ bool InferMatmulInputNZ(const Operator &op,
   GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   vector<vector<int64_t>> x1_data_slice = {{}, {}, {}, {}};
   vector<vector<int64_t>> x2_data_slice = {{}, {}, {}, {}};
-  for(int i = 0; i < output.size(); i++) {
+  for(auto i = 0; i < output.size(); i++) {
     if (output[i].size() > 1) {
       if (i == 0) {
         if (!trans_b) {
@@ -1225,7 +1225,7 @@ bool InferMatmulInputND(const Operator &op,
   GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   vector<vector<int64_t>> x1_data_slice = {{}, {}};
   vector<vector<int64_t>> x2_data_slice = {{}, {}};
-  for(int i = 0; i < output.size(); i++) {
+  for(auto i = 0; i < output.size(); i++) {
     if (output[i].size() > 1) {
       if (i == 0) {
         if (!trans_a) {
@@ -1315,7 +1315,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
   vector<vector<int64_t>> x2_data_slice(x2_dims);
   size_t y_dims = output.size();
 
-  for(int i = 0; i < y_dims; i++) {
+  for(size_t i = 0; i < y_dims; i++) {
     if (output[i].size() > 1) {
       if (i == y_dims - 4) {
         // split n
@@ -1375,7 +1375,7 @@ bool InferBatchMatmulInputND(const Operator &op,
   vector<vector<int64_t>> x2_data_slice(x2_dims);
   size_t y_dims = output.size();
 
-  for(int i = 0; i < y_dims; i++) {
+  for(size_t i = 0; i < y_dims; i++) {
     if (output[i].size() > 1) {
       if (i == y_dims - 2) {
         // split m
@@ -1749,7 +1749,7 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
     return GRAPH_FAILED;
   }
 
-  int dim_num = std::max(dim_num_x1, dim_num_x2);
+  auto dim_num = std::max(dim_num_x1, dim_num_x2);
   bool any_unknown_rank = shape_x1 == UNKNOWN_RANK || shape_x1 == UNKNOWN_RANK || shape_bias == UNKNOWN_RANK;
   if (!any_unknown_rank && (dim_num < 1 || dim_num > 8)) {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 1 to 8.");
@@ -1942,8 +1942,8 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagDInferShape) {
   }
 
   if (dims_x.size() != dims_assist.size()) {
-    int dec = dims_x.size() - dims_assist.size();
-    for (int i = 0; i < dec; i++) {
+    auto dec = dims_x.size() - dims_assist.size();
+    for (auto i = 0; i < dec; i++) {
       dims_assist.insert(dims_assist.begin(), (int64_t)1);
     }
   }
@@ -3220,7 +3220,7 @@ bool is_ellispis(std::string ori_str, std::string target) {
 // remove spaces from the string
 void trim_whitespace(std::string &s)
 {
-    int index = 0;
+    auto index = 0;
     if(!s.empty()) {
         while((index = s.find(' ',index)) != string::npos) {
             s.erase(index,1);
