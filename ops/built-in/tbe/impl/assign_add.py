@@ -99,6 +99,7 @@ def _assign_add_int64_schedule(res, tensor_ref, tensor_val, res_add):
 
 # pylint: disable=locally-disabled,too-many-locals,unnecessary-lambda
 # pylint: disable=locally-disabled,too-many-statements
+@tbe_platform.fusion_manager.fusion_manager.register("assign_add")
 def _compute_assign_add(tensor_x, tensor_y, output, kernel_name='assign_add'):
     """
     assignadd compute function for int8, uint8, int32, float16, float32
