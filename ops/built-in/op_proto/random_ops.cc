@@ -559,7 +559,6 @@ static bool CheckDtype(const ge::Operator& op) {
 
 IMPLEMT_COMMON_INFERFUNC(MultinomialFussInferShape) {
   int DATA_TYPE_INT32_ONNX = 6;
-  int DATA_TYPE_INT64_ONNX = 7;
   ge::TensorDesc input_desc = op.GetInputDesc(0);
   ge::TensorDesc output_desc = op.GetOutputDesc(0);
   std::vector<int64_t> dims = input_desc.GetShape().GetDims();

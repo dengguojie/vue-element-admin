@@ -53,7 +53,6 @@ IMPLEMT_INFERFUNC(StringToNumber, StringToNumberInfer) {
 INFER_FUNC_REG(StringToNumber, StringToNumberInfer);
 
 IMPLEMT_INFERFUNC(DecodeRaw, DecodeRawInfer) {
-  int64_t unused_dim = 0;
   auto x1_tensor = op.GetInputDesc(0);
   Shape s = x1_tensor.GetShape();
   std::vector<int64_t> dims;
@@ -195,7 +194,7 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
 
   size_t inputs_size = op_desc->GetInputsSize();
   size_t record_defaults_size = inputs_size - 1;
-  for (int i = 0; i < record_defaults_size; ++i) {
+  for (size_t i = 0; i < record_defaults_size; ++i) {
     GeShape record_default_shape;
     auto temp_record_default_desc =
         op_desc->MutableInputDesc("record_defaults" + std::to_string(i));
@@ -233,7 +232,7 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
 
   size_t outputs_size = op_desc->GetOutputsSize();
   auto temp_records_desc = op.GetInputDesc("records");
-  for (int i = 0; i < outputs_size; ++i) {
+  for (size_t i = 0; i < outputs_size; ++i) {
     auto temp_record_default_desc =
         op.GetDynamicInputDesc("record_defaults", i);
     auto temp_output_desc = op.GetDynamicOutputDesc("output", i);
@@ -297,7 +296,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
     return GRAPH_FAILED;
   }
 
-  for (int i = 0; i < dense_shapes.size(); ++i) {
+  for (size_t i = 0; i < dense_shapes.size(); ++i) {
     GeShape temp_dense_shape(dense_shapes[i]);
     if (!ShapeFullyDefined(temp_dense_shape)) {
       OP_LOGW(op.GetName().c_str(), "dense_shapes[%ld] is not fully defined.",
@@ -306,7 +305,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
     std::vector<int64_t> dense_shape;
     if (dense_shapes[i].size() > 0 && dense_shapes[i][0] == -1) {
       variable_length.push_back(true);
-      for (int d = 1; d < dense_shapes[i].size(); ++d) {
+      for (size_t d = 1; d < dense_shapes[i].size(); ++d) {
         dense_shape.push_back(dense_shapes[i][d]);
       }
     } else {
@@ -314,7 +313,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
       dense_shape = dense_shapes[i];
     }
     int64_t dense_shape_size = 1;
-    for (int d = 0; d < dense_shape.size(); ++d) {
+    for (size_t d = 0; d < dense_shape.size(); ++d) {
       if (dense_shape[i] < 0) {
         dense_shape_size = -1;
         break;

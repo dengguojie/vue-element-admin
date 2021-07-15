@@ -882,7 +882,7 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
     GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get attr value from axis input failed, as data buff is null");
     return GRAPH_FAILED;
   }
-  int64_t axis;
+  int64_t axis = 0;
   if (axis_type == DT_INT32) {
     axis = *const_cast<int32_t*>(reinterpret_cast<const int32_t*>(pbuff));
   } else if (axis_type == DT_INT64) {
@@ -1761,7 +1761,7 @@ IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
   if (!inRange.empty()) {
     std::vector<int64_t> pre_op_range;
     pre_op_range.resize(2 * inRange.size());
-    for (int i = 0; i < pre_op_range.size(); i = i + 2) {
+    for (size_t i = 0; i < pre_op_range.size(); i = i + 2) {
       pre_op_range[i] = inRange[i / 2].first;
       pre_op_range[i + 1] = inRange[i / 2].second;
     }
@@ -1837,7 +1837,7 @@ IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
     if (!inRange.empty()) {
       std::vector<int64_t> pre_op_range;
       pre_op_range.resize(2 * inRange.size());
-      for (int i = 0; i < pre_op_range.size(); i = i + 2) {
+      for (size_t i = 0; i < pre_op_range.size(); i = i + 2) {
         pre_op_range[i] = inRange[i / 2].first;
         pre_op_range[i + 1] = inRange[i / 2].second;
       }
@@ -2449,8 +2449,8 @@ IMPLEMT_INFERFUNC(NonZero, NonZeroInfer) {
   } else {
     std::vector<std::pair<int64_t, int64_t>> range;
     if (transpose == false) {
-      y_desc->SetShape(GeShape({UNKNOWN_DIM, x_shape.GetDimNum()}));
-      y_desc->SetOriginShape(GeShape({UNKNOWN_DIM, x_shape.GetDimNum()}));
+      y_desc->SetShape(GeShape({UNKNOWN_DIM, static_cast<int64_t>(x_shape.GetDimNum())}));
+      y_desc->SetOriginShape(GeShape({UNKNOWN_DIM, static_cast<int64_t>(x_shape.GetDimNum())}));
       if (x_shape.GetShapeSize() == UNKNOWN_DIM) {
         range.emplace_back(std::make_pair(1, -1));
       } else {
@@ -2458,8 +2458,8 @@ IMPLEMT_INFERFUNC(NonZero, NonZeroInfer) {
       }
       range.emplace_back(std::make_pair(x_shape.GetDimNum(), x_shape.GetDimNum()));
     } else {
-      y_desc->SetShape(GeShape({x_shape.GetDimNum(), UNKNOWN_DIM}));
-      y_desc->SetOriginShape(GeShape({x_shape.GetDimNum(), UNKNOWN_DIM}));
+      y_desc->SetShape(GeShape({static_cast<int64_t>(x_shape.GetDimNum()), UNKNOWN_DIM}));
+      y_desc->SetOriginShape(GeShape({static_cast<int64_t>(x_shape.GetDimNum()), UNKNOWN_DIM}));
       range.emplace_back(std::make_pair(x_shape.GetDimNum(), x_shape.GetDimNum()));
       if (x_shape.GetShapeSize() == UNKNOWN_DIM) {
         range.emplace_back(std::make_pair(1, -1));
