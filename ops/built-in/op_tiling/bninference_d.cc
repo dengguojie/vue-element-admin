@@ -24,8 +24,9 @@ bool BNInferenceDTiling(const std::string& op_type, const TeOpParas& op_paras, c
                    OpRunInfo& run_info) {
     GELOGD("op [%s] Enter BNInferenceDTiling inputs size:%d", op_type.c_str(), op_paras.inputs.size());
 
-    CHECK((op_info.count("broadcast_mean_shape") > 0),
-          "op [%s] : compile info not contain [broadcast_mean_shape]", op_type.c_str());
+    OP_TILING_CHECK((op_info.count("broadcast_mean_shape") < 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [broadcast_mean_shape]"),
+                    return false);
 
     std::vector<int64_t> broadcast_mean_shape = op_info["broadcast_mean_shape"];
 
@@ -37,8 +38,8 @@ bool BNInferenceDTiling(const std::string& op_type, const TeOpParas& op_paras, c
 
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
 
-    CHECK((broadcast_mean_shape.size() <= input_shape_x.size()),
-          "op [%s] : shape of mean is lager than shape of x.", op_type.c_str());
+    OP_TILING_CHECK((broadcast_mean_shape.size() > input_shape_x.size()),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "shape of mean is lager than shape of x."), return false);
     // modify shape mean & varince
     for (size_t i = 0; i < broadcast_mean_shape.size(); i++) {
         broadcast_mean_shape[i] = broadcast_mean_shape[i] == -1 ? input_shape_x[i] : broadcast_mean_shape[i];

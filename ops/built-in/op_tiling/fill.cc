@@ -22,15 +22,17 @@ bool FillTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
                 OpRunInfo& run_info) {
   std::vector<int64_t> shapes;
 
-  CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
-  CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
+  OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
+                  return false);
+  OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
 
   std::string dims_dtype = op_paras.inputs[0].tensor[0].dtype;
   auto pointer = std::get<0>(op_paras.const_inputs.at("dims"));
   auto size = std::get<1>(op_paras.const_inputs.at("dims"));
   uint32_t count =
       (dims_dtype == "int64") ? size / sizeof(int64_t) : (dims_dtype == "int32") ? size / sizeof(int32_t) : 0;
-  CHECK(count, "op [%s] : input dims shape cannot be empty", op_type.c_str());
+  OP_TILING_CHECK(!count, VECTOR_INNER_ERR_REPORT_TILIING(op_type, " input dims shape cannot be empty"), return false);
 
   if (dims_dtype == "int64") {
     auto* data = (int64_t*)pointer;
@@ -48,15 +50,18 @@ bool FillTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
   int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1ll, std::multiplies<int64_t>());
 
   TeOpParas op_paras_tmp = std::move(op_paras);
-  CHECK(!op_paras_tmp.inputs.empty(),
-        "op [%s] : op_paras_tmp.inputs cannot be empty", op_type.c_str());
-  CHECK(!op_paras_tmp.inputs[0].tensor.empty(),
-        "op [%s] : op_paras_tmp.inputs[0].tensor cannot be empty", op_type.c_str());
+  OP_TILING_CHECK(op_paras_tmp.inputs.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.inputs cannot be empty"), return false);
+  OP_TILING_CHECK(op_paras_tmp.inputs[0].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.inputs[0].tensor cannot be empty"),
+                  return false);
   op_paras_tmp.inputs[0].tensor[0].shape = {fused_output};
 
-  CHECK(!op_paras_tmp.outputs.empty(), "op [%s] : op_paras_tmp.outputs cannot be empty", op_type.c_str());
-  CHECK(!op_paras_tmp.outputs[0].tensor.empty(), "op [%s] : op_paras_tmp.outputs[0].tensor cannot be empty",
-        op_type.c_str());
+  OP_TILING_CHECK(op_paras_tmp.outputs.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.outputs cannot be empty"), return false);
+  OP_TILING_CHECK(op_paras_tmp.outputs[0].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras_tmp.outputs[0].tensor cannot be empty"),
+                  return false);
   op_paras_tmp.outputs[0].tensor[0].shape.clear();
   op_paras_tmp.outputs[0].tensor[0].shape.push_back(fused_output);
   GELOGD("fill get dims fused_output is [%d], and fuse shape size is [%d]", fused_output,

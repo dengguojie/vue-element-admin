@@ -117,14 +117,16 @@ bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_info,
   std::vector<int32_t> pattern_info;
   std::vector<int32_t> ub_info;
 
-  CHECK((op_info.find("common_info") != op_info.end()),
-        "op [%s] : compile info not contain [common_info]", op_type.c_str());
+  OP_TILING_CHECK((op_info.find("common_info") == op_info.end()),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [common_info]"),
+                  return false);
   common_info = op_info.at("common_info").get<std::vector<int32_t>>();
-  CHECK((op_info.find("pattern_info") != op_info.end()),
-        "op [%s] : compile info not contain [pattern_info]", op_type.c_str());
+  OP_TILING_CHECK((op_info.find("pattern_info") == op_info.end()),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [pattern_info]"),
+                  return false);
   pattern_info = op_info.at("pattern_info").get<std::vector<int32_t>>();
-  CHECK((op_info.find("ub_info") != op_info.end()),
-        "op [%s] : compile info not contain [ub_info]", op_type.c_str());
+  OP_TILING_CHECK((op_info.find("ub_info") == op_info.end()),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [ub_info]"), return false);
   ub_info = op_info.at("ub_info").get<std::vector<int32_t>>();
 
   compileinfo.core_num = common_info[0];

@@ -172,10 +172,18 @@ static bool GetSquareSumAllCompileParams(const nlohmann::json& op_info, int64_t&
 bool CheckTensorShape(const std::vector<int64_t>& input_x_shape, const std::vector<int64_t>& input_y_shape) {
   int32_t input_x_dims = input_x_shape.size();
   int32_t input_y_dims = input_y_shape.size();
-  CHECK(input_x_dims == input_y_dims, "op[SquareSumAllTiling] : two input tensor must have the same dimension.");
+  OP_TILING_CHECK(
+      input_x_dims != input_y_dims,
+      VECTOR_INNER_ERR_REPORT_TILIING("SquareSumAllTiling", "two input tensor must have the same dimension."),
+      return false);
   for (int32_t i = 0; i < input_x_dims; ++i) {
-    CHECK(input_x_shape[i] == input_y_shape[i], "op[SquareSumAllTiling] : two input tensor must have the same shape.");
-    CHECK(input_x_shape[i] > 0, "op[SquareSumAllTiling] : invalid input tensor shape.");
+    OP_TILING_CHECK(
+        input_x_shape[i] != input_y_shape[i],
+        VECTOR_INNER_ERR_REPORT_TILIING("SquareSumAllTiling", "two input tensor must have the same shape."),
+        return false);
+    OP_TILING_CHECK(input_x_shape[i] <= 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING("SquareSumAllTiling", "invalid input tensor shape."),
+                    return false);
   }
   return true;
 }
@@ -184,9 +192,12 @@ bool CheckTensorShape(const std::vector<int64_t>& input_x_shape, const std::vect
 bool SquareSumAllTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                         OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "op[SquareSumAllTiling] tiling running.");
-  CHECK(op_paras.inputs.size() == 2, "op [%s] : op_paras.inputs.size() != 2", op_type.c_str());
-  CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
-  CHECK(!op_paras.inputs[1].tensor.empty(), "op [%s] : op_paras.inputs[1].tensor cannot be empty", op_type.c_str());
+  OP_TILING_CHECK(op_paras.inputs.size() != 2,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs.size() != 2"), return false);
+  OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
+  OP_TILING_CHECK(op_paras.inputs[1].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[1].tensor cannot be empty"), return false);
 
   const std::vector<int64_t>& input_x_shape = op_paras.inputs[0].tensor[0].shape;
   const std::vector<int64_t>& input_y_shape = op_paras.inputs[1].tensor[0].shape;
@@ -196,7 +207,8 @@ bool SquareSumAllTiling(const std::string& op_type, const TeOpParas& op_paras, c
 
   const std::string input_x_dtype = op_paras.inputs[0].tensor[0].dtype;
   const std::string input_y_dtype = op_paras.inputs[1].tensor[0].dtype;
-  CHECK(input_x_dtype == input_y_dtype, "op [%s] : op_paras.inputs's dtype must be the same", op_type.c_str());
+  OP_TILING_CHECK(input_x_dtype != input_y_dtype,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs's dtype must be the same"), return false);
 
   // get compile info
   int64_t ub_size = 0;

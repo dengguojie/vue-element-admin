@@ -41,10 +41,10 @@ bool AutoTiling(const std::string& op_type, const ge::Operator& op_paras, const 
                 utils::OpRunInfo& run_info) {
   GELOGI("op[%s] tiling running.", op_type.c_str());
 
-  CHECK((op_info.find("_pattern") != op_info.end()), "op [%s] : compile info not contain [_pattern]",
-        op_type.c_str());
-  CHECK(op_info["_pattern"].is_string(), "op [%s] : compile info[_pattern] not is string",
-        op_type.c_str());
+  OP_TILING_CHECK((op_info.find("_pattern") == op_info.end()),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [_pattern]"), return false);
+  OP_TILING_CHECK(!op_info["_pattern"].is_string(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info[_pattern] not is string"), return false);
   const std::string& pattern = op_info["_pattern"];
 
   GELOGI("op[%s] tiling pattern.", pattern.c_str());

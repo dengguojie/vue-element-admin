@@ -29,12 +29,6 @@ namespace optiling {
       REPORT_INNER_ERROR("E89999", "op[%s], " err_msg, get_op_name(op_name), ##__VA_ARGS__); \
   } while(0)
 
-#define CHECK(cond, message, ...)   \
-  if (!(cond)) {                      \
-    OP_LOGE(#message, __VA_ARGS__); \
-    return false;                   \
-  };
-
 #define OP_TILING_CHECK(cond, log_func, return_expr)   \
   do {                                                 \
     if (cond) {                                        \
@@ -42,14 +36,6 @@ namespace optiling {
       return_expr;                                     \
     }                                                  \
   } while (0)
-
-#define CHECK_EQ(x, y, message, ...) CHECK(((x) == (y)), message, __VA_ARGS__);
-#define CHECK_NE(x, y, message, ...) CHECK(((x) != (y)), message, __VA_ARGS__);
-#define CHECK_GT(x, y, message, ...) CHECK(((x) > (y)), message, __VA_ARGS__);
-#define CHECK_GE(x, y, message, ...) CHECK(((x) >= (y)), message, __VA_ARGS__);
-#define CHECK_LT(x, y, message, ...) CHECK(((x) < (y)), message, __VA_ARGS__);
-#define CHECK_LE(x, y, message, ...) CHECK(((x) <= (y)), message, __VA_ARGS__);
-
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_ERROR_LOG_H_

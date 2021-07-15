@@ -20,8 +20,9 @@ namespace optiling {
 
 bool BiasAddTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                    OpRunInfo& run_info) {
-    CHECK((op_info.count("boardcast_bias_shape") > 0),
-          "op [%s] : compile info not contain [boardcast_bias_shape]", op_type.c_str());
+    OP_TILING_CHECK((op_info.count("boardcast_bias_shape") <= 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [boardcast_bias_shape]"),
+                    return false);
 
     std::vector<int64_t> boardcast_bias_shape = op_info["boardcast_bias_shape"];
 
@@ -30,8 +31,9 @@ bool BiasAddTiling(const std::string& op_type, const TeOpParas& op_paras, const 
         return false;
     }
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
-    CHECK((boardcast_bias_shape.size() <= input_shape_x.size()),
-          "op [%s] : shape of boardcast_bias is lager than shape of x.", op_type.c_str());
+    OP_TILING_CHECK((boardcast_bias_shape.size() > input_shape_x.size()),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "shape of boardcast_bias is lager than shape of x."),
+                    return false);
 
     for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
         boardcast_bias_shape[i] = boardcast_bias_shape[i] == -1 ? input_shape_x[i] : boardcast_bias_shape[i];

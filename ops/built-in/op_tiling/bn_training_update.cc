@@ -20,8 +20,11 @@
 namespace optiling{
     bool BNTrainingUpdateTiling(const std::string& op_type, const TeOpParas& op_paras,
                                 const nlohmann::json& op_info, OpRunInfo& run_info){
-        CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
-        CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
+        OP_TILING_CHECK(op_paras.inputs.empty(),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"), return false);
+        OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"),
+                        return false);
         std::vector<int64_t> shape_x = op_paras.inputs[0].tensor[0].shape;
         int32_t N = shape_x[0];
         int32_t C1 = shape_x[1];

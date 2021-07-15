@@ -238,7 +238,8 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, 2>& input_shap
                      const size_t input_num, size_t& dim_len,
                      const std::string& op_type, const TeOpParas& op_paras) {
   for (size_t i = 0; i < input_num; i++) {
-    CHECK(!op_paras.inputs[i].tensor.empty(), "op [%s] : input tensor cannot be empty", op_type.c_str());
+    OP_TILING_CHECK(op_paras.inputs[i].tensor.empty(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, " input tensor cannot be empty"), return false);
     // init all dim to 1
     input_shapes[i].fill(1ll);
   }
@@ -261,8 +262,11 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, 2>& input_shap
         max_output = input_shapes[j][i];
         output_shape[i] = input_shapes[j][i];
       }
-      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
-            std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str());
+      OP_TILING_CHECK(verify_broadcast,
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shapes [%s] cannot broadcast to shape [%s]",
+                                                      std::to_string(input_shapes[j][i]).c_str(),
+                                                      std::to_string(max_output).c_str()),
+                      return false);
     }
   }
   return true;
@@ -526,8 +530,8 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const TeOpP
                    input_features_shape.size() : input_labels_shape.size();
   std::array<std::array<int64_t, MAX_DIM_LEN>, 2> input_shapes{};
 
-  CHECK((op_info.find("flag_info") != op_info.end()), "op [%s] : compile info not contain [flag_info]",
-        op_type.c_str());
+  OP_TILING_CHECK((op_info.find("flag_info") == op_info.end()),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [flag_info]"), return false);
   if (kDtypeSizeMap.count(input_features.dtype) == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "Invalid input dtype");
     return false;

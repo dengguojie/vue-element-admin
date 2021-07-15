@@ -54,8 +54,11 @@ bool AssignTiling(const std::string& op_type, const TeOpParas& op_paras, const n
                  OpRunInfo& run_info) {
     using namespace ge;
 
-    CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
-    CHECK(!op_paras.inputs[1].tensor.empty(), "op [%s] : op_paras.inputs[1].tensor cannot be empty", op_type.c_str());
+    OP_TILING_CHECK(op_paras.inputs.empty(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"), return false);
+    OP_TILING_CHECK(op_paras.inputs[1].tensor.empty(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[1].tensor cannot be empty"),
+                    return false);
 
     const std::vector<int64_t>& value_shape = op_paras.inputs[1].tensor[0].shape;
     const std::string input_dtype = op_paras.inputs[1].tensor[0].dtype;

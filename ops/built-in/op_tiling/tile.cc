@@ -28,24 +28,31 @@
 namespace optiling {
 bool TileTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                  OpRunInfo& run_info) {
-    CHECK((op_info.count("compile_shape") > 0),
-        "op [%s] : compile info not contain [compile_shape]", op_type.c_str());
-    CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
-    CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
+    OP_TILING_CHECK((op_info.count("compile_shape") <= 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [compile_shape]"), return false);
+    OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
+                    return false);
+    OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
 
     std::vector<int64_t> x_runtime_shape = op_paras.inputs[0].tensor[0].shape;
     std::vector<int64_t> compile_shape = op_info["compile_shape"].get<std::vector<int64_t>>();
     std::vector<int64_t> multiples_value;
 
-    CHECK(op_paras.inputs.size() >= 2 , "op [%s] : op_paras.inputs's size should be >= 2", op_type.c_str());
-    CHECK(!op_paras.inputs[1].tensor.empty(), "op [%s] : op_paras.inputs[1].tensor cannot be empty", op_type.c_str());
+    OP_TILING_CHECK(op_paras.inputs.size() < 2,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs's size should be >= 2"), return false);
+    OP_TILING_CHECK(op_paras.inputs[1].tensor.empty(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[1].tensor cannot be empty"),
+                    return false);
     std::string multiples_dtype = op_paras.inputs[1].tensor[0].dtype;
     auto pointer = std::get<0>(op_paras.const_inputs.at("multiples"));
     auto size = std::get<1>(op_paras.const_inputs.at("multiples"));
 
     uint32_t count =
       (multiples_dtype == "int64") ? size / sizeof(int64_t) : (multiples_dtype == "int32") ? size / sizeof(int32_t) : 0;
-    CHECK(count, "op [%s]: input multiples shape cannot be empty", op_type.c_str());
+    OP_TILING_CHECK(!count,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input multiples shape cannot be empty"),
+                    return false);
 
     if (multiples_dtype == "int64") {
         auto* data = (int64_t*)pointer;
@@ -67,7 +74,10 @@ bool TileTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
 
     // align shape for multiples and input shapes
     uint64_t len_diff = multiples_value.size() - compile_shape.size();
-    CHECK((len_diff >= 0), "op [%s]: length of multiples should not be less than input_x's dimension", op_type.c_str());
+    OP_TILING_CHECK(
+        (len_diff < 0),
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "length of multiples should not be less than input_x's dimension"),
+        return false);
     x_runtime_shape.insert(x_runtime_shape.begin(), len_diff, 1);
     compile_shape.insert(compile_shape.begin(), len_diff, 1);
 

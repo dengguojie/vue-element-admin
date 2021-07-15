@@ -18,12 +18,18 @@
 namespace optiling {
 bool GerTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                OpRunInfo& run_info) {
-  CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
-  CHECK(!op_paras.outputs.empty(), "op [%s] : op_paras.outputs cannot be empty", op_type.c_str());
-  CHECK(op_paras.inputs.size() == 2, "op [%s] : op_paras.inputs size needs to be 2", op_type.c_str());
-  CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
-  CHECK(!op_paras.inputs[1].tensor.empty(), "op [%s] : op_paras.inputs[1].tensor cannot be empty", op_type.c_str());
-  CHECK(!op_paras.outputs[0].tensor.empty(), "op [%s] : op_paras.outputs[0].tensor cannot be empty", op_type.c_str());
+  OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
+                  return false);
+  OP_TILING_CHECK(op_paras.outputs.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.outputs cannot be empty"), return false);
+  OP_TILING_CHECK(op_paras.inputs.size() != 2,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs size needs to be 2"), return false);
+  OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
+  OP_TILING_CHECK(op_paras.inputs[1].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[1].tensor cannot be empty"), return false);
+  OP_TILING_CHECK(op_paras.outputs[0].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.outputs[0].tensor cannot be empty"), return false);
 
   const std::vector<int64_t> shape_x1 = op_paras.inputs[0].tensor[0].shape;
   const std::vector<int64_t> shape_x2 = op_paras.inputs[1].tensor[0].shape;

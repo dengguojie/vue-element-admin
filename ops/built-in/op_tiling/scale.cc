@@ -20,14 +20,17 @@ namespace optiling {
 
 bool ScaleTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                    OpRunInfo& run_info) {
-    CHECK((op_info.count("_boardcast_scale_shape") > 0),
-          "op [%s] : compile info not contain [_boardcast_scale_shape]", op_type.c_str());
+    OP_TILING_CHECK((op_info.count("_boardcast_scale_shape") <= 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain[_boardcast_scale_shape]"),
+                    return false);
     OP_LOGD("op [%s] Enter SCALETILING inputs size:%d", op_type.c_str(), op_paras.inputs.size());
 
     std::vector<int64_t> boardcast_scale_shape = op_info["_boardcast_scale_shape"];
 
-    CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
-    CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
+    OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
+                    return false);
+    OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
 
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
 

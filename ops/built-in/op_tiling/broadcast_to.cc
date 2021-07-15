@@ -29,8 +29,12 @@
 namespace optiling {
 bool BroadcastToTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                        OpRunInfo& run_info) {
-  CHECK(op_paras.inputs.size() == 2, "op [%s] : length of op_paras.inputs should be 2", op_type.c_str());
-  CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
+  OP_TILING_CHECK(op_paras.inputs.size() != 2,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "length of op_paras.inputs should be 2"),
+                  return false);
+  OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"),
+                  return false);
 
   std::vector<int64_t> x_runtime_shape = op_paras.inputs[0].tensor[0].shape;
   std::vector<int64_t> shape_value;
@@ -42,7 +46,8 @@ bool BroadcastToTiling(const std::string& op_type, const TeOpParas& op_paras, co
   uint32_t count = (shape_dtype == "int64")   ? size / sizeof(int64_t)
                    : (shape_dtype == "int32") ? size / sizeof(int32_t)
                                               : 0;
-  CHECK(count != 0, "op [%s]: input shape shape cannot be empty", op_type.c_str());
+  OP_TILING_CHECK((count == 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape shape cannot be empty"),
+                  return false);
 
   if (shape_dtype == "int64") {
     auto* data = (int64_t*)pointer;
@@ -62,7 +67,10 @@ bool BroadcastToTiling(const std::string& op_type, const TeOpParas& op_paras, co
 
   // align shape for shape and input shapes
   uint64_t len_diff = shape_value.size() - x_runtime_shape.size();
-  CHECK((len_diff >= 0), "op [%s]: length of shape should not be less than input_x's dimension", op_type.c_str());
+  OP_TILING_CHECK((len_diff < 0), 
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, 
+                                                  "length of shape should not be less than input_x's dimension"),
+                  return false);
   int64_t const_value_front =
       std::accumulate(shape_value.begin(), shape_value.begin() + len_diff, 1, std::multiplies<int>());
   broadcast_shape.push_back(const_value_front);

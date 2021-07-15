@@ -268,7 +268,10 @@ bool BlockLessForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesN
   if (int(runParams.row_num_once_ub % blockNum) != 0) {
     runParams.row_num_once_ub = int(runParams.row_num_once_ub / blockNum) * blockNum;
   }
-  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
+  OP_TILING_CHECK((runParams.row_num_once_ub == 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING("GatherV2", "Devide by row_num_once_ub[%ld] exception.",
+                                                  runParams.row_num_once_ub),
+                  return false);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
@@ -283,7 +286,10 @@ bool BlockLessForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesN
   if (int(runParams.row_num_last_ub % blockNum) != 0) {
     runParams.row_num_last_ub = int(runParams.row_num_last_ub / blockNum) * blockNum;
   }
-  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
+  OP_TILING_CHECK((runParams.row_num_last_ub == 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING("GatherV2", "Devide by row_num_last_ub[%ld] exception.",
+                                                  runParams.row_num_last_ub),
+                  return false);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
@@ -307,14 +313,20 @@ bool BlockAlignForParamsTiling(GatherV2TilingParams& runParams, int64_t& indices
   }
 
   runParams.row_num_once_ub = resUbSize / (runParams.paramsRow * paramsDSize);
-  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
+  OP_TILING_CHECK((runParams.row_num_once_ub == 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING("GatherV2", "Devide by row_num_once_ub[%ld] exception.",
+                                                  runParams.row_num_once_ub),
+                  return false);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
   }
 
   runParams.row_num_last_ub = resUbSize / (runParams.paramsRow * paramsDSize);
-  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
+  OP_TILING_CHECK((runParams.row_num_last_ub == 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING("GatherV2", "Devide by row_num_last_ub[%ld] exception.",
+                                                  runParams.row_num_last_ub),
+                  return false);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
@@ -336,7 +348,10 @@ bool BlockLessForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indices
   if (int(runParams.row_num_once_ub % blockNum) != 0) {
     runParams.row_num_once_ub = int(runParams.row_num_once_ub / blockNum) * blockNum;
   }
-  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
+  OP_TILING_CHECK((runParams.row_num_once_ub == 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING("GatherV2", "Devide by row_num_once_ub[%ld] exception.",
+                                                  runParams.row_num_once_ub),
+                  return false);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
@@ -351,7 +366,10 @@ bool BlockLessForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indices
   if (int(runParams.row_num_last_ub % blockNum) != 0) {
     runParams.row_num_last_ub = int(runParams.row_num_last_ub / blockNum) * blockNum;
   }
-  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
+  OP_TILING_CHECK((runParams.row_num_last_ub == 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING("GatherV2", "Devide by row_num_last_ub[%ld] exception.",
+                                                  runParams.row_num_last_ub),
+                  return false);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
@@ -375,14 +393,20 @@ bool BlockAlignForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indice
   }
 
   runParams.row_num_once_ub = resUbSize / (runParams.paramsRow * paramsDSize);
-  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
+  OP_TILING_CHECK((runParams.row_num_once_ub == 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING("GatherV2", "Devide by row_num_once_ub[%ld] exception.",
+                                                  runParams.row_num_once_ub),
+                  return false);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
   }
 
   runParams.row_num_last_ub = resUbSize / (runParams.paramsRow * paramsDSize);
-  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
+  OP_TILING_CHECK((runParams.row_num_last_ub == 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING("GatherV2", "Devide by row_num_last_ub[%ld] exception.",
+                                                  runParams.row_num_last_ub),
+                  return false);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
