@@ -113,6 +113,7 @@ class WorkspaceLayerNormSchedule:
         self.tiling_case = tiling_case
         self.get_sub_tensor()
         self._do_create_schedule()
+        self._do_set_var_range()
         self._do_cache_read_write()
         self._do_set_scope()
         self._do_storage_bound()
@@ -126,6 +127,13 @@ class WorkspaceLayerNormSchedule:
     def _do_create_schedule(self):
         self.schedule = tvm.create_schedule(
             [tuple(self.graph_info.endpoint_output_tensor_set)[0].op, self.sub_gm_tensor.op])
+
+    def _do_set_var_range(self):
+        res_tensor = tuple(self.graph_info.endpoint_output_tensor_set)[0]
+        self.res_shape = res_tensor.shape
+        self.dim_ln_range = operation.get_context().get_current_compute().get("dim_ln_range")
+        if isinstance(self.res_shape[-1], tvm.expr.Var):
+            self.schedule.set_var_range(self.res_shape[-1], *self.dim_ln_range)
 
     def _do_cache_read_write(self):
         def _do_cache_read():

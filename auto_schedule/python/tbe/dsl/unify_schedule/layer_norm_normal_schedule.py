@@ -30,6 +30,7 @@ from . import util
 from .util import get_dsl_insn
 
 MAX_NODE_COUNT = 12
+LAST_DIM_RANGE_NUM1 = 64
 
 
 @register_schedule(pattern=Pattern.LayerNorm)
@@ -129,9 +130,11 @@ class NormalLayerNormSchedule:
         self.tiling_case = tiling_case
         self.get_sub_tensor()
         self._do_create_schedule()
+        self._do_set_var_range()
         self._do_cache_read_write()
         self._do_set_scope()
         self._do_storage_bound()
+        self._do_compute_inline()
         self._do_tiling()
         self._do_storage_align()
         self._do_emit_insn()
@@ -141,6 +144,13 @@ class NormalLayerNormSchedule:
     def _do_create_schedule(self):
         self.schedule = tvm.create_schedule(
             tuple(self.graph_info.endpoint_output_tensor_set)[0].op)
+
+    def _do_set_var_range(self):
+        res_tensor = tuple(self.graph_info.endpoint_output_tensor_set)[0]
+        self.res_shape = res_tensor.shape
+        self.dim_ln_range = operation.get_context().get_current_compute().get("dim_ln_range")
+        if isinstance(self.res_shape[-1], tvm.expr.Var):
+            self.schedule.set_var_range(self.res_shape[-1], *self.dim_ln_range)
 
     def _do_cache_read_write(self):
         def _do_cache_read():
@@ -186,6 +196,20 @@ class NormalLayerNormSchedule:
             if tensor not in tuple(
                     self.graph_info.output_tensor_set | self.graph_info.input_tensor_set) and tensor != self.sub_gm_tensor:
                 self.schedule[tensor].set_scope(tbe_platform_info.scope_ubuf)
+
+    def _do_compute_inline(self):
+        self.inline_tensor_list = []
+        for tensor in self.graph_info.input_tensor_set:
+            opname = tensor.op.name
+            if opname in ("gamma", "beta") and self.is_cast:
+                bc_tensor = tuple(self.forward_compute_graph_map[tuple(self.forward_compute_graph_map[tensor])[0]])[0]
+                self.schedule[bc_tensor].compute_inline()
+                self.inline_tensor_list.append(bc_tensor)
+
+            elif opname in ("gamma", "beta") and not self.is_cast:
+                bc_tensor = tuple(self.forward_compute_graph_map[tensor])[0]
+                self.schedule[bc_tensor].compute_inline()
+                self.inline_tensor_list.append(bc_tensor)
 
     def _do_storage_bound(self):
         UB_SIZE = get_soc_spec("UB_SIZE")
@@ -239,6 +263,11 @@ class NormalLayerNormSchedule:
         # get last endpoint output tensor
         res_tensor = tuple(self.graph_info.endpoint_output_tensor_set)[0]
 
+        if self.dim_ln_range[-1] is not None and self.dim_ln_range[-1] <= LAST_DIM_RANGE_NUM1:
+            ub_factor_range = (1, None)
+        else:
+            ub_factor_range = (1, 255)
+
         # get tiling axis
         block_split_axis_index = case.block_split_axis_index
         block_split_axis_index_1 = case.block_split_axis_index_1
@@ -260,7 +289,7 @@ class NormalLayerNormSchedule:
 
         ub_factor = case.ub_factor
         ub_inner = ub_factor if ub_factor is not None else var(
-            "ub_factor", (1, None))
+            "ub_factor", ub_factor_range)
         ub_fuse_inner = ub_fuse_factor if ub_fuse_factor is not None else var("ub_fuse_factor", (0, 0))
         ub_inner = ub_inner + ub_fuse_inner
 
@@ -303,8 +332,9 @@ class NormalLayerNormSchedule:
 
         self.emit_insn_dict = {}
         if not self.is_cast:
+            non_compute_at_tensor_list = [res_tensor, self.sub_gm_tensor] + self.inline_tensor_list
             for tensor in self.forward_compute_graph_map:
-                if tensor not in (res_tensor, self.sub_gm_tensor):
+                if tensor not in non_compute_at_tensor_list:
                     self.schedule[tensor].compute_at(
                         self.schedule[res_tensor], ub_outer)
             self.schedule[self.sub_tensor_ub].compute_at(
@@ -324,6 +354,8 @@ class NormalLayerNormSchedule:
                     self.schedule[res_tensor], ub_outer)
         else:
             for tensor in self.forward_compute_graph_map:
+                if tensor in self.inline_tensor_list:
+                    continue
                 if tensor not in (self.graph_info.input_tensor_set | self.graph_info.output_tensor_set):
 
                     self.schedule[tensor].compute_at(
@@ -413,8 +445,11 @@ class NormalLayerNormSchedule:
     def _do_emit_insn(self):
         # emit_insn
         if not self.is_cast:
+
             res_tensor = tuple(self.graph_info.endpoint_output_tensor_set)[0]
             for tensor in self.forward_compute_graph_map:
+                if tensor in self.inline_tensor_list:
+                    continue
                 if tensor == self.sub_gm_tensor:
                     tensor = self.sub_tensor_ub
                 if tensor in self.graph_info.input_tensor_set:

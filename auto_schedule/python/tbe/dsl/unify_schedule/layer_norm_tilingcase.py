@@ -56,6 +56,8 @@ num_tw = 2
 num_thr = 3
 CONST = "const"
 STATIC = "static"
+LAST_DIM_RANGE_NUM1 = 64
+LAST_DIM_RANGE_NUM2 = 2000
 
 
 class ComputeGraphInfo:
@@ -236,7 +238,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None):
     ub_info = [max_ub_count]
 
     pre_compile_info = get_compile_info()
-    if pre_compile_info:
+    if pre_compile_info and "core_num" not in pre_compile_info:
         info_map = {"common_info": common_info, "pattern_info": pattern_info,
                     "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": util.get_core_num(), "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 10 * 1024, "mode": mode}
         for key in info_map.keys():
@@ -247,11 +249,13 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None):
                     key_info = pre_compile_info.get(key)
                     key_info += info_map.get(key)
                     add_compile_info(key, key_info)
+    elif pre_compile_info:
+        pass
     else:
         raise RuntimeError("pre_compile_info is Null")
 
 
-def _calc_tiling_key(reduce_info, tiling):
+def _calc_tiling_key(reduce_info, tiling, dim_ln_range):
     # tiling: single_case
     shape = reduce_info.shape_before_reduce
     reduce_axis_idx = reduce_info.reduce_axis_indexes
@@ -267,7 +271,13 @@ def _calc_tiling_key(reduce_info, tiling):
     tiling_key = _get_tiling_key(atomic, db, shape_type, block_split_axis, block_split_axis_1, ub_split_axis_index_reduce, ub_split_axis,
                                  shape, reduce_axis_idx, is_normal, is_fuse_axis)
 
-    tiling.tiling_key = tiling_key
+    if dim_ln_range[-1] is not None and dim_ln_range[-1] <= LAST_DIM_RANGE_NUM1:
+        range_key = 0
+    elif dim_ln_range[-1] is not None and dim_ln_range[-1] <= LAST_DIM_RANGE_NUM2:
+        range_key = 1
+    else:
+        range_key = 2
+    tiling.tiling_key = tiling_key + range_key
 
 
 def _get_tiling_key(atomic, db, shape_type, block_split_axis, block_split_axis_1, ub_split_axis_index_reduce, ub_split_axis, shape, reduce_idx_list, is_normal, is_fuse_axis):
@@ -311,6 +321,7 @@ def calc_tiling_case(outs, options=None):
     tiling_case_list = []
     # get mode
     mode = operation.get_context().get_current_compute().get("mode")
+    dim_ln_range = operation.get_context().get_current_compute().get("dim_ln_range")
     apply_compile_info(layer_norm_info, compute_graph_info, tiling_case_list, mode)
     # Normal reduce tiling cases
     if mode == CONST:
@@ -320,7 +331,7 @@ def calc_tiling_case(outs, options=None):
     # apply_compile_info(layer_norm_info, compute_graph_info, tiling_case_list)
     # calc_tiling_key
     for tiling_case in tiling_case_list:
-        _calc_tiling_key(layer_norm_info, tiling_case)
+        _calc_tiling_key(layer_norm_info, tiling_case, dim_ln_range)
 
     return tiling_case_list
 
@@ -506,7 +517,7 @@ def _gen_tiling_case(info: LayerNormInfo):
                 tiling_case_list.append(normal_tiling_case)
             else:
                 normal_tiling_case.is_split_ub = True
-                for ii in range(i, nj + 1):
+                for ii in range(i, i + 2):
                     fuse_normal_tiling_case = deepcopy(normal_tiling_case)
                     fuse_normal_tiling_case.block_split_axis_index_1 = ii
                     tiling_case_list.append(fuse_normal_tiling_case)

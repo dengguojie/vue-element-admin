@@ -36,6 +36,7 @@ from copy import deepcopy
 SHAPE_SIZE_LIMIT = 2147483648
 
 SIZE_SIXTEEN = 16
+LAST_DIM_RANGE_SET = ((1, 64), (65, 2000), (2001, None))
 
 
 # pylint: disable = unused-argument
@@ -525,27 +526,34 @@ def layer_norm(input_x,
     ins = _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis)
     schedules, tensors = [], []
     var_list = []
-    for i in range(len(shape_x)):
+    for i in range(len(shape_x)-1):
         dim_axis = operation.var("dim_" + str(i), range_x[i])
         var_list.append(dim_axis)
+    var_list.append(operation.var("dim_" + str(len(shape_x)-1)))
 
     for (dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis) in ins[:1]:
-        with tbe.compute():
-            x_var, gamma_var, beta_var, reduce_axis_var = _reduce_variable_shape(
-                [dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis], var_list)
-            data_x = tvm.placeholder(x_var, name="x", dtype=dtype)
-            data_gamma = tvm.placeholder(gamma_var, name="gamma", dtype=dtype)
-            data_beta = tvm.placeholder(beta_var, name="beta", dtype=dtype)
+        x_last_dim_range = dy_shape_x["range"][-1]
+        if x_last_dim_range[0] == x_last_dim_range[-1]:
+            x_last_dim_range_set = [x_last_dim_range]
+        else:
+            x_last_dim_range_set = LAST_DIM_RANGE_SET
+        for idx, rn in enumerate(x_last_dim_range_set):
+            with tbe.compute():
+                x_var, gamma_var, beta_var, reduce_axis_var = _reduce_variable_shape(
+                    [dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis], var_list, rn)
+                data_x = tvm.placeholder(x_var, name="x", dtype=dtype)
+                data_gamma = tvm.placeholder(gamma_var, name="gamma", dtype=dtype)
+                data_beta = tvm.placeholder(beta_var, name="beta", dtype=dtype)
 
-            mean, variance, res = layer_norm_compute(data_x, data_gamma, data_beta,
-                                                     output_y, output_mean, output_variance,
-                                                     dy_reduce_axis.get("value"), begin_params_axis, epsilon,
-                                                     kernel_name, impl_mode)
-            tensors.append([data_x, data_gamma, data_beta, res, mean, variance])
-        with tvm.target.cce():
-            sch = tbe.auto_schedule([res, mean, variance])
+                mean, variance, res = layer_norm_compute(data_x, data_gamma, data_beta,
+                                                         output_y, output_mean, output_variance,
+                                                         dy_reduce_axis.get("value"), begin_params_axis, epsilon,
+                                                         kernel_name, impl_mode)
+                tensors.append([data_x, data_gamma, data_beta, res, mean, variance])
+            with tvm.target.cce():
+                sch = tbe.auto_schedule([res, mean, variance])
 
-        schedules.append(sch)
+            schedules.append(sch)
 
     config = {
         "print_ir": False,
@@ -682,6 +690,13 @@ def generate_reduce_input(inputs_before_reduce):
         for idx, val in enumerate(new_shape_local[index]):
             if new_range_local[index][idx][0] == new_range_local[index][idx][1]:
                 new_shape_local[index][idx] = new_range_local[index][idx][0]
+    for index in range(len(new_shape_local)):
+        for idx, val in enumerate(new_shape_local[index]):
+            if new_range_local[index][idx][0] == new_range_local[index][idx][1]:
+                new_shape_local[index][idx] = new_range_local[index][idx][0]
+    for xid, xval in enumerate(new_shape_local[0]):
+        if xval != -1:
+            new_range_local[0][xid] = (xval, xval)
     for id, x in enumerate(inputs_before_reduce):
         x["shape"] = new_shape_local[id]
         x["range"] = new_range_local[id]
@@ -717,7 +732,7 @@ def _generate_all_ins(inputx):
     return outs
 
 
-def _reduce_variable_shape(inputs, var_list):
+def _reduce_variable_shape(inputs, var_list, dim_ln_range):
     """
     variable shape for reduce ops
     """
@@ -742,6 +757,7 @@ def _reduce_variable_shape(inputs, var_list):
     current_compute = operation.get_context().get_current_compute()
     if current_compute:
         current_compute.add("mode", mode)
+        current_compute.add("dim_ln_range", dim_ln_range)
         ori_axis = input_axis[0].get("ori_axis")
         if ori_axis is not None:
             current_compute.add("ori_axis", ori_axis)
