@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 from absl import flags, app
 from typing import List, Dict
@@ -383,6 +384,7 @@ def get_cube_case_dir(case_dir):
                 'Conv2DTranspose', 'Conv2DTransposeD',
                 'Conv2DV200', 'Conv2D_Compress',
                 'Conv2D_Lx_Fusion', 'Conv2D_Vector_Fused',
+                'Deconvolution',
                 'Conv3D',
                 'Conv3DBackpropFilter', 'Conv3DBackpropFilterD',
                 'Conv3DBackpropInput', 'Conv3DBackpropInputD',
@@ -434,25 +436,8 @@ def main(argv):
             exit(0)
     cube_case_dir, vector_case_dir = get_cube_case_dir(case_dir)
 
-    if vector_case_dir:
-        cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"
-        report_path = FLAGS.report_path if FLAGS.report_path else "./report/ops/python_report"
-        simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
-        process_num = FLAGS.process_num
-        res = op_ut_runner.run_ut(vector_case_dir,
-                                  soc_version=soc_version,
-                                  test_report="json",
-                                  test_report_path=report_path,
-                                  cov_report="html",
-                                  cov_report_path=cov_report_path,
-                                  simulator_mode="pv",
-                                  simulator_lib_path=simulator_lib_path,
-                                  process_num=process_num)
-        if res != op_status.SUCCESS:
-            if pr_changed_file and str(pr_changed_file).strip():
-                exit(-1)
-
     if cube_case_dir:
+        print("Enter cube op.")
         cov_report_path = FLAGS.cov_path + '_cube' if FLAGS.cov_path else "./cov_report/ops/python_utest_cube"
         report_path = FLAGS.report_path + '_cube'  if FLAGS.report_path else "./report/ops/python_report_cube"
         simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
@@ -473,9 +458,30 @@ def main(argv):
             dst_path = os.path.join(FLAGS.cov_path, '.coverage.cube')
             shutil.move(cube_cov_file, dst_path)
         if cube_res != op_status.SUCCESS:
+            if pr_changed_file and str(pr_changed_file).strip():
+                exit(-1)
+        if not pr_changed_file or not str(pr_changed_file).strip():
+            time.sleep(10)
+  
+    if vector_case_dir:
+        print("Enter vector op.")
+        cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"
+        report_path = FLAGS.report_path if FLAGS.report_path else "./report/ops/python_report"
+        simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
+        process_num = FLAGS.process_num
+        res = op_ut_runner.run_ut(vector_case_dir,
+                                  soc_version=soc_version,
+                                  test_report="json",
+                                  test_report_path=report_path,
+                                  cov_report="html",
+                                  cov_report_path=cov_report_path,
+                                  simulator_mode="pv",
+                                  simulator_lib_path=simulator_lib_path,
+                                  process_num=process_num)
+        if res != op_status.SUCCESS:
             exit(-1)
 
-    if vector_case_dir and res != op_status.SUCCESS:
+    if cube_case_dir and cube_res != op_status.SUCCESS:
         exit(-1)
     exit(0)
 
