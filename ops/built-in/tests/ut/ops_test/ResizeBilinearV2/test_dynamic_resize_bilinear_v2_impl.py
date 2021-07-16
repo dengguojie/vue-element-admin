@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+ut for resize
+"""
 from op_test_frame.ut import OpUT
 
 
@@ -33,7 +36,7 @@ case1 = {"params": [{"shape": (32, 1, 512, 512, 16), "dtype": "float32", "format
 
 case2 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
-                     "range": [(1, None), (1, None), (1, None), (1, None),(1, None)]},
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     {"shape": (2,), "dtype": "int32", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW", "range": [(1, None)]},
                     {"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format": "NCHW",
@@ -59,6 +62,22 @@ case3 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format"
          "format_expect": [],
          "support_expect": True}
 
+case4 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    {"shape": (2,), "dtype": "int32", "format": "NCHW",
+                     "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW", "range": [(1, None)]},
+                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    False, False],
+         "case_name": "dynamic_resize_bilinear_v2_d_fp16_to_fp16",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
+ut_case.add_case("all", case4)

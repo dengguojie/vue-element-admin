@@ -90,7 +90,12 @@ def test_1951_fp16_small_shape(test_arg):
     with tbe.common.context.op_context.OpContext("dynamic"):
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
-                           tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True))
+                           tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
+                           False, False, "test_1951_fp32_small_shape_fp16_to_fp32")
+        resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
+                           tensor_dict([2], "NCHW", "int32"),
+                           tensor_dict(output_shape, "NCHW", "float16", tensor_format="NC1HWC0", is_output=True),
+                           False, False, "test_1951_fp32_small_shape_fp16_to_fp16")
 
     set_current_compile_soc_info(test_arg)
 

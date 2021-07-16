@@ -91,6 +91,10 @@ def test_1981_fp16_small_shape(test_arg):
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True))
+        resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
+                           tensor_dict([2], "NCHW", "int32"),
+                           tensor_dict(output_shape, "NCHW", "float16", tensor_format="NC1HWC0", is_output=True),
+                           False, False, "test_1981_fp16_small_shape_fp16_to_fp16")
 
     set_current_compile_soc_info(test_arg)
 
@@ -159,11 +163,15 @@ def test_new_performance(test_arg):
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           True, True), "test_new_performance_3"
+                           True, True, "test_new_performance_3")
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
                            False, False, "test_new_performance_4")
+        resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
+                           tensor_dict([2], "NCHW", "int32"),
+                           tensor_dict(output_shape, "NCHW", "float16", tensor_format="NC1HWC0", is_output=True),
+                           False, False, "test_new_performance_5")
     set_current_compile_soc_info(test_arg)
 
 
