@@ -52,17 +52,20 @@ class LayerNormCube(object):
         self._reduce_shape_nz = None
         self._reduce_cof = None
         self._para = para
+        self._batch = None
 
     def _init_input_tensor(self, x, gamma, beta):
 
         shape_gamma = shape_util.shape_to_list(gamma.shape)
         shape_x_l0a = [self._m_dim, self._k_dim, BLOCK_M0, BLOCK_K0]
+        if self._batch:
+            shape_x_l0a = self._batch + shape_x_l0a
 
         x_l1 = tvm.compute(self._shape_nz, lambda *indices: x(*indices),
                            name="x_l1")
 
         x_l0a = tvm.compute(shape_x_l0a,
-                            lambda *indices: x_l1(indices[-3], indices[-4], indices[-2], indices[-1]),
+                            lambda *indices: x_l1(*indices[:-4], indices[-3], indices[-4], indices[-2], indices[-1]),
                             name="x_l0a")
 
         x_ub = tvm.compute(self._shape_nz, lambda *indices: x_l1(*indices),
@@ -97,7 +100,7 @@ class LayerNormCube(object):
                               name="one_l0b")
         x_sum = tvm.compute(self._reduce_shape_nz,
                             lambda *indices: tvm.sum(
-                                (x_l0a(indices[-3], reduce_k, indices[-2], reduce_k0)
+                                (x_l0a(*indices[:-4], indices[-3], reduce_k, indices[-2], reduce_k0)
                                  * one_l0b(reduce_k, indices[-4], indices[-1], reduce_k0)
                                  ).astype("float32"),
                                 axis=[reduce_k, reduce_k0]),
@@ -115,6 +118,9 @@ class LayerNormCube(object):
         # cal the var of layernorm
         shape_xx_sum = [self._m_dim, self._m_dim, BLOCK_M0, BLOCK_M0]
         shape_xx_sum_scalar = [self._m_dim, BLOCK_M0]
+        if self._batch:
+            shape_xx_sum = self._batch + shape_xx_sum
+            shape_xx_sum_scalar = self._batch + shape_xx_sum_scalar
         # the reduce axis
         reduce_k = tvm.reduce_axis((0, self._k_dim), name="square_k1")
         reduce_k0 = tvm.reduce_axis((0, BLOCK_K0), name="square_k0")
@@ -124,8 +130,8 @@ class LayerNormCube(object):
                             name="x_l0b")
         xx_sum = tvm.compute(shape_xx_sum,
                              lambda *indices: tvm.sum(
-                                 (x_l0a(indices[-3], reduce_k, indices[-2], reduce_k0)
-                                  * x_l0b(reduce_k, indices[-4], indices[-1], reduce_k0)
+                                 (x_l0a(*indices[:-4], indices[-3], reduce_k, indices[-2], reduce_k0)
+                                  * x_l0b(*indices[:-4], reduce_k, indices[-4], indices[-1], reduce_k0)
                                   ).astype("float32"),
                                  axis=[reduce_k, reduce_k0]),
                              name="xx_sum_l0c")
@@ -135,11 +141,11 @@ class LayerNormCube(object):
                                  tag="xx_sum_cub")
 
         xx_sum_cub_scalar = tvm.compute(shape_xx_sum_scalar,
-                                        lambda *indices: xx_sum_cub(indices[-2], indices[-2], indices[-1], indices[-1]),
+                                        lambda *indices: xx_sum_cub(*indices[:-2], indices[-2], indices[-2], indices[-1], indices[-1]),
                                         name="xx_sum_cub_scalar")
         xx_sum_cub_broadcast = tvm.compute(self._reduce_shape_nz,
                                            lambda *indices: xx_sum_cub_scalar(
-                                               indices[-3], indices[-2]),
+                                               *indices[:-4], indices[-3], indices[-2]),
                                            name="xx_sum_cub_broadcast")
         xx_sum_cub = tvm.compute(self._reduce_shape_nz,
                                  lambda *indices: xx_sum_cub_broadcast(*indices) * self._reduce_cof,
@@ -157,6 +163,8 @@ class LayerNormCube(object):
     def _mean_var_nz2nd(self, nz_input, para_name):
         # chanspose NZ to ND of mean and var
         nd_output_shape = [self._m_dim * BLOCK_M0, 1]
+        if self._batch:
+            nd_output_shape = self._batch + nd_output_shape
 
         nd_fp16 = tvm.compute(self._reduce_shape_nz,
                               lambda *indices: (nz_input(*indices)).astype("float16"),
@@ -164,11 +172,11 @@ class LayerNormCube(object):
                               tag="cast_" + para_name)
 
         nd_trans = tvm.compute(self._reduce_shape_nz,
-                               lambda *indices: nd_fp16(indices[-4], indices[-3], indices[-1], indices[-2]),
+                               lambda *indices: nd_fp16(*indices[:-4], indices[-4], indices[-3], indices[-1], indices[-2]),
                                name="trans_" + para_name,
                                tag="trans_" + para_name)
         nd_out = tvm.compute(nd_output_shape,
-                             lambda *indices: nd_trans(0, indices[-2] // 16, 0, indices[-2] % 16),
+                             lambda *indices: nd_trans(*indices[:-2], 0, indices[-2] // 16, 0, indices[-2] % 16),
                              name=para_name + "_out",
                              tag=para_name + "_out")
         return nd_out
@@ -178,7 +186,7 @@ class LayerNormCube(object):
 
         x_sub_mean = tvm.compute(self._shape_nz,
                                  lambda *indices: x(*indices)
-                                                  - mean(0, *indices[-3:]),
+                                                  - mean(*indices[:-4], 0, *indices[-3:]),
                                  name="x_sub_mean")
         var_add_eps = tvm.compute(self._reduce_shape_nz,
                                   lambda *indices: var(*indices) + tvm.const(epsilon, dtype="float32"),
@@ -193,7 +201,7 @@ class LayerNormCube(object):
 
         y = tvm.compute(self._shape_nz,
                           lambda *indices: x_sub_mean(*indices)
-                                           * var_exp(0, *indices[-3:]),
+                                           * var_exp(*indices[:-4], 0, *indices[-3:]),
                           name="mean_mul_var")
 
         return y
@@ -218,8 +226,11 @@ class LayerNormCube(object):
 
         self._shape_nz = shape_x
         self._reduce_cof = (reduce_num * 1.0) ** (-1)
-        self._k_dim, self._m_dim = shape_x[:2]
+        self._k_dim, self._m_dim = shape_x[-4:-2]
         self._reduce_shape_nz = [1, self._m_dim, BLOCK_M0, 16]
+        if len(shape_x) > 4:
+            self._batch = shape_x[:-4]
+            self._reduce_shape_nz = self._batch + self._reduce_shape_nz
 
         # get input tensor in l1, ub, l0a
         x_tensorlist, gamma_ub_fp32, beta_ub_fp32 = self._init_input_tensor(input_x, input_gamma, input_beta)

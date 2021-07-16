@@ -63,14 +63,14 @@ def check_reget_multioutput_list(outs):
 def reget_layernorm_multioutput(outs):
     """
     return multioutputs to the virtual output
-    """ 
+    """
     if check_reget_multioutput_list(outs):
         res_out, mean_out, var_out = outs
         virtual_res = tvm.compute(res_out.shape,
                                   lambda *indices:
                                   res_out(*indices)
-                                  + mean_out(indices[-3]*16+indices[-2], 0)
-                                  + var_out(indices[-3]*16+indices[-2], 0),
+                                  + mean_out(*indices[:-4], indices[-3]*16+indices[-2], 0)
+                                  + var_out(*indices[:-4], indices[-3]*16+indices[-2], 0),
                                   name='cube_layer_norm',
                                   tag="cube_layer_norm")
         return [virtual_res] + outs
@@ -143,14 +143,17 @@ def _set_tensor_scope(sch, des_tensor):
 
 
 def _get_tiling(res):
-    k_dims = res.shape[0].value
+    k_dims = res.shape[-4].value
     tiling = \
         {'L1_shape': [1, 1, 16, 16],
          "AL1_shape" : [1, 1],
          'CL0_matrix': [k_dims, 1, 16, 16],
          'CUB_matrix': [k_dims, 1, 16, 16]
          }
-    batch_m = res.shape[1].value
+
+    batch_m = res.shape[-3].value
+    for batch_mem in res.shape[:-4]:
+        batch_m *= batch_mem.value
     core_num = get_soc_spec(CORE_NUM)
 
     if batch_m < core_num:
@@ -188,6 +191,7 @@ class CceLayerNormCubeOp(object):
         self._scope = scope
         self._sch = None
         self._res = None
+        self._batch = False
 
     def _split_l0c_and_ub(self, tiling):
         """
@@ -228,9 +232,10 @@ class CceLayerNormCubeOp(object):
         split m axis based on block dims
         """
         block_parts = tiling["block_dim"]
+        self._sch[self._res].reorder(m_outer, n_outer)
+        if self._batch:
+            m_outer = self._sch[self._res].fuse(*self._sch[self._res].op.axis[:-4], m_outer)
         m_outer_outer, m_outer_inner = self._sch[self._res].split(m_outer, nparts=block_parts)
-
-        self._sch[self._res].reorder(m_outer_outer, m_outer_inner, n_outer)
 
         block_axis_outer, block_axis_inner = self._sch[self._res].split(m_outer_outer, 1)
         blockidx = tvm.thread_axis("blockIdx.x")
@@ -309,9 +314,9 @@ class CceLayerNormCubeOp(object):
             if ub_tensor.op.name in ("xx_sum_cub", "x_sum_cub", "x_ub", "input_gamma_ub", "input_beta_ub"):
                 self._sch [ub_tensor].emit_insn(self._sch [ub_tensor].op.axis[0], "dma_copy")
             elif ub_tensor.op.name in ("trans_var", "trans_mean"):
+                ub_ori_shape_len = len(ub_tensor.shape) - 2
                 self._sch [ub_tensor].buffer_align(
-                    (1, 1),
-                    (1, 1),
+                    *(((1, 1),) * ub_ori_shape_len),
                     (16, 16),
                     (16, 16)
                 )
@@ -342,7 +347,7 @@ class CceLayerNormCubeOp(object):
                 k_outer_outer, k_outer_inner = self._sch[tensor_map[tensor_name]].split(k_outer, nparts=1)
                 self._sch[tensor_map[tensor_name]].reorder(k_outer_outer, *tensor_map[tensor_name].op.axis)
                 mad_dict = {"mad_pattern": 0, "k_outer": [k_outer_outer]}
-                self._sch[tensor_map[tensor_name]].emit_insn(self._sch[tensor_map[tensor_name]].op.axis[0], "mad", mad_dict)
+                self._sch[tensor_map[tensor_name]].emit_insn(self._sch[tensor_map[tensor_name]].op.axis[-4], "mad", mad_dict)
             elif tensor_name == "one_l0b":
                 self._sch[tensor_map[tensor_name]].emit_insn(self._sch[tensor_map[tensor_name]].op.axis[0], "set_2d")
 
@@ -377,6 +382,8 @@ class CceLayerNormCubeOp(object):
         sch = sch_list[0]
         self._sch = sch
         self._res = res
+        if len(res.shape) > 4:
+            self._batch = True
     
         # get all tensor of the sch
         all_tensor = _get_all_tensors(res)
