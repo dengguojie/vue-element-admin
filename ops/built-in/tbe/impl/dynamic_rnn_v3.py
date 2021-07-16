@@ -1055,7 +1055,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         pjc_a_l1 = tvm.compute(shape_dh,
                                lambda *indices: update_h(*indices),
                                name='pjc_a_l1',
-                               tag="out_to_l1")
+                               tag="conv_l1fuse_reshape")
         shape_project = [t_size, state_size, hidden_size, 16, 16]
         pjc_b_l1 = tvm.compute(shape_project,
                                lambda *indices: project_gm(*indices),
