@@ -26,6 +26,8 @@
 
 namespace ge {
 namespace {
+const std::vector<int64_t> DUMMY_SHAPE = {-3};
+const graphStatus GRAPH_NODE_NEED_REPASS = 50331647; // current can not update submodule, so define here
 graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& input_names) {
   for (const std::string& name : input_names) {
     auto dims = op.GetInputDesc(name).GetShape().GetDims();
@@ -46,6 +48,67 @@ graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& inpu
     }
   }
   return GRAPH_SUCCESS;
+}
+graphStatus WhileInferImpl(Operator &op) {
+  size_t in_num = op.GetInputsSize();
+  size_t out_num = op.GetOutputsSize();
+  GE_OP_LOGD(op.GetName(), "Begin to infer while node shape, input size %zu, output size %zu", in_num, out_num);
+  if (in_num != out_num) {
+    string reason = "input num not equal with out num.";
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), "input", reason);
+    REPORT_INNER_ERROR("E19999",
+                       "[Node:%s] Check input num and output num failed, as %s",
+                       op.GetName().c_str(),
+                       reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input num failed, as %s", reason.c_str());
+    return GRAPH_FAILED;
+  }
+  bool need_infer_again = false;
+  for (size_t i = 0; i < in_num; ++i) {
+    auto in_desc = op.GetDynamicInputDesc("input", i);
+    auto out_desc = op.GetDynamicOutputDesc("output", i);
+    auto data_shape = in_desc.GetShape();
+    auto out_shape = out_desc.GetShape();
+    if(out_shape.GetDims() == DUMMY_SHAPE){
+      GE_OP_LOGI(op.GetName(), "First time to infer while node shape, no need update from output to input.");
+      return GRAPH_SUCCESS;
+    }
+    // check datatype between output and input
+    if (in_desc.GetDataType() != out_desc.GetDataType()) {
+      REPORT_INNER_ERROR("E19999",
+                         "node[%s] does not support diff dtype or format among all ref output. src datatype :%d, "
+                         "dst datatype: %d",
+                         op.GetName().c_str(), in_desc.GetDataType(), out_desc.GetDataType());
+      GE_OP_LOGE(op.GetName().c_str(),
+                 "[Check][Param] node does not support diff dtype or format output. src datatype :%d,"
+                 "dst datatype: %d", in_desc.GetDataType(), out_desc.GetDataType());
+      return GRAPH_FAILED;
+    }
+
+    if (data_shape.GetDims() != out_shape.GetDims()) {
+      GE_OP_LOGI(op.GetName(), "While %zu output shape is not match with input shape.Need infer again.", i);
+      need_infer_again = true;
+      if (data_shape.GetDimNum() != out_shape.GetDimNum()) {
+        in_desc.SetUnknownDimNumShape();
+      } else {
+        size_t data_dim_num = data_shape.GetDimNum();
+        std::vector<std::pair<int64_t, int64_t>> data_shape_range = {data_dim_num, std::make_pair(1, UNKNOWN_DIM)};
+        for (size_t j = 0; j < data_dim_num; ++j) {
+          if (data_shape.GetDim(j) != out_shape.GetDim(j)) {
+            data_shape.SetDim(j, UNKNOWN_DIM);
+          }
+          if (data_shape.GetDim(j) != UNKNOWN_DIM) {
+            data_shape_range[j] = std::make_pair(data_shape.GetDim(j), data_shape.GetDim(j));
+          }
+        }
+        in_desc.SetShape(data_shape);
+        in_desc.SetShapeRange(data_shape_range);
+      }
+      op.UpdateDynamicOutputDesc("output", i, in_desc);
+      op.UpdateDynamicInputDesc("input", i, in_desc);
+    }
+  }
+  return need_infer_again ? GRAPH_NODE_NEED_REPASS : GRAPH_SUCCESS;
 }
 }  // namespace
 
@@ -86,7 +149,7 @@ IMPLEMT_VERIFIER(Case, CaseVerify) {
 VERIFY_FUNC_REG(Case, CaseVerify);
 
 IMPLEMT_INFERFUNC(_While, _WhileInfer) {
-  return GRAPH_SUCCESS;
+  return WhileInferImpl(op);
 }
 INFER_FUNC_REG(_While, _WhileInfer);
 IMPLEMT_VERIFIER(_While, _WhileVerify) {
@@ -95,7 +158,7 @@ IMPLEMT_VERIFIER(_While, _WhileVerify) {
 VERIFY_FUNC_REG(_While, _WhileVerify);
 
 IMPLEMT_INFERFUNC(While, WhileInfer) {
-  return GRAPH_SUCCESS;
+  return WhileInferImpl(op);
 }
 INFER_FUNC_REG(While, WhileInfer);
 IMPLEMT_VERIFIER(While, WhileVerify) {

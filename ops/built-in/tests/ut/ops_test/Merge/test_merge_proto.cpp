@@ -225,6 +225,10 @@ TEST_F(Merge, merge_infer_loopcond) {
                                                       ge::DT_FLOAT16, ge::FORMAT_ND,
                                                       {64},
                                                       ge::FORMAT_ND, shape_range);
+  const auto tensor_desc_dummy = create_desc_shape_range({-3},
+                                                        ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                        {},
+                                                        ge::FORMAT_ND, shape_range);
 
   auto data0 = ge::op::Data("data0").set_attr_index(0);
   auto data1 = ge::op::Data("data1").set_attr_index(1);
@@ -239,7 +243,7 @@ TEST_F(Merge, merge_infer_loopcond) {
   auto merge = ge::op::Merge("merge");
   merge.create_dynamic_input_x(2);
   merge.UpdateDynamicInputDesc("x", 0, tensor_desc_x1);
-  merge.UpdateDynamicInputDesc("x", 1, tensor_desc_x2);
+  merge.UpdateDynamicInputDesc("x", 1, tensor_desc_dummy);
   merge.set_dynamic_input_x(0, data1);
 
   auto switch0 = ge::op::Switch("switch");
@@ -259,7 +263,7 @@ TEST_F(Merge, merge_infer_loopcond) {
 
   auto next1 = ge::op::NextIteration("next_iteration");
   next1.update_input_desc_x(tensor_desc_x2);
-  next1.update_output_desc_y(tensor_desc_x2);
+  next1.update_output_desc_y(tensor_desc_dummy);
   next1.set_input_x(add1);
   merge.set_dynamic_input_x(1, next1, "y");
 
@@ -293,6 +297,8 @@ TEST_F(Merge, merge_infer_loopcond) {
     EXPECT_EQ(td_v.GetShapeRange(output_shape_range_v), ge::GRAPH_SUCCESS);
     EXPECT_EQ(output_shape_range_v, expected_shape_range_v);
   }
+  next1.update_output_desc_y(tensor_desc_x2);
+  merge.set_dynamic_input_x(1, next1, "y");
 
   // Infer second time.
   op.SetAttr("_need_infer_again", true);

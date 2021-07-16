@@ -34,6 +34,7 @@ struct DimGroup {
   bool is_unknown_shape{false};
   bool is_max_unknown{false};
 };
+const std::vector<int64_t> DUMMY_SHAPE = {-3};
 
 static graphStatus MergeAsMaxInput(Operator &op) {
   const auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
@@ -162,16 +163,14 @@ graphStatus MergeInferImpl(Operator &op) {
   const auto &node = NodeUtils::GetNodeFromOperator(op);
   if (in_num == 2 && node != nullptr) {
     // Check is while_loop, order of InferShape: Enter -> Merge -> Switch -> NextIteration -> Merge -> Switch -> Exit
-    // So when processing InferShape on Merge op, shape & datatype of NextIteration op is set as default.
+    // So when processing InferShape on Merge op on first time, shape of NextIteration op is set as dummy_shape.
     // Therefore, shape & datatype of Merge op should be set as the Enter op.
-    const auto &node_x1 = node->GetInDataNodes().at(1);   // NextIteration
-    if (node_x1->GetType() == "NextIteration" || node_x1->GetType() == "RefNextIteration") {
-      bool need_infer_again = false;
-      if (op.GetAttr(ATTR_NAME_NEED_INFER_AGAIN, need_infer_again) != GRAPH_SUCCESS) {  // first time infer.
-        OP_LOGD(op.GetName(), "Update output shape by merge input enter");
-        TensorDesc td_x = op.GetDynamicInputDesc("x", 0);
-        return op.UpdateOutputDesc("y", td_x);
-      }
+    const auto& node_x1 = node->GetInDataNodes().at(1);  // NextIteration
+    auto x1_dims = op.GetDynamicInputDesc("x", 1).GetShape().GetDims();
+    if (x1_dims == DUMMY_SHAPE) {  // first time infer.
+      OP_LOGD(op.GetName(), "Update output shape by merge input enter");
+      TensorDesc td_x = op.GetDynamicInputDesc("x", 0);
+      return op.UpdateOutputDesc("y", td_x);
     }
   }
 
