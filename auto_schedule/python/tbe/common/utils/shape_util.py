@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019-2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -507,12 +509,12 @@ def variable_shape(inputs: list, op_mode="elewise"):
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
-                    _var = operation.var_inner("_dim_" + str(i) + "_" + str(_suffix), _range[i])
+                    _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)) , _range[i])
                 d_shape.append(_var)
             elif shape[i] == -77:
                 # no broadcast
                 if _var is None:
-                    _var = operation.var_inner("_dim_" + str(i) + "_" + str(_suffix), _range[i])
+                    _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)) , _range[i])
                 d_shape.append(_var)
             else:
                 d_shape.append(shape[i])
@@ -560,7 +562,7 @@ def _reduce_and_norm_variable_shape(inputs: list):
     for index in range(len(shape_local[0])):
         _var = None
         if shape_local[0][index] == -1:
-            _var = operation.var_inner("_dim_" + str(index), range_local[0][index])
+            _var = operation.var_inner("_dim_{}".format(str(index)), range_local[0][index])
             shape_before_reduce.append(_var)
         else:
             shape_before_reduce.append(shape_local[0][index])

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019-2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -600,7 +602,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         for tensor in self._mid_tensors:
             tag = tensor.op.tag.split("|")[0]
             if "reduce" in tag:
-                tag = "5hdc_" + tag
+                tag = "5hdc_{}".format(tag)
             self._schedule[tensor].emit_insn(
                 self._schedule[tensor].op.axis[0],
                 tag)

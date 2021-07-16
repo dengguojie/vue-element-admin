@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
 # Copyright 2019-2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -5362,7 +5364,7 @@ def vec_binary_cmpsel(tensor_op, extern_args, args=None):
         if extern_args[i] is not None:
             scalar_buffer = cce_util.apply_for_new_alloc(
                 ir_builder, src_dtype, (128,), cce_params.scope_ubuf,
-                "scalar"+str(i))
+                "scalar{}".format(str(i)))
             vec_cmd_factory(ir_builder, "vector_dup", [], [scalar_buffer],
                             cal_once_len, 1,
                             [tvm.const(extern_args[i], dtype=src_dtype)],
