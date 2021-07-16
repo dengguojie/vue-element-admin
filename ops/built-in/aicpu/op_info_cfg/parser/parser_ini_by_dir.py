@@ -1,5 +1,3 @@
-# import ConfigParser
-
 import json
 import os
 import stat
@@ -7,7 +5,6 @@ import sys
 
 def parse_ini_files(ini_files):
     aicpu_ops_info = {}
-    #for ini_file in ini_files:
     print(ini_files)
     parse_ini_to_obj(ini_files, aicpu_ops_info)
     return aicpu_ops_info
