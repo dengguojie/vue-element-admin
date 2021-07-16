@@ -488,6 +488,9 @@ Status AdaptiveAvgPool2dPass::LeftConstNode(
     ge::GeTensorDesc &left_tensor_desc) const {
   int64_t left_dim_num = GetDimNum(left_tensor_shape);
   Status ret = SetConstDesc(left_tensor_shape, left_tensor_desc, input_desc1);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "LeftConstNode fusion failed"),
+                    return FAILED);
   unique_ptr<uint16_t[]> left_assit(new (std::nothrow)
                                         uint16_t[left_dim_num]());
   FUSION_PASS_CHECK(left_assit.get() == nullptr,
@@ -500,6 +503,9 @@ Status AdaptiveAvgPool2dPass::LeftConstNode(
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."),
                     return ret);
   ret = AssistDataGen(left_tensor, left_assit.get());
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get AssistDataGen failed"),
+                    return FAILED);
   left_tensor_desc.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_MAKE_SHARED(
       (assit_left_ptr = std::make_shared<ge::GeTensor>(
@@ -516,6 +522,9 @@ Status AdaptiveAvgPool2dPass::MidConstNode(
   int64_t mid_dim_num = GetDimNum(input_shape);
   // 定义辅助矩阵输入mid shape
   Status ret = SetConstDesc(input_shape, mid_tensor_desc, input_desc1);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get MidConstNode failed"),
+                    return FAILED);
   unique_ptr<uint16_t[]> mid_assit(new (std::nothrow) uint16_t[mid_dim_num]());
   FUSION_PASS_CHECK(mid_assit.get() == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "mid_assit is NULL"),
@@ -543,6 +552,9 @@ Status AdaptiveAvgPool2dPass::RightConstNode(
   int64_t right_dim_num = GetDimNum(right_tensor_shape);
   // 定义辅助矩阵输入right shape
   Status ret = SetConstDesc(right_tensor_shape, right_tensor_desc, input_desc1);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get RightConstNode failed"),
+                    return FAILED);
   unique_ptr<uint16_t[]> right_assit(new (std::nothrow)
                                          uint16_t[right_dim_num]());
   FUSION_PASS_CHECK(right_assit.get() == nullptr,
@@ -555,6 +567,9 @@ Status AdaptiveAvgPool2dPass::RightConstNode(
                     return ret);
   // 给辅助矩阵赋值
   ret = AssistDataGen(right_tensor, right_assit.get());
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get RightConstNode failed"),
+                    return FAILED);
   right_tensor_desc.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_MAKE_SHARED(
       (assit_right_ptr = std::make_shared<ge::GeTensor>(
@@ -572,6 +587,9 @@ Status AdaptiveAvgPool2dPass::MulConstNode(
   int64_t mul_dim_num = GetDimNum(output_shape);
   // 定义辅助矩阵输入mul shape
   Status ret = SetConstDesc(output_shape, mul_tensor_desc, input_desc1);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get RightConstNode failed"),
+                    return FAILED);
   unique_ptr<uint16_t[]> mul_assit(new (std::nothrow) uint16_t[mul_dim_num]());
   FUSION_PASS_CHECK(mul_assit.get() == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_assit is NULL"),
@@ -583,6 +601,9 @@ Status AdaptiveAvgPool2dPass::MulConstNode(
                     return ret);
   // 给辅助矩阵赋值
   ret = AssistDataGen(mul_tensor, mul_assit.get());
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get RightConstNode failed"),
+                    return FAILED);
   mul_tensor_desc.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_MAKE_SHARED(
       (assit_mul_ptr = std::make_shared<ge::GeTensor>(
@@ -622,6 +643,9 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   vector<int64_t> bat_one_shape;
   Status ret =
       CreatFuseNode(adaptive_node, input_shape, output_shape, bat_one_shape);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   ge::GeShape bat_one_outshape(bat_one_shape);
   //  step3: 定义新的node节点
   ge::GeTensorDesc input_desc1 = adaptive_node->GetOpDesc()->GetInputDesc(0);
@@ -629,17 +653,26 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   ge::NodePtr batmm_one_node;
   ret = CreatOneNode(batmm_one_node, adaptive_node, graph, new_nodes,
                      bat_one_outshape);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   FUSION_PASS_CHECK(batmm_one_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batmm_one_node is null."),
                     return PARAM_INVALID);
   // 定义一个新的节点 batmmTwo
   ge::NodePtr batmm_two_node;
   ret = CreatTwoNode(batmm_two_node, adaptive_node, graph, new_nodes,
                      bat_one_outshape);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   FUSION_PASS_CHECK(batmm_two_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batmm_two_node is null."),
                     return PARAM_INVALID);
   // 定义一个新的节点 mul_node
   ge::NodePtr mul_node;
   ret = CreatMulNode(mul_node, adaptive_node, graph, new_nodes);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_node is null."),
                     return PARAM_INVALID);
   // 设置shape
@@ -648,6 +681,9 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   // 获取辅助矩阵的shape信息
   ret = GetTensorShape(input_shape, output_shape, left_tensor_shape,
                        right_tensor_shape);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   // get assist lens
   int64_t left_dim_num = GetDimNum(left_tensor_shape);
   int64_t right_dim_num = GetDimNum(right_tensor_shape);
@@ -658,27 +694,41 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   //  gen value to assist matirx
   ret = AdaptiveValueGen(input_shape, output_shape, left_tensor, right_tensor,
                          mul_tensor);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   // 设置左矩阵
   ge::GeTensorPtr assit_left_ptr = nullptr;
   ge::GeTensorDesc left_tensor_desc(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
   ret = LeftConstNode(left_tensor_shape, input_desc1, assit_left_ptr,
                       left_tensor, left_tensor_desc);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   // 设置中矩阵
   ge::GeTensorPtr assit_mid_ptr = nullptr;
   ge::GeTensorDesc mid_tensor_desc(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
   ret = MidConstNode(input_shape, input_desc1, assit_mid_ptr, mid_tensor_desc);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   // 构造右assit
   ge::GeTensorPtr assit_right_ptr = nullptr;
   ge::GeTensorDesc right_tensor_desc(GeShape(), ge::FORMAT_NCHW,
                                      ge::DT_FLOAT16);
   ret = RightConstNode(right_tensor_shape, input_desc1, assit_right_ptr,
                        right_tensor, right_tensor_desc);
-
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   // 构造mul 矩阵
   ge::GeTensorPtr assit_mul_ptr = nullptr;
   ge::GeTensorDesc mul_tensor_desc(GeShape(), ge::FORMAT_NCHW, ge::DT_FLOAT16);
   ret = MulConstNode(output_shape, input_desc1, assit_mul_ptr, mul_tensor,
                      mul_tensor_desc);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   // 将赋值矩阵连接batchone并设置类型
   vector<ge::GeTensorPtr> left_weights = {assit_left_ptr, assit_mid_ptr};
   ge::OpDescUtils::SetWeights(batmm_one_node, left_weights);
@@ -697,6 +747,9 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   const_mid_input->GetOpDesc()->SetType("Const");
   // remove mid node
   ret = RemoveNodes(const_mid_input, graph);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   // 将赋值矩阵连接batchTwo
   vector<ge::GeTensorPtr> right_weights = {assit_right_ptr};
   ge::OpDescUtils::SetWeights(batmm_two_node, right_weights);
@@ -722,6 +775,9 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   const_mul_input->GetOpDesc()->SetType("Const");
   // add edge to batmmOne and two
   ret = Bridge(adaptive_node, batmm_one_node, batmm_two_node, mul_node);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion failed"),
+                    return FAILED);
   // remove adaptive_node
   ret = RemoveNodes(adaptive_node, graph);
   FUSION_PASS_CHECK(ret != SUCCESS,

@@ -72,29 +72,6 @@ static bool GetConstValue(const TeOpParas& paras, const string& name, const stri
   return true;
 }
 
-static int64_t CalShapeMul(const std::vector<int64_t>& shape, int64_t start, int64_t end) {
-  int64_t res = 1;
-  for (; start <= end; start += 1) {
-    res *= shape[start];
-  }
-  return res;
-}
-
-static int64_t CalVnchwUbSize(int64_t ub_size, int64_t dtype_size, int64_t byte_block) {
-  int64_t block_element = byte_block / dtype_size;
-  return (ub_size / dtype_size - block_element) / 2 / block_element * block_element;
-}
-
-static bool isShapeEqualExceptLast(const std::vector<int64_t>& input_shape, const std::vector<int64_t>& output_shape,
-                                   int64_t end) {
-  for (int64_t i = 0; i <= end; i++) {
-    if (input_shape[i] != output_shape[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 }  // namespace optiling
 
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_STRIDED_SLICE_H_

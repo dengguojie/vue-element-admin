@@ -36,11 +36,11 @@ const int32_t FUSED_REDUCE_AXIS = 1;
 const int32_t H_W_THRESHOLD = 100;
 
 struct TilingInfo {
-  int32_t block_dim;
-  int32_t block_tiling_axis;
-  int64_t block_tiling_factor;
-  int32_t ub_tiling_axis;
-  int64_t ub_tiling_factor;
+  int32_t block_dim{-1};
+  int32_t block_tiling_axis{-1};
+  int64_t block_tiling_factor{-1};
+  int32_t ub_tiling_axis{-1};
+  int64_t ub_tiling_factor{-1};
 };
 
 struct ReorderInfo {
