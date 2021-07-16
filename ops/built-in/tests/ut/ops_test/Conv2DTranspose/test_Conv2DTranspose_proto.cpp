@@ -130,6 +130,96 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeDynamicNWC) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+// dynamic opti ut outbackprop shape [-1, c, -1, -1] with no range
+TEST_F(Conv2DTransposeProtoTest, conv2dTransposeSpecialRange) {
+    ge::op::Conv2DTranspose op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("x",
+                       create_desc_shape_range({-1, 32, -1, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, 32, -1, -1},
+                                               ge::FORMAT_NCHW,
+                                               {}));
+    op.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {1, -1}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    std::vector<std::pair<int64_t, int64_t>> output_range;
+    tensor_desc_y->GetShapeRange(output_range);
+    std::vector<std::pair<int64_t, int64_t>> expect_y_range = {{1, -1}, {16, 16}, {1, -1}, {1, -1}};
+    EXPECT_EQ((output_range == expect_y_range), true);
+}
+
+// dynamic opti ut outbackprop shape [-1, c, -1, -1] with range < 4
+TEST_F(Conv2DTransposeProtoTest, conv2dTransposeSpecialRange_1) {
+    ge::op::Conv2DTranspose op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("x",
+                       create_desc_shape_range({-1, 32, -1, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, 32, -1, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}}));
+    op.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {1, -1}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
 // dynamic opti ut outbackprop shape [-2]
 TEST_F(Conv2DTransposeProtoTest, conv2dTransposeDynamicRank) {
     ge::op::Conv2DTranspose op;

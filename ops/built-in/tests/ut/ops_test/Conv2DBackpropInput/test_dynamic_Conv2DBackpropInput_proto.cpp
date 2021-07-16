@@ -151,6 +151,11 @@ TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputDynamicNWC) {
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    std::vector<std::pair<int64_t, int64_t>> output_range;
+    tensor_desc_y->GetShapeRange(output_range);
+    std::vector<std::pair<int64_t, int64_t>> expect_y_range = {{1, 10}, {16, 16}, {24, 24}, {6, -1}};
+    EXPECT_EQ((output_range == expect_y_range), true);
 }
 
 // no output shape and no value range

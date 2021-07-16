@@ -90,7 +90,8 @@ TEST_F(AvgPoolGradProtoTest, No_Input_Size){
 
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
     auto input_sizes_desc = op_desc->MutableInputDesc("orig_input_shape");
-    ge::AttrUtils::SetListInt(*input_sizes_desc, "_pre_op_in_range", {1, 2, 32, 32, 4, 5, 4, 5});
+    std::vector<std::pair<int64_t, int64_t>> value_range = {{1, 2}, {32, 32}, {4, 5}, {4, 5}};
+    input_sizes_desc->SetValueRange(value_range);
 
     op.UpdateOutputDesc("out_grad",
                     create_desc_shape_range({-1, 32, -1, -1},
@@ -109,6 +110,11 @@ TEST_F(AvgPoolGradProtoTest, No_Input_Size){
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("out_grad");
+    std::vector<std::pair<int64_t, int64_t>> output_range;
+    tensor_desc_y->GetShapeRange(output_range);
+    std::vector<std::pair<int64_t, int64_t>> expect_y_range = {{1, 2}, {32, 32}, {4, 5}, {4, 5}};
+    EXPECT_EQ((output_range == expect_y_range), true);
 }
 
 // dynamic c + var 
@@ -133,7 +139,8 @@ TEST_F(AvgPoolGradProtoTest, avg_pool_grad_dynamic_c){
 
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
     auto input_sizes_desc = op_desc->MutableInputDesc("orig_input_shape");
-    ge::AttrUtils::SetListInt(*input_sizes_desc, "_pre_op_in_range", {1, 2, 32, 32, 4, 5, 4, 5});
+    std::vector<std::pair<int64_t, int64_t>> value_range = {{1, 2}, {32, 32}, {4, 5}, {4, 5}};
+    input_sizes_desc->SetValueRange(value_range);
 
     op.UpdateOutputDesc("out_grad",
                     create_desc_shape_range({-1, 32, -1, -1},
@@ -152,6 +159,94 @@ TEST_F(AvgPoolGradProtoTest, avg_pool_grad_dynamic_c){
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic opti ut input_grad shape [-1, c, -1, -1] with no range
+TEST_F(AvgPoolGradProtoTest, avg_pool_grad_dynamic_nhw_no_range){
+    ge::op::AvgPoolGrad op;
+    op.UpdateInputDesc("input_grad",
+                       create_desc_shape_range({1, -1, 2, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {1, -1, 2, -1},
+                                               ge::FORMAT_NCHW,
+                                               {}));
+          
+    auto avg_pool_grad_input_ori_shape_data = ge::op::Data("orig_input_shape");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    avg_pool_grad_input_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    avg_pool_grad_input_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_orig_input_shape(avg_pool_grad_input_ori_shape_data);
+    op.UpdateInputDesc("orig_input_shape", ori_tensorDesc);
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto input_sizes_desc = op_desc->MutableInputDesc("orig_input_shape");
+    std::vector<std::pair<int64_t, int64_t>> value_range = {{1, 2}, {32, 32}, {4, 5}, {4, 5}};
+    input_sizes_desc->SetValueRange(value_range);
+
+    op.UpdateOutputDesc("out_grad",
+                    create_desc_shape_range({-1, 32, -1, -1},
+                                            ge::DT_FLOAT16,
+                                            ge::FORMAT_NCHW,
+                                            {-1, 32, -1, -1},
+                                            ge::FORMAT_NCHW,
+                                            {{1, 2}, {32, 32}, {4, 5}, {4, 5}}));
+
+    op.SetAttr("ksize", {1, 1, 3, 3});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("padding", "SAME");
+    op.SetAttr("data_format", "NCHW");
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+//dynamic opti ut input_grad shape [-1, c, -1, -1] with range < 4
+TEST_F(AvgPoolGradProtoTest, avg_pool_grad_dynamic_nhw_part_range){
+    ge::op::AvgPoolGrad op;
+    op.UpdateInputDesc("input_grad",
+                       create_desc_shape_range({1, -1, 2, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {1, -1, 2, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 2}}));
+          
+    auto avg_pool_grad_input_ori_shape_data = ge::op::Data("orig_input_shape");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    avg_pool_grad_input_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    avg_pool_grad_input_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_orig_input_shape(avg_pool_grad_input_ori_shape_data);
+    op.UpdateInputDesc("orig_input_shape", ori_tensorDesc);
+
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto input_sizes_desc = op_desc->MutableInputDesc("orig_input_shape");
+    std::vector<std::pair<int64_t, int64_t>> value_range = {{1, 2}, {32, 32}, {4, 5}, {4, 5}};
+    input_sizes_desc->SetValueRange(value_range);
+
+    op.UpdateOutputDesc("out_grad",
+                    create_desc_shape_range({-1, 32, -1, -1},
+                                            ge::DT_FLOAT16,
+                                            ge::FORMAT_NCHW,
+                                            {-1, 32, -1, -1},
+                                            ge::FORMAT_NCHW,
+                                            {{1, 2}, {32, 32}, {4, 5}, {4, 5}}));
+
+    op.SetAttr("ksize", {1, 1, 3, 3});
+    op.SetAttr("strides", {1, 1, 2, 2});
+    op.SetAttr("padding", "SAME");
+    op.SetAttr("data_format", "NCHW");
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 // dynamic -2 + Const 

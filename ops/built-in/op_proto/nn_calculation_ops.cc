@@ -56,6 +56,7 @@
 namespace ge {
 
 namespace {
+  const int32_t kConv2dDimSizeLimit = 4;
   const int32_t kConv3dDimSizeLimit = 5;
   const int32_t kConv3dLengthPadsLimit = 6;
   const int32_t kConv3dStridesSizeLimit = 5;
@@ -1212,35 +1213,34 @@ static void set_conv2d_backprop_input_out_range(const std::string& pad_str,
 static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const std::string& pad_str,
                                                       const std::vector<int64_t>& dy_sizes,
                                                       Format dy_format,
-                                                      const std::vector<std::pair<int64_t, int64_t>>& dy_range,
+                                                      std::vector<std::pair<int64_t, int64_t>>& dy_range,
                                                       const std::vector<int64_t>& filter_sizes, Format filter_format,
                                                       Format dx_format,
                                                       std::vector<std::pair<int64_t, int64_t>>& dx_range,
-                                                      ge::GeTensorDescPtr& y_desc, const int64_t& groups,
+                                                      ge::GeTensorDescPtr& y_desc, ge::GeTensorDescPtr& x_desc,
+                                                      const int64_t& groups,
                                                       bool& unknown_rank, const std::vector<int64_t>& attr_params) {
-  std::vector<int64_t> dx_sizes = y_desc->MutableShape().GetDims();
-  if (dx_sizes.empty() || dx_sizes.size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "dx_sizes list should be 4D. actual is: %u.", dx_sizes.size());
-    map<string, string> err_map;
-    err_map["param_name"] = "dx_sizes";
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["expected_value"] = "4D";
-    err_map["input_value"] = std::to_string(dx_sizes.size()) + "D.";
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+  if (dy_range.size() != dy_sizes.size() && dy_range.size() != 0 && !unknown_rank) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
+      "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
+      dy_range.size(), dy_sizes.size());
     return false;
   }
-  size_t idx = 0;
-  int64_t stride_h = attr_params[idx++];
-  int64_t stride_w = attr_params[idx++];
-  int64_t dilation_h = attr_params[idx++];
-  int64_t dilation_w = attr_params[idx++];
-  std::vector<int32_t> pads_list;
-  op.GetAttr("pads", pads_list);
-  int32_t pad_up = pads_list[0];
-  int32_t pad_down = pads_list[1];
-  int32_t pad_left = pads_list[2];
-  int32_t pad_right = pads_list[3];
+  if (dy_range.size() == 0 && !unknown_rank) {
+    dy_range.resize(dy_sizes.size());
+    for (int i = 0; i < dy_sizes.size(); i++) {
+      dy_range[i].first = std::max(dy_sizes[i], kDynamicRangeLowerBound);
+      dy_range[i].second = dy_sizes[i];
+    }
+    x_desc->SetShapeRange(dy_range);
+  }
+  
+  CHECK_KEY_IN_MAP(format2str, dx_format, "dx_format", return false);
+  std::string dx_format_str = format2str[dx_format];
+  int32_t h_input_position = dx_format_str.find("H");
+  int32_t w_input_position = dx_format_str.find("W");
+  int32_t c_input_position = dx_format_str.find("C");
+  int32_t n_input_position = dx_format_str.find("N");
 
   CHECK_KEY_IN_MAP(format2str, filter_format, "filter_format", return false);
   std::string filter_format_str = format2str[filter_format];
@@ -1250,60 +1250,93 @@ static bool set_conv2d_backprop_input_out_shape_range(ge::Operator& op, const st
   int64_t filter_h = filter_sizes[h_filter_position];
   int64_t filter_w = filter_sizes[w_filter_position];
   int64_t filter_c = filter_sizes[c_filter_position];
-  CHECK_KEY_IN_MAP(format2str, dx_format, "dx_format", return false);
-  std::string dx_format_str = format2str[dx_format];
-  int32_t h_input_position = dx_format_str.find("H");
-  int32_t w_input_position = dx_format_str.find("W");
-  int32_t c_input_position = dx_format_str.find("C");
-  int32_t n_input_position = dx_format_str.find("N");
 
-  if (unknown_rank) {
-    vector<int64_t> dx_shape;
-    dx_shape.resize(4);
-    dx_shape[n_input_position] = -1;
-    dx_shape[h_input_position] = -1;
-    dx_shape[w_input_position] = -1;
-    dx_shape[c_input_position] = groups * filter_c;
-    y_desc->SetShape(GeShape(dx_shape));
-    return true;
-  }
-  CHECK_KEY_IN_MAP(format2str, dy_format, "dy_format", return false);
-  std::string dy_format_str = format2str[dy_format];
-  int32_t w_dy_position = dy_format_str.find("W");
-  int32_t h_dy_position = dy_format_str.find("H");
-  int32_t n_dy_position = dy_format_str.find("N");
-
-  int64_t dx_h = dx_sizes[h_input_position];
-  int64_t dx_w = dx_sizes[w_input_position];
-
-  int64_t khext = (filter_h - 1) * dilation_h + 1;
-  int64_t kwext = (filter_w - 1) * dilation_w + 1;
-
-  if(op.GetOpType() == "Conv2DTranspose") {
-    std::vector<int32_t> output_padding_list;
-    op.GetAttr("output_padding", output_padding_list);
-    int32_t outputpadding_h = output_padding_list[h_dy_position];
-    int32_t outputpadding_w = output_padding_list[w_dy_position];
-    khext = outputpadding_h + ((filter_h - 1) * dilation_h + 1);
-    kwext = outputpadding_w + ((filter_w - 1) * dilation_w + 1);
-  }
-
-  dx_range.resize(4);
-  dx_range[c_input_position] = std::make_pair(filter_c * groups, filter_c * groups);
-  dx_range[h_input_position] = std::make_pair(dx_h, dx_h);
-  dx_range[w_input_position] = std::make_pair(dx_w, dx_w);
-  dx_range[n_input_position] = std::make_pair(dy_sizes[n_dy_position], dy_sizes[n_dy_position]);
-  if (!dy_range.empty() && dy_range.size() == dy_sizes.size()) {
-    dx_range[n_input_position] = dy_range[n_dy_position];
-    if (dx_h == -1) {
-      vector<int64_t> attr_params_h = {stride_h, khext, static_cast<int64_t>(pad_up + pad_down)};
-      set_conv2d_backprop_input_out_range(pad_str, h_input_position, attr_params_h, dy_range, dx_range);
+  if (!dx_range.empty() && dx_range.size() == kConv2dDimSizeLimit && !unknown_rank) {   
+    if (dx_range[c_input_position].first == -1 ||
+        dx_range[c_input_position].first != dx_range[c_input_position].second) {
+      int64_t cin = groups * filter_c;
+      dx_range[c_input_position].first = cin;
+      dx_range[c_input_position].second = cin;
     }
-    if (dx_w == -1) {
-      vector<int64_t> attr_params_w = {stride_w, kwext, static_cast<int64_t>(pad_left + pad_right)};
-      set_conv2d_backprop_input_out_range(pad_str, w_input_position, attr_params_w, dy_range, dx_range);
+    if ((y_desc->SetShapeRange(dx_range)) != GRAPH_SUCCESS) {
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "do set dx range failed.");
+      return false;
     }
-    y_desc->SetShapeRange(dx_range);
+    OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
+  } else {
+    std::vector<int64_t> dx_sizes = y_desc->MutableShape().GetDims();
+    if (dx_sizes.empty() || dx_sizes.size() != kConv2dDimSizeLimit) {
+      OP_LOGE(op.GetName().c_str(), "dx_sizes list should be 4D. actual is: %u.", dx_sizes.size());
+      map<string, string> err_map;
+      err_map["param_name"] = "dx_sizes";
+      err_map["op_name"] = op.GetName().c_str();
+      err_map["expected_value"] = "4D";
+      err_map["input_value"] = std::to_string(dx_sizes.size()) + "D.";
+      std::string report_error_code = "E50029";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return false;
+    }
+    size_t idx = 0;
+    int32_t stride_h = attr_params[idx++];
+    int32_t stride_w = attr_params[idx++];
+    int32_t dilation_h = attr_params[idx++];
+    int32_t dilation_w = attr_params[idx++];
+    std::vector<int32_t> pads_list;
+    op.GetAttr("pads", pads_list);
+    int32_t pad_up = pads_list[0];
+    int32_t pad_down = pads_list[1];
+    int32_t pad_left = pads_list[2];
+    int32_t pad_right = pads_list[3];
+
+    if (unknown_rank) {
+      vector<int64_t> dx_shape;
+      dx_shape.resize(kConv2dDimSizeLimit);
+      dx_shape[n_input_position] = -1;
+      dx_shape[h_input_position] = -1;
+      dx_shape[w_input_position] = -1;
+      dx_shape[c_input_position] = groups * filter_c;
+      y_desc->SetShape(GeShape(dx_shape));
+      return true;
+    }
+
+    CHECK_KEY_IN_MAP(format2str, dy_format, "dy_format", return false);
+    std::string dy_format_str = format2str[dy_format];
+    int32_t w_dy_position = dy_format_str.find("W");
+    int32_t h_dy_position = dy_format_str.find("H");
+    int32_t n_dy_position = dy_format_str.find("N");
+
+    int64_t dx_h = dx_sizes[h_input_position];
+    int64_t dx_w = dx_sizes[w_input_position];
+
+    int64_t khext = (filter_h - 1) * dilation_h + 1;
+    int64_t kwext = (filter_w - 1) * dilation_w + 1;
+
+    if(op.GetOpType() == "Conv2DTranspose") {
+      std::vector<int32_t> output_padding_list;
+      op.GetAttr("output_padding", output_padding_list);
+      int32_t outputpadding_h = output_padding_list[h_dy_position];
+      int32_t outputpadding_w = output_padding_list[w_dy_position];
+      khext = outputpadding_h + ((filter_h - 1) * dilation_h + 1);
+      kwext = outputpadding_w + ((filter_w - 1) * dilation_w + 1);
+    }
+
+    dx_range.resize(kConv2dDimSizeLimit);
+    dx_range[c_input_position] = std::make_pair(filter_c * groups, filter_c * groups);
+    dx_range[h_input_position] = std::make_pair(dx_h, dx_h);
+    dx_range[w_input_position] = std::make_pair(dx_w, dx_w);
+    dx_range[n_input_position] = std::make_pair(dy_sizes[n_dy_position], dy_sizes[n_dy_position]);
+    if (!dy_range.empty() && dy_range.size() == dy_sizes.size()) {
+      dx_range[n_input_position] = dy_range[n_dy_position];
+      if (dx_h == -1) {
+        vector<int64_t> attr_params_h = {stride_h, khext, pad_up + pad_down};
+        set_conv2d_backprop_input_out_range(pad_str, h_input_position, attr_params_h, dy_range, dx_range);
+      }
+      if (dx_w == -1) {
+        vector<int64_t> attr_params_w = {stride_w, kwext, pad_left + pad_right};
+        set_conv2d_backprop_input_out_range(pad_str, w_input_position, attr_params_w, dy_range, dx_range);
+      }
+      y_desc->SetShapeRange(dx_range);
+    }
   }
   return true;
 }
@@ -1578,24 +1611,12 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
     x_desc->GetShapeRange(dy_range);
     std::vector<std::pair<int64_t, int64_t>> dx_range;
     input_sizes_desc->GetValueRange(dx_range);
-    if (!dx_range.empty() && dx_range.size() == 4 && dy_range.size() == 4) {
-      CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return GRAPH_FAILED);
-      std::string dx_format_str = format2str[input_format];
-      int32_t c_input_position = dx_format_str.find("C");
-      int32_t fc_position = filterFormatStr.find("C");
-      int64_t filter_c = filter_sizes[fc_position];
-      dx_range[c_input_position].first = filter_c;
-      dx_range[c_input_position].second = filter_c;
-      y_desc->SetShapeRange(dx_range);
-      OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
-    } else {
-      int64_t groups = 1;
-      vector<int64_t> attr_params = {stride_h, stride_w, dilation_h, dilation_w};
-      if (!set_conv2d_backprop_input_out_shape_range(op, pad_str, dy_sizes, dy_format, dy_range, filter_sizes,
-                                                     filter_format, input_format, dx_range, y_desc,
-                                                     groups, unknown_rank, attr_params)) {
-        return GRAPH_FAILED;
-      }
+    int64_t groups = 1;
+    vector<int64_t> attr_params = {stride_h, stride_w, dilation_h, dilation_w};
+    if (!set_conv2d_backprop_input_out_shape_range(op, pad_str, dy_sizes, dy_format, dy_range, filter_sizes,
+                                                   filter_format, input_format, dx_range, y_desc, x_desc,
+                                                   groups, unknown_rank, attr_params)) {
+      return GRAPH_FAILED;
     }
     for (size_t i = 0; i < dx_range.size(); i++) {
       if (dx_range[i].first == dx_range[i].second) {
@@ -2973,48 +2994,12 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     }
     std::vector<std::pair<int64_t, int64_t>> dy_range;
     x_desc->GetShapeRange(dy_range);
-    if (dy_range.size() != dy_sizes.size() && dy_range.size() != 0 && !unknown_rank) {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
-        "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
-        dy_range.size(), dy_sizes.size());
-      return GRAPH_FAILED;
-    }
-    if (dy_range.size() == 0 && !unknown_rank) {
-      dy_range.resize(dy_sizes.size());
-      for (size_t i = 0; i < dy_sizes.size(); i++) {
-        dy_range[i].first = std::max(dy_sizes[i], kDynamicRangeLowerBound);
-        dy_range[i].second = dy_sizes[i];
-      }
-      if ((x_desc->SetShapeRange(dy_range)) != GRAPH_SUCCESS) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "do set dy range failed.");
-        return GRAPH_FAILED;
-      }
-    }
     std::vector<std::pair<int64_t, int64_t>> dx_range;
     input_sizes_desc->GetValueRange(dx_range);
-    if (!dx_range.empty() && dx_range.size() == 4 && !unknown_rank) {
-      CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return GRAPH_FAILED);
-      std::string dx_format_str = format2str[input_format];
-
-      int32_t c_input_position = dx_format_str.find("C");
-      CHECK_KEY_IN_MAP(format2str, filter_format, "filter_format", return GRAPH_FAILED);
-      filterFormatStr = format2str[filter_format];
-      fc_position = filterFormatStr.find("C");
-      filter_c = filter_sizes[fc_position];
-      int64_t cin = groups * filter_c;
-      dx_range[c_input_position].first = cin;
-      dx_range[c_input_position].second = cin;
-      if ((y_desc->SetShapeRange(dx_range)) != GRAPH_SUCCESS) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "do set dx range failed.");
-        return GRAPH_FAILED;
-      }
-      OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
-    } else {
-      if (!set_conv2d_backprop_input_out_shape_range(op, pad_str, dy_sizes, dy_format, dy_range, filter_sizes,
-                                                     filter_format, input_format, dx_range, y_desc,
-                                                     groups, unknown_rank, attr_params)) {
-        return GRAPH_FAILED;
-      }
+    if (!set_conv2d_backprop_input_out_shape_range(op, pad_str, dy_sizes, dy_format, dy_range, filter_sizes,
+                                                    filter_format, input_format, dx_range, y_desc, x_desc,
+                                                    groups, unknown_rank, attr_params)) {
+      return GRAPH_FAILED;
     }
     for (size_t i = 0; i < dx_range.size(); i++) {
       if (dx_range[i].first == dx_range[i].second) {
@@ -9853,24 +9838,9 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
     xDesc->GetShapeRange(dyRange);
     std::vector<std::pair<int64_t, int64_t>> dxRange;
     inputSizesDesc->GetValueRange(dxRange);
-    if (!dxRange.empty() && dxRange.size() == 4 && dyRange.size() == 4) {
-      CHECK_KEY_IN_MAP(format2str, inputFormat, "inputFormat", return GRAPH_FAILED);
-      std::string dx_format_str = format2str[inputFormat];
-      int32_t c_input_position = dx_format_str.find("C");
-      CHECK_KEY_IN_MAP(format2str, filterFormat, "filterFormat", return GRAPH_FAILED);
-      filterFormatStr = format2str[filterFormat];
-      fc_position = filterFormatStr.find("C");
-      filter_c = filterSizes[fc_position];
-      int64_t cin = groups * filter_c;
-      dxRange[c_input_position].first = cin;
-      dxRange[c_input_position].second = cin;
-      yDesc->SetShapeRange(dxRange);
-      OP_LOGD(op.GetName().c_str(), "get value_range success from GE.");
-    } else {
-      if (!set_conv2d_backprop_input_out_shape_range(op, padStr, dySizes, xFormat, dyRange, filterSizes,
-                        filterFormat, inputFormat, dxRange, yDesc, groups, unknownRank, attrParams)) {
-        return GRAPH_FAILED;
-      }
+    if (!set_conv2d_backprop_input_out_shape_range(op, padStr, dySizes, xFormat, dyRange, filterSizes,
+                      filterFormat, inputFormat, dxRange, yDesc, xDesc, groups, unknownRank, attrParams)) {
+      return GRAPH_FAILED;
     }
     for (size_t i = 0; i < dxRange.size(); i++) {
       if (dxRange[i].first == dxRange[i].second) {

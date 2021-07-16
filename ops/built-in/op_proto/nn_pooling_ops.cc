@@ -40,6 +40,7 @@
 namespace ge {
 
 namespace {
+  constexpr size_t kAvgPoolGradOriShapeDim = 4;
   constexpr size_t kAvgPool3DGradOriShapeDim = 5;
   constexpr size_t kAvgPool3DGradKsizeDim = 5;
   constexpr size_t kAvgPool3DGradStridesDim = 5;
@@ -51,7 +52,6 @@ namespace {
   constexpr size_t kAvgPool3DGradDataSlice = 6;
   const int64_t kDynamicRangeLowerBound = 1;
   const int64_t kDynamicRangeUpperBound = 4096;
-  const char* const kPreOpInputShapeRange = "_pre_op_in_range";
   map<int, std::string> format2str = {
     {ge::FORMAT_NCHW, "NCHW"}, {ge::FORMAT_NHWC, "NHWC"}, {ge::FORMAT_HWCN, "HWCN"},
     {ge::FORMAT_DHWNC, "DHWNC"}, {ge::FORMAT_DHWCN, "DHWCN"}, {ge::FORMAT_NDHWC, "NDHWC"},
@@ -3229,8 +3229,8 @@ bool SetAvgPool3DGradOutputRange(ge::OpDescPtr &op_desc,
 
   std::vector<std::pair<int64_t, int64_t>> fmap_range(kAvgPool3DGradOriShapeDim);
 
-  std::vector<int64_t> pre_op_range;
-  ge::AttrUtils::GetListInt(*orig_input_desc, kPreOpInputShapeRange, pre_op_range);
+  std::vector<std::pair<int64_t, int64_t>> pre_op_range;
+  orig_input_desc->GetValueRange(pre_op_range);
 
   std::vector<int64_t> output_shape = output_desc->MutableShape().GetDims();
   std::vector<std::pair<int64_t, int64_t>> orig_shape_range;
@@ -3241,13 +3241,10 @@ bool SetAvgPool3DGradOutputRange(ge::OpDescPtr &op_desc,
     fmap_shape.assign(kAvgPool3DGradOriShapeDim, -1);
     OP_LOGE("AvgPool3dGrad", "AvgPool3dGrad has not spport grads shape -2.");
     return false;
-  } else if ((pre_op_range.size() == kAvgPool3DGradOriShapeDim * 2) &&
+  } else if ((pre_op_range.size() == kAvgPool3DGradOriShapeDim) &&
              (grads_range.size() == kAvgPool3DGradOriShapeDim)) {
     // try get prevent op output shape range
-    for (size_t i = 0; i < pre_op_range.size(); i+=2) {
-      fmap_range[i / 2].first = pre_op_range[i];
-      fmap_range[i / 2].second = pre_op_range[i + 1];
-    }
+    fmap_range = pre_op_range;
   } else if (orig_shape_range.size() == kAvgPool3DGradOriShapeDim) {
     // try get orig_input_shape range and ifx dedy range
     fmap_range = orig_shape_range;
@@ -5366,65 +5363,85 @@ static void set_avg_pool_grad_out_range(const std::string& pad_str,
 static bool set_avg_pool_grad_out_shape_range(ge::Operator& op, const std::string& pad_str,
                                               const std::vector<int64_t>& input_grad_shape,
                                               const std::string& data_format,
-                                              const std::vector<std::pair<int64_t, int64_t>>& input_grad_range,
+                                              std::vector<std::pair<int64_t, int64_t>>& input_grad_range,
                                               const std::vector<int64_t>& ksize,
                                               std::vector<std::pair<int64_t, int64_t>>& output_range,
-                                              ge::GeTensorDescPtr& tensordesc_output, bool& unknown_rank) {
-  std::vector<int64_t> output_sizes = tensordesc_output->MutableShape().GetDims();
-  if (output_sizes.empty() || output_sizes.size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "output_sizes list should be 4D. actual is: %u.", output_sizes.size());
-    map<string, string> err_map;
-    err_map["param_name"] = "output_sizes";
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["expected_value"] = "4D";
-    err_map["input_value"] = std::to_string(output_sizes.size()) + "D.";
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+                                              ge::GeTensorDescPtr& tensordesc_output,
+                                              ge::GeTensorDescPtr& input_grad_desc,
+                                              bool& unknown_rank) {
+  if (input_grad_range.size() != input_grad_shape.size() && input_grad_range.size() != 0 && !unknown_rank) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), 
+      "length of range(%zu) in dyanmic shape must be equal to the length of shape(%zu), or equal to 0.",
+      input_grad_range.size(), input_grad_range.size());
     return false;
   }
-  int32_t h_position = data_format.find("H");
-  int32_t w_position = data_format.find("W");
-  int32_t c_position = data_format.find("C");
-  int32_t n_position = data_format.find("N");
-
-  if (unknown_rank) {
-    vector<int64_t> output_shape;
-    output_shape.resize(4);
-    output_shape[n_position] = -1;
-    output_shape[h_position] = -1;
-    output_shape[w_position] = -1;
-    output_shape[c_position] = -1;
-    tensordesc_output->SetShape(GeShape(output_shape));
-    return true;
+  if (input_grad_range.size() == 0 && !unknown_rank) {
+    input_grad_range.resize(input_grad_shape.size());
+    for (int i = 0; i < input_grad_shape.size(); i++) {
+      input_grad_range[i].first = std::max(input_grad_shape[i], kDynamicRangeLowerBound);
+      input_grad_range[i].second = input_grad_shape[i];
+    }
+    input_grad_desc->SetShapeRange(input_grad_range);
   }
-
-  int64_t output_h = output_sizes[h_position];
-  int64_t output_w = output_sizes[w_position];
-
-  int64_t filter_h = ksize[h_position];
-  int64_t filter_w = ksize[w_position];
-
-  std::vector<int64_t> strides;
-  strides = GetAttrValue(op, "strides");
-  int64_t stride_h = strides[h_position];
-  int64_t stride_w = strides[w_position];
-
-  output_range.resize(4);
-  output_range[c_position] = std::make_pair(input_grad_shape[c_position], input_grad_shape[c_position]);
-  output_range[h_position] = std::make_pair(output_h, output_h);
-  output_range[w_position] = std::make_pair(output_w, output_w);
-  output_range[n_position] = std::make_pair(input_grad_shape[n_position], input_grad_shape[n_position]);
-  if (!input_grad_range.empty() && input_grad_range.size() == input_grad_range.size()) {
-    output_range[n_position] = input_grad_range[n_position];
-    if (output_h == -1) {
-      vector<int64_t> attr_params_h = {stride_h, filter_h};
-      set_avg_pool_grad_out_range(pad_str, h_position, attr_params_h, input_grad_range, output_range);
-    }
-    if (output_w == -1) {
-      vector<int64_t> attr_params_w = {stride_w, filter_w};
-      set_avg_pool_grad_out_range(pad_str, w_position, attr_params_w, input_grad_range, output_range);
-    }
+  if (!output_range.empty() && output_range.size() == kAvgPoolGradOriShapeDim && !unknown_rank) {
     tensordesc_output->SetShapeRange(output_range);
+  } else {
+    std::vector<int64_t> output_sizes = tensordesc_output->MutableShape().GetDims();
+    if (output_sizes.empty() || output_sizes.size() != 4) {
+      OP_LOGE(op.GetName().c_str(), "output_sizes list should be 4D. actual is: %u.", output_sizes.size());
+      map<string, string> err_map;
+      err_map["param_name"] = "output_sizes";
+      err_map["op_name"] = op.GetName().c_str();
+      err_map["expected_value"] = "4D";
+      err_map["input_value"] = std::to_string(output_sizes.size()) + "D.";
+      std::string report_error_code = "E50029";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return false;
+    }
+    int32_t h_position = data_format.find("H");
+    int32_t w_position = data_format.find("W");
+    int32_t c_position = data_format.find("C");
+    int32_t n_position = data_format.find("N");
+
+    if (unknown_rank) {
+      vector<int64_t> output_shape;
+      output_shape.resize(kAvgPoolGradOriShapeDim);
+      output_shape[n_position] = -1;
+      output_shape[h_position] = -1;
+      output_shape[w_position] = -1;
+      output_shape[c_position] = -1;
+      tensordesc_output->SetShape(GeShape(output_shape));
+      return true;
+    }
+
+    int64_t output_h = output_sizes[h_position];
+    int64_t output_w = output_sizes[w_position];
+
+    int64_t filter_h = ksize[h_position];
+    int64_t filter_w = ksize[w_position];
+
+    std::vector<int64_t> strides;
+    strides = GetAttrValue(op, "strides");
+    int64_t stride_h = strides[h_position];
+    int64_t stride_w = strides[w_position];
+
+    output_range.resize(kAvgPoolGradOriShapeDim);
+    output_range[c_position] = std::make_pair(input_grad_shape[c_position], input_grad_shape[c_position]);
+    output_range[h_position] = std::make_pair(output_h, output_h);
+    output_range[w_position] = std::make_pair(output_w, output_w);
+    output_range[n_position] = std::make_pair(input_grad_shape[n_position], input_grad_shape[n_position]);
+    if (!input_grad_range.empty() && input_grad_range.size() == input_grad_range.size()) {
+      output_range[n_position] = input_grad_range[n_position];
+      if (output_h == -1) {
+        vector<int64_t> attr_params_h = {stride_h, filter_h};
+        set_avg_pool_grad_out_range(pad_str, h_position, attr_params_h, input_grad_range, output_range);
+      }
+      if (output_w == -1) {
+        vector<int64_t> attr_params_w = {stride_w, filter_w};
+        set_avg_pool_grad_out_range(pad_str, w_position, attr_params_w, input_grad_range, output_range);
+      }
+      tensordesc_output->SetShapeRange(output_range);
+    }
   }
   return true;
 }
@@ -5584,24 +5601,12 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
     std::vector<std::pair<int64_t, int64_t>> input_grad_range;
     input_grad_desc->GetShapeRange(input_grad_range);
     std::vector<std::pair<int64_t, int64_t>> output_range;
-    std::vector<int64_t> pre_op_range;
-    ge::AttrUtils::GetListInt(*input_sizes_desc, kPreOpInputShapeRange, pre_op_range);
-    output_range.resize(pre_op_range.size()/2);
-    for (size_t i = 0; i < pre_op_range.size(); i = i + 2) {
-      output_range[i/2].first = pre_op_range[i];
-      output_range[i/2].second = pre_op_range[i+1];
-    }
-    if (!output_range.empty() && output_range.size() == 4 && input_grad_range.size() == 4) {
-      tensordesc_output->SetShapeRange(output_range);
-    } else {
-      std::string data_format;
-      op.GetAttr("data_format", data_format);
-      std::vector<int64_t> ksize;
-      ksize = GetAttrValue(op, "ksize");
-      if (!set_avg_pool_grad_out_shape_range(op, pad_str, input_grad_shape, data_format, input_grad_range, ksize,
-                                            output_range, tensordesc_output, unknown_rank)) {
-        return GRAPH_FAILED;
-      }
+    input_sizes_desc->GetValueRange(output_range);
+    std::vector<int64_t> ksize;
+    ksize = GetAttrValue(op, "ksize");
+    if (!set_avg_pool_grad_out_shape_range(op, pad_str, input_grad_shape, data_format, input_grad_range, ksize,
+                                          output_range, tensordesc_output, input_grad_desc, unknown_rank)) {
+      return GRAPH_FAILED;
     }
     for (size_t i = 0; i < output_range.size(); i++) {
       if (output_range[i].first == output_range[i].second) {
