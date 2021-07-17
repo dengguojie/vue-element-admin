@@ -28,7 +28,7 @@ ut_case.add_case(["Ascend710", "Ascend910A"], {
                 "param_type": "output"},
                 {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 1), "ori_shape": (4, 1),
                 "param_type": "output"},
-                False, False, "iou"],
+                True, False, "iou"],
      "case_name": "test1",
      "expect": "success"})
 
@@ -43,7 +43,7 @@ ut_case.add_case(["Ascend710", "Ascend910A"], {
                 "param_type": "output"},
                 {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
                 "param_type": "output"},
-                False, False, "iou"],
+                True, False, "iou"],
      "case_name": "test2",
      "expect": "success"})
 
@@ -58,7 +58,7 @@ ut_case.add_case(["Ascend710", "Ascend910A"], {
                 "param_type": "output"},
                 {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (1, 4), "ori_shape": (1, 4),
                 "param_type": "output"},
-                False, False, "iou"],
+                True, False, "iou"],
      "case_name": "test3",
      "expect": "failed"})
      

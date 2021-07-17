@@ -167,7 +167,7 @@ REG_OP(Iou)
 * the value "4" refers to [x1, y1, x2, y2] or [x, y, w, h] . \n
 
 *@par Attributes:
-*@li trans: An optional bool, transform from xywh to xyxy or not.
+*@li trans: An optional bool, true for 'xywh', false for 'xyxy'.
 *@li is_cross: An optional bool, control whether the output shape is [M, N] or [1, N]
 *@li mode: Computation mode, a character string with the value range of [iou, iof] . \n
 
@@ -1866,7 +1866,7 @@ REG_OP(GridAssignPositive)
 * the value "4" refers to [x1, y1, x2, y2] or [x, y, w, h] . \n
 
 *@par Attributes:
-*@li trans: An optional attr, transform from xywh to xyxy or not, only support false now.
+*@li trans: An optional attr, true for 'xywh', false for 'xyxy', only support true now.
 *@li is_cross: An optional attr, if false M equals N, only support false now.
 *@li mode: An optional attr, a character string with the value range of ['iou', 'iof'],
 *          only support 'iou' now. \n

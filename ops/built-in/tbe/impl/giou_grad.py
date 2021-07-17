@@ -53,7 +53,7 @@ class GIoUGrad(object):
         self.move_flag = True
         if self.all_num_align == self.all_num:
             self.move_flag = False
-            
+
         # func: apply for the input/output tensors
         self.dy = self.tik_instance.Tensor(self.dtype, [self.all_num], name="dy", scope=tik.scope_gm)
         self.bboxes = self.tik_instance.Tensor(self.dtype, [BOX_LOC, self.all_num], name="bboxes", scope=tik.scope_gm)
@@ -152,7 +152,7 @@ class GIoUGrad(object):
         self.gtboxes_ub = None
         self.dbboxes_ub = None
         self.dgtboxes_ub = None
-        
+
         # func: for task allocation
         self.available_aicore_num = tik.Dprofile().get_aicore_num()
         self.used_aicore_num = self.available_aicore_num if self.task_num > self.available_aicore_num else self.task_num
@@ -178,8 +178,8 @@ class GIoUGrad(object):
 
         util.check_kernel_name(self.kernel_name)
 
-        if trans != False:
-            raise RuntimeError("The attr_trans should be false.")
+        if trans != True:
+            raise RuntimeError("The attr_trans should be true.")
 
         if is_cross != False:
             raise RuntimeError("The attr_is_cross should be false.")
@@ -208,6 +208,7 @@ class GIoUGrad(object):
 
         if self.move_flag:
             self.move_out()
+
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.dy, self.bboxes, self.gtboxes],
                                    outputs=[self.dbboxes, self.dgtboxes])
@@ -218,6 +219,7 @@ class GIoUGrad(object):
         """giou_grad_compute_compute_core"""
         self.init_date()
 
+        # func: get b1 and b2
         self.move_in(task_idx)
 
         b1w_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b1w_half", scope=tik.scope_ubuf)
@@ -270,7 +272,6 @@ class GIoUGrad(object):
 
     def init_date(self):
         """init_date"""
-
         # func: create for the calculation cache of inter/union/enclose
         self.inter = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="inter", scope=tik.scope_ubuf)
         self.union = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="union", scope=tik.scope_ubuf)
@@ -375,7 +376,7 @@ class GIoUGrad(object):
         """move_in"""
         # func: for dy
         self.tik_instance.data_move(self.dy_ub, self.dy[task_idx * MINI_BATCH], 0, 1, REP_TIME, 0, 0)
-        
+
         # func: for bboxes
         self.tik_instance.data_move(self.b1x, self.bboxes[task_idx * MINI_BATCH], 0, 1, REP_TIME, 0, 0)
         self.tik_instance.data_move(self.b1y, self.bboxes[self.all_num + task_idx * MINI_BATCH], 0, 1, REP_TIME, 0, 0)
@@ -383,7 +384,7 @@ class GIoUGrad(object):
                                     0)
         self.tik_instance.data_move(self.b1h, self.bboxes[self.all_num * 3 + task_idx * MINI_BATCH], 0, 1, REP_TIME, 0,
                                     0)
-                                    
+
         # func: for gtboxes
         self.tik_instance.data_move(self.b2x, self.gtboxes[task_idx * MINI_BATCH], 0, 1, REP_TIME, 0, 0)
         self.tik_instance.data_move(self.b2y, self.gtboxes[self.all_num + task_idx * MINI_BATCH], 0, 1, REP_TIME, 0, 0)
@@ -476,72 +477,107 @@ class GIoUGrad(object):
 
         self.tik_instance.vec_sub(BLOCK, self.tmp_a, self.tmp_zero, self.dxlen, REP_TIME, 1, 1, 1)  # max_x
         self.tik_instance.vec_sub(BLOCK, self.tmp_b, self.tmp_zero, self.dylen, REP_TIME, 1, 1, 1)  # max_y
-
+        
+        tmp_mask = self.tik_instance.Tensor("uint16", [BLOCK], name="tmp_mask", scope=tik.scope_ubuf) # tmp_mask
+        
         with self.tik_instance.for_range(0, MINI_BATCH // MASK_BLOCK) as idx:
-            # for inter part : min(b1_x2, b2_x2)
+            # func for max(inter1, 0) > 0
+            self.tik_instance.vec_cmpv_gt(tmp_mask, self.xlen_min[MASK_BLOCK * idx], self.tmp_zero, 1,
+                                          REP_STRIDE, REP_STRIDE)
+            # func: mask_b1x2: b1x2 < b2x2, mask_b2x2 = ~mask_b1x2
             self.tik_instance.vec_cmpv_lt(self.mask, self.b1x2[MASK_BLOCK * idx], self.b2x2[MASK_BLOCK * idx], 1,
                                           REP_STRIDE, REP_STRIDE)
-
+            # func: mask_b1x2 * (inter2 *dinter)
             self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_c[MASK_BLOCK * idx], self.mask,
                                       self.dxlen[MASK_BLOCK * idx], self.tmp_zero,
                                       1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
+            # func: mask_b1x2 * (inter2 *dinter) * (max(inter1, 0) > 0)
+            self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_c[MASK_BLOCK * idx], tmp_mask,
+                                      self.tmp_c[MASK_BLOCK * idx], self.tmp_zero,
+                                      1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
             self.tik_instance.vec_add(MASK_BLOCK, self.db1x2[MASK_BLOCK * idx], self.tmp_c[MASK_BLOCK * idx],
                                       self.db1x2[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
+            # func: mask_b2x2 * (inter2 *dinter)
             self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_d[MASK_BLOCK * idx], self.mask, self.tmp_zero,
                                       self.dxlen[MASK_BLOCK * idx],
                                       1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
+            # func: mask_b2x2 * (inter2 *dinter) *(max(inter1, 0) > 0)
+            self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_d[MASK_BLOCK * idx], tmp_mask,
+                                      self.tmp_d[MASK_BLOCK * idx], self.tmp_zero,
+                                      1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
             self.tik_instance.vec_add(MASK_BLOCK, self.db2x2[MASK_BLOCK * idx], self.tmp_d[MASK_BLOCK * idx],
                                       self.db2x2[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
-
-            # for inter part : max(b1_x1, b2_x1)
+            # func: mask_b1x1: b1x1 > b2x1, mask_b2x1 = ~mask_b1x1
             self.tik_instance.vec_cmpv_gt(self.mask, self.b1x1[MASK_BLOCK * idx], self.b2x1[MASK_BLOCK * idx], 1,
                                           REP_STRIDE, REP_STRIDE)
-
+            # func: mask_b1x1 * (-inter2 *dinter)
             self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_c[MASK_BLOCK * idx], self.mask,
                                       self.tmp_a[MASK_BLOCK * idx], self.tmp_zero, 1, REP_STRIDE, REP_STRIDE,
                                       REP_STRIDE)
-
+            # func: mask_b1x1 * (-inter2 *dinter) * (max(inter1, 0) > 0)
+            self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_c[MASK_BLOCK * idx], tmp_mask,
+                                      self.tmp_c[MASK_BLOCK * idx], self.tmp_zero, 1, REP_STRIDE, REP_STRIDE,
+                                      REP_STRIDE) 
             self.tik_instance.vec_add(MASK_BLOCK, self.db1x1[MASK_BLOCK * idx], self.tmp_c[MASK_BLOCK * idx],
                                       self.db1x1[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
-
+            # func: mask_b2x1 * (-inter2 *dinter)
             self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_d[MASK_BLOCK * idx], self.mask, self.tmp_zero,
                                       self.tmp_a[MASK_BLOCK * idx], MASK_BLOCK // MASK_BLOCK, REP_STRIDE, REP_STRIDE,
                                       REP_STRIDE)
-
+            # func: mask_b2x1 * (-inter2 *dinter) * (max(inter1, 0) > 0)
+            self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_d[MASK_BLOCK * idx], tmp_mask, 
+                                      self.tmp_d[MASK_BLOCK * idx], self.tmp_zero,
+                                      MASK_BLOCK // MASK_BLOCK, REP_STRIDE, REP_STRIDE, REP_STRIDE)
             self.tik_instance.vec_add(MASK_BLOCK, self.db2x1[MASK_BLOCK * idx], self.tmp_d[MASK_BLOCK * idx],
                                       self.db2x1[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
-
-            # for inter part : min(b1_y2, b2_y2)
+            # func for max(inter2, 0) > 0
+            self.tik_instance.vec_cmpv_gt(tmp_mask, self.ylen_min[MASK_BLOCK * idx], self.tmp_zero, 1,
+                                          REP_STRIDE, REP_STRIDE)
+            # func: mask_b1y2: b1y2 < b2y2, mask_b2y2 = ~mask_b1y2
             self.tik_instance.vec_cmpv_lt(self.mask, self.b1y2[MASK_BLOCK * idx], self.b2y2[MASK_BLOCK * idx], 1,
                                           REP_STRIDE, REP_STRIDE)
-
+            # func: mask_b1y2 * (inter1 *dinter)
             self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_c[MASK_BLOCK * idx], self.mask,
                                       self.dylen[MASK_BLOCK * idx], self.tmp_zero,
                                       1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
+            # func: mask_b1y2 * (inter1 *dinter) * (max(inter2, 0) > 0)         
+            self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_c[MASK_BLOCK * idx], tmp_mask,
+                                      self.tmp_c[MASK_BLOCK * idx], self.tmp_zero,
+                                      1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
             self.tik_instance.vec_add(MASK_BLOCK, self.db1y2[MASK_BLOCK * idx], self.tmp_c[MASK_BLOCK * idx],
                                       self.db1y2[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
+            # func: mask_b2y2 * (inter1 *dinter)                          
             self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_d[MASK_BLOCK * idx], self.mask, self.tmp_zero,
                                       self.dylen[MASK_BLOCK * idx],
                                       1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
+            # func: mask_b2y2 * (inter1 *dinter) * (max(inter2, 0) > 0)                            
+            self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_d[MASK_BLOCK * idx], tmp_mask,
+                                      self.tmp_d[MASK_BLOCK * idx], self.tmp_zero,
+                                      1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
             self.tik_instance.vec_add(MASK_BLOCK, self.db2y2[MASK_BLOCK * idx], self.tmp_d[MASK_BLOCK * idx],
                                       self.db2y2[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
-
-            # for inter part : max(b1_y1, b2_y1)
+            # func: mask_b1y1: b1y1 > b2y1, mask_b2y1 = ~mask_b1y1
             self.tik_instance.vec_cmpv_gt(self.mask, self.b1y1[MASK_BLOCK * idx], self.b2y1[MASK_BLOCK * idx], 1,
-                                          REP_STRIDE,
-                                          REP_STRIDE)
-
+                                          REP_STRIDE, REP_STRIDE)
+            # func: mask_b1y1 * (-inter1 *dinter)  
             self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_c[MASK_BLOCK * idx], self.mask,
                                       self.tmp_b[MASK_BLOCK * idx], self.tmp_zero, 1, REP_STRIDE, REP_STRIDE,
                                       REP_STRIDE)
-            self.tik_instance.vec_add(MASK_BLOCK, self.db1y1[MASK_BLOCK * idx], self.tmp_c[MASK_BLOCK * idx],
-                                      self.db1y1[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE,
+            # func: mask_b1y1 * (-inter1 *dinter) * (max(inter2, 0) > 0) 
+            self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_c[MASK_BLOCK * idx], tmp_mask,
+                                      self.tmp_c[MASK_BLOCK * idx], self.tmp_zero, 1, REP_STRIDE, REP_STRIDE,
                                       REP_STRIDE)
+            self.tik_instance.vec_add(MASK_BLOCK, self.db1y1[MASK_BLOCK * idx], self.tmp_c[MASK_BLOCK * idx],
+                                      self.db1y1[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
+            # func: mask_b2y1 * (-inter1 *dinter)
             self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_d[MASK_BLOCK * idx], self.mask, self.tmp_zero,
                                       self.tmp_b[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
+            # func: mask_b2y1 * (-inter1 *dinter) * (max(inter2, 0) > 0)                           
+            self.tik_instance.vec_sel(MASK_BLOCK, 0, self.tmp_d[MASK_BLOCK * idx], tmp_mask,
+                                      self.tmp_d[MASK_BLOCK * idx], self.tmp_zero, 1,
+                                      REP_STRIDE, REP_STRIDE, REP_STRIDE)
             self.tik_instance.vec_add(MASK_BLOCK, self.db2y1[MASK_BLOCK * idx], self.tmp_d[MASK_BLOCK * idx],
-                                      self.db2y1[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE,
-                                      REP_STRIDE)
+                                      self.db2y1[MASK_BLOCK * idx], 1, REP_STRIDE, REP_STRIDE, REP_STRIDE)
 
     def union_part(self):
         """union_part"""
@@ -559,7 +595,7 @@ class GIoUGrad(object):
         # for union part : b1y2-b1y1
         self.tik_instance.vec_add(BLOCK, self.db1y2, self.db1y2, self.tmp_a, REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(BLOCK, self.db1y1, self.db1y1, self.tmp_a, REP_TIME, 1, 1, 1)
-
+        
         self.tik_instance.vec_sub(BLOCK, self.tmp_c, self.b2x2, self.b2x1, REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(BLOCK, self.tmp_d, self.b2y2, self.b2y1, REP_TIME, 1, 1, 1)
 
@@ -640,23 +676,23 @@ class GIoUGrad(object):
     def update_dboxes(self, task_idx):
         """update_dboxes"""
         # for b1x b1y b2x b2y
-        self.tik_instance.vec_add(BLOCK, self.tmp_a, self.db1x1, self.db1x2, REP_TIME, 1, 1, 1)
-        self.tik_instance.vec_muls(BLOCK, self.db1x, self.tmp_a, self.half, REP_TIME, 1, 1)
-
-        self.tik_instance.vec_add(BLOCK, self.tmp_a, self.db1y1, self.db1y2, REP_TIME, 1, 1, 1)
-        self.tik_instance.vec_muls(BLOCK, self.db1y, self.tmp_a, self.half, REP_TIME, 1, 1)
-
-        self.tik_instance.vec_add(BLOCK, self.tmp_a, self.db2x1, self.db2x2, REP_TIME, 1, 1, 1)
-        self.tik_instance.vec_muls(BLOCK, self.db2x, self.tmp_a, self.half, REP_TIME, 1, 1)
-
-        self.tik_instance.vec_add(BLOCK, self.tmp_a, self.db2y1, self.db2y2, REP_TIME, 1, 1, 1)
-        self.tik_instance.vec_muls(BLOCK, self.db2y, self.tmp_a, self.half, REP_TIME, 1, 1)
+        self.tik_instance.vec_add(BLOCK, self.db1x, self.db1x1, self.db1x2, REP_TIME, 1, 1, 1)
+        self.tik_instance.vec_add(BLOCK, self.db1y, self.db1y1, self.db1y2, REP_TIME, 1, 1, 1)
+        self.tik_instance.vec_add(BLOCK, self.db2x, self.db2x1, self.db2x2, REP_TIME, 1, 1, 1)
+        self.tik_instance.vec_add(BLOCK, self.db2y, self.db2y1, self.db2y2, REP_TIME, 1, 1, 1)
 
         # for b1w b1h b2w b2h
         self.tik_instance.vec_sub(BLOCK, self.db1w, self.db1x2, self.db1x1, REP_TIME, 1, 1, 1)
+        self.tik_instance.vec_muls(BLOCK, self.db1w, self.db1w, self.half, REP_TIME, 1, 1)
+
         self.tik_instance.vec_sub(BLOCK, self.db1h, self.db1y2, self.db1y1, REP_TIME, 1, 1, 1)
+        self.tik_instance.vec_muls(BLOCK, self.db1h, self.db1h, self.half, REP_TIME, 1, 1)
+
         self.tik_instance.vec_sub(BLOCK, self.db2w, self.db2x2, self.db2x1, REP_TIME, 1, 1, 1)
+        self.tik_instance.vec_muls(BLOCK, self.db2w, self.db2w, self.half, REP_TIME, 1, 1)
+
         self.tik_instance.vec_sub(BLOCK, self.db2h, self.db2y2, self.db2y1, REP_TIME, 1, 1, 1)
+        self.tik_instance.vec_muls(BLOCK, self.db2h, self.db2h, self.half, REP_TIME, 1, 1)
 
         if self.move_flag:
             self.tik_instance.data_move(self.dbboxes_[task_idx * MINI_BATCH], self.db1x, 0, 1, REP_TIME, 0, 0)
@@ -745,7 +781,7 @@ def giou_grad(dy, bboxes, gtboxes, dbboxes, dgtboxes, trans=False, is_cross=True
 
     Attributes:
     trans : bool
-        transform from xywh to xyxy or not
+        true for 'xywh', false for 'xyxy'
     is_cross : bool
         if false: m must be equal to n
     mode :  str
