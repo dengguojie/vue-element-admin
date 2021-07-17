@@ -31,7 +31,7 @@ from tbe.common.utils.errormgr import get_error_message
 
 _MAX_RUN_INFO_SIZE = 1024*64
 _ASCEND_OPP_PATH_ENV = "ASCEND_OPP_PATH"
-_ASCEND_OPP_PATH_DEFAULT = "/usr/local/Ascend/opp"
+_ASCEND_OPP_PATH_DEFAULT = os.path.abspath("/usr/local/Ascend/opp")
 _BUILTIN_TILING_PATH = "op_impl/built-in/ai_core/tbe/op_tiling/liboptiling.so"
 _CUSTOM_TILING_PATH_DEFAULT = "op_impl/custom/ai_core/tbe/op_tiling/liboptiling.so"
 
