@@ -521,7 +521,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   ge::GeTensorDesc y_desc = *(GetCurrNodeInputDesc(y_node, y_idx).get());
   ge::GeTensorDesc filter_desc = *(GetCurrNodeInputDesc(conv2dbp_input_node, filter_anchor).get());
   ge::GeTensorDesc conv2dbp_input_outbackprop_desc = *(GetCurrNodeInputDesc(conv2dbp_input_node, out_bp_anchor).get());
-  ge::GeTensorDesc conv2dbp_input_y_desc = *(GetCurrNodeInputDesc(conv2dbp_input_node, y_anchor).get());
+  ge::GeTensorDesc conv2dbp_input_y_desc = *(GetCurrNodeOutputDesc(conv2dbp_input_node, y_anchor).get());
   FUSION_PASS_CHECK(GetCurrNodeInputDesc(y_node, y_idx) == nullptr,
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "y_desc is null"),
       return FAILED);
