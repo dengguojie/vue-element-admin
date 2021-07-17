@@ -40,16 +40,14 @@ namespace optiling {
         return false; \
     }
 
-static void PrintScreen(const string & logStr) {
-    const char * pLevel = std::getenv("ASCEND_GLOBAL_LOG_LEVEL");
-    const char * pStdout = std::getenv("ASCEND_SLOG_PRINT_TO_STDOUT");
 
-    if (pLevel == NULL || pStdout == NULL) {
-        return;
-    }
-    if (pLevel[0] == '0' && pStdout[0] == '1') {
-        cout << logStr << endl;
-    }
+static string PrintScreenImpl(const string & logStr) {
+    cout << logStr << endl;
+    return "";
+}
+
+static void PrintScreen(const string & logStr) {
+    OP_LOGD("Transpose", "%s", PrintScreenImpl(logStr).c_str());
 }
 
 static int64_t AlignX(int64_t a, int64_t x) {
@@ -61,18 +59,18 @@ static int64_t AlignX(int64_t a, int64_t x) {
 
 // 1/16 usage of UB with vnchwconv as b16
 static int64_t CalcVnchwconvPartialUbSize(int64_t coreNum, int64_t ubBlocks) {
-    return (ubBlocks * 32 - UB_RESERVED_KB * 1024) / 32 / 2;
+    return (ubBlocks * BYTES_PER_BLOCK - UB_RESERVED_KB * BYTES_PER_KB) / BYTES_PER_BLOCK / 2;
 }
 
 // full usage of UB with vnchwconv
 static int64_t CalcVnchwconvFullColSize(int64_t coreNum, int64_t ubBlocks) {
-    if (coreNum > 2 && ubBlocks == 8192) {
+    if (coreNum > 2 && ubBlocks == BLOCK_NUM_256K) {
         return 256; //910, 224*2 is better
     }
-    else if (coreNum == 2 && ubBlocks == 8192) {
+    else if (coreNum == 2 && ubBlocks == BLOCK_NUM_248K) {
         return 256; //310, 224*2 is better
     }
-    else if (coreNum == 1 && ubBlocks == 6144) {
+    else if (coreNum == 1 && ubBlocks == BLOCK_NUM_192K) {
         return 256; // cs and es
     } else {
         return 256;
@@ -86,13 +84,13 @@ static int GCD(int a, int b) {
 
 static int64_t Align16(int64_t val, int64_t factor, int64_t upLimit = 0) {
     int64_t res = val / factor;
-    int64_t k = res % 16;
+    int64_t k = res % ELE_NUM_PER_BLOCK_FP16;
     if (k != 0) {
-        res = res + 16 - k;
+        res = res + ELE_NUM_PER_BLOCK_FP16 - k;
     }
     if (upLimit != 0) {
         while (res * factor > upLimit)  {
-            res -= 16;
+            res -= ELE_NUM_PER_BLOCK_FP16;
         }
     }
     return res;

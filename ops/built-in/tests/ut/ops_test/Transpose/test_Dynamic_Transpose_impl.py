@@ -194,23 +194,24 @@ def add_ts_case(soc, d_type, x, perm, y, value_type="default"):
 #                                          ok
 #
 #------------------------------------------------------------------------------------------------
-add_ts_case(["Ascend910A"], "uint8",   (33, 200),                  (1, 0),                 (200, 33),               "random")
-add_ts_case(["Ascend910A"], "float32", (1000, 2000),               (1, 0),                 (2000, 1000),            "random")
-add_ts_case(["Ascend910A"], "float32", (2, 3, 4, 500, 601),        (0, 2, 1, 3, 4),        (2, 4, 3, 500, 601),     "random")
-add_ts_case(["Ascend910A"], "float32", (2, 3, 4, 5, 6),            (0, 2, 1, 3, 4),        (2, 4, 3, 5, 6),         "random")
-add_ts_case(["Ascend910A"], "float32", (20000, 3),                 (1, 0),                 (3, 20000),              "random")
-add_ts_case(["Ascend910A"], "float32", (3, 20000),                 (1, 0),                 (20000, 3),              "random")
-add_ts_case(["Ascend910A"], "float16", (20000, 3),                 (1, 0),                 (3, 20000),              "random")
-add_ts_case(["Ascend910A"], "float16", (3, 20000),                 (1, 0),                 (20000, 3),              "random")
-add_ts_case(["Ascend910A"], "int32",   (95, 32, 96, 8),            (2, 1, 0, 3,),          (96, 32, 95, 8),         "arange")
-add_ts_case(["Ascend910A"], "int32",   (9, 32, 5, 30, 3, 8),       (3, 1, 4, 2, 0, 5),     (30, 32, 3, 5, 9, 8),    "arange")
-add_ts_case(["Ascend910A"], "int32",   (9, 32, 5, 9, 5, 8),        (4, 3, 1, 0, 2, 5),     (5, 9, 32, 9, 5, 8),     "arange")
-add_ts_case(["Ascend910A"], "int32",   (32, 9, 5, 9, 5, 8),        (0, 4, 3, 2, 1, 5),     (32, 5, 9, 5, 9, 8),     "arange")
-add_ts_case(["Ascend910A"], "int32",   (100, 70, 9, 8),            (0, 2, 1, 3),           (100, 9, 70, 8),         "arange")
-add_ts_case(["Ascend910A"], "int32",   (70, 9, 100, 8),            (2, 1, 0, 3),           (100, 9, 70, 8),         "arange")
-add_ts_case(["Ascend910A"], "int32",   (32, 10, 30, 3, 8),         (0, 3, 2, 1, 4),        (32, 3, 30, 10, 8),      "arange")
-add_ts_case(["Ascend910A"], "int32",   (32, 10, 37, 3, 8),         (3, 0, 2, 1, 4),        (3, 32, 37, 10, 8),      "arange")
-add_ts_case(["Ascend910A"], "int16",   (16, 4, 6410),              (1, 0, 2),              (4, 16, 6410),           "random")
+add_ts_case(["Ascend910A", "Ascend310"], "uint16",  (8, 80, 240),               (1,2,0),                (80, 240, 8),            "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "uint8",   (33, 200),                  (1, 0),                 (200, 33),               "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "float32", (1000, 2000),               (1, 0),                 (2000, 1000),            "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "float32", (2, 3, 4, 500, 601),        (0, 2, 1, 3, 4),        (2, 4, 3, 500, 601),     "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "float32", (2, 3, 4, 5, 6),            (0, 2, 1, 3, 4),        (2, 4, 3, 5, 6),         "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "float32", (20000, 3),                 (1, 0),                 (3, 20000),              "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "float32", (3, 20000),                 (1, 0),                 (20000, 3),              "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "float16", (20000, 3),                 (1, 0),                 (3, 20000),              "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "float16", (3, 20000),                 (1, 0),                 (20000, 3),              "random")
+#add_ts_case(["Ascend910A", "Ascend310"], "int32",   (95, 32, 96, 8),            (2, 1, 0, 3,),          (96, 32, 95, 8),         "arange")
+#add_ts_case(["Ascend910A", "Ascend310"], "int32",   (9, 32, 5, 30, 3, 8),       (3, 1, 4, 2, 0, 5),     (30, 32, 3, 5, 9, 8),    "arange")
+#add_ts_case(["Ascend910A", "Ascend310"], "int32",   (9, 32, 5, 9, 5, 8),        (4, 3, 1, 0, 2, 5),     (5, 9, 32, 9, 5, 8),     "arange")
+#add_ts_case(["Ascend910A", "Ascend310"], "int32",   (32, 9, 5, 9, 5, 8),        (0, 4, 3, 2, 1, 5),     (32, 5, 9, 5, 9, 8),     "arange")
+#add_ts_case(["Ascend910A", "Ascend310"], "int32",   (100, 70, 9, 8),            (0, 2, 1, 3),           (100, 9, 70, 8),         "arange")
+#add_ts_case(["Ascend910A", "Ascend310"], "int32",   (70, 9, 100, 8),            (2, 1, 0, 3),           (100, 9, 70, 8),         "arange")
+#add_ts_case(["Ascend910A", "Ascend310"], "int32",   (32, 10, 30, 3, 8),         (0, 3, 2, 1, 4),        (32, 3, 30, 10, 8),      "arange")
+#add_ts_case(["Ascend910A", "Ascend310"], "int32",   (32, 10, 37, 3, 8),         (3, 0, 2, 1, 4),        (3, 32, 37, 10, 8),      "arange")
+#add_ts_case(["Ascend910A", "Ascend310"], "int16",   (16, 4, 6410),              (1, 0, 2),              (4, 16, 6410),           "random")
 
 #add_ts_case(["Ascend910A"], "int32",   (9, 32, 11, 31, 3, 8),      (3, 1, 4, 2, 0, 5),     (31, 32, 3, 11, 9, 8),   "arange")
 #add_ts_case(["Ascend910A"], "int32",   (6, 32, 9, 31, 3, 8),       (3, 1, 4, 0, 2, 5),     (31, 32, 3, 6, 9, 8),    "arange")
@@ -355,5 +356,6 @@ add_ts_case(["Ascend910A"], "int16",   (16, 4, 6410),              (1, 0, 2),   
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
     ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
     #ut_case.run(["Ascend920A"], simulator_mode="esl", simulator_lib_path=simulator_lib_path)
 

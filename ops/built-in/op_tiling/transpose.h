@@ -40,11 +40,15 @@ namespace optiling {
 #define UB_REORDER_COMBINATION 4 // src: intact|tail dst:intact|tail 4 = 2*2
 #define UB_REORDER_LOOP 3
 #define BYTES_PER_BLOCK 32
+#define BYTES_PER_KB 1024 
 #define UB_REORDER_FACTOR 33
 #define ELE_NUM_PER_BLOCK_B8 32 
 #define ELE_NUM_PER_BLOCK_FP16 16
 #define ELE_NUM_PER_BLOCK_FP32 8
 #define ELE_NUM_PER_BLOCK_INT64 4
+#define BLOCK_NUM_256K 8192
+#define BLOCK_NUM_248K 7936
+#define BLOCK_NUM_192K 6144
 /*
  * 4 * 32 block = 4KB, this value should be consistent with the variable in transpose.py
  * 1KB : reserved

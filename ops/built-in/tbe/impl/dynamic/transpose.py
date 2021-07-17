@@ -841,7 +841,7 @@ class Transpose(object):
         if UB_SIZE == 256 * 1024:
             return 247  # 910, 247 to avoid bank conflict
         if UB_SIZE == 248 * 1024:
-            return 247  # 310, 247 to avoid bank conflict
+            return 245  # 310, 245 to avoid bank conflict
         if UB_SIZE == 192 * 1024:
             return 191 # cs & 920
         if UB_SIZE == 128 * 1024:

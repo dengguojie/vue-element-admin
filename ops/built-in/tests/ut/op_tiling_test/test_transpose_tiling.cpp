@@ -1159,6 +1159,44 @@ TEST_F(TransposeTilingTest, nchw) {
     //EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[1].num, 6);
 }
 
+TEST_F(TransposeTilingTest, ub310) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 7936;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(4096);
+    shapeInfo.inShape.push_back(8192);
+    shapeInfo.outShape.push_back(8192);
+    shapeInfo.outShape.push_back(4096);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(0);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+}
+
+TEST_F(TransposeTilingTest, ublihisi) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 6144;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(4096);
+    shapeInfo.inShape.push_back(8192);
+    shapeInfo.outShape.push_back(8192);
+    shapeInfo.outShape.push_back(4096);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(0);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+}
+
 TEST_F(TransposeTilingTest, int8) {
     CompilerInfo compilerInfo;
     ShapeInfo shapeInfo;
