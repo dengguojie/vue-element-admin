@@ -32,9 +32,9 @@ IMPLEMT_VERIFIER(LeftShift, LeftShiftVerify) {
 }
 
 IMPLEMT_INFERFUNC(LeftShift, LeftShiftInferShape) {
-  Shape data_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("z");
+  Shape data_shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("z");
   td.SetShape(ge::Shape(data_shape));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("z", td);
@@ -45,8 +45,8 @@ INFER_FUNC_REG(LeftShift, LeftShiftInferShape);
 VERIFY_FUNC_REG(LeftShift, LeftShiftVerify);
 
 IMPLEMT_INFERFUNC(RightShift, RightShiftInfer) {
-  DataType type = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("z");
+  DataType type = op.GetInputDescByName("x").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDescByName("z");
   tensordesc_output.SetDataType(type);
   (void)op.UpdateOutputDesc("z", tensordesc_output);
   return BROADCAST_INFER("x", "y", "z")(op);

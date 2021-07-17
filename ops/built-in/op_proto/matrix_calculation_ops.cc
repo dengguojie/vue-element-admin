@@ -2213,9 +2213,9 @@ VERIFY_FUNC_REG(ScatterAdd, ScatterAddVerify);
 // ------------------ScatterScalar--------------------
 IMPLEMT_COMMON_INFERFUNC(ScatterScalarInferShape) {
   // main part of shape infer
-  Shape index_shape = op.GetInputDesc("index").GetShape();
-  DataType index_dtype = op.GetInputDesc("index").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  Shape index_shape = op.GetInputDescByName("index").GetShape();
+  DataType index_dtype = op.GetInputDescByName("index").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(index_shape));
   td.SetDataType(index_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -3066,18 +3066,25 @@ INFER_FUNC_REG(MatrixDiagV2, MatrixDiagV2InferShape);
 
 // ----------------IndexAdd Begin-------------------
 bool InferShapeAndTypeIndexAdd(Operator& op) {
-  TensorDesc output_desc = op.GetOutputDesc("var_out");
-  DataType var_dtype = op.GetInputDesc("var").GetDataType();
-  Format var_format = op.GetInputDesc("var").GetFormat();
-  ge::Shape var_shape = op.GetInputDesc("var").GetShape();
+  TensorDesc output_desc = op.GetOutputDescByName("var_out");
+  DataType var_dtype = op.GetInputDescByName("var").GetDataType();
+  Format var_format = op.GetInputDescByName("var").GetFormat();
+  ge::Shape var_shape = op.GetInputDescByName("var").GetShape();
   std::vector<int64_t> var_dims = var_shape.GetDims();
 
-  ge::Shape updates_shape = op.GetInputDesc("updates").GetShape();
+  ge::Shape updates_shape = op.GetInputDescByName("updates").GetShape();
   std::vector<int64_t> updates_dims = updates_shape.GetDims();
 
+  AscendString op_name_str;
+  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+    OP_LOGE("get op name faild!");
+    return false;
+  }
+  const char *op_name = op_name_str.GetString();
+
   if (updates_dims != var_dims) {
-    OP_LOGE(op.GetName().c_str(), "var_dims not equal updates dims");
-    return GRAPH_FAILED;
+    OP_LOGE(op_name, "var_dims not equal updates dims");
+    return false;
   }
 
   ge::Shape output_shape = ge::Shape(var_dims);
@@ -3086,21 +3093,26 @@ bool InferShapeAndTypeIndexAdd(Operator& op) {
   output_desc.SetFormat(var_format);
   op.UpdateOutputDesc("var_out", output_desc);
 
-  return GRAPH_SUCCESS;
+  return true;
 }
 
 IMPLEMT_VERIFIER(IndexAdd, IndexAddVerify) {
-  DataType var_dtype = op.GetInputDesc("var").GetDataType();
-  DataType indices_dtype = op.GetInputDesc("indices").GetDataType();
-  DataType updates_dtype = op.GetInputDesc("updates").GetDataType();
-  DataType var_out_dtype = op.GetInputDesc("var_out").GetDataType();
-  if (var_dtype != var_out_dtype || var_dtype != updates_dtype) {
-    OP_LOGE(op.GetName().c_str(),
+  DataType var_dtype = op.GetInputDescByName("var").GetDataType();
+  DataType indices_dtype = op.GetInputDescByName("indices").GetDataType();
+  DataType updates_dtype = op.GetInputDescByName("updates").GetDataType();
+  AscendString op_name_str;
+  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+    OP_LOGE("get op name faild!");
+    return false;
+  }
+  const char *op_name = op_name_str.GetString();
+  if (var_dtype != updates_dtype) {
+    OP_LOGE(op_name,
             "The input shape of var var_out updates is equal, please check!");
     return GRAPH_FAILED;
   }
   if (indices_dtype != DT_INT32) {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(op_name,
             "The input shape of indices is not int32, please check!");
     return GRAPH_FAILED;
   }
@@ -3108,8 +3120,14 @@ IMPLEMT_VERIFIER(IndexAdd, IndexAddVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(IndexAddInferShape) {
-  if (InferShapeAndTypeIndexAdd(op) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "index_add infer shape failed!");
+  AscendString op_name_str;
+  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+    OP_LOGE("get op name faild!");
+    return false;
+  }
+  const char *op_name = op_name_str.GetString();
+  if (InferShapeAndTypeIndexAdd(op) == false) {
+    OP_LOGE(op_name, "index_add infer shape failed!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -3123,18 +3141,25 @@ VERIFY_FUNC_REG(IndexAdd, IndexAddVerify);
 
 // ----------------IndexPut Begin-------------------
 bool InferShapeAndTypeIndexPut(Operator& op) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  DataType x1_dtype = op.GetInputDesc("x1").GetDataType();
-  Format x1_format = op.GetInputDesc("x1").GetFormat();
-  ge::Shape x1_shape = op.GetInputDesc("x1").GetShape();
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  DataType x1_dtype = op.GetInputDescByName("x1").GetDataType();
+  Format x1_format = op.GetInputDescByName("x1").GetFormat();
+  ge::Shape x1_shape = op.GetInputDescByName("x1").GetShape();
   std::vector<int64_t> x1_dims = x1_shape.GetDims();
-
-  ge::Shape x2_shape = op.GetInputDesc("x2").GetShape();
+  
+  ge::Shape x2_shape = op.GetInputDescByName("x2").GetShape();
   std::vector<int64_t> x2_dims = x2_shape.GetDims();
 
+  AscendString op_name_str;
+  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+    OP_LOGE("get op name faild!");
+    return false;
+  }
+  const char *op_name = op_name_str.GetString();
+
   if (x2_dims != x1_dims) {
-    OP_LOGE(op.GetName().c_str(), "x1_dims not equal x2_dims");
-    return GRAPH_FAILED;
+    OP_LOGE(op_name, "x1_dims not equal x2_dims");
+    return false;
   }
 
   ge::Shape output_shape = ge::Shape(x1_dims);
@@ -3143,20 +3168,26 @@ bool InferShapeAndTypeIndexPut(Operator& op) {
   output_desc.SetFormat(x1_format);
   op.UpdateOutputDesc("y", output_desc);
 
-  return GRAPH_SUCCESS;
+  return true;
 }
 
 IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
-  DataType x1_dtype = op.GetInputDesc("x1").GetDataType();
-  DataType indices_dtype = op.GetInputDesc("indices").GetDataType();
-  DataType x2_dtype = op.GetInputDesc("x2").GetDataType();
+  DataType x1_dtype = op.GetInputDescByName("x1").GetDataType();
+  DataType x2_dtype = op.GetInputDescByName("x2").GetDataType();
+  DataType indices_dtype = op.GetInputDescByName("indices").GetDataType();
+  AscendString op_name_str;
+  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+    OP_LOGE("get op name faild!");
+    return false;
+  }
+  const char *op_name = op_name_str.GetString();
   if (x1_dtype != x2_dtype) {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(op_name,
             "The input shape of x1 x2 y is equal, please check!");
     return GRAPH_FAILED;
   }
   if (indices_dtype != DT_INT32) {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(op_name,
             "The input shape of indices is not int32, please check!");
     return GRAPH_FAILED;
   }
@@ -3164,8 +3195,14 @@ IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(IndexPutInferShape) {
-  if (InferShapeAndTypeIndexPut(op) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "index_put infer shape failed!");
+  AscendString op_name_str;
+  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+    OP_LOGE("get op name faild!");
+    return false;
+  }
+  const char *op_name = op_name_str.GetString();
+  if (InferShapeAndTypeIndexPut(op) == false) {
+    OP_LOGE(op_name, "index_put infer shape failed!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -3510,9 +3547,9 @@ VERIFY_FUNC_REG(Eye, EyeVerify);
 
 // ----------------FillDiagonal-------------------
 IMPLEMT_COMMON_INFERFUNC(FillDiagonalInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  Shape x_shape = op.GetInputDescByName("x").GetShape();
+  DataType x_dtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(x_shape));
   td.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", td);
