@@ -28,6 +28,9 @@ from typing import Union
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import var_inner
 from tbe.tvm.tensor import Tensor
+from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform.platform_info import get_soc_spec
 
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import INSN_MAPPING
@@ -507,6 +510,36 @@ class ReduceSchedule(VectorSchedule):
                                                                align_axis_index,
                                                                align_num)
                     self.storage_align_list.append(storage_align_info)
+
+    def _calc_compute_align(self):
+        if get_soc_spec(SOC_VERSION) != ASCEND_920A:
+            return
+
+        if self._last_reduction_rf_optimization():
+            return
+
+        def _set_align(_tensor, _factor):
+            return self.ComputeAlignInfo(_tensor, None, _factor)
+
+        def _set_reduce_align(_reduce):
+            if _reduce in self._data_flow_control:
+                # _reduce has performed cache_write()
+                _reduce = self.get_buffers_of(_reduce)[0]
+            factor = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[_reduce.dtype])
+            self.compute_align_list.append(_set_align(_reduce, factor))
+
+        # No distinction between N_last and last
+        # last not storage_align reduce
+        # N_last storage_align reduce unless pattern in pure data_move
+        for item in self.storage_align_list:
+            tensor, factor = item.tensor, item.factor
+            if not get_dsl_insn(tensor) in ["dma_copy", ""]:
+                self.compute_align_list.append(_set_align(tensor, factor))
+
+        if self.reduce_info.is_reduce_last_axis():
+            reduce_tensor = self.reduce_info.reduce_tensor
+            if get_dsl_insn(reduce_tensor) in ["reduce_max", "reduce_min"]:
+                _set_reduce_align(reduce_tensor)
 
     def _calc_compute_at(self):
         """

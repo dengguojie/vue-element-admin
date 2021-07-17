@@ -104,4 +104,5 @@ compile_case_list = [
 ]
 
 for item in compile_case_list:
-    ut_case.add_case(["Ascend910A", "Ascend310"], case=item)
+    ut_case.add_case(["Ascend920A", "Ascend310", "Ascend910A"], case=item)
+

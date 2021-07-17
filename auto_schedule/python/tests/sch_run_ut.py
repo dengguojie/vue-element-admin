@@ -208,6 +208,9 @@ def main(argv):
     _ = argv
     soc_version = FLAGS.soc_version
     soc_version = [soc.strip() for soc in str(soc_version).split(",")]
+    # template handle
+    if "Ascend920A" not in soc_version:
+        soc_version.append("Ascend920A")
     pr_changed_file = FLAGS.pr_changed_file
     if not pr_changed_file or not str(pr_changed_file).strip():
         case_dir = FLAGS.case_dir

@@ -50,6 +50,7 @@ class VectorScheduleBase(ABC):
         self._calc_reorder()
         self._calc_constraint()
         self._calc_storage_align()
+        self._calc_compute_align()
         self._calc_compute_at()
         self._calc_emit_insn()
         self._calc_pragma()
@@ -64,6 +65,7 @@ class VectorScheduleBase(ABC):
         self._do_reorder()
         self._do_constraint()
         self._do_storage_align()
+        self._do_compute_align()
         self._do_compute_at()
         self._do_emit_insn()
         self._do_pragma()
@@ -104,6 +106,10 @@ class VectorScheduleBase(ABC):
 
     @abstractmethod
     def _calc_storage_align(self):
+        """"""
+
+    @abstractmethod
+    def _calc_compute_align(self):
         """"""
 
     @abstractmethod
@@ -148,6 +154,10 @@ class VectorScheduleBase(ABC):
 
     @abstractmethod
     def _do_storage_align(self):
+        """"""
+
+    @abstractmethod
+    def _do_compute_align(self):
         """"""
 
     @abstractmethod

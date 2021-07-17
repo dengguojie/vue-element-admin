@@ -83,6 +83,7 @@ class NormPattern:
     # generic
     N_0 = "N_0"
 
+
 class CompileInfo:
     """
     Built-in Compilation Info Keys
@@ -138,14 +139,14 @@ INSN_MAPPING = {
     "elewise_single_trunc": "vector_conv_trunc",
     "elewise_single_round": "vector_conv_rint",
     "elewise_single_round_d": "vector_conv_round",
-    "elewise_empty_intrin":  "phony_insn",
+    "elewise_empty_intrin": "phony_insn",
     "tuple_reduce_sum": "vector_reduce_sum",
-    "reduce_sum":  "vector_reduce_sum",
-    "reduce_min":  "vector_reduce_min",
-    "reduce_max":  "vector_reduce_max",
-    "reduce_prod":  "vector_reduce_prod",
-    "broadcast":  "vector_broadcast",
-    "unified_broadcast":  "vector_broadcast",
+    "reduce_sum": "vector_reduce_sum",
+    "reduce_min": "vector_reduce_min",
+    "reduce_max": "vector_reduce_max",
+    "reduce_prod": "vector_reduce_prod",
+    "broadcast": "vector_broadcast",
+    "unified_broadcast": "vector_broadcast",
     "elewise_binary_cmpsel_gt": "vector_select_gt",
     "elewise_binary_cmpsel_ge": "vector_select_ge",
     "elewise_binary_cmpsel_lt": "vector_select_lt",
@@ -198,7 +199,6 @@ DST_SRC_NO_REUSE_SET = {
     "elewise_single_round",
     "elewise_single_round_d",
 }
-
 
 # support scalar insn
 # example: tensor - scalar
@@ -285,3 +285,9 @@ DTYPE_BYTE_MAPPING = {
     "uint64": 8,
     "custom[bfloat]16": 2,
 }
+
+AtomicSupportMap910 = {"support_dtype": ["float32", ],
+                       "support_insn": ["reduce_sum", ], }
+
+AtomicSupportMap920A = {"support_dtype": ["float32", "float16", "int32", "int16", "int8", "bfloat16"],
+                        "support_insn": ["reduce_sum", "reduce_max", "reduce_min"]}

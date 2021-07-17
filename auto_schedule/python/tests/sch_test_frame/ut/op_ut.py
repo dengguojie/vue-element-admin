@@ -964,7 +964,11 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
     def _set_run_soc(run_soc_version):
         # there is a bug in te, we can't import te before tensorflow, so can't import te outside
         from te.platform import te_set_version  # pylint: disable=import-outside-toplevel
-        te_set_version(run_soc_version)
+        # template handle
+        if run_soc_version == "Ascend920A":
+            te_set_version(run_soc_version, "VectorCore")
+        else:
+            te_set_version(run_soc_version)
 
     def run_case(self, one_soc_version: str, case_name_list: List[str] = None,
                  case_usage_list: List = None, run_cfg: Dict[str, Any] = None) -> ut_report.OpUTReport:

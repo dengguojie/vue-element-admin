@@ -20,22 +20,33 @@ import copy
 
 from tbe import tvm
 from tvm.tensor import Tensor
-from tbe.common.platform import scope_ubuf
+
+from tbe.common.platform import ASCEND_920A, SOC_VERSION, scope_ubuf
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
-from tbe.dsl.base.operation import var_inner
 from tbe.dsl.base import operation
+from tbe.dsl.base.operation import var_inner
+
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import INSN_MAPPING
+from .util import get_dsl_insn
+from .util import is_reduce_tensor
 
 from .reduce_tilingcase import ReduceTilingCase, Dim, R, A
 from .vector_info import ComputeGraphInfo
-from .util import get_dsl_insn
 
 CONST = "const"
 BLOCK_SIZE_BYTE = 32
 
 
 class _VectorSchedule(object):
+
+    class ComputeAlignInfo:
+        def __init__(self, tensor=None, pad=None, factor=None):
+            self.tensor = tensor
+            self.pad = pad
+            self.factor = factor
+
     def __init__(self, graph_info):
         self.schedule = None
         self.graph_info = graph_info
@@ -98,6 +109,12 @@ class _VectorSchedule(object):
 
     @abc.abstractmethod
     def _do_storage_align(self):
+        """
+        :return:
+        """
+
+    @abc.abstractmethod
+    def _do_compute_align(self):
         """
         :return:
         """
@@ -178,6 +195,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
         self.reduce_repls = None
 
         self._storage_align_para = {}
+        self._compute_align_list = []
         self._axis_offset = 0
         self._reduce_case = 0
         self._serial_group = None
@@ -197,6 +215,9 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         self._calculate_storage_align()
         self._do_storage_align()
+
+        self._calculate_compute_align()
+        self._do_compute_align()
 
         self._calculate_multi_core()
         self._do_multi_core()
@@ -449,11 +470,6 @@ class ReduceAtomicSchedule(_VectorSchedule):
                     "offset": 0}
             self._storage_align_para[self.reduce_rfs] = para
 
-            para = {"align_axis_var": self.reduce_repls.op.axis[res_align_axis],
-                    "align_factor": align_factor,
-                    "offset": 0}
-            self._storage_align_para[self.reduce_repls] = para
-
         else:
             align_axis = a1_end_index
             _storage_align_tensors_before_reduce(align_axis)
@@ -465,6 +481,56 @@ class ReduceAtomicSchedule(_VectorSchedule):
             offset = self._storage_align_para[stage]["offset"]
             self.schedule[stage].storage_align(
                 scope_iter_var, align_factor, offset)
+
+    def _calculate_compute_align(self):
+        if get_soc_spec(SOC_VERSION) != ASCEND_920A:
+            return
+
+        def _set_align(_tensor, _factor):
+            return self.ComputeAlignInfo(_tensor, None, _factor)
+
+        def _set_reduce_align(_reduce):
+            factor = int(BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[_reduce.dtype])
+            self._compute_align_list.append(_set_align(_reduce, factor))
+
+        # No distinction between N_last and last
+        # last not storage_align reduce
+        # N_last storage_align reduce unless pattern in pure data_move
+        # Attention tag of rf is "" while used get_dsl_insn
+        for tensor in self._storage_align_para:
+            factor = self._storage_align_para[tensor]["align_factor"]
+            if hasattr(self.reduce_rfs, "index") and \
+                    tensor in self.reduce_rfs or tensor in [self.reduce_rfs, ]:
+                self._compute_align_list.append(_set_align(tensor, factor))
+            else:
+                if not get_dsl_insn(tensor) in ["dma_copy", ""]:
+                    self._compute_align_list.append(_set_align(tensor, factor))
+
+        # Deal Reduce
+        if self.reduce_info.is_reduce_last_axis():
+            if get_dsl_insn(self.reduce_info.reduce_tensor) in ["reduce_max", "reduce_min"]:
+                _set_reduce_align(self.reduce_rfs)
+
+    def _do_compute_align(self):
+        """
+        Reorder of AtomicSch decided distinction between last and N_last in
+        reduction of "rf" while "repls" always in last pattern. The pattern
+        of "rf" is as same as ori reduce_tensor
+        """
+        for compute_align in self._compute_align_list:
+            pad = compute_align.pad
+            factor = compute_align.factor
+            tensor = compute_align.tensor
+            stage = self.schedule[tensor]
+            if is_reduce_tensor(tensor):
+                if self.reduce_info.is_reduce_last_axis():
+                    axis = tensor.op.reduce_axis[-1] if len(tensor.op.reduce_axis) == 1 \
+                        else tensor.op.reduce_axis[-2]
+                else:
+                    axis = tensor.op.axis[-1]
+            else:
+                axis = tensor.op.axis[-1]
+            stage.compute_align(axis, factor, pad)
 
     def _calculate_multi_core(self):
         if self.need_multi_core:
@@ -537,6 +603,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         # Reduce
         res_tensor = self.reduce_info.reduce_tensor
+        insn = INSN_MAPPING.get(get_dsl_insn(res_tensor), get_dsl_insn(res_tensor))
         extra_space = self.tiling_case.tensor_ub_size_before_reduce
 
         if self._reduce_case == 2:
@@ -557,22 +624,22 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 res_ub_inner = ub_tiling_tensor.op.reduce_axis[-1]
 
             self.emit_insn_map[ub_tiling_tensor] = {"scope": res_ub_inner,
-                                                    "instruction": 'vector_reduce_sum',
+                                                    "instruction": insn,
                                                     "extra_space": extra_space}
         elif self._reduce_case == 3:
             # ub cut ak (none reduce axis),
             if ub_split_axis not in reduce_axis_index:
                 self.emit_insn_map[ub_tiling_tensor] = {
                     "scope": ub_tiling_tensor.op.reduce_axis[-1],
-                    "instruction": 'vector_reduce_sum',
+                    "instruction": insn,
                     "extra_space": extra_space}
             else:
                 self.emit_insn_map[ub_tiling_tensor] = {"scope": res_ub_inner,
-                                                        "instruction": 'vector_reduce_sum',
+                                                        "instruction": insn,
                                                         "extra_space": extra_space}
         else:
             self.emit_insn_map[ub_tiling_tensor] = {"scope": res_ub_inner,
-                                                    "instruction": 'vector_reduce_sum',
+                                                    "instruction": insn,
                                                     "extra_space": extra_space}
 
         self.emit_insn_map[self.reduce_repls] = {

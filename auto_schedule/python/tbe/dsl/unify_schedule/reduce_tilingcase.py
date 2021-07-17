@@ -29,7 +29,7 @@ from typing import Tuple
 from typing import Union
 
 from tbe import tvm
-from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_910, ASCEND_920A
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import op_tiling
@@ -46,6 +46,7 @@ from .constants import CompileInfo
 from .constants import Pattern
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import ReducePattern
+from .constants import AtomicSupportMap910, AtomicSupportMap920A
 from .computation import Computation
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
@@ -577,24 +578,27 @@ def _calculate_atomic_tiling_cases(info: SingleReduceInfo) -> List[ReduceTilingC
 
 
 def check_atomic_add_support(reduce_info: SingleReduceInfo):
-    if get_soc_spec(SOC_VERSION) != ASCEND_910:
+    # Common Regulation
+    version = get_soc_spec(SOC_VERSION)
+    if version not in [ASCEND_920A, ASCEND_910]:
         return False
+
     reduce_tensor: Tensor = reduce_info.reduce_tensor
     if reduce_tensor is None:
         return False
-    dtype = reduce_tensor.dtype
-    if dtype != "float32":
-        return False
+
     output_tensors = reduce_info.graph_info.output_tensor_set
     for output_tensor in output_tensors:
-        dtype = output_tensor.dtype
-        if dtype != "float32":
-            return False
         if not is_reduce_tensor(output_tensor):
             return False
-    tag = reduce_tensor.op.tag
-    if tag.find("sum") == -1:
+
+    # Special Regulation
+    _map = AtomicSupportMap920A if version != ASCEND_910 else AtomicSupportMap910
+    if reduce_tensor.dtype not in _map.get("support_dtype"):
         return False
+    if reduce_tensor.op.tag not in _map.get("support_insn"):
+        return False
+
     return True
 
 

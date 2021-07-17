@@ -160,8 +160,22 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
         __import__(case_module_name)
         case_module = sys.modules[case_module_name]
         ut_case = getattr(case_module, "ut_case", None)
-        case_usage_list = [CaseUsage.IMPL, CaseUsage.CUSTOM, CaseUsage.CFG_COVERAGE_CHECK,
-                           CaseUsage.CHECK_SUPPORT, CaseUsage.SELECT_FORMAT, CaseUsage.PRECISION]
+
+        # template handle
+        _version_920a = False
+        if hasattr(run_arg.soc_version, "index"):
+            if "Ascend920A" in run_arg.soc_version:
+                _version_920a = True
+        else:
+            if "Ascend920A" == run_arg.soc_version:
+                _version_920a = True
+
+        if _version_920a:
+            case_usage_list = [CaseUsage.IMPL, CaseUsage.CUSTOM, CaseUsage.CFG_COVERAGE_CHECK,
+                               CaseUsage.CHECK_SUPPORT, CaseUsage.SELECT_FORMAT]
+        else:
+            case_usage_list = [CaseUsage.IMPL, CaseUsage.CUSTOM, CaseUsage.CFG_COVERAGE_CHECK,
+                               CaseUsage.CHECK_SUPPORT, CaseUsage.SELECT_FORMAT, CaseUsage.PRECISION]
 
         # if not run_arg.simulator_mode:
         #     case_usage_list.remove(CaseUsage.PRECISION)

@@ -47,6 +47,7 @@ from tbe.tvm.tensor import Tensor
 
 from .util import get_reduce_all_axes
 from .util import get_reduce_axis_indexes
+from .util import get_reduce_axes
 from .util import is_keepdims
 from .util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
@@ -136,6 +137,15 @@ class VectorSchedule(VectorScheduleBase, ABC):
             self.factor = factor
             self.offset = offset
 
+    class ComputeAlignInfo:
+        def __init__(self,
+                     tensor: Union[Tensor, "VectorSchedule.Placeholder"] = None,
+                     pad: int = None,
+                     factor: int = None):
+            self.tensor = tensor
+            self.pad = pad
+            self.factor = factor
+
     class EmitInsnInfo:
         def __init__(self,
                      tensor: Union[Tensor, "VectorSchedule.Placeholder"] = None,
@@ -202,6 +212,8 @@ class VectorSchedule(VectorScheduleBase, ABC):
         self.constraint_func_pair_list = []
         # Storage Align - Calculate
         self.storage_align_list = []
+        # Compute Align - Calculate
+        self.compute_align_list = []
         # Multi Core - Calculate
         self.multi_core_bind_tensor = None
         self.multi_core_bind_axis = None
@@ -384,6 +396,19 @@ class VectorSchedule(VectorScheduleBase, ABC):
             offset = storage_align.offset
             stage: Stage = self.schedule[tensor]
             stage.storage_align(axis, factor, offset)
+
+    def _do_compute_align(self):
+        for compute_align in self.compute_align_list:
+            tensor = self.solve_placeholder(compute_align.tensor)
+            if is_reduce_tensor(tensor):
+                is_last_reduce = get_reduce_all_axes(tensor)[-1] in get_reduce_axes(tensor)
+                axis = tensor.op.reduce_axis[-1] if is_last_reduce else tensor.op.axis[-1]
+            else:
+                axis = tensor.op.axis[-1]
+            factor = compute_align.factor
+            pad = compute_align.pad
+            stage: Stage = self.schedule[tensor]
+            stage.compute_align(axis, factor, pad)
 
     def _do_compute_at(self):
         for idx, anchor_point in enumerate(self.anchor_point_list):
