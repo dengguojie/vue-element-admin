@@ -24,6 +24,22 @@ from te.platform.fusion_manager import fusion_manager
 BLOCK = 8
 MIN = -3.4e38
 REPEAT_OFFSET = 255
+LABEL_MAX = 1000
+
+# pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
+def check_supported(log_probs, targets, input_lengths, target_lengths, neg_log_likelihood, log_alpha, blank=0,
+                    reduction="mean", zero_infinity=False, kernel_name="ctc_loss_v2"):
+    """
+    check the op support situation.
+    Go to AICPU when the label's length is over 1K. 
+    """
+    targets_shape = targets.get("shape")
+    if targets_shape[-1] > LABEL_MAX:
+        reason = "The label's length is over 1K."
+        return False, reason
+
+    return True, ""
+
 
 @fusion_manager.register("ctc_loss_v2")
 class CTCLossV2(object):
@@ -43,9 +59,6 @@ class CTCLossV2(object):
         self.output_size = 2 * self.S + 1
         self.output_size_up = (self.output_size + BLOCK - 1) // BLOCK * BLOCK
         self.alpha_size = self.T * self.output_size
-
-        if self.output_size < BLOCK:
-            raise RuntimeError("Unexcepted case: 2 * S + 1 < 8.")
 
         self.log_probs = self.tik_instance.Tensor("float32", [self.T, self.N, self.C], name="log_probs",
                                                   scope=tik.scope_gm)
@@ -110,10 +123,10 @@ class CTCLossV2(object):
         self.tik_instance.data_move(input_length_ub, self.input_lengths[task_idx], 0, 1, 1, 0, 0)
         self.tik_instance.data_move(target_length_ub, self.target_lengths[task_idx], 0, 1, 1, 0, 0)
 
-        T_i = self.tik_instance.Scalar("int32", init_value=input_length_ub[0])
-        S_i = self.tik_instance.Scalar("int32", init_value=target_length_ub[0])
+        t_i = self.tik_instance.Scalar("int32", init_value=input_length_ub[0])
+        s_i = self.tik_instance.Scalar("int32", init_value=target_length_ub[0])
 
-        repeats, s_inc, e_inc = self.count_trace(S_i, targets_ub)
+        repeats, s_inc, e_inc = self.count_trace(s_i, targets_ub)
 
         start = self.tik_instance.Scalar("int32")
         start_loop = self.tik_instance.Scalar("int32")
@@ -154,24 +167,24 @@ class CTCLossV2(object):
         current_target.set_as(targets_ub[0])
         log_alpha_ub[output_dst + 1].set_as(log_probs_ub[current_target])
 
-        with self.tik_instance.if_scope(repeats < T_i - S_i):
+        with self.tik_instance.if_scope(repeats < t_i - s_i):
             start.set_as(0)
         with self.tik_instance.else_scope():
             start.set_as(1)
         end.set_as(2)
 
-        with self.tik_instance.for_range(1, T_i) as t:
+        with self.tik_instance.for_range(1, t_i) as t:
             self.tik_instance.data_move(log_probs_ub[0], self.log_probs[self.C * task_idx + self.N * self.C * t], 0, 1,
                                         self.C_BLOCK // BLOCK, 0, 0)
             self.tik_instance.vector_dup(BLOCK, log_alpha_ub[output_src], MIN, self.output_size_up // BLOCK, 1, 1)
 
-            remain.set_as(S_i + repeats - T_i + t)
+            remain.set_as(s_i + repeats - t_i + t)
             with self.tik_instance.if_scope(remain >= 0):
                 tmp.set_as(s_inc[remain])
                 start.set_as(start + tmp)
             start_loop.set_as(start)
 
-            with self.tik_instance.if_scope(t <= S_i + repeats):
+            with self.tik_instance.if_scope(t <= s_i + repeats):
                 tmp.set_as(e_inc[t - 1])
                 end.set_as(end + tmp)
 
@@ -281,19 +294,19 @@ class CTCLossV2(object):
             output_src.set_as(output_dst)
             output_dst.set_as(self.output_size_up - output_src)
 
-        with self.tik_instance.if_scope(self.T == T_i):
+        with self.tik_instance.if_scope(self.T == t_i):
             self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (self.T - 1) * self.output_size],
-                                        log_alpha_ub[output_dst], 0, 1, self.output_size // BLOCK, 0, 0)
+                                        log_alpha_ub[output_dst], 0, 1, self.output_size_up // BLOCK, 0, 0)
 
             with self.tik_instance.if_scope(self.output_size % BLOCK != 0):
                 self.tik_instance.data_move(self.log_alpha_[task_idx * BLOCK],
                                             log_alpha_ub[output_dst + self.output_size_up - BLOCK], 0, 1, 1, 0, 0)
         with self.tik_instance.else_scope():
-            self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (T_i - 1) * self.output_size],
+            self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (t_i - 1) * self.output_size],
                                         log_alpha_ub[output_dst], 0, 1, self.output_size_up // BLOCK, 0, 0)
 
-        a_tmp.set_as(log_alpha_ub[output_dst + 2 * S_i])
-        b_tmp.set_as(log_alpha_ub[output_dst + 2 * S_i - 1])
+        a_tmp.set_as(log_alpha_ub[output_dst + 2 * s_i])
+        b_tmp.set_as(log_alpha_ub[output_dst + 2 * s_i - 1])
         c_tmp.set_as(0)
 
         with self.tik_instance.if_scope(a_tmp > b_tmp):
@@ -313,7 +326,7 @@ class CTCLossV2(object):
         b_ub[0].set_as(-a_tmp - max_tmp)
         self.tik_instance.data_move(self.neg_log_likelihood_[task_idx * BLOCK], b_ub, 0, 1, 1, 0, 0)
 
-    def count_trace(self, S_i, targets_ub):
+    def count_trace(self, s_i, targets_ub):
         """count_trace"""
         s_inc = self.tik_instance.Tensor("int32", [self.output_size], name="s_inc", scope=tik.scope_ubuf)
         e_inc = self.tik_instance.Tensor("int32", [self.output_size], name="e_inc", scope=tik.scope_ubuf)
@@ -328,7 +341,7 @@ class CTCLossV2(object):
         idx_counter = self.tik_instance.Scalar("int32", init_value=1)
 
         s_inc[0].set_as(one_step)
-        with self.tik_instance.for_range(1, S_i) as idx:
+        with self.tik_instance.for_range(1, s_i) as idx:
             left.set_as(targets_ub[idx - 1])
             right.set_as(targets_ub[idx])
             with self.tik_instance.if_scope(left == right):
