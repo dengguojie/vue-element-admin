@@ -540,8 +540,8 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const TeOpP
   std::array<int64_t, MAX_DIM_LEN> output_shape;
   bool ret = CompletedShapes(input_shapes, output_shape, input_num, dim_len, op_type, op_paras);
   // not use pure template
-  CompileInfo compile_info;
-  TilingInfo tiling_info;
+  CompileInfo compile_info = {1, 1, 1};
+  TilingInfo tiling_info = {1, 1, 1, 1, 1};
 
   ret = ret && GetPreCompileParams(op_type, op_info, compile_info);
 

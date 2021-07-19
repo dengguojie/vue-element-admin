@@ -94,6 +94,9 @@ static bool Construct3DPadsByPadding(std::string opName, ge::Operator& op, int32
   int32_t padr = 0;
   if (GRAPH_SUCCESS == op.GetAttr("padding", padStr)) {
     if (padStr.compare("SAME") == 0) {
+      if (strd == 0 || strh == 0 || strw == 0) {
+        return false;
+      }
       int32_t tails_d = id % strd;
       int32_t tails_h = ih % strh;
       int32_t tails_w = iw % strw;
@@ -1270,7 +1273,7 @@ IMPLEMT_INFER_DATA_SLICE(Pooling, PoolingInferDataSlice) {
         int64_t n_start = y_data_slice[i][0];
         int64_t n_end = y_data_slice[i][1];
         x_data_slice[i] = {n_start, n_end};
-        
+
         if (!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
           std::string err_msg = SetAttrErrMsg("x_data_slice");
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -1544,7 +1547,7 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
   int32_t h_output_position = data_format.find("H");
   int32_t w_output_position = data_format.find("W");
   int32_t c_output_position = data_format.find("C");
-  
+
   int32_t strh = strides_list[h_output_position];
   int32_t strw = strides_list[w_output_position];
   int32_t padt = pad_list[0];
@@ -1573,7 +1576,7 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
     std::vector<std::pair<int64_t, int64_t>> output_range(Input_range);
     output_range[c_input_position] = Input_range[c_input_position];
     output_range[h_input_position] = std::make_pair(dim_vector[h_input_position], dim_vector[h_input_position]);
-    output_range[w_input_position] = std::make_pair(dim_vector[w_input_position], dim_vector[w_input_position]);    
+    output_range[w_input_position] = std::make_pair(dim_vector[w_input_position], dim_vector[w_input_position]);
     if (input_h == -1 && !global_pooling) {
       vector<int32_t> attrParams_h = {strh, padt + padb, kh, h_input_position, h_output_position};
       SetAvgPoolOutRange(padding_mode, attrParams_h, ceil_mode, Input_range, output_range);
@@ -1671,7 +1674,7 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   int32_t c_output_position = data_format.find("C");
   int32_t w_output_position = data_format.find("W");
   int32_t h_output_position = data_format.find("H");
-  
+
   if (!unknown_rank) {
     int64_t input_w = dims_input[w_input_position];
     int64_t input_h = dims_input[h_input_position];
@@ -1681,7 +1684,7 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
       ksize_list[h_output_position] = dims_input[h_output_position];
       ksize_list[w_output_position] = dims_input[w_output_position];
     }
-    op.SetAttr("ksize", ksize_list);  
+    op.SetAttr("ksize", ksize_list);
     output_shape[n_input_position] = dims_input[n_input_position];
     output_shape[c_input_position] = dims_input[c_input_position];
     if (padding_mode == "SAME") {
@@ -1744,13 +1747,11 @@ static void InferHWAvgpool(int64_t kernel,int64_t stride, vector<int64_t>& outpu
                            int64_t& ori_input) {
     int64_t first_start = 0;
     int64_t second_start = 0;
-    int64_t first_end = 0;
     int64_t second_end = 0;
     int64_t start = 0;
     int64_t end = 0;
     first_start = output[0] * stride;
     second_start = output[1] * stride;
-    first_end = std::min(first_start + kernel, ori_input);
     second_end = std::min(second_start + kernel, ori_input);
     start = std::max(first_start, int64_t(0));
     end = second_end - 1;
@@ -2007,7 +2008,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
   if (GRAPH_SUCCESS != op.GetAttr("padding_mode", paddingMode)) {
     std::string err_msg = GetInputInvalidErrMsg("padding_mode");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
- 
+
     return GRAPH_FAILED;
   }
 
@@ -2187,14 +2188,38 @@ bool GetAvgPool3DOutputRange(ge::OpDescPtr &op_desc, const vector<int64_t> &ksiz
         OP_LOGE("AvgPool3D", "input x range dim is invalid, expect:%u, real:%u.",
                 kAvgPool3DOriShapeDim, fmap_range.size()),
         return false);
-  output_range[data_format.find("N")] = fmap_range[fmap_format_str.find("N")];
-  output_range[data_format.find("C")] = fmap_range[fmap_format_str.find("C")];
-  AvgPool3DCalOutputRange(ksize_dhw[0], strides_dhw[0], padding, fmap_range[fmap_format_str.find("D")],
-                          output_range[data_format.find("D")]);
-  AvgPool3DCalOutputRange(ksize_dhw[1], strides_dhw[1], padding, fmap_range[fmap_format_str.find("H")],
-                          output_range[data_format.find("H")]);
-  AvgPool3DCalOutputRange(ksize_dhw[2], strides_dhw[2], padding, fmap_range[fmap_format_str.find("W")],
-                          output_range[data_format.find("W")]);
+  auto n_position = data_format.find("N");
+  auto c_position = data_format.find("C");
+  auto d_position = data_format.find("D");
+  auto h_position = data_format.find("H");
+  auto w_position = data_format.find("W");
+
+  auto f_n_position = fmap_format_str.find("N");
+  auto f_c_position = fmap_format_str.find("C");
+  auto f_d_position = fmap_format_str.find("D");
+  auto f_h_position = fmap_format_str.find("H");
+  auto f_w_position = fmap_format_str.find("W");
+
+  if (n_position == std::string::npos || c_position == std::string::npos || d_position == std::string::npos ||
+      h_position == std::string::npos || w_position == std::string::npos) {
+        return false;
+      }
+  if (f_n_position == std::string::npos || f_c_position == std::string::npos || f_d_position == std::string::npos ||
+      f_h_position == std::string::npos || f_w_position == std::string::npos) {
+        return false;
+      }
+  if  (output_range.size() < data_format.size() || fmap_range.size() < fmap_format_str.size()) {
+    return false;
+  }
+
+  output_range[n_position] = fmap_range[f_n_position];
+  output_range[c_position] = fmap_range[f_c_position];
+  AvgPool3DCalOutputRange(ksize_dhw[0], strides_dhw[0], padding, fmap_range[f_d_position],
+                          output_range[d_position]);
+  AvgPool3DCalOutputRange(ksize_dhw[1], strides_dhw[1], padding, fmap_range[f_h_position],
+                          output_range[h_position]);
+  AvgPool3DCalOutputRange(ksize_dhw[2], strides_dhw[2], padding, fmap_range[f_w_position],
+                          output_range[w_position]);
   for (size_t i = 0; i < fmap_range.size(); ++i) {
     output_shape[i] = output_range[i].first == output_range[i].second ? output_range[i].first : -1;
   }
@@ -5476,7 +5501,7 @@ IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
   auto input_grad_shape = tensordesc_input.GetShape().GetDims();
   Tensor orig_input_shape_tensor;
   std::vector<int64_t> orig_input_size;
-  if (!IsUnKnownShape(input_grad_shape) && !IsUnknownRankShape(input_grad_shape)) { 
+  if (!IsUnKnownShape(input_grad_shape) && !IsUnknownRankShape(input_grad_shape)) {
     if (op.GetInputConstData("orig_input_shape", orig_input_shape_tensor) != GRAPH_SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "Get constdata filed");
       return GRAPH_FAILED;
@@ -7092,7 +7117,7 @@ IMPLEMT_VERIFIER(MaxPoolV3, MaxPoolV3Verify) {
     return GRAPH_FAILED;
   }
 
-  if (data_format != "NCHW" && data_format != "NHWC") {    
+  if (data_format != "NCHW" && data_format != "NHWC") {
     string expected_format_list = ConcatString("NCHW, NHWC");
     std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
@@ -7494,7 +7519,7 @@ IMPLEMT_INFERFUNC(AdaptiveMaxPool2d, AdaptiveMaxPool2dInferShape) {
     int64_t dims = dims_input[i];
     dim_vector.push_back(dims);
   }
-  OP_LOGI(op.GetName().c_str(), 
+  OP_LOGI(op.GetName().c_str(),
           " AdaptiveMaxPool2d inferShape dims: [%u] ", dims_input.size());
 
   size_t index0 = dims_input.size() - 2;
@@ -7507,7 +7532,7 @@ IMPLEMT_INFERFUNC(AdaptiveMaxPool2d, AdaptiveMaxPool2dInferShape) {
   }
   dim_vector[index0] = ouput_size_list[0];
   dim_vector[index1] = ouput_size_list[1];
-  
+
   TensorDesc td = op.GetOutputDesc("y");
   DataType input_dtype = input_tensor_desc.GetDataType();
   Shape output_shape(dim_vector);
