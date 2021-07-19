@@ -1064,38 +1064,30 @@ class GIoU():
                 self.index_reg[i].set_as(point_ub[conv_index * 8 + i])
             for i in range(2):
                 if gt_mode and (not self.trans):
-                    self.gtboxes_x0[conv_index * 2 + i] \
-                        .set_as(self.index_reg[i * 4 + 0])
-                    self.gtboxes_y0[conv_index * 2 + i] \
-                        .set_as(self.index_reg[i * 4 + 1])
-                    self.gtboxes_x1[conv_index * 2 + i] \
-                        .set_as(self.index_reg[i * 4 + 2])
-                    self.gtboxes_y1[conv_index * 2 + i] \
-                        .set_as(self.index_reg[i * 4 + 3])
+                    self.gtboxes_x0[conv_index * 2 + i].set_as(self.index_reg[i * 4 + 0])
+                    self.gtboxes_y0[conv_index * 2 + i].set_as(self.index_reg[i * 4 + 1])
+                    self.gtboxes_x1[conv_index * 2 + i].set_as(self.index_reg[i * 4 + 2])
+                    self.gtboxes_y1[conv_index * 2 + i].set_as(self.index_reg[i * 4 + 3])
                 elif gt_mode and self.trans:
                     self.gtboxes_x0[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 0] - self.index_reg[i * 4 + 2] / 2)
                     self.gtboxes_y0[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 1] - self.index_reg[i * 4 + 3] / 2)
-                    self.gtboxes_x1[conv_index * 2 + 1] \
+                    self.gtboxes_x1[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 0] + self.index_reg[i * 4 + 2] / 2)
                     self.gtboxes_y1[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 1] + self.index_reg[i * 4 + 3] / 2)
                 elif (not gt_mode) and (not self.trans):
-                    self.bboxes_x0[conv_index * 2 + i] \
-                        .set_as(self.index_reg[i * 4 + 0])
-                    self.bboxes_y0[conv_index * 2 + i] \
-                        .set_as(self.index_reg[i * 4 + 1])
-                    self.bboxes_x1[conv_index * 2 + i] \
-                        .set_as(self.index_reg[i * 4 + 2])
-                    self.bboxes_y1[conv_index * 2 + i] \
-                        .set_as(self.index_reg[i * 4 + 3])
+                    self.bboxes_x0[conv_index * 2 + i].set_as(self.index_reg[i * 4 + 0])
+                    self.bboxes_y0[conv_index * 2 + i].set_as(self.index_reg[i * 4 + 1])
+                    self.bboxes_x1[conv_index * 2 + i].set_as(self.index_reg[i * 4 + 2])
+                    self.bboxes_y1[conv_index * 2 + i].set_as(self.index_reg[i * 4 + 3])
                 elif (not gt_mode) and self.trans:
                     self.bboxes_x0[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 0] - self.index_reg[i * 4 + 2] / 2)
                     self.bboxes_y0[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 1] - self.index_reg[i * 4 + 3] / 2)
-                    self.bboxes_x1[conv_index * 2 + 1] \
+                    self.bboxes_x1[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 0] + self.index_reg[i * 4 + 2] / 2)
                     self.bboxes_y1[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 1] + self.index_reg[i * 4 + 3] / 2)
