@@ -88,7 +88,7 @@ Status Const2AttrFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr 
                          unknownShape) || is_fuzz_build);
       if (is_dynamic) {
         std::string oriUnSupportedReason;
-        bool isOriSupported = opsKernelInfoStorePtr->CheckSupported(node->GetOpDesc(), oriUnSupportedReason);
+        bool isOriSupported = opsKernelInfoStorePtr->CheckSupported(node, oriUnSupportedReason);
         bool fuzz_build_use_accurate = false;
         (void)ge::AttrUtils::GetBool(op_desc_ptr, "fuzz_build_use_accurate", fuzz_build_use_accurate);
         bool support_status = (isOriSupported && !fuzz_build_use_accurate);

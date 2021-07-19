@@ -78,7 +78,7 @@ Status TransposedUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
         return FAILED;
     }
 
-    bool isTransposSupported = CheckOpSupported(transposeOpDesc);
+    bool isTransposSupported = CheckOpSupported(transposeNode);
 
     if (!isTransposSupported) {
         auto anchor = transposeNode->GetInDataAnchor(1);
