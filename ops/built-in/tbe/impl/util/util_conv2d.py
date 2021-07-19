@@ -352,16 +352,30 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     c0_val = 16
     if weights.dtype == "int8":
         c0_val = 32
-    cin_ori = shape_c//groups
-    cout_ori = cout_all//groups
-    enlarge = min(lcm(lcm(cin_ori, c0_val)//cin_ori, lcm(cout_ori, 16)//cout_ori), groups)
-    c1_opt = math.ceil(cin_ori*enlarge/c0_val)
-    cout1_opt = math.ceil(cout_ori*enlarge/16)
-    group_opt = math.ceil(groups/enlarge)
+    cin_ori = shape_c // groups
+    cout_ori = cout_all // groups
+    enlarge = min(lcm(lcm(cin_ori, c0_val) // cin_ori, lcm(cout_ori, 16) // cout_ori), groups)
+    c1_opt = math.ceil(cin_ori * enlarge / c0_val)
+    cout1_opt = math.ceil(cout_ori * enlarge / 16)
+    group_opt = math.ceil(groups / enlarge)
 
-    fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"].value if "L1_addr_flag" in inputs.op.attrs else "nothing"
-    fmap_l1_valid_size = inputs.op.attrs["L1_valid_size"].value if "L1_valid_size" in inputs.op.attrs else -1
-    slice_offset = inputs.op.attrs["slice_offset"] if "slice_offset" in inputs.op.attrs else (0, 0, 0, 0, 0)
+    if inputs.op.tag == "aipp_res_convolution":
+        fmap_l1_addr_flag = "nothing"
+        fmap_l1_valid_size = -1
+        slice_offset = (0, 0, 0, 0, 0)
+        from te.tvm.buffer_manager import get_buffer_manager
+        buffer_manager = get_buffer_manager()
+        for remapped_buffer in buffer_manager.get_remapped_buffers():
+            remapped_buffer_attr = remapped_buffer.get_buffer_attr()
+            if "aipp_flag" in remapped_buffer_attr and remapped_buffer_attr["aipp_flag"] == 1:
+                fmap_l1_addr_flag = remapped_buffer_attr["L1_addr_flag"]
+                fmap_l1_valid_size = remapped_buffer_attr["L1_valid_size"]
+                slice_offset = remapped_buffer_attr["slice_offset"]
+                break
+    else:
+        fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"].value if "L1_addr_flag" in inputs.op.attrs else "nothing"
+        fmap_l1_valid_size = inputs.op.attrs["L1_valid_size"].value if "L1_valid_size" in inputs.op.attrs else -1
+        slice_offset = inputs.op.attrs["slice_offset"] if "slice_offset" in inputs.op.attrs else (0, 0, 0, 0, 0)
     fusion_para = {"fmap_l1_addr_flag": fmap_l1_addr_flag,
                    "fmap_l1_valid_size": fmap_l1_valid_size,
                    "slice_offset": slice_offset}
@@ -642,7 +656,7 @@ def _trans_stride(input_size, kernel, stride, pad, dlt):
     new stride
     """
     return 1 if input_size + pad[0] + pad[1] == \
-                    (kernel - 1)*dlt + 1 else stride
+                    (kernel - 1) * dlt + 1 else stride
 
 
 def _conv2d_fusion_para(inputs, outputs):
@@ -685,8 +699,8 @@ def _get_minimum_load_L1(shape_fm, shape_filter, strides, pads, dilations, data_
         err_man.raise_err_should_be_4d("conv2d", "pads shape")
     strideh = _trans_stride(shape_fm[2], shape_filter[2], strideh, [pad_top, pad_bottom], dilate_h)
     stridew = _trans_stride(shape_fm[3], shape_filter[3], stridew, [pad_left, pad_right], dilate_w)
-    filter_h_dilation = (shape_filter[2] - 1)*dilate_h + 1
-    filter_w_dilation = (shape_filter[3] - 1)*dilate_w + 1
+    filter_h_dilation = (shape_filter[2] - 1) * dilate_h + 1
+    filter_w_dilation = (shape_filter[3] - 1) * dilate_w + 1
     w_out = (shape_fm[3] + (pad_left + pad_right) - filter_w_dilation) // stridew + 1
     h_out_part = _lcm(w_out, 16) // w_out
     h_part_length = (h_out_part - 1) * strideh + filter_h_dilation

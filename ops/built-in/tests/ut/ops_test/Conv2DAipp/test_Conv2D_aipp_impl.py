@@ -431,7 +431,7 @@ def test_conv_aipp(test_arg):
             strides, pads, dilations, bias=bias, C04=True,aipp_format="xrgb", \
             crops=False, soc_version=soc)
 
-    def aipp_conv_relu_maxpooling_test_cases( soc):
+    def aipp_conv_relu_maxpooling_test_cases(soc):
 
         shape_in_ori = (8, 3, 224, 224) #  NC1HWC0
         shape_w_ori = (64, 3, 7, 7) #  HkWkCi1, Co1, 16, 16
@@ -450,7 +450,7 @@ def test_conv_aipp(test_arg):
             pooling_padding, bias=bias, C04=True, aipp_format="yuv", \
             crops=False, soc_version=soc)
 
-    def aipp_conv_relu_quant_test_cases( soc):
+    def aipp_conv_relu_quant_test_cases(soc):
 
         shape_in_ori = (1, 3, 416, 416) #  NC1HWC0
         shape_w_ori = (32, 3, 3, 3) #  HkWkCi1, Co1, 16, 16
@@ -473,8 +473,7 @@ def test_conv_aipp(test_arg):
     def aipp_conv_relu_test_multiplatforms():
         for soc in TEST_PLATFORM:
             cce_conf.te_set_version(soc)
-            aipp_conv_relu_test_cases( soc)
-
+            aipp_conv_relu_test_cases(soc)
 
     def aipp_conv_relu_quant_test_multiplatforms():
         for soc in TEST_PLATFORM:
@@ -484,7 +483,21 @@ def test_conv_aipp(test_arg):
     def aipp_conv_relu_maxpooling_test_multiplatforms():
         for soc in TEST_PLATFORM:
             cce_conf.te_set_version(soc)
-            aipp_conv_relu_maxpooling_test_cases( soc)
+            aipp_conv_relu_maxpooling_test_cases(soc)
+
+    def aipp_conv_leakyrelu_l1fusion_test():
+        json_str = '{\"SocInfo\":{\"autoTilingMode\":\"\",\"coreNum\":\"\",\"coreType\":\"AiCore\",\"deviceId\":\"\",\"l1Fusion\":\"true\",\"l2Fusion\":\"false\",\"l2Mode\":\"0\",\"op_debug_level\":\"1\",\"op_impl_mode\":\"high_performance\",\"op_impl_mode_list\":[],\"socVersion\":\"SD3403\",\"vector_fp_ceiling\":\"2\"},\"fusion_op_name\":\"te_fused_op_aipp_conv2d_leaky_relu_54c34dca914a2003_e79463ecea359eae_0\",\"graph_name\":\"partition0_rank1_new_sub_graph1\",\"l1_size\":262144,\"op_list\":[{\"name\":\"-1_0_new_sub_graph1_PlaceHolder0__0\",\"output_desc\":[{\"L1_addr_flag\":1,\"L1_addr_offset\":262144,\"L1_fusion_type\":0,\"L1_valid_size\":98304,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"uint8\",\"format\":\"NHWC\",\"name\":\"-1_0_new_sub_graph1_PlaceHolder0__0\",\"ori_format\":\"NHWC\",\"ori_shape\":[1,96,128,3],\"range\":[[1,1],[96,96],[128,128],[3,3]],\"sgt_slice_shape\":[],\"shape\":[1,96,128,3],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,96,128,3],\"valid_shape\":[]}],\"type\":\"Data\"},{\"name\":\"-1_0_data_0_huawei_aipp_lxfuse0OPT\",\"output_desc\":[{\"data_type\":0,\"name\":\"-1_0_data_0_huawei_aipp_lxfuse0OPT\",\"shape\":\"NULL\"}],\"type\":\"Data\"},{\"name\":\"-1_0_new_sub_graph1_PlaceHolder1__0\",\"output_desc\":[{\"L1_addr_flag\":0,\"L1_addr_offset\":-1,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"float16\",\"format\":\"FRACTAL_Z_C04\",\"name\":\"-1_0_new_sub_graph1_PlaceHolder1__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[32,3,5,5],\"range\":[[7,7],[2,2],[16,16],[16,16]],\"sgt_slice_shape\":[],\"shape\":[7,2,16,16],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[7,2,16,16],\"valid_shape\":[]}],\"type\":\"Data\"},{\"name\":\"-1_0_new_sub_graph1_PlaceHolder2__0\",\"output_desc\":[{\"L1_addr_flag\":0,\"L1_addr_offset\":-1,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"float16\",\"format\":\"NCHW\",\"name\":\"-1_0_new_sub_graph1_PlaceHolder2__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[32],\"range\":[[32,32]],\"sgt_slice_shape\":[],\"shape\":[32],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[32],\"valid_shape\":[]}],\"type\":\"Data\"},{\"name\":\"-1_0_l1-c_lxfuse0OPT\",\"output_desc\":[{\"data_type\":0,\"name\":\"-1_0_l1-c_lxfuse0OPT\",\"shape\":\"NULL\"}],\"type\":\"Data\"},{\"attr_desc\":[\"{\\"aipp_mode\\":\\"static\\",\\"input_format\\":\\"RGB888_U8\\",\\"src_image_size_h\\":96,\\"src_image_size_w\\":128}\"],\"dynamic_compile_static\":false,\"func_name\":\"aipp\",\"id\":1,\"input_desc\":[{\"L1_addr_flag\":1,\"L1_addr_offset\":262144,\"L1_fusion_type\":0,\"L1_valid_size\":98304,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"uint8\",\"format\":\"NHWC\",\"name\":\"-1_0_new_sub_graph1_PlaceHolder0__0\",\"ori_format\":\"NHWC\",\"ori_shape\":[1,96,128,3],\"range\":[[1,1],[96,96],[128,128],[3,3]],\"sgt_slice_shape\":[],\"shape\":[1,96,128,3],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,96,128,3],\"valid_shape\":[]},{\"data_type\":0,\"name\":\"-1_0_data_0_huawei_aipp_lxfuse0OPT\",\"shape\":\"NULL\"}],\"int64mode\":false,\"module_name\":\"impl.aipp\",\"name\":\"-1_0_data_0_huawei_aipp_lxfuse0\",\"ori_name\":[\"data_0_huawei_aipp\"],\"output_data_desc\":[{\"L1_addr_offset\":0,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"dtype\":\"float16\",\"format\":\"NC1HWC0_C04\",\"ori_format\":\"NCHW\",\"ori_shape\":[1,3,96,128],\"sgt_slice_shape\":[],\"shape\":[1,1,96,128,4],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,1,96,128,4],\"valid_shape\":[]}],\"output_desc\":[{\"L1_addr_offset\":0,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"float16\",\"format\":\"NC1HWC0_C04\",\"name\":\"-1_0_data_0_huawei_aipp_lxfuse0__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[1,3,96,128],\"output_index\":0,\"sgt_slice_shape\":[],\"shape\":[1,1,96,128,4],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,1,96,128,4],\"valid_shape\":[]}],\"pattern\":\"aipp\",\"py_module_path\":\"/home/s00296229/Ascend/opp/op_impl/built-in/ai_core/tbe\",\"type\":\"Aipp\"},{\"attr_desc\":[[1,1,2,2],[2,2,2,2],[1,1,1,1],1,\"NCHW\",0],\"dynamic_compile_static\":false,\"func_name\":\"conv2d\",\"id\":4,\"input_desc\":[{\"L1_addr_flag\":0,\"L1_addr_offset\":0,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"float16\",\"format\":\"NC1HWC0_C04\",\"name\":\"-1_0_data_0_huawei_aipp_lxfuse0__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[1,3,96,128],\"peer_out_param_index\":1,\"range\":[[1,1],[1,1],[96,96],[128,128],[4,4]],\"sgt_slice_shape\":[],\"shape\":[1,1,96,128,4],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,1,96,128,4],\"valid_shape\":[]},{\"L1_addr_flag\":0,\"L1_addr_offset\":-1,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"float16\",\"format\":\"FRACTAL_Z_C04\",\"name\":\"-1_0_new_sub_graph1_PlaceHolder1__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[32,3,5,5],\"peer_out_param_index\":2,\"range\":[[7,7],[2,2],[16,16],[16,16]],\"sgt_slice_shape\":[],\"shape\":[7,2,16,16],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[7,2,16,16],\"valid_shape\":[]},{\"L1_addr_flag\":0,\"L1_addr_offset\":-1,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"float16\",\"format\":\"NCHW\",\"name\":\"-1_0_new_sub_graph1_PlaceHolder2__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[32],\"peer_out_param_index\":3,\"range\":[[32,32]],\"sgt_slice_shape\":[],\"shape\":[32],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[32],\"valid_shape\":[]},{\"data_type\":0,\"name\":\"-1_0_l1-c_lxfuse0OPT\",\"shape\":\"NULL\"}],\"int64mode\":false,\"module_name\":\"impl.conv2d\",\"name\":\"-1_0_l1-c_lxfuse0\",\"ori_name\":[\"l1-c\"],\"output_data_desc\":[{\"L1_addr_offset\":0,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"dtype\":\"float16\",\"format\":\"NC1HWC0\",\"ori_format\":\"NCHW\",\"ori_shape\":[1,32,48,64],\"sgt_slice_shape\":[],\"shape\":[1,2,48,64,16],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,2,48,64,16],\"valid_shape\":[]}],\"output_desc\":[{\"L1_addr_offset\":0,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"float16\",\"format\":\"NC1HWC0\",\"name\":\"-1_0_l1-c_lxfuse0__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[1,32,48,64],\"output_index\":0,\"sgt_slice_shape\":[],\"shape\":[1,2,48,64,16],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,2,48,64,16],\"valid_shape\":[]}],\"pattern\":\"Convolution\",\"py_module_path\":\"/home/s00296229/Ascend/opp/op_impl/built-in/ai_core/tbe\",\"type\":\"Conv2D\"},{\"attr_desc\":[0.0],\"dynamic_compile_static\":false,\"func_name\":\"leaky_relu\",\"id\":5,\"input_desc\":[{\"L1_addr_flag\":0,\"L1_addr_offset\":0,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":0,\"data_type\":\"float16\",\"format\":\"NC1HWC0\",\"name\":\"-1_0_l1-c_lxfuse0__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[1,32,48,64],\"range\":[[1,1],[2,2],[48,48],[64,64],[16,16]],\"sgt_slice_shape\":[],\"shape\":[1,2,48,64,16],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,2,48,64,16],\"valid_shape\":[]}],\"int64mode\":false,\"module_name\":\"impl.leaky_relu\",\"name\":\"-1_0_l1-a_lxfuse0\",\"ori_name\":[\"l1-a\"],\"output_data_desc\":[{\"L1_addr_offset\":851968,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":1,\"dtype\":\"float16\",\"format\":\"NC1HWC0\",\"ori_format\":\"NCHW\",\"ori_shape\":[1,32,48,64],\"sgt_slice_shape\":[],\"shape\":[1,2,48,64,16],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,2,48,64,16],\"valid_shape\":[]}],\"output_desc\":[{\"L1_addr_offset\":851968,\"L1_fusion_type\":0,\"L1_workspace_size\":-1,\"addr_type\":1,\"data_type\":\"float16\",\"format\":\"NC1HWC0\",\"name\":\"-1_0_l1-a_lxfuse0__0\",\"ori_format\":\"NCHW\",\"ori_shape\":[1,32,48,64],\"output_index\":0,\"sgt_slice_shape\":[],\"shape\":[1,2,48,64,16],\"slice_offset\":[],\"split_index\":0,\"sub_format\":0,\"total_shape\":[1,2,48,64,16],\"valid_shape\":[]}],\"pattern\":\"ElemWise\",\"py_module_path\":\"/home/s00296229/Ascend/opp/op_impl/built-in/ai_core/tbe\",\"type\":\"LeakyRelu\"}],\"scope_id\":1}'
+        
+        op_desc = json.loads(json_str)
+        soc = op_desc['SocInfo']
+        cce_conf.te_set_version(soc['socVersion'],
+                        soc['coreType'],
+                        soc['coreNum'],
+                        soc['l1Fusion'],
+                        soc['l2Mode'],
+                        soc['l2Fusion'])
+
+        fusion_op(json_str)
 
 
     print("[ aipp_conv_relu ]")
@@ -492,6 +505,9 @@ def test_conv_aipp(test_arg):
 
     print("[ aipp_conv_relu_quant ]")
     aipp_conv_relu_quant_test_multiplatforms()
+
+    print("[ aipp_conv_leakyrelu l1fusion ]")
+    aipp_conv_leakyrelu_l1fusion_test()
 
 
 print("adding Conv2D aipp testcases")
