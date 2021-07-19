@@ -52,7 +52,7 @@ graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& inpu
 graphStatus WhileInferImpl(Operator &op) {
   size_t in_num = op.GetInputsSize();
   size_t out_num = op.GetOutputsSize();
-  GE_OP_LOGD(op.GetName(), "Begin to infer while node shape, input size %zu, output size %zu", in_num, out_num);
+  GE_OP_LOGD(op.GetName().c_str(), "Begin to infer while node shape, input size %zu, output size %zu", in_num, out_num);
   if (in_num != out_num) {
     string reason = "input num not equal with out num.";
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), "input", reason);
@@ -70,7 +70,7 @@ graphStatus WhileInferImpl(Operator &op) {
     auto data_shape = in_desc.GetShape();
     auto out_shape = out_desc.GetShape();
     if(out_shape.GetDims() == DUMMY_SHAPE){
-      GE_OP_LOGI(op.GetName(), "First time to infer while node shape, no need update from output to input.");
+      GE_OP_LOGI(op.GetName().c_str(), "First time to infer while node shape, no need update from output to input.");
       return GRAPH_SUCCESS;
     }
     // check datatype between output and input
