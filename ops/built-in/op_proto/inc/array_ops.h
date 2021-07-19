@@ -504,7 +504,7 @@ REG_OP(Constant)
 *x: A tensor. \n
 
 *@par Outputs:
-*y: A tensor. \n
+*y: A copy of input tensor. \n
 
 *@par Third-party framework compatibility
 *Compatible with the TensorFlow operator Snapshot.
@@ -684,7 +684,9 @@ REG_OP(ExpandDims)
 
 *@par Inputs:
 *@li x: Original tensor.
-*@li axis: List of ints. \n
+
+*@par Attributes:
+*@li axes: List of ints indicating the dimensions to be inserted. \n
 
 *@par Outputs:
 *y: Reshape tensor with same data as input. \n
@@ -848,7 +850,6 @@ REG_OP(PlaceHolder)
 *x: A tensor. \n
 
 *@par Attributes:
-*@li dtype: data type of tensor.
 *@li shape: tensor shape. \n
 
 *@par Outputs:

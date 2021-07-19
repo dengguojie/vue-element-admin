@@ -86,7 +86,7 @@ graphStatus WhileInferImpl(Operator &op) {
     }
 
     if (data_shape.GetDims() != out_shape.GetDims()) {
-      GE_OP_LOGI(op.GetName(), "While %zu output shape is not match with input shape.Need infer again.", i);
+      GE_OP_LOGI(op.GetName().c_str(), "While %zu output shape is not match with input shape.Need infer again.", i);
       need_infer_again = true;
       if (data_shape.GetDimNum() != out_shape.GetDimNum()) {
         in_desc.SetUnknownDimNumShape();
