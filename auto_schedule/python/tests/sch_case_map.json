@@ -269,6 +269,9 @@
         "reduce_max",
         "reduce_min",
         "reduce_prod"
+    ],
+    "auto_schedule/python/tbe/dsl/static_schedule/reduce_mean_mid_reduce_high_performance_schedule.py":[
+        "reduce_mean"
     ]
 
 }

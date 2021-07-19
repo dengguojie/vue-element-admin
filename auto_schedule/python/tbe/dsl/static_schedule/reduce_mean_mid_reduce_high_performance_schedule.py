@@ -100,7 +100,7 @@ def dichotomy_reduce_block_mean(stmt_op):  # pylint: disable=too-many-locals
     for _ in range(int(collapse_loop_num)):
         cur_size = collapse(ir_builder, in_buffer, cur_size)
     target_size = cce_emitinsn_params.cceEmitParamsIns.get_param("block_split_factor")
-    loop_num = int(math.log(vector_inst_one_repeat_size // target_size, 2))
+    loop_num = int(math.log(min(vector_inst_one_repeat_size, cur_size) // target_size, 2))
     for _ in range(loop_num):
         half_size = cur_size // 2
         reset_mask_insn(ir_builder, in_buffer.dtype, bits=half_size)
