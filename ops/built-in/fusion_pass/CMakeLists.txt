@@ -240,6 +240,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/relu_fusion_pass.cc
   graph_fusion/ai_core/remove_node_fusion_pass.cc
   graph_fusion/ai_core/reshape_transpose_fusion_pass.cc
+  graph_fusion/ai_core/resize_bilinear_cast_fusion_pass.cc
   graph_fusion/ai_core/resize_nearest_neighbor_grad_d_fusion_pass.cc
   graph_fusion/ai_core/rnn_fusion_pass.cc
   graph_fusion/ai_core/rpn_proposals_fusion_pass.cc
