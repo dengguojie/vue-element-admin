@@ -805,9 +805,7 @@ def _check_last_dim_with_vreducev2(input_shape, output_shape, begin, end, stride
     if dtype not in ["float16", "float32"]:
         return False
     for i in range(0, len(output_shape) - 1):
-        if begin[i] != 0:
-            return False
-        if end[i] != output_shape[i]:
+        if input_shape[i] != output_shape[i]:
             return False
     if 0 <= begin[-1] < end[-1] <= input_shape[-1]:
         return True
