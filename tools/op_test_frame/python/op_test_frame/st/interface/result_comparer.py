@@ -111,7 +111,7 @@ def _display_error_output(real_data, expect_data, err_idx, relative_diff):
         count += 1
         if len_err <= 20 or count < 10 or count > len_err - 10:
             utils.print_info_log('%08d \t %.7f \t %.7f \t %.7f \t %.7f' % (
-                i, expect_data[i], real_data[i], abs(np.float64(expect_data[i]) - np.float64(real_data[i])),
+                i + 1, expect_data[i], real_data[i], abs(np.float64(expect_data[i]) - np.float64(real_data[i])),
                 relative_diff[count - 1]))
         elif count == 10:
             dot_3 = '...'
