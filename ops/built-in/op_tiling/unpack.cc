@@ -123,7 +123,7 @@ bool GetCompileParams(const nlohmann::json& op_info, CompileInfo& compile_info) 
 void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, const CompileInfo& compile_info,
                                  std::unordered_map<std::string, int32_t>& var_names, TilingStrategy& key,
                                  int32_t& actual_block_num) {
-  int64_t calc_size = std::accumulate(output_reshape.begin(), output_reshape.end(), 1, std::multiplies<int64_t>());
+  int64_t calc_size = std::accumulate(output_reshape.begin(), output_reshape.end(), (int64_t)1, std::multiplies<int64_t>());
   // Minimum memory size processed by each core
   constexpr int32_t kCalcMemSize{1024};
   int32_t split_factor = 1;
@@ -151,20 +151,30 @@ void GetSingleOutputTilingParams(const std::vector<int64_t>& output_reshape, con
 void GetUbTiling(std::vector<int64_t>& output_reshape, const int32_t ub_limit, const int32_t dtype_size,
                  int32_t& split_axis, int32_t& split_factor) {
   int32_t ele_per_block = kBlockSize / dtype_size;
+  int64_t ori_last_ele = output_reshape[2];
 
   if (output_reshape[2] % ele_per_block != 0) {
     output_reshape[2] = std::ceil(output_reshape[2] * 1.0 / ele_per_block) * ele_per_block;
   }
   int32_t len = static_cast<int32_t>(output_reshape.size()) - 1;
   for (int i = 0; i < len; i++) {
-    int64_t ele_cnt = std::accumulate(output_reshape.begin() + i, output_reshape.end(), 1, std::multiplies<int64_t>());
+    int64_t ele_cnt = std::accumulate(output_reshape.begin() + i, output_reshape.end(), (int64_t)1, std::multiplies<int64_t>());
     if (ele_cnt <= ub_limit) {
       split_axis = i - 1;
       split_factor = ub_limit / ele_cnt;
       break;
     } else if (i == len - 1) {
       split_axis = i;
-      split_factor = ub_limit;
+      if (0 < ori_last_ele % ub_limit < ele_per_block) {
+        for (int j = ub_limit; j > 0; j--) {
+          if (ori_last_ele % j >= ele_per_block || ori_last_ele % j == 0){
+            split_factor = j;
+            break;
+          }
+        }
+      } else {
+          split_factor = ub_limit;
+      }
       break;
     }
   }
