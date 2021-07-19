@@ -580,10 +580,12 @@ def is_support_fractal_z_input(_input):
         return False
     ori_format = _input.get("ori_format")
     shape = _input.get("ori_shape")
+    if len(ori_format) != len(shape):
+        return False
     n_dim = shape[ori_format.index("N")]
     support_format = get_fused_str(["N", "C", "H", "W"])
 
-    if groups == 0 or ori_format not in support_format or len(ori_format) != len(shape) or \
+    if groups == 0 or ori_format not in support_format or \
             (n_dim % groups != 0) or ((n_dim // groups) % 16 != 0):
         return False
 

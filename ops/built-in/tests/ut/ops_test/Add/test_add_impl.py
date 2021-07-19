@@ -3,6 +3,7 @@
 test_add_impl
 """
 # pylint: disable=unused-import
+from impl.util import util_common
 from op_test_frame.ut import BroadcastOpUT
 from op_test_frame.utils.op_param_util import cartesian_set_format_dtype
 
@@ -217,4 +218,20 @@ def test_op_select_format(test_arg):
                      {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
                       "ori_format": "HWCN", "sub_format" : 8},
                      "test_add_op_select_format_17")
+    op_select_format({"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (),
+                      "ori_format": "NHWC", "sub_format" : 0},
+                     {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (),
+                      "ori_format": "NHWC", "sub_format" : 0},
+                     {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (),
+                      "ori_format": "NHWC", "sub_format" : 0},
+                     "test_add_op_select_format_18")
+
+    def __test_util_commom():
+        input_parm = ({"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (1,), "ori_format": "NHWC", "sub_format" : 0},
+                      {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (1,), "ori_format": "NHWC", "sub_format" : 0},
+                      {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (1,), "ori_format": "NHWC", "sub_format" : 0})
+        util_common.is_support_fractal_z_inputs(input_parm)
+
+    __test_util_commom()
+
 ut_case.add_cust_test_func(test_func=test_op_select_format)
