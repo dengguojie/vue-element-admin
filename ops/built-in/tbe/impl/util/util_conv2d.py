@@ -47,7 +47,7 @@ CONV_SHAPE_DIM = 4
 HK_WK_C04_V200 = 65535
 
 def lcm(a_val, b_val):
-    return (a_val*b_val)//math.gcd(a_val, b_val)
+    return (a_val * b_val) // math.gcd(a_val, b_val)
 
 
 def _shape_to_list(shape):
@@ -203,8 +203,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     # dilateh, dilatew check
     dilate_check()
 
-    hk_dilation = (h_k - 1)*dilateh + 1
-    wk_dilation = (w_k - 1)*dilatew + 1
+    hk_dilation = (h_k - 1) * dilateh + 1
+    wk_dilation = (w_k - 1) * dilatew + 1
 
     h_out = (h_i + pad_top + pad_bottom - hk_dilation) // strideh + 1
     w_out = (w_i + pad_left + pad_right - wk_dilation) // stridew + 1
@@ -233,7 +233,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                                                  "pad_left or pad_right", actual_value)
 
     w_block_size_n = CUBE_MKN[w_dtype]['mac'][2]
-    shape_w[0] = ((shape_w[0] + w_block_size_n - 1) // w_block_size_n)*w_block_size_n
+    shape_w[0] = ((shape_w[0] + w_block_size_n - 1) // w_block_size_n) * w_block_size_n
 
     # filterH, filterW check(before dilation according to chip design demand )
     def _check_w_range():
@@ -325,7 +325,7 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     weight_h = shape_w[pos_h]
     weight_w = shape_w[pos_w]
     # fix the weight's channel=cin_ori
-    shape_c = shape_w[pos_c]*groups
+    shape_c = shape_w[pos_c] * groups
     cout_all = shape_w[pos_cout]
 
     if len(strides) != 4:
@@ -355,8 +355,8 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     cin_ori = shape_c // groups
     cout_ori = cout_all // groups
     enlarge = min(lcm(lcm(cin_ori, c0_val) // cin_ori, lcm(cout_ori, 16) // cout_ori), groups)
-    c1_opt = math.ceil(cin_ori * enlarge / c0_val)
-    cout1_opt = math.ceil(cout_ori * enlarge / 16)
+    c1_opt = math.ceil(cin_ori*enlarge / c0_val)
+    cout1_opt = math.ceil(cout_ori*enlarge / 16)
     group_opt = math.ceil(groups / enlarge)
 
     if inputs.op.tag == "aipp_res_convolution":
@@ -367,10 +367,10 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
         buffer_manager = get_buffer_manager()
         for remapped_buffer in buffer_manager.get_remapped_buffers():
             remapped_buffer_attr = remapped_buffer.get_buffer_attr()
-            if "aipp_flag" in remapped_buffer_attr and remapped_buffer_attr["aipp_flag"] == 1:
-                fmap_l1_addr_flag = remapped_buffer_attr["L1_addr_flag"]
-                fmap_l1_valid_size = remapped_buffer_attr["L1_valid_size"]
-                slice_offset = remapped_buffer_attr["slice_offset"]
+            if "L1_addr_flag" in remapped_buffer_attr and remapped_buffer_attr["L1_addr_flag"] != "nothing":
+                fmap_l1_addr_flag = remapped_buffer_attr.get("L1_addr_flag", "nothing")
+                fmap_l1_valid_size = remapped_buffer_attr.get("L1_valid_size", -1)
+                slice_offset = remapped_buffer_attr.get("slice_offset", (0, 0, 0, 0, 0))
                 break
     else:
         fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"].value if "L1_addr_flag" in inputs.op.attrs else "nothing"
@@ -380,10 +380,16 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
                    "fmap_l1_valid_size": fmap_l1_valid_size,
                    "slice_offset": slice_offset}
 
-    para_dict = {"pad_h": padh, "pad_w": padw, "stride_h": strideh,
-                 "stride_w": stridew, "dilate_h": dlt_h, "dilate_w": dlt_w,
-                 "offset_x": offset_x, "filter_h": weight_h,
-                 "filter_w": weight_w, "bias_tensor": bias,
+    para_dict = {"pad_h": padh, 
+                 "pad_w": padw, 
+                 "stride_h": strideh,
+                 "stride_w": stridew, 
+                 "dilate_h": dlt_h, 
+                 "dilate_w": dlt_w,
+                 "offset_x": offset_x, 
+                 "filter_h": weight_h,
+                 "filter_w": weight_w, 
+                 "bias_tensor": bias,
                  "offset_w_tensor": offset_w,
                  "fusion_para": fusion_para,
                  "kernel_name": kernel_name,
