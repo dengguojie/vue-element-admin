@@ -42,7 +42,7 @@ class SegmentSort:
                                                     self.tik.scope_gm, "output_proposal")
 
     def get_result_info(self):
-        ai_core_num = self.cont.const_aicore_num
+        ai_core_num = 32
         each_core_data_num = self.method.ceil_div(self.data_num, ai_core_num)
         each_core_data_num = self.method.get_align_num(each_core_data_num, self.each_loop_index_num)
         each_core_data_num = max(self.ub_pro_num_max, each_core_data_num)
