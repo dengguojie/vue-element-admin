@@ -1531,7 +1531,6 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
                                     const std::vector<int32_t>& pad_list, const std::vector<int64_t>& dims_input,
                                     std::vector<int64_t> dim_vector, const bool& ceil_mode, const bool& global_pooling,
                                     const std::string& padding_mode) {
-  CHECK_KEY_IN_MAP(format2str, input_format, "input_format", return false);
   std::string input_format_str = format2str[input_format];
 
   if (input_format_str != "NHWC") {

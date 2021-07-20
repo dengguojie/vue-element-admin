@@ -805,7 +805,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             pooling_mode=pooling_mode
         )
     else:
-        # dynamic avg_pool_grad: dy_grad /= mean_matrix
+        # dynamic avg_pool_grad: dy_grad is dy_grad / mean_matrix
         if pooling_mode is "AVG":
             mean_matrix_shape = [shape_dy[2], shape_dy[3], shape_dy[4]]
             mean_matrix = tvm.compute(
