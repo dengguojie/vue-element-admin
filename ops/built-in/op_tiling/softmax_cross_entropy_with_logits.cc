@@ -455,17 +455,18 @@ bool DoNdTiling(const std::string& op_type, const nlohmann::json& op_info,
   block_axis = 0;
   block_nparts = 1;
   int32_t bound_size = compile_info.ub_size / dtype_size / 10;
-
+  int32_t num_per_block = 32 / dtype_size;
+  int32_t c_size_align = (c_size + num_per_block - 1) / num_per_block * num_per_block;
   if (c_size > bound_size) {
       VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "not supported shape");
       return false;
-  } else if ((c_size * (32 / dtype_size) < bound_size) &&
-             (n_h_w >= (32 / dtype_size))) {
+  } else if ((c_size * num_per_block < bound_size) &&
+             (n_h_w >= num_per_block)) {
       // for open multi-core
       block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * 32) ?
                      compile_info.core_num : n_h_w * dtype_size / 32;
       int32_t block_tiling_inner_loop = n_h_w / block_nparts;
-      ub_factor = min(bound_size / c_size, block_tiling_inner_loop);
+      ub_factor = min(bound_size / c_size_align, block_tiling_inner_loop);
   } else {
       // for cannot open multi-core scene
       block_nparts = 1;

@@ -378,14 +378,18 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
             if tensor_i.op.name[0:6] != "reduce":
                 shape_i = util.shape_to_list(tensor_i.shape)
                 storage_align_flag = 0 if shape_i[1] % block_size_align == 0 else storage_align_flag
+                tensor_tmp = tensor_i
+                break
 
-        if storage_align_flag:
+        cond1 = isinstance(tensor_tmp.shape[1], tvm.expr.IntImm) and (int(tensor_tmp.shape[1]) != 1)
+        cond2 = isinstance(tensor_tmp.shape[1], tvm.expr.Max)
+        if (cond1 or cond2) and storage_align_flag:
             for i, (tensor_i, param) in enumerate(self._mid_tensor_buffer_tensor_map.items()):
-                if param.op.name[0:6] != "reduce":
+                if param.op.name[0:6] != "reduce" and param.op.name[0:9] != "broadcast":
                     self._schedule[param].storage_align(param.op.axis[0], block_size_align, 0)
 
             for i, (tensor_i, param) in enumerate(self._cache_read_buffer_tensor_map.items()):
-                if tensor_i.op.name[0:6] != "reduce":
+                if tensor_i.op.name[0:6] != "reduce" and tensor_i.op.name[0:4] != "data":
                     self._schedule[tensor_i].storage_align(tensor_i.op.axis[0], block_size_align, 0)
 
     def _calc_multi_core(self):

@@ -39,14 +39,24 @@ def _process_range(range0, range1):
     dim01_range = range0[1]
     dim10_range = range1[0]
     dim11_range = range1[1]
-    intersection_dim00_dim10_range = (max(_range_to_int(dim00_range[0]), _range_to_int(dim10_range[0])),
-                                      min(_range_to_int(dim00_range[1]), _range_to_int(dim10_range[1])))
-    intersection_dim01_dim11_range = (max(_range_to_int(dim01_range[0]), _range_to_int(dim11_range[0])),
-                                      min(_range_to_int(dim01_range[1]), _range_to_int(dim11_range[1])))
-    dim00_range = intersection_dim00_dim10_range
-    dim10_range = intersection_dim00_dim10_range
-    dim01_range = intersection_dim01_dim11_range
-    dim11_range = intersection_dim01_dim11_range
+    if _range_to_int(dim00_range[0]) > 1 and _range_to_int(dim10_range[0]) > 1:
+        intersection_dim00_dim10_range = (max(_range_to_int(dim00_range[0]), _range_to_int(dim10_range[0])),
+                                          min(_range_to_int(dim00_range[1]), _range_to_int(dim10_range[1])))
+        dim00_range = intersection_dim00_dim10_range
+        dim10_range = intersection_dim00_dim10_range
+    else:
+        dim00_range = (_range_to_int(dim00_range[0]), _range_to_int(dim00_range[1]))
+        dim10_range = (_range_to_int(dim10_range[0]), _range_to_int(dim10_range[1]))
+
+    if _range_to_int(dim01_range[0]) > 1 and _range_to_int(dim11_range[0]) > 1:
+        intersection_dim01_dim11_range = (max(_range_to_int(dim01_range[0]), _range_to_int(dim11_range[0])),
+                                          min(_range_to_int(dim01_range[1]), _range_to_int(dim11_range[1])))
+        dim01_range = intersection_dim01_dim11_range
+        dim11_range = intersection_dim01_dim11_range
+    else:
+        dim01_range = (_range_to_int(dim01_range[0]), _range_to_int(dim01_range[1]))
+        dim11_range = (_range_to_int(dim11_range[0]), _range_to_int(dim11_range[1]))
+
     range0 = [dim00_range, dim01_range]
     range1 = [dim10_range, dim11_range]
     return range0, range1
@@ -372,7 +382,7 @@ def softmax_cross_entropy_with_logits(
                                                 "labels_shape0": input_labels['shape'][0],
                                                 "labels_shape1": input_labels['shape'][1]})
 
-    tbe_context.get_context().add_compile_info("ragne",
+    tbe_context.get_context().add_compile_info("range",
                                                {"features_range0_l": input_features['range'][0][0],
                                                 "features_range0_r": input_features['range'][0][1],
                                                 "features_range1_l": input_features['range'][1][0],
