@@ -174,5 +174,93 @@
 				"value": "NDHWC"
 			}
 		]
+	},
+	{
+		"case_name": "Test_AvgPool3DGradD_gobal",
+		"op": "AvgPool3DGradD",
+		"input_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [2, 1, 1, 1, 8],
+				"ori_shape": [2, 1, 1, 1, 8],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "grads"
+			},
+			{
+				"format": "DHWCN",
+				"ori_format": "DHWCN", 
+				"type": "float16",
+				"shape": [4, 4, 4, 1, 48],
+				"ori_shape": [4, 4, 4, 1, 48],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "filter"
+			},
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [2, 1, 1, 1, 8],
+				"ori_shape": [2, 1, 1, 1, 8],
+				"data_distribute": "uniform",
+				"value_range": [[0, 0.001]],
+				"name": "multiplier"
+			}
+		],
+		"output_desc": [
+			{
+				"format": "NDHWC",
+				"ori_format": "NDHWC", 
+				"type": "float16",
+				"shape": [2, 4, 4, 4, 8],
+				"ori_shape": [2, 4, 4, 4, 8],
+				"name": "y"
+			}
+		],
+		"attr": [
+			{
+				"name": "orig_input_shape",
+				"type": "list_int",
+				"value": [2, 4, 4, 4, 8]
+			},
+			{
+				"name": "ksize",
+				"type": "list_int",
+				"value": [1, 4, 4, 4, 1]
+			},
+			{
+				"name": "strides",
+				"type": "list_int",
+				"value": [1, 1, 1, 1, 1]
+			},
+			{
+				"name": "pads",
+				"type": "list_int",
+				"value": [0, 0, 0, 0, 0, 0]
+			},
+			{
+				"name": "ceil_mode",
+				"type": "bool",
+				"value": false
+			},
+			{
+				"name": "count_include_pad",
+				"type": "bool",
+				"value": false
+			},
+			{
+				"name": "divisor_override",
+				"type": "int",
+				"value": 0
+			},
+			{
+				"name": "data_format",
+				"type": "string",
+				"value": "NDHWC"
+			}
+		]
 	}
 ]
