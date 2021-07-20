@@ -4347,8 +4347,8 @@ def nd_2_nz(src, dst, src_format, dst_format, kernel_name="nd_2_nz"):
     check_list = ("float16", "float32", "int8", "int32")
     para_check.check_dtype_rule(src_dtype, check_list)
 
-    white_list = [[38400, 54], [76800, 54], [153600, 54],
-                  [307200, 54], [614400, 54], [1228800, 54], [2457600, 54]]
+    white_list = [[38400, 54], [76800, 54], [153600, 54], [307200, 54], [614400, 54], [1228800, 54], [2457600, 54],
+                  [49152, 3], [196608, 3], [786432, 3], [131072, 2], [3, 786432]]
     if list(src_shape) in white_list:
         trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
         return

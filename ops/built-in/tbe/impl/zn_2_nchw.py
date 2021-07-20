@@ -23,6 +23,7 @@ from te.utils import para_check
 from te import tvm
 from impl import five_2_four
 from impl.util.util_common import write_code
+from impl import trans_data_negative_target_ntc
 
 # available ub size
 UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
@@ -731,6 +732,15 @@ def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
     dst_shape = dst.get("shape")
     dtype = src.get("dtype")
     n_i, c_i, h_i, w_i = dst_shape
+
+    white_list = [[2048, 1024, 1, 1], [512, 2048, 1, 1], [2048, 512, 1, 1], [1024, 512, 1, 1], [256, 2048, 1, 1],
+                  [512, 1024, 1, 1], [512, 512, 3, 3], [256, 1024, 1, 1], [1024, 256, 1, 1], [256, 256, 3, 3],
+                  [256, 512, 1, 1], [512, 256, 1, 1], [512, 128, 1, 1], [128, 128, 3, 3], [128, 512, 1, 1],
+                  [128, 256, 1, 1], [64, 256, 1, 1], [256, 64, 1, 1], [64, 64, 3, 3], [64, 64, 1, 1],
+                  [256, 256, 1, 1], [80, 256, 1, 1], [12, 256, 1, 1]]
+    if list(dst_shape) in white_list and dtype.lower() == "float16":
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
+        return
 
     if n_i % 16 == 0:
         _check_parameters(src, dst, src_format, dst_format, kernel_name)
