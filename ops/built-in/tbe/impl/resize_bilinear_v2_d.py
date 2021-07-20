@@ -107,13 +107,39 @@ def _get_scalar_dtype():
     return dtype
 
 
+def is_dynamic_white_list(ori_format, ori_input_shape, out_size):
+    """
+    is_dynamic_white_list
+    """
+    # dynamic_white_list format:
+    # [batch, ceil(channel, shape_c0) * shape_c0, in_height, in_width, out_height, out_width]
+    dynamic_white_list = [[4, 16, 480, 640, 800, 1067],
+                          [400, 2048, 7, 7, 33, 33]]
+
+    shape_c0 = 16
+    dict_zip_shape = dict(zip(list(ori_format), ori_input_shape))
+    nchw_input_shape = [dict_zip_shape["N"], ((dict_zip_shape["C"] + shape_c0 - 1) // shape_c0) * shape_c0,
+                        dict_zip_shape["H"], dict_zip_shape["W"]]
+    check_list = list(nchw_input_shape + list(out_size))
+
+    if check_list not in dynamic_white_list:
+        # check_list is not in dynamic_white_list, will do blurred
+        # rule is [4, 16, 480, 640, 800, 1067] == [-1, 16, 480, -1, 800, 1067]
+        for target_list in dynamic_white_list:
+            if -1 not in target_list:
+                continue
+            for idx, dims in enumerate(target_list):
+                target_list[idx] = target_list[idx] if dims != -1 else check_list[idx]
+            if target_list == check_list:
+                return True
+        return False
+
+    # check_list is in dynamic_white_list, return True directly
+    return True
+
+
 # pylint: disable=unused-argument,unused-variable,too-many-arguments
-def check_supported(images,
-                                y,
-                                size,
-                                align_corners=False,
-                                half_pixel_centers=False,
-                                kernel_name="resize_bilinear_v2"):
+def check_supported(images, y, size, align_corners=False, half_pixel_centers=False, kernel_name="resize_bilinear_v2"):
     """
     To check whether the AICORE operator can support
     1. when the shape of input images is unrank shape or dim size not equal 4, will change to aicpu
@@ -152,6 +178,10 @@ def check_supported(images,
 
     except RuntimeError as e:
         return False, e.args
+
+    is_use_dynamic = is_dynamic_white_list(image_format, image_shape, size)
+    if is_use_dynamic:
+        return False, "this case will use dynamic Op ResizeBilinearV2"
 
     return True, ""
 
