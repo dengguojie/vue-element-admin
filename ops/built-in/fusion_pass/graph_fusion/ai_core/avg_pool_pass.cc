@@ -229,6 +229,9 @@ Status AvgPoolFusionPass::Calc4DWeightAvgPool(const std::vector<int64_t>& filter
                                               std::unique_ptr<int32_t[]>& weightInt8Temp) {
   FUSION_PASS_CHECK(filterDims4D.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "filterDims4D is empty!"), return FAILED);
 
+  if (INDEX_CO_avg > filterDims4D.size()) {
+    return FAILED;
+  }
   for (int64_t j = 0; j < filterDims4D[INDEX_CO_avg]; j++) {
     int64_t sum_temp = 0;
     for (int64_t i = 0; i < filterDims4D[INDEX_CI_avg]; i++) {

@@ -46,7 +46,10 @@ static const char YOLOV3_D[] = "YoloV3DetectionOutputV2D";
 uint32_t YOLOV3_DEFAULT_N = 10;
 uint32_t YOLOV3_PARAM_NUM_PER_YOLO = 3;
 
-Status GenerateWIndexFP16V2(const int32_t h, const int32_t w, uint16_t* output1) {
+Status GenerateWIndexFP16V2(const int32_t h, const int32_t w, uint16_t* output1, const int32_t outLength) {
+  if (outLength < h * w) {
+    return FAILED;
+  }
   for (int32_t i = 0; i < h; ++i) {
     for (int32_t j = 0; j < w; ++j) {
       fp16_t t;
@@ -58,7 +61,10 @@ Status GenerateWIndexFP16V2(const int32_t h, const int32_t w, uint16_t* output1)
   return SUCCESS;
 }
 
-Status GenerateHIndexFP16V2(const int32_t h, const int32_t w, uint16_t* output1) {
+Status GenerateHIndexFP16V2(const int32_t h, const int32_t w, uint16_t* output1, const int32_t outLength) {
+  if (outLength < h * w) {
+    return FAILED;
+  }
   for (int32_t i = 0; i < h; ++i) {
     for (int32_t j = 0; j < w; ++j) {
       fp16_t t;
@@ -149,9 +155,10 @@ Status YoloV3DetectionOutputV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& map
     FUSION_PASS_CHECK(inputAssitH.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitH%d is NULL", i),
                       return PARAM_INVALID);
 
-    Status ret = GenerateWIndexFP16V2(dimInfo[2], dimInfo[3], inputAssitW.get());
+    int32_t outLength = dimInfo[2] * dimInfo[3];
+    Status ret = GenerateWIndexFP16V2(dimInfo[2], dimInfo[3], inputAssitW.get(), outLength);
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateWIndex%d failed.", i), return NOT_CHANGED);
-    ret = GenerateHIndexFP16V2(dimInfo[2], dimInfo[3], inputAssitH.get());
+    ret = GenerateHIndexFP16V2(dimInfo[2], dimInfo[3], inputAssitH.get(), outLength);
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateHIndex%d failed.", i), return NOT_CHANGED);
 
     // define the shape of auxiliary matrix

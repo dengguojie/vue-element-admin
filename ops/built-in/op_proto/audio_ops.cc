@@ -65,6 +65,9 @@ IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
   }
 
   auto spectrogram_shape = op.GetInputDesc(0).GetShape().GetDims();
+  if (spectrogram_shape.size() < 2) {
+    return GRAPH_FAILED;
+  }
   int64_t spectrogram_channels = spectrogram_shape[0];
   int64_t spectrogram_length = spectrogram_shape[1];
 

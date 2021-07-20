@@ -132,6 +132,11 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
           return PARAM_INVALID;
         }
 
+        auto sizeConstOffset = offsetsTensorPtr->GetData().GetSize();
+        if (sizeConstOffset < INT_NUM_THREE) {
+          return PARAM_INVALID;
+        }
+
         vector<int32_t> offsetsNew = {constOffsetData[0], constOffsetData[2], constOffsetData[1]};
         offsetsTensorPtr->SetData(reinterpret_cast<uint8_t*>(offsetsNew.data()), offsetsNew.size() * sizeof(int32_t));
 
@@ -184,6 +189,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
     FUSION_PASS_CHECK(oriSliceOutputShape.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "Slice output shape is nullptr!"),
                       return NOT_CHANGED);
     vector<int64_t> outputSliceShapeVec;
+    if (oriSliceOutputShape.size() < INT_NUM_THREE) {
+        return FAILED;
+    }
     outputSliceShapeVec.push_back(oriSliceOutputShape[0]);
     outputSliceShapeVec.push_back(oriSliceOutputShape[2]);
     outputSliceShapeVec.push_back(oriSliceOutputShape[1]);
@@ -231,6 +239,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
 
       // Define out auxiliary matrix shape of Add1 node
       vector<int64_t> newnodeShapeVec;
+      if (oriNmsScorceShape.size() < INT_NUM_THREE) {
+          return PARAM_INVALID;
+      }
       newnodeShapeVec.push_back(oriNmsScorceShape[0]);
       newnodeShapeVec.push_back(oriNmsScorceShape[1]);
       newnodeShapeVec.push_back(oriNmsScorceShape[2]);

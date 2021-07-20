@@ -42,6 +42,9 @@ static const string FUSED_NODE = "ReduceProd";
 
 Status CheckProdFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_info) {
   for (size_t i = 0; i < axis_info.size(); ++i) {
+    if (axis_info[i] > tensor_info.size()) {
+      return FAILED;
+    }
     if (tensor_info[axis_info[i]] != 1) {
       return FAILED;
     }

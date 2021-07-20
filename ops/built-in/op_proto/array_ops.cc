@@ -1604,7 +1604,9 @@ IMPLEMT_INFERFUNC(Squeeze, SqueezeInfer) {
         out_shape.emplace_back(exist_dim);
         // after verified, it has ensure x_range ele num is same with dims num
         if (!x_range.empty()) {
-          y_range.emplace_back(x_range[i]);
+          if (x_range.size() > i) {
+            y_range.emplace_back(x_range[i]);
+          }
         }
       }
     } else {
@@ -1617,7 +1619,9 @@ IMPLEMT_INFERFUNC(Squeeze, SqueezeInfer) {
         out_shape.emplace_back(exist_dim);
         // after verified, it has ensure x_range ele num is same with dims num
         if (!x_range.empty()) {
-          y_range.emplace_back(x_range[i]);
+          if (x_range.size() > i) {
+            y_range.emplace_back(x_range[i]);
+          }
         }
       }
     }
@@ -1761,6 +1765,9 @@ IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
   if (!inRange.empty()) {
     std::vector<int64_t> pre_op_range;
     pre_op_range.resize(2 * inRange.size());
+    if (pre_op_range.size() >= INT_MAX) {
+      return GRAPH_FAILED;
+    }
     for (size_t i = 0; i < pre_op_range.size(); i = i + 2) {
       pre_op_range[i] = inRange[i / 2].first;
       pre_op_range[i + 1] = inRange[i / 2].second;

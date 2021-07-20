@@ -43,6 +43,7 @@ static const string MOMENTUM = "momentum";
 static const string EPSILON = "epsilon";
 static const string USE_GLOBAL_STATS = "use_global_stats";
 static const string MODE = "mode";
+static const int32_t INT_NUM_FOUR = 4;
 
 vector<FusionPattern*> HostBNFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -105,6 +106,9 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
   OP_LOGI(FUSED_OP_TYPE.c_str(), "NODE %s 1", bnOpDescPtr->GetName().c_str());
   // get conv node inputs.
   Node::Vistor<NodePtr> inputNodes = bnNodePtr->GetInDataNodes();
+  if (inputNodes.size() < INT_NUM_FOUR) {
+     return PARAM_INVALID;
+  }
   ge::NodePtr dataNodePtr = inputNodes.at(0);
   ge::NodePtr meanNodePtr = inputNodes.at(1);
   ge::NodePtr varNodePtr = inputNodes.at(2);

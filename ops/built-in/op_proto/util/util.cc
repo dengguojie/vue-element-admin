@@ -999,7 +999,7 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
       // no need to transfer shape
       continue;
     } else {
-      ShapeTransferAccordingToFormat* global_object = new ShapeTransferAccordingToFormat();
+      ShapeTransferAccordingToFormat* global_object = new (std::nothrow) ShapeTransferAccordingToFormat();
       CHECK(global_object == nullptr, 
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("new ShapeTransferAccordingToFormat failed.")),
       return false);
@@ -1039,7 +1039,7 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
       // no need to transfer shape
       continue;
     } else {
-      ShapeTransferAccordingToFormat* global_object = new ShapeTransferAccordingToFormat();
+      ShapeTransferAccordingToFormat* global_object = new(std::nothrow) ShapeTransferAccordingToFormat();
       CHECK(global_object == nullptr, 
             VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("new ShapeTransferAccordingToFormat failed.")),
             return false);

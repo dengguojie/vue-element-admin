@@ -39,7 +39,10 @@ namespace fe {
 static const char PATTERN_YOLOV2[] = "YoloV2DetectionOutput";
 static const char YOLOV2[] = "YoloV2DetectionOutput";
 
-Status GenWIndexFP16(const int32_t h, const int32_t w, uint16_t* output1) {
+Status GenWIndexFP16(const int32_t h, const int32_t w, uint16_t* output1, const int32_t outLength) {
+  if (outLength < h * w) {
+    return FAILED;
+  }
   for (int32_t i = 0; i < h; ++i) {
     for (int32_t j = 0; j < w; ++j) {
       fp16_t t;
@@ -136,7 +139,8 @@ Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   FUSION_PASS_CHECK(inputAssitH1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitH1 is NULL"),
                     return PARAM_INVALID);
 
-  Status ret = GenWIndexFP16(dimInfo1[2], dimInfo1[3], inputAssitW1.get());
+  int32_t outLength = dimInfo1[2] * dimInfo1[3];
+  Status ret = GenWIndexFP16(dimInfo1[2], dimInfo1[3], inputAssitW1.get(), outLength);
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateWIndex1 failed."), return NOT_CHANGED);
   ret = GenHIndexFP16(dimInfo1[2], dimInfo1[3], inputAssitH1.get());
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "GenerateHIndex1 failed."), return NOT_CHANGED);

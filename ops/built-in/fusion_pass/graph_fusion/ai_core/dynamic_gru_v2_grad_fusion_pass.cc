@@ -689,29 +689,6 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddHConcatNode(ge::NodePtr dynamicGRUGra
   }
   concatDesc->AddInputDesc("input_init_h", inputTensorDescInitH);
   ge::GeTensorDesc inputTensorDescSplitH = splitNode->GetOpDesc()->GetOutputDesc(0).Clone();
-  if (fusion_reduce) {
-    ge::GeTensorDesc inputSplitHForReshape = splitNode->GetOpDesc()->GetOutputDesc(0).Clone();
-    //add reshape node
-    auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicGRUGradNode->GetName()+"/myReshape", "Reshape");
-    FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "create reshape Op operator error."),
-                      return nullptr);
-    auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
-    reshapeOp.BreakConnect();
-    reshape_desc->UpdateInputDesc("x", inputTensorDescSplitH);
-    vector<int64_t> splitNodeDim = inputSplitHForReshape.GetShape().GetDims();
-    FUSION_PASS_CHECK(splitNodeDim.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "AddHConcatNode:check failed, fusion failed."),
-                      return nullptr);
-    vector<int64_t> reshapeOutDim = {splitNodeDim[0] * splitNodeDim[1], splitNodeDim[2]};
-    inputSplitHForReshape.SetShape(GeShape(reshapeOutDim));
-    inputSplitHForReshape.SetOriginShape(GeShape(reshapeOutDim));
-    reshape_desc->UpdateInputDesc("shape", inputSplitHForReshape);
-    reshape_desc->UpdateOutputDesc("y", inputSplitHForReshape);
-
-    ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
-    FUSION_PASS_CHECK(myReshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape node error."),
-                      return nullptr);
-    newNodes.push_back(myReshape_node);
-  }
   concatDesc->AddInputDesc("input_split_h", inputTensorDescSplitH);
 
   // output concat_h, shape:{t,batch_size,hidden_size}

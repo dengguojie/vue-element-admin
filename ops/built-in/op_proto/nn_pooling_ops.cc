@@ -1268,7 +1268,7 @@ IMPLEMT_INFER_DATA_SLICE(Pooling, PoolingInferDataSlice) {
     return GRAPH_FAILED;
   }
   for(unsigned i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 0) {
+    if (y_data_slice[i].size() >= 2) {
       if (i == 0) {
         int64_t n_start = y_data_slice[i][0];
         int64_t n_end = y_data_slice[i][1];

@@ -203,7 +203,10 @@ bool ShapeTransferAccordingToFormat::GetShapeAccordingToFormat(ShapeAndFormat& s
     LOG_ERROR("currentDataType %u is invalid!", shapeAndFormatInfo.currentDataType);
     return false;
   }
-  AxisUtil* axisutil_object = new AxisUtil();
+  AxisUtil* axisutil_object = new (std::nothrow) AxisUtil();
+  if (axisutil_object == nullptr) {
+    return false;
+  }
   if (!axisutil_object->HasAxisValueFunc(shapeAndFormatInfo.oldFormat)) {
     delete axisutil_object;
     return true;

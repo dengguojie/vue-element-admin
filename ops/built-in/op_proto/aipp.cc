@@ -530,7 +530,7 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
   }
 
   // protobuff message to json
-  std::shared_ptr<domi::InsertNewOps> insert_op_conf_ = std::make_shared<domi::InsertNewOps>();
+  std::shared_ptr<domi::InsertNewOps> insert_op_conf_(new (std::nothrow) domi::InsertNewOps());
   if (insert_op_conf_ == nullptr) {
     OP_LOGE(op.GetName().c_str(), "insert_op_conf_ is null!");
     return GRAPH_FAILED;
@@ -551,6 +551,11 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
     return GRAPH_FAILED;
   }
   ::domi::AippOpParams* aipp_op_params = insert_op_conf_->mutable_aipp_op(index);
+  if (aipp_op_params == nullptr) {
+    std::string err_msg = GetInputInvalidErrMsg("aipp_op_params");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
 
   nlohmann::json root;
   // aipp_mode AippMode

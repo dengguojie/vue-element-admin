@@ -73,6 +73,9 @@ Status GemmTransFusionPass::GenerateTransposeNode(ge::ComputeGraph* graph, const
                     return FAILED);
   vector<int64_t> next_in_shape(2);
   for (size_t i = 0; i < perm.size(); ++i) {
+    if (perm.size() > next_in_shape.size()) {
+      return FAILED;
+    }
     next_in_shape[i] = prev_out_desc.GetShape().GetDim(perm[i]);
   }
   ge::OpDescPtr transpose_desc;

@@ -39,6 +39,7 @@
 namespace fe {
 static const string PATTERN_FUSEDNODE = "FusedNodeDecodeBboxV2";
 static const string FUSED_NODE = "DecodeBboxV2";
+static const int32_t INT_NUM_TWO = 2;
 
 vector<FusionPattern*> DecodeBboxV2InsertTransposePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -75,6 +76,9 @@ Status DecodeBboxV2InsertTransposePass::Fusion(ge::ComputeGraph& graph, Mapping&
     AddTransposeBeforeNode(fusedNode, 1, permBoxesList, graph);
 
     vector<int64_t> outputShapeVec;
+    if (oriOutputShape.size() < INT_NUM_TWO) {
+      return NOT_CHANGED;
+    }
     outputShapeVec.push_back(oriOutputShape[1]);
     outputShapeVec.push_back(oriOutputShape[0]);
     ge::GeShape outputShape(outputShapeVec);
