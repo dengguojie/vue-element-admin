@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-add_compile_options(-Werror=format)
+add_compile_options(-Werror=format -Werror=bool-compare -fno-common -fno-strict-aliasing)
