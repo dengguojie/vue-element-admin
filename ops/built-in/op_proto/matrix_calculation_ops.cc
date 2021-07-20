@@ -111,9 +111,11 @@ bool InferFCNZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w
 
 
 bool InferFullyConnectionDataSlice(ge::Operator& op) {
-  auto x_tensor = op.GetInputDesc("x");
-  auto w_tensor = op.GetInputDesc("w");
-  auto y_tensor = op.GetOutputDesc("y");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
+  auto x_tensor = op.GetInputDescByName("x");
+  auto w_tensor = op.GetInputDescByName("w");
+  auto y_tensor = op.GetOutputDescByName("y");
 
   auto x_shape = x_tensor.GetShape().GetDims();
   auto w_shape = w_tensor.GetShape().GetDims();
@@ -139,25 +141,25 @@ bool InferFullyConnectionDataSlice(ge::Operator& op) {
   GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("w");
   vector<vector<int64_t>> y_data_slice;
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    OP_LOGI(opName.GetString(), "no data slice, not need infer input");
     return false;
   }
 
   int32_t infer_x = 0;
   int32_t infer_w = 0;
   if (y_format == FORMAT_NC1HWC0) {
-    OP_LOGI(op.GetName().c_str(), "infer dataslice from 5HD to 5HD");
+    OP_LOGI(opName.GetString(), "infer dataslice from 5HD to 5HD");
     InferFC5HD(x_data_slice, w_data_slice, y_data_slice, infer_x, infer_w);
   } else if (x_format == FORMAT_NC1HWC0) {
-    OP_LOGI(op.GetName().c_str(), "infer dataslice from 5HD to NZ");
+    OP_LOGI(opName.GetString(), "infer dataslice from 5HD to NZ");
     InferFC5HD2NZ(x_data_slice, w_data_slice, y_data_slice, infer_x, infer_w, x_shape);
   } else {
-    OP_LOGI(op.GetName().c_str(), "infer dataslice from NZ to NZ");
+    OP_LOGI(opName.GetString(), "infer dataslice from NZ to NZ");
     InferFCNZ(x_data_slice, w_data_slice, y_data_slice, infer_x, infer_w, axis);
   }
 
   if (infer_x == 0 && infer_w == 0) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    OP_LOGI(opName.GetString(), "no data slice, not need infer input");
     return false;
   }
 
@@ -165,7 +167,7 @@ bool InferFullyConnectionDataSlice(ge::Operator& op) {
     if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
       return false;
     }
-    OP_LOGI(op.GetName().c_str(), "infer input x success");
+    OP_LOGI(opName.GetString(), "infer input x success");
   }
   if (infer_w == 1) {
     if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
@@ -173,7 +175,7 @@ bool InferFullyConnectionDataSlice(ge::Operator& op) {
     }
     num_output = (w_data_slice[1][1] - w_data_slice[1][0] + 1) * w_shape[2];
     op.SetAttr("num_output", num_output);
-    OP_LOGI(op.GetName().c_str(), "infer input w success");
+    OP_LOGI(opName.GetString(), "infer input w success");
   }
   return true;
 }
@@ -185,6 +187,8 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
   int xDim = xShape.size();
   int axis = op.get_attr_axis();
   int axis_new;
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
 
   if (axis < 0) {
     axis_new = axis + xDim;
@@ -195,7 +199,7 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
   // check axis
   if (axis_new != 1 && axis_new != 2) {
     std::string err_msg = OtherErrMsg(ConcatString("Attr axis is wrong, the original value of axis ",axis," is not supported."));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -213,7 +217,7 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
   // check wShape size
   if (wShape.size() != 2) {
     std::string err_msg = GetAttrValueErrMsg("wShape.size()", std::to_string(wShape.size()), "2");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -223,14 +227,14 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
       if (kShape != wShape[1]) {
         string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[1]:",wShape[1]);
         std::string err_msg = OtherErrMsg(err_msg1);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
         return GRAPH_FAILED;
       }
     } else {
       if (kShape != wShape[0]) {
         string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[0]:",wShape[0]);
         std::string err_msg = OtherErrMsg(err_msg1);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
         return GRAPH_FAILED;
       }
     }
@@ -240,17 +244,19 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
 }
 
 IMPLEMT_INFERFUNC(FullyConnection, FullyConnectionInfer) {
-  auto outDesc = op.GetOutputDesc("y");
-  auto weightDesc = op.GetInputDesc("w");
-  auto xDesc = op.GetInputDesc("x");
+  auto outDesc = op.GetOutputDescByName("y");
+  auto weightDesc = op.GetInputDescByName("w");
+  auto xDesc = op.GetInputDescByName("x");
 
-  auto xShape = op.GetInputDesc("x").GetShape().GetDims();
-  auto wShape = op.GetInputDesc("w").GetShape().GetDims();
-  auto xDtype = op.GetInputDesc("x").GetDataType();
+  auto xShape = op.GetInputDescByName("x").GetShape().GetDims();
+  auto wShape = op.GetInputDescByName("w").GetShape().GetDims();
+  auto xDtype = op.GetInputDescByName("x").GetDataType();
   bool transpose = op.get_attr_transpose();
   int axis = op.get_attr_axis();
   int xDim = xShape.size();
   int axis_new;
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
 
   if (axis < 0) {
     axis_new = axis + xDim;
@@ -259,7 +265,7 @@ IMPLEMT_INFERFUNC(FullyConnection, FullyConnectionInfer) {
   }
   if (axis_new != 1 && axis_new != 2) {
     std::string err_msg = GetAttrValueErrMsg("axis_new", std::to_string(axis_new), "1 or 2");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
   op.SetAttr("axis", axis_new);
@@ -282,7 +288,7 @@ IMPLEMT_INFERFUNC(FullyConnection, FullyConnectionInfer) {
       }
       changedXShape.push_back(km_shape);
     } else {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Not enough info about M and K!\n");
+      CUBE_INNER_ERR_REPORT(opName.GetString(), "Not enough info about M and K!\n");
       return GRAPH_FAILED;
     }
 
@@ -354,7 +360,9 @@ IMPLEMT_INFERFUNC(FullyConnection, FullyConnectionInfer) {
 }
 
 IMPLEMT_INFER_DATA_SLICE(FullyConnection, FullyConnectionInferDataSlice) {
-  OP_LOGD(op.GetName().c_str(), "Enter FullyConnection InferDataSlice");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "Enter FullyConnection InferDataSlice");
   if (InferFullyConnectionDataSlice(op)) {
     return GRAPH_SUCCESS;
   }
@@ -367,6 +375,8 @@ INFER_DATA_SLICE_FUNC_REG(FullyConnection, FullyConnectionInferDataSlice);
 
 // ----------------FullyConnectionCompress-------------------
 IMPLEMT_VERIFIER(FullyConnectionCompress, FullyConnectionCompressVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   auto xShape = op.get_input_desc_x().GetShape().GetDims();
   auto wShape = op.get_input_desc_w().GetShape().GetDims();
   bool transpose = op.get_attr_transpose();
@@ -379,8 +389,8 @@ IMPLEMT_VERIFIER(FullyConnectionCompress, FullyConnectionCompressVerify) {
 
   // check wShape size
   if (wShape.size() != 1 && wShape.size() != 2) {
-    OpsOneOutputShapeErrReport(op.GetName(), "W shape", "wShape Compress size must equal to 1 or 2!");
-    OP_LOGE(op.GetName().c_str(), "wShape Compress size must equal to 1 or 2!\n");
+    OpsOneOutputShapeErrReport(opName.GetString(), "W shape", "wShape Compress size must equal to 1 or 2!");
+    OP_LOGE(opName.GetString(), "wShape Compress size must equal to 1 or 2!\n");
     return GRAPH_FAILED;
   }
 
@@ -388,14 +398,14 @@ IMPLEMT_VERIFIER(FullyConnectionCompress, FullyConnectionCompressVerify) {
   if (wShape.size() == 2) {
     if (!transpose) {
       if (kShape != wShape[1]) {
-        OpsTwoInputShapeErrReport(op.GetName(), "X Shape", "W Shape", "weight Compress K must equal to input K!");
-        OP_LOGE(op.GetName().c_str(), "weight Compress K must equal to input K!\n");
+        OpsTwoInputShapeErrReport(opName.GetString(), "X Shape", "W Shape", "weight Compress K must equal to input K!");
+        OP_LOGE(opName.GetString(), "weight Compress K must equal to input K!\n");
         return GRAPH_FAILED;
       }
     } else {
       if (kShape != wShape[0]) {
-        OpsTwoInputShapeErrReport(op.GetName(), "X Shape", "W Shape", "weight Compress K must equal to input K!");
-        OP_LOGE(op.GetName().c_str(), "weight Compress K must equal to input K!\n");
+        OpsTwoInputShapeErrReport(opName.GetString(), "X Shape", "W Shape", "weight Compress K must equal to input K!");
+        OP_LOGE(opName.GetString(), "weight Compress K must equal to input K!\n");
         return GRAPH_FAILED;
       }
     }
@@ -405,17 +415,19 @@ IMPLEMT_VERIFIER(FullyConnectionCompress, FullyConnectionCompressVerify) {
 }
 
 IMPLEMT_INFERFUNC(FullyConnectionCompress, FullyConnectionCompressInfer) {
-  auto outDesc = op.GetOutputDesc("y");
-  auto weightDesc = op.GetInputDesc("w");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  auto outDesc = op.GetOutputDescByName("y");
+  auto weightDesc = op.GetInputDescByName("w");
 
-  auto xShape = op.GetInputDesc("x").GetShape().GetDims();
-  auto wShape = op.GetInputDesc("w").GetShape().GetDims();
-  auto xDtype = op.GetInputDesc("x").GetDataType();
+  auto xShape = op.GetInputDescByName("x").GetShape().GetDims();
+  auto wShape = op.GetInputDescByName("w").GetShape().GetDims();
+  auto xDtype = op.GetInputDescByName("x").GetDataType();
   bool transpose = op.get_attr_transpose();
 
   if (xShape.size() < 1 || wShape.size() < 1) {
-    OpsTwoInputShapeErrReport(op.GetName(), "X Shape", "W Shape", "Input Shape or Weight Shape should >= 1!");
-    OP_LOGE(op.GetName().c_str(), "Invalid Shape size, xShape size is %u, wShape size is %u.", xShape.size(),
+    OpsTwoInputShapeErrReport(opName.GetString(), "X Shape", "W Shape", "Input Shape or Weight Shape should >= 1!");
+    OP_LOGE(opName.GetString(), "Invalid Shape size, xShape size is %u, wShape size is %u.", xShape.size(),
             wShape.size());
     return GRAPH_FAILED;
   }
@@ -464,7 +476,9 @@ IMPLEMT_INFERFUNC(FullyConnectionCompress, FullyConnectionCompressInfer) {
 }
 
 IMPLEMT_INFER_DATA_SLICE(FullyConnectionCompress, FullyConnectionCompressInferDataSlice) {
-  OP_LOGD(op.GetName().c_str(), "Enter FullyConnectionCompress InferDataSlice");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "Enter FullyConnectionCompress InferDataSlice");
   if (InferFullyConnectionDataSlice(op)) {
     return GRAPH_SUCCESS;
   }
@@ -479,8 +493,8 @@ INFER_DATA_SLICE_FUNC_REG(FullyConnectionCompress, FullyConnectionCompressInferD
 
 // ----------------Matmul-------------------
 string GetMatMulInfo(const Operator &op, const std::string &name_attr) {
-  auto desc_a = op.GetInputDesc("x1");
-  auto desc_b = op.GetInputDesc("x2");
+  auto desc_a = op.GetInputDescByName("x1");
+  auto desc_b = op.GetInputDescByName("x2");
   ge::Shape shape_a = desc_a.GetShape();
   ge::Shape shape_b = desc_b.GetShape();
   ge::Shape ori_shape_a = desc_a.GetOriginShape();
@@ -491,36 +505,36 @@ string GetMatMulInfo(const Operator &op, const std::string &name_attr) {
   desc_b.GetShapeRange(range_b);
 
   bool trans_a = false, trans_b = false;
-  op.GetAttr(name_attr + "_x1", trans_a);
-  op.GetAttr(name_attr + "_x2", trans_b);
+  op.GetAttr((name_attr + "_x1").c_str(), trans_a);
+  op.GetAttr((name_attr + "_x2").c_str(), trans_b);
 
   std::ostringstream oss;
   oss << "shape of a: ";
-  for (auto i = 0; i < shape_a.GetDimNum(); i++) {
+  for (size_t i = 0; i < shape_a.GetDimNum(); i++) {
       oss << shape_a.GetDim(i) << ", ";
   }
   oss << "ori shape of a: ";
-  for (auto i = 0; i < ori_shape_a.GetDimNum(); i++) {
+  for (size_t i = 0; i < ori_shape_a.GetDimNum(); i++) {
       oss << ori_shape_a.GetDim(i) << ", ";
   }
   oss << std::endl;
   oss << "shape of b: ";
-  for (auto i = 0; i < shape_b.GetDimNum(); i++) {
+  for (size_t i = 0; i < shape_b.GetDimNum(); i++) {
       oss << shape_b.GetDim(i) << ", ";
   }
   oss << "ori shape of b: ";
-  for (auto i = 0; i < ori_shape_b.GetDimNum(); i++) {
+  for (size_t i = 0; i < ori_shape_b.GetDimNum(); i++) {
       oss << ori_shape_b.GetDim(i) << ", ";
   }
   oss << std::endl;
   oss << "trans_a " << trans_a << " trans_b " << trans_b << std::endl;
   oss << "range of a: (";
-  for (auto i = 0; i < range_a.size(); i++) {
+  for (size_t i = 0; i < range_a.size(); i++) {
       oss << "(" << range_a[i].first << ", " << range_a[i].second << ") ";
   }
   oss << ")" << std::endl;
   oss << "range of b: (";
-  for (auto i = 0; i < range_b.size(); i++) {
+  for (size_t i = 0; i < range_b.size(); i++) {
       oss << "(" << range_b[i].first << ", " << range_b[i].second << "), ";
   }
   oss << ")" << std::endl;
@@ -888,7 +902,7 @@ bool InferShapeMatMul::NormalizeRangeOfMatMul(const vector<int64_t> &shape,
   // deal with empty range
   vector<std::pair<int64_t, int64_t>> preprocess_range;
   if (shape != UNKNOWN_RANK && range.empty()) {
-    for (auto i = 0; i < shape.size(); ++i) {
+    for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] == -1) {
         preprocess_range.push_back({1, NORMALIZE_INFINITE_RANGE});
       } else {
@@ -1018,7 +1032,7 @@ void InferShapeMatMul::SimplifyShapeAndRange() {
     return;
   }
 
-  for (auto i = 0; i < range_out.size(); i++) {
+  for (size_t i = 0; i < range_out.size(); i++) {
     if (range_out[i].first == range_out[i].second) {
       shape_out[i] = range_out[i].first;
     }
@@ -1069,7 +1083,7 @@ bool InferShapeMatMul::GetShapeRangeOfOutput() {
 void GetMatmulShapeGear(int64_t dim_size,
                         const std::vector<int64_t> &shape_gear,
                         std::pair<int64_t, int64_t> &range) {
-  auto position = 1;
+  size_t position = 1;
   while (position < shape_gear.size() && shape_gear[position] < dim_size) {
     position++;
   }
@@ -1078,7 +1092,7 @@ void GetMatmulShapeGear(int64_t dim_size,
 
 int32_t CalculateMatmulShapeRange(const std::vector<int64_t> &shape,
                                   std::vector<std::pair<int64_t, int64_t>> &single_point_range) {
-  for (auto i = 0; i < shape.size() - 2; i++) {
+  for (size_t i = 0; i < shape.size() - 2; i++) {
     if (shape[i] > MAX_RANGE) {
       return -1;
     }
@@ -1097,14 +1111,16 @@ graphStatus GetMatMulOutputShape(Operator &op,
                                  std::vector<int64_t> &shape_out,
                                  std::vector<std::pair<int64_t, int64_t>> &shape_range_out,
                                  const std::string &name_attr, bool has_batch) {
-  ge::TensorDesc desc_a = op.GetInputDesc("x1");
-  ge::TensorDesc desc_b = op.GetInputDesc("x2");
+  ge::TensorDesc desc_a = op.GetInputDescByName("x1");
+  ge::TensorDesc desc_b = op.GetInputDescByName("x2");
   auto shape_a = desc_a.GetShape().GetDims();
   auto shape_b = desc_b.GetShape().GetDims();
   std::vector<std::pair<int64_t, int64_t>> shape_range_a;
   std::vector<std::pair<int64_t, int64_t>> shape_range_b;
   desc_a.GetShapeRange(shape_range_a);
   desc_b.GetShapeRange(shape_range_b);
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
 
   ge::TensorDesc desc_bias;
   std::vector<std::pair<int64_t, int64_t>> shape_range_bias;
@@ -1115,10 +1131,10 @@ graphStatus GetMatMulOutputShape(Operator &op,
   }
 
   bool trans_a = false;
-  if (ge::GRAPH_SUCCESS != op.GetAttr(name_attr + "_x1", trans_a)) {
-    OpsGetAttrErrReport(op.GetName(), name_attr + "_x1");
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!",
-            op.GetName().c_str(), name_attr.c_str());
+  if (ge::GRAPH_SUCCESS != op.GetAttr((name_attr + "_x1").c_str(), trans_a)) {
+    OpsGetAttrErrReport(opName.GetString(), name_attr + "_x1");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!",
+            opName.GetString(), name_attr.c_str());
     return GRAPH_FAILED;
   }
   if(shape_a.size() == 1 && shape_a[0] > 0) {
@@ -1130,28 +1146,28 @@ graphStatus GetMatMulOutputShape(Operator &op,
     shape_range_b.push_back(make_pair<int64_t, int64_t>(1, 1));
   }
   bool trans_b = false;
-  if (ge::GRAPH_SUCCESS != op.GetAttr(name_attr + "_x2", trans_b)) {
-    OpsGetAttrErrReport(op.GetName(), name_attr + "_x2");
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!",
-            op.GetName().c_str(), name_attr.c_str());
+  if (ge::GRAPH_SUCCESS != op.GetAttr((name_attr + "_x2").c_str(), trans_b)) {
+    OpsGetAttrErrReport(opName.GetString(), name_attr + "_x2");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!",
+            opName.GetString(), name_attr.c_str());
     return GRAPH_FAILED;
   }
 
   bool fuzzy_flag = false;
   bool is_static_shape = !IsUnKnownShape(shape_a) && !IsUnKnownShape(shape_b) && !IsUnknownShape(shape_bias);
-  if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzzy_flag) && fuzzy_flag && is_static_shape) {
+  if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzzy_flag) && fuzzy_flag && is_static_shape) {
     auto shape_a_length = shape_a.size();
     auto shape_b_length = shape_b.size();
     std::vector<std::pair<int64_t, int64_t>> single_point_range_a(shape_a_length);
     std::vector<std::pair<int64_t, int64_t>> single_point_range_b(shape_b_length);
     int32_t calc_range_a = CalculateMatmulShapeRange(shape_a, single_point_range_a);
     if (calc_range_a < 0) {
-      OP_LOGE(op.GetName().c_str(), "shape of input_x1 is too large");
+      OP_LOGE(opName.GetString(), "shape of input_x1 is too large");
       return GRAPH_FAILED;
     }
     int32_t calc_range_b = CalculateMatmulShapeRange(shape_b, single_point_range_b);
     if (calc_range_b < 0) {
-      OP_LOGE(op.GetName().c_str(), "shape of input_x2 is too large");
+      OP_LOGE(opName.GetString(), "shape of input_x2 is too large");
       return GRAPH_FAILED;
     }
     shape_range_a = single_point_range_a;
@@ -1164,14 +1180,14 @@ graphStatus GetMatMulOutputShape(Operator &op,
     if (shape_a_length > 2 || shape_b_length > 2) {
       transpose_name = "adj";
     }
-    OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, transpose_name).c_str());
+    OP_LOGD(opName.GetString(), "%s", GetMatMulInfo(op, transpose_name).c_str());
   }
-  auto obj = InferShapeMatMul(op.GetName(), shape_a, shape_b, shape_bias, shape_range_a, shape_range_b,
+  auto obj = InferShapeMatMul(opName.GetString(), shape_a, shape_b, shape_bias, shape_range_a, shape_range_b,
                               shape_range_bias, trans_a, trans_b, shape_out, shape_range_out, has_batch);
   if (!obj.GetShapeRangeOfOutput()) {
     return GRAPH_FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "fuzzy_flag = %d", fuzzy_flag);
+  OP_LOGD(opName.GetString(), "fuzzy_flag = %d", fuzzy_flag);
   return GRAPH_SUCCESS;
 }
 
@@ -1184,7 +1200,9 @@ bool InferMatmulInputNZ(const Operator &op,
   GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   vector<vector<int64_t>> x1_data_slice = {{}, {}, {}, {}};
   vector<vector<int64_t>> x2_data_slice = {{}, {}, {}, {}};
-  for(auto i = 0; i < output.size(); i++) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
+  for(size_t i = 0; i < output.size(); i++) {
     if (output[i].size() > 1) {
       if (i == 0) {
         if (!trans_b) {
@@ -1195,7 +1213,7 @@ bool InferMatmulInputNZ(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
           return false;
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in N success");
+        OP_LOGI(opName.GetString(), "infer input in N success");
         return true;
       } else if (i == 1) {
         if (!trans_a) {
@@ -1206,15 +1224,15 @@ bool InferMatmulInputNZ(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
           return false;
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in M success");
+        OP_LOGI(opName.GetString(), "infer input in M success");
         return true;
       } else {
-        OP_LOGI(op.GetName().c_str(), "cannot support cut in block_n and block_m");
+        OP_LOGI(opName.GetString(), "cannot support cut in block_n and block_m");
         return false;
       }
     }
   }
-  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  OP_LOGI(opName.GetString(), "no data slice, not need infer input");
   return false;
 }
 
@@ -1226,7 +1244,9 @@ bool InferMatmulInputND(const Operator &op,
   GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
   vector<vector<int64_t>> x1_data_slice = {{}, {}};
   vector<vector<int64_t>> x2_data_slice = {{}, {}};
-  for(auto i = 0; i < output.size(); i++) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
+  for(size_t i = 0; i < output.size(); i++) {
     if (output[i].size() > 1) {
       if (i == 0) {
         if (!trans_a) {
@@ -1237,7 +1257,7 @@ bool InferMatmulInputND(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
           return false;
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in M success");
+        OP_LOGI(opName.GetString(), "infer input in M success");
         return true;
       } else if (i == 1) {
         if (!trans_b) {
@@ -1248,12 +1268,12 @@ bool InferMatmulInputND(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
           return false;
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in N success");
+        OP_LOGI(opName.GetString(), "infer input in N success");
         return true;
       }
     }
   }
-  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  OP_LOGI(opName.GetString(), "no data slice, not need infer input");
   return false;
 }
 
@@ -1262,24 +1282,26 @@ bool InferMatmul(const Operator &op) {
   CHECK_PTR_NULL(op_desc, "op desc", return false);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   CHECK_PTR_NULL(tensor_desc_y, "tensor y desc", return false);
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
 
   bool trans_a = false;
   if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", trans_a)) {
-    OpsGetAttrErrReport(op.GetName(), "transpose_x1");
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transpose_x1 failed!",
-            op.GetName().c_str());
+    OpsGetAttrErrReport(opName.GetString(), "transpose_x1");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transpose_x1 failed!",
+            opName.GetString());
     return false;
   }
   bool trans_b = false;
   if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x2", trans_b)) {
-    OpsGetAttrErrReport(op.GetName(), "transpose_x2");
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transpose_x2 failed!",
-            op.GetName().c_str());
+    OpsGetAttrErrReport(opName.GetString(), "transpose_x2");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transpose_x2 failed!",
+            opName.GetString());
     return false;
   }
 
-  Format x1_format = op.GetInputDesc("x1").GetFormat();
-  Format x2_format = op.GetInputDesc("x2").GetFormat();
+  Format x1_format = op.GetInputDescByName("x1").GetFormat();
+  Format x2_format = op.GetInputDescByName("x2").GetFormat();
   if (x1_format == FORMAT_FRACTAL_NZ) {
     trans_a = !trans_a;
   }
@@ -1290,7 +1312,7 @@ bool InferMatmul(const Operator &op) {
   vector<vector<int64_t>> y_data_slice;
 
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    OP_LOGI(opName.GetString(), "no data slice, not need infer input");
     return false;
   }
 
@@ -1318,6 +1340,8 @@ bool InferBatchMatmulInputNZ(const Operator &op,
   vector<vector<int64_t>> x1_data_slice(x1_dims);
   vector<vector<int64_t>> x2_data_slice(x2_dims);
   size_t y_dims = output.size();
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
 
   for(size_t i = 0; i < y_dims; i++) {
     if (output[i].size() > 1) {
@@ -1331,7 +1355,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
           return false;
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in N success");
+        OP_LOGI(opName.GetString(), "infer input in N success");
         return true;
       } else if (i == y_dims - 3) {
         if (!trans_a) {
@@ -1342,7 +1366,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
           return false;
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in M success");
+        OP_LOGI(opName.GetString(), "infer input in M success");
         return true;
       } else if (i < y_dims - 4){
         // split batch
@@ -1356,15 +1380,15 @@ bool InferBatchMatmulInputNZ(const Operator &op,
             return false;
           }
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in batch success");
+        OP_LOGI(opName.GetString(), "infer input in batch success");
         return true;
       } else {
-        OP_LOGI(op.GetName().c_str(), "cannot support cut in block_n and block_m");
+        OP_LOGI(opName.GetString(), "cannot support cut in block_n and block_m");
         return false;
       }
     }
   }
-  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  OP_LOGI(opName.GetString(), "no data slice, not need infer input");
   return false;
 }
 
@@ -1378,6 +1402,8 @@ bool InferBatchMatmulInputND(const Operator &op,
   vector<vector<int64_t>> x1_data_slice(x1_dims);
   vector<vector<int64_t>> x2_data_slice(x2_dims);
   size_t y_dims = output.size();
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
 
   for(size_t i = 0; i < y_dims; i++) {
     if (output[i].size() > 1) {
@@ -1391,7 +1417,7 @@ bool InferBatchMatmulInputND(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
           return false;
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in M success");
+        OP_LOGI(opName.GetString(), "infer input in M success");
         return true;
       } else if (i == y_dims - 1) {
         // split n
@@ -1403,7 +1429,7 @@ bool InferBatchMatmulInputND(const Operator &op,
         if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
           return false;
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in N success");
+        OP_LOGI(opName.GetString(), "infer input in N success");
         return true;
       } else {
         x1_data_slice[i] = output[i];
@@ -1416,38 +1442,40 @@ bool InferBatchMatmulInputND(const Operator &op,
             return false;
           }
         }
-        OP_LOGI(op.GetName().c_str(), "infer input in Batch success");
+        OP_LOGI(opName.GetString(), "infer input in Batch success");
         return true;
       }
     }
   }
-  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  OP_LOGI(opName.GetString(), "no data slice, not need infer input");
   return false;
 }
 
 bool InferBatchMatmul(const Operator &op) {
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
 
   bool trans_a = false;
   bool trans_b = false;
   if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x1", trans_a)) {
-    OpsGetAttrErrReport(op.GetName(), "transposeA");
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transposeA failed!",
-            op.GetName().c_str());
+    OpsGetAttrErrReport(opName.GetString(), "transposeA");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transposeA failed!",
+            opName.GetString());
     return false;
   }
   if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x2", trans_b)) {
-    OpsGetAttrErrReport(op.GetName(), "transposeB");
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transposeB failed!",
-            op.GetName().c_str());
+    OpsGetAttrErrReport(opName.GetString(), "transposeB");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr transposeB failed!",
+            opName.GetString());
     return false;
   }
 
-  Format x1_format = op.GetInputDesc("x1").GetFormat();
-  Format x2_format = op.GetInputDesc("x2").GetFormat();
-  size_t x1_dims = op.GetInputDesc("x1").GetShape().GetDimNum();
-  size_t x2_dims = op.GetInputDesc("x2").GetShape().GetDimNum();
+  Format x1_format = op.GetInputDescByName("x1").GetFormat();
+  Format x2_format = op.GetInputDescByName("x2").GetFormat();
+  size_t x1_dims = op.GetInputDescByName("x1").GetShape().GetDimNum();
+  size_t x2_dims = op.GetInputDescByName("x2").GetShape().GetDimNum();
   if (x1_format == FORMAT_FRACTAL_NZ) {
     trans_a = !trans_a;
   }
@@ -1457,7 +1485,7 @@ bool InferBatchMatmul(const Operator &op) {
 
   vector<vector<int64_t>> y_data_slice;
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    OP_LOGI(opName.GetString(), "no data slice, not need infer input");
     return false;
   }
 
@@ -1491,6 +1519,8 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   auto tensordesc_output = op_desc->MutableOutputDesc("y");
@@ -1500,12 +1530,12 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
 
   auto dtype = tensordesc_x1.GetDataType();
 
-  OP_LOGD(op.GetName().c_str(), "start judge the dtype for matmul!");
+  OP_LOGD(opName.GetString(), "start judge the dtype for matmul!");
   if (dtype == DT_FLOAT) {
-    OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
+    OP_LOGW(opName.GetString(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
 
-  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "transpose").c_str());
+  OP_LOGD(opName.GetString(), "%s", GetMatMulInfo(op, "transpose").c_str());
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
@@ -1523,7 +1553,9 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
 
 // the slice infer
 IMPLEMT_INFER_DATA_SLICE(MatMul, MatMulInferDataSlice) {
-  OP_LOGD(op.GetName().c_str(), "Enter Matmul InferDataSlice.");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "Enter Matmul InferDataSlice.");
   if (!InferMatmul(op)) {
     return GRAPH_FAILED;
   }
@@ -1558,7 +1590,9 @@ IMPLEMT_VERIFIER(MatMulV2, MatMulV2Verify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start matmul infershape.");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Start matmul infershape.");
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   auto tensordesc_output = op_desc->MutableOutputDesc("y");
   auto tensordesc_x1 = op_desc->MutableInputDesc("x1");
@@ -1567,27 +1601,27 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   auto shape_x1 = tensordesc_x1->GetShape();
   auto shape_x2 = tensordesc_x2->GetShape();
   auto dtype = tensordesc_x1->GetDataType();
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Check the input dtype.");
+  OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Check the input dtype.");
   if (dtype == DT_FLOAT) {
-    OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
+    OP_LOGW(opName.GetString(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Check the input shape length.");
+  OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Check the input shape length.");
   if (shape_x1.GetDims() != UNKNOWN_RANK && shape_x1.GetDims().size() != 2 && shape_x1.GetDims().size() != 4) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "[Plugin][ERROR]Matmul the first input dims is not 2 or 4!");
+    CUBE_INNER_ERR_REPORT(opName.GetString(), "[Plugin][ERROR]Matmul the first input dims is not 2 or 4!");
     return GRAPH_FAILED;
   }
 
-  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "transpose").c_str());
+  OP_LOGD(opName.GetString(), "%s", GetMatMulInfo(op, "transpose").c_str());
 
   std::vector<int64_t> shape_out;
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Check the transpose attr.");
+  OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Check the transpose attr.");
   if (GRAPH_SUCCESS != GetMatMulOutputShape(op, shape_out, shape_range_out, "transpose", false)) {
     return GRAPH_FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] The transpose attr is Ok.");
+  OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] The transpose attr is Ok.");
   ge::GeShape shape_out_desc{shape_out};
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Start to set output shape.");
+  OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Start to set output shape.");
   tensordesc_output->SetShape(shape_out_desc);
   tensordesc_output->SetOriginShape(shape_out_desc);
   tensordesc_output->SetShapeRange(shape_range_out);
@@ -1596,11 +1630,13 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   } else {
     tensordesc_output->SetDataType(tensordesc_x1->GetDataType());
   }
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] End MatMulV2 infershape.");
+  OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] End MatMulV2 infershape.");
   return GRAPH_SUCCESS;
 }
 IMPLEMT_INFERFORMAT_FUNC(MatMulV2, MatMulV2InferFormat) {
-  OP_LOGD(op.GetName().c_str(), "[MatMulV2 Inferformat] Finaly input format is %d", FORMAT_ND);
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "[MatMulV2 Inferformat] Finaly input format is %d", FORMAT_ND);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
 
   auto tensordesc_input = op_desc->MutableInputDesc("x1");
@@ -1615,7 +1651,9 @@ IMPLEMT_INFERFORMAT_FUNC(MatMulV2, MatMulV2InferFormat) {
 }
 // the slice infer
 IMPLEMT_INFER_DATA_SLICE(MatMulV2, MatMulV2InferDataSlice) {
-  OP_LOGD(op.GetName().c_str(), "Enter MatmulV2 InferDataSlice.");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "Enter MatmulV2 InferDataSlice.");
   if (!InferMatmul(op)) {
     return GRAPH_FAILED;
   }
@@ -1644,31 +1682,33 @@ IMPLEMT_VERIFIER(GEMM, GemmVerify) {
   support_list_ab.push_back(DT_FLOAT);
   support_list_ab.push_back(DT_INT32);
   support_list_ab.push_back(DT_FLOAT16);
-  OP_LOGD(op.GetName().c_str(), "[GEMM Verify] Start GEMM Verify.");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "[GEMM Verify] Start GEMM Verify.");
 
   if (CheckInputDataType(op, "a", support_list) == false) {
-    TbeInputDataTypeErrReport(op.GetName().c_str(), "a", "float16,int8",
-                              DataTypeToStringDesc(op.GetInputDesc("a").GetDataType()));
+    TbeInputDataTypeErrReport(opName.GetString(), "a", "float16,int8",
+                              DataTypeToStringDesc(op.GetInputDescByName("a").GetDataType()));
     return GRAPH_FAILED;
   }
   if (CheckInputDataType(op, "b", support_list) == false) {
-    TbeInputDataTypeErrReport(op.GetName().c_str(), "b", "float16,int8",
-                              DataTypeToStringDesc(op.GetInputDesc("b").GetDataType()));
+    TbeInputDataTypeErrReport(opName.GetString(), "b", "float16,int8",
+                              DataTypeToStringDesc(op.GetInputDescByName("b").GetDataType()));
     return GRAPH_FAILED;
   }
   if (CheckInputDataType(op, "c", support_list_ab) == false) {
-    TbeInputDataTypeErrReport(op.GetName().c_str(), "c", "float32,int32,float16",
-                              DataTypeToStringDesc(op.GetInputDesc("c").GetDataType()));
+    TbeInputDataTypeErrReport(opName.GetString(), "c", "float32,int32,float16",
+                              DataTypeToStringDesc(op.GetInputDescByName("c").GetDataType()));
     return GRAPH_FAILED;
   }
   if (CheckInputDataType(op, "alpha", support_list_ab) == false) {
-    TbeInputDataTypeErrReport(op.GetName().c_str(), "alpha", "float32,int32,float16",
-                              DataTypeToStringDesc(op.GetInputDesc("alpha").GetDataType()));
+    TbeInputDataTypeErrReport(opName.GetString(), "alpha", "float32,int32,float16",
+                              DataTypeToStringDesc(op.GetInputDescByName("alpha").GetDataType()));
     return GRAPH_FAILED;
   }
   if (CheckInputDataType(op, "beta", support_list_ab) == false) {
-    TbeInputDataTypeErrReport(op.GetName().c_str(), "beta", "float32,int32,float16",
-                              DataTypeToStringDesc(op.GetInputDesc("beta").GetDataType()));
+    TbeInputDataTypeErrReport(opName.GetString(), "beta", "float32,int32,float16",
+                              DataTypeToStringDesc(op.GetInputDescByName("beta").GetDataType()));
     return GRAPH_FAILED;
   }
 
@@ -1677,9 +1717,11 @@ IMPLEMT_VERIFIER(GEMM, GemmVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(GemmInferShape) {
-  OP_LOGD(op.GetName().c_str(), "[GEMM Infershape] Start GEMM infershape.");
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  ge::TensorDesc inputTensorDescC = op.GetInputDesc("c");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "[GEMM Infershape] Start GEMM infershape.");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
+  ge::TensorDesc inputTensorDescC = op.GetInputDescByName("c");
   DataType dtype = inputTensorDescC.GetDataType();
   ge::Shape shapeC = inputTensorDescC.GetShape();
   ge::Shape outputShape(shapeC);
@@ -1723,7 +1765,9 @@ void modify_batchmatmul_outputshape(vector<int64_t> &shape_out, const vector<int
 }
 
 graphStatus CommonBatchMatMulInferShape(Operator &op) {
-  OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "adj").c_str());
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "%s", GetMatMulInfo(op, "adj").c_str());
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   auto tensordesc_out = op_desc->MutableOutputDesc("y");
@@ -1745,12 +1789,12 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
   bool trans_a = false;
   bool trans_b = false;
   if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x1", trans_a)) {
-    OpsGetAttrErrReport(op.GetName(), "transposeA");
+    OpsGetAttrErrReport(opName.GetString(), "transposeA");
     printf("GetOpAttr transpose_a or transpose_a failed!");
     return GRAPH_FAILED;
   }
   if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x2", trans_b)) {
-    OpsGetAttrErrReport(op.GetName(), "transposeB");
+    OpsGetAttrErrReport(opName.GetString(), "transposeB");
     printf("GetOpAttr transpose_a or transpose_b failed!");
     return GRAPH_FAILED;
   }
@@ -1758,7 +1802,7 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
   auto dim_num = std::max(dim_num_x1, dim_num_x2);
   bool any_unknown_rank = shape_x1 == UNKNOWN_RANK || shape_x1 == UNKNOWN_RANK || shape_bias == UNKNOWN_RANK;
   if (!any_unknown_rank && (dim_num < 1 || dim_num > 8)) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 1 to 8.");
+    CUBE_INNER_ERR_REPORT(opName.GetString(), "[Infershape]The shape can only be in the range of 1 to 8.");
     return GRAPH_FAILED;
   }
 
@@ -1768,7 +1812,7 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGD(op.GetName().c_str(), "modify output shape with ori_shape");
+  OP_LOGD(opName.GetString(), "modify output shape with ori_shape");
 
   tensordesc_out->SetShape(ge::GeShape(shape_out));
   tensordesc_out->SetShapeRange(shape_range_out);
@@ -1787,7 +1831,9 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
 
 // the slice infer
 IMPLEMT_INFER_DATA_SLICE(BatchMatMul, BatchMatMulInferDataSlice) {
-  OP_LOGD(op.GetName().c_str(), "Enter BatchMatmul InferDataSlice.");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "Enter BatchMatmul InferDataSlice.");
   if (!InferBatchMatmul(op)) {
     return GRAPH_FAILED;
   }
@@ -1815,7 +1861,9 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
 }
 
 IMPLEMT_INFERFORMAT_FUNC(BatchMatMulV2, BatchMatMulV2InferFormat) {
-  OP_LOGD(op.GetName().c_str(), "[BatchMatMulV2 Inferformat] Finaly input format is %d", FORMAT_ND);
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "[BatchMatMulV2 Inferformat] Finaly input format is %d", FORMAT_ND);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
 
   auto tensordesc_input = op_desc->MutableInputDesc("x1");
@@ -1831,7 +1879,9 @@ IMPLEMT_INFERFORMAT_FUNC(BatchMatMulV2, BatchMatMulV2InferFormat) {
 
 // the slice infer
 IMPLEMT_INFER_DATA_SLICE(BatchMatMulV2, BatchMatMulV2InferDataSlice) {
-  OP_LOGD(op.GetName().c_str(), "Enter BatchMatmulV2 InferDataSlice.");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  OP_LOGD(opName.GetString(), "Enter BatchMatmulV2 InferDataSlice.");
   if (!InferBatchMatmul(op)) {
     return GRAPH_FAILED;
   }
@@ -1870,14 +1920,14 @@ COMMON_INFER_FUNC_REG(L2Loss, L2LossInferShape);
 
 // ----------------DiagPart-------------------
 IMPLEMT_COMMON_INFERFUNC(DiagPartInferShape) {
-  Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  Shape shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   std::vector<int64_t> dim_vector;
   for (size_t i = 0; i < shape.GetDimNum() / 2; i++) {
     dim_vector.push_back(shape.GetDim(i));
   }
   Shape output_shape(dim_vector);
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(output_shape);
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -1889,14 +1939,14 @@ COMMON_INFER_FUNC_REG(DiagPart, DiagPartInferShape);
 
 // ----------------DiagPartD-------------------
 IMPLEMT_COMMON_INFERFUNC(DiagPartDInferShape) {
-  Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  Shape shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   std::vector<int64_t> dim_vector;
   for (size_t i = 0; i < shape.GetDimNum() / 2; i++) {
     dim_vector.push_back(shape.GetDim(i));
   }
   Shape output_shape(dim_vector);
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(output_shape);
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -1908,9 +1958,9 @@ COMMON_INFER_FUNC_REG(DiagPartD, DiagPartDInferShape);
 
 // ---------------MatrixDiag-------------------
 IMPLEMT_COMMON_INFERFUNC(MatrixDiagInferShape) {
-  Shape input_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   int64_t dimsInput = input_shape.GetDimNum() - 1;
   int64_t dimNums1 = input_shape.GetDim(dimsInput);
 
@@ -1936,9 +1986,11 @@ VERIFY_FUNC_REG(MatrixDiag, MatrixDiagVerify);
 
 // ---------------MatrixDiagD-------------------
 IMPLEMT_COMMON_INFERFUNC(MatrixDiagDInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  Shape assist_shape = op.GetInputDesc("assist").GetShape();
-  TensorDesc td = op.GetOutputDesc("y");
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  Shape x_shape = op.GetInputDescByName("x").GetShape();
+  Shape assist_shape = op.GetInputDescByName("assist").GetShape();
+  TensorDesc td = op.GetOutputDescByName("y");
   std::vector<int64_t> dims_x = x_shape.GetDims();
   std::vector<int64_t> dims_assist = assist_shape.GetDims();
   if (dims_x.size() < dims_assist.size()) {
@@ -1949,7 +2001,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagDInferShape) {
 
   if (dims_x.size() != dims_assist.size()) {
     auto dec = dims_x.size() - dims_assist.size();
-    for (auto i = 0; i < dec; i++) {
+    for (size_t i = 0; i < dec; i++) {
       dims_assist.insert(dims_assist.begin(), (int64_t)1);
     }
   }
@@ -1958,7 +2010,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagDInferShape) {
   for (size_t i = 0; i < dims_x.size(); i++) {
     if ((dims_x[i] != dims_assist[i]) && (dims_x[i] != 1) && (dims_assist[i] != 1)) {
       std::string err_msg = OtherErrMsg(ConcatString("The dimensions does not match the broadcast rule(", dims_x[i], ", ", dims_assist[i], ")"));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     }
 
     int64_t dims = dims_x[i] > dims_assist[i] ? dims_x[i] : dims_assist[i];
@@ -1970,12 +2022,14 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagDInferShape) {
 }
 
 IMPLEMT_VERIFIER(MatrixDiagD, MatrixDiagDVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   DataType input_diagonal_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
     string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",input_diagonal_dtype, ", input_diagonal_dtype:",input_diagonal_dtype);
     std::string err_msg = OtherErrMsg(err_msg1);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1987,9 +2041,9 @@ VERIFY_FUNC_REG(MatrixDiagD, MatrixDiagDVerify);
 
 // ----------------MatrixDiagPart--------------------
 IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartInferShape) {
-  Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  Format input_format = op.GetInputDesc("x").GetFormat();
+  Shape shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  Format input_format = op.GetInputDescByName("x").GetFormat();
   std::vector<int64_t> dim_vector;
   int64_t dimsInput_1 = shape.GetDimNum() - 1;
   int64_t dimsInput_2 = shape.GetDimNum() - 2;
@@ -2006,7 +2060,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartInferShape) {
     dim_vector.push_back(dimNums_1);
   }
   Shape output_shape(dim_vector);
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(output_shape);
   td.SetDataType(input_dtype);
   td.SetFormat(input_format);
@@ -2024,9 +2078,9 @@ VERIFY_FUNC_REG(MatrixDiagPart, MatrixDiagPartVerify);
 
 // ----------------MatrixDiagPartD--------------------
 IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartDInferShape) {
-  Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  Format input_format = op.GetInputDesc("x").GetFormat();
+  Shape shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  Format input_format = op.GetInputDescByName("x").GetFormat();
   std::vector<int64_t> dim_vector;
   int64_t dimsInput_1 = shape.GetDimNum() - 1;
   int64_t dimsInput_2 = shape.GetDimNum() - 2;
@@ -2043,7 +2097,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartDInferShape) {
     dim_vector.push_back(dimNums_1);
   }
   Shape output_shape(dim_vector);
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(output_shape);
   td.SetDataType(input_dtype);
   td.SetFormat(input_format);
@@ -2052,12 +2106,14 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartDInferShape) {
 }
 
 IMPLEMT_VERIFIER(MatrixDiagPartD, MatrixDiagPartDVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   DataType input_diagonal_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
     string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",input_diagonal_dtype, ", input_help_dtype:",input_help_dtype);
     std::string err_msg = OtherErrMsg(err_msg1);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2098,13 +2154,15 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagDInferShape) {
 }
 
 IMPLEMT_VERIFIER(MatrixSetDiagD, MatrixSetDiagDVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   DataType input_matrix_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_diagonal_dtype = op.GetInputDesc(1).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(2).GetDataType();
   if ((input_matrix_dtype != input_diagonal_dtype) || (input_matrix_dtype != input_help_dtype)) {
     string err_msg1 = ConcatString("the inputs of matrix and diagonal should be the same dtype! input_matrix_dtype:",input_matrix_dtype, ", input_diagonal_dtype:",input_diagonal_dtype,", input_help_dtype:",input_help_dtype);
     std::string err_msg = OtherErrMsg(err_msg1);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2149,9 +2207,9 @@ IMPLEMT_VERIFIER(TensorScatterUpdate, TensorScatterUpdateVerify) {
 }
 
 IMPLEMT_INFERFUNC(TensorScatterUpdate, TensorScatterUpdateInferShape) {
-  Shape var_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  Shape var_shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(var_shape));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -2171,9 +2229,9 @@ IMPLEMT_VERIFIER(ScatterElements, ScatterElementsVerify) {
 }
 
 IMPLEMT_INFERFUNC(ScatterElements, ScatterElementsInferShape) {
-  Shape data_shape = op.GetInputDesc("data").GetShape();
-  DataType input_dtype = op.GetInputDesc("data").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  Shape data_shape = op.GetInputDescByName("data").GetShape();
+  DataType input_dtype = op.GetInputDescByName("data").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(data_shape));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -2309,9 +2367,9 @@ IMPLEMT_VERIFIER(TensorScatterAdd, TensorScatterAddVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(TensorScatterAddInferShape) {
-  Shape var_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  Shape var_shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(var_shape));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -2357,9 +2415,9 @@ IMPLEMT_VERIFIER(TensorScatterSub, TensorScatterSubVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(TensorScatterSubInferShape) {
-  Shape var_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  Shape var_shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(var_shape));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -2398,17 +2456,19 @@ VERIFY_FUNC_REG(ScatterSub, ScatterSubVerify);
 
 // ---------------ConfusionMatrix-----------------
 IMPLEMT_COMMON_INFERFUNC(ConfusionMatrixInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   int64_t num_classes;
   auto output_dtype = DT_FLOAT;
   std::string output_dtype_str = "float32";
   if (op.GetAttr("num_classes", num_classes) != GRAPH_SUCCESS) {
     std::string err_msg = GetInputInvalidErrMsg("num_classes");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("dtype", output_dtype_str) != GRAPH_SUCCESS) {
     std::string err_msg = GetInputInvalidErrMsg("dtype");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
   if (output_dtype_str == "float32") {
@@ -2424,14 +2484,14 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionMatrixInferShape) {
   } else {
     string expected_data_type_list = ConcatString("float32, int32, int8, float16, uint8");
     std::string err_msg = GetInputDtypeNotSupportErrMsg("dtype", expected_data_type_list, output_dtype_str);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> out_shape;
   out_shape.push_back(num_classes);
   out_shape.push_back(num_classes);
   vector<int64_t> y_shape(out_shape);
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(y_shape));
   td.SetDataType((DataType)output_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -2559,39 +2619,41 @@ bool FullyDefined(Shape s) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   Shape input_shape;
   auto input_tensor_desc = op.GetInputDesc(0);
-  if (WithRankAtLeast(input_tensor_desc, 2, input_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(input_tensor_desc, 2, input_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
       "failed to call WithRankAtLeast function, ",
       "input[input] rank must be at least 2D, but got rank[",
       op.GetInputDesc(0).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape k_shape;
   auto k_tensor_desc = op.GetInputDesc(1);
-  if (WithRankAtMost(k_tensor_desc, 1, k_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(k_tensor_desc, 1, k_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
       "failed to call WithRankAtMost function, ",
       "input[k] rank must be at most 1D, but got rank[",
       op.GetInputDesc(1).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape padding_value_shape;
   auto padding_value_tensor_desc = op.GetInputDesc(2);
-  if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[padding_value] rank must be 0, but got rank[",
       op.GetInputDesc(2).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
-  TensorDesc output_desc = op.GetOutputDesc("diagonal");
+  TensorDesc output_desc = op.GetOutputDescByName("diagonal");
 
   Tensor k_tensor;
   std::vector<std::string> input_infer_depends = {"k"};
@@ -2624,7 +2686,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
       std::string err_msg = ConcatString(
         "the input [k] must be scalar or a vector with one or two elements, ",
         "but it has [", num_elements, "] elements. ");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -2634,7 +2696,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
       "the variable [lower_diag_index] of input [k] 1th value[",
       lower_diag_index,  "] must be  not greater than [upper_diag_index] ",
       "of input [k] 2th value[", upper_diag_index, "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2649,7 +2711,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
         "the variable [lower_diag_index] of input [k] value[",
         lower_diag_index, "] is illegal, ",
         "should be 0 or in range(", -num_rows, ", ", num_cols, ")");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
     if (upper_diag_index != 0 && (-num_rows >= upper_diag_index || upper_diag_index >= num_cols)) {
@@ -2657,7 +2719,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
         "the variable [upper_diag_index] of input [k] value[",
         upper_diag_index, "] is illegal, ",
         "should be 0 or in range(", -num_rows, ", ", num_cols, ")");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
     max_diag_len = std::min(num_rows + std::min(upper_diag_index, 0), num_cols - std::max(lower_diag_index, 0));
@@ -2681,36 +2743,38 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagPartV2InferShape) {
 INFER_FUNC_REG(MatrixDiagPartV2, MatrixDiagPartV2InferShape);
 
 IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   Shape input_shape;
   auto input_tensor_desc = op.GetInputDesc(0);
-  if (WithRankAtLeast(input_tensor_desc, 2, input_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(input_tensor_desc, 2, input_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
       "failed to call WithRankAtLeast function, ",
       "input[input] rank must be at least 2D, but got rank[",
       op.GetInputDesc(0).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape diagonal_shape;
   auto diagonal_tensor_desc = op.GetInputDesc(1);
-  if (WithRankAtLeast(diagonal_tensor_desc, 1, diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(diagonal_tensor_desc, 1, diagonal_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
       "failed to call WithRankAtLeast function, ",
       "input[diagonal] rank must be at least 1D, but got rank[",
       op.GetInputDesc(1).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape k_shape;
   auto k_tensor_desc = op.GetInputDesc(2);
-  if (WithRankAtMost(k_tensor_desc, 1, k_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(k_tensor_desc, 1, k_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
       "failed to call WithRankAtMost function, ",
       "input[k] rank must be at most 1D, but got rank[",
       op.GetInputDesc(2).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2738,7 +2802,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
         std::string err_msg = ConcatString(
           "the input[k] must be a scalar or vector with one or two elements, ",
           "but it has [", num_elements, "] elements. ");
-        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
         return GRAPH_PARAM_INVALID;
       }
     }
@@ -2749,7 +2813,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
         lower_diag_index, "] must be ",
         "not greater than [upper_diag_index] of input[k] 2th value[",
         upper_diag_index, "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -2758,32 +2822,32 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
     auto input_rank = input_shape.GetDimNum();
     if (k_index_known) {
       if (WithRank(diagonal_tensor_desc, (lower_diag_index == upper_diag_index ? input_rank - 1 : input_rank),
-                   diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+                   diagonal_shape, opName.GetString()) != GRAPH_SUCCESS) {
         std::string err_msg = ConcatString(
           "failed to call WithRank function, ",
           "input[diagonal] rank must be [",
           (lower_diag_index == upper_diag_index ? input_rank - 1 : input_rank),
           "], but got rank[", diagonal_tensor_desc.GetShape().GetDimNum(), "]");
-        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
         return GRAPH_FAILED;
       } else {
-        if (WithRankAtLeast(diagonal_tensor_desc, input_rank - 1, diagonal_shape, op.GetName().c_str()) !=
+        if (WithRankAtLeast(diagonal_tensor_desc, input_rank - 1, diagonal_shape, opName.GetString()) !=
             GRAPH_SUCCESS) {
           std::string err_msg = ConcatString(
             "failed to call WithRankAtLeast function, ",
             "input[diagonal] rank must be at least ", input_rank - 1,
             "D, but got rank[", diagonal_tensor_desc.GetShape().GetDimNum(), "]");
-          AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+          AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
           return GRAPH_FAILED;
         }
 
-        if (WithRankAtMost(diagonal_tensor_desc, input_rank, diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+        if (WithRankAtMost(diagonal_tensor_desc, input_rank, diagonal_shape, opName.GetString()) != GRAPH_SUCCESS) {
           std::string err_msg = ConcatString(
             "failed to call WithRankAtMost function, ",
             "input[diagonal] rank must be at most ",
             input_rank,"D, but got rank[",
             diagonal_tensor_desc.GetShape().GetDimNum(), "]");
-          AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+          AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
           return GRAPH_FAILED;
         }
       }
@@ -2797,7 +2861,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
             "the variable [lower_diag_index] of input[k] value[",
             lower_diag_index, "] is illegal, ",
             "should be 0 or in range(", -num_rows, ", ", num_cols, ")");
-          AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+          AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
           return GRAPH_PARAM_INVALID;
         }
         if (upper_diag_index != 0 && (-num_rows >= upper_diag_index || upper_diag_index >= num_cols)) {
@@ -2805,25 +2869,25 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
             "the variable [upper_diag_index] of input[k] value[",
             upper_diag_index, "] is illegal, ",
             "should be 0 or in range(", -num_rows, ", ", num_cols, ")");
-          AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+          AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
           return GRAPH_PARAM_INVALID;
         }
       }
     }
   }
 
-  auto output_desc = op.GetOutputDesc("output");
+  auto output_desc = op.GetOutputDescByName("output");
   Shape output_shape = input_shape;
   if (RankKnown(diagonal_shape) && !FullyDefined(input_shape)) {
     Shape diagonal_prefix_shape;
     if (SubShape(diagonal_shape, 0, (lower_diag_index == upper_diag_index ? -1 : -2), 1, diagonal_prefix_shape,
-                 op.GetName().c_str()) != GRAPH_SUCCESS) {
+                 opName.GetString()) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString(
         "failed to call SubShape function, input[diagonal] shape",
         DebugString(diagonal_shape.GetDims()),
         ", end[", (lower_diag_index == upper_diag_index ? -1 : -2),
         "] is invaild");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_FAILED;
     }
 
@@ -2832,17 +2896,17 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
         "to concatenate prefix diagonal shape",
         DebugString(diagonal_prefix_shape.GetDims()),
         " and 2D unknown_shape");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_FAILED;
     }
 
-    if (Merge(input_shape, diagonal_shape, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    if (Merge(input_shape, diagonal_shape, output_shape, opName.GetString()) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString(
         "failed to call Merge function to merge the 0th input[input] shape",
         DebugString(input_shape.GetDims()),
         " and the 1st input[diagonal]'s shape",
         DebugString(diagonal_shape.GetDims()));
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -2856,58 +2920,60 @@ IMPLEMT_COMMON_INFERFUNC(MatrixSetDiagV2InferShape) {
 INFER_FUNC_REG(MatrixSetDiagV2, MatrixSetDiagV2InferShape);
 
 IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   Shape diagonal_shape;
   auto diagonal_tensor_desc = op.GetInputDesc(0);
-  if (WithRankAtLeast(diagonal_tensor_desc, 1, diagonal_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(diagonal_tensor_desc, 1, diagonal_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRankAtLeast function, ",
       "input[diagonal] rank must be at least 1D, but got rank[",
       op.GetInputDesc(0).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape k_shape;
   auto k_tensor_desc = op.GetInputDesc(1);
-  if (WithRankAtMost(k_tensor_desc, 1, k_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(k_tensor_desc, 1, k_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
       "failed to call WithRankAtMost function, ",
       "input[k] rank must be at most 1D, but got rank[",
       op.GetInputDesc(1).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape num_rows_shape;
   auto num_rows_tensor_desc = op.GetInputDesc(2);
-  if (WithRank(num_rows_tensor_desc, 0, num_rows_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(num_rows_tensor_desc, 0, num_rows_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[num_rows] rank must be 0, but got rank[",
       op.GetInputDesc(2).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape num_cols_shape;
   auto num_cols_tensor_desc = op.GetInputDesc(3);
-  if (WithRank(num_cols_tensor_desc, 0, num_cols_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(num_cols_tensor_desc, 0, num_cols_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[num_cols] rank must be 0, but got rank[",
       op.GetInputDesc(3).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape padding_value_shape;
   auto padding_value_tensor_desc = op.GetInputDesc(4);
-  if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(padding_value_tensor_desc, 0, padding_value_shape, opName.GetString()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[padding_value] rank must be 0, but got rank[",
       op.GetInputDesc(4).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_FAILED;
   }
 
-  auto output_desc = op.GetOutputDesc("output");
+  auto output_desc = op.GetOutputDescByName("output");
   Tensor k_tensor;
   std::vector<std::string> input_infer_depends = {"k", "num_rows", "num_cols"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -2939,7 +3005,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
       std::string err_msg = ConcatString(
         "the input[k] must be scalar or a vector with one or two elements, ",
         "but it has [", num_elements, "] elements. ");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -2950,7 +3016,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
       lower_diag_index, "] must be ",
       "not greater than [upper_diag_index] of input[k] 2th value[",
       upper_diag_index, "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -2965,7 +3031,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
         "diagonals implied from [d_lower] and [d_upper].",
         " num_diags is [" , num_diags, "], d_lower is [", lower_diag_index,
         "], d_upper is [", upper_diag_index, "], other_dim is [", other_dim, "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -2997,7 +3063,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
     std::string err_msg = ConcatString(
       "input[num_rows] value[", num_rows, "] must be not less than ",
       "min_num_rows[", min_num_rows, "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -3007,7 +3073,7 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
     std::string err_msg = ConcatString(
       "input[num_cols] value[", num_cols, "] must be not less than ",
       "min_num_cols[", min_num_cols, "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -3018,18 +3084,18 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
       "input[num_cols] value[", num_cols, "] ",
       "are not equal with min_num_rows[", min_num_rows, "] and min_num_cols[",
       min_num_rows, "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
   Shape output_shape;
-  OP_LOGI(op.GetName().c_str(), "num_rows: ", num_rows, " num_cols: ", num_cols);
+  OP_LOGI(opName.GetString(), "num_rows: ", num_rows, " num_cols: ", num_cols);
   if (lower_diag_index == upper_diag_index) {
-    if (ReplaceDim(diagonal_shape, diagonal_rank - 1, num_rows, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    if (ReplaceDim(diagonal_shape, diagonal_rank - 1, num_rows, output_shape, opName.GetString()) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString(
         "failed to call ReplaceDim function, replace input[diagonal] dim, ",
         "index[", diagonal_rank - 1, "],  replace value[", num_rows, "]");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_FAILED;
     }
     if (Concatenate(output_shape, Shape({num_cols}), output_shape) != GRAPH_SUCCESS) {
@@ -3037,22 +3103,22 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagV2InferShape) {
         "failed to call Concatenate function, output shape",
         DebugString(output_shape.GetDims()),
         " and another shape", DebugString(Shape({num_cols}).GetDims()));
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_FAILED;
     }
   } else {
-    if (ReplaceDim(diagonal_shape, diagonal_rank - 2, num_rows, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    if (ReplaceDim(diagonal_shape, diagonal_rank - 2, num_rows, output_shape, opName.GetString()) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString(
         "failed to call ReplaceDim function, replace input[diagonal] dim, ",
         "index[", diagonal_rank - 2, "], replace value[", num_rows, "]");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_FAILED;
     }
-    if (ReplaceDim(output_shape, diagonal_rank - 1, num_cols, output_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    if (ReplaceDim(output_shape, diagonal_rank - 1, num_cols, output_shape, opName.GetString()) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString(
         "failed to call ReplaceDim function, replace output[output] dim, ",
         "index[", diagonal_rank - 1, "], replace value[", num_cols, "]");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(opName.GetString(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -3263,7 +3329,7 @@ bool is_ellispis(std::string ori_str, std::string target) {
 // remove spaces from the string
 void trim_whitespace(std::string &s)
 {
-    auto index = 0;
+    size_t index = 0;
     if(!s.empty()) {
         while((index = s.find(' ',index)) != string::npos) {
             s.erase(index,1);
@@ -3452,11 +3518,13 @@ void einsum_infer_shape(std::string eqn, vector<vector<int64_t>> tensor_list,vec
 }
 
 IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
     auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
     // get attr equation
     std::string equation;
     if (op.GetAttr("equation", equation) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr equation failed");
+        OP_LOGE(opName.GetString(), "GetOpAttr equation failed");
         return GRAPH_FAILED;
     }
     // set tensor_size attr
@@ -3470,11 +3538,11 @@ IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
     vector<int64_t> output_shape;
     einsum_infer_shape(equation,tensor_list,output_shape);
     // updata output shape and dtype
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetShape(ge::Shape(output_shape));
     output_desc.SetDataType(x0_type);
     CHECK(op.UpdateOutputDesc("y",output_desc) != GRAPH_SUCCESS,
-         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."),
+         OP_LOGE(opName.GetString(), "UpdateOutputDesc failed."),
          return GRAPH_FAILED);
     return GRAPH_SUCCESS;
 }
@@ -3489,7 +3557,7 @@ VERIFY_FUNC_REG(Einsum, EinsumVerify);
 static bool CheckRows(const Operator &op, const string &attr_num_rows)
 {
     int64_t num_rows;
-    op.GetAttr(attr_num_rows, num_rows);
+    op.GetAttr(attr_num_rows.c_str(), num_rows);
     if (num_rows <= 0) {
         return false;
     }
@@ -3498,11 +3566,13 @@ static bool CheckRows(const Operator &op, const string &attr_num_rows)
 
 static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape)
 {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return false);
     std::vector<int64_t> batch_shape;
-    op.GetAttr(attr_batch_shape, batch_shape);
+    op.GetAttr(attr_batch_shape.c_str(), batch_shape);
     for (size_t i = 0; i < batch_shape.size(); ++i) {
         if (batch_shape[i] <= 0) {
-            OP_LOGE(op.GetName().c_str(), "the value of batch_shape less than 0.\n");
+            OP_LOGE(opName.GetString(), "the value of batch_shape less than 0.\n");
             return false;
         }
     }
@@ -3511,7 +3581,7 @@ static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape)
 
 IMPLEMT_COMMON_INFERFUNC(EyeInferShape)
 {
-    TensorDesc td = op.GetOutputDesc("y");
+    TensorDesc td = op.GetOutputDescByName("y");
     int64_t num_rows, num_columns;
     std::vector<int64_t> batch_shape;
     op.GetAttr("num_rows", num_rows);

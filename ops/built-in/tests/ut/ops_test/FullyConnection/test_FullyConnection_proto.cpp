@@ -41,6 +41,19 @@ class FullyConnectionProtoTest : public testing::Test {
   }
 };
 
+TEST_F(FullyConnectionProtoTest, fullyConnectionInferShapeTest_1) {
+    ge::op::FullyConnection fullyConnection;
+    fullyConnection.UpdateInputDesc("x", create_desc_with_ori({4, 1, 4, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{4, 64, 16, 1}, ge::FORMAT_NHWC));
+    fullyConnection.UpdateInputDesc("w", create_desc_with_ori({1, 1, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z,{8, 16, 1, 1}, ge::FORMAT_HWCN));
+    fullyConnection.UpdateOutputDesc("y", create_desc_with_ori({4, 1, 4, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{4, 64, 8, 1}, ge::FORMAT_NHWC));
+    fullyConnection.SetAttr("num_output", 8);
+    fullyConnection.SetAttr("transpose", false);
+    fullyConnection.SetAttr("axis", 2);
+
+    auto status = fullyConnection.InferShapeAndType();
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+}
+
 TEST_F(FullyConnectionProtoTest, fullyConnectionSplicDataTest_1) {
     ge::op::FullyConnection fullyConnection;
     fullyConnection.UpdateInputDesc("x", create_desc_with_ori({4, 1, 4, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_NZ,{4, 64, 16, 1}, ge::FORMAT_NHWC));
