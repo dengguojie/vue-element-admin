@@ -171,8 +171,6 @@ def _test_nhwc_in_nhwc_out_case_1(test_arg):
         cce_build_code(sch, config)
     cce_conf.te_set_version('Ascend910A')
 
-
-
 def _test_nhwc_in_nhwc_out_case_2(test_arg):
     cce_conf.te_set_version('Ascend920A')
     conv_filter = (256, 3, 3, 256)

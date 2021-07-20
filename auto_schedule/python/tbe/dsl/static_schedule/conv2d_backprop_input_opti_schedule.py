@@ -2454,7 +2454,7 @@ class Conv2dDxOptiSchedule:
                 sch[c_gm].emit_insn(l0c_n_inner_inner, "phony_insn")
             else:
                 if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
-                    sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy", {"layout_transform": "nz2nd"})
+                    sch[c_gm].emit_insn(l0c_m_inner_inner, "dma_copy", {"layout_transform": "nz2nd"})
                 else:
                     sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
 
@@ -2748,13 +2748,23 @@ class Conv2dDxOptiSchedule:
             )
         l0c_m_inner_outer, l0c_m_inner_inner = sch[c_gm].split(l0c_m_inner, nparts=1)
         add_input_at, l0c_m_inner_outer = sch[c_gm].split(l0c_m_inner_outer, nparts=1)
-        sch[c_gm].reorder(
-            l0c_n_inner_outer,
-            add_input_at,
-            l0c_m_inner_outer,
-            l0c_n_inner_inner,
-            l0c_m_inner_inner
-        )
+
+        if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
+            sch[c_gm].reorder(
+                l0c_n_inner_outer,
+                add_input_at,
+                l0c_m_inner_outer,
+                l0c_m_inner_inner,
+                l0c_n_inner_inner
+            )
+        else:
+            sch[c_gm].reorder(
+                l0c_n_inner_outer,
+                add_input_at,
+                l0c_m_inner_outer,
+                l0c_n_inner_inner,
+                l0c_m_inner_inner
+            )
         self._print_ir_conv("reorder loc", sch)
 
         _attach_ub(fusion_type)
