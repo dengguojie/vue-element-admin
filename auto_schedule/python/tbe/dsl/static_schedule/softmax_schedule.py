@@ -30,6 +30,7 @@ from tbe.dsl.instrinsic import cce_util
 from tbe.common.platform import intrinsic_check_support
 from tbe.dsl.instrinsic.cce_intrin_md import vec_cmd_factory
 
+from .import util
 from .vector_schedule import VectorSchedule
 from .util import shape_to_list
 from .util import get_align_factor
@@ -114,6 +115,7 @@ class SoftmaxSchedule(VectorSchedule):
         self._is_block_ub_one_axis = False
         self._is_block_fuse = False
         self._is_reduce_last_axis_enhance_insn = False
+        self._pattern = util.pattern.P_NONE
 
     # pylint: disable=arguments-differ
     def do_schedule(self, out_tensors):
@@ -150,6 +152,10 @@ class SoftmaxSchedule(VectorSchedule):
                 if input_readers_len > 1:
                     self._is_this_schedule_support = True
                     break
+
+            self._pattern = util.pattern_identify(self._cache_write_tensors)
+            if self._pattern in ("softmax_grad_fp32",):
+                self._is_this_schedule_support = False
 
             if self._is_this_schedule_support:
                 sch = self._do_schedule_last_with_workspace()
