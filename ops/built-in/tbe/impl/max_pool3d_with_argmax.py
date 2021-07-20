@@ -127,7 +127,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                             big_matrix_ub[tmp_kd * self.k_h * self.k_w + tmp_kh * self.k_w + tmp_kw, 0],
                             aux_l1,
                             (0, 0, 0, 0),
-                            aux_l1.shape[2] + self.dirty_l1_pad,
+                            aux_l1.shape[2],
                             aux_l1.shape[3],
                             tmp_kd,
                             tmp_kw,
@@ -501,6 +501,8 @@ def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
         raise RuntimeError("dimension of ksize must be 5, value of (1, 1, kernel_d, kernel_h, kernel_w)!")
     if ksize[0] != 1 or ksize[1] != 1:
         raise RuntimeError("first two dimensions of ksize should be one!")
+    if ksize[3] > 255 or ksize[4] > 255:
+        raise RuntimeError("current version don't support kernel_h or kernel_w > 255!")
     if len(strides) != 5:
         raise RuntimeError("dimension of stride must be 5, value of (1, 1, stride_d, stride_h, stride_w)!")
     if strides[0] != 1 or strides[1] != 1:
@@ -518,6 +520,22 @@ def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
         raise RuntimeError("current version only support ceil_mode=False!")
     if argmax_type != "bitmask":
         raise RuntimeError("current version only support bitmask argmax, please set argmax_type=bitmask!")
+
+    # this version only support the generalization of branch MaxPool3dWithArgmaxWholeKernel,
+    # that means we have to put all the kernel into ub, at each loop of img2col.
+    # please refer to MaxPool3dWithArgmaxWholeKernel's init function for more details, then you will know
+    # what these magic numbers mean.
+    k_bound = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // 32 - 18) // 17
+    if ksize[2] * ksize[3] * ksize[4] > k_bound:
+        raise RuntimeError("the kernel is so big, we don't support such generalization!")
+    Wo = (input_shape[4] - ksize[4]) // strides[4] + 1
+    Ho = (input_shape[3] - ksize[3]) // strides[3] + 1
+    l1_h_pad = math.ceil((math.ceil(Ho * Wo / 16) * 16 - Ho * Wo) / Wo) * strides[3]
+
+    # this version only support the strategy that with out cutting l1.
+    # so we put size kernel_d * input_h * input_w into l1 at one time.
+    if ksize[2] * (input_shape[3] + l1_h_pad) * input_shape[4] * 16 > tbe_platform.get_soc_spec(tbe_platform.L1_SIZE):
+        raise RuntimeError("l1 is not enough, please try a smaller kernel_d, or a smaller input_h or input_w!")
 
 
 @register_operator("MaxPool3DWithArgmax")
