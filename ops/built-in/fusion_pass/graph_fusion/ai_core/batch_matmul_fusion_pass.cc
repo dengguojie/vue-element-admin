@@ -54,7 +54,7 @@ Status BatchMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
                     CUBE_CALL_ERR_REPORT("BatchMatmulFusionPass", "Fusion GetNode Error"),
                     return PARAM_INVALID);
   if (!CheckIsNeedFusion(fused_node)) {
-    return SUCCESS;
+    return NOT_CHANGED;
   }
 
   ge::NodePtr matmul_node = nullptr;

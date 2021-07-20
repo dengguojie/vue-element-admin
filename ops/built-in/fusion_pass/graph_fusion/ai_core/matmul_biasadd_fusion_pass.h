@@ -16,7 +16,7 @@
 
 /*!
  * \file matmul_biasadd_fusion_pass.h
- * \brief matmul biasadd fusion pass(matmul --> biasadd)
+ * \brief matmul biasadd fusion pass(matmul/batch_matmul --> biasadd)
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_BIASADD_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MATMUL_BIASADD_FUSION_PASS_H_
@@ -32,7 +32,9 @@ class MatMulBiasAddFusionPass : public PatternFusionBasePass {
  private:
   const std::string CONSTANTOP = "Constant";
   const std::string CONSTANT = "Const";
-  const string FUSED_OP_TYPE = "MatMul/MatMulV2";
+  const string FUSED_OP_TYPE = "MatMul/MatMulV2/BatchMatMul/BatchMatMulV2";
+  const size_t DIMENSION_0 = 0;
+  const size_t DIMENSION_1 = 1;
 };
 }  // namespace fe
 
