@@ -347,6 +347,9 @@ REG_OP(SelfAdjointEig)
     .OP_END_FACTORY_REG(SelfAdjointEig)
 
 /**
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+
 *@brief Computes the sign and the log of the absolute value of the determinant
 of one or more square matrices . \n
 
