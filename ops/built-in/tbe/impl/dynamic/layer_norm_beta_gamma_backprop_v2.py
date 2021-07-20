@@ -24,6 +24,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import tuple_sum
+from tbe.dsl.base import operation
 
 
 @tbe_register.register_param_generalization("LayerNormBetaGammaBackpropV2")
@@ -112,8 +114,7 @@ def layer_norm_beta_gamma_backprop_v2_compute(data_dy, res_for_gamma, output_pd_
 
     data_x = tbe.vmul(res_for_gamma, data_dy)
     if param_axis:
-        pd_gamma = tbe.reduce_sum(data_x, param_axis, keepdims=True)
-        pd_beta = tbe.reduce_sum(data_dy_2, param_axis, keepdims=True)
+        pd_gamma, pd_beta = tuple_sum([data_x, data_dy_2], param_axis, keepdims=True)
     else:
         pd_beta = tbe.vadds(data_dy_2, tvm.const(0, dtype=dtype))
         pd_gamma = tbe.vadds(data_x, tvm.const(0, dtype=dtype))
@@ -127,7 +128,7 @@ def layer_norm_beta_gamma_backprop_v2_compute(data_dy, res_for_gamma, output_pd_
     return res_list
 
 
-@register_operator("LayerNormBetaGammaBackpropV2", pattern="Layer_norm_beta_gamma_backprop")
+@register_operator("LayerNormBetaGammaBackpropV2", pattern="Layer_norm_beta_gamma_backprop_v2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
@@ -165,14 +166,16 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
     dtype_x = res_for_gamma.get("dtype").lower()
     format_dy = input_dy.get("format")
 
-    dim_0 = tbe.var("dim_0")
-    dim_1 = tbe.var("dim_1")
-    shape_data = (dim_0, dim_1, shape_dy[2])
+    fused_axis = tbe.var("fused_axis")
+    shape_data = (fused_axis, shape_dy[2])
 
     data_dy = tvm.placeholder(shape_data, name="data_dy_layernormgrad_beta_gamma", dtype=dtype)
     data_x = tvm.placeholder(shape_data, name="data_x", dtype=dtype_x)
 
     with tbe.compute():
+        current_compute = operation.get_context().get_current_compute()
+        if current_compute:
+            current_compute.add("fused_axis", fused_axis)
         res_list = layer_norm_beta_gamma_backprop_v2_compute(data_dy,
                                                              data_x,
                                                              output_pd_gamma,
