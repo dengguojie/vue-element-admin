@@ -225,10 +225,14 @@ Status ConvAddFusionPass::ConnectConvToOutput(NodePtr conv_node, NodePtr add_nod
   */
 template <typename T>
 void SetOutputData(std::vector<T>& y_data, int64_t channel_for_scalar, GeTensorPtr conv_bias_ptr) {
-  const T* datak = reinterpret_cast<const T*>(conv_bias_ptr->MutableData().data());
-
-  for (int64_t i = 0; i < channel_for_scalar; i++) {
-    y_data.push_back(datak[0]);
+  uint8_t *aligned_addr = conv_bias_ptr->MutableData().data();
+  if (aligned_addr != nullptr) {
+    const T* datak = reinterpret_cast<const T*>(aligned_addr);
+    if (datak != nullptr) {
+      for (int64_t i = 0; i < channel_for_scalar; i++) {
+        y_data.push_back(datak[0]);
+      }
+    }
   }
 }
 
