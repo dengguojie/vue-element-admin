@@ -330,6 +330,11 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
     """
     dst_tensor = None
     c0_dict = {"float32": 8, "float16": 16, "int8": 32, "int4": 64}
+    fractal_n0 = 16 # the third params of fractal_nz(d // d0, n // n0, n0, d0)
+    def _ceil_div(dividend, divisor):
+        if divisor == 0:
+            raise RuntimeError("division by zero")
+        return (dividend + divisor - 1) // divisor
 
     if src_format == "NHWC" and dst_format == "NC1HWC0":
         src_n, src_h, src_w, src_c = tuple(i.value for i in src.shape)
@@ -354,21 +359,53 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             tag = "5HD_trans_NHWC")
     elif src_format == "NHWC" and dst_format == "FRACTAL_Z":
         src_n, src_h, src_w, src_c = tuple(i.value for i in src.shape)
-        dst_n0 = 16
-        dst_n1 = (src_n + dst_n0 - 1) // dst_n0
+        dst_n1 = _ceil_div(src_n, fractal_n0)
         dst_c0 = c0_dict[src.dtype]
-        dst_c1 = (src_c + dst_c0 - 1) // dst_c0
-        dst_shape = dst_c1 * src_h * src_w, dst_n1, dst_n0, dst_c0
+        dst_c1 = _ceil_div(src_c, dst_c0)
+        dst_shape = dst_c1 * src_h * src_w, dst_n1, fractal_n0, dst_c0
         hw = src_h * src_w
         dst_tensor = tvm.compute(
             dst_shape,
-            lambda  i, j, k, l: src(j * dst_n0 + k,
+            lambda  i, j, k, l: src(j * fractal_n0 + k,
             (i % hw) // src_w, (i % hw) // src_w,
             (i // hw) * dst_c0 + l),
             name = "res_fractal_z_weight",
             attrs={"ori_format": "NHWC", "ori_shape": src.shape},
             tag = "NHWC_trans_FZ"
         )
+    elif src_format == "ND" and dst_format == "FRACTAL_NZ":
+        n_axis_length = src.shape[-2]
+        d_axis_length = src.shape[-1]
+        if src.dtype == "int8" or src.dtype == "float16":
+            fractal_d0 = c0_dict.get(src.dtype)
+            kn_shape = _ceil_div(n_axis_length, fractal_n0)
+            n_shape = _ceil_div(d_axis_length, fractal_d0)
+            dst_shape = (n_shape, kn_shape, fractal_n0, fractal_d0)
+            dst_tensor = tvm.compute(
+                dst_shape,
+                lambda *indices: tvm.select(tvm.any(
+                (indices[-4] * fractal_d0 + indices[-1]) < d_axis_length),
+                src(*indices[:-4],
+                indices[-3] * fractal_n0 + indices[-2],
+                indices[-4] * fractal_d0 + indices[-1]),
+                tvm.const(0).astype(src.dtype)),
+                name=src.name + "_fractal",
+                attrs={"ori_format": "ND", "ori_shape": src.shape,
+                    "format": dst_format, "ND_trans_Nz": 1}, tag="gemm")
+
+    elif src_format == "FRACTAL_NZ" and dst_format == "ND":
+        src_shape = tuple(i.value for i in src.shape)
+        dst_shape = src.op.attrs["ori_nd_shape"]
+        dst_tensor = tvm.compute(
+                dst_shape,
+                lambda *indices: src(indices[-1] // src_shape[-2],
+                indices[-2] // src_shape[-1],
+                indices[-2] % src_shape[-1],
+                indices[-1] % src_shape[-2]).astype(src.dtype),
+                tag="gemm",
+                name="res_nd",
+                attrs={"ori_format": "FRACTAL_NZ",
+                    "ori_shape": src.shape, "Nz_trans_ND": 1})
     else:
         raise RuntimeError("not support this kind of format transfer !")
 

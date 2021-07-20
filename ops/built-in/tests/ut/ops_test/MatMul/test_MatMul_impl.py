@@ -13,6 +13,7 @@ from impl.mat_mul import mat_mul_compute
 from impl.leaky_relu import leaky_relu_compute
 from impl.mat_mul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
+from impl.trans_data import trans_data_compute
 from te.platform.cce_conf import te_set_version
 ut_case = OpUT("MatMul", None, None)
 
@@ -247,6 +248,45 @@ case_fp16_transpose_nz_2  = {"params": [{"shape": (6,4,16, 16), "dtype": "float1
 ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_1)
 ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_2)
 
+def test_matmul_trans_data_fusion_920_1(test_arg):
+    te_set_version("Ascend920A")
+    with cce():
+        tensor_a_ori = tvm.placeholder((12288, 4096), name="tensor_a_ori", dtype="int8")
+        tensor_b_ori = tvm.placeholder((12288, 1024), name="tensor_b_ori", dtype="int8")
+        tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
+        tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
+        output_y = {"shape": (64, 256, 16, 16), "dtype": "int32", "ori_shape": (4096, 1024), "format": "ND", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, True, False, 0)
+        out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
+        tensor_list = [tensor_a_ori, tensor_b_ori, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_transdata_fusion_1",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version('Ascend910A')
+
+def test_matmul_trans_data_fusion_920_2(test_arg):
+    te_set_version("Ascend920A")
+    with cce():
+        tensor_a_ori = tvm.placeholder((128, 768, 16, 32), name="tensor_a", dtype="int8", attrs={"format": "FRACTAL_NZ", "ori_format": "ND"})
+        tensor_b_ori = tvm.placeholder((32, 768, 16, 32), name="tensor_b", dtype="int8", attrs={"format": "FRACTAL_NZ", "ori_format": "ND"})
+        output_y = {"shape": (64, 256, 16, 16), "dtype": "int32", "ori_shape": (4096, 1024), "format": "ND", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(tensor_a_ori, tensor_b_ori, None, None, output_y, True, False, 0)
+        tensor_list = [tensor_a_ori, tensor_b_ori, matmul_out]
+        sch = auto_schedule(matmul_out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_transdata_fusion_2",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version('Ascend910A')
+
 
 
 def test_split_matmul(test_arg):
@@ -295,10 +335,10 @@ def test_matmul_confusion_transpose_710(test_arg):
         cce_build_code(sch, config)
     te_set_version("Ascend310")
 
-
+ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_1)
+ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_2)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_910)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_710)
-
 
 def test_check_support(test_arg):
     from tbe.common.context import op_context
@@ -322,6 +362,7 @@ ut_case.add_cust_test_func(test_func=test_check_support)
 
 
 def test_matmul_multi_output(test_arg):
+    te_set_version("Ascend910A")
     with cce():
         x1 = tvm.placeholder((48, 64, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 768)}, dtype="float16")
         x2 = tvm.placeholder((48, 48, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (768, 768)}, dtype="float16")
@@ -340,3 +381,4 @@ def test_matmul_multi_output(test_arg):
         }
         cce_build_code(sch, config)
 ut_case.add_cust_test_func(test_func=test_matmul_multi_output)
+

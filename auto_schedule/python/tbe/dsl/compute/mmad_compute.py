@@ -4012,6 +4012,8 @@ class MatMulCompute:
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         self.matrix_type = "float32"
         self.format_out = format_out
+        self.origin_m_shape = 0
+        self.origin_n_shape = 0
 
     @staticmethod
     def _ceil_div(dividend, divisor):
@@ -4253,13 +4255,14 @@ class MatMulCompute:
                 attrs={"kernel_name": self.kernel_name})
         else:
             nz_out_shape = [n_shape_l0, m_shape_l0, self.block_in, self.block_out]
+            nd_ori_out_shape = [self.origin_m_shape, self.origin_n_shape]
             if self.batch_shape_a:
                 nz_out_shape.insert(0, self.batch_shape_a)
             tensor_c_gm = tvm.compute(nz_out_shape,
                                       lambda *indices: tensor_c_matrix(*indices).astype(self.dst_dtype),
                                       tag="gemm",
                                       name="tensor_c_gm",
-                                      attrs={"kernel_name": self.kernel_name})
+                                      attrs={"kernel_name": self.kernel_name, "ori_nd_shape": nd_ori_out_shape})
 
         return tensor_c_gm
 
@@ -4297,6 +4300,10 @@ class MatMulCompute:
         if len(self.tensor_b.shape) in (3, 5):
             self.batch_shape_b = self.tensor_b.shape[0].value
 
+        if "ND_trans_Nz" in self.tensor_a.op.attrs:
+            origin_shape = self.tensor_a.op.attrs["ori_shape"]
+            self.origin_m_shape = origin_shape[-1] if self.trans_a else origin_shape[-2]
+
         if self.format_a == "FRACTAL_NZ":
             # [(batch), K, M, 16, 16/32] or [(batch), M, K, 16, 16/32]
             self.m_shape = self.tensor_a.shape[-4].value if self.trans_a else self.tensor_a.shape[-3].value
@@ -4310,6 +4317,9 @@ class MatMulCompute:
             self.origin_reduce_axis = self.tensor_a.shape[-2].value if\
                 self.trans_a else self.tensor_a.shape[-1].value
 
+        if "ND_trans_Nz" in self.tensor_b.op.attrs:
+            origin_shape = self.tensor_b.op.attrs["ori_shape"]
+            self.origin_n_shape = origin_shape[-2] if self.trans_b else origin_shape[-1]
         # matrix B
         if self.format_b == "FRACTAL_NZ":
             # [(batch), N, K, 16, 16/32] or [(batch), K, N, 16, 16/32]

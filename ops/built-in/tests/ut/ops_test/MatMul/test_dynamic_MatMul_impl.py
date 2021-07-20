@@ -203,8 +203,8 @@ for case in common_cases:
     for param in gen_cases_by_shape_and_range(case):
         ut_case.add_case("Ascend910A", param)
 
-for case in matmul_case_succ:
-    ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
+#for case in matmul_case_succ:
+#    ut_case.add_case("Ascend910A", gen_matmul_dynamic_succecase(*case))
 
 for error_case in matmul_case_error:
     ut_case.add_case("Ascend910A", gen_matmul_dynamic_errorcase(*error_case))

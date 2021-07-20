@@ -71,10 +71,11 @@ class GEMM_Params:
         self.cube_vector_split = False
         self.trans_a = False
         self.trans_b = False
-        self.cv_split_nd_in_flag = False
         self.is_dynamic = False
         self.MAT_MUL = False
         self.fusion_type = FusionType.DEFAULT_MODE
+        self.nd_trans_nz_in = False
+        self.nz_trans_nd_out = False
 
 
     def print_debug(self, *info):
@@ -2050,20 +2051,39 @@ class GEMM_Schedule:
         self.gemm_params.TENSOR_MAP["a_placehold"] = all_tensor.get("tensor_a")
         self.gemm_params.TENSOR_MAP["b_placehold"] = all_tensor.get("tensor_b")
 
-        if "tensor_a_fract" in all_tensor and "tensor_b_fract" in all_tensor:
-            self.gemm_params.TENSOR_MAP["a_l1"] = all_tensor.get("tensor_a_fract")
+        for tensor in all_tensor.values():
+            if "ND_trans_Nz" in tensor.op.attrs:
+                self.gemm_params.nd_trans_nz_in = True
+                break
+        if "Nz_trans_ND" in res.op.attrs:
+            self.gemm_params.nz_trans_nd_out = True
+
+        if self.gemm_params.nd_trans_nz_in:
+            self.gemm_params.TENSOR_MAP["a_l1"] = self.gemm_params.TENSOR_MAP["a_l0a"].op.input_tensors[0]
             sch[self.gemm_params.TENSOR_MAP["a_l1"]].set_scope(tbe_platform_info.scope_cbuf)
-            self.gemm_params.TENSOR_MAP["b_l1"] = all_tensor.get("tensor_b_fract")
+            self.gemm_params.TENSOR_MAP["b_l1"] = self.gemm_params.TENSOR_MAP["b_l0b"].op.input_tensors[0]
             sch[self.gemm_params.TENSOR_MAP["b_l1"]].set_scope(tbe_platform_info.scope_cbuf)
-            self.gemm_params.cv_split_nd_in_flag = True
+            self.gemm_params.TENSOR_MAP["a_placehold"] = self.gemm_params.TENSOR_MAP["a_l1"].op.input_tensors[0]
+            self.gemm_params.TENSOR_MAP["b_placehold"] = self.gemm_params.TENSOR_MAP["b_l1"].op.input_tensors[0]
         else:
-            self.gemm_params.TENSOR_MAP["a_l1"] = sch.cache_read(self.gemm_params.TENSOR_MAP["a_placehold"],
-                                                    tbe_platform_info.scope_cbuf,
-                                                    [self.gemm_params.TENSOR_MAP["a_l0a"]])
-            self.gemm_params.TENSOR_MAP["b_l1"] = sch.cache_read(self.gemm_params.TENSOR_MAP["b_placehold"],
-                                                    tbe_platform_info.scope_cbuf,
-                                                    [self.gemm_params.TENSOR_MAP["b_l0b"]])
-            self.gemm_params.cv_split_nd_in_flag = False
+            if "tensor_a_fract" in all_tensor and "tensor_b_fract" in all_tensor:
+                self.gemm_params.TENSOR_MAP["a_l1"] = all_tensor.get("tensor_a_fract")
+                sch[self.gemm_params.TENSOR_MAP["a_l1"]].set_scope(tbe_platform_info.scope_cbuf)
+                self.gemm_params.TENSOR_MAP["b_l1"] = all_tensor.get("tensor_b_fract")
+                sch[self.gemm_params.TENSOR_MAP["b_l1"]].set_scope(tbe_platform_info.scope_cbuf)
+                self.gemm_params.nd_trans_nz_in = True
+            else:
+                self.gemm_params.TENSOR_MAP["a_l1"] = sch.cache_read(self.gemm_params.TENSOR_MAP["a_placehold"],
+                                                        tbe_platform_info.scope_cbuf,
+                                                        [self.gemm_params.TENSOR_MAP["a_l0a"]])
+                self.gemm_params.TENSOR_MAP["b_l1"] = sch.cache_read(self.gemm_params.TENSOR_MAP["b_placehold"],
+                                                        tbe_platform_info.scope_cbuf,
+                                                        [self.gemm_params.TENSOR_MAP["b_l0b"]])
+                self.gemm_params.nd_trans_nz_in = False
+
+        if self.gemm_params.nz_trans_nd_out:
+            self.gemm_params.TENSOR_MAP["origin_gm"] = res.op.input_tensors[0]
+            sch[self.gemm_params.TENSOR_MAP["origin_gm"]].compute_inline()
 
         self.gemm_params.TENSOR_MAP["fix_pipe_bias"] = all_tensor.get("tensor_bias")
         self.gemm_params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c_matrix")
@@ -2247,7 +2267,10 @@ class GEMM_Schedule:
 
         self.gemm_params.print_ir_matmul("orgin", sch)
         if self.gemm_params.fusion_type == FusionType.DEFAULT_MODE or self.gemm_params.cube_vector_split:
-            kernel_name = self.gemm_params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
+            if "Nz_trans_ND" in res.op.attrs:
+                kernel_name = self.gemm_params.TENSOR_MAP["origin_gm"].op.attrs["kernel_name"]
+            else:
+                kernel_name = self.gemm_params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
         else:
             kernel_name = self.gemm_params.TENSOR_MAP["c_ub"].op.attrs["kernel_name"]
         self._get_trans_flag_cv_split()
@@ -3072,6 +3095,7 @@ class GEMM_Schedule:
 
             def _do_l1_ub_process():
                 if self.gemm_params.cube_vector_split:
+                    _do_l1_process()
                     return
                 # get order
                 k_dict = {
@@ -3221,7 +3245,6 @@ class GEMM_Schedule:
                     scope_c_inner = scopes_intrins_c[1]
                     scope_c_inner_outer, scope_c_inner_inner = sch[c_gm].split(
                         scope_c_inner, factor=16)
-                sch_agent[b_l0b].emit_insn(sch_agent[b_l0b].op.axis[0], "dma_copy")
 
                 if not self.gemm_params.cube_vector_split:
                     sch_agent[b_normalize_ub].emit_insn(
@@ -3241,22 +3264,36 @@ class GEMM_Schedule:
                 al1_scopes_intrins = sch_agent[a_l1].intrin_scopes(nlast)
                 al1_scope_insn = al1_scopes_intrins[0]
 
-                if self.gemm_params.cube_vector_split:
-                    dma_dict = {"layout_transform", "nd2nz"}
+                if self.gemm_params.nd_trans_nz_in:
+                    dma_dict = {"layout_transform": "nd2nz"}
                     sch_agent[a_l1].emit_insn(al1_scope_insn, "dma_copy", dma_dict)
                 else:
                     sch_agent[a_l1].emit_insn(al1_scope_insn, "dma_copy")
 
                 bl1_intrins = sch_agent[b_l1].intrin_scopes(nlast)
                 bl1_fract_insn = bl1_intrins[0]
-
-                if self.gemm_params.cube_vector_split:
-                    dma_dict = {"layout_transform", "nd2nz"}
+                if self.gemm_params.nd_trans_nz_in:
+                    dma_dict = {"layout_transform": "nd2nz"}
                     sch_agent[b_l1].emit_insn(bl1_fract_insn, "dma_copy", dma_dict)
                 else:
                     sch_agent[b_l1].emit_insn(bl1_fract_insn, "dma_copy")
-
-                sch_agent[a_l0a].emit_insn(sch_agent[a_l0a].op.axis[0], "dma_copy")
+                
+                if self.gemm_params.cube_vector_split:
+                    a_dtype = self.gemm_params.TENSOR_MAP["a_placehold"].dtype
+                    if a_dtype == "int8" and self.gemm_params.trans_a:
+                        a_l0a_outer, a_l0a_inner = sch_agent[a_l0a].split(sch_agent[a_l0a].op.axis[0], 2)
+                        sch_agent[a_l0a].emit_insn(a_l0a_inner, "dma_copy")
+                    else:
+                        sch_agent[a_l0a].emit_insn(sch_agent[a_l0a].op.axis[0], "dma_copy")
+                    b_dtype = self.gemm_params.TENSOR_MAP["b_placehold"].dtype
+                    if b_dtype == "int8" and not self.gemm_params.trans_b:
+                        b_l0b_outer, b_l0b_inner = sch_agent[b_l0b].split(sch_agent[b_l0b].op.axis[1], 2)
+                        sch_agent[b_l0b].emit_insn(b_l0b_inner, "dma_copy")
+                    else:
+                        sch_agent[b_l0b].emit_insn(sch_agent[b_l0b].op.axis[0], "dma_copy")    
+                else:
+                    sch_agent[b_l0b].emit_insn(sch_agent[b_l0b].op.axis[0], "dma_copy")
+                    sch_agent[a_l0a].emit_insn(sch_agent[a_l0a].op.axis[0], "dma_copy")
 
                 inner_k_axis = sch_agent[c_l0c].get_relate_scope(
                     c_l0c.op.reduce_axis[0], scope_insn
@@ -3297,8 +3334,8 @@ class GEMM_Schedule:
                     sch_agent[c_ub_temp].reorder(outer1, outer2, inner1, inner2)
                     sch_agent[c_ub_temp].emit_insn(inner1, "vector_add")
 
-                if self.gemm_params.cube_vector_split:
-                    dma_dict = {"layout_transform", "nz2nd"}
+                if self.gemm_params.nz_trans_nd_out:
+                    dma_dict = {"layout_transform": "nz2nd"}
                     sch_agent[c_gm].emit_insn(scope_c, "dma_copy", dma_dict)
                 else:
                     sch_agent[c_gm].emit_insn(scope_c, "dma_copy", {"no_overlap": 1})
@@ -4135,14 +4172,29 @@ class GEMM_Schedule:
 
             def _do_intrin_mapping_common(al1_emit_axis, bl1_emit_axis):
                 # intrin mapping
-                temp_tensor_list = [
-                    a_l0a,
-                    b_l0b,
-                ]
+                temp_tensor_list = []
+
+                if self.gemm_params.cube_vector_split:
+                     a_dtype = self.gemm_params.TENSOR_MAP["a_placehold"].dtype
+                     if a_dtype == "int8" and self.gemm_params.trans_a:
+                         a_l0a_outer, a_l0a_inner = sch[a_l0a].split(a_l0a.op.axis[0], 2)
+                         sch[a_l0a].emit_insn(a_l0a_inner, "dma_copy")
+                     else:
+                         sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy")
+                     b_dtype = self.gemm_params.TENSOR_MAP["b_placehold"].dtype
+                     if b_dtype == "int8" and not self.gemm_params.trans_b:
+                         b_l0b_outer, b_l0b_inner = sch[b_l0b].split(b_l0b.op.axis[1], 2)
+                         sch[b_l0b].emit_insn(b_l0b_inner, "dma_copy")
+                     else:
+                         sch[b_l0b].emit_insn(b_l0b.op.axis[0], "dma_copy")
+                else:
+                    temp_tensor_list.append(a_l0a)
+                    temp_tensor_list.append(b_l0b)
+                  
                 if small_ub_flag:
                     sch[a_l1].emit_insn(al1_emit_axis, "dma_copy")
                     sch[b_l1].emit_insn(bl1_emit_axis, "dma_copy")
-                elif self.gemm_params.cv_split_nd_in_flag:
+                elif self.gemm_params.nd_trans_nz_in:
                     dma_dict = {"layout_transform": "nd2nz"}
                     sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", dma_dict)
                     sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy", dma_dict)
