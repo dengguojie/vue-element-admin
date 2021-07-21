@@ -394,7 +394,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         # (1) height & weight of x/output_backprop/filter are all 1
         # (2) strides is [1,1]
         def _set_all_one_case_flag():
-            if self.stride == [1, 1] and self.shape_x_5hd[2:4] == [1, 1] \
+            if not self.var_map and self.stride == [1, 1] and self.shape_x_5hd[2:4] == [1, 1] \
                     and self.shape_grads_5hd[2:4] == [1, 1] \
                     and self.weight_shape[2:4] == [1, 1]:
                 self.flag_all_one_case = True

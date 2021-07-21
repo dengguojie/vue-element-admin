@@ -427,6 +427,18 @@ ut_case.add_case(
         "expect": 'success'
         })
 
+# h = 1 and w = 1
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([1024, 1024, 1, 1], [-1, 1024, 1, 1], [-1, 1024, 1, 1],
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(1024, 1024), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        [(1, 16384), (1024, 1024), (1, 1), (1, 1)],
+                                        (1, 1, 1, 1), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case_hw1",
+                                        "success"))
 
 def test_conv2d_backprop_filter_fuzz_build_generalization(test_arg):
     from impl.dynamic.conv2d_backprop_filter import conv2d_bp_filter_generalization

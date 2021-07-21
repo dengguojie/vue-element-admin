@@ -1125,8 +1125,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
         # for dynamic_mode w_one_case
         if self.var_map:
+            flag_all_one_case = False
             w_one_flag = tiling.get("w_one_flag")
             sch.set_var_value(self.var_map["w_one_flag"], w_one_flag)
+            sch.set_var_range(self.var_map["w_one_flag"], w_one_flag, w_one_flag)
             flag_w_one_case = True if w_one_flag == 2 else False
             if flag_w_one_case:
                 width_grads *= 2
@@ -1513,7 +1515,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                             # hw splited one time before BL1  attach
                             hw_parts_offset = hw_mad_1_l1_out_at.var * bl1_k
                     else:
-                        if grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
+                        if not self.var_map and grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
                             # hw splited one time before BL1  attach
                             hw_parts_offset = \
                                 hw_mad_1_l1_out_at * tiling["BL1_shape"][0]
