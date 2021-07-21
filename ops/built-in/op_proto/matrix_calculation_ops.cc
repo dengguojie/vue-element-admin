@@ -670,7 +670,7 @@ bool IntersectDimensionAndRange(const std::string &op_name,
       return true;
     }
     CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%ld) must be in range(%ld, %ld)",
-                          dim_b, range_a.first, range_b.second);
+                          dim_b, range_a.first, range_a.second);
     return false;
   }
   if (range_b.first <= dim_a && dim_a <= range_b.second) {
@@ -1361,7 +1361,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
         if (!trans_a) {
           x1_data_slice[x1_dims - 4] = output[i];
         } else {
-          x1_data_slice[x2_dims - 3] = output[i];
+          x1_data_slice[x1_dims - 3] = output[i];
         }
         if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
           return false;
