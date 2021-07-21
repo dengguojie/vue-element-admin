@@ -70,6 +70,8 @@ static Status SetWeightTensorData(ge::GeTensorPtr wTensorPtr, ge::GeTensorPtr rT
   FUSION_PASS_CHECK(wxhMergeData.get() == nullptr, OP_LOGE(FUSED_NODE, "wxhMergeData is NULL"), return FAILED);
   T *wxData = (T *)wTensorPtr->GetData().data();
   T *whData = (T *)rTensorPtr->GetData().data();
+  FUSION_PASS_CHECK(wxData == nullptr, OP_LOGE(FUSED_NODE, "wxData is NULL"), return FAILED);
+  FUSION_PASS_CHECK(whData == nullptr, OP_LOGE(FUSED_NODE, "whData is NULL"), return FAILED);
 
   auto retMem = memset_s(wxhMergeData.get(), weightSize, 0, weightSize);
   FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_NODE, "Failed to operate memset_s function!"), return FAILED);
@@ -288,6 +290,8 @@ static Status SetInitHCTensorData(ge::GeTensorPtr initTensorPtr, ge::GeTensorDes
                     OP_LOGE(FUSED_NODE, "initDataReverse is null"),
   return FAILED);
   T *srcData = (T *)initTensorPtr->GetData().data();
+  FUSION_PASS_CHECK(srcData == nullptr, OP_LOGE(FUSED_NODE, "initTensorPtr->GetData().data() is NULL"),
+                    return FAILED);
 
   auto retMem = memset_s(initData.get(), init_size, 0, init_size);
   FUSION_PASS_CHECK(retMem != EOK,

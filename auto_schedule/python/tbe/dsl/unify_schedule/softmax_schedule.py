@@ -330,8 +330,6 @@ class SoftmaxSchedule:
             self._get_data_alignment(self._cache_write_tensors)
         self._is_32byte_align = (shape[-1] % align_factor_32byte == 0)
 
-        #self._get_max_ub_count_and_try_double_buffer()
-
         return True
 
 
@@ -570,7 +568,7 @@ class SoftmaxSchedule:
             raise RuntimeError("Can not calculate with no compute")
 
         # example: Three float16 nodes, the number of reduce rows is 5
-        # max_ub_count = 248KB // (2B*3*5) = 248KB // (2B*3) // 5
+        # info: max_ub_count = 248KB // (2B*3*5) = 248KB // (2B*3) // 5
         max_ub_count = total_size // total_width // reduce_rows
 
         max_ub_count = max_ub_count // align_factor * align_factor
@@ -721,7 +719,7 @@ class SoftmaxSchedule:
         self._schedule[self._res].reorder(*reorder_list)
 
         # 2. reduce_tensor reorder
-        #ub_factor = self._tiling_para["ub_tiling"]["factor"]
+        # info: ub_factor = self._tiling_para["ub_tiling"]["factor"]
         for i in self._reduce_tensors:
             write_buffer = self._cache_write_tensors_and_buffer_map[i]
             outer, inner = self._schedule[write_buffer].split(

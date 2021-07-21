@@ -688,7 +688,7 @@ class SoftmaxSchedule(VectorSchedule):
             raise RuntimeError("Can not calculate with no compute")
 
         # example: Three float16 nodes, the number of reduce rows is 5
-        # max_ub_count = 248KB // (2B*3*5) = 248KB // (2B*3) // 5
+        # info: max_ub_count = 248KB // (2B*3*5) = 248KB // (2B*3) // 5
         max_ub_count = total_size // total_width // reduce_rows
 
         max_ub_count = max_ub_count // align_factor * align_factor
@@ -1743,7 +1743,7 @@ class SoftmaxSchedule(VectorSchedule):
             elif i in self._reduce_tensors:
                 # vector_reduce_max/vector_reduce_min/vector_reduce_sum
                 insn = write_buffer.op.tag.split("|")[0]
-                insn = "vector_" + insn
+                insn = "vector_{}".format(insn)
                 self._emit_insn_map[write_buffer]["instruction"] = insn
             # 3.2 elewise using reduce result,
             # compute_inline broadcast(not last axis)

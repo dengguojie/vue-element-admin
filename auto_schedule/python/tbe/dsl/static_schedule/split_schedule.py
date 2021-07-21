@@ -196,8 +196,8 @@ def split_schedule_com(data, split_dim, shape_list, tensor_list):
         # pylint: disable=locally-disabled,unnecessary-lambda
         data_gm = tvm.compute(shape_ub,
                               lambda *index: data_ub(*index),
-                              name='res' + str(i),
-                              tag='split_com|schedule_' + str(i))
+                              name='res{}'.format(str(i)),
+                              tag='split_com|schedule_{}'.format(str(i)))
         res.append(data_gm)
     # for RL tune getting res
     bank_manager.set_op_res(res)

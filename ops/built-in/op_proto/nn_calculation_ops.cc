@@ -2102,7 +2102,6 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
   if (IsUnknownRankShape(input_shape)) {
     std::vector<int64_t> dim_vec = {-1};
     output_desc->SetShape(GeShape(dim_vec));
-    // output_desc->SetRealDimCnt(1);
     output_desc->SetDataType(input_dtype);
     std::vector<std::pair<int64_t, int64_t>> output_range;
     output_range.push_back(std::pair<int64_t, int64_t>{-1 , 1});
@@ -2141,7 +2140,6 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
   }
 
   output_desc->SetShape(GeShape(dim_vec));
-  // output_desc->SetRealDimCnt(1);
   output_desc->SetDataType(input_dtype);
 
   if (IsUnknown(input_shape)) {

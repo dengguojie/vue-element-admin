@@ -172,7 +172,7 @@ def _reduce_w(n, c1, d_p, h_p, o_w, c0, s_w, k_w, tx_ub_c):
             shape,
             lambda *i: tvm.max(tx_ub_c[i[0], i[1], i[2], i[3], i[4] * s_w + j, i[5]],
                                tx_rw[i[0], i[1], i[2], i[3], i[4], i[5]]),
-            name="tx_rw" + str(j),
+            name="tx_rw{}".format(str(j)),
             tag="reduce_max"
         )
         tx_rw = tx_rwx
@@ -201,7 +201,7 @@ def _reduce_h(n, c1, d_p, o_h, o_w, c0, s_h, k_h, tx_rw):
             shape,
             lambda *i: tvm.max(tx_rw[i[0], i[1], i[2], i[3] * s_h + j, i[4], i[5]],
                                tx_rh[i[0], i[1], i[2], i[3], i[4], i[5]]),
-            name="tx_rh" + str(j),
+            name="tx_rh{}".format(str(j)),
             tag="reduce_max"
         )
         tx_rh = tx_rhx
@@ -230,7 +230,7 @@ def _reduce_d(n, c1, o_d, o_h, o_w, c0, s_d, k_d, tx_rh):
             shape,
             lambda *i: tvm.max(tx_rh[i[0], i[1], i[2] * s_d + j, i[3], i[4], i[5]],
                                tx_rd[i[0], i[1], i[2], i[3], i[4], i[5]]),
-            name="tx_rd" + str(j),
+            name="tx_rd{}".format(str(j)),
             tag="reduce_max"
         )
         tx_rd = tx_rdx

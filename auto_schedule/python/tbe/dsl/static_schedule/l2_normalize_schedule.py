@@ -1009,7 +1009,7 @@ class L2NormalizeSchedule(VectorSchedule):
                 broadcast_shape = self._shape_to_list(tensor.shape)
                 if original_shape[-1] == 1 and broadcast_shape[-1] != 1:
                     return True
-                # include (1,1,1,1,1,1,1)->(10, 10, 5, 2, 3, 9,1)
+                # info: include (1,1,1,1,1,1,1)->(10, 10, 5, 2, 3, 9,1)
                 if sum(original_shape[:]) == len(original_shape):
                     return True
         return False

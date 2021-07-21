@@ -175,14 +175,14 @@ def cartesian_set_format_dtype(name_list, dtype_list, format_list):  # pylint: d
         new_format_list[idx] = new_format_list[idx] * d_l
     result = {}
     for idx, ipt_name in enumerate(name_list[0]):
-        result["input" + str(idx)] = {
+        result["input{}".format(str(idx))] = {
             "name": ipt_name,
             "dtype": ",".join(new_dtype_list[idx]),
             "format": ",".join(new_format_list[idx])
         }
     ipt_len = len(name_list[0])
     for idx, opt_name in enumerate(name_list[1]):
-        result["output" + str(idx)] = {
+        result["output{}".format(str(idx))] = {
             "name": opt_name,
             "dtype": ",".join(new_dtype_list[idx + ipt_len]),
             "format": ",".join(new_format_list[idx + ipt_len])

@@ -100,12 +100,12 @@ def split(data, split_dim, size_splits):
     output_tensor_list = []
     for i, _ in enumerate(output_shape_list):
         output_shape = output_shape_list[i]
-        name = 'tensor' + str(i)
+        name = 'tensor{}'.format(str(i))
         output_tensor = tvm.compute(
             output_shape,
             lambda *index: data(
                 *_index_offset(output_shape, split_dim, offset, *index)),
-            name=name, tag="split_com|compute_" + str(i))
+            name=name, tag="split_com|compute_{}".format(str(i)))
         output_tensor_list.append(output_tensor)
         offset = offset + output_shape[split_dim]
 
