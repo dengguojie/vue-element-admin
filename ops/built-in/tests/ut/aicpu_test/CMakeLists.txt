@@ -55,6 +55,8 @@ set(_cpu_context
   ${CPU_CONTEXT_DIR}/common/device_sharder.cc
   ${CPU_CONTEXT_DIR}/common/eigen_threadpool.cc
   ${CPU_CONTEXT_DIR}/common/cpu_kernel_cache.cc
+  ${CPU_CONTEXT_DIR}/common/async_cpu_kernel.cc
+  ${CPU_CONTEXT_DIR}/common/async_event_util.cc
   ${CPU_CONTEXT_DIR}/stub/aicpu_sharder.cc
 )
 
@@ -170,6 +172,8 @@ set(_cpu_kernels_ut_files
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
   testcase/cast/src/cast_utest.cpp
   testcase/ceil/src/ceil_utest.cpp
+  testcase/common/src/async_cpu_kernel_utest.cpp
+  testcase/common/src/async_event_util_utest.cpp
   testcase/common/src/attr_value_utest.cpp
   testcase/common/src/context_utest.cpp
   testcase/common/src/cpu_kernels_register_utest.cpp
