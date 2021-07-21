@@ -34,6 +34,21 @@
     }                                                                            \
   }
 
+#define CHECK_POSITION(position)                                                       \
+  {                                                                                    \
+    if (position < 0) {                                                                \
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get position failed:%s:%d", #position, position); \
+      return false;                                                                    \
+    }                                                                                  \
+  }
+
+#define CHECK_OP_FUNC(cond, msg, return_expr)           \
+  do {                                                  \
+    if (cond) {                                         \
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), msg); \
+      return_expr;                                      \
+    }                                                   \
+  } while (0)
 
 #include "./nn_calculation_ops.h"
 
@@ -623,6 +638,7 @@ static bool modify_dy_w_max(ge::Operator& op, const std::vector<int64_t>& dy_siz
                             std::vector<std::pair<int64_t, int64_t>>& dx_range) {
   std::string dy_format_str = format2str[dy_format];
   int32_t w_input_position = dy_format_str.find("W");
+  CHECK_POSITION(w_input_position);
   int64_t w_max = kDynamicRangeUpperBound / (stride_h * stride_w);
   if (w_max < dy_sizes[w_input_position]) {
     OP_LOGE(op.GetName().c_str(), "w of dedy is too large for opti scheme, w can't larger than %lld, actual is %lld",
@@ -2164,14 +2180,6 @@ COMMON_INFER_FUNC_REG(BiasAddGrad, BiasAddGradInferShape);
 
 //============================Conv2Dbackprop===============================
 #define ALIGN_CONV2DBP(x_1, x_2) ((((x_1) + (x_2)-1) / (x_2)) * (x_2))
-
-#define CHECK_POSITION(position)                                                       \
-  {                                                                                    \
-    if (position < 0) {                                                                \
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get position failed:%s:%d", #position, position); \
-      return false;                                                                    \
-    }                                                                                  \
-  }
 
 static bool getStrideDilationHW(ge::Operator& op, int32_t& stride_h, int32_t& stride_w, int32_t& dilation_h,
                                 int32_t& dilation_w) {
@@ -6819,17 +6827,7 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
     return GRAPH_FAILED;
   }
 
-  if (GRAPH_SUCCESS != op.update_output_desc_y(y_tensor)) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
-    map<std::string, std::string> err_map;
-    err_map["param_name"] = "output_desc_y";
-    err_map["op_name"] = "Conv3d";
-    err_map["excepted_value"] = GRAPH_SUCCESS;
-    err_map["output_value"] = op.update_output_desc_y(y_tensor);
-    std::string report_error_code = "E50029";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
-  }
+  CHECK_OP_FUNC(GRAPH_SUCCESS != op.update_output_desc_y(y_tensor), "update output desc failed.", return GRAPH_FAILED);
 
   // fuzzy compile
   bool is_static_shape = !unknown_rank &&

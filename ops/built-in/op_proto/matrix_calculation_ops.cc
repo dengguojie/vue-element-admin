@@ -787,6 +787,7 @@ class InferShapeMatMul {
                    vector<std::pair<int64_t, int64_t>> &range_b,
                    vector<std::pair<int64_t, int64_t>> &range_bias, bool trans_a, bool trans_b,
                    vector<int64_t> &shape_out, vector<std::pair<int64_t, int64_t>> &range_out, bool has_batch);
+  ~InferShapeMatMul() {};
 
  private:
   bool PrecheckShapeAndRange(const string &op_name);
