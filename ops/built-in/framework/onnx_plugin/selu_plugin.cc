@@ -18,15 +18,8 @@
  * \file selu_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-#include <cmath>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-
-#include "op_log.h"
+ #include <cmath>
+#include "onnx_common.h"
 
 namespace domi {
 static const float ALPHA_DEFAULT = 1.67326324235;
@@ -35,7 +28,7 @@ static const float DIFF_ABS = 0.00001;
 Status ParseParamsSelu(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto *node = reinterpret_cast<const ge::onnx::NodeProto *>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Selu", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   float alpha = ALPHA_DEFAULT;
@@ -45,7 +38,7 @@ Status ParseParamsSelu(const Message* op_src, ge::Operator& op_dest) {
     if (attr.name() == "gamma" && attr.type() == ge::onnx::AttributeProto::FLOAT) gamma = attr.f();
   }
   if(fabs(alpha - ALPHA_DEFAULT) > DIFF_ABS || fabs(gamma - GAMMA_DEFAULT) > DIFF_ABS) {
-    OP_LOGE("Selu", "the attr of alpha or gamma is not default. transform failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "the attr of alpha or gamma is not default. transform failed.");
     return FAILED;
   }
 

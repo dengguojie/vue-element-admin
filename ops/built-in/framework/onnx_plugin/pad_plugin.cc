@@ -11,16 +11,8 @@
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
 
-#include <string>
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "all_ops.h"
-#include "graph.h"
+#include "onnx_common.h"
 
-using namespace std;
 using namespace ge;
 using ge::Operator;
 
@@ -28,7 +20,7 @@ namespace domi {
 Status parse_params_pad_v11(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("Pad", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -36,7 +28,7 @@ Status parse_params_pad_v11(const Message* op_src, ge::Operator& op_dest) {
     if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
       std::string mode_value = attr.s();
       if (mode_value == "reflect" || mode_value == "edge") {
-        OP_LOGE("Pad", "Mode attr of Pad only supports constant, current is %s .", mode_value.c_str());
+        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Pad only supports constant, current is %s .", mode_value.c_str());
         return FAILED;
       }
     }
@@ -49,7 +41,7 @@ Status parse_params_pad_v11(const Message* op_src, ge::Operator& op_dest) {
 Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Pad", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -69,14 +61,14 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
     if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
       std::string mode_value = attr.s();
       if (mode_value == "reflect" || mode_value == "edge") {
-        OP_LOGE("Pad", "Mode attr of Pad only supports constant, current is %s .", mode_value.c_str());
+        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Pad only supports constant, current is %s .", mode_value.c_str());
         return FAILED;
       }
     } else if (attr.name() == "pads") {
       set_pads_flag = true;
       unsigned int len = attr.ints_size();
       if (len & 1) {
-        OP_LOGE("Pad", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
+        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
         return FAILED;
       }
       for (unsigned int i = 0; i < len / 2; i++) {
@@ -89,7 +81,7 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
   }
 
   if (!set_pads_flag) {
-    OP_LOGE("Pad", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   int num = v_pads.size();

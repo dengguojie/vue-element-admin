@@ -18,23 +18,14 @@
  * \file random_normal_like.cc
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph/utils/attr_utils.h"
-#include "../../op_proto/inc/all_ops.h"
-#include "op_log.h"
-#include "graph/operator.h"
+#include "onnx_common.h"
 
 using namespace ge;
 namespace domi {
 Status ParseParamsRandomNormalLike(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("ParseParamsRandomNormalLike", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -79,7 +70,7 @@ Status ParseOpToGraphRandomNormalLike(const ge::Operator &op, ge::Graph &graph) 
   // cast from onnx dtype to tbe dtype
   std::map<int, ge::DataType> kvlist = {{1, ge::DT_FLOAT}, {10, ge::DT_FLOAT16}, {11, ge::DT_DOUBLE}};
   if (kvlist.find(dtype) == kvlist.end()){
-    OP_LOGE("RandomNormalLike", "only support float32/float16/double, but got %d", dtype);
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "only support float32/float16/double, but got %d", dtype);
     return FAILED;
   }
   

@@ -10,15 +10,7 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph.h"
-#include "all_ops.h"
-#include "op_log.h"
+#include "../onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -30,7 +22,7 @@ using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ParseParamsInt8Dequantize(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("ParseParamsInt8Dequantize", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("ParseParamsInt8Dequantize", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 

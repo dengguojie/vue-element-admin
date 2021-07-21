@@ -10,16 +10,7 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-#include <map>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph.h"
-#include "all_ops.h"
-#include "op_log.h"
+#include "../onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -31,7 +22,7 @@ using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ParseParamsInt8Fc(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("ParseParamsInt8Fc", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("ParseParamsInt8Fc", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -49,7 +40,7 @@ Status ParseParamsInt8Fc(const Message* op_src, ge::Operator& op_dest) {
   int op_output_size = node->output_size();
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
-    OP_LOGE("ParseParamsInt8Fc", "Get OpDesc from operator failed.");
+    ONNX_PLUGIN_LOGE("ParseParamsInt8Fc", "Get OpDesc from operator failed.");
     return FAILED;
   }
   op_desc->AddDynamicInputDesc("x", op_input_size);
@@ -74,7 +65,7 @@ Status ParseParamsInt8Fc(const Message* op_src, ge::Operator& op_dest) {
   for (auto iter = offset_map.begin(); iter != offset_map.end(); ++iter) {
     if (o_counter == 3) {
       if (iter->second != 0) {
-        OP_LOGW("Int8Fc", "The offset of operator AscendDequant in NPU must 0.");
+        ONNX_PLUGIN_LOGW("Int8Fc", "The offset of operator AscendDequant in NPU must 0.");
       }
       op_dest.SetAttr("ascend_dequant_offset", 0);
     } else if (o_counter == 0) {
@@ -121,7 +112,7 @@ Status ParseOpToGraphInt8Fc(const ge::Operator& op, Graph& graph) {
                 .set_attr_transpose(false);
     inputs = {data1, data2, data3};
   } else {
-    OP_LOGE("ParseParamsInt8Fc", "Numbers of input cannot be parsered.");
+    ONNX_PLUGIN_LOGE("ParseParamsInt8Fc", "Numbers of input cannot be parsered.");
     return FAILED;
   }
 
@@ -149,7 +140,7 @@ Status ParseOpToGraphInt8Fc(const ge::Operator& op, Graph& graph) {
   tensor.SetFormat(ge::FORMAT_NCHW);
   auto ret_y = op_desc->UpdateOutputDesc(0, tensor);
   if (ret_y != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Int8FC", "update quant output format failed.");
+    ONNX_PLUGIN_LOGE("Int8FC", "update quant output format failed.");
     return FAILED;
   }
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;

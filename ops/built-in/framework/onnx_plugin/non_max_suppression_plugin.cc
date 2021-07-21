@@ -18,12 +18,7 @@
  * \file non_max_suppression_plugin.cc
  * \brief
  */
-#include <string>
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
+#include "onnx_common.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
@@ -32,7 +27,7 @@ Status ParseParamsNonMaxSuppression(const Message *op_src, ge::Operator &op_dest
 {
     const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
     if (node == nullptr) {
-        OP_LOGE("NonMaxSuppression", "Dynamic cast op_src to NodeProto failed.");
+        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
         return FAILED;
     }
     int center_point_box = 0;

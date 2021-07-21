@@ -10,14 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <vector>
-
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "all_ops.h"
+#include "onnx_common.h"
 
 using namespace ge;
 namespace domi {
@@ -25,7 +18,7 @@ using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
-    OP_LOGE("ArgMin", "Get OpDesc from operator failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Get OpDesc from operator failed.");
     return FAILED;
   }
 
@@ -37,7 +30,7 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
   // 3.set attr if needed
   const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
-    OP_LOGE("ArgMin", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -46,13 +39,13 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "axis" && attr.type() == ge::onnx::AttributeProto::INT) {
       axis = attr.i();
-      OP_LOGI("ArgMin", "set dimension = %d", attr.i());
+      ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "set dimension = %d", axis);
     }
     if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
       keep_dims = attr.i();
     }
     if (attr.name() == "select_last_index" && attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1) {
-      OP_LOGW("ArgMin", "select_last_index should be 0, but now it's 1");
+      ONNX_PLUGIN_LOGW(op_dest.GetName().c_str(), "select_last_index should be 0, but now it's 1");
     }
   }
 
@@ -64,12 +57,12 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
 static Status ParseOpToGraphArgMin(const Operator& op, Graph& graph) {
   int keep_dims = 1;
   if (op.GetAttr("keep_dims", keep_dims) != SUCCESS) {
-    OP_LOGE("ArgMin", "get keep_dims from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
     return FAILED;
   }
   int axis = 0;
   if (op.GetAttr("dimension", axis) != SUCCESS) {
-    OP_LOGE("ArgMin", "get dimension from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get dimension from op failed");
     return FAILED;
   }
 

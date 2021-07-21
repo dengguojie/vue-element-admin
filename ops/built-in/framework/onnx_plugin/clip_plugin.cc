@@ -18,14 +18,7 @@
  * \file clip_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "all_ops.h"
-#include "graph.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -36,7 +29,7 @@ namespace domi {
 Status ParseParamsClipV9(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Clip", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Clip", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -80,12 +73,12 @@ static Status ParseOpToGraphClipV9(const Operator& op, Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
   ge::Tensor value1;
   if (op.GetAttr("max", value1) != SUCCESS) {
-    OP_LOGE("Clip", "get max from op failed");
+    ONNX_PLUGIN_LOGE("Clip", "get max from op failed");
     return FAILED;
   }
   ge::Tensor value2;
   if (op.GetAttr("min", value2) != SUCCESS) {
-    OP_LOGE("Clip", "get max from op failed");
+    ONNX_PLUGIN_LOGE("Clip", "get max from op failed");
     return FAILED;
   }
 
@@ -115,7 +108,7 @@ Status ParseParamsClipV11(const Message* op_src, ge::Operator& op_dest) {
   // 3.set attr if needed
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Clip", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Clip", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -123,7 +116,7 @@ Status ParseParamsClipV11(const Message* op_src, ge::Operator& op_dest) {
   bool no_min = false;
   int num = node->input_size();
   if (num < 2) {
-    OP_LOGE("Clip", "At least of 'min' or 'max' must not be None");
+    ONNX_PLUGIN_LOGE("Clip", "At least of 'min' or 'max' must not be None");
     return FAILED;
   } else if (num == 2) {
     no_min = false;
@@ -143,19 +136,19 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
   auto data0 = op::Data("x").set_attr_index(0);
   bool no_max = true;
   if (op.GetAttr("no_max", no_max) != SUCCESS) {
-    OP_LOGE("Clip", "get no_max from op failed");
+    ONNX_PLUGIN_LOGE("Clip", "get no_max from op failed");
     return FAILED;
   }
   bool no_min = true;
   if (op.GetAttr("no_min", no_min) != SUCCESS) {
-    OP_LOGE("Clip", "get no_min from op failed");
+    ONNX_PLUGIN_LOGE("Clip", "get no_min from op failed");
     return FAILED;
   }
 
   int index = 1;
   Operator min_op;
   if (no_min) {
-    OP_LOGI("Clip", "Min is ommitted, use default value=-3.402823e+38");
+    ONNX_PLUGIN_LOGI("Clip", "Min is ommitted, use default value=-3.402823e+38");
     float min = -3.402823e+38;
     ge::Shape shape({1});
     TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_FLOAT);
@@ -168,7 +161,7 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
 
   Operator max_op;
   if (no_max) {
-    OP_LOGI("Clip", "Max is ommitted, use default value=3.402823e+38");
+    ONNX_PLUGIN_LOGI("Clip", "Max is ommitted, use default value=3.402823e+38");
     float max = 3.402823e+38;
     ge::Shape shape({1});
     TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_FLOAT);

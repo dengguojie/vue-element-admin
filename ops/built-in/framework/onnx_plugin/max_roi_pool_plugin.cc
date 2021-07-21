@@ -18,18 +18,14 @@
  * \file max_roi_pool_plugin.cc
  * \brief
  */
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
+#include "onnx_common.h"
 
 namespace domi {
 
 Status ParseParamsMaxRoiPool(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-      OP_LOGE("MaxRoiPool", "Dynamic cast op_src to NodeProto failed.");
+      ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
       return FAILED;
   }
   float spatial_scale = 1.0;
@@ -44,7 +40,7 @@ Status ParseParamsMaxRoiPool(const Message* op_src, ge::Operator& op_dest) {
     }
   }
   if (pooled_shape.size() != 2) {
-    OP_LOGE("MaxRoiPool", "Obtain attr pooled_shape failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Obtain attr pooled_shape failed.");
     return FAILED;
   }
 

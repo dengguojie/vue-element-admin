@@ -18,24 +18,17 @@
  * \file global_average_pool_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/operator.h"
-
-#include "op_log.h"
+#include "onnx_common.h"
 
 namespace domi {
 
 static const int DEFAULT_AXIS = 0;
 
 Status ParseParamsGlobalAveragePool(const Message* op_src, ge::Operator& op_dest) {
-  OP_LOGI("GlobalAveragePool", "[PLUGIN_GLOBALAVERAGEPOOL]---------ParseParams GlobalAveragePool start----------");
+  ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "[PLUGIN_GLOBALAVERAGEPOOL]---------ParseParams GlobalAveragePool start----------");
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("GlobalAveragePool", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 

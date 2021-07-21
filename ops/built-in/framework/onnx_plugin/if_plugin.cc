@@ -10,10 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
@@ -21,12 +18,12 @@ Status ParseParamsIf(const Message *op_src, ge::Operator &op_dest) {
   const ge::onnx::NodeProto *node = dynamic_cast<const ge::onnx::NodeProto *>(op_src);
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (node == nullptr) {
-    OP_LOGE("If", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   int in_size = node->input_size() - 1;
   if (in_size < 0) {
-    OP_LOGE("If", "If input num is less than 0.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "If input num is less than 0.");
     return FAILED;
   }
   int out_size = node->output_size();
@@ -38,7 +35,7 @@ Status ParseSubgraphPostFnIf(const std::string& subgraph_name, const ge::Graph& 
   AutoMappingSubgraphIOIndexFunc auto_mapping_subgraph_index_func =
     FrameworkRegistry::Instance().GetAutoMappingSubgraphIOIndexFunc(ONNX);
   if (auto_mapping_subgraph_index_func == nullptr) {
-    OP_LOGE("If", "auto mapping subgraph func is nullptr!");
+    ONNX_PLUGIN_LOGE("If", "auto mapping subgraph func is nullptr!");
     return FAILED;
   }
   return auto_mapping_subgraph_index_func(graph,

@@ -10,14 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-#include "graph.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "all_ops.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -69,7 +62,7 @@ static uint8_t* ParseTensorValue(const ge::onnx::TensorProto &tp)
 {
   const uint8_t *data = nullptr;
   auto data_type = tp.data_type();
-  OP_LOGI("ConstantOfShape", "Datatype[%ld.]", data_type);
+  ONNX_PLUGIN_LOGI("ConstantOfShape", "Datatype[%d.]", data_type);
   switch (data_type) {
     case ge::onnx::TensorProto::DataType::TensorProto_DataType_INT64:
       data = reinterpret_cast<const uint8_t *>(tp.int64_data().data());
@@ -84,7 +77,7 @@ static uint8_t* ParseTensorValue(const ge::onnx::TensorProto &tp)
       data = reinterpret_cast<const uint8_t *>(tp.double_data().data());
       break;
     default:
-      OP_LOGE("ConstantOfShape", "Datatype[%ld] don't support.", data_type);
+      ONNX_PLUGIN_LOGE("ConstantOfShape", "Datatype[%d] don't support.", data_type);
   }
   return const_cast<uint8_t *>(data);
 }
@@ -93,7 +86,7 @@ Status ParseParamsConstantOfShape(const Message *op_src, ge::Operator &op_dest)
 {
   const ge::onnx::NodeProto *node = dynamic_cast<const ge::onnx::NodeProto *>(op_src);
   if (node == nullptr) {
-    OP_LOGE("ConstantOfShape", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("ConstantOfShape", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
@@ -136,7 +129,7 @@ static Status ParseOpToGraphConstantOfShape(const Operator &op, Graph &graph)
   auto data0 = op::Data("data0").set_attr_index(0);
   ge::Tensor value;
   if (op.GetAttr("value", value) != SUCCESS) {
-    OP_LOGE("ConstantOfShape", "get value from op failed");
+    ONNX_PLUGIN_LOGE("ConstantOfShape", "get value from op failed");
     return FAILED;
   }
   auto data1 = op::Const("data1").set_attr_value(value);

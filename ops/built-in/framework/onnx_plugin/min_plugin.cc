@@ -10,17 +10,8 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
+#include "onnx_common.h"
 
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph.h"
-#include "all_ops.h"
-#include "op_log.h"
-
-using namespace std;
 using namespace ge;
 using ge::Operator;
 namespace domi {
@@ -30,12 +21,11 @@ using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status OpMinUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("Min", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
   int n = node->input_size();
-  OP_LOGI("Min", "[PLUGIN_min]-input_size=%d ", n);
   op_dest.SetAttr("N", n);
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   op_desc->AddDynamicInputDesc("x", n);
@@ -81,7 +71,7 @@ Status ParseOpToGraphMin(const ge::Operator& op, Graph& graph) {
   std::vector<ge::Operator> inputs;
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
   if (input_size == 0) {
-    OP_LOGE("ParseOpToGraphMin", "input_size must ge 1");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "input_size must ge 1");
     return FAILED;
   } else if (input_size == 1) {
     auto data_op = op::Data("data").set_attr_index(0);

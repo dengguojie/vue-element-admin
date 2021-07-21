@@ -11,12 +11,7 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#include <map>
-
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
@@ -75,7 +70,7 @@ int32_t TransDataTypeFromOnnxToOm(int onnx) {
 Status ParseParamsCast(const Message *op_src, ge::Operator &op_dst) {
   const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Cast", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -86,7 +81,7 @@ Status ParseParamsCast(const Message *op_src, ge::Operator &op_dst) {
       int onnx = attr.i();
       int32_t om = TransDataTypeFromOnnxToOm(onnx);
       if (om == -1) {
-        OP_LOGE("Cast", "TransDataTypeFromOnnxToOm failed, onnx = %d", onnx);
+        ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "TransDataTypeFromOnnxToOm failed, onnx = %d", onnx);
         return FAILED;
       }
       op_dst.SetAttr("dst_type", om);
@@ -95,7 +90,7 @@ Status ParseParamsCast(const Message *op_src, ge::Operator &op_dst) {
   }
 
   if (!bfind_to) {
-    OP_LOGE("Cast", "Message op_src do not have attribute to.");
+    ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Message op_src do not have attribute to.");
     return FAILED;
   }
   return SUCCESS;

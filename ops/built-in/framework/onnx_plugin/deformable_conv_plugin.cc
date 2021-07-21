@@ -10,23 +10,16 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include <vector>
-
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "all_ops.h"
+#include "onnx_common.h"
 
 using namespace ge;
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest) {
-  OP_LOGI("DeformableConv2D", "Start into the ParseParamsDeformableConv2D!");
+  ONNX_PLUGIN_LOGI("DeformableConv2D", "Start into the ParseParamsDeformableConv2D!");
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("DeformableConv2D", "Dynamic cast op_src to NodeProto failed");
+    ONNX_PLUGIN_LOGE("DeformableConv2D", "Dynamic cast op_src to NodeProto failed");
     return FAILED;
   }
 
@@ -53,7 +46,7 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
         strides.push_back(attr.ints(0));
         strides.push_back(attr.ints(1));
       } else {
-        OP_LOGE("DeformableConv2D", "the strides attr shape is wrong.");
+        ONNX_PLUGIN_LOGE("DeformableConv2D", "the strides attr shape is wrong.");
         return FAILED;
       }
 
@@ -71,7 +64,7 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
         pads.push_back(attr.ints(0));
         pads.push_back(attr.ints(1));
       } else {
-        OP_LOGE("DeformableConv2D", "the pads attr shape is wrong.");
+        ONNX_PLUGIN_LOGE("DeformableConv2D", "the pads attr shape is wrong.");
         return FAILED;
       }
 
@@ -91,7 +84,7 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
         dilations.push_back(attr.ints(0));
         dilations.push_back(attr.ints(1));
       } else {
-        OP_LOGE("DeformableConv2D", "the dilations attr shape is wrong.");
+        ONNX_PLUGIN_LOGE("DeformableConv2D", "the dilations attr shape is wrong.");
         return FAILED;
       }
     }
@@ -111,12 +104,12 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
   if (set_strides) {
     op_dest.SetAttr("strides", strides);
   } else {
-    OP_LOGE("DeformableConv2D", "onnx DeformableConv2D op has no strides attr.");
+    ONNX_PLUGIN_LOGE("DeformableConv2D", "onnx DeformableConv2D op has no strides attr.");
   }
   if (set_pads) {
     op_dest.SetAttr("pads", pads);
   } else {
-    OP_LOGE("DeformableConv2D", "onnx DeformableConv2D op has no pads attr.");
+    ONNX_PLUGIN_LOGE("DeformableConv2D", "onnx DeformableConv2D op has no pads attr.");
   }
 
   op_dest.SetAttr("dilations", dilations);
@@ -130,7 +123,7 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
   input_tensorx.SetFormat(ge::FORMAT_NCHW);
   auto ret = op_dest.UpdateInputDesc("x", input_tensorx);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE("DeformableConv2D", "update x format failed");
+    ONNX_PLUGIN_LOGE("DeformableConv2D", "update x format failed");
     return FAILED;
   }
 
@@ -139,7 +132,7 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
   input_tensor_offsets.SetFormat(ge::FORMAT_NCHW);
   ret = op_dest.UpdateInputDesc("offsets", input_tensor_offsets);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE("DeformableConv2D", "update offsets format failed");
+    ONNX_PLUGIN_LOGE("DeformableConv2D", "update offsets format failed");
     return FAILED;
   }
 
@@ -148,7 +141,7 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
   input_tensor_filter.SetFormat(ge::FORMAT_NCHW);
   ret = op_dest.UpdateInputDesc("filter", input_tensor_filter);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE("DeformableConv2D", "update filter format failed");
+    ONNX_PLUGIN_LOGE("DeformableConv2D", "update filter format failed");
     return FAILED;
   }
 
@@ -157,7 +150,7 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
   output_tensor.SetFormat(ge::FORMAT_NCHW);
   auto ret_output = op_dest.UpdateOutputDesc("y", output_tensor);
   if (ret_output != ge::GRAPH_SUCCESS) {
-    OP_LOGE("DeformableConv2D", "update output format failed");
+    ONNX_PLUGIN_LOGE("DeformableConv2D", "update output format failed");
     return FAILED;
   }
   return SUCCESS;

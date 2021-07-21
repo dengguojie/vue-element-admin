@@ -10,15 +10,8 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include <vector>
-#include "graph.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "all_ops.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
-using namespace std;
 using namespace ge;
 using ge::Operator;
 namespace domi {
@@ -28,13 +21,13 @@ static const int DATA_TYPE_INT32 = 6;
 Status OpUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("ParseParamsMultinomialCall",
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(),
             "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
-    OP_LOGE("ParseParamsMultinomialCall", "op_desc is null");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "op_desc is null");
     return FAILED;
   }
   op_desc->AddDynamicInputDesc("x", 1);
@@ -91,7 +84,7 @@ Status ParseParamsMultinomialCallV13(const Message* op_src, ge::Operator& op_des
 Status ParseOpToGraphMultinomial(const ge::Operator &op, Graph &graph) {
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
-    OP_LOGE("ParseOpToGraphMultinomial", "op_desc is null");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "op_desc is null");
     return FAILED;
   }
   int sample_size = 1;

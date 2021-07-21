@@ -11,13 +11,7 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#include <vector>
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "all_ops.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -30,7 +24,7 @@ Status ParseParamsFlatten(const Message* op_src, ge::Operator& op_dest) {
   // 1.add dynamic input and out
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
-    OP_LOGE("Flatten", "Get OpDesc From operator failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Get OpDesc From operator failed.");
     return FAILED;
   }
   opDesc->AddDynamicInputDesc("args", 1);
@@ -39,7 +33,7 @@ Status ParseParamsFlatten(const Message* op_src, ge::Operator& op_dest) {
   // 2.set attr if needed
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Flatten", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -56,7 +50,7 @@ Status ParseParamsFlatten(const Message* op_src, ge::Operator& op_dest) {
 
 Status ParseParamsFlattenV11(const Message* op_src, ge::Operator& op_dest) {
   if (ParseParamsFlatten(op_src, op_dest) != SUCCESS) {
-    OP_LOGE("Flatten", "Parser params of flatten failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Parser params of flatten failed.");
     return FAILED;
   }
   // set original_type
@@ -68,7 +62,7 @@ Status ParseParamsFlattenV11(const Message* op_src, ge::Operator& op_dest) {
 
 Status ParseParamsFlattenV12(const Message* op_src, ge::Operator& op_dest) {
   if (ParseParamsFlatten(op_src, op_dest) != SUCCESS) {
-    OP_LOGE("Flatten", "Parser params of flatten failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Parser params of flatten failed.");
     return FAILED;
   }
   // set original_type
@@ -80,7 +74,7 @@ Status ParseParamsFlattenV12(const Message* op_src, ge::Operator& op_dest) {
 
 Status ParseParamsFlattenV13(const Message* op_src, ge::Operator& op_dest) {
   if (ParseParamsFlatten(op_src, op_dest) != SUCCESS) {
-    OP_LOGE("Flatten", "Parser params of flatten failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Parser params of flatten failed.");
     return FAILED;
   }
   // set original_type
@@ -92,7 +86,7 @@ Status ParseParamsFlattenV13(const Message* op_src, ge::Operator& op_dest) {
 
 Status ParseParamsFlattenV9(const Message* op_src, ge::Operator& op_dest) {
   if (ParseParamsFlatten(op_src, op_dest) != SUCCESS) {
-    OP_LOGE("Flatten", "Parser params of flatten failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Parser params of flatten failed.");
     return FAILED;
   }
   // set original_type
@@ -105,11 +99,11 @@ Status ParseParamsFlattenV9(const Message* op_src, ge::Operator& op_dest) {
 static Status ParseOpToGraphFlatten(const Operator& op, Graph& graph) {
   int axis = 1;
   if (op.GetAttr("axis", axis) != SUCCESS) {
-    OP_LOGE("Flatten", "get axis from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get axis from op failed");
     return FAILED;
   }
   if (axis < 0) {
-    OP_LOGE("Flatten", "negative axis[%d] is not support.", axis);
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "negative axis[%d] is not support.", axis);
     return FAILED;
   }
 

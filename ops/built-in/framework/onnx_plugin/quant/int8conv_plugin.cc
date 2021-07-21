@@ -10,14 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "all_ops.h"
+#include "../onnx_common.h"
 
 using namespace ge;
 namespace domi {
@@ -26,7 +19,7 @@ using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ChangeFormatInt8Conv(const ge::Operator& op, const int idx, ge::Format format, bool is_input) {
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
-    OP_LOGE("Int8Conv", "Get op_desc from operator failed.");
+    ONNX_PLUGIN_LOGE("Int8Conv", "Get op_desc from operator failed.");
     return FAILED;
   }
   if (is_input) {
@@ -35,7 +28,7 @@ Status ChangeFormatInt8Conv(const ge::Operator& op, const int idx, ge::Format fo
     org_tensor.SetFormat(format);
     auto ret = op_desc->UpdateInputDesc(idx, org_tensor);
     if (ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Int8Conv", "change input format failed.");
+      ONNX_PLUGIN_LOGE("Int8Conv", "change input format failed.");
       return FAILED;
     }
   } else {
@@ -44,7 +37,7 @@ Status ChangeFormatInt8Conv(const ge::Operator& op, const int idx, ge::Format fo
     org_tensor_y.SetFormat(format);
     auto ret_y = op_desc->UpdateOutputDesc(idx, org_tensor_y);
     if (ret_y != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Int8Conv", "change output format failed.");
+      ONNX_PLUGIN_LOGE("Int8Conv", "change output format failed.");
       return FAILED;
     }
   }
@@ -54,13 +47,13 @@ Status ChangeFormatInt8Conv(const ge::Operator& op, const int idx, ge::Format fo
 Status ParseParamsInt8Conv(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Int8Conv", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Int8Conv", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
-    OP_LOGE("Int8Conv", "Get op_desc from operator failed.");
+    ONNX_PLUGIN_LOGE("Int8Conv", "Get op_desc from operator failed.");
     return FAILED;
   }
   op_desc->AddDynamicInputDesc("x", 3);
@@ -112,7 +105,7 @@ Status ParseParamsInt8Conv(const Message* op_src, ge::Operator& op_dest) {
     dilations.insert(dilations.begin(), temp_num);
     dilations.insert(dilations.end(), temp_num);
   } else {
-    OP_LOGW("Int8Conv", "get attr order foramt is failed.");
+    ONNX_PLUGIN_LOGW("Int8Conv", "get attr order foramt is failed.");
   }
 
   op_dest.SetAttr("strides", strides);
@@ -133,42 +126,42 @@ static Status ParseOpToGraphInt8Conv(const ge::Operator& op, Graph& graph) {
 
   std::vector<int64_t> strides = {};
   if (op.GetAttr("strides", strides) != SUCCESS) {
-    OP_LOGE("Int8Conv", "get strides from op failed");
+    ONNX_PLUGIN_LOGE("Int8Conv", "get strides from op failed");
     return FAILED;
   }
   std::vector<int64_t> pads = {};
   if (op.GetAttr("pads", pads) != SUCCESS) {
-    OP_LOGE("Int8Conv", "get pads from op failed");
+    ONNX_PLUGIN_LOGE("Int8Conv", "get pads from op failed");
     return FAILED;
   }
   std::vector<int64_t> dilations = {};
   if (op.GetAttr("dilations", dilations) != SUCCESS) {
-    OP_LOGE("Int8Conv", "get dilations from op failed");
+    ONNX_PLUGIN_LOGE("Int8Conv", "get dilations from op failed");
     return FAILED;
   }
   int groups = 1;
   if (op.GetAttr("groups", groups) != SUCCESS) {
-    OP_LOGE("Int8Conv", "get groups from op failed");
+    ONNX_PLUGIN_LOGE("Int8Conv", "get groups from op failed");
     return FAILED;
   }
   float Y_scale = 0.0;
   if (op.GetAttr("Y_scale", Y_scale) != SUCCESS) {
-    OP_LOGE("Int8Conv", "get Y_scale from op failed");
+    ONNX_PLUGIN_LOGE("Int8Conv", "get Y_scale from op failed");
     return FAILED;
   }
   int64_t Y_zero_point = 0;
   if (op.GetAttr("Y_zero_point", Y_zero_point) != SUCCESS) {
-    OP_LOGE("Int8Conv", "get Y_zero_point from op failed");
+    ONNX_PLUGIN_LOGE("Int8Conv", "get Y_zero_point from op failed");
     return FAILED;
   }
   float scale = 0.0;
   if (op.GetAttr("scale", scale) != SUCCESS) {
-    OP_LOGE("Int8Conv", "get scale from op failed");
+    ONNX_PLUGIN_LOGE("Int8Conv", "get scale from op failed");
     return FAILED;
   }
   std::string order = "";
   if (op.GetAttr("order", order) != SUCCESS) {
-    OP_LOGE("Int8Conv", "get order from op failed");
+    ONNX_PLUGIN_LOGE("Int8Conv", "get order from op failed");
     return FAILED;
   }
 
@@ -179,7 +172,7 @@ static Status ParseOpToGraphInt8Conv(const ge::Operator& op, Graph& graph) {
   std::map<std::string, ge::Format> kvmap = {{"NCHW", ge::FORMAT_NCHW}, {"NHWC", ge::FORMAT_NHWC}};
   auto order_map = kvmap.find(order);
   if (order_map == kvmap.end()){
-    OP_LOGE("Int8Conv", "only support NCHW/NHWC, but got %s", order.c_str());
+    ONNX_PLUGIN_LOGE("Int8Conv", "only support NCHW/NHWC, but got %s", order.c_str());
     return FAILED;
   }
 
@@ -195,19 +188,19 @@ static Status ParseOpToGraphInt8Conv(const ge::Operator& op, Graph& graph) {
   // The x should be NCHW
   auto ret_x = ChangeFormatInt8Conv(conv, 0, order_map->second, true);
   if (ret_x != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Int8Conv", "update x format failed.");
+    ONNX_PLUGIN_LOGE("Int8Conv", "update x format failed.");
     return FAILED;
   }
   // The filter should be NCHW/HWCN
   auto ret_w = ChangeFormatInt8Conv(conv, 1, filter_format, true);
   if (ret_w != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Int8Conv", "update filter format failed.");
+    ONNX_PLUGIN_LOGE("Int8Conv", "update filter format failed.");
     return FAILED;
   }
   // The output should be NCHW
   auto ret_y = ChangeFormatInt8Conv(conv, 0, order_map->second, false);
   if (ret_y != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Int8Conv", "update output format failed.");
+    ONNX_PLUGIN_LOGE("Int8Conv", "update output format failed.");
     return FAILED;
   }
 
@@ -224,19 +217,19 @@ static Status ParseOpToGraphInt8Conv(const ge::Operator& op, Graph& graph) {
   //The deq_data should be NC1HWC0
   auto ret_deq_x = ChangeFormatInt8Conv(ascendD, 0, order_map->second, true);
   if (ret_deq_x != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Intconv8", "update intput x format failed");
+    ONNX_PLUGIN_LOGE("Intconv8", "update intput x format failed");
     return FAILED;
   }
   //The deq_data should be NC1HWC0
   auto ret_deq = ChangeFormatInt8Conv(ascendD, 1, order_map->second, true);
   if (ret_deq != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Intconv8", "update intput deq format failed");
+    ONNX_PLUGIN_LOGE("Intconv8", "update intput deq format failed");
     return FAILED;
   }
   //The deq_data should be NC1HWC0
   auto ret_deq_y = ChangeFormatInt8Conv(ascendD, 0, order_map->second, false);
   if (ret_deq_y != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Intconv8", "update output y format failed");
+    ONNX_PLUGIN_LOGE("Intconv8", "update output y format failed");
     return FAILED;
   }
 
@@ -247,13 +240,13 @@ static Status ParseOpToGraphInt8Conv(const ge::Operator& op, Graph& graph) {
   //The deq_data should be NCHW
   auto ret_quant_x = ChangeFormatInt8Conv(ascendQ, 0, order_map->second, true);
   if (ret_quant_x != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Intconv8", "update intput x format failed");
+    ONNX_PLUGIN_LOGE("Intconv8", "update intput x format failed");
     return FAILED;
   }
   //The deq_data should be NC1HWC0
   auto ret_quant_y = ChangeFormatInt8Conv(ascendQ, 0, ge::FORMAT_NC1HWC0, false);
   if (ret_quant_y != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Intconv8", "update output y format failed");
+    ONNX_PLUGIN_LOGE("Intconv8", "update output y format failed");
     return FAILED;
   }
 

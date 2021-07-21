@@ -19,21 +19,14 @@
  * \file common_lstm_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph/utils/attr_utils.h"
-#include "op_log.h"
+#include "onnx_common.h"
 
 namespace domi {
 
 Status ParseParamsCommonLSTM(const Message* op_src, ge::Operator& op_dest) {
-  OP_LOGI("[LSTM]---------------ParseParamsCommonLSTM start---------------");
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("LSTM", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -48,12 +41,11 @@ Status ParseParamsCommonLSTM(const Message* op_src, ge::Operator& op_dest) {
     }
   }
   if (!hidden_size_flag) {
-    OP_LOGI("CommonLSTM", "onnx LSTM op has no hidden_size attr.");
+    ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "onnx LSTM op has no hidden_size attr.");
     hidden_size = 0;
   }
   op_dest.SetAttr("hidden_size", hidden_size);
 
-  OP_LOGI("[LSTM]---------------ParseParamsCommonLSTM end---------------");
   return SUCCESS;
 }
 

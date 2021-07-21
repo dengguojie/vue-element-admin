@@ -18,23 +18,14 @@
  * \file add_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph/utils/attr_utils.h"
-#include "../../op_proto/inc/all_ops.h"
-#include "op_log.h"
-#include "graph/operator.h"
+#include "onnx_common.h"
 
 namespace domi {
 
 Status ParseParamsAddcmul(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Addcmul", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   float value = 0.0;
@@ -44,7 +35,7 @@ Status ParseParamsAddcmul(const Message* op_src, ge::Operator& op_dest) {
   if (it != attrs.end()){
     value = it->f();
   } else {
-    OP_LOGE("Addcmul", "get attr value failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "get attr value failed.");
     return FAILED;
   }
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
@@ -61,7 +52,7 @@ static Status ParseOpToGraph(const ge::Operator &op, ge::Graph &graph) {
   auto data_2 = ge::op::Data().set_attr_index(2);
   float value = 0.0;
   if (op.GetAttr("value", value) != ge::GRAPH_SUCCESS) {
-    OP_LOGE("Addcmul", "get attr value failed.");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attr value failed.");
     return FAILED;
   }
   auto mul = ge::op::Mul("Mul");

@@ -10,16 +10,14 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsBatchMatMul(const Message *opSrc, ge::Operator &opDst) {
   const NodeProto *node = reinterpret_cast<const NodeProto *>(opSrc);
   if (node == nullptr) {
-    OP_LOGE("BatchMatMul", "Dynamic cast opSrc to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(opDst.GetName().c_str(), "Dynamic cast opSrc to NodeProto failed.");
     return FAILED;
   }
   // onnx doesn't have transpose attr

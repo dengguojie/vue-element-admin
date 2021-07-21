@@ -18,16 +18,8 @@
  * \file reduce_sum_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "all_ops.h"
-#include "graph.h"
+#include "onnx_common.h"
 
-using namespace std;
 using namespace ge;
 using ge::Operator;
 
@@ -36,7 +28,7 @@ Status parse_params_reduce_sum(const Message* op_src, ge::Operator& op_dest)
 {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-      OP_LOGE("ReduceSum", "Dynamic cast op_src to NodeProto failed.");
+      ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
       return FAILED;
   }
 
@@ -79,7 +71,7 @@ static Status ParseOpToGraphReduceSum(const Operator& op, Graph& graph)
   auto data0 = op::Data("data0").set_attr_index(0);
   ge::Tensor value;
   if (op.GetAttr("axes", value) != SUCCESS) {
-      OP_LOGE("Reducesum", "get value from op failed");
+      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get value from op failed");
       return FAILED;
   }
 
@@ -88,7 +80,7 @@ static Status ParseOpToGraphReduceSum(const Operator& op, Graph& graph)
 
   bool flag = false;
   if (op.GetAttr("keep_dims", flag) != SUCCESS) {
-      OP_LOGE("Reducesum", "get keep_dims from op failed");
+      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
       return FAILED;
   }
   reducesum.set_attr_keep_dims(flag);
@@ -104,7 +96,7 @@ Status ParseParamsReduceSum13(const Message* op_src, ge::Operator& op_dest)
 {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-      OP_LOGE("ReduceSum13", "Dynamic cast op_src to NodeProto failed.");
+      ONNX_PLUGIN_LOGE("ReduceSum13", "Dynamic cast op_src to NodeProto failed.");
       return FAILED;
   }
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
@@ -132,22 +124,22 @@ static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
   auto data0 = op::Data("data0").set_attr_index(0);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr){
-    OP_LOGE("Resize", "Get op desc failed.");
+    ONNX_PLUGIN_LOGE("Resize", "Get op desc failed.");
     return FAILED;
   }
   bool flag = false;
   if (op.GetAttr("keep_dims", flag) != SUCCESS) {
-    OP_LOGE("Reducesum", "get keep_dims from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
     return FAILED;
   }
   int input_num = 1;
   if (op.GetAttr("input_size", input_num) != SUCCESS) {
-    OP_LOGE("Reducesum", "get input_num from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get input_num from op failed");
     return FAILED;
   }
   int empty_axes = 0;
   if (op.GetAttr("noop_with_empty_axes", empty_axes) != SUCCESS) {
-    OP_LOGE("ReduceSum", "get attribute noop_with_empty_axes failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attribute noop_with_empty_axes failed");
     return FAILED;
   }
   if (input_num == 1 && empty_axes == 0) {
@@ -171,7 +163,7 @@ static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
     output_indexs.emplace_back(reducesum13, vector<std::size_t>{0});
     graph.SetInputs(inputs).SetOutputs(output_indexs);
   } else {
-    OP_LOGE("ReduceSum", "Input num or set attr is error");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Input num or set attr is error");
     return FAILED;
   }
   return SUCCESS;

@@ -18,14 +18,7 @@
  * \file lp_normalization_plugin.cc
  * \brief
  */
-#include <string>
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "all_ops.h"
-#include "graph.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -35,7 +28,7 @@ namespace domi {
 Status parse_params_lp_normalization(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("LpNormalization", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -69,11 +62,11 @@ Status parse_op_to_graph_lp_normalization(const Operator& op, Graph& graph) {
   int p_num = 2;
   int axis = -1;
   if (op.GetAttr("p", p_num) != SUCCESS) {
-    OP_LOGE("LpNormalization", "get attr p from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attr p from op failed");
     return FAILED;
   }
   if (op.GetAttr("axis", axis) != SUCCESS) {
-    OP_LOGE("LpNormalization", "get attr axis from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attr axis from op failed");
     return FAILED;
   }
   lp_norm_op.set_attr_p(p_num);

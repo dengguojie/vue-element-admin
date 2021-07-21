@@ -10,15 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "all_ops.h"
+#include "onnx_common.h"
 
 using namespace ge;
 namespace domi {
@@ -26,7 +18,7 @@ using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsReduceMean(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("ReduceMean", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -51,7 +43,7 @@ Status ParseParamsReduceMean(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("keep_dims", keep_dims);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
-    OP_LOGE("ReduceMean", "Get OpDesc from operator failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Get OpDesc from operator failed.");
     return FAILED;
   }
   op_desc->AddDynamicInputDesc("x", 2);
@@ -66,7 +58,7 @@ static Status ParseOpToGraphReduceMean(const ge::Operator& op, Graph& graph) {
 
   ge::Tensor axes;
   if (op.GetAttr("axes", axes) != SUCCESS) {
-    OP_LOGE("ReduceMean", "get axes from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get axes from op failed");
     return FAILED;
   }
   auto data1 = op::Const("data1").set_attr_value(axes);
@@ -74,7 +66,7 @@ static Status ParseOpToGraphReduceMean(const ge::Operator& op, Graph& graph) {
 
   bool keep_dims = false;
   if (op.GetAttr("keep_dims", keep_dims) != SUCCESS) {
-    OP_LOGE("ReduceMean", "get keep_dims from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
     return FAILED;
   }
   Reducemean.set_attr_keep_dims(keep_dims);

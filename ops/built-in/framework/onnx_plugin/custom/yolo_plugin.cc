@@ -18,13 +18,7 @@
  * \file yolo_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
+#include "../onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -33,7 +27,7 @@ namespace domi {
 Status ParseParamsYolo(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Yolo", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Yolo", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 

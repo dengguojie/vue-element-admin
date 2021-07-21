@@ -10,15 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "all_ops.h"
-#include "graph.h"
-#include "bitwise_ops.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -29,13 +21,13 @@ using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsBitShift(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("BitShift", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
-    OP_LOGE("BitShift", "Get OpDesc from operator failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Get OpDesc from operator failed.");
     return FAILED;
   }
   opDesc->AddDynamicInputDesc("x", 2);
@@ -48,7 +40,7 @@ Status ParseParamsBitShift(const Message* op_src, ge::Operator& op_dest) {
     if (attr.name() == "direction" && attr.type() == ge::onnx::AttributeProto::STRING) {
       direction = attr.s();
     } else {
-      OP_LOGE("BitShift", "direction attr is empty");
+      ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "direction attr is empty");
       return FAILED;
     }
   }
@@ -62,7 +54,7 @@ static Status ParseOpToGraphBitShift(const Operator& op, Graph& graph) {
   auto data1 = op::Data("data1").set_attr_index(1);
   std::string direction = "RIGHT";
   if (op.GetAttr("direction", direction) != SUCCESS) {
-      OP_LOGE("BitShift", "get value from op failed");
+      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get value from op failed");
       return FAILED;
   }
 
@@ -75,7 +67,7 @@ static Status ParseOpToGraphBitShift(const Operator& op, Graph& graph) {
     auto bitshift_l = op::LeftShift().set_input_x(data0).set_input_y(data1);
     output_indexs.emplace_back(bitshift_l, vector<std::size_t>{0});
   } else {
-    OP_LOGE("BitShift", "attr direction is error");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "attr direction is error");
     return FAILED;
   }
 

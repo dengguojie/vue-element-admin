@@ -11,14 +11,7 @@
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
 
-#include <vector>
-#include <string>
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "graph/utils/op_desc_utils.h"
-#include "all_ops.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -29,7 +22,7 @@ using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ParseParamSlice(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Slice", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   return SUCCESS;
@@ -38,7 +31,7 @@ Status ParseParamSlice(const Message* op_src, ge::Operator& op_dest) {
 Status ParseParamSliceCall(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("SliceV9", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   std::vector<int64_t> ends = {};
@@ -67,7 +60,7 @@ Status ParseParamSliceCall(const Message* op_src, ge::Operator& op_dest) {
     }
   }
   if (ends.empty() || starts.empty()) {
-    OP_LOGE("SliceV9", "attr must have ends and starts");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "attr must have ends and starts");
     return FAILED;
   }
 

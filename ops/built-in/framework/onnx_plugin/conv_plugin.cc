@@ -18,17 +18,7 @@
  * \file conv_plugin.cc
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "register/register.h"
-#include "graph/operator.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "graph/utils/op_desc_utils.h"
-
-#include "graph.h"
-#include "all_ops.h"
-#include "op_log.h"
+#include "onnx_common.h"
 
 namespace domi {
 
@@ -84,7 +74,7 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
       // in onnx pads=[head, top, left, tail, bottomm, right] -> [head, tail, top, bottom, left, right]
       unsigned int len = attr.ints_size();
       if (len & 1) {
-        OP_LOGE("Conv", "The value lenth of pads is odd, transform failed.");
+        ONNX_PLUGIN_LOGE("Conv", "The value lenth of pads is odd, transform failed.");
         return FAILED;
       }
       if (attr.ints_size() == ONNX_1D_ATTR_PAD_LEN) {
@@ -121,7 +111,7 @@ Status ChangeFormat(OpDesc& op_dsc, const int idx, ge::Format format, bool is_in
     org_tensor.SetFormat(format);
     auto ret = op_dsc->UpdateInputDesc(idx, org_tensor);
     if (ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Conv", "change input format failed.");
+      ONNX_PLUGIN_LOGE("Conv", "change input format failed.");
       return FAILED;
     }
   } else {
@@ -130,7 +120,7 @@ Status ChangeFormat(OpDesc& op_dsc, const int idx, ge::Format format, bool is_in
     org_tensor_y.SetFormat(format);
     auto ret_y = op_dsc->UpdateOutputDesc(idx, org_tensor_y);
     if (ret_y != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Conv", "change output format failed.");
+      ONNX_PLUGIN_LOGE("Conv", "change output format failed.");
       return FAILED;
     }
   }
@@ -147,7 +137,7 @@ Status ParseParamsConv(const Message* op_src, ge::Operator& op) {
   // Convert original onnx graph conv attrs to GE graph attrs
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("Conv", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Conv", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -159,7 +149,7 @@ Status ParseParamsConv(const Message* op_src, ge::Operator& op) {
   op.SetAttr("original_type", "ai.onnx::11::Conv");
 
   if (SetAttrToOp(node, op) != SUCCESS) {
-    OP_LOGE("Conv", "set attr to operator failed");
+    ONNX_PLUGIN_LOGE("Conv", "set attr to operator failed");
     return FAILED;
   }
 
@@ -169,49 +159,49 @@ Status ParseParamsConv(const Message* op_src, ge::Operator& op) {
 Status SetFormat(ge::Operator& op, const int& dims) {
   OpDesc op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    OP_LOGE("Conv", "get op desc failed.");
+    ONNX_PLUGIN_LOGE("Conv", "get op desc failed.");
     return FAILED;
   }
   if (dims == INPUT_4D) {
     // The fmap should be NCHW
     auto ret_x = ChangeFormat(op_dsc, 0, ge::FORMAT_NCHW, true);
     if (ret_x != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Conv", "update fmap format failed.");
+      ONNX_PLUGIN_LOGE("Conv", "update fmap format failed.");
       return FAILED;
     }
     // The filter should be NCHW
     auto ret_w = ChangeFormat(op_dsc, 1, ge::FORMAT_NCHW, true);
     if (ret_w != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Conv", "update filter format failed.");
+      ONNX_PLUGIN_LOGE("Conv", "update filter format failed.");
       return FAILED;
     }
     // The output should be NCHW
     auto ret_y = ChangeFormat(op_dsc, 0, ge::FORMAT_NCHW, false);
     if (ret_y != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Conv", "update output format failed.");
+      ONNX_PLUGIN_LOGE("Conv", "update output format failed.");
       return FAILED;
     }
   } else if (dims == INPUT_5D) {
     // The fmap should be NCDHW
     auto ret_x = ChangeFormat(op_dsc, 0, ge::FORMAT_NCDHW, true);
     if (ret_x != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Conv", "update fmap format failed.");
+      ONNX_PLUGIN_LOGE("Conv", "update fmap format failed.");
       return FAILED;
     }
     // The filter should be NCDHW
     auto ret_w = ChangeFormat(op_dsc, 1, ge::FORMAT_NCDHW, true);
     if (ret_w != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Conv", "update filter format failed.");
+      ONNX_PLUGIN_LOGE("Conv", "update filter format failed.");
       return FAILED;
     }
     // The output should be NCDHW
     auto ret_y = ChangeFormat(op_dsc, 0, ge::FORMAT_NCDHW, false);
     if (ret_y != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Conv", "update output format failed.");
+      ONNX_PLUGIN_LOGE("Conv", "update output format failed.");
       return FAILED;
     }
   } else {
-    OP_LOGE("Conv", "The input tensor is not 4D/5D, set format failed.");
+    ONNX_PLUGIN_LOGE("Conv", "The input tensor is not 4D/5D, set format failed.");
     return FAILED;
   }
   return SUCCESS;
@@ -225,21 +215,21 @@ Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
   auto ret_dilations = op.GetAttr("dilations", convAttr.dilations);
   op.GetAttr("auto_pad", pad_mode);
   if (pad_mode != "NOTSET") {
-    OP_LOGW("Conv",
+    ONNX_PLUGIN_LOGW("Conv",
             "The attr of auto_pad is not NOTSET, unsupported other value for now,transform failed, may cause precision "
             "error.");
   }
   if (ret_strides != SUCCESS && ret_pads != SUCCESS && ret_dilations != SUCCESS) {
-    OP_LOGW("Conv",
+    ONNX_PLUGIN_LOGW("Conv",
             "get attr of strides or pads or dilations from op failed, can not distinguish 2D/3D, use default 2D,"
             " please set one of them obviously.");
   }
   if (op.GetAttr("dim_size", convAttr.dim_size) != SUCCESS) {
-    OP_LOGE("Conv", "get dim size from op failed");
+    ONNX_PLUGIN_LOGE("Conv", "get dim size from op failed");
     return FAILED;
   }
   if (op.GetAttr("input_num", convAttr.input_num) != SUCCESS) {
-    OP_LOGE("Conv", "get number of input from op failed");
+    ONNX_PLUGIN_LOGE("Conv", "get number of input from op failed");
     return FAILED;
   }
   if (op.GetAttr("groups", convAttr.groups) != SUCCESS)
@@ -254,7 +244,7 @@ Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
   }
 
   if (op.GetAttr("trans_2d", convAttr.trans_2d) != SUCCESS) {
-    OP_LOGW("Conv", "get the flag of convert 1d to 2d failed, use default.");
+    ONNX_PLUGIN_LOGW("Conv", "get the flag of convert 1d to 2d failed, use default.");
   }
 
   std::vector<int64_t> strides_list_default = {1, 1, 1, 1};
@@ -278,7 +268,7 @@ Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
 static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
   ConvAttr tbeAttr;
   if (GetConvAttr(op, tbeAttr) != SUCCESS) {
-    OP_LOGE("Conv", "get attr value failed.");
+    ONNX_PLUGIN_LOGE("Conv", "get attr value failed.");
     return FAILED;
   }
 
@@ -319,11 +309,11 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
                    .set_attr_data_format(tbeAttr.data_format);
         break;
       default:
-        OP_LOGE("Conv", "the num of inputs is incorrect.");
+        ONNX_PLUGIN_LOGE("Conv", "the num of inputs is incorrect.");
         return FAILED;
     }
     if (SetFormat(conv, tbeAttr.dim_size) != SUCCESS) {
-      OP_LOGE("Conv", "set format for input and output failed.");
+      ONNX_PLUGIN_LOGE("Conv", "set format for input and output failed.");
       return FAILED;
     }
     if (tbeAttr.trans_2d) {
@@ -356,15 +346,15 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
                    .set_attr_data_format(tbeAttr.data_format);
         break;
       default:
-        OP_LOGE("Conv", "the num of inputs is incorrect.");
+        ONNX_PLUGIN_LOGE("Conv", "the num of inputs is incorrect.");
         return FAILED;
     }
     if (SetFormat(conv, tbeAttr.dim_size) != SUCCESS) {
-      OP_LOGE("Conv", "set format for input and output failed.");
+      ONNX_PLUGIN_LOGE("Conv", "set format for input and output failed.");
       return FAILED;
     }
   } else {
-    OP_LOGE("Conv", "just support 4D or 5D input, transform failed.");
+    ONNX_PLUGIN_LOGE("Conv", "just support 4D or 5D input, transform failed.");
     return FAILED;
   }
 

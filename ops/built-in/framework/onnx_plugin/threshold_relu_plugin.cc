@@ -10,14 +10,7 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "all_ops.h"
-#include "graph.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
 
 using namespace std;
@@ -29,7 +22,7 @@ using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ParseParamsThresholdedRelu(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("ParseParamsThresholdedRelu", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   float alpha = 1.0;

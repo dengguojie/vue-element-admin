@@ -18,16 +18,7 @@
  * \file max_pool_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph.h"
-#include "all_ops.h"
-#include "op_log.h"
-#include "graph/operator.h"
+#include "onnx_common.h"
 
 using namespace ge;
 namespace domi {
@@ -79,7 +70,7 @@ Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_at
     } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
       unsigned int len = attr.ints_size();
       if (len & 1) {
-        OP_LOGE("MaxPool", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
+        ONNX_PLUGIN_LOGE("MaxPool", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
         return FAILED;
       }
       for (unsigned int i = 0; i < len / 2; i++) {
@@ -102,12 +93,12 @@ Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_at
         onnx_attr.trans_2d = true;
       }
     } else if (attr.name() == "storage_order" && attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1) {
-      OP_LOGE("MaxPool", "only support storage_order=0, but 1 is obtained now.");
+      ONNX_PLUGIN_LOGE("MaxPool", "only support storage_order=0, but 1 is obtained now.");
       return FAILED;
     }
   }
   if (onnx_attr.kernel_shape.size() == 0) {
-    OP_LOGE("MaxPool", "kernel_shape is required attribute, but NONE is obtained now.");
+    ONNX_PLUGIN_LOGE("MaxPool", "kernel_shape is required attribute, but NONE is obtained now.");
     return FAILED;
   }
   return SUCCESS;
@@ -126,22 +117,22 @@ void MaybeChangeAttr(std::vector<int64_t>& value, int64_t length, int64_t num) {
 }
 
 Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
-  OP_LOGI("MaxPool", "[PLUGIN_MaxPool]--------------ParseParamsMaxPool  start---------------");
+  ONNX_PLUGIN_LOGI("MaxPool", "[PLUGIN_MaxPool]--------------ParseParamsMaxPool  start---------------");
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("MaxPool", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("MaxPool", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   int op_output_size = node->output_size();
   if (op_output_size != OUTPUT_SIZE) {
-    OP_LOGE("MaxPool", "The output of Indices is not support, transforming failed.");
+    ONNX_PLUGIN_LOGE("MaxPool", "The output of Indices is not support, transforming failed.");
     return FAILED;
   }
 
   // 1.add dynamic input and out
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
-    OP_LOGE("MaxPool", "Get OpDesc from operator failed.");
+    ONNX_PLUGIN_LOGE("MaxPool", "Get OpDesc from operator failed.");
     return FAILED;
   }
   opDesc->AddDynamicInputDesc("x", 1);
@@ -156,7 +147,7 @@ Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
 
   int64_t dims = node_attr.kernel_shape.size();
   if (dims != 2 && dims != 3) {
-    OP_LOGE("MaxPool", "Only support 2D/3D, but the length of kernel_shape is %ld", dims);
+    ONNX_PLUGIN_LOGE("MaxPool", "Only support 2D/3D, but the length of kernel_shape is %ld", dims);
     return FAILED;
   }
 
@@ -184,31 +175,31 @@ Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
 
 Status UpdateTbeAttrFromOp(const Operator& op, TbeAttr& tbe_attr, int dims) {
   if (op.GetAttr("ceil_mode", tbe_attr.ceil_mode) != SUCCESS) {
-    OP_LOGE("MaxPool", "get ceil_mode from op failed");
+    ONNX_PLUGIN_LOGE("MaxPool", "get ceil_mode from op failed");
     return FAILED;
   };
   if (op.GetAttr("padding_mode", tbe_attr.padding_mode) != SUCCESS) {
-    OP_LOGE("MaxPool", "get padding_mode from op failed");
+    ONNX_PLUGIN_LOGE("MaxPool", "get padding_mode from op failed");
     return FAILED;
   };
   if (op.GetAttr("ksize", tbe_attr.ksize) != SUCCESS) {
-    OP_LOGE("MaxPool", "get ksize from op failed");
+    ONNX_PLUGIN_LOGE("MaxPool", "get ksize from op failed");
     return FAILED;
   };
   if (op.GetAttr("strides", tbe_attr.strides) != SUCCESS) {
-    OP_LOGE("MaxPool", "get strides from op failed");
+    ONNX_PLUGIN_LOGE("MaxPool", "get strides from op failed");
     return FAILED;
   };
   if (op.GetAttr("pads", tbe_attr.pads) != SUCCESS) {
-    OP_LOGE("MaxPool", "get pads from op failed");
+    ONNX_PLUGIN_LOGE("MaxPool", "get pads from op failed");
     return FAILED;
   };
   if (op.GetAttr("dilation", tbe_attr.dilation) != SUCCESS) {
-    OP_LOGE("MaxPool", "get dilation from op failed");
+    ONNX_PLUGIN_LOGE("MaxPool", "get dilation from op failed");
     return FAILED;
   };
   if (op.GetAttr("trans_2d", tbe_attr.trans_2d) != SUCCESS) {
-    OP_LOGW("MaxPool", "get trans_2d from op failed, use default.");
+    ONNX_PLUGIN_LOGW("MaxPool", "get trans_2d from op failed, use default.");
   };
   return SUCCESS;
 }
@@ -266,10 +257,10 @@ Status UpdateFormat(Operator& op, Format format) {
   orgTensorX.SetFormat(format);
   auto ret = op_desc->UpdateInputDesc("x", orgTensorX);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update input x format failed.");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update input x format failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
+  ONNX_PLUGIN_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
 
   // update output format
   ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
@@ -277,17 +268,17 @@ Status UpdateFormat(Operator& op, Format format) {
   orgTensorY.SetFormat(format);
   ret = op_desc->UpdateOutputDesc("y", orgTensorY);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output y format failed.");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update output y format failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
+  ONNX_PLUGIN_LOGI(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
   return SUCCESS;
 }
 
 static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
   int dims = 0;
   if (op.GetAttr("dims", dims) != SUCCESS) {
-    OP_LOGE("MaxPool", "get dims from op failed");
+    ONNX_PLUGIN_LOGE("MaxPool", "get dims from op failed");
     return FAILED;
   }
   TbeAttr tbe_attr;
@@ -324,10 +315,10 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
       orgTensorY.SetFormat(ge::FORMAT_NCHW);
       auto ret = op_desc->UpdateOutputDesc("y", orgTensorY);
       if (ret != ge::GRAPH_SUCCESS) {
-        OP_LOGE(transposeOut.GetName().c_str(), "update output y format failed.");
+        ONNX_PLUGIN_LOGE(transposeOut.GetName().c_str(), "update output y format failed.");
         return FAILED;
       }
-      OP_LOGI(transposeOut.GetName().c_str(), "update output y format success, now is %d",
+      ONNX_PLUGIN_LOGI(transposeOut.GetName().c_str(), "update output y format success, now is %d",
               op_desc->GetOutputDesc("y").GetFormat());
       outputs.emplace_back(transposeOut, std::vector<std::size_t>{0});
     } else {

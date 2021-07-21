@@ -10,13 +10,7 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
-#include <vector>
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "all_ops.h"
+#include "onnx_common.h"
 
 using ge::Operator;
 using namespace ge;
@@ -26,13 +20,13 @@ using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsMean(const Message* op_src, ge::Operator& op_dest) {
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
-    OP_LOGE("Mean", "Get OpDesc from operator failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Get OpDesc from operator failed.");
     return FAILED;
   }
   op_dest.SetAttr("original_type", "ai.onnx::9::Mean");
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Mean", "Dynamic cast op_src to NodeProto failed");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed");
     return FAILED;
   }
   int N_num = node->input_size();
@@ -47,13 +41,13 @@ Status ParseParamsMean(const Message* op_src, ge::Operator& op_dest) {
 Status ParseOpToGraphMean(const ge::Operator& op, Graph& graph) {
   int N_num = 0;
   if (op.GetAttr("N", N_num) != SUCCESS) {
-    OP_LOGE("Mean", "get attribute N failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attribute N failed");
     return FAILED;
   }
   std::vector<ge::Operator> inputs;
   std::vector<std::pair<Operator, std::vector<size_t>>> output_indexs;
   if (N_num == 0) {
-    OP_LOGE("ParseOpToGraphMean", "input size must greater than 1");
+    ONNX_PLUGIN_LOGE("ParseOpToGraphMean", "input size must greater than 1");
     return FAILED;
   } else {
     auto ACC = op::AccumulateNV2("AccumulateNV2").create_dynamic_input_x(N_num).set_attr_N(N_num);

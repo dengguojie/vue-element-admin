@@ -11,19 +11,14 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#include <vector>
-
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsSoftmax(const Message *op_src, ge::Operator &op_dest, std::vector<int> &v_axis) {
   const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Softmax", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   for (const auto &attr : node->attribute()) {
@@ -39,7 +34,7 @@ Status ParseParamsSoftmaxV11(const Message *op_src, ge::Operator &op_dest) {
   std::vector<int> v_axis;
   auto ret = ParseParamsSoftmax(op_src, op_dest, v_axis);
   if (ret != SUCCESS) {
-    OP_LOGE("Softmax", "acquire attr from NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "acquire attr from NodeProto failed.");
     return FAILED;
   }
   if (v_axis.empty()) {
@@ -54,7 +49,7 @@ Status ParseParamsSoftmaxV13(const Message *op_src, ge::Operator &op_dest) {
   std::vector<int> v_axis;
   auto ret = ParseParamsSoftmax(op_src, op_dest, v_axis);
   if (ret != SUCCESS) {
-    OP_LOGE("Softmax", "acquire attr from NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "acquire attr from NodeProto failed.");
     return FAILED;
   }
   if (v_axis.empty()) {

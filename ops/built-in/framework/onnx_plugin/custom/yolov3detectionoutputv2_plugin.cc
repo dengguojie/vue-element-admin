@@ -18,13 +18,7 @@
  * \file yolov3detectionoutputv2_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
+#include "../onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -33,7 +27,7 @@ namespace domi {
 Status ParseParamsYolov3detectionoutputv2(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Yolov3detectionoutputv2", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Yolov3detectionoutputv2", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -80,7 +74,7 @@ Status ParseParamsYolov3detectionoutputv2(const Message* op_src, ge::Operator& o
   }
 
   if (v_biases.empty()) {
-    OP_LOGE("Yolov3detectionoutputv2", "The attr of biases is required.");
+    ONNX_PLUGIN_LOGE("Yolov3detectionoutputv2", "The attr of biases is required.");
     return FAILED;
   }
 

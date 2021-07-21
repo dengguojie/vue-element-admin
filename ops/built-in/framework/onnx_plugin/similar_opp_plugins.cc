@@ -11,10 +11,7 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
 namespace domi {
 #define REGISTER_PARSE_PARAMS_OP(ATC_OPP)                                    \
@@ -22,7 +19,7 @@ namespace domi {
     const ge::onnx::NodeProto *node =                                        \
         dynamic_cast<const ge::onnx::NodeProto *>(op_src);               \
     if (node == nullptr) {                                                   \
-      OP_LOGE(#ATC_OPP, "Dynamic cast op_src to NodeProto failed.");         \
+      ONNX_PLUGIN_LOGE(#ATC_OPP, "Dynamic cast op_src to NodeProto failed.");         \
       return FAILED;                                                         \
     }                                                                        \
     return SUCCESS;                                                          \

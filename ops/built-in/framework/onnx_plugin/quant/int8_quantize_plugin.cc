@@ -10,21 +10,13 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-
-#include "op_log.h"
-
+#include "../onnx_common.h"
 namespace domi {
 
 Status ParseParamsInt8Quantize(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Int8Quantize", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Int8Quantize", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -48,7 +40,7 @@ Status ParseParamsInt8Quantize(const Message* op_src, ge::Operator& op_dest) {
   // the input format should be NCHW
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
-    OP_LOGE("Int8Quantize", "Get op desc failed.");
+    ONNX_PLUGIN_LOGE("Int8Quantize", "Get op desc failed.");
     return FAILED;
   }
   for (size_t i = 0; i < op_desc->GetInputsSize(); i++) {
@@ -57,7 +49,7 @@ Status ParseParamsInt8Quantize(const Message* op_src, ge::Operator& op_dest) {
     tensor.SetFormat(ge::FORMAT_NCHW);
     auto ret_x = op_desc->UpdateInputDesc(i, tensor);
     if (ret_x != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Int8Quantize", "update input format failed.");
+      ONNX_PLUGIN_LOGE("Int8Quantize", "update input format failed.");
       return FAILED;
     }
   }
@@ -67,7 +59,7 @@ Status ParseParamsInt8Quantize(const Message* op_src, ge::Operator& op_dest) {
     tensor.SetFormat(ge::FORMAT_NCHW);
     auto ret_y = op_desc->UpdateOutputDesc(i, tensor);
     if (ret_y != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Int8Quantize", "update output format failed.");
+      ONNX_PLUGIN_LOGE("Int8Quantize", "update output format failed.");
       return FAILED;
     }
   }

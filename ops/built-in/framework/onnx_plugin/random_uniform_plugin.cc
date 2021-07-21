@@ -18,23 +18,14 @@
  * \file randomuniform.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph/utils/attr_utils.h"
-#include "../../op_proto/inc/all_ops.h"
-#include "op_log.h"
-#include "graph/operator.h"
+#include "onnx_common.h"
 
 using namespace ge;
 namespace domi {
 Status ParseParamsRandomuniform(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Randomuniform", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -80,33 +71,33 @@ Status ParseParamsRandomuniform(const Message* op_src, ge::Operator& op_dest) {
 Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
   ge::Tensor shape;
   if (op.GetAttr("shape", shape) != SUCCESS) {
-    OP_LOGE("Randomuniform", "get shape from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get shape from op failed");
     return FAILED;
   }
   auto data0 = op::Const("data0").set_attr_value(shape);
 
   float max_f = 0.0;
   if (op.GetAttr("max", max_f) != SUCCESS) {
-    OP_LOGE("Randomuniform", "get max from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get max from op failed");
     return FAILED;
   }
 
   float min_f = 0.0;
   if (op.GetAttr("min", min_f) != SUCCESS) {
-    OP_LOGE("Randomuniform", "get min from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get min from op failed");
     return FAILED;
   }
 
   int dtype = 1;
   if (op.GetAttr("dtype", dtype) != SUCCESS) {
-    OP_LOGE("Randomuniform", "get dtype from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get dtype from op failed");
     return FAILED;
   }
   // cast output to dst_dtype(onnx : Ascend)
   // float32, float16, int32, int64
   std::map<int, int> kvlist = {{1, 0}, {10, 1}, {6, 3}, {2, 9}};
   if (kvlist.find(dtype) == kvlist.end()){
-    OP_LOGE("Randomuniform", "only support float32/float16/int32/int64, but got %d", dtype);
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "only support float32/float16/int32/int64, but got %d", dtype);
     return FAILED;
   }
   ge::DataType temp_type = ge::DT_FLOAT;
@@ -122,7 +113,7 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
 
   int seed = 0;
   if (op.GetAttr("seed", seed) != SUCCESS) {
-    OP_LOGE("Randomuniform", "get seed from op failed");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get seed from op failed");
     return FAILED;
   }
 

@@ -18,14 +18,7 @@
  * \file mean_variance_normalization_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-
-#include "op_log.h"
+#include "onnx_common.h"
 
 namespace domi {
 static const int OUTPUT_SIZE = 1;
@@ -52,7 +45,7 @@ Status SetAttrToDesc(ge::Operator& op_dest, MeanVarianceNormalizationAttr& node_
   if (node_attr.set_axes_flag) {
     op_dest.SetAttr("axes", node_attr.v_axes);
   } else {
-    OP_LOGI("MeanVarianceNormalization", "onnx MeanVarianceNormalization op has no axes attr, set it to [0, 2, 3].");
+    ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "onnx MeanVarianceNormalization op has no axes attr, set it to [0, 2, 3].");
     op_dest.SetAttr("axes", node_attr.DefaultAxes);
   }
 
@@ -60,15 +53,14 @@ Status SetAttrToDesc(ge::Operator& op_dest, MeanVarianceNormalizationAttr& node_
 }
 
 Status ParseParamsMeanVarianceNormalization(const Message* op_src, ge::Operator& op_dest) {
-  OP_LOGI("Enter ParseParamsMeanVarianceNormalization.");
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("MeanVarianceNormalization", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   int op_output_size = node->output_size();
   if (op_output_size != OUTPUT_SIZE) {
-    OP_LOGE("MeanVarianceNormalization", "The output of Indices is not support, transforming failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "The output of Indices is not support, transforming failed.");
     return FAILED;
   }
   MeanVarianceNormalizationAttr node_attr;
@@ -79,8 +71,6 @@ Status ParseParamsMeanVarianceNormalization(const Message* op_src, ge::Operator&
   if (SetAttrToDesc(op_dest, node_attr) != SUCCESS) {
     return FAILED;
   }
-
-  OP_LOGI("Exit ParseParamsMeanVarianceNormalization.");
 
   return SUCCESS;
 }

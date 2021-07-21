@@ -11,17 +11,14 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
+#include "onnx_common.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsLRN(const Message *op_src, ge::Operator &op_dst) {
   const NodeProto *node = dynamic_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
-    OP_LOGE("LRN", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
   float alpha = 0.0001;
@@ -45,13 +42,13 @@ Status ParseParamsLRN(const Message *op_src, ge::Operator &op_dst) {
   }
 
   if (!bfind_size) {
-    OP_LOGE("LRN", "Message do not have attr size");
+    ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Message do not have attr size");
     return FAILED;
   }
 
   int even_base = 2;
   if (size % even_base == 0) {
-    OP_LOGE("LRN", "Attr size must be odd num");
+    ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Attr size must be odd num");
     return FAILED;
   }
   alpha = alpha / size;

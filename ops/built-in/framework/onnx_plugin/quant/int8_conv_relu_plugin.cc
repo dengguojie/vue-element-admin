@@ -18,18 +18,7 @@
  * \file int8_conv_relu_plugin.cc
  * \brief
  */
-#include <string>
-#include <vector>
-#include <map>
-
-#include "register/register.h"
-#include "graph/operator.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "graph/utils/op_desc_utils.h"
-
-#include "graph.h"
-#include "all_ops.h"
-#include "op_log.h"
+#include "../onnx_common.h"
 
 namespace domi {
 
@@ -80,7 +69,7 @@ Status SetAttrToInt8Op(const ge::onnx::NodeProto* node, ge::Operator& op) {
       // in onnx pads=[head, top, left, tail, bottomm, right] -> [head, tail, top, bottom, left, right]
       unsigned int len = attr.ints_size();
       if (len & 1) {
-        OP_LOGE("Int8ConvRelu", "The value lenth of pads is odd, transform failed.");
+        ONNX_PLUGIN_LOGE("Int8ConvRelu", "The value lenth of pads is odd, transform failed.");
         return FAILED;
       }
       for (unsigned int i = 0; i < len / 2; i++) {
@@ -104,7 +93,7 @@ Status SetAttrToInt8Op(const ge::onnx::NodeProto* node, ge::Operator& op) {
     }
   }
   if (scale_map.size() < 4) {
-    OP_LOGW("Int8ConvRelu", "The number of scales is less then 4.");
+    ONNX_PLUGIN_LOGW("Int8ConvRelu", "The number of scales is less then 4.");
   }
   unsigned int s_conter = 0;
   for (auto iter = scale_map.begin(); iter != scale_map.end(); ++iter) {
@@ -116,13 +105,13 @@ Status SetAttrToInt8Op(const ge::onnx::NodeProto* node, ge::Operator& op) {
     ++s_conter;
   }
   if (offset_map.size() < 4) {
-    OP_LOGW("Int8ConvRelu", "The number of offset is less then 4.");
+    ONNX_PLUGIN_LOGW("Int8ConvRelu", "The number of offset is less then 4.");
   }
   unsigned int o_counter = 0;
   for (auto iter = offset_map.begin(); iter != offset_map.end(); ++iter) {
     if (o_counter == 3) {
       if (iter->second != 0) {
-        OP_LOGW("Int8ConvRelu", "The offset of operator AscendDequant in NPU must 0.");
+        ONNX_PLUGIN_LOGW("Int8ConvRelu", "The offset of operator AscendDequant in NPU must 0.");
       }
       op.SetAttr("ascend_dequant_offset", 0);
     } else if (o_counter == 0) {
@@ -143,7 +132,7 @@ Status ChangeInt8Format(OpDesc& op_dsc, const size_t idx, ge::Format& format, bo
     org_tensor.SetFormat(format);
     auto ret = op_dsc->UpdateInputDesc(idx, org_tensor);
     if (ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Int8ConvRelu", "change input of idx %d format failed.", idx);
+      ONNX_PLUGIN_LOGE("Int8ConvRelu", "change input of idx %zu format failed.", idx);
       return FAILED;
     }
   } else {
@@ -152,7 +141,7 @@ Status ChangeInt8Format(OpDesc& op_dsc, const size_t idx, ge::Format& format, bo
     org_tensor_y.SetFormat(format);
     auto ret_y = op_dsc->UpdateOutputDesc(idx, org_tensor_y);
     if (ret_y != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Int8ConvRelu", "change output of idx %d format failed.", idx);
+      ONNX_PLUGIN_LOGE("Int8ConvRelu", "change output of idx %zu format failed.", idx);
       return FAILED;
     }
   }
@@ -163,7 +152,7 @@ Status ParseParamsInt8ConvRelu(const Message* op_src, ge::Operator& op) {
   // Convert original onnx graph conv attrs to GE graph attrs
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("Int8ConvRelu", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -175,7 +164,7 @@ Status ParseParamsInt8ConvRelu(const Message* op_src, ge::Operator& op) {
   op.SetAttr("original_type", "ai.onnx::11::Int8ConvRelu");
 
   if (SetAttrToInt8Op(node, op) != SUCCESS) {
-    OP_LOGE("Int8ConvRelu", "set attr to operator failed");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "set attr to operator failed");
     return FAILED;
   }
 
@@ -185,7 +174,7 @@ Status ParseParamsInt8ConvRelu(const Message* op_src, ge::Operator& op) {
 Status SetInt8Format(ge::Operator& op, const int& dims, ge::Format& format) {
   OpDesc op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    OP_LOGE("Int8ConvRelu", "get op desc failed.");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "get op desc failed.");
     return FAILED;
   }
   size_t input_num = op_dsc->GetInputsSize();
@@ -195,18 +184,18 @@ Status SetInt8Format(ge::Operator& op, const int& dims, ge::Format& format) {
       // The input should be NCHW or NHWC
       auto ret_x = ChangeInt8Format(op_dsc, i, format, true);  // ge::FORMAT_NCHW
       if (ret_x != ge::GRAPH_SUCCESS) {
-        OP_LOGE("Int8ConvRelu", "update %s input format failed.", op_name.c_str());
+        ONNX_PLUGIN_LOGE("Int8ConvRelu", "update %s input format failed.", op_name.c_str());
         return FAILED;
       }
     }
     // The output should be NCHW or NHWC
     auto ret_y = ChangeInt8Format(op_dsc, 0, format, false);
     if (ret_y != ge::GRAPH_SUCCESS) {
-      OP_LOGE("Int8ConvRelu", "update %s output format failed.", op_name.c_str());
+      ONNX_PLUGIN_LOGE("Int8ConvRelu", "update %s output format failed.", op_name.c_str());
       return FAILED;
     }
   } else {
-    OP_LOGE("Int8ConvRelu", "The input tensor is not 4D, set format failed.");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "The input tensor is not 4D, set format failed.");
     return FAILED;
   }
   return SUCCESS;
@@ -220,14 +209,14 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
   auto ret_kernels = op.GetAttr("kernels", convAttr.kernels);
 
   if (ret_strides != SUCCESS && ret_pads != SUCCESS && ret_dilations != SUCCESS && ret_kernels != SUCCESS) {
-    OP_LOGW("Int8ConvRelu", "get attr of kernels from op failed, data of filter is missing,please set it obviously.");
+    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get attr of kernels from op failed, data of filter is missing,please set it obviously.");
   }
   if (op.GetAttr("dim_size", convAttr.dim_size) != SUCCESS) {
-    OP_LOGE("Int8ConvRelu", "get dim size from op failed");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "get dim size from op failed");
     return FAILED;
   }
   if (op.GetAttr("input_num", convAttr.input_num) != SUCCESS) {
-    OP_LOGE("Int8ConvRelu", "get number of input from op failed");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "get number of input from op failed");
     return FAILED;
   }
   if (op.GetAttr("groups", convAttr.groups) != SUCCESS)
@@ -240,16 +229,16 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
   }
 
   if (op.GetAttr("ascend_dequant_scale", convAttr.ascend_dequant_scale) != SUCCESS) {
-    OP_LOGW("Int8ConvRelu", "get the attr of ascendDequant scale failed.");
+    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get the attr of ascendDequant scale failed.");
   }
   if (op.GetAttr("ascend_dequant_offset", convAttr.ascend_dequant_offset) != SUCCESS) {
-    OP_LOGW("Int8ConvRelu", "get the attr of ascendDequant offset failed.");
+    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get the attr of ascendDequant offset failed.");
   }
   if (op.GetAttr("ascend_quant_scale", convAttr.ascend_quant_scale) != SUCCESS) {
-    OP_LOGW("Int8ConvRelu", "get the attr of ascendQuant scale failed.");
+    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get the attr of ascendQuant scale failed.");
   }
   if (op.GetAttr("ascend_quant_offset", convAttr.ascend_quant_offset) != SUCCESS) {
-    OP_LOGW("Int8ConvRelu", "get the attr of ascendQuant offset failed.");
+    ONNX_PLUGIN_LOGW("Int8ConvRelu", "get the attr of ascendQuant offset failed.");
   }
   unsigned int stride_size = convAttr.strides.size();
   unsigned int dilation_size = convAttr.dilations.size();
@@ -261,7 +250,7 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
       convAttr.strides.insert(convAttr.strides.begin(), 1);
       convAttr.strides.push_back(1);
     } else if (convAttr.data_format.find("C") == std::string::npos) {
-      OP_LOGW("Int8ConvRelu", "the format of operater is incorrect.");
+      ONNX_PLUGIN_LOGW("Int8ConvRelu", "the format of operater is incorrect.");
     }
   }
   if (dilation_size == 2) {
@@ -272,7 +261,7 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
       convAttr.dilations.insert(convAttr.dilations.begin(), 1);
       convAttr.dilations.push_back(1);
     } else if (convAttr.data_format.find("C") == std::string::npos) {
-      OP_LOGW("Int8ConvRelu", "the format of operater is incorrect.");
+      ONNX_PLUGIN_LOGW("Int8ConvRelu", "the format of operater is incorrect.");
     }
   }
   std::vector<int64_t> strides_list_default = {1, 1, 1, 1};
@@ -291,7 +280,7 @@ Status GetInt8ConvAttr(const ge::Operator& op, Int8ConvAttr& convAttr) {
 static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
   Int8ConvAttr tbeAttr;
   if (GetInt8ConvAttr(op, tbeAttr) != SUCCESS) {
-    OP_LOGE("Int8ConvRelu", "get attr value failed.");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "get attr value failed.");
     return FAILED;
   }
   std::map<string, ge::Format> format_map = {
@@ -328,15 +317,15 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
                    .set_attr_data_format(tbeAttr.data_format);
         break;
       default:
-        OP_LOGE("Int8ConvRelu", "the num of inputs is incorrect.");
+        ONNX_PLUGIN_LOGE("Int8ConvRelu", "the num of inputs is incorrect.");
         return FAILED;
     }
     if (SetInt8Format(conv, tbeAttr.dim_size, format_map[tbeAttr.data_format]) != SUCCESS) {
-      OP_LOGE("Int8ConvRelu", "set format for input and output of conv failed.");
+      ONNX_PLUGIN_LOGE("Int8ConvRelu", "set format for input and output of conv failed.");
       return FAILED;
     }
   } else {
-    OP_LOGE("Int8ConvRelu", "just support 4D input, transform failed.");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "just support 4D input, transform failed.");
     return FAILED;
   }
 
@@ -351,12 +340,12 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
                                 .set_attr_relu_flag(false)
                                 .set_attr_dtype(DT_FLOAT16);
   if (SetInt8Format(ascend_deq, tbeAttr.dim_size, format_map[tbeAttr.data_format]) != SUCCESS) {
-    OP_LOGE("Int8ConvRelu", "set format for input and output of ascend dequant failed.");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "set format for input and output of ascend dequant failed.");
     return FAILED;
   }
   ge::Operator relu = op::Relu("Int8ConvReluRelu").set_input_x(ascend_deq);
   if (SetInt8Format(relu, tbeAttr.dim_size, format_map[tbeAttr.data_format]) != SUCCESS) {
-    OP_LOGE("Int8ConvRelu", "set format for input and output of relu failed.");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "set format for input and output of relu failed.");
     return FAILED;
   }
   ge::Operator ascend_quant = op::AscendQuant("Int8ConvReluAscendQuant")
@@ -366,7 +355,7 @@ static Status ParseOpToGraphInt8ConvRelu(const ge::Operator& op, Graph& graph) {
                                   .set_attr_sqrt_mode(false)
                                   .set_attr_round_mode("Round");
   if (SetInt8Format(ascend_quant, tbeAttr.dim_size, format_map[tbeAttr.data_format]) != SUCCESS) {
-    OP_LOGE("Int8ConvRelu", "set format for input and output of ascend quant failed.");
+    ONNX_PLUGIN_LOGE("Int8ConvRelu", "set format for input and output of ascend quant failed.");
     return FAILED;
   }
   outputs.emplace_back(ascend_quant, std::vector<std::size_t>{0});

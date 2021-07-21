@@ -18,14 +18,7 @@
  * \file concat_plugin.cpp
  * \brief
  */
-#include <string>
-#include <vector>
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-#include "graph.h"
-#include "all_ops.h"
-#include "op_log.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -38,7 +31,7 @@ static const int DEFAULT_CONCAT_DIM = 0;
 Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (nullptr == node) {
-    OP_LOGE("Concat", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -53,14 +46,13 @@ Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
   }
 
   if (!set_axis_flag) {
-    OP_LOGI("ERROR", "onnx Concat op has no axis attr.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "onnx Concat op has no axis attr.");
     concat_dim = DEFAULT_CONCAT_DIM;
     return PARAM_INVALID;
   }
   op_dest.SetAttr("concat_dim", concat_dim);
 
   int n = node->input_size();
-  OP_LOGI("Concat", "[PLUGIN_CONCAT]-input_size=%d ", n);
   op_dest.SetAttr("N", n);
   OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   op_desc->AddDynamicInputDesc("x", n);
@@ -69,7 +61,7 @@ Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseParamsConcatCall(const Message* op_src, ge::Operator& op_dest) {
-  OP_LOGI("Concat", "ParseParams Concat start");
+  ONNX_PLUGIN_LOGI(op_dest.GetName().c_str(), "ParseParams Concat start");
   if (OpConcatUpdateInfo(op_src, op_dest) != SUCCESS) {
     return FAILED;
   }
@@ -84,7 +76,7 @@ Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
 
   if (input_size == 0) {
-    OP_LOGE("ParseOpToGraphConcat", "input_size must ge 1");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "input_size must ge 1");
     return FAILED;
   } else if (input_size == 1) {
     auto data_op = op::Data("data").set_attr_index(0);

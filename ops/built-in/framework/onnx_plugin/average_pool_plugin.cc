@@ -10,16 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "graph.h"
-#include "all_ops.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/operator.h"
+#include "onnx_common.h"
 
 using namespace std;
 using namespace ge;
@@ -89,7 +80,7 @@ Status AvgUpdateAttrFromOnnx(const NodeProto* node, AvgPoolAttr& node_attr) {
     if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
       unsigned int len = attr.ints_size();
       if (len & 1) {
-        OP_LOGE("AveragePool", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
+        ONNX_PLUGIN_LOGE("AveragePool", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
         return FAILED;
       }
       for (unsigned int i = 0; i < len / 2; i++) {
@@ -104,13 +95,13 @@ Status AvgUpdateAttrFromOnnx(const NodeProto* node, AvgPoolAttr& node_attr) {
 Status ParseParamsAveragePool(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("AveragePool", "reinterpret_cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("AveragePool", "reinterpret_cast op_src to NodeProto failed.");
     return FAILED;
   }
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
-    OP_LOGE("AveragePool", "Get OpDesc from operator failed.");
+    ONNX_PLUGIN_LOGE("AveragePool", "Get OpDesc from operator failed.");
     return FAILED;
   }
   opDesc->AddDynamicInputDesc("x", 1);
@@ -124,7 +115,7 @@ Status ParseParamsAveragePool(const Message* op_src, ge::Operator& op_dest) {
 
   int64_t dims = node_attr.kernel_shape.size();
   if (dims != 1 && dims != 2 && dims != 3) {
-    OP_LOGE("AveragePool", "Only support 1D/2D/3D, but the length of kernel_shape is %ld", dims);
+    ONNX_PLUGIN_LOGE("AveragePool", "Only support 1D/2D/3D, but the length of kernel_shape is %ld", dims);
     return FAILED;
   }
 
@@ -157,31 +148,31 @@ Status ParseParamsAveragePool(const Message* op_src, ge::Operator& op_dest) {
 
 Status AvgUpdateTbeAttrFromOp(const Operator& op, AvgTbeAttr& tbe_attr) {
   if (op.GetAttr("ceil_mode", tbe_attr.ceil_mode) != SUCCESS) {
-    OP_LOGE("AveragePool", "get ceil_mode from op failed");
+    ONNX_PLUGIN_LOGE("AveragePool", "get ceil_mode from op failed");
     return FAILED;
   };
   if (op.GetAttr("padding_mode", tbe_attr.padding_mode) != SUCCESS) {
-    OP_LOGE("AveragePool", "get padding_mode from op failed");
+    ONNX_PLUGIN_LOGE("AveragePool", "get padding_mode from op failed");
     return FAILED;
   };
   if (op.GetAttr("ksize", tbe_attr.ksize) != SUCCESS) {
-    OP_LOGE("AveragePool", "get ksize from op failed");
+    ONNX_PLUGIN_LOGE("AveragePool", "get ksize from op failed");
     return FAILED;
   };
   if (op.GetAttr("strides", tbe_attr.strides) != SUCCESS) {
-    OP_LOGE("AveragePool", "get strides from op failed");
+    ONNX_PLUGIN_LOGE("AveragePool", "get strides from op failed");
     return FAILED;
   };
   if (op.GetAttr("pads", tbe_attr.pads) != SUCCESS) {
-    OP_LOGE("AveragePool", "get pads from op failed");
+    ONNX_PLUGIN_LOGE("AveragePool", "get pads from op failed");
     return FAILED;
   };
   if (op.GetAttr("exclusive", tbe_attr.exclusive) != SUCCESS) {
-    OP_LOGE("AveragePool", "get exclusive from op failed");
+    ONNX_PLUGIN_LOGE("AveragePool", "get exclusive from op failed");
     return FAILED;
   };
   if (op.GetAttr("trans_2d", tbe_attr.trans_2d) != SUCCESS) {
-    OP_LOGW("AveragePool", "get trans_2d from op failed, use default.");
+    ONNX_PLUGIN_LOGW("AveragePool", "get trans_2d from op failed, use default.");
   };
   return SUCCESS;
 }
@@ -239,10 +230,10 @@ Status AvgUpdateFormat(Operator& op, Format format) {
   orgTensorX.SetFormat(format);
   auto ret = op_desc->UpdateInputDesc("x", orgTensorX);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update input x format failed.");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update input x format failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
+  ONNX_PLUGIN_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
 
   // update output format
   ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
@@ -250,17 +241,17 @@ Status AvgUpdateFormat(Operator& op, Format format) {
   orgTensorY.SetFormat(format);
   ret = op_desc->UpdateOutputDesc("y", orgTensorY);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output y format failed.");
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update output y format failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
+  ONNX_PLUGIN_LOGI(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
   return SUCCESS;
 }
 
 Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
   int dims = 0;
   if (op.GetAttr("dims", dims) != SUCCESS) {
-    OP_LOGE("AveragePool", "get dims from op failed");
+    ONNX_PLUGIN_LOGE("AveragePool", "get dims from op failed");
     return FAILED;
   }
 
@@ -297,10 +288,10 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
       orgTensorY.SetFormat(ge::FORMAT_NCHW);
       auto ret = op_desc->UpdateOutputDesc("y", orgTensorY);
       if (ret != ge::GRAPH_SUCCESS) {
-        OP_LOGE(transposeOut.GetName().c_str(), "update output y format failed.");
+        ONNX_PLUGIN_LOGE(transposeOut.GetName().c_str(), "update output y format failed.");
         return FAILED;
       }
-      OP_LOGI(transposeOut.GetName().c_str(), "update output y format success, now is %d",
+      ONNX_PLUGIN_LOGI(transposeOut.GetName().c_str(), "update output y format success, now is %d",
               op_desc->GetOutputDesc("y").GetFormat());
       outputs.emplace_back(transposeOut, std::vector<std::size_t>{0});
     } else {

@@ -10,21 +10,14 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph/utils/op_desc_utils.h"
-
-#include "op_log.h"
+#include "onnx_common.h"
 
 namespace domi {
 
 Status ParseParamsAscendDequant(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("AscendDequant", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -48,7 +41,7 @@ Status ParseParamsAscendDequant(const Message* op_src, ge::Operator& op_dest) {
     // the input format should be NCHW
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr){
-    OP_LOGE("Dequant", "Get op desc failed.");
+    ONNX_PLUGIN_LOGE("Dequant", "Get op desc failed.");
     return FAILED;
   }
   for (size_t i = 0; i < op_desc->GetInputsSize(); i++){
@@ -57,7 +50,7 @@ Status ParseParamsAscendDequant(const Message* op_src, ge::Operator& op_dest) {
     tensor.SetFormat(ge::FORMAT_NCHW);
     auto ret_x = op_desc->UpdateInputDesc(i, tensor);
     if (ret_x != ge::GRAPH_SUCCESS){
-      OP_LOGE("Dequant", "update input format failed.");
+      ONNX_PLUGIN_LOGE("Dequant", "update input format failed.");
       return FAILED;
     }
   }
@@ -67,7 +60,7 @@ Status ParseParamsAscendDequant(const Message* op_src, ge::Operator& op_dest) {
     tensor.SetFormat(ge::FORMAT_NCHW);
     auto ret_y = op_desc->UpdateOutputDesc(i, tensor);
     if (ret_y != ge::GRAPH_SUCCESS){
-      OP_LOGE("Dequant", "update output format failed.");
+      ONNX_PLUGIN_LOGE("Dequant", "update output format failed.");
       return FAILED;
     }
   }

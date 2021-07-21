@@ -10,14 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include <string>
-#include <vector>
-#include "graph/utils/op_desc_utils.h"
-#include "op_log.h"
-#include "proto/onnx/ge_onnx.pb.h"
-#include "register/register.h"
-#include "graph.h"
-#include "all_ops.h"
+#include "../onnx_common.h"
 
 using namespace ge;
 namespace domi {
@@ -25,13 +18,13 @@ using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsInt8Transpose(const Message* op_src, ge::Operator& op_dest) {
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("Int8Transpose", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE("Int8Transpose", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
-    OP_LOGE("Int8Transpose", "Get OpDesc from operator failed.");
+    ONNX_PLUGIN_LOGE("Int8Transpose", "Get OpDesc from operator failed.");
     return FAILED;
   }
   opDesc->AddDynamicInputDesc("x", 2);
@@ -63,7 +56,7 @@ static Status ParseOpToGraphInt8Transpose(const ge::Operator& op, Graph& graph) 
 
   ge::Tensor perm;
   if (op.GetAttr("axes", perm) != SUCCESS) {
-    OP_LOGE("Int8Transpose", "get perm from op failed");
+    ONNX_PLUGIN_LOGE("Int8Transpose", "get perm from op failed");
     return FAILED;
   }
 
