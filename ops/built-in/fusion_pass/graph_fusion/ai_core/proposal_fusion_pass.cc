@@ -31,6 +31,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "pattern_fusion_util.h"
@@ -159,7 +160,7 @@ Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, ge::NodePtr pr
   if (PatternFusionUtil::IsUnknownShape(channel) ||
       PatternFusionUtil::IsUnknownShape(height) ||
       PatternFusionUtil::IsUnknownShape(width)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "ProposalFusionPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProposalFusionPass cannot be applied for unknown shape.");
     return FAILED;
   }
 
@@ -188,9 +189,9 @@ Status ProposalFusionPass::GenerateAnchorsFp16(uint16_t* output1, ge::NodePtr pr
   }
 
   if ((int)anchor_scale.size() * (int)anchor_ratio.size() * 4 != channel) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(),
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
             "Proposal input channel is invalid, scale.size*ratio.size*4 must equal channel,"
-            "scale.size:%d, ratio.size:%d, channel:%d",
+            "scale.size:%lu, ratio.size:%lu, channel:%d",
             anchor_scale.size(), anchor_ratio.size(), channel);
     return FAILED;
   }
@@ -232,7 +233,7 @@ vector<FusionPattern*> ProposalFusionPass::DefinePatterns() {
   // proposal->proposal_d
   // define DiagFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ProposalFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   // define origin graph
@@ -247,13 +248,13 @@ Status ProposalFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into ProposalFusionPass");
   // proposal node
   ge::NodePtr proposalVNode = GetNodeFromMapping(PATTERN_PROPOSAL, mapping);
-  FUSION_PASS_CHECK(proposalVNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "proposalVNode is null, fusion failed."),
+  FUSION_PASS_CHECK(proposalVNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "proposalVNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of proposal
   ge::OpDescPtr proposalDesc = proposalVNode->GetOpDesc();
   FUSION_PASS_CHECK(proposalDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "proposalVNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "proposalVNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // get the input desc of the entance of proposal node to differentiate between const and var
@@ -273,7 +274,7 @@ Status ProposalFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::GeTensorPtr assitPtr = nullptr;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into ProposalFusionPass DT_FLOAT16");
   unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[dimNums]());
-  FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                     return PARAM_INVALID);
 
   Status ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));

@@ -22,6 +22,7 @@
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "common/util/platform_info.h"
@@ -138,7 +139,7 @@ float CalcSolution2(GruCalcParam& param) {
 vector<FusionPattern*> DynamicGRUV2FusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicGRUV2FusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_GRUV2_NODE, {GRUV2_NODE}).SetOutput(PATTERN_GRUV2_NODE);
   patterns.push_back(pattern);
@@ -193,7 +194,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddSplitNode(ge::NodePtr gru_node, ge::NodeP
   auto split_op = ge::OperatorFactory::CreateOperator(gru_node->GetName() + "/DynamicGRUV2Hidden",
                                                       "DynamicGRUV2Hidden");
   FUSION_PASS_CHECK(split_op.IsEmpty(),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "create DynamicGRUV2Hidden operator error"),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create DynamicGRUV2Hidden operator error"),
                     return nullptr);
   auto gru_split_desc = ge::OpDescUtils::GetOpDescFromOperator(split_op);
   split_op.BreakConnect();
@@ -229,7 +230,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddSplitNode(ge::NodePtr gru_node, ge::NodeP
   // create node
   ge::NodePtr split_node = graph.AddNode(gru_split_desc);
   FUSION_PASS_CHECK(split_node == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add splitted node failed, %s.", split_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add splitted node failed, %s.", split_node->GetName().c_str()),
                     return nullptr);
   new_nodes.push_back(split_node);
 
@@ -270,7 +271,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
                                                   vector<ge::NodePtr>& new_nodes) {
   auto matmul_op = ge::OperatorFactory::CreateOperator(gru_node->GetName() + "/BatchMatMulV2", "BatchMatMulV2");
   FUSION_PASS_CHECK(matmul_op.IsEmpty(),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "create matmul operator error"),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create matmul operator error"),
                     return nullptr);
   auto matmul_desc = ge::OpDescUtils::GetOpDescFromOperator(matmul_op);
   matmul_op.BreakConnect();
@@ -289,7 +290,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
     if (bias_desc_ptr->GetDataType() == ge::DT_FLOAT16) {
       Operator cast_op = ge::OperatorFactory::CreateOperator(gru_node->GetName() + "/BatchMatMulV2/Cast", "Cast");
       FUSION_PASS_CHECK(cast_op.IsEmpty(),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "create cast operator error"),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create cast operator error"),
                         return nullptr);
       auto cast_desc = ge::OpDescUtils::GetOpDescFromOperator(cast_op);
       cast_op.BreakConnect();
@@ -302,7 +303,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
       // create cast node
       cast_node = graph.AddNode(cast_desc);
       FUSION_PASS_CHECK(cast_node == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add cast failed, %s.", cast_node->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add cast failed, %s.", cast_node->GetName().c_str()),
                         return nullptr);
       new_nodes.push_back(cast_node);
     }
@@ -335,7 +336,7 @@ ge::NodePtr DynamicGRUV2FusionPass::AddMatmulNode(ge::NodePtr gru_node, ge::Comp
   // create matmul node
   ge::NodePtr matmul_node = graph.AddNode(matmul_desc);
   FUSION_PASS_CHECK(matmul_node == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add matmul failed, %s.", matmul_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add matmul failed, %s.", matmul_node->GetName().c_str()),
                     return nullptr);
   new_nodes.push_back(matmul_node);
 
@@ -360,7 +361,7 @@ bool DynamicGRUV2FusionPass::JudgeSplit(ge::NodePtr gru_node, bool& result) {
   OptionalInfo optional_info;
   FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
                                                                                      optional_info) != fe::SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get platform_info failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get platform_info failed."),
                     return false);
   uint64_t l1_size = platform_info.ai_core_spec.l1_size;
   uint32_t core_num = platform_info.soc_info.ai_core_cnt;
@@ -409,7 +410,7 @@ Status DynamicGRUV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   if (PatternFusionUtil::IsUnknownShape(m_size) ||
       PatternFusionUtil::IsUnknownShape(x_size) ||
       PatternFusionUtil::IsUnknownShape(h_size)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicGRUV2FusionPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DynamicGRUV2FusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
 
@@ -425,13 +426,13 @@ Status DynamicGRUV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   // add matmul
   ge::NodePtr matmul_node = AddMatmulNode(gru_node, graph, new_nodes);
   FUSION_PASS_CHECK(matmul_node == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "AddMatmulNode failed, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddMatmulNode failed, fusion failed."),
                     return FAILED);
 
   // add split node
   ge::NodePtr split_node = AddSplitNode(gru_node, matmul_node, graph, new_nodes);
   FUSION_PASS_CHECK(split_node == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "AddSplitNode failed, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddSplitNode failed, fusion failed."),
                     return FAILED);
 
   // unlink all
@@ -439,7 +440,7 @@ Status DynamicGRUV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   // remove gru_node from graph
   FUSION_PASS_CHECK(
       ge::GRAPH_SUCCESS != graph.RemoveNode(gru_node),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", gru_node->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", gru_node->GetName().c_str()),
       return FAILED);
 
   return SUCCESS;

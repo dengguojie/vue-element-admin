@@ -20,6 +20,7 @@
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
@@ -33,7 +34,7 @@ vector<FusionPattern*> NLLLossFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("NLLLossFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -62,7 +63,7 @@ ge::NodePtr NLLLossFusionPass::AddNLLLossSumNode(ge::NodePtr nll_loss_node,
 
   // create nll_loss_sum node
   ge::NodePtr nll_loss_sum_node = graph.AddNode(nll_loss_sum_desc);
-  FUSION_PASS_CHECK(nll_loss_sum_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(nll_loss_sum_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                     nll_loss_sum_node->GetName().c_str()), fail_status=true);
   new_nodes.push_back(nll_loss_sum_node);
   
@@ -104,7 +105,7 @@ ge::NodePtr NLLLossFusionPass::AddDivNode(ge::NodePtr nll_loss_node,
 
   // create div node
   ge::NodePtr div_node = graph.AddNode(div_desc);
-  FUSION_PASS_CHECK(div_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(div_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                     div_node->GetName().c_str()), fail_status=true);
   new_nodes.push_back(div_node);
   
@@ -139,7 +140,7 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   // get nll_loss_node
   ge::NodePtr nll_loss_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(nll_loss_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "nll_loss_node is null, fusion failed."),
+  FUSION_PASS_CHECK(nll_loss_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "nll_loss_node is null, fusion failed."),
                     return PARAM_INVALID);
   
   // get fuzz build attr
@@ -147,7 +148,7 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   // check nllloss support dynamic
   if (GRAPH_SUCCESS != ge::NodeUtils::GetNodeUnknownShapeStatus(*(nll_loss_node.get()), is_unknown_shape)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "can't get unknown shape status.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get unknown shape status.");
     return FAILED;
   }
   
@@ -159,7 +160,7 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(nll_loss_node);
   if (GRAPH_SUCCESS != op.GetAttr(reduction_attr, reduction)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "can't get reduction attr.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get reduction attr.");
     return FAILED;
   }
 
@@ -169,11 +170,11 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   }
 
   ge::NodePtr nll_loss_sum_node = AddNLLLossSumNode(nll_loss_node, graph, new_nodes, fail_status);
-  FUSION_PASS_CHECK(fail_status, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(fail_status, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
                     "AddNLLLossSumNode:check failed, fusion failed."), return FAILED);
 
   AddDivNode(nll_loss_node, nll_loss_sum_node, graph, new_nodes, fail_status);
-  FUSION_PASS_CHECK(fail_status, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(fail_status, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
                     "AddDivNode:check failed, fusion failed."), return FAILED);
 
   // unlink all control input of nll_loss_node
@@ -188,7 +189,7 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     }
   }
   // remove nll_loss_node from graph
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(nll_loss_node), OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(nll_loss_node), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "remove fusedNode node[%s] failed", nll_loss_node->GetName().c_str()), return FAILED);
 
   return SUCCESS;

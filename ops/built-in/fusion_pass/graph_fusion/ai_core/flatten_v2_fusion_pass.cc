@@ -29,6 +29,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "fp16_t.hpp"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
@@ -48,7 +49,7 @@ vector<FusionPattern*> FlattenV2Pass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   // define Fusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("FlattenV2Pass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_FLATTEN_V2, {FLATTEN_V2}).SetOutput(PATTERN_FLATTEN_V2);
@@ -62,7 +63,7 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into FlattenV2Pass");
   // diag node
   ge::NodePtr flattenV2Node = GetNodeFromMapping(PATTERN_FLATTEN_V2, mapping);
-  FUSION_PASS_CHECK(flattenV2Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "flattenV2Node is null, fusion failed."),
+  FUSION_PASS_CHECK(flattenV2Node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "flattenV2Node is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::InDataAnchorPtr oriInAnchorPtr0 = flattenV2Node->GetInDataAnchor(0);
@@ -96,10 +97,10 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   }
   int64_t dimVal = 1;
   FUSION_PASS_CHECK(static_cast<int64_t>(inputShape.size()) < flattenV2EndAxis + 1,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid inputShape."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "invalid inputShape."), return FAILED);
   for (int64_t i = flattenV2Axis; i < flattenV2EndAxis + 1; i++) {
     if (PatternFusionUtil::IsUnknownShape(inputShape[i])) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "FlattenV2Pass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "FlattenV2Pass cannot be applied for unknown shape.");
       return FAILED;
     }
     dimVal = dimVal * inputShape[i];
@@ -133,13 +134,13 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(oriBottomPeerAnchorPtr0, oriTopPeerAnchorPtri),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
                               inputNode->GetName().c_str(), outputNode->GetName().c_str()),
                       return FAILED);
   }
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(flattenV2Node),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove flattenv2 node failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove flattenv2 node failed"), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "FlattenV2Pass success!!!!");
 

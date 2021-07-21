@@ -33,6 +33,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 
 using namespace ge;
@@ -45,7 +46,7 @@ vector<FusionPattern*> OneHotFusionPass::DefinePatterns() {
 
   // one_hot fusion to one_hot_d
   FusionPattern* pattern = new (std::nothrow) FusionPattern("OneHotFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_ONEHOT, {ONEHOT}).SetOutput(PATTERN_ONEHOT);
@@ -66,12 +67,12 @@ static DESTYPE GetOneHotConstValue(const uint8_t* const_data) {
 Status OneHotFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get one_hot node and node-desc
   ge::NodePtr one_hot_node = GetNodeFromMapping(PATTERN_ONEHOT, mapping);
-  FUSION_PASS_CHECK(one_hot_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "one_hot_node is null, fusion failed."),
+  FUSION_PASS_CHECK(one_hot_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "one_hot_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr one_hot_desc = one_hot_node->GetOpDesc();
   FUSION_PASS_CHECK(one_hot_desc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "one_hot_node's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "one_hot_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   std::string fusionOpType = "OneHotD";

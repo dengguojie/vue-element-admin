@@ -24,6 +24,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 
 namespace fe {
@@ -55,7 +56,7 @@ vector<FusionPattern*> DreluFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DreluFusionPass");
 
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_RELUGRAD, {RELUGRAD})
@@ -81,24 +82,24 @@ Status DreluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   }
   FUSION_PASS_CHECK(reluGradCount > 1, OP_LOGI(FUSED_OP_TYPE.c_str(), "Relu have multiple output, can not fusion."),
                     return NOT_CHANGED);
-  FUSION_PASS_CHECK(relu == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "relu is null, fusion failed."),
+  FUSION_PASS_CHECK(relu == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "relu is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(reluGrad == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "reluGrad is null, fusion failed."),
+  FUSION_PASS_CHECK(reluGrad == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reluGrad is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::NodePtr relu2 = CreateNode(graph, relu, fusionNodes);
   FUSION_PASS_CHECK(relu2 == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "relu2 is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "relu2 is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (relu2->GetOpDesc()->InferShapeAndType() != ge::GRAPH_SUCCESS) {
-    FUSION_PASS_CHECK(graph.RemoveNode(relu2) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove ReluV2 failed."),
+    FUSION_PASS_CHECK(graph.RemoveNode(relu2) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove ReluV2 failed."),
                       return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "ReluV2 InferShapeAndType failed, can not fusion.");
     return NOT_CHANGED;
   }
 
-  FUSION_PASS_CHECK(ReplaceNode(relu, relu2, graph) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "replace node failed"),
+  FUSION_PASS_CHECK(ReplaceNode(relu, relu2, graph) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "replace node failed"),
                     return FAILED);
 
   ge::OpDescPtr reluDesc = relu2->GetOpDesc();
@@ -118,22 +119,22 @@ Status DreluFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   reluGrad->GetOpDesc()->MutableInputDesc(1)->SetDataType(ge::DT_UINT8);
   auto reluGradInDataAnchor = reluGrad->GetInDataAnchor(1);
   FUSION_PASS_CHECK(reluGradInDataAnchor == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "reluGradInDataAnchor is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reluGradInDataAnchor is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(reluGrad == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "reluGrad is null, fusion failed."),
+  FUSION_PASS_CHECK(reluGrad == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reluGrad is null, fusion failed."),
                     return PARAM_INVALID);
   auto reluGradPeerOutDataAnchor = reluGradInDataAnchor->GetPeerOutAnchor();
 
   auto relu2OutDataAnchor = relu2->GetOutDataAnchor(1);
 
   FUSION_PASS_CHECK(relu2OutDataAnchor == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "relu2OutDataAnchor is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "relu2OutDataAnchor is null, fusion failed."), return PARAM_INVALID);
   // delete edge
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(reluGradPeerOutDataAnchor, reluGradInDataAnchor) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove inputdata edge error"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove inputdata edge error"), return FAILED);
   // add edge
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(relu2OutDataAnchor, reluGradInDataAnchor) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add input edge error"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input edge error"), return FAILED);
   reluGrad->GetOpDesc()->MutableInputDesc(1)->SetOriginDataType(reluGrad->GetOpDesc()->GetInputDesc(1).GetDataType());
   fusionNodes.push_back(reluGrad);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define DreluFusionPass fusion end");
@@ -144,17 +145,17 @@ Status DreluFusionPass::RemoveNode(ge::NodePtr node, ge::ComputeGraph& graph) {
   // remove input data edge
   for (size_t i = 0; i < node->GetAllInDataAnchors().size(); ++i) {
     auto inDataAnchor = node->GetInDataAnchor(i);
-    FUSION_PASS_CHECK(inDataAnchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inDataAnchor is null, fusion failed."),
+    FUSION_PASS_CHECK(inDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inDataAnchor is null, fusion failed."),
                       return PARAM_INVALID);
     auto preOutDataAnchor = inDataAnchor->GetPeerOutAnchor();
     if (preOutDataAnchor == nullptr) {
       continue;
     }
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(preOutDataAnchor, inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove inputdata edge error"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove inputdata edge error"), return FAILED);
   }
   // delete node
-  FUSION_PASS_CHECK(graph.RemoveNode(node) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "remove node failed"),
+  FUSION_PASS_CHECK(graph.RemoveNode(node) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed"),
                     return FAILED);
   return SUCCESS;
 }
@@ -180,38 +181,38 @@ Status DreluFusionPass::ReplaceNode(ge::NodePtr oldNode, ge::NodePtr newNode, ge
   for (size_t i = 0; i < oldNode->GetAllInDataAnchors().size(); ++i) {
     auto inDataAnchor = oldNode->GetInDataAnchor(static_cast<int>(i));
     auto inDataAnchorNew = newNode->GetInDataAnchor(static_cast<int>(i));
-    FUSION_PASS_CHECK(inDataAnchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inDataAnchor is null, fusion failed."),
+    FUSION_PASS_CHECK(inDataAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inDataAnchor is null, fusion failed."),
                       return PARAM_INVALID);
     FUSION_PASS_CHECK(inDataAnchorNew == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "inDataAnchorNew is null, fusion failed."), return PARAM_INVALID);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inDataAnchorNew is null, fusion failed."), return PARAM_INVALID);
 
     auto preOutDataAnchor = inDataAnchor->GetPeerOutAnchor();
     if (preOutDataAnchor != nullptr) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(preOutDataAnchor, inDataAnchor) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "remove inputdata edge error"), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove inputdata edge error"), return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preOutDataAnchor, inDataAnchorNew) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add input edge error"), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input edge error"), return FAILED);
     }
   }
   // input control edge
   auto inCtrlAnchor = oldNode->GetInControlAnchor();
   auto inCtrlAnchorNew = newNode->GetInControlAnchor();
-  FUSION_PASS_CHECK(inCtrlAnchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inCtrlAnchor is null, fusion failed."),
+  FUSION_PASS_CHECK(inCtrlAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inCtrlAnchor is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(inCtrlAnchorNew == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "inCtrlAnchorNew is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inCtrlAnchorNew is null, fusion failed."), return PARAM_INVALID);
 
   for (auto preOutCtrlAnchor : inCtrlAnchor->GetPeerOutControlAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(preOutCtrlAnchor, inCtrlAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove input control edge error"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove input control edge error"), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preOutCtrlAnchor, inCtrlAnchorNew) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input control edge error"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input control edge error"), return FAILED);
   }
   for (auto outPeerDataAnchor : inCtrlAnchor->GetPeerOutDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(outPeerDataAnchor, inCtrlAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove input control edge error"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove input control edge error"), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outPeerDataAnchor, inCtrlAnchorNew) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input control edge error"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input control edge error"), return FAILED);
   }
   // output data edge
   for (size_t i = 0; i < oldNode->GetAllOutDataAnchors().size(); ++i) {
@@ -222,30 +223,30 @@ Status DreluFusionPass::ReplaceNode(ge::NodePtr oldNode, ge::NodePtr newNode, ge
     }
     for (auto nextInDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(outDataAnchor, nextInDataAnchor) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "remove outData edge error"), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove outData edge error"), return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outDataAnchorNew, nextInDataAnchor) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add outData edge error"), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add outData edge error"), return FAILED);
     }
     for (auto nextInCtrlAnchor : outDataAnchor->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(outDataAnchor, nextInCtrlAnchor) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "remove outData edge error"), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove outData edge error"), return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outDataAnchorNew, nextInCtrlAnchor) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add outData edge error"), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add outData edge error"), return FAILED);
     }
   }
 
   // output control edge
   auto outCtrlAnchor = oldNode->GetOutControlAnchor();
-  FUSION_PASS_CHECK(outCtrlAnchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "outCtrlAnchor is null, fusion failed."),
+  FUSION_PASS_CHECK(outCtrlAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outCtrlAnchor is null, fusion failed."),
                     return PARAM_INVALID);
   auto outCtrlAnchorNew = newNode->GetOutControlAnchor();
   FUSION_PASS_CHECK(outCtrlAnchorNew == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "outCtrlAnchorNew is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outCtrlAnchorNew is null, fusion failed."), return PARAM_INVALID);
   for (auto nextInCtrlAnchor : outCtrlAnchor->GetPeerInControlAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(outCtrlAnchor, nextInCtrlAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove outControl edge error"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove outControl edge error"), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outCtrlAnchorNew, nextInCtrlAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add outControl edge error"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add outControl edge error"), return FAILED);
   }
   // delete old node
   FUSION_PASS_CHECK(RemoveNode(oldNode, graph) != SUCCESS, , return FAILED);

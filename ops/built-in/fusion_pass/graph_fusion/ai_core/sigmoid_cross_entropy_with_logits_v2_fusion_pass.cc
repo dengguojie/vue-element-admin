@@ -20,6 +20,7 @@
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
@@ -33,7 +34,7 @@ vector<FusionPattern*> SigmoidCrossEntropyWithLogitsV2FusionPass::DefinePatterns
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SigmoidCrossEntropyWithLogitsV2FusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -78,7 +79,7 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   // create sigmoid_none node
   ge::NodePtr sigmoidNoneNode = graph.AddNode(sigmoidNoneDesc);
 
-  FUSION_PASS_CHECK(sigmoidNoneNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(sigmoidNoneNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                     sigmoidNoneNode->GetName().c_str()), failStatus=true);
 
   newNodes.push_back(sigmoidNoneNode);
@@ -130,7 +131,7 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddReduceNode(ge::NodePtr
 
   // create reduce node
   ge::NodePtr reduceNode = graph.AddNode(reduceDesc);
-  FUSION_PASS_CHECK(reduceNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(reduceNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                     reduceNode->GetName().c_str()), failStatus=true);
   newNodes.push_back(reduceNode);
   
@@ -157,12 +158,12 @@ Status SigmoidCrossEntropyWithLogitsV2FusionPass::Fusion(ge::ComputeGraph& graph
 
   // get sigmoidNode
   ge::NodePtr sigmoidNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(sigmoidNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "sigmoidNode is null, fusion failed."),
+  FUSION_PASS_CHECK(sigmoidNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sigmoidNode is null, fusion failed."),
                     return PARAM_INVALID);
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(sigmoidNode);
 
   if (GRAPH_SUCCESS != op.GetAttr(reductionAttr, reduction)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "can't get reduction attr.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get reduction attr.");
     return FAILED;
   }
 
@@ -171,11 +172,11 @@ Status SigmoidCrossEntropyWithLogitsV2FusionPass::Fusion(ge::ComputeGraph& graph
   }
 
   ge::NodePtr sigmoidNoneNode = AddSigmoidNoneNode(sigmoidNode, graph, newNodes, failStatus);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
                     "AddSigmoidNoneNode:check failed, fusion failed."), return FAILED);
 
   AddReduceNode(sigmoidNode, sigmoidNoneNode, graph, newNodes, failStatus, reduction);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), 
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), 
                     "AddReduceNode:check failed, fusion failed."), return FAILED);
 
   // unlink all control input of sigmoidNode
@@ -190,7 +191,7 @@ Status SigmoidCrossEntropyWithLogitsV2FusionPass::Fusion(ge::ComputeGraph& graph
     }
   }
   // remove sigmoidNode from graph
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(sigmoidNode), OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(sigmoidNode), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "remove fusedNode node[%s] failed", sigmoidNode->GetName().c_str()), return FAILED);
 
   return SUCCESS;

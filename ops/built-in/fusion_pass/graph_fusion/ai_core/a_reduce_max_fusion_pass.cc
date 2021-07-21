@@ -53,7 +53,7 @@ Status AReduceMaxFusionPass::CheckMaxFussionOrNot(vector<int64_t> tensor_info, v
 vector<FusionPattern*> AReduceMaxFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AReduceMaxFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -63,13 +63,13 @@ vector<FusionPattern*> AReduceMaxFusionPass::DefinePatterns() {
 Status AReduceMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceMaxFusionPass fusion begin.");
   ge::NodePtr maxNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(maxNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maxNode is null, fusion failed."),
+  FUSION_PASS_CHECK(maxNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maxNode is null, fusion failed."),
                     return PARAM_INVALID);
 
-  FUSION_PASS_CHECK(maxNode->GetOpDesc() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(maxNode->GetOpDesc() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "maxNode get output failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(maxNode->GetOpDesc()->GetInputsSize() < 2, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(maxNode->GetOpDesc()->GetInputsSize() < 2, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "maxNode input size small than 2"),
                     return PARAM_INVALID);
   ge::GeTensorDesc tensor_input = maxNode->GetOpDesc()->GetInputDesc(0);
@@ -105,7 +105,7 @@ Status AReduceMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
       const_data[i] = tensor_size + const_data[i];
     }
     if (const_data[i] > (static_cast<int64_t>(tensor_size)) && (!IsUnknownRankShape(tensor_info))) {
-        OP_LOGE("const_data is not right");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_data is not right");
         return FAILED;
     }
   }
@@ -118,13 +118,13 @@ Status AReduceMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete edge of afterNode and max. connect beforeNode and afterNode");
   for (auto inDataAnchor : maxNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(maxNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove max and outnode edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove max and outnode edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(maxNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete reducemax edge.");
-  FUSION_PASS_CHECK(graph.RemoveNode(maxNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove maxNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(maxNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove maxNode failed."),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceMaxFusionPass fusion end");

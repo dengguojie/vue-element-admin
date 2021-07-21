@@ -20,6 +20,7 @@
  */
 #include "const2attr_fusion_pass.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "fusion_const2attr_registry.h"
 #include "fusion_precheck_func.h"
 #include "graph/utils/graph_utils.h"
@@ -44,7 +45,7 @@ Status Const2AttrFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   return SUCCESS;
 }
 Status Const2AttrFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr opsKernelInfoStorePtr) {
-  FUSION_PASS_CHECK(opsKernelInfoStorePtr == nullptr, OP_LOGE("Const2AttrFusion", "opsKernelInfoStorePtr is nullptr"),
+  FUSION_PASS_CHECK(opsKernelInfoStorePtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT("Const2AttrFusion", "opsKernelInfoStorePtr is nullptr"),
                     return FAILED);
 
   int32_t matchTimes = 0;

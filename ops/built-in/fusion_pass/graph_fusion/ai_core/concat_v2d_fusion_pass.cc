@@ -31,6 +31,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 
@@ -42,7 +43,7 @@ static const char ATTR_CONCAT_DIM[] = "concat_dim";
 vector<FusionPattern*> Concatv2dFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("Concatv2dFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {CONCATV2D}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -135,7 +136,7 @@ Status Concatv2dFusionPass::PatternParse(ge::NodePtr concatv2dNode, vector<ge::N
 Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr concatv2dNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
 
-  FUSION_PASS_CHECK(concatv2dNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
+  FUSION_PASS_CHECK(concatv2dNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
   vector<ge::NodePtr> fusedInputNodes;
   vector<ge::NodePtr> concatNodes;
@@ -196,7 +197,7 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     for (InDataAnchorPtr inAnchorPtr : outAnchor->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedConcatv2dNode->GetOutDataAnchor(index), inAnchorPtr),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from %s to fusion node %s's %d th failed.",
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from %s to fusion node %s's %d th failed.",
                                 concatv2dNode->GetName().c_str(), fusedConcatv2dNode->GetName().c_str(), index),
                         return FAILED);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from %s to fusion node %s's %d index success.",
@@ -215,7 +216,7 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
   for (auto concatNode : concatNodes) {
     FUSION_PASS_CHECK(graph.RemoveNode(concatNode) == ge::GRAPH_FAILED,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove node %s failed.", concatNode->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node %s failed.", concatNode->GetName().c_str()),
                       return FAILED);
   }
   return SUCCESS;

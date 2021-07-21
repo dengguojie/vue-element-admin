@@ -20,6 +20,7 @@
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "external/graph/operator_factory.h"
@@ -40,7 +41,7 @@ vector<FusionPattern*> DynamicRNNGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicRNNGradFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -60,7 +61,7 @@ ge::NodePtr GetConstNodeOne(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& gr
     int64_t n_value = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(1);
     unique_ptr<float[]> inputAssit(new (std::nothrow) float[matrixSize]());
     auto retMem = memset_s(inputAssit.get(), matrixSize, 1, matrixSize);
-    FUSION_PASS_CHECK(retMem != EOK, OP_LOGE("DynamicRnnGrad", "Failed to operate memset_s function."), failStatus=true);
+    FUSION_PASS_CHECK(retMem != EOK, VECTOR_FUSION_INNER_ERR_REPORT("DynamicRnnGrad", "Failed to operate memset_s function."), failStatus=true);
     float* dstConst = inputAssit.get();
     for (int j = 0; j < matrixSize; j++) {
         *(dstConst + j) = 1;
@@ -223,7 +224,7 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
      //add reshape
      if (n_value % 16 != 0) {
        auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicRNNGradNode->GetName() + "/cellReshape" + std::to_string(i), "Reshape");
-       FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error."),
+       FUSION_PASS_CHECK(reshapeOp.IsEmpty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error."),
                          return result);
        auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
        reshapeOp.BreakConnect();
@@ -248,7 +249,7 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
        reshape_desc->UpdateOutputDesc("y", reshapeCellOutputDesc);
 
        ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
-       FUSION_PASS_CHECK(myReshape_node==nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape node  error."),
+       FUSION_PASS_CHECK(myReshape_node==nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create Reshape node  error."),
                          return result);
        newNodes.push_back(myReshape_node);
        reshape_nodes.push_back(myReshape_node);
@@ -352,17 +353,17 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
      ge::AttrUtils::SetInt(lstmSplitDesc, "num_split", 2);
 
      ge::NodePtr basicLstmCellStateGradNode= graph.AddNode(basicLstmCellStateGradDesc);
-     FUSION_PASS_CHECK(basicLstmCellStateGradNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", basicLstmCellStateGradDesc->GetName().c_str()), failStatus=true);
+     FUSION_PASS_CHECK(basicLstmCellStateGradNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", basicLstmCellStateGradDesc->GetName().c_str()), failStatus=true);
      basicLstm_cell_state_grad_nodes.push_back(basicLstmCellStateGradNode);
      newNodes.push_back(basicLstmCellStateGradNode);
 
      ge::NodePtr matmulNode= graph.AddNode(lstmBatchMatMulDesc);
-     FUSION_PASS_CHECK(matmulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmBatchMatMulDesc->GetName().c_str()), failStatus=true);
+     FUSION_PASS_CHECK(matmulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmBatchMatMulDesc->GetName().c_str()), failStatus=true);
      matmul_nodes.push_back(matmulNode);
      newNodes.push_back(matmulNode);
 
      ge::NodePtr splitNode= graph.AddNode(lstmSplitDesc);
-     FUSION_PASS_CHECK(splitNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitDesc->GetName().c_str()), failStatus=true);
+     FUSION_PASS_CHECK(splitNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitDesc->GetName().c_str()), failStatus=true);
      split_nodes.push_back(splitNode);
      newNodes.push_back(splitNode);
   }
@@ -385,8 +386,8 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start Add Edge for loop cell node.");
   ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
   int64_t num_split_x = dynamicRNNGradDesc->GetInputDesc(7).GetShape().GetDim(0);
-  FUSION_PASS_CHECK(resultNode.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "resultNode is null, fusion failed."), failStatus=true);
-  FUSION_PASS_CHECK(resultNode.size() != 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "resultNode lenght is not there, fusion failed."), failStatus=true);
+  FUSION_PASS_CHECK(resultNode.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "resultNode is null, fusion failed."), failStatus=true);
+  FUSION_PASS_CHECK(resultNode.size() != 4, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "resultNode lenght is not there, fusion failed."), failStatus=true);
   vector<ge::NodePtr> basic_lstm_cell_state_grad_nodes = resultNode[0];
   vector<ge::NodePtr> matmul_nodes = resultNode[1];
   vector<ge::NodePtr> split_nodes = resultNode[2];
@@ -404,59 +405,59 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
      if (i == num_split_x - 1) {
          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(5)->GetPeerOutAnchor(),
                                                               basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(0)),
-                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitC->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitC->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                            return FAILED);
      } else {
          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmSplitC->GetOutDataAnchor(idx-1),
                                                               basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(0)),
-                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitC->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitC->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                            return FAILED);
      }
      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmSplitDy->GetOutDataAnchor(idx),
                                                           basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(1)),
-                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                        return FAILED);
      // add edge for dh dc
      if (i == 0) {
          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(9)->GetPeerOutAnchor(),
                                                               basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(2)),
-                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                            return FAILED);
          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(10)->GetPeerOutAnchor(),
                                                               basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(3)),
-                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                            return FAILED);
 
      } else {
          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(split_nodes[i-1]->GetOutDataAnchor(1),
                                                               basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(2)),
-                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                            return FAILED);
          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i-1]->GetOutDataAnchor(1),
                                                               basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(3)),
-                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitDy->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                            return FAILED);
      }
      if (tSizeJudge != 1) {
        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmSplitI->GetOutDataAnchor(idx),
                                                             basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(4)),
-                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitI->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitI->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                          return FAILED);
        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmSplitJ->GetOutDataAnchor(idx),
                                                             basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(5)),
-                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitJ->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitJ->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                          return FAILED);
        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmSplitF->GetOutDataAnchor(idx),
                                                             basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(6)),
-                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitF->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitF->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                          return FAILED);
        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmSplitO->GetOutDataAnchor(idx),
                                                             basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(7)),
-                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitO->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitO->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                          return FAILED);
        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmSplitTanh->GetOutDataAnchor(idx),
                                                             basic_lstm_cell_state_grad_nodes[i]->GetInDataAnchor(8)),
-                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitTanh->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
+                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", lstmSplitTanh->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                          return FAILED);
      } else {
        ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(11)->GetPeerOutAnchor(),
@@ -475,19 +476,19 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
      //add matmul input edge
      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i]->GetOutDataAnchor(0),
                                                           matmul_nodes[i]->GetInDataAnchor(0)),
-                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0,matmul_nodes[i]->GetName().c_str(), 0),
+                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0,matmul_nodes[i]->GetName().c_str(), 0),
                        return FAILED);
      OP_LOGD(FUSED_OP_TYPE.c_str(), "add matmul input2 edge.");
      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
                                                           matmul_nodes[i]->GetInDataAnchor(1)),
-                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,matmul_nodes[i]->GetName().c_str(), 0),
+                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,matmul_nodes[i]->GetName().c_str(), 0),
                        return FAILED);
 
      //add split input edge
      OP_LOGD(FUSED_OP_TYPE.c_str(), "add split input edge.");
      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(matmul_nodes[i]->GetOutDataAnchor(0),
                                                           split_nodes[i]->GetInDataAnchor(0)),
-                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
+                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
                        return FAILED);
 
      //add lstmInputGrad output
@@ -495,7 +496,7 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
      if (tSizeJudge != 1) {
        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(split_nodes[i]->GetOutDataAnchor(0),
                                                           lstmXConcatD->GetInDataAnchor(idx)),
-                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
+                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
                          return FAILED);
      } else {
        lstmXConcatD = split_nodes[i];
@@ -504,12 +505,12 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
      if (n_value % 16 != 0) {
        FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i]->GetOutDataAnchor(0),
                                                             reshape_nodes[i]->GetInDataAnchor(0)),
-                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
+                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
                          return FAILED);
        if (tSizeJudge != 1) {
          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(reshape_nodes[i]->GetOutDataAnchor(0),
                                                               lstmGageConcatD->GetInDataAnchor(idx)),
-                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
+                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
                            return FAILED);
        } else {
          lstmGageConcatD = reshape_nodes[i];
@@ -518,7 +519,7 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
        if (tSizeJudge != 1) {
          FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i]->GetOutDataAnchor(0),
                                                               lstmGageConcatD->GetInDataAnchor(idx)),
-                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
+                           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
                            return FAILED);
        } else {
          lstmGageConcatD = basic_lstm_cell_state_grad_nodes[i];
@@ -531,7 +532,7 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
                   inAnchorPtr->UnlinkAll();
                   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i]->GetOutDataAnchor(1),
                                                                        inAnchorPtr),
-                                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+                                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                             basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0,basic_lstm_cell_state_grad_nodes[i]->GetName().c_str(), 0),
                                     return FAILED);
               }
@@ -541,7 +542,7 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
                   inAnchorPtr->UnlinkAll();
                   FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(split_nodes[i]->GetOutDataAnchor(1),
                                                                        inAnchorPtr),
-                                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+                                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                             split_nodes[i]->GetName().c_str(), 0, split_nodes[i]->GetName().c_str(), 0),
                                     return FAILED);
               }
@@ -555,7 +556,7 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
       for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(2)->GetPeerInDataAnchors()) {
            inAnchorPtr->UnlinkAll();
            FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmXConcatD->GetOutDataAnchor(0), inAnchorPtr),
-                             OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+                             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                      lstmXConcatD->GetName().c_str(), 0,lstmXConcatD->GetName().c_str(), 0),
                              return FAILED);
 
@@ -570,7 +571,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddLSTMInputGradNode(ge::NodePtr dynamicRN
                                                            vector<ge::NodePtr>& newNodes, bool& failStatus) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "start add loop node for graph.");
   vector<vector<ge::NodePtr>> result_node = AddTLoopNode(dynamicRNNGradNode, graph, newNodes, failStatus);
-  FUSION_PASS_CHECK(result_node.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "result_node is null, fusion failed."), failStatus=true);
+  FUSION_PASS_CHECK(result_node.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "result_node is null, fusion failed."), failStatus=true);
   //add split for inputs
   ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
 
@@ -817,11 +818,11 @@ ge::NodePtr DynamicRNNGradFusionPass::AddLSTMInputGradNode(ge::NodePtr dynamicRN
   ge::AttrUtils::SetInt(lstmGageConcatDDesc, "N", num_split_x);
 
   ge::NodePtr lstmSplitC= graph.AddNode(lstmSplitCDesc);
-  FUSION_PASS_CHECK(lstmSplitC == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitCDesc->GetName().c_str()), failStatus=true);
+  FUSION_PASS_CHECK(lstmSplitC == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitCDesc->GetName().c_str()), failStatus=true);
   newNodes.push_back(lstmSplitC);
 
   ge::NodePtr lstmSplitDy= graph.AddNode(lstmSplitDyDesc);
-  FUSION_PASS_CHECK(lstmSplitDy == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitDyDesc->GetName().c_str()), failStatus=true);
+  FUSION_PASS_CHECK(lstmSplitDy == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitDyDesc->GetName().c_str()), failStatus=true);
   newNodes.push_back(lstmSplitDy);
 
   ge::NodePtr lstmSplitI = nullptr;
@@ -831,36 +832,36 @@ ge::NodePtr DynamicRNNGradFusionPass::AddLSTMInputGradNode(ge::NodePtr dynamicRN
   ge::NodePtr lstmSplitTanh = nullptr;
   if (tSizeJudge != 1) {
     lstmSplitI= graph.AddNode(lstmSplitIDesc);
-    FUSION_PASS_CHECK(lstmSplitI == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitIDesc->GetName().c_str()), failStatus=true);
+    FUSION_PASS_CHECK(lstmSplitI == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitIDesc->GetName().c_str()), failStatus=true);
     newNodes.push_back(lstmSplitI);
 
     lstmSplitJ= graph.AddNode(lstmSplitJDesc);
-    FUSION_PASS_CHECK(lstmSplitJ == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitJDesc->GetName().c_str()), failStatus=true);
+    FUSION_PASS_CHECK(lstmSplitJ == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitJDesc->GetName().c_str()), failStatus=true);
     newNodes.push_back(lstmSplitJ);
 
     lstmSplitF= graph.AddNode(lstmSplitFDesc);
-    FUSION_PASS_CHECK(lstmSplitF == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitFDesc->GetName().c_str()), failStatus=true);
+    FUSION_PASS_CHECK(lstmSplitF == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitFDesc->GetName().c_str()), failStatus=true);
     newNodes.push_back(lstmSplitF);
 
     lstmSplitO= graph.AddNode(lstmSplitODesc);
-    FUSION_PASS_CHECK(lstmSplitO == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitODesc->GetName().c_str()), failStatus=true);
+    FUSION_PASS_CHECK(lstmSplitO == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitODesc->GetName().c_str()), failStatus=true);
     newNodes.push_back(lstmSplitO);
 
     lstmSplitTanh= graph.AddNode(lstmSplitTanhDesc);
-    FUSION_PASS_CHECK(lstmSplitTanh == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitTanhDesc->GetName().c_str()), failStatus=true);
+    FUSION_PASS_CHECK(lstmSplitTanh == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmSplitTanhDesc->GetName().c_str()), failStatus=true);
     newNodes.push_back(lstmSplitTanh);
   }
   ge::NodePtr lstmXConcatD = nullptr;
   if (tSizeJudge != 1) {
     lstmXConcatD = graph.AddNode(lstmXConcatDDesc);
-    FUSION_PASS_CHECK(lstmXConcatD == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmXConcatDDesc->GetName().c_str()), failStatus=true);
+    FUSION_PASS_CHECK(lstmXConcatD == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmXConcatDDesc->GetName().c_str()), failStatus=true);
     newNodes.push_back(lstmXConcatD);
   }
 
   ge::NodePtr lstmGageConcatD = nullptr;
   if (tSizeJudge != 1) {
     lstmGageConcatD= graph.AddNode(lstmGageConcatDDesc);
-    FUSION_PASS_CHECK(lstmGageConcatD == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmGageConcatDDesc->GetName().c_str()), failStatus=true);
+    FUSION_PASS_CHECK(lstmGageConcatD == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", lstmGageConcatDDesc->GetName().c_str()), failStatus=true);
     newNodes.push_back(lstmGageConcatD);
   }
     // add c
@@ -962,7 +963,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddSplitNode(ge::NodePtr dynamicRNNGradNod
 
   // create concat node
   ge::NodePtr splitNode = graph.AddNode(splitDesc);
-  FUSION_PASS_CHECK(splitNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(splitNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                                                   splitNode->GetName().c_str()),
                     failStatus = true);
   newNodes.push_back(splitNode);
@@ -1023,7 +1024,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddHConcatNode(ge::NodePtr dynamicRNNGradN
 
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
-  FUSION_PASS_CHECK(concatNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(concatNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                                                    concatNode->GetName().c_str()),
                     failStatus = true);
   newNodes.push_back(concatNode);
@@ -1088,7 +1089,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddConcatNode(ge::NodePtr dynamicRNNGradNo
 
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
-  FUSION_PASS_CHECK(concatNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(concatNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                                                    concatNode->GetName().c_str()),
                     failStatus = true);
   newNodes.push_back(concatNode);
@@ -1158,7 +1159,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddConcatNodeT_1(ge::NodePtr dynamicRNNGra
 
   // create concat node
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
-  FUSION_PASS_CHECK(concatNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(concatNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                                                    concatNode->GetName().c_str()),
                     failStatus = true);
   newNodes.push_back(concatNode);
@@ -1192,7 +1193,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddMatmulNode(ge::NodePtr dynamicRNNGradNo
   inputTensorDescXh.SetOriginShape(concatNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape());
   inputTensorDescXh.SetOriginFormat(ge::FORMAT_ND);
   ge::GeTensorDesc inputTensorDescXhTotal = inputTensorDescXh;
-  FUSION_PASS_CHECK(dynamicRNNGradNode->GetOpDesc() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Get DynamicRnnGrad desc Failed, fusion failed."),
+  FUSION_PASS_CHECK(dynamicRNNGradNode->GetOpDesc() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get DynamicRnnGrad desc Failed, fusion failed."),
                     failStatus = true);
   if ((n_value % 16) == 0 && dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(0) == 1) {
     vector<int64_t> concat_dim_new = {concatNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(0),
@@ -1239,7 +1240,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddMatmulNode(ge::NodePtr dynamicRNNGradNo
 
   // create matmul node
   ge::NodePtr matmulNode = graph.AddNode(matmulDesc);
-  FUSION_PASS_CHECK(matmulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(matmulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                                                    matmulNode->GetName().c_str()),
                     failStatus = true);
   newNodes.push_back(matmulNode);
@@ -1286,7 +1287,7 @@ Status DynamicRNNGradFusionPass::AddDwReduceSumNode(ge::NodePtr dynamicRNNGradNo
 
   // create reduce_sum node
   ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
-  FUSION_PASS_CHECK(reduceSumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+  FUSION_PASS_CHECK(reduceSumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                                                       reduceSumNode->GetName().c_str()),
                     return FAILED);
   newNodes.push_back(reduceSumNode);
@@ -1444,12 +1445,12 @@ Status DynamicRNNGradFusionPass::AddDbReduceSumNode(ge::NodePtr dynamicRNNGradNo
 
     // create reduce_sum node
     ge::NodePtr matmulNode = graph.AddNode(matmulDesc);
-    FUSION_PASS_CHECK(matmulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+    FUSION_PASS_CHECK(matmulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                                                      matmulNode->GetName().c_str()),
                       return FAILED);
     newNodes.push_back(matmulNode);
     ge::NodePtr reduceSumNode = graph.AddNode(reduceSumDesc);
-    FUSION_PASS_CHECK(reduceSumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+    FUSION_PASS_CHECK(reduceSumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                                                         reduceSumNode->GetName().c_str()),
                       return FAILED);
     newNodes.push_back(reduceSumNode);
@@ -1466,7 +1467,7 @@ Status DynamicRNNGradFusionPass::AddDbReduceSumNode(ge::NodePtr dynamicRNNGradNo
     }
   } else {
     ge::NodePtr matmulNode = graph.AddNode(matmulDesc);
-    FUSION_PASS_CHECK(matmulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddLSTMInputGradNode:check failed, fusion failed."),
+    FUSION_PASS_CHECK(matmulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddLSTMInputGradNode:check failed, fusion failed."),
                       return FAILED);
     newNodes.push_back(matmulNode);
     ge::GraphUtils::AddEdge(lstmInputGradNode->GetOutDataAnchor(0), matmulNode->GetInDataAnchor(1));
@@ -1486,7 +1487,7 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   bool failStatus = false;
   // get dynamicRNNGradNode
   ge::NodePtr dynamicRNNGradNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(dynamicRNNGradNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Get DynamicRnnGrad Node Failed, fusion failed."),
+  FUSION_PASS_CHECK(dynamicRNNGradNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get DynamicRnnGrad Node Failed, fusion failed."),
                     return FAILED);
 
   if (dynamicRNNGradNode->GetOpDesc()->GetInputDesc(5).GetShape().GetDims().size() == 3) {
@@ -1509,14 +1510,14 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
       PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(3).GetShape().GetDim(1)) ||
       PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(2).GetShape().GetDim(2)) ||
       PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(2).GetShape().GetDim(1))) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicRNNGradFusionPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DynamicRNNGradFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
 
   // add lstmInputGrad
   OP_LOGI(FUSED_OP_TYPE.c_str(), "start add lstmInputGradNode.");
   ge::NodePtr lstmInputGradNode = AddLSTMInputGradNode(dynamicRNNGradNode, graph, newNodes, failStatus);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddLSTMInputGradNode:check failed, fusion failed."),
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddLSTMInputGradNode:check failed, fusion failed."),
                     return FAILED);
 
   int t_size = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(0);
@@ -1526,12 +1527,12 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   OP_LOGI(FUSED_OP_TYPE.c_str(), "start add splitNode and concat node for h.");
   if (t_size != 1) {
         ge::NodePtr splitNode = AddSplitNode(dynamicRNNGradNode, graph, newNodes, failStatus);
-        FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddSplitNode:check failed, fusion failed."),
+        FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddSplitNode:check failed, fusion failed."),
                           return FAILED);
         ge::NodePtr hConcatInputNode = nullptr;
         if (n_value % 16 == 0) {
           auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicRNNGradNode->GetName() + "/myReshape", "Reshape");
-          FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error."),
+          FUSION_PASS_CHECK(reshapeOp.IsEmpty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error."),
                           return FAILED);
           auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
           reshapeOp.BreakConnect();
@@ -1549,7 +1550,7 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
           reshape_desc->UpdateOutputDesc("y", inputTensorDescSplitH);
 
           ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
-          FUSION_PASS_CHECK(myReshape_node==nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape node  error."),
+          FUSION_PASS_CHECK(myReshape_node==nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create Reshape node  error."),
                             return FAILED);
           newNodes.push_back(myReshape_node);
 
@@ -1560,16 +1561,16 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
         }
         // add concat
         ge::NodePtr hConcatNode = AddHConcatNode(dynamicRNNGradNode, hConcatInputNode, graph, newNodes, failStatus);
-        FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddHConcatNode:check failed, fusion failed."),
+        FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddHConcatNode:check failed, fusion failed."),
                           return FAILED);
         // add concat
         concatNode = AddConcatNode(dynamicRNNGradNode, hConcatNode, graph, newNodes, failStatus);
-        FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddConcatNode:check failed, fusion failed."),
+        FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddConcatNode:check failed, fusion failed."),
                           return FAILED);
   } else {
         // add concat
         concatNode = AddConcatNodeT_1(dynamicRNNGradNode, graph, newNodes, failStatus);
-        FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddConcatNode:check failed, fusion failed."),
+        FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddConcatNode:check failed, fusion failed."),
                           return FAILED);
 
   }
@@ -1577,7 +1578,7 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   OP_LOGI(FUSED_OP_TYPE.c_str(), "start add matmul node.");
   ge::NodePtr matmulNode =
       AddMatmulNode(dynamicRNNGradNode, concatNode, lstmInputGradNode, graph, newNodes, failStatus);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "AddMatmulNode:check failed, fusion failed."),
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddMatmulNode:check failed, fusion failed."),
                     return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "start add reduceSum node for dw.");
   if (t_size != 1 && (n_value % 16) != 0) {
@@ -1612,7 +1613,7 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   // remove dynamicRNNGradNode from graph
   FUSION_PASS_CHECK(
       ge::GRAPH_SUCCESS != graph.RemoveNode(dynamicRNNGradNode),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", dynamicRNNGradNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", dynamicRNNGradNode->GetName().c_str()),
       return FAILED);
 
   return SUCCESS;

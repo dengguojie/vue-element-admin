@@ -30,6 +30,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "fp16_t.hpp"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
@@ -71,7 +72,7 @@ vector<FusionPattern*> YoloV2DetectionOutputPass::DefinePatterns() {
   // yolo_v3_detection_output->yolo_v3_detection_output_d
   // define Fusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("YoloV2DetectionOutputPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_YOLOV2, {YOLOV2}).SetOutput(PATTERN_YOLOV2);
@@ -85,27 +86,27 @@ Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into YoloV2DetectionOutputPass");
   // diag node
   ge::NodePtr yolov2VNode = GetNodeFromMapping(PATTERN_YOLOV2, mapping);
-  FUSION_PASS_CHECK(yolov2VNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "yolov2VNode is null, fusion failed."),
+  FUSION_PASS_CHECK(yolov2VNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "yolov2VNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of diag
   ge::OpDescPtr yolov2Desc = yolov2VNode->GetOpDesc();
   FUSION_PASS_CHECK(yolov2Desc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "yolov2VNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "yolov2VNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // find the parent node of yolov2
   ge::InDataAnchorPtr yolov2AnchorPtr0 = yolov2VNode->GetInDataAnchor(0);
   FUSION_PASS_CHECK(yolov2AnchorPtr0 == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "InDataAnchor is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InDataAnchor is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OutDataAnchorPtr constAnchorPtr0 = yolov2AnchorPtr0->GetPeerOutAnchor();
   FUSION_PASS_CHECK(constAnchorPtr0 == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "PeerOutAnchor is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PeerOutAnchor is null, fusion failed."),
                     return PARAM_INVALID);
   ge::NodePtr regionNode = constAnchorPtr0->GetOwnerNode();
   FUSION_PASS_CHECK(regionNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "regionNode is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "regionNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // get the input desc of entrance node to differentiate const and varj
@@ -117,7 +118,7 @@ Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   // GESHAPE->vector
   vector<int64_t> dimInfo1 = diagInputShape1.GetDims();
   FUSION_PASS_CHECK(dimInfo1.size() < 4,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "unexpected diagInputShape Dim. Dim(%d) less then 4",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "unexpected diagInputShape Dim. Dim(%lu) less then 4",
                             dimInfo1.size()),
                     return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "YoloV2DetectionOutputPass dimInfo1:%d,%d,%d,%d", dimInfo1[0], dimInfo1[1],
@@ -125,7 +126,7 @@ Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
 
   if (PatternFusionUtil::IsUnknownShape(dimInfo1[2]) ||
       PatternFusionUtil::IsUnknownShape(dimInfo1[3])) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "YoloV2DetectionOutputPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "YoloV2DetectionOutputPass cannot be applied for unknown shape.");
     return FAILED;
   }
 
@@ -133,10 +134,10 @@ Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   ge::GeTensorPtr assitPtrH1 = nullptr;
 
   unique_ptr<uint16_t[]> inputAssitW1(new (std::nothrow) uint16_t[dimInfo1[2] * dimInfo1[3]]());
-  FUSION_PASS_CHECK(inputAssitW1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitW1 is NULL"),
+  FUSION_PASS_CHECK(inputAssitW1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitW1 is NULL"),
                     return PARAM_INVALID);
   unique_ptr<uint16_t[]> inputAssitH1(new (std::nothrow) uint16_t[dimInfo1[2] * dimInfo1[3]]());
-  FUSION_PASS_CHECK(inputAssitH1.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitH1 is NULL"),
+  FUSION_PASS_CHECK(inputAssitH1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitH1 is NULL"),
                     return PARAM_INVALID);
 
   int32_t outLength = dimInfo1[2] * dimInfo1[3];
@@ -177,7 +178,7 @@ Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   ge::OpDescUtils::SetWeights(yolov2VNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(yolov2VNode);
   FUSION_PASS_CHECK(constInputNodes.size() < 2,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "unexpected const inputs num. num(%d) less then 2",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "unexpected const inputs num. num(%lu) less then 2",
                             constInputNodes.size()),
                     return FAILED);
   NodePtr constInput0 = constInputNodes[0];

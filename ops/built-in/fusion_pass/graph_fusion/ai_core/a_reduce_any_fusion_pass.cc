@@ -27,6 +27,7 @@
 #include <vector>
 #include <algorithm>
 #include "op_log.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -51,7 +52,7 @@ Status CheckAnyFussionOrNot(vector<int64_t> tensor_info, vector<int64_t> axis_in
 vector<FusionPattern*> AReduceAnyFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AReduceAnyFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -61,13 +62,13 @@ vector<FusionPattern*> AReduceAnyFusionPass::DefinePatterns() {
 Status AReduceAnyFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceAnyFusionPass fusion begin.");
   ge::NodePtr anyNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(anyNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "anyNode is null, fusion failed."),
+  FUSION_PASS_CHECK(anyNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "anyNode is null, fusion failed."),
                     return PARAM_INVALID);
 
-  FUSION_PASS_CHECK(anyNode->GetOpDesc() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(anyNode->GetOpDesc() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "anyNode get output failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(anyNode->GetOpDesc()->GetInputsSize() < 2, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(anyNode->GetOpDesc()->GetInputsSize() < 2, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "anyNode input size small than 2"),
                     return PARAM_INVALID);
   ge::GeTensorDesc tensor_input = anyNode->GetOpDesc()->GetInputDesc(0);
@@ -112,13 +113,13 @@ Status AReduceAnyFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete edge of afterNode and any. connect beforeNode and afterNode");
   for (auto inDataAnchor : anyNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(anyNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove any and outnode edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove any and outnode edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(anyNode->GetInDataAnchor(0)->GetPeerOutAnchor(), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add innode and outnode edge failed."), return FAILED);
   }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "delete reduceany edge.");
-  FUSION_PASS_CHECK(graph.RemoveNode(anyNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove anyNode failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(anyNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove anyNode failed."),
                     return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AReduceAnyFusionPass fusion end");

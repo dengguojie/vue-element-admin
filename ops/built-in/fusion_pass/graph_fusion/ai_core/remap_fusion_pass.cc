@@ -27,6 +27,7 @@
 #include <vector>
 #include <algorithm>
 #include "op_log.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/tensor_utils.h"
 #include "graph/utils/attr_utils.h"
@@ -45,7 +46,7 @@ static const string FUSED_NODE = "Remap";
 vector<FusionPattern*> RemapFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("RemapFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -471,17 +472,17 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   // get input 1 shape
   ge::GeTensorDesc img_input_desc = fused_node->GetOpDesc()->GetInputDesc(0);
   vector<int64_t> img_input_shape = img_input_desc.GetShape().GetDims();
-  FUSION_PASS_CHECK(img_input_shape.size() != 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "the input0 shape dim must be 4"),
+  FUSION_PASS_CHECK(img_input_shape.size() != 4, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "the input0 shape dim must be 4"),
                     return PARAM_INVALID);
   // get input 2 shape
   ge::GeTensorDesc warpoffset_input_desc = fused_node->GetOpDesc()->GetInputDesc(1);
   vector<int64_t> warpoffset_shape = warpoffset_input_desc.GetShape().GetDims();
-  FUSION_PASS_CHECK(warpoffset_shape.size() != 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "the input1 shape dim must be 4"),
+  FUSION_PASS_CHECK(warpoffset_shape.size() != 4, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "the input1 shape dim must be 4"),
                     return PARAM_INVALID);
   // get output 1 shape
   ge::GeTensorDesc output_desc = fused_node->GetOpDesc()->GetOutputDesc(0);
   vector<int64_t> output_desc_shape = output_desc.GetShape().GetDims();
-  FUSION_PASS_CHECK(output_desc_shape.size() != 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "the output shape dim must be 4"),
+  FUSION_PASS_CHECK(output_desc_shape.size() != 4, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "the output shape dim must be 4"),
                     return PARAM_INVALID);
   // uint8 input
   int64_t ret = 0;
@@ -489,7 +490,7 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     // create pre_cast1_node
     ge::NodePtr pre_cast1_node = nullptr;
     ret = CreateCastNode("_pre_cast1_node", pre_cast1_node, fused_node, graph, newNodes, img_input_desc);
-    FUSION_PASS_CHECK(pre_cast1_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pre_cast1_node is null."),
+    FUSION_PASS_CHECK(pre_cast1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pre_cast1_node is null."),
                       return PARAM_INVALID);
     pre_cast1_node->GetOpDesc()->GetOutputDesc(0).SetDataType(DT_FLOAT16);
     AttrUtils::SetInt(pre_cast1_node->GetOpDesc(), "dst_type", DT_FLOAT16);
@@ -497,7 +498,7 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     // create pre_cast2_node
     ge::NodePtr pre_cast2_node = nullptr;
     ret = CreateCastNode("_pre_cast2_node", pre_cast2_node, fused_node, graph, newNodes, output_desc);
-    FUSION_PASS_CHECK(pre_cast2_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pre_cast2_node is null."),
+    FUSION_PASS_CHECK(pre_cast2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pre_cast2_node is null."),
                       return PARAM_INVALID);
     pre_cast2_node->GetOpDesc()->GetOutputDesc(0).SetDataType(DT_UINT8);
     pre_cast2_node->GetOpDesc()->GetInputDesc(0).SetDataType(DT_FLOAT16);
@@ -506,14 +507,14 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     auto tmpPreDataAnchor = fused_node->GetInDataAnchor(0)->GetPeerOutAnchor();
     ret =
         ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(), fused_node->GetInDataAnchor(0));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "remove edge img_node failed."), return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge img_node failed."), return FAILED);
     ret = ge::GraphUtils::AddEdge(tmpPreDataAnchor, pre_cast1_node->GetInDataAnchor(0));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge img to pre_cast1_node failed."),
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge img to pre_cast1_node failed."),
                       return FAILED);
 
     // pre_cast1_node->fused_node
     ret = ge::GraphUtils::AddEdge(pre_cast1_node->GetOutDataAnchor(0), fused_node->GetInDataAnchor(0));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge pre_cast1_node to fused_node failed."),
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge pre_cast1_node to fused_node failed."),
                       return FAILED);
 
     // pre_cast2_node-> fused_node output
@@ -546,77 +547,77 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   // create split node
   ge::NodePtr split_node = nullptr;
   ret = CreateSplitNode(split_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(split_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "split_node is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(split_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "split_node is null."), return PARAM_INVALID);
 
   // create floor_x node
   ge::NodePtr floor_x_node = nullptr;
   ret = CreateFloorxNode(floor_x_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(floor_x_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "floor_x_node is null."),
+  FUSION_PASS_CHECK(floor_x_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "floor_x_node is null."),
                     return PARAM_INVALID);
 
   // create ceil_x node
   ge::NodePtr ceil_x_node = nullptr;
   ret = CreateCeilxNode(ceil_x_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(ceil_x_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "ceil_x_node is null."),
+  FUSION_PASS_CHECK(ceil_x_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ceil_x_node is null."),
                     return PARAM_INVALID);
 
   // create floor_y node
   ge::NodePtr floor_y_node = nullptr;
   ret = CreateFlooryNode(floor_y_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(floor_y_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "floor_y_node is null."),
+  FUSION_PASS_CHECK(floor_y_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "floor_y_node is null."),
                     return PARAM_INVALID);
 
   // create ceil_y node
   ge::NodePtr ceil_y_node = nullptr;
   ret = CreateCeilyNode(ceil_y_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(ceil_y_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "ceil_y_node is null."),
+  FUSION_PASS_CHECK(ceil_y_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ceil_y_node is null."),
                     return PARAM_INVALID);
 
   // create cast1 node
   ge::NodePtr cast1_node = nullptr;
   ret = CreateCastNode("cast1", cast1_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(cast1_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "cast1_node is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(cast1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "cast1_node is null."), return PARAM_INVALID);
 
   // create cast2 node
   ge::NodePtr cast2_node = nullptr;
   ret = CreateCastNode("cast2", cast2_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(cast2_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "cast1_cast2_nodenode is null."),
+  FUSION_PASS_CHECK(cast2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "cast1_cast2_nodenode is null."),
                     return PARAM_INVALID);
 
   // create cast3 node
   ge::NodePtr cast3_node = nullptr;
   ret = CreateCastNode("cast3", cast3_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(cast3_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "cast3_node is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(cast3_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "cast3_node is null."), return PARAM_INVALID);
 
   // create cast4 node
   ge::NodePtr cast4_node = nullptr;
   ret = CreateCastNode("cast4", cast4_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(cast4_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "cast4_node is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(cast4_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "cast4_node is null."), return PARAM_INVALID);
 
   // create mulsx1 node
   ge::NodePtr mulsx1_node = nullptr;
   float mul_x_factor = img_input_shape[3];
   ret = CreateMulsx1Node(mulsx1_node, fused_node, graph, newNodes, temp_desc, mul_x_factor);
-  FUSION_PASS_CHECK(mulsx1_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulsx1_node is null."),
+  FUSION_PASS_CHECK(mulsx1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulsx1_node is null."),
                     return PARAM_INVALID);
 
   // create mulsx2 node
   ge::NodePtr mulsx2_node = nullptr;
   ret = CreateMulsx2Node(mulsx2_node, fused_node, graph, newNodes, temp_desc, mul_x_factor);
-  FUSION_PASS_CHECK(mulsx2_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulsx2_node is null."),
+  FUSION_PASS_CHECK(mulsx2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulsx2_node is null."),
                     return PARAM_INVALID);
 
   // create mulsy1 node
   float mul_y_factor = img_input_shape[2] * img_input_shape[3];
   ge::NodePtr mulsy1_node = nullptr;
   ret = CreateMulsy1Node(mulsy1_node, fused_node, graph, newNodes, temp_desc, mul_y_factor);
-  FUSION_PASS_CHECK(mulsy1_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulsy1_node is null."),
+  FUSION_PASS_CHECK(mulsy1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulsy1_node is null."),
                     return PARAM_INVALID);
 
   // create mulsy2 node
   ge::NodePtr mulsy2_node = nullptr;
   ret = CreateMulsy2Node(mulsy2_node, fused_node, graph, newNodes, temp_desc, mul_y_factor);
-  FUSION_PASS_CHECK(mulsy2_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulsy2_node is null."),
+  FUSION_PASS_CHECK(mulsy2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulsy2_node is null."),
                     return PARAM_INVALID);
 
   std::string name;
@@ -624,182 +625,182 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::NodePtr add1_node = nullptr;
   name = "add1";
   ret = CreateAddNode(name, add1_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(add1_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add1_node is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(add1_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add1_node is null."), return PARAM_INVALID);
 
   // create add2 node
   ge::NodePtr add2_node = nullptr;
   name = "add2";
   ret = CreateAddNode(name, add2_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(add2_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add2_node is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(add2_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add2_node is null."), return PARAM_INVALID);
 
   // create add3 node
   ge::NodePtr add3_node = nullptr;
   name = "add3";
   ret = CreateAddNode(name, add3_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(add3_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add3_node is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(add3_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add3_node is null."), return PARAM_INVALID);
 
   // create add4 node
   ge::NodePtr add4_node = nullptr;
   name = "add4";
   ret = CreateAddNode(name, add4_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(add4_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add4_node is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(add4_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add4_node is null."), return PARAM_INVALID);
 
   // create concat node
   ge::NodePtr concat_node = nullptr;
   ret = CreateConcatNode(concat_node, fused_node, graph, newNodes, temp_desc);
-  FUSION_PASS_CHECK(concat_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "concat_node is null."),
+  FUSION_PASS_CHECK(concat_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "concat_node is null."),
                     return PARAM_INVALID);
 
   // create a new node for remapOffsets
   ge::NodePtr remap_offsets_node = nullptr;
   ret = CreateRemapOffsetsNode(remap_offsets_node, fused_node, graph, newNodes, img_input_desc, warpoffset_input_desc);
-  FUSION_PASS_CHECK(remap_offsets_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "remap_offsets_node is null."),
+  FUSION_PASS_CHECK(remap_offsets_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remap_offsets_node is null."),
                     return PARAM_INVALID);
 
   // create a new node for Resize
   ge::NodePtr remap_resize_node = nullptr;
   ret = CreateRemapResizeNode(remap_resize_node, fused_node, graph, newNodes, img_input_desc, warpoffset_input_desc,
                               output_desc);
-  FUSION_PASS_CHECK(remap_resize_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "remap_resize_node is null."),
+  FUSION_PASS_CHECK(remap_resize_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remap_resize_node is null."),
                     return PARAM_INVALID);
 
   // warp_offset->split_node & warp_offset->resize_node
   auto tmpDataAnchor = fused_node->GetInDataAnchor(1)->GetPeerOutAnchor();
   ret = ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(1)->GetPeerOutAnchor(), fused_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "remove edge offsets_node failed."), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge offsets_node failed."), return FAILED);
 
   ret = ge::GraphUtils::AddEdge(tmpDataAnchor, remap_resize_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge offsets_node to resize node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge offsets_node to resize node failed."),
                     return FAILED);
 
   // split_node->floor_x_node
   ret = ge::GraphUtils::AddEdge(split_node->GetOutDataAnchor(0), floor_x_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge split_node to floor_x_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge split_node to floor_x_node failed."),
                     return FAILED);
 
   // split_node->ceil_x_node
   ret = ge::GraphUtils::AddEdge(split_node->GetOutDataAnchor(0), ceil_x_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge split_node to ceil_x_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge split_node to ceil_x_node failed."),
                     return FAILED);
 
   // split_node->floor_y_node
   ret = ge::GraphUtils::AddEdge(split_node->GetOutDataAnchor(1), floor_y_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge split_node to floor_y_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge split_node to floor_y_node failed."),
                     return FAILED);
 
   // split_node->floor_y_node
   ret = ge::GraphUtils::AddEdge(split_node->GetOutDataAnchor(1), ceil_y_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge split_node to ceil_y_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge split_node to ceil_y_node failed."),
                     return FAILED);
 
   // floor_x_node->cast1_node
   ret = ge::GraphUtils::AddEdge(floor_x_node->GetOutDataAnchor(0), cast1_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge floor_x_node to cast1_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge floor_x_node to cast1_node failed."),
                     return FAILED);
 
   // ceil_x_node->cast2_node
   ret = ge::GraphUtils::AddEdge(ceil_x_node->GetOutDataAnchor(0), cast2_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge ceil_x_node to cast2_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge ceil_x_node to cast2_node failed."),
                     return FAILED);
 
   // floor_y_node->cast3_node
   ret = ge::GraphUtils::AddEdge(floor_y_node->GetOutDataAnchor(0), cast3_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge floor_y_node to cast3_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge floor_y_node to cast3_node failed."),
                     return FAILED);
 
   // ceil_y_node->cast4_node
   ret = ge::GraphUtils::AddEdge(ceil_y_node->GetOutDataAnchor(0), cast4_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge ceil_y_node to cast4_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge ceil_y_node to cast4_node failed."),
                     return FAILED);
 
   // cast1_node->mulsx1_node
   ret = ge::GraphUtils::AddEdge(cast1_node->GetOutDataAnchor(0), mulsx1_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge cast1_node to mulsx1_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge cast1_node to mulsx1_node failed."),
                     return FAILED);
 
   // cast2_node->mulsx2_node
   ret = ge::GraphUtils::AddEdge(cast2_node->GetOutDataAnchor(0), mulsx2_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge cast2_node to mulsx2_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge cast2_node to mulsx2_node failed."),
                     return FAILED);
 
   // cast3_node->mulsy1_node
   ret = ge::GraphUtils::AddEdge(cast3_node->GetOutDataAnchor(0), mulsy1_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge cast3_node to mulsy1_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge cast3_node to mulsy1_node failed."),
                     return FAILED);
 
   // cast4_node->mulsy2_node
   ret = ge::GraphUtils::AddEdge(cast4_node->GetOutDataAnchor(0), mulsy2_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge cast4_node to mulsy2_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge cast4_node to mulsy2_node failed."),
                     return FAILED);
 
   // mulsx1_node + mulsy1_node->add1_node
   ret = ge::GraphUtils::AddEdge(mulsx1_node->GetOutDataAnchor(0), add1_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsx1_node to add1_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsx1_node to add1_node failed."),
                     return FAILED);
   ret = ge::GraphUtils::AddEdge(mulsy1_node->GetOutDataAnchor(0), add1_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsy1_node to add1_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsy1_node to add1_node failed."),
                     return FAILED);
 
   // mulsx2_node + mulsy1_node ->add2_node
   ret = ge::GraphUtils::AddEdge(mulsx2_node->GetOutDataAnchor(0), add2_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsx2_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsx2_node to concat_node failed."),
                     return FAILED);
   ret = ge::GraphUtils::AddEdge(mulsy1_node->GetOutDataAnchor(0), add2_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsy1_node to add1_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsy1_node to add1_node failed."),
                     return FAILED);
 
   // mulsx1_node + mulsy2_node->add3_node
   ret = ge::GraphUtils::AddEdge(mulsx1_node->GetOutDataAnchor(0), add3_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsx1_node to add1_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsx1_node to add1_node failed."),
                     return FAILED);
   ret = ge::GraphUtils::AddEdge(mulsy2_node->GetOutDataAnchor(0), add3_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsy2_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsy2_node to concat_node failed."),
                     return FAILED);
 
   // mulsx2_node + mulsy2_node->add4_node
   ret = ge::GraphUtils::AddEdge(mulsx2_node->GetOutDataAnchor(0), add4_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsx2_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsx2_node to concat_node failed."),
                     return FAILED);
   ret = ge::GraphUtils::AddEdge(mulsy2_node->GetOutDataAnchor(0), add4_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsy2_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsy2_node to concat_node failed."),
                     return FAILED);
 
   // add1_node->concat_node
   ret = ge::GraphUtils::AddEdge(add1_node->GetOutDataAnchor(0), concat_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge add1_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge add1_node to concat_node failed."),
                     return FAILED);
 
   // add2_node->concat_node
   ret = ge::GraphUtils::AddEdge(add2_node->GetOutDataAnchor(0), concat_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge add2_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge add2_node to concat_node failed."),
                     return FAILED);
 
   // add3_node->concat_node
   ret = ge::GraphUtils::AddEdge(add3_node->GetOutDataAnchor(0), concat_node->GetInDataAnchor(2));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge add3_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge add3_node to concat_node failed."),
                     return FAILED);
 
   // add4_node->concat_node
   ret = ge::GraphUtils::AddEdge(add4_node->GetOutDataAnchor(0), concat_node->GetInDataAnchor(3));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge add4_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge add4_node to concat_node failed."),
                     return FAILED);
 
   // concat_node->remap_offsets_node
   ret = ge::GraphUtils::AddEdge(concat_node->GetOutDataAnchor(0), remap_offsets_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge mulsy2_node to concat_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge mulsy2_node to concat_node failed."),
                     return FAILED);
 
   // img->remap_offsets_node
   auto tempDataAnchor = fused_node->GetInDataAnchor(0)->GetPeerOutAnchor();
   ret = ge::GraphUtils::RemoveEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(), fused_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "remove edge img_node failed."), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge img_node failed."), return FAILED);
   ret = ge::GraphUtils::AddEdge(tempDataAnchor, remap_offsets_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge img to remap_offsets_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge img to remap_offsets_node failed."),
                     return FAILED);
 
   // remap_offsets_node->remap_resize_node
   ret = ge::GraphUtils::AddEdge(remap_offsets_node->GetOutDataAnchor(0), remap_resize_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge offsets_node to resize_node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge offsets_node to resize_node failed."),
                     return FAILED);
 
   // remap_resize_node->warp_img
@@ -817,7 +818,7 @@ Status RemapFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   AddTransposeBeforeNode(remap_resize_node, 1, perm_boxes_list, graph);
   ret = ge::GraphUtils::AddEdge(remap_resize_node->GetInDataAnchor(1)->GetPeerOutAnchor(),
                                 split_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge transpose to split node failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge transpose to split node failed."),
                     return FAILED);
   // insert transpose at resize input 0
   perm_boxes_list = {0, 1, 4, 2, 3};

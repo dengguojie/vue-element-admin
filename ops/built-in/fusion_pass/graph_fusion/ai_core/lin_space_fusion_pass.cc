@@ -32,6 +32,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "pattern_fusion_util.h"
@@ -56,7 +57,7 @@ vector<FusionPattern*> LinSpaceFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   // lin_space fused to lin_space_d
   FusionPattern* pattern = new (std::nothrow) FusionPattern("LinSpaceFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_LINSPACE, {LINSPACE}).SetOutput(PATTERN_LINSPACE);
@@ -68,13 +69,13 @@ vector<FusionPattern*> LinSpaceFusionPass::DefinePatterns() {
 Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get the lin_space node
   ge::NodePtr linspaceVNode = GetNodeFromMapping(PATTERN_LINSPACE, mapping);
-  FUSION_PASS_CHECK(linspaceVNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "linspaceVNode is null, fusion failed."),
+  FUSION_PASS_CHECK(linspaceVNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "linspaceVNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // get the desc of lin_space node
   ge::OpDescPtr linspaceDesc = linspaceVNode->GetOpDesc();
   FUSION_PASS_CHECK(linspaceDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "linspaceVNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "linspaceVNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   vector<int64_t> dims = linspaceDesc->GetOutputDesc("output").GetShape().GetDims();
   for (int64_t ele : dims) {
@@ -87,7 +88,7 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   // desc copy
   ge::OpDescPtr linSpaceDDesc = AttrUtils::CopyOpDesc(linspaceDesc);
   FUSION_PASS_CHECK(linSpaceDDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "linSpaceDDesc's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "linSpaceDDesc's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::GeTensorDesc tensorDesc0 = linspaceVNode->GetOpDesc()->GetInputDesc(0);
@@ -106,7 +107,7 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::ConstGeTensorPtr constTensor2 = nullptr;
   ge::AttrUtils::GetTensor(constNode2->GetOpDesc(), "value", constTensor2);
   const uint8_t* constData = constTensor2->GetData().GetData();
-  FUSION_PASS_CHECK(constData == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "constData is NULL"),
+  FUSION_PASS_CHECK(constData == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constData is NULL"),
                     return PARAM_INVALID);
   int32_t num = *((int32_t*)constData);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "The num is %d\n", num);
@@ -119,7 +120,7 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   ge::GeTensorPtr assitPtr = nullptr;
   unique_ptr<float[]> inputAssit(new (std::nothrow) float[num]());
-  FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                     return PARAM_INVALID);
   Status ret = NnSet(num, FLOAT_NUM_ZERO, *reinterpret_cast<float*>(inputAssit.get()));
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "NnSet failed."), return NOT_CHANGED);
@@ -158,7 +159,7 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   fusionNodes.push_back(linSpaceDNode);
   FUSION_PASS_CHECK(
       linSpaceDNode == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", linSpaceDNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", linSpaceDNode->GetName().c_str()),
       return PARAM_INVALID);
 
   linSpaceDDesc->SetType("LinSpaceD");
@@ -167,14 +168,14 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   FUSION_PASS_CHECK(
       SUCCESS != ge::GraphUtils::AddEdge(assistNode->GetOutDataAnchor(0), linSpaceDNode->GetInDataAnchor(0)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from %s's index[%d] to %s's index[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from %s's index[%d] to %s's index[%d] failed.",
               assistNode->GetName().c_str(), 0, linSpaceDNode->GetName().c_str(), 0),
       return FAILED);
 
   for (unsigned int i = 0; i < linspaceVNode->GetAllInDataAnchors().size(); i++) {
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(linspaceVNode->GetInDataAnchor(i)->GetPeerOutAnchor(),
                                                          linSpaceDNode->GetInDataAnchor(i + 1)),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from %s's index[%d] to %s's index[%d] failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from %s's index[%d] to %s's index[%d] failed.",
                               linspaceVNode->GetName().c_str(), i, linSpaceDNode->GetName().c_str(), i + 1),
                       return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Success to add edge from %s's index[%d] to %s's index[%d].",
@@ -187,7 +188,7 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     for (InDataAnchorPtr inAnchorPtr : linspaceVNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(linSpaceDNode->GetOutDataAnchor(0), inAnchorPtr),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from %s's index to %s's 1st index failed.",
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from %s's index to %s's 1st index failed.",
                                 linSpaceDNode->GetName().c_str(), inAnchorPtr->GetOwnerNode()->GetName().c_str()),
                         return FAILED);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from %s's 1st index to %s's 1st index.",
@@ -202,7 +203,7 @@ Status LinSpaceFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   }
   FUSION_PASS_CHECK(
       ge::GRAPH_SUCCESS != graph.RemoveNode(linspaceVNode),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", linspaceVNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", linspaceVNode->GetName().c_str()),
       return FAILED);
 
   return SUCCESS;

@@ -32,6 +32,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 
 using namespace ge;
@@ -42,7 +43,7 @@ static const std::string PATTERN_FUSEDNODE = "AddN";
 vector<FusionPattern*> AddNFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AddNFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -55,10 +56,10 @@ vector<FusionPattern*> AddNFusionPass::DefinePatterns() {
 //       including newly added nodes and fused but not deleted nodes
 Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
+  FUSION_PASS_CHECK(fused_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   size_t inputs_num = fusedDesc->GetInputsSize();
@@ -88,16 +89,16 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     }
     ge::NodePtr add_n_base_node = graph.AddNode(addNBaseDesc);
     FUSION_PASS_CHECK(add_n_base_node == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add_n_base_node is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add_n_base_node is null, fusion failed."),
                       return PARAM_INVALID);
 
     fusionNodes.push_back(add_n_base_node);
     ge::AttrUtils::SetInt(add_n_base_node->GetOpDesc(), "N", nodes_num);
     for (InDataAnchorPtr inAnchorPtr : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(0), inAnchorPtr),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(add_n_base_node->GetOutDataAnchor(0), inAnchorPtr),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
     }
 
     for (size_t i = 0; i < nodes_num; i++) {
@@ -110,7 +111,7 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
           OpDescUtils::ClearInputDesc(addNDesc, a);
         }
         ge::NodePtr add_n_node = graph.AddNode(addNDesc);
-        FUSION_PASS_CHECK(add_n_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add_n_node is null, fusion failed."),
+        FUSION_PASS_CHECK(add_n_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add_n_node is null, fusion failed."),
                           return PARAM_INVALID);
 
         fusionNodes.push_back(add_n_node);
@@ -118,8 +119,8 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
 
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(add_n_node->GetOutDataAnchor(0), add_n_base_node->GetInDataAnchor(i)),
-            OP_LOGE(FUSED_OP_TYPE.c_str(),
-                    "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
                     add_n_base_node->GetName().c_str(), i, add_n_node->GetName().c_str(), i),
             return FAILED);
 
@@ -127,8 +128,8 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(m + i * 62)->GetPeerOutAnchor(),
                                                  add_n_node->GetInDataAnchor(m)),
-              OP_LOGE(FUSED_OP_TYPE.c_str(),
-                      "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
                       fused_node->GetName().c_str(), (m + i * 62), add_n_node->GetName().c_str(), m),
               return FAILED);
         }
@@ -145,14 +146,14 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
         }
         ge::NodePtr last_add_n_node = graph.AddNode(LastAddNDesc);
         FUSION_PASS_CHECK(last_add_n_node == nullptr,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "last_add_n_node is null, fusion failed."),
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "last_add_n_node is null, fusion failed."),
                           return PARAM_INVALID);
         fusionNodes.push_back(last_add_n_node);
         ge::AttrUtils::SetInt(last_add_n_node->GetOpDesc(), "N", last_node_inputs_num);
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(last_add_n_node->GetOutDataAnchor(0),
                                                              add_n_base_node->GetInDataAnchor(i)),
-                          OP_LOGE(FUSED_OP_TYPE.c_str(),
-                                  "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                  "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
                                   add_n_base_node->GetName().c_str(), i, last_add_n_node->GetName().c_str(), i),
                           return FAILED);
 
@@ -160,8 +161,8 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
           FUSION_PASS_CHECK(
               SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(n + i * 62)->GetPeerOutAnchor(),
                                                  last_add_n_node->GetInDataAnchor(n)),
-              OP_LOGE(FUSED_OP_TYPE.c_str(),
-                      "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
+              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      "Add edge from fused node:%s's index[%lu] to fusion node:%s's index[%lu] failed.",
                       fused_node->GetName().c_str(), (n + i * 62), last_add_n_node->GetName().c_str(), n),
               return FAILED);
         }
@@ -179,7 +180,7 @@ Status AddNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     }
   }
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fused_node),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed", fused_node->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed", fused_node->GetName().c_str()),
                     return FAILED);
 
   return SUCCESS;

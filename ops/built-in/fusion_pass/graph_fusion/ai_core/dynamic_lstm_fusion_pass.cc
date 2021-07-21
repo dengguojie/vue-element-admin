@@ -20,6 +20,7 @@
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
@@ -33,7 +34,7 @@ vector<FusionPattern *> DynamicLSTMFusionPass::DefinePatterns()
     vector<FusionPattern *> patterns;
 
     FusionPattern *pattern = new (std::nothrow) FusionPattern("DynamicLSTMV2FusionPass");
-    FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+    FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
         "lstm pattern object failed."), return patterns);
 
     pattern->AddOpDesc(PATTERN_FUSEDNODE, { FUSED_NODE }).SetOutput(PATTERN_FUSEDNODE);
@@ -70,7 +71,7 @@ Status DynamicLSTMFusionPass::ProcessLSTMStatic(ge::NodePtr fusedNode, ge::NodeP
     bool constAdjustFlag = false;
     vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(inputWNode);
     if (weights.empty()) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weights is null, fusion failed.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weights is null, fusion failed.");
         return PARAM_INVALID;
     }
     ge::GeTensorPtr inputWConstGeTensor = weights[0];
@@ -139,7 +140,7 @@ Status DynamicLSTMFusionPass::ProcessLSTMStatic(ge::NodePtr fusedNode, ge::NodeP
     // add the sub operators to the graph
     innerproductNode = graph.AddNode(innerProductStaticDesc);
     FUSION_PASS_CHECK(innerproductNode == nullptr,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", innerProductStaticDesc->GetName().c_str()), return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", innerProductStaticDesc->GetName().c_str()), return FAILED);
     newNodes.push_back(innerproductNode);
     return SUCCESS;
 }
@@ -155,7 +156,7 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
     vector<ge::GeTensorPtr> weightsWx = ge::OpDescUtils::MutableWeights(inputWxNode);
     if (weightsWx.empty()) {
         failStatus = true;
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsWx is null, fusion failed.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsWx is null, fusion failed.");
         return nullptr;
     }
     ge::GeTensorPtr wxTensorPtr = weightsWx[0];
@@ -170,7 +171,7 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
     vector<ge::GeTensorPtr> weightsWh = ge::OpDescUtils::MutableWeights(inputWhNode);
     if (weightsWh.empty()) {
         failStatus = true;
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsWh is null, fusion failed.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsWh is null, fusion failed.");
         return nullptr;
     }
     ge::GeTensorPtr whTensorPtr = weightsWh[0];
@@ -184,8 +185,8 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
     int32_t wxCol = wxConstTensorDesc.GetShape().GetDim(1);
     int32_t whRow = whConstTensorDesc.GetShape().GetDim(0);
     int32_t whCol = whConstTensorDesc.GetShape().GetDim(1);
-    FUSION_PASS_CHECK(wxCol == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "wxCol can not 0"), return nullptr);
-    FUSION_PASS_CHECK(whCol == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "whCol can not 0"), return nullptr);
+    FUSION_PASS_CHECK(wxCol == 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "wxCol can not 0"), return nullptr);
+    FUSION_PASS_CHECK(whCol == 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "whCol can not 0"), return nullptr);
 
     // wxRow == whRow
     std::vector<int64_t> dimsIn;
@@ -208,16 +209,16 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
     if (dataType == ge::DT_FLOAT16 || dataType == ge::DT_FLOAT) {
         // the wx + wh matrix
         unique_ptr<float[]> wxhMergeData(new (std::nothrow) float[targetCol * wxRow]());
-        FUSION_PASS_CHECK(wxhMergeData.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "wxhMergeData is NULL"), return nullptr);
+        FUSION_PASS_CHECK(wxhMergeData.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "wxhMergeData is NULL"), return nullptr);
         FUSION_PASS_CHECK(wxTensorPtr->GetData().data() == nullptr,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "wxTensorPtr->GetData().data() is NULL"), return nullptr);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "wxTensorPtr->GetData().data() is NULL"), return nullptr);
         FUSION_PASS_CHECK(whTensorPtr->GetData().data() == nullptr,
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "whTensorPtr->GetData().data() is NULL"), return nullptr);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "whTensorPtr->GetData().data() is NULL"), return nullptr);
         float *wxData = (float *)wxTensorPtr->GetData().data();
         float *whData = (float *)whTensorPtr->GetData().data();
 
         auto retMem = memset_s(wxhMergeData.get(), targetCol * wxRow, 0, targetCol * wxRow);
-        FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to operate memset_s function!"), return nullptr);
+        FUSION_PASS_CHECK(retMem != EOK, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to operate memset_s function!"), return nullptr);
 
         // wx transpose, assign to merge data
         float *dstWeight = wxhMergeData.get();
@@ -232,7 +233,7 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
         wxTensorPtr->SetData(reinterpret_cast<uint8_t *>(wxhMergeData.get()), (targetCol * wxRow) * sizeof(float));
         constWxOp.SetAttr("const_adjust_flag", true);
     } else {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, float32), fusion failed.", fusedDesc->GetName().c_str());
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, float32), fusion failed.", fusedDesc->GetName().c_str());
         failStatus = true;
     }
     return wxTensorPtr;
@@ -320,12 +321,12 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     // get the NodePtr of LSTM
     OP_LOGI(FUSED_OP_TYPE.c_str(), "lstm fusion start fusion");
     ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-    FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."), return PARAM_INVALID);
+    FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."), return PARAM_INVALID);
     int32_t inputSize = fusedNode->GetInDataNodes().size();
     int32_t outputSize = fusedNode->GetOutDataNodes().size();
     // get the OpDescPtr of LSTM
     ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-    FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode OpDesc is null, fusion failed."), return PARAM_INVALID);
+    FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode OpDesc is null, fusion failed."), return PARAM_INVALID);
 
     // LSTM input X support 3 dim and 4 dim
     ge::GeTensorDesc tempInput0Desc = fusedDesc->GetInputDesc(0);
@@ -389,43 +390,43 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     if (hasStatic) {
         OP_LOGI(FUSED_OP_TYPE.c_str(), "has static start build static");
         Status resStatus = ProcessLSTMStatic(fusedNode, innerproductNode, graph, newNodes, inputIndexInfo);
-        FUSION_PASS_CHECK(resStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process Static fail."), return PARAM_INVALID);
+        FUSION_PASS_CHECK(resStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process Static fail."), return PARAM_INVALID);
         ge::OpDescPtr InnerProductOpDesc = innerproductNode->GetOpDesc();
         outInnerProductTensorDesc = InnerProductOpDesc->GetOutputDesc(0);
     }
 
     // process w_xh
     ge::GeTensorPtr wxTensorPtr = ProcessLSTMWxh(fusedNode, failStatus, inputIndexInfo);
-    FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process wxh fail."), return FAILED);
+    FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process wxh fail."), return FAILED);
 
     // add dynamicLSTM
     ge::OpDescPtr dynamicLSTMOpDesc = nullptr;
     ge::NodePtr dynamicLSTMNode = nullptr;
     FUSION_PASS_MAKE_SHARED((dynamicLSTMOpDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/DynamicLSTMV2", "DynamicLSTMV2")), return INTERNAL_ERROR);
     FUSION_PASS_CHECK(SUCCESS != AddDynamicLSTMNode(dynamicLSTMOpDesc, fusedDesc, wxTensorPtr->GetTensorDesc(), inputIndexInfo, expose_hidden, outInnerProductTensorDesc, outputSize), 
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "make DynamicLSTMV2 layer fail."), return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "make DynamicLSTMV2 layer fail."), return FAILED);
     dynamicLSTMNode = graph.AddNode(dynamicLSTMOpDesc);
-    FUSION_PASS_CHECK(dynamicLSTMNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "dynamicLSTM node is null, fusion failed."), return FAILED);
+    FUSION_PASS_CHECK(dynamicLSTMNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dynamicLSTM node is null, fusion failed."), return FAILED);
 
     // connect x
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(), dynamicLSTMNode->GetInDataAnchor(0)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node x failed."), return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node x failed."), return FAILED);
 
     // connect w
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndexInfo.wxIndex)->GetPeerOutAnchor(), dynamicLSTMNode->GetInDataAnchor(1)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node w failed."), return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node w failed."), return FAILED);
     
     // connect bias
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndexInfo.biasIndex)->GetPeerOutAnchor(), dynamicLSTMNode->GetInDataAnchor(2)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node bias failed."), return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node bias failed."), return FAILED);
     
     // connect cont
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(), dynamicLSTMNode->GetInDataAnchor(3)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node bias failed."), return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node bias failed."), return FAILED);
     
     int32_t inputxIndex = 4;
 
@@ -433,15 +434,15 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     if (hasStatic) {
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndexInfo.xStaticIndex)->GetPeerOutAnchor(), innerproductNode->GetInDataAnchor(0)),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "add Fc Node edge to fusion node xstatic failed."), return FAILED);
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add Fc Node edge to fusion node xstatic failed."), return FAILED);
         
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndexInfo.wxStaticIndex)->GetPeerOutAnchor(), innerproductNode->GetInDataAnchor(1)),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "add Fc Node edge to fusion node wxstatic failed."), return FAILED);
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add Fc Node edge to fusion node wxstatic failed."), return FAILED);
         
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(innerproductNode->GetOutDataAnchor(0), dynamicLSTMNode->GetInDataAnchor(inputxIndex)),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "add Fc Node edge to fusion node x failed."), return FAILED);
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add Fc Node edge to fusion node x failed."), return FAILED);
         inputxIndex += 1;
 
     }
@@ -450,11 +451,11 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
     if (expose_hidden) {
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndexInfo.h0Index)->GetPeerOutAnchor(), dynamicLSTMNode->GetInDataAnchor(inputxIndex)),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node h0 failed."), return FAILED);
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node h0 failed."), return FAILED);
         inputxIndex += 1;
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndexInfo.c0Index)->GetPeerOutAnchor(), dynamicLSTMNode->GetInDataAnchor(inputxIndex)),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node c0 failed."), return FAILED);
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node c0 failed."), return FAILED);
     }
 
     ge::OutDataAnchorPtr outputY = fusedNode->GetOutDataAnchor(0);
@@ -489,7 +490,7 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
         ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(dynamicLSTMNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node output y failed."), return FAILED);
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node output y failed."), return FAILED);
     }
 
     if (outputSize == 3) {
@@ -498,7 +499,7 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
             ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
             FUSION_PASS_CHECK(
                 SUCCESS != ge::GraphUtils::AddEdge(dynamicLSTMNode->GetOutDataAnchor(3), oriTopPeerAnchorPtri),
-                OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node last output h failed."), return FAILED);
+                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node last output h failed."), return FAILED);
         }
 
         for (uint64_t i = 0; i < ctOriTopPeerAnchors.size(); i++) {
@@ -506,13 +507,13 @@ Status DynamicLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, 
             ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
             FUSION_PASS_CHECK(
                 SUCCESS != ge::GraphUtils::AddEdge(dynamicLSTMNode->GetOutDataAnchor(4), oriTopPeerAnchorPtri),
-                OP_LOGE(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node last output c failed."), return FAILED);
+                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add dynamicLSTMV2 Node edge to fusion node last output c failed."), return FAILED);
         }
     }
 
     // remove LSTMD from graph
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode->GetName().c_str()),
                     return FAILED);
     return SUCCESS;
 }

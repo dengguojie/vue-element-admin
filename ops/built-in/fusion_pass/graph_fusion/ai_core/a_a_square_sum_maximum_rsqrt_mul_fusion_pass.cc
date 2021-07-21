@@ -26,6 +26,7 @@
 
 #include "pattern_fusion_util.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -69,7 +70,7 @@ vector<FusionPattern*> AASquareSumMaximumRsqrtMulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AASquareSumMaximumRsqrtMulFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_SQUARE, {SQUARE})
@@ -92,7 +93,7 @@ vector<FusionPattern*> AASquareSumMaximumRsqrtMulFusionPass::DefinePatterns() {
 
 Status AASquareSumMaximumRsqrtMulFusionPass::CheckPeerAllInDataAnchors(const ge::OutDataAnchorPtr& outputAnchor,
                                                                        const size_t& expectedNum) {
-  FUSION_PASS_CHECK(outputAnchor == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "outputAnchor must not be null"),
+  FUSION_PASS_CHECK(outputAnchor == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outputAnchor must not be null"),
                     return PARAM_INVALID);
   if (outputAnchor->GetPeerInDataAnchors().size() == expectedNum) {
     return SUCCESS;
@@ -103,15 +104,15 @@ Status AASquareSumMaximumRsqrtMulFusionPass::CheckPeerAllInDataAnchors(const ge:
 Status AASquareSumMaximumRsqrtMulFusionPass::IsMatch(ge::NodePtr& squareNode, ge::NodePtr& sumNode,
                                                      ge::NodePtr& maximumNode, ge::NodePtr& rsqrtNode,
                                                      ge::NodePtr& mulNode) {
-  FUSION_PASS_CHECK(squareNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "squareNode is null, fusion failed."),
+  FUSION_PASS_CHECK(squareNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "squareNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(sumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "sumNode is null, fusion failed."),
+  FUSION_PASS_CHECK(sumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sumNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(maximumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maximumNode is null, fusion failed."),
+  FUSION_PASS_CHECK(maximumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maximumNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(rsqrtNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "rsqrtNode is null, fusion failed."),
+  FUSION_PASS_CHECK(rsqrtNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "rsqrtNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(
       CheckPeerAllInDataAnchors(squareNode->GetOutDataAnchor(0), 1) != SUCCESS,
@@ -148,7 +149,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::IsMatch(ge::NodePtr& squareNode, ge
   std::vector<ge::GeTensorPtr> sumWeights;
   for (auto &sum_in_anchor : sum_in_anchors) {
     FUSION_PASS_CHECK(sum_in_anchor == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "sum_in_anchor is null, fusion failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sum_in_anchor is null, fusion failed."),
                       return PARAM_INVALID);
 
     auto sum_out_anchor = sum_in_anchor->GetPeerOutAnchor();
@@ -218,15 +219,15 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
   ge::NodePtr maximumNode = GetNodeFromMapping(PATTERN_MAXIMUM, mapping);
   ge::NodePtr rsqrtNode = GetNodeFromMapping(PATTERN_RSQRT, mapping);
   ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
-  FUSION_PASS_CHECK(squareNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "squareNode is null, fusion failed."),
+  FUSION_PASS_CHECK(squareNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "squareNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(sumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "sumNode is null, fusion failed."),
+  FUSION_PASS_CHECK(sumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sumNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(maximumNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "maximumNode is null, fusion failed."),
+  FUSION_PASS_CHECK(maximumNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "maximumNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(rsqrtNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "rsqrtNode is null, fusion failed."),
+  FUSION_PASS_CHECK(rsqrtNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "rsqrtNode is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (IsMatch(squareNode, sumNode, maximumNode, rsqrtNode, mulNode) != SUCCESS) {
@@ -256,7 +257,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
   }
 
   ge::GeTensorPtr axis_w = sumWeights[0];
-  FUSION_PASS_CHECK(axis_w == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "axis_w is null, fusion failed."),
+  FUSION_PASS_CHECK(axis_w == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "axis_w is null, fusion failed."),
                     return NOT_CHANGED);
 
   if (axis_w->GetTensorDesc().GetDataType() != ge::DT_INT32 && axis_w->GetTensorDesc().GetDataType() != ge::DT_INT64) {
@@ -271,7 +272,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
   if (axisType == ge::DT_INT32) {
     const int32_t* const_data_ptr = (int32_t*)(axis_w->GetData().GetData());
     FUSION_PASS_CHECK(const_data_ptr == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "const_data_ptr is null, fusion failed."), return PARAM_INVALID);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_data_ptr is null, fusion failed."), return PARAM_INVALID);
     size = sizeTotal / sizeof(int32_t);
 
     std::vector<int32_t> const_data;
@@ -285,7 +286,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
   } else if (axisType == ge::DT_INT64) {
     const int64_t* const_data_ptr = (int64_t*)(axis_w->GetData().GetData());
     FUSION_PASS_CHECK(const_data_ptr == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "const_data_ptr is null, fusion failed."), return PARAM_INVALID);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_data_ptr is null, fusion failed."), return PARAM_INVALID);
     size = sizeTotal / sizeof(int64_t);
 
     std::vector<int64_t> const_data;
@@ -320,7 +321,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
   }
 
   ge::GeTensorPtr eps_w = maximumWeights[0];
-  FUSION_PASS_CHECK(eps_w == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "eps_w is null, fusion failed."),
+  FUSION_PASS_CHECK(eps_w == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "eps_w is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (eps_w->GetTensorDesc().GetShape().GetDimNum() != 0) {
@@ -336,18 +337,18 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
   }
 
   ge::DataType epsType = eps_w->GetTensorDesc().GetDataType();
-  FUSION_PASS_CHECK(eps_w->GetData().data() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "eps_w->GetData().data() is null."),
+  FUSION_PASS_CHECK(eps_w->GetData().data() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "eps_w->GetData().data() is null."),
                     return FAILED);
   if (epsType == ge::DT_FLOAT) {
     float eps = (*((float*)eps_w->GetData().data()));
     OP_LOGI(FUSED_OP_TYPE.c_str(), "L2_norm eps = %f.", eps);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(mulNode->GetOpDesc(), ge::L2_NORMALIZE_ATTR_EPS, eps),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "set L2 normalize eps failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set L2 normalize eps failed."), return FAILED);
   } else if (epsType == ge::DT_FLOAT16) {
     float eps = (*((fp16_t*)eps_w->GetData().data())).toFloat();
     OP_LOGI(FUSED_OP_TYPE.c_str(), "L2_norm eps = %f.", eps);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetFloat(mulNode->GetOpDesc(), ge::L2_NORMALIZE_ATTR_EPS, eps),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "set L2 normalize eps failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set L2 normalize eps failed."), return FAILED);
   }
 
   uint32_t rsqrt_output_index = 0;
@@ -358,7 +359,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
       break;
     }
   }
-  FUSION_PASS_CHECK(rsqrtNode->GetOutDataAnchor(0) == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(rsqrtNode->GetOutDataAnchor(0) == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "rsqrtNode get output failed."),
                     return PARAM_INVALID);
 
@@ -366,7 +367,7 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
     for (ge::InDataAnchorPtr &inAnchorPtr : rsqrtNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::RemoveEdge(rsqrtNode->GetOutDataAnchor(0), inAnchorPtr),
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge from fused node:%s's index to fusion node:%s's 1st index failed.",
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge from fused node:%s's index to fusion node:%s's 1st index failed.",
                   rsqrtNode->GetName().c_str(), mulNode->GetName().c_str()),
           return FAILED);
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove edge from fused node:%s's 1st index to fusion node:%s's 1st index.",
@@ -379,14 +380,14 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
 
   mulNode->GetOpDesc()->SetType("L2Normalize");
 
-  FUSION_PASS_CHECK(graph.RemoveNode(rsqrtNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove rsqrt node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(rsqrtNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove rsqrt node failed."),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(maximumNode) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove maximum node failed."), return FAILED);
-  FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove sum node failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove maximum node failed."), return FAILED);
+  FUSION_PASS_CHECK(graph.RemoveNode(sumNode) != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove sum node failed."),
                     return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(squareNode) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove square node failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove square node failed."), return FAILED);
 
   fusionNodes.push_back(mulNode);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AASquareSumMaximumRsqrtMulFusionPass fusion end");

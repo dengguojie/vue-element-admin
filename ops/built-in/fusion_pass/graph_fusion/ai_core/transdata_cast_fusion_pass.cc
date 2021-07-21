@@ -32,6 +32,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
@@ -46,7 +47,7 @@ vector<FusionPattern*> TransdataCastFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("TransdataCastFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_TRANSDATA, {"TransData"}).SetOutput(PATTERN_TRANSDATA);
@@ -58,10 +59,10 @@ vector<FusionPattern*> TransdataCastFusionPass::DefinePatterns() {
 
 Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_TRANSDATA, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (fusedDesc->GetOutputDesc(0).GetDataType() != ge::DT_BOOL) {
@@ -73,12 +74,12 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::OpDescPtr castInt8ToFloat16Desc = AttrUtils::CloneOpDesc(fusedDesc);
   FUSION_PASS_CHECK(
       castInt8ToFloat16Desc == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
       return PARAM_INVALID);
   ge::OpDescPtr castFloat16ToBoolDesc = AttrUtils::CloneOpDesc(fusedDesc);
   FUSION_PASS_CHECK(
       castFloat16ToBoolDesc == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedNode->GetName().c_str()),
       return PARAM_INVALID);
   castInt8ToFloat16Desc->SetName(fusedDesc->GetName() + "/" + PATTERN_CAST_1);
   castFloat16ToBoolDesc->SetName(fusedDesc->GetName() + "/" + PATTERN_CAST_2);
@@ -87,10 +88,10 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   // delete useless attribute
   FUSION_PASS_CHECK(SUCCESS != castInt8ToFloat16Desc->DelAttr("src_format"),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Delete the attr of src_format from castInt8ToFloat16Desc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Delete the attr of src_format from castInt8ToFloat16Desc failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(SUCCESS != castInt8ToFloat16Desc->DelAttr("dst_format"),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Delete the attr of dst_format from castInt8ToFloat16Desc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Delete the attr of dst_format from castInt8ToFloat16Desc failed."),
                     return PARAM_INVALID);
   if (SUCCESS != castInt8ToFloat16Desc->DelAttr("groups")) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of groups from castInt8ToFloat16Desc failed.");
@@ -103,10 +104,10 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   }
 
   FUSION_PASS_CHECK(SUCCESS != castFloat16ToBoolDesc->DelAttr("src_format"),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Delete the attr of src_format from castFloat16ToBoolDesc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Delete the attr of src_format from castFloat16ToBoolDesc failed."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(SUCCESS != castFloat16ToBoolDesc->DelAttr("dst_format"),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Delete the attr of dst_format from castFloat16ToBoolDesc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Delete the attr of dst_format from castFloat16ToBoolDesc failed."),
                     return PARAM_INVALID);
   if (SUCCESS != castFloat16ToBoolDesc->DelAttr("groups")) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete the attr of groups from castFloat16ToBoolDesc failed.");
@@ -127,10 +128,10 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   // add dst_type attribute
   FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(castInt8ToFloat16Desc, "dst_type", ge::DT_FLOAT16),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr to float16 from cast."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to set attr to float16 from cast."),
                     return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(castFloat16ToBoolDesc, "dst_type", ge::DT_BOOL),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr to float16 from cast."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to set attr to float16 from cast."),
                     return FAILED);
 
   // update input and output for cast_1, cast_2 and transdata
@@ -162,11 +163,11 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::NodePtr castFloat16ToBoolNode = graph.AddNode(castFloat16ToBoolDesc);
   FUSION_PASS_CHECK(
       castInt8ToFloat16Node == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
               castInt8ToFloat16Node->GetName().c_str()),
       return PARAM_INVALID);
   FUSION_PASS_CHECK(castFloat16ToBoolNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                             castFloat16ToBoolNode->GetName().c_str()),
                     return PARAM_INVALID);
 
@@ -181,13 +182,13 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   // set edge for before fusedNode -> cast_1 -> fusedNode
   for (unsigned int i = 0; i < fusedNode->GetAllInDataAnchors().size(); i++) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(trandataInDataPeerAnchor, transdataInDataAnchor) != ge::GRAPH_SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove node failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed."), return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge %u of node %s", i, fusedNode->GetName().c_str());
 
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(trandataInDataPeerAnchor,
                                            castInt8ToFloat16Node->GetInDataAnchor(i)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "Add edge from before fused node:%s's index[%u] to fusion node:%s's index[%u] failed.",
                 fusedNode->GetName().c_str(), i, castInt8ToFloat16Node->GetName().c_str(), i),
         return FAILED);
@@ -197,7 +198,7 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(castInt8ToFloat16Node->GetOutDataAnchor(i),
                                            fusedNode->GetInDataAnchor(i)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%u] to fusion node:%s's index[%u] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%u] to fusion node:%s's index[%u] failed.",
                 castInt8ToFloat16Node->GetName().c_str(), i, fusedNode->GetName().c_str(), i),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's index[%u] to fusion node:%s's index[%u].",
@@ -208,7 +209,7 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetOutDataAnchor(0),
                                            castFloat16ToBoolNode->GetInDataAnchor(0)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                 "Add edge from before fused node:%s's index[%u] to fusion node:%s's index[%u] failed.",
                 fusedNode->GetName().c_str(), 0, castFloat16ToBoolNode->GetName().c_str(), 0),
         return FAILED);
@@ -219,11 +220,11 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   unsigned int i = 0;
   for (auto inDataAnchor : fusedNodeOutAnchorPeerInAnchors) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(0), inDataAnchor) != ge::GRAPH_SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "remove node failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node failed."), return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge %u of node %s", i, fusedNode->GetName().c_str());
 
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(castFloat16ToBoolNode->GetOutDataAnchor(0), inDataAnchor),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                               "Add edge from fused node:%s's index[%u] to after fusion node:%s's index[%u] failed.",
                               castFloat16ToBoolNode->GetName().c_str(), i, fusedNode->GetName().c_str(), i),
                       return FAILED);

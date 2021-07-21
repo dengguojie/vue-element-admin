@@ -27,6 +27,7 @@
 #include <sstream>
 #include <vector>
 #include "op_log.h"
+#include "error_util.h"
 #include "graph_optimizer/fusion_common/graph_pass_util.h"
 
 #include "graph/debug/ge_attr_define.h"
@@ -117,7 +118,7 @@ Status FusedBatchnormFusionPass::GetAllBatchNormNodes(ge::ComputeGraph& graph, v
 Status FusedBatchnormFusionPass::MatchBatchNormNode(NodePtr bnNodePtr, PassMatchResult& matchResult) {
   // BN node has epsilon attr
   OpDescPtr bnOpDescPtr = bnNodePtr->GetOpDesc();
-  FUSION_PASS_CHECK(bnOpDescPtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "bnOpDescPtr is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(bnOpDescPtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bnOpDescPtr is null."), return PARAM_INVALID);
   if (!ge::AttrUtils::HasAttr(bnOpDescPtr, "epsilon")) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The fused batch norm node does not have epsilon attr.");
     return FAILED;
@@ -385,7 +386,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   bnReduceOp->AddOutputDesc("square_sum", matchResult.batchNormPtr->GetOpDesc()->GetInputDesc(2));
 
   ge::NodePtr bnReduceNode = graph.AddNode(bnReduceOp);
-  FUSION_PASS_CHECK(bnReduceNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "bnReduceNode is null, fusion failed."),
+  FUSION_PASS_CHECK(bnReduceNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bnReduceNode is null, fusion failed."),
                     return PARAM_INVALID);
   // add edge for bnreduce node
   GraphUtils::AddEdge(matchResult.dataNodeOutAnchorVec[0], bnReduceNode->GetInDataAnchor(0));
@@ -411,7 +412,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
 
   ge::NodePtr bnUpdateNode = graph.AddNode(bnUpdateOp);
 
-  FUSION_PASS_CHECK(bnUpdateNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "bnUpdateNode is null, fusion failed."),
+  FUSION_PASS_CHECK(bnUpdateNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bnUpdateNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // add edge for input of bnupdate
@@ -505,21 +506,21 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   float epsilonVal;
   if (ge::AttrUtils::GetFloat(bnNodePtr->GetOpDesc(), "epsilon", epsilonVal)) {
     if (!ge::AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "epsilon", epsilonVal)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set epsilon for bn update node.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to set epsilon for bn update node.");
       return FAILED;
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to get epsilon from batchnorm node.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to get epsilon from batchnorm node.");
     return FAILED;
   }
 
   if (!bnStreamLabel.empty()) {
     if (!ge::AttrUtils::SetStr(bnUpdateNode->GetOpDesc(), STREAM_LABEL, bnStreamLabel)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "bnUpdateNode set _stream_label error, fusion failed.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bnUpdateNode set _stream_label error, fusion failed.");
       return FAILED;
     }
     if (!ge::AttrUtils::SetStr(bnReduceNode->GetOpDesc(), STREAM_LABEL, bnStreamLabel)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "bnReduceNode set _stream_label error, fusion failed.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bnReduceNode set _stream_label error, fusion failed.");
       return FAILED;
     }
   }
@@ -549,7 +550,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
       float constDataFp32 = constDataFp16.toFloat();
       OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constDataFp32);
       if (!AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "factor", constDataFp32)) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
     return FAILED;
       }
     } else {
@@ -557,7 +558,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
       float constData = (float)(*constDataPtr);
       OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constData);
       if (!AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "factor", constData)) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
     return FAILED;
       }
     }
@@ -611,7 +612,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   for (NodePtr constNodePtr : matchResult.constNodeVec) {
     if (PatternFusionUtil::GetOutEdgeSize(constNodePtr) == 0) {
       FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNodePtr),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNodePtr->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNodePtr->GetName().c_str()),
                         return FAILED);
       originalNodes.push_back(constNodePtr);
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Remove const Node:[%s].", constNodePtr->GetName().c_str());

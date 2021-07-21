@@ -23,6 +23,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "tbe_ops_pass_util.h"
 #include <string>
@@ -80,7 +81,7 @@ static Status ParseNumberIdx(ge::GeTensorDesc& tensorDesc, size_t& numberIdx) {
 vector<FusionPattern*> SpaceToDepthFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SpaceToDepthFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {SPACE_TO_DEPTH_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -90,10 +91,10 @@ vector<FusionPattern*> SpaceToDepthFusionPass::DefinePatterns() {
 Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr spaceToDepthNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(spaceToDepthNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "spaceToDepthNode is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "spaceToDepthNode is null, fusion failed."), return PARAM_INVALID);
   ge::OpDescPtr spaceToDepthDesc = spaceToDepthNode->GetOpDesc();
   FUSION_PASS_CHECK(spaceToDepthDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "spaceToDepthDesc is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "spaceToDepthDesc is null, fusion failed."), return PARAM_INVALID);
 
   // check dynamic shape
   Operator spaceToDepthOp = OpDescUtils::CreateOperatorFromNode(spaceToDepthNode);
@@ -148,7 +149,7 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   size_t inChannelIdx = -1;
   FUSION_PASS_CHECK(
       SUCCESS != PatternFusionUtil::ParseChannelIdx(spaceToDepthInput, inChannelIdx),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s, which is unsupportable.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s, which is unsupportable.",
               spaceToDepthName.c_str(), ge::TypeUtils::FormatToSerialString(assitMatrixFormat).c_str()),
       return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: The original format of node's input0 is %s.", spaceToDepthName.c_str(),
@@ -189,7 +190,7 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
 
   unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[destSize]());
   FUSION_PASS_CHECK(inputAssit.get() == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s]: inputAssit is NULL", spaceToDepthName.c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s]: inputAssit is NULL", spaceToDepthName.c_str()),
                     return PARAM_INVALID);
 
   Status ret = NnSet(destSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));

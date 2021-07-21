@@ -28,6 +28,7 @@
 #include "graph/ge_tensor.h"
 #include "graph/op_desc.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph/utils/graph_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
@@ -113,9 +114,9 @@ Status CastCastFusionPass::ReLinkControlAnchor(ge::NodePtr castNode1, ge::NodePt
     if (cast1InControlAnchorPtr != nullptr && cast2InControlAnchorPtr != nullptr) {
         for (OutControlAnchorPtr outControlAnchorPtr : cast1InControlAnchorPtr->GetPeerOutControlAnchors()) {
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(outControlAnchorPtr, cast1InControlAnchorPtr),
-                OP_LOGE(FUSED_OP_TYPE.c_str(), "remove input control edge failed"), return FAILED);
+                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove input control edge failed"), return FAILED);
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(outControlAnchorPtr, cast2InControlAnchorPtr),
-                OP_LOGE(FUSED_OP_TYPE.c_str(), "add input control edge failed"), return FAILED);
+                VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add input control edge failed"), return FAILED);
         }
     }
     return SUCCESS;

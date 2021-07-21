@@ -33,6 +33,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 
 using namespace ge;
@@ -43,7 +44,7 @@ static const char *PAD = "PadV3";
 #define GET_CONST_DATA(DTYPE, TYPE, TENSOR, DATA)   \
   case (DTYPE): { \
     if (!GetConstDataTemplate<TYPE>(TENSOR, DATA)) { \
-      OP_LOGE(PAD, "get const_data failed"); \
+      VECTOR_FUSION_INNER_ERR_REPORT(PAD, "get const_data failed"); \
       return false; \
     } \
     break; \
@@ -55,7 +56,7 @@ bool GetConstDataTemplate(const ge::Tensor &const_tensor, std::vector<int64_t> &
   size_t size = 0;
   uint8_t *const_data_ptr = (uint8_t *)const_tensor.GetData();
   if (const_data_ptr == nullptr) {
-    OP_LOGE(PAD, "const_data_ptr is null");
+    VECTOR_FUSION_INNER_ERR_REPORT(PAD, "const_data_ptr is null");
     return false;
   }
   size = const_tensor.GetSize() / sizeof(T);
@@ -83,7 +84,7 @@ bool PadV3FusionPass::GetConstValue(const ge::Tensor &const_tensor, const DataTy
     GET_CONST_DATA(DT_DOUBLE, double, const_tensor, const_data)
     GET_CONST_DATA(DT_BOOL, bool, const_tensor, const_data)
     default:
-      OP_LOGE(PAD, "get const_data failed");
+      VECTOR_FUSION_INNER_ERR_REPORT(PAD, "get const_data failed");
       return false;
   }
   return true;
@@ -95,7 +96,7 @@ vector<FusionPattern *> PadV3FusionPass::DefinePatterns()
 
   // pad fusion to pad_d
   FusionPattern *pattern = new(std::nothrow) FusionPattern("PadV3Fusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_PAD, {PAD}).SetOutput(PATTERN_PAD);
@@ -121,7 +122,7 @@ bool PadV3FusionPass::AutoRemoveInput(ge::ComputeGraph &graph, ge::NodePtr &pad_
     ge::NodePtr constNode1 = const_anchor_ptr->GetOwnerNode();
     if (PatternFusionUtil::GetOutEdgeSize(constNode1) == 0) {
       FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNode1),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNode1->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove Node[%s] failed", constNode1->GetName().c_str()),
                         return false);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Remove const Node:[%s].", constNode1->GetName().c_str());
     } else {
@@ -130,7 +131,7 @@ bool PadV3FusionPass::AutoRemoveInput(ge::ComputeGraph &graph, ge::NodePtr &pad_
   }
 
   if (!ge::OpDescUtils::ClearInputDesc(pad_desc, index)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to clear input desc[%d]", index);
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to clear input desc[%d]", index);
     return false;
   }
 
@@ -142,14 +143,14 @@ Status PadV3FusionPass::PadMoveConsttoAttr(ge::ComputeGraph &graph, ge::NodePtr 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(pad_node);
   Tensor const_tensor;
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", const_tensor)) {
-    OP_LOGE(op.GetName().c_str(), "Get GetInputConstData failed ");
+    VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "Get GetInputConstData failed ");
     return GRAPH_FAILED;
   }
   DataType dtype = op.GetInputDesc("paddings").GetDataType();
 
   std::vector<int64_t> pad_value;
   if (!GetConstValue(const_tensor, dtype, pad_value)) {
-    OP_LOGE(op.GetName().c_str(), "Get Paddings Const Value failed ");
+    VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "Get Paddings Const Value failed ");
     return GRAPH_FAILED;
   };
 
@@ -162,30 +163,30 @@ Status PadV3FusionPass::PadMoveConsttoAttr(ge::ComputeGraph &graph, ge::NodePtr 
   }
 
   ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
-  FUSION_PASS_CHECK(pad_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "pad_v3_node's OpDesc is null, fusion failed."), return PARAM_INVALID);
   ge::AttrUtils::SetListListInt(pad_desc, "paddings", paddings);
 
   // translate constant_values to attr
   if (pad_desc->MutableInputDesc(pad_desc->GetInputIndexByName("constant_values")) != nullptr) {
     if (ge::GRAPH_SUCCESS != op.GetInputConstData("constant_values", const_tensor)) {
-      OP_LOGE(op.GetName().c_str(), "Get GetInputConstData failed ");
+      VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "Get GetInputConstData failed ");
       return GRAPH_FAILED;
     }
     dtype = op.GetInputDesc("constant_values").GetDataType();
 
     vector<int64_t> const_value;
     if (!GetConstValue(const_tensor, dtype, const_value)) {
-      OP_LOGE(op.GetName().c_str(), "Get Const Value failed ");
+      VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "Get Const Value failed ");
       return GRAPH_FAILED;
     }
     ge::AttrUtils::SetInt(pad_desc, "constant_values", const_value.at(0));
   }
 
   // remove input node as index descend
-  FUSION_PASS_CHECK(!AutoRemoveInput(graph, pad_node, op, "constant_values"), OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(!AutoRemoveInput(graph, pad_node, op, "constant_values"), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "remove input constant_values failed, fusion failed."), return GRAPH_FAILED);
-  FUSION_PASS_CHECK(!AutoRemoveInput(graph, pad_node, op, "paddings"), OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(!AutoRemoveInput(graph, pad_node, op, "paddings"), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "remove input paddings failed, fusion failed."), return GRAPH_FAILED);
 
   return SUCCESS;
@@ -195,11 +196,11 @@ Status PadV3FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
 {
   bool is_dynamic_shape = false;
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PAD, mapping);
-  FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_v3_node is null, fusion failed."),
+  FUSION_PASS_CHECK(pad_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_v3_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
-  FUSION_PASS_CHECK(pad_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                     "pad_v3_node's OpDesc is null, fusion failed."), return PARAM_INVALID);
   // get fuzz build attr
   ge::AttrUtils::GetBool(pad_node->GetOpDesc(), ge::ATTR_NAME_FUZZ_BUILD, is_dynamic_shape);
@@ -220,7 +221,7 @@ Status PadV3FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   }
 
   if (PadMoveConsttoAttr(graph, pad_node) != SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), " PadMoveConsttoAttr failed.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), " PadMoveConsttoAttr failed.");
     return PARAM_INVALID;
   }
 

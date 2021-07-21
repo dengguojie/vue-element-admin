@@ -34,6 +34,7 @@
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
@@ -48,7 +49,7 @@ vector<FusionPattern*> ALSTMFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ALSTMFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -99,7 +100,7 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(inputWNode);
   if (weights.empty()) {
     failStatus = true;
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weights is null, fusion failed.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weights is null, fusion failed.");
     return inputTensorDesc;
   }
   ge::GeTensorPtr inputWConstGeTensor = weights[0];
@@ -141,7 +142,7 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
 
     unique_ptr<float[]> wStaticPaddData(new (std::nothrow) float[destWCol * destWRow]());
     auto retMem = memset_s(wStaticPaddData.get(), destWCol * destWRow, 0, destWCol * destWRow);
-    FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to operate const zero memset_s function!"),
+    FUSION_PASS_CHECK(retMem != EOK, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to operate const zero memset_s function!"),
                       failStatus = true);
     float* wStaticOriData = (float*)inputWConstGeTensor->GetData().data();
     float* wStaticWeight = wStaticPaddData.get();
@@ -180,7 +181,7 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   // add the sub operators to the graph
   innerproductNode = graph.AddNode(innerProductStaticDesc);
   FUSION_PASS_CHECK(innerproductNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                             innerProductStaticDesc->GetName().c_str()),
                     failStatus = true);
   newNodes.push_back(innerproductNode);
@@ -203,7 +204,7 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
     dequantNode = graph.AddNode(dequantStaticDesc1);
     FUSION_PASS_CHECK(
         dequantNode == nullptr,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", dequantStaticDesc1->GetName().c_str()),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", dequantStaticDesc1->GetName().c_str()),
         failStatus = true);
     newNodes.push_back(dequantNode);
   }
@@ -221,7 +222,7 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
   vector<ge::GeTensorPtr> weightsWx = ge::OpDescUtils::MutableWeights(inputWxNode);
   if (weightsWx.empty()) {
     failStatus = true;
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsWx is null, fusion failed.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsWx is null, fusion failed.");
     return nullptr;
   }
   ge::GeTensorPtr wxTensorPtr = weightsWx[0];
@@ -236,7 +237,7 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
   vector<ge::GeTensorPtr> weightsWh = ge::OpDescUtils::MutableWeights(inputWhNode);
   if (weightsWh.empty()) {
     failStatus = true;
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsWh is null, fusion failed.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsWh is null, fusion failed.");
     return nullptr;
   }
   ge::GeTensorPtr whTensorPtr = weightsWh[0];
@@ -285,7 +286,7 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
     float* whData = (float*)whTensorPtr->GetData().data();
 
     auto retMemWxh = memset_s(wxhPaddData.get(), targetRow * destWhCol, 0, targetRow * destWhCol);
-    FUSION_PASS_CHECK(retMemWxh != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsWh get space failed, fusion failed."), failStatus=true);
+    FUSION_PASS_CHECK(retMemWxh != EOK, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM weightsWh get space failed, fusion failed."), failStatus=true);
     float* dstWeight = wxhPaddData.get();
     int32_t oldSingleCol = whCol / 4;
     int32_t singleCol = (oldSingleCol + 15) / 16 * 16;
@@ -319,7 +320,7 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
     constWxOp.SetAttr("const_adjust_flag", true);
 
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, int8), fusion failed.",
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, int8), fusion failed.",
             fusedDesc->GetName().c_str());
     failStatus = true;
   }
@@ -350,7 +351,7 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
   vector<ge::GeTensorPtr> bias_data = ge::OpDescUtils::MutableWeights(inputBiasNode);
   if (bias_data.empty()) {
     failStatus = true;
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM bias_data is null, fusion failed.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM bias_data is null, fusion failed.");
     return lstmCellV2Node;
   }
   Operator biasOp = OpDescUtils::CreateOperatorFromNode(inputBiasNode);
@@ -373,7 +374,7 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
     unique_ptr<float[]> biasPadData(new (std::nothrow) float[tar_bias_dim]());
 
     auto retMemBias = memset_s(biasPadData.get(), tar_bias_dim, 0, tar_bias_dim);
-    FUSION_PASS_CHECK(retMemBias != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM Bias get space failed, fusion failed."), failStatus=true);
+    FUSION_PASS_CHECK(retMemBias != EOK, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LSTM Bias get space failed, fusion failed."), failStatus=true);
     float* dstBias = biasPadData.get();
     float* srcBias = (float*)biasTensorPtr->GetData().data();
     for (int32_t repeat = 0; repeat < 4; repeat++) {
@@ -545,7 +546,7 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
     ge::NodePtr basicLSTMNode = graph.AddNode(basicLSTMDesc2);
     FUSION_PASS_CHECK(
         basicLSTMNode == nullptr,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", basicLSTMDesc2->GetName().c_str()),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", basicLSTMDesc2->GetName().c_str()),
         failStatus = true);
     newNodes.push_back(basicLSTMNode);
     lstmCellV2Node.push_back(basicLSTMNode);
@@ -555,12 +556,12 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
 Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   // get the NodePtr of LSTM
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   int32_t input_size = fusedNode->GetInDataNodes().size();
   // get the OpDescPtr of LSTM
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   ge::GeTensorDesc tempInput0Desc = fusedDesc->GetInputDesc(0);
   ge::GeShape shapeInput0 = tempInput0Desc.GetShape();
@@ -568,7 +569,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   if (shapeInput0.GetDims().size() == 4) {
     if (PatternFusionUtil::IsUnknownShape(shapeInput0.GetDim(2)) ||
         PatternFusionUtil::IsUnknownShape(shapeInput0.GetDim(3))) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ALSTMFusionPass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ALSTMFusionPass cannot be applied for unknown shape.");
       return FAILED;
     }
     last_dim_value = shapeInput0.GetDim(2) * shapeInput0.GetDim(3);
@@ -651,7 +652,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   if (has_static) {
     outInnerProductTensorDesc = ProcessStatic(fusedNode, num_output, innerproductNode, dequantNode, graph, newNodes,
                                               failStatus, xStaticIndex, wxStaticIndex);
-    FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "ProcessStatic:check failed, fusion failed."),
+    FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProcessStatic:check failed, fusion failed."),
                       return PARAM_INVALID);
   }
 
@@ -713,7 +714,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::NodePtr splitXNode = graph.AddNode(spiltStaticDesc);
   FUSION_PASS_CHECK(
       splitXNode == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", spiltStaticDesc->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", spiltStaticDesc->GetName().c_str()),
       return PARAM_INVALID);
   newNodes.push_back(splitXNode);
 
@@ -748,13 +749,13 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::NodePtr splitContNode = graph.AddNode(spiltContStaticDesc);
   FUSION_PASS_CHECK(
       splitContNode == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", spiltContStaticDesc->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", spiltContStaticDesc->GetName().c_str()),
       return PARAM_INVALID);
   newNodes.push_back(splitContNode);
 
   // process w_xh
   ge::GeTensorPtr wxTensorPtr = ProcessWxh(fusedNode, failStatus, wxIndex, whIndex, c0Index);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "ProcessWxh:check failed, fusion failed."),
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProcessWxh:check failed, fusion failed."),
                     return FAILED);
 
   std::vector<int64_t> dimsTShape;
@@ -808,7 +809,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::NodePtr concatNode = graph.AddNode(concatStaticDesc);
   FUSION_PASS_CHECK(
       concatNode == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", concatStaticDesc->GetName().c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", concatStaticDesc->GetName().c_str()),
       return PARAM_INVALID);
   newNodes.push_back(concatNode);
   string opType = GetPeerNodeOptype(fusedNode);
@@ -819,14 +820,14 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(xStaticIndex)->GetPeerOutAnchor(),
                                            innerproductNode->GetInDataAnchor(0)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                 fusedNode->GetName().c_str(), 0, innerproductNode->GetName().c_str(), 0),
         return FAILED);
 
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(wxStaticIndex)->GetPeerOutAnchor(),
                                            innerproductNode->GetInDataAnchor(1)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                 fusedNode->GetName().c_str(), 0, innerproductNode->GetName().c_str(), 0),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -835,14 +836,14 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     if (opType == "AscendQuant") {
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(innerproductNode->GetOutDataAnchor(0), dequantNode->GetInDataAnchor(0)),
-          OP_LOGE(FUSED_OP_TYPE.c_str(),
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                   "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                   innerproductNode->GetName().c_str(), 0, dequantNode->GetName().c_str(), 0),
           return FAILED);
 
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(10)->GetPeerOutAnchor(),
                                                            dequantNode->GetInDataAnchor(1)),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                 "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                 fusedNode->GetName().c_str(), 0, dequantNode->GetName().c_str(), 0),
                         return FAILED);
@@ -854,7 +855,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   FUSION_PASS_CHECK(
       SUCCESS !=
           ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(), splitXNode->GetInDataAnchor(0)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
               fusedNode->GetName().c_str(), 0, splitXNode->GetName().c_str(), 0),
       return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -863,7 +864,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   FUSION_PASS_CHECK(
       SUCCESS !=
           ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(), splitContNode->GetInDataAnchor(0)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
               fusedNode->GetName().c_str(), 1, splitContNode->GetName().c_str(), 0),
       return FAILED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -873,7 +874,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   for (int64_t i = 0; i < numSplitX; i++) {
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(splitXNode->GetOutDataAnchor(i), lstmCellV2Node[i]->GetInDataAnchor(0)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                 splitXNode->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 0),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -881,7 +882,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
 
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(splitContNode->GetOutDataAnchor(i), lstmCellV2Node[i]->GetInDataAnchor(1)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%ld] to fusion node:%s's input[%d] failed.",
                 splitContNode->GetName().c_str(), i, lstmCellV2Node[i]->GetName().c_str(), 0),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -892,7 +893,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       if (opType == "AscendQuant") {
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dequantNode->GetOutDataAnchor(0),
                                                              lstmCellV2Node[i]->GetInDataAnchor(index)),
-                          OP_LOGE(FUSED_OP_TYPE.c_str(),
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                   "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                   dequantNode->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 0),
                           return FAILED);
@@ -901,7 +902,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       } else {
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(innerproductNode->GetOutDataAnchor(0),
                                                              lstmCellV2Node[i]->GetInDataAnchor(index)),
-                          OP_LOGE(FUSED_OP_TYPE.c_str(),
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                   "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                   innerproductNode->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 0),
                           return FAILED);
@@ -914,7 +915,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     if (i == 0 && expose_hidden) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(h0Index)->GetPeerOutAnchor(),
                                                            lstmCellV2Node[i]->GetInDataAnchor(index)),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                 "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                 fusedNode->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 0),
                         return FAILED);
@@ -923,7 +924,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       index = index + 1;
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(c0Index)->GetPeerOutAnchor(),
                                                            lstmCellV2Node[i]->GetInDataAnchor(index)),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                 "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                 fusedNode->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 0),
                         return FAILED);
@@ -931,7 +932,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     } else if (i > 0) {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmCellV2Node[i - 1]->GetOutDataAnchor(0),
                                                            lstmCellV2Node[i]->GetInDataAnchor(index)),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                 "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                 lstmCellV2Node[i - 1]->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 0),
                         return FAILED);
@@ -940,7 +941,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       index = index + 1;
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(lstmCellV2Node[i - 1]->GetOutDataAnchor(1),
                                                            lstmCellV2Node[i]->GetInDataAnchor(index)),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                 "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                 lstmCellV2Node[i - 1]->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 0),
                         return FAILED);
@@ -953,7 +954,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(wxIndex)->GetPeerOutAnchor(),
                                            lstmCellV2Node[i]->GetInDataAnchor(index)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d] failed.",
                 fusedNode->GetName().c_str(), 0, lstmCellV2Node[i]->GetName().c_str(), 1),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's output[%d] to fusion node:%s's input[%d].",
@@ -963,7 +964,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     // concat node
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(lstmCellV2Node[i]->GetOutDataAnchor(0), concatNode->GetInDataAnchor(i)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                 lstmCellV2Node[i]->GetName().c_str(), 0, concatNode->GetName().c_str(), 0),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -973,7 +974,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(biasIndex)->GetPeerOutAnchor(),
                                            lstmCellV2Node[i]->GetInDataAnchor(index)),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                 lstmCellV2Node[i]->GetName().c_str(), 0, fusedNode->GetName().c_str(), 0),
         return FAILED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d].",
@@ -984,7 +985,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     if (opType == "AscendQuant") {
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(9)->GetPeerOutAnchor(),
                                                            lstmCellV2Node[i]->GetInDataAnchor(index)),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                 "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.",
                                 lstmCellV2Node[i]->GetName().c_str(), 0, fusedNode->GetName().c_str(), 0),
                         return FAILED);
@@ -1000,7 +1001,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     for (InDataAnchorPtr inAnchorPtr : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), inAnchorPtr),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                 "Add edge from fused node:%s's output[0] to fusion node:%s's output[0] failed.",
                                 concatNode->GetName().c_str(), fusedNode->GetName().c_str()),
                         return FAILED);
@@ -1016,7 +1017,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(lstmCellV2Node[numSplitX - 1]->GetOutDataAnchor(0), inAnchorPtr),
-          OP_LOGE(FUSED_OP_TYPE.c_str(),
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                   "Add edge from fused node:%s's output[0] to fusion node:%s's output[0] failed.",
                   lstmCellV2Node[numSplitX - 1]->GetName().c_str(), fusedNode->GetName().c_str()),
           return FAILED);
@@ -1032,7 +1033,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
       inAnchorPtr->UnlinkAll();
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(lstmCellV2Node[numSplitX - 1]->GetOutDataAnchor(1), inAnchorPtr),
-          OP_LOGE(FUSED_OP_TYPE.c_str(),
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                   "Add edge from fused node:%s's output[0] to fusion node:%s's output[0] failed.",
                   lstmCellV2Node[numSplitX - 1]->GetName().c_str(), fusedNode->GetName().c_str()),
           return FAILED);
@@ -1054,7 +1055,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   }
   // remove LSTMD from graph
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", fusedNode->GetName().c_str()),
                     return FAILED);
 
   return SUCCESS;

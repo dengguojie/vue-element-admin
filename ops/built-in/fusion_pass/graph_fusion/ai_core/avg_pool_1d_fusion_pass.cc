@@ -31,6 +31,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "securec.h"
 
@@ -70,10 +71,10 @@ Status AvgPool1DFusionPass::AvgValueTableGen(const vector<int64_t>& dim_info, co
                                              const int64_t stride_size, const vector<int64_t>& padding,
                                              const bool ceil_mode, const bool count_include_pad,
                                              vector<int64_t>& assit_dim_info, T* output) {
-  FUSION_PASS_CHECK(output == nullptr, OP_LOGE(kFusedOpType.c_str(), "The output pointer is null!"), return FAILED);
-  FUSION_PASS_CHECK(dim_info.size() < 4, OP_LOGE(kFusedOpType.c_str(), "The dim_info at least has 4 elements!"),
+  FUSION_PASS_CHECK(output == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The output pointer is null!"), return FAILED);
+  FUSION_PASS_CHECK(dim_info.size() < 4, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The dim_info at least has 4 elements!"),
                     return FAILED);
-  FUSION_PASS_CHECK(padding.size() < 2, OP_LOGE(kFusedOpType.c_str(), "The padding at least has 2 elements!"),
+  FUSION_PASS_CHECK(padding.size() < 2, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The padding at least has 2 elements!"),
                     return FAILED);
 
   int64_t n_input{1};
@@ -92,7 +93,7 @@ Status AvgPool1DFusionPass::AvgValueTableGen(const vector<int64_t>& dim_info, co
   int64_t w_output = 0;
   int64_t c0_output = c0_input;
 
-  FUSION_PASS_CHECK(stride == 0, OP_LOGE(kFusedOpType.c_str(), "The stride should not be 0, fusion failed."),
+  FUSION_PASS_CHECK(stride == 0, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The stride should not be 0, fusion failed."),
                     return FAILED);
   w_output = CalWoutput(w_in_input, padl, padr, k_size, stride, ceil_mode);
   SetAssitInfo(n_output, c1_output, h_output, w_output, c0_output, assit_dim_info);
@@ -116,7 +117,7 @@ Status AvgPool1DFusionPass::AvgValueTableGen(const vector<int64_t>& dim_info, co
           }
           data_num = end - start;
           if (data_num == 0) {
-            OP_LOGE("divied by zero error.");
+            VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "divied by zero error.");
             return FAILED;
           }
           if (typeid(output) == typeid(float*)) {
@@ -136,7 +137,7 @@ Status AvgPool1DFusionPass::AvgValueTableGen(const vector<int64_t>& dim_info, co
               output[out_offset_point] = tmp.val;
             }
           } else {
-            OP_LOGE(kFusedOpType.c_str(), "Check data type, output is zero!");
+            VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Check data type, output is zero!");
             return FAILED;
           }
         }
@@ -149,7 +150,7 @@ Status AvgPool1DFusionPass::AvgValueTableGen(const vector<int64_t>& dim_info, co
 vector<FusionPattern*> AvgPool1DFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (nothrow) FusionPattern("AvgPool1DFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "New a pattern object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "New a pattern object failed."), return patterns);
   pattern->AddOpDesc(kPatternAvgPool1D, {"AvgPool1D"}).SetOutput(kPatternAvgPool1D);
   patterns.push_back(pattern);
   return patterns;
@@ -159,13 +160,13 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   // avg_pool_1d node
   NodePtr avgpool1d_fussed_node = GetNodeFromMapping(kPatternAvgPool1D, mapping);
   FUSION_PASS_CHECK(avgpool1d_fussed_node == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "The avgpool1d_fussed_node is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The avgpool1d_fussed_node is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of avg_pool_1d
   OpDescPtr avgpool1d_desc = avgpool1d_fussed_node->GetOpDesc();
   FUSION_PASS_CHECK(avgpool1d_desc == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "The avgpool1d_fussed_node's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The avgpool1d_fussed_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   int64_t k_size;
@@ -176,11 +177,11 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
 
   // get ksize pads strides value ceil_mode count_include_pad
   FUSION_PASS_CHECK(!AttrUtils::GetInt(avgpool1d_desc, "ksize", k_size),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr ksize failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Get attr ksize failed."), return FAILED);
   FUSION_PASS_CHECK(!AttrUtils::GetInt(avgpool1d_desc, "strides", strides),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr strides failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Get attr strides failed."), return FAILED);
   FUSION_PASS_CHECK(!AttrUtils::GetListInt(avgpool1d_desc, "pads", pads),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr pads failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Get attr pads failed."), return FAILED);
   // Attr ceil_mode and count_include_pad are optional
   AttrUtils::GetBool(avgpool1d_desc, "ceil_mode", ceil_mode);
   AttrUtils::GetBool(avgpool1d_desc, "count_include_pad", count_include_pad);
@@ -190,7 +191,7 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   // gen avgtable matrix
   auto avgpool1d_op_desc = avgpool1d_fussed_node->GetOpDesc();
   FUSION_PASS_CHECK(avgpool1d_op_desc == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "The opdesc of avgpool1d_fussed_node is nullptr."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The opdesc of avgpool1d_fussed_node is nullptr."),
                     return PARAM_INVALID);
   GeTensorDesc avgpool1d_input_shape_tensor = avgpool1d_op_desc->GetInputDesc(0);
 
@@ -200,7 +201,7 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   GeShape avgpool1d_shape = avgpool1d_input_shape_tensor.GetShape();
   vector<int64_t> avgpool1d_dim_info = avgpool1d_shape.GetDims();
   FUSION_PASS_CHECK(avgpool1d_dim_info.size() < 4,
-                    OP_LOGE(kFusedOpType.c_str(), "The size of avgpool1d_dim_info should great than 3, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The size of avgpool1d_dim_info should great than 3, fusion failed."),
                     return FAILED);
   Format input_format = avgpool1d_input_shape_tensor.GetFormat();
   FUSION_PASS_CHECK(pads.size() != 2, OP_LOGW(kFusedOpType.c_str(), "Pads must list of 2 elements."),
@@ -220,30 +221,30 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
                                      avgpool1d_dim_info[3]};
   // orig_input_shape_v must NCHW
   GeTensorPtr avg_table_assit_ptr{nullptr};
-  FUSION_PASS_CHECK(strides == 0, OP_LOGE(kFusedOpType.c_str(), "The stride should not be 0, fusion failed."),
+  FUSION_PASS_CHECK(strides == 0, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The stride should not be 0, fusion failed."),
                     return PARAM_INVALID);
   for (size_t i = 1; i <= 3; i++) {
     auto dim = avgpool1d_dim_info[i];
     FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(dim),
-                      OP_LOGE(kFusedOpType.c_str(), "AvgPool1DFusionPass cannot be applied for unknown shape."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "AvgPool1DFusionPass cannot be applied for unknown shape."),
                       return GRAPH_FAILED);
   }
   int64_t w_output = CalWoutput(avgpool1d_dim_info[3], pads[0], pads[1], k_size, strides, ceil_mode);
-  FUSION_PASS_CHECK(w_output <= 0, OP_LOGE(kFusedOpType.c_str(), "Should keep w_output > 0!"), return GRAPH_FAILED);
+  FUSION_PASS_CHECK(w_output <= 0, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Should keep w_output > 0!"), return GRAPH_FAILED);
   int64_t value_table_size = w_output * kC0;
 
   FUSION_PASS_CHECK(
       (((avgpool1d_dim_info[1] * avgpool1d_dim_info[2] * avgpool1d_dim_info[3]) == 0) || (value_table_size <= 0)),
-      OP_LOGE(kFusedOpType.c_str(), "The value_table_size have 0 element"), return FAILED);
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The value_table_size have 0 element"), return FAILED);
   vector<int64_t> avgpool1d_assit_dim_info;
   Status ret;
   if (input_type == DT_FLOAT16) {
     unique_ptr<uint16_t[]> input_assit(new (nothrow) uint16_t[value_table_size]());
-    FUSION_PASS_CHECK(input_assit.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "The input_assit is NULL"),
+    FUSION_PASS_CHECK(input_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The input_assit is NULL"),
                       return PARAM_INVALID);
     ret = AvgValueTableGen(orig_input_shape_v, k_size, strides, pads, ceil_mode, count_include_pad,
                            avgpool1d_assit_dim_info, input_assit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "AssitHelp failed."), return ret);
     GeShape avppool1d_assit_shape(avgpool1d_assit_dim_info);
     // set tensor_desc
     GeTensorDesc tensor_desc(GeShape(), FORMAT_NC1HWC0, input_type);
@@ -258,11 +259,11 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
         return PARAM_INVALID);
   } else if (input_type == DT_FLOAT) {
     unique_ptr<float[]> input_assit(new (nothrow) float[value_table_size]());
-    FUSION_PASS_CHECK(input_assit.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "The input_assit is NULL"),
+    FUSION_PASS_CHECK(input_assit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The input_assit is NULL"),
                       return PARAM_INVALID);
     ret = AvgValueTableGen(orig_input_shape_v, k_size, strides, pads, ceil_mode, count_include_pad,
                            avgpool1d_assit_dim_info, input_assit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "AssitHelp failed."), return ret);
     GeShape avppool1d_assit_shape(avgpool1d_assit_dim_info);
     // set tensor_desc
     GeTensorDesc tensor_desc(GeShape(), FORMAT_NC1HWC0, input_type);
@@ -278,13 +279,13 @@ Status AvgPool1DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   }
   vector<GeTensorPtr> avgpool1d_weights = {avg_table_assit_ptr};
   FUSION_PASS_CHECK(OpDescUtils::SetWeights(avgpool1d_fussed_node, avgpool1d_weights) != GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "SetWeights failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "SetWeights failed."), return FAILED);
 
   auto avgpool1d_const_input_nodes = OpDescUtils::GetConstInputs(avgpool1d_fussed_node);
   NodePtr avgpool1d_const_input = avgpool1d_const_input_nodes[0];
   auto avgpool1d_const_input_desc = avgpool1d_const_input->GetOpDesc();
   FUSION_PASS_CHECK(avgpool1d_const_input_desc == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "The avgpool1d_const_input_desc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The avgpool1d_const_input_desc is null, fusion failed."),
                     return PARAM_INVALID);
   avgpool1d_const_input_desc->SetType(kConstantOp);
   avgpool1d_desc->SetType("AvgPool1DD");

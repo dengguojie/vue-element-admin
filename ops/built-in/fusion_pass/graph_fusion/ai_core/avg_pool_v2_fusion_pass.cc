@@ -26,6 +26,7 @@
 #include <map>
 
 #include "op_log.h"
+#include "error_util.h"
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/types.h"
@@ -72,7 +73,7 @@ vector<FusionPattern*> AvgPoolV2FusionPass::DefinePatterns() {
 NodePtr AvgPoolV2FusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode, ge::Format& inputOriginFormat) {
   ge::OutDataAnchorPtr avgPoolAnchorPtr1 = avgPoolNode->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(avgPoolAnchorPtr1 == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "avgPoolAnchorPtr1 is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avgPoolAnchorPtr1 is null, fusion failed."),
                     return nullptr);
   ge::NodePtr postNode = nullptr;
   ge::NodePtr mulNode = nullptr;
@@ -213,7 +214,7 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
 
   ge::OpDescPtr mulOp = mulNode->GetOpDesc();
   FUSION_PASS_CHECK(mulOp == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "mulOp is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulOp is null, fusion failed."),
                     return PARAM_INVALID);
   ge::GeTensorDesc inputDesc0 = mulOp->GetInputDesc(0);
   ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
@@ -600,7 +601,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       for (size_t i = 0; i <= 3; i++) {
         auto dim = dimOut[i];
         if (PatternFusionUtil::IsUnknownShape(dim)) {
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
           return NOT_CHANGED;
         }
       }

@@ -28,6 +28,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "fp16_t.hpp"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
@@ -44,7 +45,7 @@ vector<FusionPattern*> YoloPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   // define Fusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("YoloPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_YOLO, {YOLO}).SetOutput(PATTERN_YOLO);
@@ -58,7 +59,7 @@ Status YoloPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::No
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into YoloPass");
   // diag node
   ge::NodePtr yoloNode = GetNodeFromMapping(PATTERN_YOLO, mapping);
-  FUSION_PASS_CHECK(yoloNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "yoloNode is null, fusion failed."),
+  FUSION_PASS_CHECK(yoloNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "yoloNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr yoloDesc = yoloNode->GetOpDesc();
@@ -66,13 +67,13 @@ Status YoloPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::No
 
   vector<int64_t> inputShape = yoloInputDesc.GetShape().GetDims();
   FUSION_PASS_CHECK(inputShape.size() < 4,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s] input shape less then 4.", yoloNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node[%s] input shape less then 4.", yoloNode->GetName().c_str()),
                     return FAILED);
 
   for (size_t i = 2; i <= 3; i++) {
     auto dim = inputShape[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "YoloPass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "YoloPass cannot be applied for unknown shape.");
       return FAILED;
     }
   }

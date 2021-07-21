@@ -28,6 +28,7 @@
 
 #include "quant_host_cpu_op_common.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/types.h"
@@ -125,7 +126,7 @@ NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode
   // creat a mul node
   std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
   mulDesc = std::make_shared<ge::OpDesc>(PoolNode->GetName() + "_mul_layer", "Mul");
-  FUSION_PASS_CHECK(mulDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."), return nullptr);
+  FUSION_PASS_CHECK(mulDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."), return nullptr);
 
   // add input
   ge::GeTensorDesc input_desc = PoolNode->GetOpDesc()->GetOutputDesc(0);
@@ -138,7 +139,7 @@ NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode
       mulH = dimMul[2];
       mulW = dimMul[3];
     } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimMul size is not match, please check!");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimMul size is not match, please check!");
     return nullptr;
   }
 
@@ -151,7 +152,7 @@ NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode
   input_desc.SetFormat(ge::FORMAT_NC1HWC0);
   input_desc.SetOriginFormat(ge::FORMAT_NCHW);
   FUSION_PASS_CHECK(mulDesc->AddInputDesc(input_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
 
   // add output
   ge::GeTensorDesc output_desc;
@@ -161,7 +162,7 @@ NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode
   output_desc.SetFormat(ge::FORMAT_NC1HWC0);
   output_desc.SetOriginFormat(ge::FORMAT_NCHW);
   FUSION_PASS_CHECK(mulDesc->AddOutputDesc(output_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
 
   // add node
   mulNode = graph.AddNode(mulDesc);
@@ -176,13 +177,13 @@ NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode
 
     // add edge between mul and next_node
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                               mulNode->GetName().c_str(), postNode->GetName().c_str()),
                       return nullptr);
   }
   // add edge between avgpool and mul
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(PoolAnchorPtr1, mulNode->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                             PoolNode->GetName().c_str(), mulNode->GetName().c_str()),
                     return nullptr);
 
@@ -212,29 +213,29 @@ Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
       dimH = dimInfo[2];
       dimW = dimInfo[3];
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimOut size is not match, please check!");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimOut size is not match, please check!");
     return PARAM_INVALID;
   }
   outputC1 = (outputC + outputC0 - 1) / outputC0;
   ge::GeTensorPtr coffePtr = nullptr;
   int64_t coffeSize = 1 * outputC1 * outputH * outputW * outputC0;
-  FUSION_PASS_CHECK(coffeSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "coffeSize is Invalid"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(coffeSize <= 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "coffeSize is Invalid"), return PARAM_INVALID);
   unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[coffeSize]());
-  FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                     return PARAM_INVALID);
 
   Status ret = NnSet(coffeSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
 
   vector<int64_t> coffeDimInfo = {1, outputC1, outputH, outputW, outputC0};
   ret = PoolingGenerateCoffeFP16(coffeDimInfo, window, stride, pad, dimH, dimW, *inputAssit.get(), isInt8);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "CoffeFP16 is failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CoffeFP16 is failed."), return ret);
 
   vector<int64_t> coffeDimInfoOrigin;
   if (inputDesc0OriginFormat == FORMAT_NCHW) {
     coffeDimInfoOrigin = {1, outputC, outputH, outputW};
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "format is wrong, please check!");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "format is wrong, please check!");
     return PARAM_INVALID;
   }
 
@@ -255,7 +256,7 @@ Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
                           return PARAM_INVALID);
   ge::OpDescPtr constOpdesc = ge::OpDescUtils::CreateConstOp(coffePtr);
   FUSION_PASS_CHECK(constOpdesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to create const op desc."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to create const op desc."),
                     return FAILED);
   ge::NodePtr constNode = nullptr;
   if (recode.empty() or !mulConstNode.count(recode)) {
@@ -273,14 +274,14 @@ Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   }
 
   FUSION_PASS_CHECK(constNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
                     return FAILED);
   FUSION_PASS_CHECK(mulNode->AddLinkFrom(1, constNode) != ge::GRAPH_SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to link const node with pooling node."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to link const node with pooling node."),
                     return FAILED);
 
   ge::OpDescPtr mulDesc = mulNode->GetOpDesc();
-  FUSION_PASS_CHECK(mulDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(mulDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   auto constInputNodes = OpDescUtils::GetConstInputs(mulNode);
@@ -288,7 +289,7 @@ Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   if (constInputNodes.size() != 0) {
     constInput = constInputNodes[0];
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
     return PARAM_INVALID;
   }
   constInput->GetOpDesc()->SetType(CONSTANTOPTAB);
@@ -298,7 +299,7 @@ Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
 
 Status PoolingFusionPass::Calc4DWeight(const std::vector<int64_t>& filterDims4D, const int64_t& kernelDataCount,
                                        const int8_t* filterInt8Data, std::unique_ptr<int32_t[]>& weightInt8Temp) {
-  FUSION_PASS_CHECK(filterDims4D.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "filterDims4D is empty!"), return FAILED);
+  FUSION_PASS_CHECK(filterDims4D.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filterDims4D is empty!"), return FAILED);
   for (int64_t j = 0; j < filterDims4D[INDEX_CO]; j++) {
     int64_t sum_temp = 0;
     for (int64_t i = 0; i < filterDims4D[INDEX_CI]; i++) {
@@ -308,7 +309,7 @@ Status PoolingFusionPass::Calc4DWeight(const std::vector<int64_t>& filterDims4D,
                       (i * filterDims4D[INDEX_FILTER_H] * filterDims4D[INDEX_FILTER_W]) +
                       (h * filterDims4D[INDEX_FILTER_W]) + w;
           FUSION_PASS_CHECK(k >= kernelDataCount,
-                            OP_LOGE(FUSED_OP_TYPE.c_str(), "The index %ld is out of weightInt8Data's range", k),
+                            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The index %ld is out of weightInt8Data's range", k),
                             return FAILED);
           sum_temp += filterInt8Data[k];
         }
@@ -343,24 +344,24 @@ Status PoolingFusionPass::GetWeightOfConv(const std::string& opName, const int8_
   // get conv core kerneldata count
   int64_t kernelDataCount = 1;
   FUSION_PASS_CHECK(GetkernelDataCountForPass(filterDims, kernelDataCount) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "GetkernelDataCount faild."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetkernelDataCount faild."), return PARAM_INVALID);
 
-  FUSION_PASS_CHECK(filterInt8Data == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "weightInt8Data is nullptr"),
+  FUSION_PASS_CHECK(filterInt8Data == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weightInt8Data is nullptr"),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(kernelDataCount <= min, OP_LOGE(FUSED_OP_TYPE.c_str(), "kernelDataCount is not a positive number."),
+  FUSION_PASS_CHECK(kernelDataCount <= min, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelDataCount is not a positive number."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(kernelDataCount == min || kernelDataCount >= UINT_MAX / div,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "kernelDataCount is out of range."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelDataCount is out of range."), return PARAM_INVALID);
 
   // calc weight: accumulate weights
   std::unique_ptr<int32_t[]> weightInt8Temp(new (std::nothrow) int32_t[filterDims4D[INDEX_CO]]());
-  FUSION_PASS_CHECK(weightInt8Temp == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "weightInt8Temp is nullptr"),
+  FUSION_PASS_CHECK(weightInt8Temp == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weightInt8Temp is nullptr"),
                     return PARAM_INVALID);
   Status ret;
-  FUSION_PASS_CHECK(filterDims4D.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "filterDims4D is empty!"), return FAILED);
+  FUSION_PASS_CHECK(filterDims4D.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filterDims4D is empty!"), return FAILED);
 
   ret = Calc4DWeight(filterDims4D, kernelDataCount, filterInt8Data, weightInt8Temp);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Get weight failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get weight failed."), return ret);
 
   weightInt8OutParam = std::move(weightInt8Temp);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Successfully get weight for node %s.", opName.c_str());
@@ -370,12 +371,12 @@ Status PoolingFusionPass::GetWeightOfConv(const std::string& opName, const int8_
 Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr poolingNode,
                                          vector<ge::NodePtr>& fusionNodes,int64_t& windowH,
                                          int64_t& windowW, int64_t& inputC) {
-  FUSION_PASS_CHECK(poolingNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingNode is null, fusion failed."),
+  FUSION_PASS_CHECK(poolingNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr poolingOp = poolingNode->GetOpDesc();
 
-  FUSION_PASS_CHECK(poolingOp == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingOp is null, fusion failed."),
+  FUSION_PASS_CHECK(poolingOp == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingOp is null, fusion failed."),
                     return PARAM_INVALID);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "quant bias optimize op %s, begin to bias optimize.", poolingOp->GetName().c_str());
@@ -387,17 +388,17 @@ Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr po
 
   /* Get pooling Weight filter */
   vector<ge::GeTensorPtr> weights_pooling = ge::OpDescUtils::MutableWeights(poolingNode);
-  FUSION_PASS_CHECK(weights_pooling.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "weights_pooling is nullptr!"),
+  FUSION_PASS_CHECK(weights_pooling.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weights_pooling is nullptr!"),
                     return PARAM_INVALID);
   ge::GeTensorPtr filter = weights_pooling[0];
-  FUSION_PASS_CHECK(filter == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "filter is nullptr!"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(filter == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filter is nullptr!"), return PARAM_INVALID);
   int8_t* filterInt8Data = (int8_t*)(filter->GetData().data());
   vector<int64_t> filterDims = {inputC, 1, windowH, windowW};
 
   /* Store the filter data after optimization */
   std::unique_ptr<int32_t[]> weightInt8OutParam;
   Status ret = GetWeightOfConv(poolingNode->GetName(), filterInt8Data, filterDims, weightInt8OutParam);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Get weight of conv failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get weight of conv failed."), return ret);
   int64_t co = filterDims.at(INDEX_CO);
 
   // do not have bias, create bias node and init bias
@@ -417,7 +418,7 @@ Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr po
   ge::NodePtr constNode = graph.AddNode(constOpDesc);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "cube node %s, the const node %s", poolingNode->GetName().c_str(),
           constNode->GetName().c_str());
-  FUSION_PASS_CHECK(constNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "constNode is nullptr"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(constNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constNode is nullptr"), return PARAM_INVALID);
   fusionNodes.push_back(constNode);
 
   // bias is the name of the third input of conv2d in IR conv2d.h
@@ -481,7 +482,7 @@ Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr po
   biasOutputDesc.SetDataType(ge::DT_INT32);
   if (biasOpDesc->UpdateOutputDesc(0, biasOutputDesc) != ge::GRAPH_SUCCESS) {
     biasPtr = nullptr;
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Update output desc of BiasNode[%s] not success.", biasOpDesc->GetName().c_str());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update output desc of BiasNode[%s] not success.", biasOpDesc->GetName().c_str());
     return FAILED;
   }
   // update the bias inputDesc of the convOpDesc
@@ -493,7 +494,7 @@ Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr po
   biasDesc.SetDataType(ge::DT_INT32);
   if (poolingOp->UpdateInputDesc(2, biasDesc) != ge::GRAPH_SUCCESS) {
     biasPtr = nullptr;
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "update bias input desc of ConvNode[%s] not success.",
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "update bias input desc of ConvNode[%s] not success.",
             poolingNode->GetName().c_str());
     return FAILED;
   }
@@ -503,10 +504,10 @@ Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr po
 bool PoolingFusionPass::IsMeanValueAllEqual(vector<int64_t> input, vector<int64_t> window, vector<int64_t> stride,
                                             vector<int64_t> pad, int64_t ceil_mode) {
   // input feature map and pad dim size is 4;window and stride dim size is 2;
-  FUSION_PASS_CHECK(input.size() != 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "input is invalid."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(window.size() != 2, OP_LOGE(FUSED_OP_TYPE.c_str(), "window is invalid."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(stride.size() != 2, OP_LOGE(FUSED_OP_TYPE.c_str(), "stride is invalid."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(pad.size() != 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad is invalid."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(input.size() != 4, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input is invalid."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(window.size() != 2, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "window is invalid."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(stride.size() != 2, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "stride is invalid."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(pad.size() != 4, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad is invalid."), return PARAM_INVALID);
 
   int64_t out_size_h = 0;
   int64_t out_size_w = 0;
@@ -518,7 +519,7 @@ bool PoolingFusionPass::IsMeanValueAllEqual(vector<int64_t> input, vector<int64_
     out_size_h = static_cast<int>(floor(static_cast<float>(input[2] + pad[0] + pad[1] - window[0]) / stride[0])) + 1;
     out_size_w = static_cast<int>(floor(static_cast<float>(input[3] + pad[2] + pad[3] - window[1]) / stride[1])) + 1;
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "ceil_mode is invalid, please check!");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ceil_mode is invalid, please check!");
     return PARAM_INVALID;
   }
 
@@ -533,10 +534,10 @@ bool PoolingFusionPass::IsMeanValueAllEqual(vector<int64_t> input, vector<int64_
     }
 
     if ((out_size_h - 1) * stride[0] >= input[2] + pad[0]) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "CHECK_LT((out_size_h - 1) * stride_h, in_size_h + pad_top)");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CHECK_LT((out_size_h - 1) * stride_h, in_size_h + pad_top)");
     }
     if ((out_size_w - 1) * stride[1] >= input[3] + pad[2]) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "CHECK_LT((out_size_w - 1) * stride_w, in_size_w + pad_left)");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CHECK_LT((out_size_w - 1) * stride_w, in_size_w + pad_left)");
     }
   }
 
@@ -566,7 +567,7 @@ vector<FusionPattern*> PoolingFusionPass::DefinePatterns() {
 
   // define PoolingFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PoolingMatrixFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_POOL, {POOLINGTAB}).SetOutput(PATTERN_POOL);
@@ -578,12 +579,12 @@ vector<FusionPattern*> PoolingFusionPass::DefinePatterns() {
 Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get pooling node
   ge::NodePtr poolingNode = GetNodeFromMapping(PATTERN_POOL, mapping);
-  FUSION_PASS_CHECK(poolingNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingNode is null, fusion failed."),
+  FUSION_PASS_CHECK(poolingNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr poolingDesc = poolingNode->GetOpDesc();
   FUSION_PASS_CHECK(poolingDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of Pooling
@@ -607,7 +608,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   if (PatternFusionUtil::IsUnknownShape(inputH) ||
       PatternFusionUtil::IsUnknownShape(inputC)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
     return FAILED;
   }
 
@@ -672,7 +673,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   bool isWPadZero = false;
   if (pad.size() != 4) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "the len of pad is not match.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "the len of pad is not match.");
     return FAILED;
   }
   if (pad[2] == 0 && pad[3] == 0) {
@@ -733,7 +734,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       }
     }
     if (dequantNode == nullptr) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "poolingNode does not have a dequantNode output node.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "poolingNode does not have a dequantNode output node.");
       return FAILED;
     }
     if (dequantNode->GetAllInDataAnchors().empty()) {
@@ -746,14 +747,14 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     OutDataAnchorPtr outDataAnchorPtr = inDataAnchorPtr1->GetPeerOutAnchor();
 
     int64_t matrixSize = inputC * windowH * windowW;
-    FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
+    FUSION_PASS_CHECK(matrixSize <= 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
 
     unique_ptr<int8_t[]> inputAssitInt8(new (std::nothrow) int8_t[matrixSize]());
-    FUSION_PASS_CHECK(inputAssitInt8.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssitInt8 is NULL"),
+    FUSION_PASS_CHECK(inputAssitInt8.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssitInt8 is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(matrixSize, INT8_NUM_ONE, *reinterpret_cast<int8_t*>(inputAssitInt8.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
     vector<int64_t> assitDimInfoOrigin = {inputC, 1, windowH, windowW};
     if (!IsMeanValueAllEqual(dimInfo, window, stride, pad, ceil_mode)) {
       // judge for unknownshape
@@ -761,11 +762,11 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       ge::GeShape mulShape = input_desc.GetShape();
       vector<int64_t> dimMul = mulShape.GetDims();
       if (dimMul.size() >= 2 && PatternFusionUtil::IsUnknownShape(dimMul[1])) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
       ge::NodePtr mulNode = AddMul(graph, dequantNode);
-      FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
+      FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
                         return PARAM_INVALID);
       ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
       vector<int64_t> dimOut = inputDesc0.GetOriginShape().GetDims();
@@ -773,14 +774,14 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         for (size_t i = 1; i <= 3; i++) {
           auto dim = dimOut[i];
           if (PatternFusionUtil::IsUnknownShape(dim)) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
         }
       }
       string recode;
       FUSION_PASS_CHECK(AddCoffe(graph, mulNode, pad, dimInfo, window, stride, recode, true) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return FAILED);
     }
     ge::GeTensorDesc tensorDesc;
     ge::GeShape assitShape(assitDimInfoOrigin);
@@ -799,37 +800,37 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                       return NOT_CHANGED);
     ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(assitPtr);
     FUSION_PASS_CHECK(const_opdesc == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to create const op desc."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to create const op desc."),
                       return FAILED);
     ge::NodePtr constNode = nullptr;
     constNode = graph.AddNode(const_opdesc);
     FUSION_PASS_CHECK(constNode == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
                       return FAILED);
     FUSION_PASS_CHECK(poolingNode->AddLinkFrom(1, constNode) != ge::GRAPH_SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to link const node with pooling node."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to link const node with pooling node."),
                       return FAILED);
     auto constInputNodes = OpDescUtils::GetConstInputs(poolingNode);
     NodePtr constInput = nullptr;
     if (constInputNodes.size() != 0) {
       constInput = constInputNodes[0];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
       return PARAM_INVALID;
     }
     constInput->GetOpDesc()->SetType(CONSTANTOPTAB);
     // add bias for pooling node
     ret = DoBiasOptimize(graph, poolingNode, fusionNodes, windowH, windowW, inputC);
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "do fusion failed!"), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "do fusion failed!"), return ret);
   } else {  // fp16
     int64_t matrixSize = inputC * windowH * windowW;
-    FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
+    FUSION_PASS_CHECK(matrixSize <= 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[matrixSize]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
 
     Status ret = NnSet(matrixSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
 
     vector<int64_t> assitDimInfoOrigin = {inputC, 1, windowH, windowW};
     float areaFactor = 0;
@@ -856,11 +857,11 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       ge::GeShape mulShape = input_desc.GetShape();
       vector<int64_t> dimMul = mulShape.GetDims();
       if (dimMul.size() >= 2 && PatternFusionUtil::IsUnknownShape(dimMul[1])) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
       ge::NodePtr mulNode = AddMul(graph, poolingNode);
-      FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
+      FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
                         return PARAM_INVALID);
       ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
       vector<int64_t> dimOut = inputDesc0.GetOriginShape().GetDims();
@@ -868,15 +869,15 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         for (size_t i = 1; i <= 3; i++) {
           auto dim = dimOut[i];
           if (PatternFusionUtil::IsUnknownShape(dim)) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PoolingFusionPass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
         }
       }
       FUSION_PASS_CHECK(AddCoffe(graph, mulNode, pad, dimInfo, window, stride, recode, false) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return FAILED);
     }
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16 failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16 failed."), return ret);
 
     ge::GeTensorDesc tensorDesc;
     ge::GeShape assitShape(assitDimInfoOrigin);
@@ -895,22 +896,22 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                       return NOT_CHANGED);
     ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(assitPtr);
     FUSION_PASS_CHECK(const_opdesc == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to create const op desc."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to create const op desc."),
                       return FAILED);
     ge::NodePtr constNode = nullptr;
     constNode = graph.AddNode(const_opdesc);
     FUSION_PASS_CHECK(constNode == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
                       return FAILED);
     FUSION_PASS_CHECK(poolingNode->AddLinkFrom(1, constNode) != ge::GRAPH_SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to link const node with pooling node."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to link const node with pooling node."),
                       return FAILED);
     auto constInputNodes = OpDescUtils::GetConstInputs(poolingNode);
     NodePtr constInput = nullptr;
     if (constInputNodes.size() != 0) {
       constInput = constInputNodes[0];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
       return PARAM_INVALID;
     }
     constInput->GetOpDesc()->SetType(CONSTANTOPTAB);

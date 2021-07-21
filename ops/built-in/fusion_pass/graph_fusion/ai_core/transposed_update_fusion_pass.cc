@@ -20,6 +20,7 @@
  */
 #include "transposed_update_fusion_pass.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
@@ -32,7 +33,7 @@ namespace fe {
 vector<FusionPattern*> TransposedUpdateFusionPass::DefinePatterns() {
     vector<FusionPattern*> patterns;
     FusionPattern* pattern = new (std::nothrow) FusionPattern("TransposedUpdatePattern");
-    FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+    FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                       return patterns);
     pattern->AddOpDesc("TransposeD", {"TransposeD"}).SetOutput("TransposeD");
     patterns.push_back(pattern);
@@ -74,7 +75,7 @@ Status TransposedUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
     ge::OpDescPtr outOpDesc = ge::OpDescUtils::CreateConstOp(outTensor);
     auto constNode = graph.AddNode(outOpDesc);
     if (transposeNode->AddLinkFrom("perm", constNode) != SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to AddEdge");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to AddEdge");
         return FAILED;
     }
 
@@ -84,11 +85,11 @@ Status TransposedUpdateFusionPass::Fusion(ge::ComputeGraph& graph,
         auto anchor = transposeNode->GetInDataAnchor(1);
         anchor->UnlinkAll();
         if (graph.RemoveNode(constNode) != SUCCESS) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to remove const node");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove const node");
             return FAILED;
         }
         if (ge::NodeUtils::RemoveInputAnchor(transposeNode, 1) != SUCCESS) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to remove input anchor");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to remove input anchor");
             return FAILED;
         }
         ge::AttrUtils::SetListInt(transposeOpDesc, "perm", perm);

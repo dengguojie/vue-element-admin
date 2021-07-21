@@ -28,6 +28,7 @@
 #include "graph/tensor.h"
 #include "graph/utils/type_utils.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "register/graph_optimizer/graph_optimize_register_error_codes.h"
 
 using namespace ge;

@@ -26,6 +26,7 @@
 #include <sstream>
 #include <algorithm>
 #include "op_log.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -43,7 +44,7 @@ static const char AXIS[] = "axes";
 vector<FusionPattern*> ReduceMaxDFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ReduceMaxDFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_MAXD, {MAXD}).SetOutput(PATTERN_MAXD);
   patterns.push_back(pattern);
@@ -53,7 +54,7 @@ vector<FusionPattern*> ReduceMaxDFusionPass::DefinePatterns() {
 Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ReduceMaxDFusionPass fusion begin");
   ge::NodePtr max_node = GetNodeFromMapping(PATTERN_MAXD, mapping);
-  FUSION_PASS_CHECK(max_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "max_node is null, fusion failed."),
+  FUSION_PASS_CHECK(max_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "max_node is null, fusion failed."),
                     return PARAM_INVALID);
   // validation
   ge::GeTensorDesc tensor_input = max_node->GetOpDesc()->GetInputDesc(0);
@@ -115,7 +116,7 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   std::shared_ptr<ge::OpDesc> minNewOpdesc = nullptr;
   minNewOpdesc = std::make_shared<ge::OpDesc>(max_node->GetName(), MAXD);
   FUSION_PASS_CHECK(minNewOpdesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                             "minNewOpdesc is null,"
                             "fusion failed."),
                     return PARAM_INVALID);
@@ -124,7 +125,7 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   std::shared_ptr<ge::OpDesc> minLastOpdesc = nullptr;
   minLastOpdesc = std::make_shared<ge::OpDesc>(max_node->GetName() + "_Tik", MAXDLAST);
   FUSION_PASS_CHECK(minLastOpdesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                             "minLastOpdesc is null,"
                             "fusion failed."),
                     return PARAM_INVALID);
@@ -132,18 +133,18 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   // add input for minnew
   ge::GeTensorDesc input_tensor1_new = max_node->GetOpDesc()->GetInputDesc(0);
   FUSION_PASS_CHECK(minNewOpdesc->AddInputDesc(input_tensor1_new) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "minNew add input failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minNew add input failed."), return FAILED);
 
   // add input for minlast
   ge::GeTensorDesc input_tensor1 = max_node->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(minLastOpdesc->AddInputDesc(input_tensor1) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "minLast add input failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLast add input failed."), return FAILED);
 
   // add output for minnew
   // The output tensor description needs to be calculated
   bool keepdims;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(max_node->GetOpDesc(), KEEPDIMS, keepdims),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get keepdims attr failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get keepdims attr failed."), return FAILED);
   int32_t dimNum = tensor_input.GetShape().GetDimNum();
   if (axis_xin.empty()) {
     for (int64_t i = 0; i < (dims_size - 1); ++i) {
@@ -153,7 +154,7 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
 
   for (size_t i = 0; i < axis_xin.size(); ++i) {
     if (axis_xin[i] < -dimNum || axis_xin[i] > (dimNum - 1)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "the axis of reduce verify failed.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "the axis of reduce verify failed.");
       return false;
     }
     if (axis_xin[i] < 0) {
@@ -185,7 +186,7 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   out_tensor1_new.SetOriginFormat(input_format);
   out_tensor1_new.SetOriginShape(ge::GeShape(oShapeVector));
   FUSION_PASS_CHECK(minNewOpdesc->AddOutputDesc(out_tensor1_new) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "minNew add output failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minNew add output failed."), return FAILED);
 
   // add output for minlast
   minLastOpdesc->UpdateInputDesc(0, out_tensor1_new);
@@ -206,7 +207,7 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   out_tensor1.SetOriginFormat(input_format);
   out_tensor1.SetOriginShape(ge::GeShape(oShapeVector1));
   FUSION_PASS_CHECK(minLastOpdesc->AddOutputDesc(out_tensor1) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "minLast add output failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLast add output failed."), return FAILED);
 
   ge::NodePtr minNewNode = graph.AddNode(minNewOpdesc);
   ge::NodePtr minLastNode = graph.AddNode(minLastOpdesc);
@@ -216,44 +217,44 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   // float keepdims;
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(minNewNode->GetOpDesc(), KEEPDIMS, keepdims),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set keepdims attr failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set keepdims attr failed"), return FAILED);
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(minLastNode->GetOpDesc(), KEEPDIMS, keepdims),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set keepdims attr failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set keepdims attr failed"), return FAILED);
 
   // set axis
   // Assign -1 to the axis property of mindnew
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(minNewNode->GetOpDesc(), AXIS, axis_xin),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "minNew Set axis attr failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minNew Set axis attr failed"), return FAILED);
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(minLastNode->GetOpDesc(), AXIS, axis_last),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "minLast Set axis attr failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLast Set axis attr failed"), return FAILED);
 
   // connect output edge for minnew
   FUSION_PASS_CHECK(
       ge::GraphUtils::AddEdge(minNewNode->GetOutDataAnchor(0), minLastNode->GetInDataAnchor(0)) != SUCCESS,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
 
   // copy output edge for minlast
   for (auto inDataAnchor : max_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(max_node->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "max_node Remove out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "max_node Remove out data edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(minLastNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "minLastNode Add out data edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLastNode Add out data edge failed."), return FAILED);
   }
 
   if (max_node->GetOutControlAnchor()) {
     for (auto inControlAnchor : max_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(max_node->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "max_node Remove out control edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "max_node Remove out control edge failed."), return FAILED);
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(minLastNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "minLastNode Add out control edge failed."), return FAILED);
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minLastNode Add out control edge failed."), return FAILED);
     }
   }
 
   // connect input for minnew
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(max_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                             minNewNode->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "minNewNode Add edge between node %s. and node %s failed.",
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "minNewNode Add edge between node %s. and node %s failed.",
                             max_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                             minNewNode->GetName().c_str()),
                     return FAILED);
@@ -263,7 +264,7 @@ Status ReduceMaxDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   minLastNode->GetOpDesc()->SetType(MAXDLAST);
 
   FUSION_PASS_CHECK(graph.RemoveNode(max_node) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove max_node node failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove max_node node failed."), return FAILED);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ReduceMaxDFusionPass fusion end");
   return SUCCESS;
 }

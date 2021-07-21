@@ -22,6 +22,7 @@
 #include "fusion_precheck_func.h"
 #include "graph/utils/graph_utils.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "graph_optimizer/fusion_common/fusion_statistic_recorder.h"
@@ -86,7 +87,7 @@ Status RemoveNodeFusionPass::Run(ge::ComputeGraph& graph) {
   for (auto& item : removeNodeMap) {
     Status status = RemoveNode(item.first, item.second, graph);
     FUSION_PASS_CHECK(status != SUCCESS && status != NOT_CHANGED,
-                      OP_LOGE(item.first->GetType().c_str(), "Fail to remove node[%s] in remove node fusion pass.",
+                      VECTOR_FUSION_INNER_ERR_REPORT(item.first->GetType().c_str(), "Fail to remove node[%s] in remove node fusion pass.",
                               item.first->GetName().c_str()),
                       return FAILED);
     if (status == SUCCESS) {
@@ -134,14 +135,14 @@ Status RemoveNodeFusionPass::RemoveNode(NodePtr node, vector<LinkIndexPair> link
                     return status);
   FUSION_PASS_CHECK(
       status != NOT_CHANGED && status != SUCCESS,
-      OP_LOGE(nodeType.c_str(), "Fail to handle the unlinked in data anchor of node[%s].", nodeName.c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(nodeType.c_str(), "Fail to handle the unlinked in data anchor of node[%s].", nodeName.c_str()),
       return status);
 
   // relink control anchor
   status = ReLinkControlAnchor(node);
   FUSION_PASS_CHECK(
       status != SUCCESS,
-      OP_LOGE(nodeType.c_str(), "Fail to re-link ctrl edge of node[%s] while removing it.", nodeName.c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(nodeType.c_str(), "Fail to re-link ctrl edge of node[%s] while removing it.", nodeName.c_str()),
       return FAILED);
 
   // relink data anchor
@@ -149,12 +150,12 @@ Status RemoveNodeFusionPass::RemoveNode(NodePtr node, vector<LinkIndexPair> link
                             outputInDataAnchorMap);
   FUSION_PASS_CHECK(
       status != SUCCESS,
-      OP_LOGE(nodeType.c_str(), "Fail to re-link data edge of node[%s] while removing it.", nodeName.c_str()),
+      VECTOR_FUSION_INNER_ERR_REPORT(nodeType.c_str(), "Fail to re-link data edge of node[%s] while removing it.", nodeName.c_str()),
       return FAILED);
 
   // remove node
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
-                    OP_LOGE(nodeType.c_str(), "Fail to remove Node[%s].", nodeName.c_str()), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(nodeType.c_str(), "Fail to remove Node[%s].", nodeName.c_str()), return FAILED);
 
   OP_LOGI(nodeType.c_str(), "The node[%s, %s] has been removed successfully.", nodeName.c_str(),
           node->GetType().c_str());
@@ -294,7 +295,7 @@ Status RemoveNodeFusionPass::HandleUnlinkedInAnchor(map<uint32_t, InDataAnchorPt
     for (NodePtr removeNode : inAnchorRelatedInfo.removeNode) {
       // re-link control anchor of removing node
       FUSION_PASS_CHECK(ReLinkControlAnchor(removeNode) != SUCCESS,
-                        OP_LOGE("HandleUnlinkedInAnchor",
+                        VECTOR_FUSION_INNER_ERR_REPORT("HandleUnlinkedInAnchor",
                                 "Fail to re-link control edges before removing Node[%s]"
                                 " while handling unlinked inDataAnchor.",
                                 removeNode->GetName().c_str()),
@@ -305,7 +306,7 @@ Status RemoveNodeFusionPass::HandleUnlinkedInAnchor(map<uint32_t, InDataAnchorPt
     for (RemoveEdgePair removeEdgePair : inAnchorRelatedInfo.removeEdgeVec) {
       FUSION_PASS_CHECK(
           ge::GraphUtils::RemoveEdge(removeEdgePair.inAnchorPtr, removeEdgePair.outAnchorPtr) != ge::GRAPH_SUCCESS,
-          OP_LOGE("HandleUnlinkedInAnchor", "Fail to remove edge while handling unlinked inDataAnchor."),
+          VECTOR_FUSION_INNER_ERR_REPORT("HandleUnlinkedInAnchor", "Fail to remove edge while handling unlinked inDataAnchor."),
           return FAILED);
     }
 
@@ -317,7 +318,7 @@ Status RemoveNodeFusionPass::HandleUnlinkedInAnchor(map<uint32_t, InDataAnchorPt
       }
       FUSION_PASS_CHECK(
           ge::GRAPH_SUCCESS != graph.RemoveNode(removeNode),
-          OP_LOGE("HandleUnlinkedInAnchor", "Fail to remove Node[%s] while handling unlinked inDataAnchor.",
+          VECTOR_FUSION_INNER_ERR_REPORT("HandleUnlinkedInAnchor", "Fail to remove Node[%s] while handling unlinked inDataAnchor.",
                   removeNode->GetName().c_str()),
           return FAILED);
     }
@@ -394,7 +395,7 @@ Status RemoveNodeFusionPass::ReLinkControlAnchor(NodePtr node) {
             continue;
           }
           FUSION_PASS_CHECK(AddCtrlEdge(outControlAnchorPtr, outNode->GetInControlAnchor()) != SUCCESS,
-                            OP_LOGE(outNode->GetType().c_str(), "Fail to re-link input control edge."), return FAILED);
+                            VECTOR_FUSION_INNER_ERR_REPORT(outNode->GetType().c_str(), "Fail to re-link input control edge."), return FAILED);
         }
       }
     }
@@ -412,7 +413,7 @@ Status RemoveNodeFusionPass::ReLinkControlAnchor(NodePtr node) {
           }
 
           FUSION_PASS_CHECK(AddCtrlEdge(inNode->GetOutControlAnchor(), inControlAnchorPtr) != SUCCESS,
-                            OP_LOGE(inNode->GetType().c_str(), "Fail to re-link output control edge."), return FAILED);
+                            VECTOR_FUSION_INNER_ERR_REPORT(inNode->GetType().c_str(), "Fail to re-link output control edge."), return FAILED);
         }
       }
     }
@@ -436,7 +437,7 @@ Status RemoveNodeFusionPass::AddCtrlEdge(OutControlAnchorPtr outCtrlAnchorPtr, I
     return SUCCESS;
   }
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(outCtrlAnchorPtr, inCtrlAnchorPtr) != ge::GRAPH_SUCCESS,
-                    OP_LOGE("AddCtrlEdge", "Fail to add ctrl edge."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT("AddCtrlEdge", "Fail to add ctrl edge."), return FAILED);
   return SUCCESS;
 }
 
@@ -474,7 +475,7 @@ Status RemoveNodeFusionPass::ReLinkDataAnchor(vector<LinkIndexPair>& linkIndexPa
 
     for (InDataAnchorPtr inAnchor : outInputDataAnchorVec) {
       FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(inputOutDataAnchor, inAnchor) != ge::GRAPH_SUCCESS,
-                        OP_LOGE("ReLinkDataAnchor", "Fail to link data edge[%u, %u] of the node.",
+                        VECTOR_FUSION_INNER_ERR_REPORT("ReLinkDataAnchor", "Fail to link data edge[%u, %u] of the node.",
                                 linkPair.inAnchorIndex, linkPair.outAnchorIndex),
                         return FAILED);
     }

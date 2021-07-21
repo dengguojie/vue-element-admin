@@ -29,6 +29,7 @@
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "external/graph/operator_factory.h"
@@ -44,7 +45,7 @@ vector<FusionPattern *> DynamicRNNV3FusionPass::DefinePatterns()
   vector<FusionPattern *> patterns;
 
   FusionPattern *pattern = new (std::nothrow) FusionPattern("DynamicRNNV3FusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
         "DynamicRNNV3FusionPass pattern object failed."), return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, { FUSED_NODE }).SetOutput(PATTERN_FUSEDNODE);
@@ -75,7 +76,7 @@ ge::NodePtr DynamicRNNV3FusionPass::AddBroadCastForCt(ge::ComputeGraph &graph, g
   ge::AttrUtils::SetListInt(broadcast_op_desc, "shape", res_nd_dim);
 
   ge::NodePtr broadcast_node1 = graph.AddNode(broadcast_op_desc);
-  FUSION_PASS_CHECK(!broadcast_node1, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(!broadcast_node1, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
         "add broadcat fail."), return nullptr);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
   fusedDesc->UpdateInputDesc(10, outputTensorDesc);
@@ -111,12 +112,12 @@ ge::GeTensorPtr DynamicRNNV3FusionPass::ProcessDynamicRnnV3Wdate(ge::NodePtr fus
 
     float *wcData = (float *)wcTensorPtr->GetData().data();
     FUSION_PASS_CHECK(wcData == nullptr,
-                      OP_LOGE("DynamicRnnV3", "wcTensorPtr->GetData().data is null, fusion failed."), return nullptr);
+                      VECTOR_FUSION_INNER_ERR_REPORT("DynamicRnnV3", "wcTensorPtr->GetData().data is null, fusion failed."), return nullptr);
 
     unique_ptr<float[]> dstWcData(new (std::nothrow) float[batchSize * hiddenSize]());
 
     auto retMem = memset_s(dstWcData.get(), batchSize*hiddenSize, 0, batchSize * hiddenSize);
-    FUSION_PASS_CHECK(retMem != EOK, OP_LOGE("DynamicRnnV3", "Failed to operate memset_s function."), return nullptr);
+    FUSION_PASS_CHECK(retMem != EOK, VECTOR_FUSION_INNER_ERR_REPORT("DynamicRnnV3", "Failed to operate memset_s function."), return nullptr);
     float *dstWc = dstWcData.get();
 
     for (int i = 0; i < batchSize; i++) {
@@ -137,10 +138,10 @@ Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   OP_LOGI(FUSED_OP_TYPE.c_str(), "DynamicRNNV3 start fusion.");
 
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
         "fusedNode OpDesc is null, fusion failed."), return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
         "fusedDesc OpDesc is null, fusion failed."), return PARAM_INVALID);
 
   int64_t batchSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(1);
@@ -150,7 +151,7 @@ Status DynamicRNNV3FusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   bool failStatus = false;
 
   AddBroadCastForCt(graph, fusedNode, failStatus, batchSize, hiddenSize, stateSize);
-  FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), "Process wco fail."), return FAILED);
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Process wco fail."), return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "DynamicRNNV3 end fusion");
 

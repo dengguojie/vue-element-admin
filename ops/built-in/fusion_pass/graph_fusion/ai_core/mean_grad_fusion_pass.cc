@@ -27,6 +27,7 @@
 #include "graph/utils/graph_utils.h"
 #include "external/graph/types.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
@@ -58,7 +59,7 @@ const int32_t OUTPUT_W_INDEX = 2;
 vector<FusionPattern*> MeanGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MeanGradFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
 
   pattern->AddOpDesc(PATTERN_RESHAPE, {RESHAPE})
       .AddOpDesc(PATTERN_TILE, {TILE})
@@ -77,9 +78,9 @@ Status MeanGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   ge::NodePtr reshapeNode = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
   ge::NodePtr tileNode = GetNodeFromMapping(PATTERN_TILE, mapping);
   ge::NodePtr truedivNode = GetNodeFromMapping(PATTERN_TRUEDIV, mapping);
-  FUSION_PASS_CHECK(reshapeNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "reshapeNode is nullptr."), return FAILED);
-  FUSION_PASS_CHECK(tileNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "tileNode is nullptr."), return FAILED);
-  FUSION_PASS_CHECK(truedivNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "truedivNode is nullptr."), return FAILED);
+  FUSION_PASS_CHECK(reshapeNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshapeNode is nullptr."), return FAILED);
+  FUSION_PASS_CHECK(tileNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tileNode is nullptr."), return FAILED);
+  FUSION_PASS_CHECK(truedivNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "truedivNode is nullptr."), return FAILED);
   int32_t outputN = 0;
   int32_t outputH = 0;
   int32_t outputW = 0;
@@ -123,11 +124,11 @@ Status MeanGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
       extractParaSuccess = true;
       ret = RemoveConstOpInput(graph, tileNode);
       FUSION_PASS_CHECK(ret != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove %s node failed.", inNode->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove %s node failed.", inNode->GetName().c_str()),
                         return ret);
     }
   }
-  FUSION_PASS_CHECK(!extractParaSuccess, OP_LOGE(FUSED_OP_TYPE.c_str(), "extract factor failed."), return FAILED);
+  FUSION_PASS_CHECK(!extractParaSuccess, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "extract factor failed."), return FAILED);
   extractParaSuccess = false;
   // remove input const node of truedivNode
   for (auto inNode : truedivNode->GetInDataNodes()) {
@@ -135,7 +136,7 @@ Status MeanGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     if ((nodeType == "Constant") || (nodeType == "Const")) {
       ret = RemoveConstOpInput(graph, truedivNode);
       FUSION_PASS_CHECK(ret != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove %s node failed.", inNode->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove %s node failed.", inNode->GetName().c_str()),
                         return ret);
     }
   }
@@ -145,38 +146,38 @@ Status MeanGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     string nodeType = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(inNode);
     if ((nodeType == "Constant") || (nodeType == "Const")) {
       ret = ParseParaFromConst(inNode, outputN, 0);
-      FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "get reshape output batch failed."), return ret);
+      FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get reshape output batch failed."), return ret);
       ret = ParseParaFromConst(inNode, outputC, 3);
-      FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "get reshape output channel failed."),
+      FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get reshape output channel failed."),
                         return ret);
       ret = RemoveConstOpInput(graph, reshapeNode);
       FUSION_PASS_CHECK(ret != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove %s node failed.", inNode->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove %s node failed.", inNode->GetName().c_str()),
                         return ret);
       extractParaSuccess = true;
     }
   }
-  FUSION_PASS_CHECK(!extractParaSuccess, OP_LOGE(FUSED_OP_TYPE.c_str(), "extract factor failed."), return FAILED);
+  FUSION_PASS_CHECK(!extractParaSuccess, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "extract factor failed."), return FAILED);
   // add link from reshape node to the output node of truedivNode
   for (auto outDataAnchor : truedivNode->GetAllOutDataAnchors()) {
     for (auto inDataAnchor : outDataAnchor->GetPeerInDataAnchors()) {
       ret = ge::GraphUtils::RemoveEdge(outDataAnchor, inDataAnchor);
       FUSION_PASS_CHECK(ret != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge between node %s. and node %s failed.",
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge between node %s. and node %s failed.",
                                 truedivNode->GetName().c_str(), inDataAnchor->GetOwnerNode()->GetName().c_str()),
                         return ret);
       ret = ge::GraphUtils::AddEdge(reshapeNode->GetOutDataAnchor(0), inDataAnchor);
       FUSION_PASS_CHECK(ret != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                                 reshapeNode->GetName().c_str(), inDataAnchor->GetOwnerNode()->GetName().c_str()),
                         return ret);
     }
   }
 
   ret = graph.RemoveNode(tileNode);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove tileNode failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove tileNode failed."), return ret);
   ret = graph.RemoveNode(truedivNode);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove truedivNode failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove truedivNode failed."), return ret);
   reshapeNode->GetOpDesc()->SetType("MeanGrad");
 
   ge::AttrUtils::SetInt(reshapeNode->GetOpDesc(), MEAN_GRAD_OUTPUT_SHAPE_FORMAT, ge::FORMAT_NHWC);
@@ -199,9 +200,9 @@ Status MeanGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   outputDesc.SetShape(GeShape(shapeValue));
   outputDesc.SetOriginFormat(ge::FORMAT_NHWC);
   FUSION_PASS_CHECK(reshapeNode->GetOpDesc()->UpdateInputDesc(0, inputDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Update inputDesc failed!"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update inputDesc failed!"), return FAILED);
   FUSION_PASS_CHECK(reshapeNode->GetOpDesc()->UpdateOutputDesc(0, outputDesc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Update outputDesc failed!"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update outputDesc failed!"), return FAILED);
   ge::GeTensorDesc inputTensorDesc;
   ge::GeTensorDesc outputTensorDesc;
   ge::AttrUtils::GetTensorDesc(reshapeNode->GetOpDesc(), "input_desc_reshape", inputTensorDesc);
@@ -225,7 +226,7 @@ Status MeanGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 // when the Remove node is called, the Const input node cannot be automatically deleted
 // You must delete the Const node of the node by yourself
 Status MeanGradFusionPass::RemoveConstOpInput(ge::ComputeGraph& graph, ge::NodePtr node) {
-  FUSION_PASS_CHECK(node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "node is nullptr."), return FAILED);
+  FUSION_PASS_CHECK(node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "node is nullptr."), return FAILED);
   for (auto inDataAnchor : node->GetAllInDataAnchors()) {
     int idx = inDataAnchor->GetIdx();
     auto outDataAnchor = inDataAnchor->GetPeerOutAnchor();
@@ -240,12 +241,12 @@ Status MeanGradFusionPass::RemoveConstOpInput(ge::ComputeGraph& graph, ge::NodeP
         ge::NodeUtils::ClearInDataAnchor(node, inDataAnchor);
         ge::OpDescUtils::ClearInputDesc(node->GetOpDesc(), (uint32_t)idx);
         ret = graph.RemoveNode(outDataAnchor->GetOwnerNode());
-        FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove const node failed"), return ret);
+        FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove const node failed"), return ret);
       } else {
         ret = ge::GraphUtils::RemoveEdge(outDataAnchor, inDataAnchor);
         ge::NodeUtils::ClearInDataAnchor(node, inDataAnchor);
         ge::OpDescUtils::ClearInputDesc(node->GetOpDesc(), (uint32_t)idx);
-        FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge from const op failed"),
+        FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge from const op failed"),
                           return ret);
       }
     }
@@ -257,22 +258,22 @@ Status MeanGradFusionPass::ParseParaFromConst(ge::NodePtr node, int32_t& param, 
   string nodeType = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(node);
   if (nodeType == "Const" || nodeType == "Constant") {
     vector<ge::ConstGeTensorPtr> weights_vec = ge::OpDescUtils::GetWeights(node);
-    FUSION_PASS_CHECK(weights_vec.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "get weights failed"), return PARAM_INVALID);
+    FUSION_PASS_CHECK(weights_vec.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get weights failed"), return PARAM_INVALID);
     const ge::GeTensor* tensor = weights_vec[0].get();
     // get data from tensor
     int64_t dataType = 0;
     FUSION_PASS_CHECK(!ge::AttrUtils::GetInt(node->GetOpDesc(), "dtype", dataType),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Get dtype attr failed."), return PARAM_INVALID);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get dtype attr failed."), return PARAM_INVALID);
     if (dataType == ge::DT_INT32) {
       FUSION_PASS_CHECK(tensor->GetData().size() < (sizeof(int32_t) * (index + 1)),
                         OP_LOGI(FUSED_OP_TYPE.c_str(), "data size too small, may not support, just not changed."),
                         return PARAM_INVALID);
       FUSION_PASS_CHECK(tensor->GetData().data() == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "tensor->GetData().data() is a null."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "tensor->GetData().data() is a null."),
                         return FAILED);
       param = *((int32_t*)tensor->GetData().data() + index);
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "data type not supported");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "data type not supported");
       return FAILED;
     }
     return SUCCESS;

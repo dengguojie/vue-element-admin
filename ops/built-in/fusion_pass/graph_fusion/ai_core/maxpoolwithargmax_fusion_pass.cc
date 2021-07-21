@@ -32,6 +32,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
@@ -48,7 +49,7 @@ vector<FusionPattern*> MaxPoolWithArgmaxFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MaxPoolWithArgmaxFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
@@ -77,17 +78,17 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   const size_t DIM_SIZE3 = 3;
   const size_t DIM_SIZE4 = 4;
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::OpDescPtr fusionDesc = AttrUtils::CopyOpDesc(fusedDesc);
   ge::GeTensorDesc tmpMaskDesc = fusionDesc->GetOutputDesc(1);
   tmpMaskDesc.SetDataType(ge::DT_UINT16);
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != fusionDesc->UpdateOutputDesc("argmax", tmpMaskDesc),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", fusionDesc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", fusionDesc->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(!CheckOpSupported(fusionDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
                     return NOT_CHANGED);
@@ -172,7 +173,7 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   std::vector<int64_t> dims_input = shape.GetDims();
   for (auto dim : dims_input) {
     if (PatternFusionUtil::IsUnknownShape(dim)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "MaxPoolWithArgmaxFusionPass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "MaxPoolWithArgmaxFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
   }
@@ -183,7 +184,7 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
           if (stridesList[i] <= INT_NUM_ZERO) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
             return FAILED; 
           }
           int64_t dims = (dims_input[i] + stridesList[i] - 1) / stridesList[i];
@@ -197,7 +198,7 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
           if (stridesList[i] <= INT_NUM_ZERO) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
             return FAILED;
           }
           int64_t dims = (dims_input[i] - ksizeList[i] + 1 + (stridesList[i] - 1)) / stridesList[i];
@@ -213,7 +214,7 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
           if (stridesList[i - 1] <= INT_NUM_ZERO) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
             return FAILED;
           }
           int64_t dims = (dims_input[i] + stridesList[i - 1] - 1) / stridesList[i - 1];
@@ -227,7 +228,7 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
           if (stridesList[i - 1] <= INT_NUM_ZERO) {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Stride must be > 0.");
             return FAILED;
           }
           int64_t dims = (dims_input[i] - ksizeList[i - 1] + 1 + (stridesList[i - 1] - 1)) / stridesList[i - 1];
@@ -278,7 +279,7 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of MaxpoolWithArgmaxNode is [%d].",
           fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size());
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != fusedDesc->UpdateOutputDesc("argmax", outputMaskDesc),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", fusedDesc->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", fusedDesc->GetName().c_str()),
                     return FAILED);
   if (fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() > 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of MaxpoolWithArgmaxNode is [%d].",
@@ -294,14 +295,14 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
         gradInputMaskDesc.SetDataType(ge::DT_UINT16);
         FUSION_PASS_CHECK(
             ge::GRAPH_SUCCESS != fusedNextDesc->UpdateInputDesc("argmax", gradInputMaskDesc),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", fusedNextDesc->GetName().c_str()),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", fusedNextDesc->GetName().c_str()),
             return FAILED);
       }
       if ((fusedNextNode->GetType() != "MaxPoolGradWithArgmax") && (fusedNextNode->GetType() != "MaxPoolGradGradWithArgmax")) {
         ge::OpDescPtr Mask2ArgmaxDesc = AttrUtils::CloneOpDesc(fusedDesc);
         FUSION_PASS_CHECK(
             Mask2ArgmaxDesc == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedDesc->GetName().c_str()),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", fusedDesc->GetName().c_str()),
             return PARAM_INVALID);
         Mask2ArgmaxDesc->SetName(fusedDesc->GetName() + "/Mask2Argmax");
         Mask2ArgmaxDesc->SetType("Mask2Argmax");
@@ -313,12 +314,12 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
         outputMaxDesc.SetOriginDataType(ge::DT_FLOAT);
         FUSION_PASS_CHECK(
             ge::GRAPH_SUCCESS != Mask2ArgmaxDesc->UpdateOutputDesc(0, outputMaxDesc),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", Mask2ArgmaxDesc->GetName().c_str()),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "UpdateOutputDesc node %s failed", Mask2ArgmaxDesc->GetName().c_str()),
             return FAILED);
         ge::NodePtr Mask2ArgmaxNode = graph.AddNode(Mask2ArgmaxDesc);
         FUSION_PASS_CHECK(
             Mask2ArgmaxNode == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", Mask2ArgmaxDesc->GetName().c_str()),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", Mask2ArgmaxDesc->GetName().c_str()),
             return PARAM_INVALID);
         Operator op_mask2argmax = ge::OpDescUtils::CreateOperatorFromNode(Mask2ArgmaxNode);
         // set attr of Mask2Argmax:originshape
@@ -368,7 +369,7 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
         ge::NodePtr transDataNode = graph.AddNode(transDataOpdesc);
         FUSION_PASS_CHECK(
             transDataNode == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", transDataOpdesc->GetName().c_str()),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", transDataOpdesc->GetName().c_str()),
             return PARAM_INVALID);
         Operator op_transdata = ge::OpDescUtils::CreateOperatorFromNode(transDataNode);
         op_transdata.SetAttr("src_format", tarnsDataSrcFormat);
@@ -380,7 +381,7 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
           for (InDataAnchorPtr inAnchorPtr : fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {
             inAnchorPtr->UnlinkAll();
             FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(transDataNode->GetOutDataAnchor(0), inAnchorPtr),
-                              OP_LOGE(FUSED_OP_TYPE.c_str(),
+                              VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                       "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.",
                                       transDataOpdesc->GetName().c_str(), fusedDesc->GetName().c_str()),
                               return FAILED);
@@ -390,17 +391,17 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
         }
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                              Mask2ArgmaxNode->GetInDataAnchor(0)),
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
                                   fusedDesc->GetName().c_str(), Mask2ArgmaxDesc->GetName().c_str()),
                           return FAILED);
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetOutDataAnchor(1), Mask2ArgmaxNode->GetInDataAnchor(1)),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
                     fusedDesc->GetName().c_str(), Mask2ArgmaxDesc->GetName().c_str()),
             return FAILED);
         FUSION_PASS_CHECK(
             SUCCESS != ge::GraphUtils::AddEdge(Mask2ArgmaxNode->GetOutDataAnchor(0), transDataNode->GetInDataAnchor(0)),
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
                     Mask2ArgmaxDesc->GetName().c_str(), transDataOpdesc->GetName().c_str()),
             return FAILED);
       }

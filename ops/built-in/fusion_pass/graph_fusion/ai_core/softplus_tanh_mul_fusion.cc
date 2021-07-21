@@ -47,7 +47,7 @@ namespace fe {
     vector<FusionPattern*> SoftplusTanhMulPass::DefinePatterns() {
       vector<FusionPattern*> patterns;
       FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftplusTanhMulFusion");
-      FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object not success."), return patterns);
+      FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object not success."), return patterns);
 
     /*
            input0 ----
@@ -74,15 +74,15 @@ namespace fe {
     Status SoftplusTanhMulPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
       ge::NodePtr softPlusNode = GetNodeFromMapping(PATTERN_SOFTPLUS, mapping);
       FUSION_PASS_CHECK(softPlusNode == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(),"Node Softplus is null, fusion failed."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),"Node Softplus is null, fusion failed."),
                         return PARAM_INVALID);
       ge::NodePtr tanhNode = GetNodeFromMapping(PATTERN_TANH, mapping);
       FUSION_PASS_CHECK(tanhNode == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Node Tanh is null, fusion failed."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node Tanh is null, fusion failed."),
                         return PARAM_INVALID);
       ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
       FUSION_PASS_CHECK(mulNode == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Node Mul is null, fusion failed."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node Mul is null, fusion failed."),
                         return PARAM_INVALID);
 
       // softplus and tanh must be single output
@@ -123,24 +123,24 @@ namespace fe {
       ge::NodePtr mishNode = graph.AddNode(mishOpDescPtr);
       fusionNodes.push_back(mishNode);
       FUSION_PASS_CHECK(mishNode == nullptr,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "FusionNode: mishNode is null, fusion failed."),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "FusionNode: mishNode is null, fusion failed."),
                         return FAILED);
 
       // link mish node
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(softPlusNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                            mishNode->GetInDataAnchor(0)),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from node:%s to node:%s failed.",
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from node:%s to node:%s failed.",
                                 softPlusNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                                 mishNode->GetName().c_str()),
                         return FAILED);
       for (const auto& InDataAnchorPtr : mulNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(mulNode->GetOutDataAnchor(0), InDataAnchorPtr),
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge from node:%s to node:%s failed.",
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove edge from node:%s to node:%s failed.",
                                   mulNode->GetName().c_str(),
                                   InDataAnchorPtr->GetOwnerNode()->GetName().c_str()),
                           return FAILED);
         FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(mishNode->GetOutDataAnchor(0), InDataAnchorPtr),
-                          OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from node:%s to node:%s failed.",
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge from node:%s to node:%s failed.",
                                   mishNode->GetName().c_str(),
                                   InDataAnchorPtr->GetOwnerNode()->GetName().c_str()),
                           return FAILED);
@@ -148,13 +148,13 @@ namespace fe {
 
       // remove softplus tanh mul
       FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(softPlusNode),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "remove softplus node[%s] failed", softPlusNode->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove softplus node[%s] failed", softPlusNode->GetName().c_str()),
                         return FAILED);
       FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(tanhNode),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "remove tanh node[%s] failed", tanhNode->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove tanh node[%s] failed", tanhNode->GetName().c_str()),
                         return FAILED);
       FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(mulNode),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "remove mul node[%s] failed", mulNode->GetName().c_str()),
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove mul node[%s] failed", mulNode->GetName().c_str()),
                         return FAILED);
 
       OP_LOGD(FUSED_OP_TYPE.c_str(), "SoftplusTanhMulPass successful.");

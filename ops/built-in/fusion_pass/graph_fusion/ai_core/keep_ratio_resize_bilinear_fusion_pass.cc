@@ -30,6 +30,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 
@@ -41,7 +42,7 @@ static const std::string PATTERN_FUSEDNODE = "KeepRatioResizeBilinear";
 vector<FusionPattern*> KeepRatioResizeBilinearFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("KeepRatioResizeBilinearFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(fuseNodeType.c_str(), "new a pattern object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "new a pattern object failed."), return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
   return patterns;
@@ -51,7 +52,7 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
                                                  vector<ge::NodePtr>& fusionNodes) {
   // get fused node
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(fuseNodeType.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // fusion KeepRatioResizeBilinear to ResizeBilinear
@@ -61,17 +62,17 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
       (resizeBilinearDesc = std::make_shared<ge::OpDesc>(resizeBilinearName, "ResizeBilinearV2")),
       return FAILED);
   FUSION_PASS_CHECK(resizeBilinearDesc == nullptr,
-                    OP_LOGE(fuseNodeType.c_str(), "resizeBilinearDesc is null, fusion failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "resizeBilinearDesc is null, fusion failed."), return FAILED);
 
   // set ResizeBilinearV2 input desc
   ge::GeTensorDesc inputDesc = fusedNode->GetOpDesc()->GetInputDesc(0);
   FUSION_PASS_CHECK(resizeBilinearDesc->AddInputDesc("x", inputDesc) != SUCCESS,
-                    OP_LOGE(fuseNodeType.c_str(), "add input desc of %s failed.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add input desc of %s failed.", fusedNode->GetName().c_str()),
                     return FAILED);
   // set ResizeBilinearV2 output desc
   ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(resizeBilinearDesc->AddOutputDesc("y", outputDesc) != SUCCESS,
-                    OP_LOGE(fuseNodeType.c_str(), "add output desc of %s failed.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add output desc of %s failed.", fusedNode->GetName().c_str()),
                     return FAILED);
 
   // get attr from KeepRatioResizeBilinearFusion
@@ -89,10 +90,10 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   int64_t widthDims = 0;
   vector<int64_t> oriinputShape = inputDesc.GetShape().GetDims();
   FUSION_PASS_CHECK(oriinputShape.empty(),
-                    OP_LOGE(fuseNodeType.c_str(), "Node[%s] input shape is NULL.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Node[%s] input shape is NULL.", fusedNode->GetName().c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(oriinputShape.size() != 4,
-                    OP_LOGE(fuseNodeType.c_str(), "Node[%s] input shape is not equal 4.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Node[%s] input shape is not equal 4.", fusedNode->GetName().c_str()),
                     return FAILED);
   if (inputDesc.GetFormat() == ge::FORMAT_NHWC) {
     heightDIms = oriinputShape[1];
@@ -103,7 +104,7 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   }
 
   if (PatternFusionUtil::IsUnknownShape(heightDIms) || PatternFusionUtil::IsUnknownShape(widthDims)) {
-    OP_LOGE(fuseNodeType.c_str(), "KeepRatioResizeBilinearFusion cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "KeepRatioResizeBilinearFusion cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
 
@@ -115,7 +116,7 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   float minShapeDimsFloat = static_cast<float>(minShapeDims);
   float maxShapeDimsFloat = static_cast<float>(maxShapeDims);
   if (minDims == 0 || maxDims == 0) {
-    OP_LOGE(fuseNodeType.c_str(), "KeepRatioResizeBilinearFusion minDims or maxDims can not be zero.");
+    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "KeepRatioResizeBilinearFusion minDims or maxDims can not be zero.");
     return NOT_CHANGED;
   }
   // get min scale
@@ -144,19 +145,19 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   // add input for ResizeBilinearV2
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                             resizeBilinearNode->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                fusedNode->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
   // add output for ResizeBilinearV2
   for (auto inDataAnchor : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(fuseNodeType.c_str(), "Remove edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Remove edge failed."), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(resizeBilinearNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(fuseNodeType.c_str(), "Add edge failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Add edge failed."), return FAILED);
   }
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode),
-                    OP_LOGE(fuseNodeType.c_str(), "Remove node:[%s] failed.", fusedNode->GetName().c_str()),
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Remove node:[%s] failed.", fusedNode->GetName().c_str()),
                     return FAILED);
   // new the size const node for ResizeBilinearV2
   std::string sizeName = fusedNode->GetName() + "_size_const";
@@ -173,7 +174,7 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   (void)ge::OpDescUtils::SetWeights(resizeBilinearNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(resizeBilinearNode);
   if (constInputNodes.size() <= 0) {
-    OP_LOGE(fuseNodeType.c_str(), "GetConstInputs Error");
+    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "GetConstInputs Error");
     return PARAM_INVALID;
   }
   NodePtr constInput = constInputNodes[0];

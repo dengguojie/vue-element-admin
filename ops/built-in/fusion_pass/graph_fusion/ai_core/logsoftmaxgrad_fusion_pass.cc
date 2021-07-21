@@ -32,6 +32,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
 #include "op_log.h"
+#include "error_util.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 
@@ -117,7 +118,7 @@ Status LogSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   }
   // fusion step
   if (DoFusion(graph, sumNode, subNode, expNode, mulNode, fusionNodes) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "logSoftMaxGrad fusion failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "logSoftMaxGrad fusion failed");
     return FAILED;
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "LogSoftmaxGrad fusion success!");
@@ -135,7 +136,7 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
   logsoftmaxGradOp.BreakConnect();
 
   ge::NodePtr logsoftmaxGradNode = graph.AddNode(opDesc);
-  FUSION_PASS_CHECK(logsoftmaxGradNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "logsoftmaxGrad create node failed"),
+  FUSION_PASS_CHECK(logsoftmaxGradNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "logsoftmaxGrad create node failed"),
                     return FAILED);
   fusionNodes.push_back(logsoftmaxGradNode);
   if (UpdateAttr(sumNode, logsoftmaxGradNode) == FAILED) {
@@ -143,11 +144,11 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
     return NOT_CHANGED;
   }
   if (PatternFusionUtil::RemoveInputEdge(mulNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove mul node input edge failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove mul node input edge failed");
     return FAILED;
   }
   if (PatternFusionUtil::RemoveInputEdge(subNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove sub node input edge failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove sub node input edge failed");
     return FAILED;
   }
 
@@ -161,12 +162,12 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "logSoftMaxGrad input data anchor 0 is null"), return FAILED);
 
   if (ge::GraphUtils::AddEdge(preOutDataAnchor, firstInDataAnchor) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge failed");
     return FAILED;
   }
 
   if (PatternFusionUtil::RemoveInputEdge(sumNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove sum edge failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove sum edge failed");
     return FAILED;
   }
 
@@ -181,12 +182,12 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "logSoftMaxGrad input anchor 1 is null"), return FAILED);
 
   if (ge::GraphUtils::AddEdge(expPreOutDataAnchor, secondInDataAnchor) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge failed");
     return FAILED;
   }
 
   if (PatternFusionUtil::RemoveInputEdge(expNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove exp node edge failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove exp node edge failed");
     return FAILED;
   }
   // set logsoftmax_grad name
@@ -207,7 +208,7 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
     auto node = peerAnchor->GetOwnerNode();
     auto outputTensor = node->GetOpDesc()->GetOutputDesc(peerAnchor->GetIdx());
     FUSION_PASS_CHECK(logsoftmaxGradNode->GetOpDesc()->UpdateInputDesc(anchor->GetIdx(), outputTensor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "update input failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "update input failed."), return FAILED);
 
     if (ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(node) == "Const") {
       isInputConst.push_back(true);
@@ -218,25 +219,25 @@ Status LogSoftmaxGradFusionPass::DoFusion(ge::ComputeGraph& graph, ge::NodePtr s
   logsoftmaxGradNode->GetOpDesc()->SetIsInputConst(isInputConst);
   // link logsoftmaxGrad node with sub child nodes
   if (LinkOutputEdge(subNode, logsoftmaxGradNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "link output edge Failed.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "link output edge Failed.");
     return FAILED;
   }
 
   // remove mul sum and exp node
   if (graph.RemoveNode(mulNode) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "mul node remove failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mul node remove failed");
     return FAILED;
   }
   if (graph.RemoveNode(expNode) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "exp node remove failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "exp node remove failed");
     return FAILED;
   }
   if (graph.RemoveNode(sumNode) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "sum node remove failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sum node remove failed");
     return FAILED;
   }
   if (graph.RemoveNode(subNode) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "sub node remove failed");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "sub node remove failed");
     return FAILED;
   }
   return SUCCESS;
@@ -246,12 +247,12 @@ Status LogSoftmaxGradFusionPass::UpdateAttr(ge::NodePtr sumNode, ge::NodePtr nod
   FUSION_PASS_CHECK(sumNode == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "sum node is null"), return FAILED);
   vector<int32_t> axisValue;
   if (ge::AttrUtils::GetListInt(sumNode->GetOpDesc(), ATTR_NAME_CONST, axisValue) == false) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Sum op should have axis attr, but now have no axis attr");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Sum op should have axis attr, but now have no axis attr");
     return FAILED;
   }
 
   if (ge::AttrUtils::SetListInt(node->GetOpDesc(), AXIS, axisValue) == false) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "set sub axis attribute error");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set sub axis attribute error");
     return FAILED;
   }
   return SUCCESS;
@@ -260,25 +261,25 @@ Status LogSoftmaxGradFusionPass::UpdateAttr(ge::NodePtr sumNode, ge::NodePtr nod
 Status LogSoftmaxGradFusionPass::LinkOutputEdge(ge::NodePtr oldNode, ge::NodePtr newNode) {
   ge::OutDataAnchorPtr newOutDataAnchor = newNode->GetOutDataAnchor(0);
   if (newOutDataAnchor == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[newOutDataAnchor] must not be null.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[newOutDataAnchor] must not be null.");
     return fe::PARAM_INVALID;
   }
   for (ge::OutDataAnchorPtr anchor : oldNode->GetAllOutDataAnchors()) {
     if (anchor == nullptr) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[anchor] must not be null.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[anchor] must not be null.");
       return fe::PARAM_INVALID;
     }
     for (ge::InDataAnchorPtr dstAnchor : anchor->GetPeerInDataAnchors()) {
       if (ge::GraphUtils::RemoveEdge(anchor, dstAnchor) != ge::GRAPH_SUCCESS ||
           ge::GraphUtils::AddEdge(newOutDataAnchor, dstAnchor) != ge::GRAPH_SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Replace out data anchor Failed.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace out data anchor Failed.");
         return FAILED;
       }
       auto peerNode = dstAnchor->GetOwnerNode();
       auto inputTensor = peerNode->GetOpDesc()->GetInputDesc(dstAnchor->GetIdx());
       FUSION_PASS_CHECK(
           newNode->GetOpDesc()->UpdateOutputDesc(newOutDataAnchor->GetIdx(), inputTensor) == ge::GRAPH_FAILED,
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "op:%s update output desc failed", newNode->GetName().c_str()), return false);
+          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op:%s update output desc failed", newNode->GetName().c_str()), return false);
     }
   }
   ge::OutControlAnchorPtr outControlAnchor = oldNode->GetOutControlAnchor();
@@ -287,7 +288,7 @@ Status LogSoftmaxGradFusionPass::LinkOutputEdge(ge::NodePtr oldNode, ge::NodePtr
     for (ge::InControlAnchorPtr dstAnchor : outControlAnchor->GetPeerInControlAnchors()) {
       if (ge::GraphUtils::RemoveEdge(outControlAnchor, dstAnchor) != ge::GRAPH_SUCCESS ||
           ge::GraphUtils::AddEdge(newOutControlAnchor, dstAnchor) != ge::GRAPH_SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Replace input control anchor Failed.");
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace input control anchor Failed.");
         return FAILED;
       }
     }

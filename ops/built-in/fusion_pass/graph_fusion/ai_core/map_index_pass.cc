@@ -27,6 +27,7 @@
 
 #include "quant_host_cpu_op_common.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "fp16_t.hpp"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/types.h"
@@ -50,7 +51,7 @@ vector<FusionPattern*> MapIndexFusionPass::DefinePatterns() {
 
   // define AvgPoolFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MapIndexFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   // define origin graph
@@ -65,29 +66,29 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into MapIndexFusionPass");
   // mapindex node
   ge::NodePtr mapIndexNode = GetNodeFromMapping(PATTERN_MAPINDEX, mapping);
-  FUSION_PASS_CHECK(mapIndexNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mapIndexNode is null, fusion failed."),
+  FUSION_PASS_CHECK(mapIndexNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mapIndexNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of MapIndex
   ge::OpDescPtr mapIndexDesc = mapIndexNode->GetOpDesc();
   FUSION_PASS_CHECK(mapIndexDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "mapIndexNode's OpDesc is null, fusion failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mapIndexNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   auto xShape = mapIndexNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
-  FUSION_PASS_CHECK(xShape.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "xShape is empty!"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(xShape.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "xShape is empty!"), return PARAM_INVALID);
   int64_t xLength = xShape[0];
   OP_LOGI(FUSED_OP_TYPE.c_str(), "xLength = %lld", xLength);
 
   auto dataSeqShape = mapIndexNode->GetOpDesc()->GetInputDesc(1).GetShape().GetDims();
-  FUSION_PASS_CHECK(dataSeqShape.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "dataSeqShape is empty!"),
+  FUSION_PASS_CHECK(dataSeqShape.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dataSeqShape is empty!"),
                     return PARAM_INVALID);
   int64_t dataSeqLength = dataSeqShape[0];
   if (PatternFusionUtil::IsUnknownShape(xLength) || PatternFusionUtil::IsUnknownShape(dataSeqLength)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "MapIndexFusionPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "MapIndexFusionPass cannot be applied for unknown shape.");
     return FAILED;
   }
-  FUSION_PASS_CHECK(xLength <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "xShape is invalid!"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(xLength <= 0, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "xShape is invalid!"), return PARAM_INVALID);
   int64_t number = ((dataSeqLength / xLength + 7) / 8) * 8;
   int64_t dataSeqNewLength = number * xLength;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "dataSeqLength = %ld, number = %ld, dataSeqNewLength = %ld", dataSeqLength, number,
@@ -105,11 +106,11 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   mapIndexDesc->UpdateInputDesc(1, dataSeqTensorDesc);
 
   vector<ge::GeTensorPtr> weightsDataSeq = ge::OpDescUtils::MutableWeights(dataSeqNode);
-  FUSION_PASS_CHECK(weightsDataSeq.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "weightsDataSeq is empty!"),
+  FUSION_PASS_CHECK(weightsDataSeq.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weightsDataSeq is empty!"),
                     return PARAM_INVALID);
 
   ge::GeTensorPtr dataSeqTensorPtr = weightsDataSeq[0];
-  FUSION_PASS_CHECK(dataSeqTensorPtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "dataSeq is null ptr!"),
+  FUSION_PASS_CHECK(dataSeqTensorPtr == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dataSeq is null ptr!"),
                     return PARAM_INVALID);
 
   dataSeqTensorPtr->SetTensorDesc(dataSeqTensorDesc);
@@ -117,12 +118,12 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   std::unique_ptr<int32_t[]> NewDataSeq(new (std::nothrow) int32_t[dataSeqNewLength]());
   auto retMem = memset_s(NewDataSeq.get(), dataSeqNewLength, 0, dataSeqNewLength);
-  FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "memset_s function failed!"),
+  FUSION_PASS_CHECK(retMem != EOK, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "memset_s function failed!"),
                     return PARAM_INVALID);
 
   int32_t* dataSeqNewData = NewDataSeq.get();
   int32_t* dataSeqOldData = (int32_t*)(dataSeqTensorPtr->GetData().data());
-  FUSION_PASS_CHECK(dataSeqOldData == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "dataSeqOldData is null ptr!"),
+  FUSION_PASS_CHECK(dataSeqOldData == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dataSeqOldData is null ptr!"),
                     return PARAM_INVALID);
   int64_t i = 0;
   int64_t j = 0;

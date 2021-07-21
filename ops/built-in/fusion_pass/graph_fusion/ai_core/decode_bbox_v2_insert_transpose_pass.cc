@@ -27,6 +27,7 @@
 #include <vector>
 #include <algorithm>
 #include "op_log.h"
+#include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -44,7 +45,7 @@ static const int32_t INT_NUM_TWO = 2;
 vector<FusionPattern*> DecodeBboxV2InsertTransposePass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DecodeBboxV2InsertTransposePass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
   patterns.push_back(pattern);
@@ -55,12 +56,12 @@ Status DecodeBboxV2InsertTransposePass::Fusion(ge::ComputeGraph& graph, Mapping&
                                                vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define DecodeBboxV2InsertTransposePass fusion begin.");
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
   ge::OpDescPtr fuseDesc = fusedNode->GetOpDesc();
   bool reversed_box = false;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetBool(fuseDesc, "reversed_box", reversed_box),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get DecodeBboxV2's attr reversed_box failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get DecodeBboxV2's attr reversed_box failed."), return FAILED);
   if (reversed_box == false) {
     // do infer for fused node again, and update fused node output shape
     ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(0);
@@ -89,7 +90,7 @@ Status DecodeBboxV2InsertTransposePass::Fusion(ge::ComputeGraph& graph, Mapping&
     opOutputDesc->UpdateOutputDesc(0, outputDesc);
     AddTransposeAfterNode(fusedNode, 0, permBoxesList, graph);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(fuseDesc, "reversed_box", true),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Set DecodeBboxV2's attr reversed_box True failed."),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set DecodeBboxV2's attr reversed_box True failed."),
                       return FAILED);
   } else {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "DecodeBboxV2 reversed_box is True don't need insert Transpose");

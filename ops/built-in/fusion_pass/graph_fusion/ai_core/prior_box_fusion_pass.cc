@@ -31,6 +31,7 @@
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
+#include "error_util.h"
 #include "fp16_t.hpp"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "securec.h"
@@ -45,12 +46,12 @@ static const uint16_t UINT_NUM_ZERO = 0;
 
 Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* output) {
   if (output == nullptr) {
-    OP_LOGE("PriorBoxDV2", "output pointer is null!");
+    VECTOR_FUSION_INNER_ERR_REPORT("PriorBoxDV2", "output pointer is null!");
     return FAILED;
   }
   GE_CHECK_POSITIVE_SIZE_RANGE(dimInfo.size());
   if (dimInfo.size() < 4) {
-    OP_LOGE("PriorBoxDV2", "PriorBoxPass output dim size must greater than 3!");
+    VECTOR_FUSION_INNER_ERR_REPORT("PriorBoxDV2", "PriorBoxPass output dim size must greater than 3!");
     return FAILED;
   }
   int64_t nInput = dimInfo[0];
@@ -85,7 +86,7 @@ Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* ou
 vector<FusionPattern*> PriorBoxPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PriorBoxFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_PRIORBOX, {PRIORBOX}).SetOutput(PATTERN_PRIORBOX);
@@ -189,7 +190,7 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
       output.push_back(variance[0]);
   } else {
     if (variance.size() != 4) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass variance dim size must be 1 or 4!");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass variance dim size must be 1 or 4!");
       return FAILED;
     }
     int count = 0;
@@ -210,13 +211,13 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
 Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "enter into PriorBoxPass");
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_PRIORBOX, mapping);
-  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
+  FUSION_PASS_CHECK(fusedNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of priorbox
   ge::OpDescPtr priorboxDesc = fusedNode->GetOpDesc();
   FUSION_PASS_CHECK(priorboxDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."), return PARAM_INVALID);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."), return PARAM_INVALID);
 
   // Get inputs
   ge::GeTensorDesc priorboxInputTensor = fusedNode->GetOpDesc()->GetInputDesc(0);
@@ -233,7 +234,7 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
     OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dimInfo:%d,%d,%d,%d,%d", dimInfo[0], dimInfo[1], dimInfo[2],
             dimInfo[3], dimInfo[4]);
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dim size must be 4 or 5!");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass feature dim size must be 4 or 5!");
     return FAILED;
   }
 
@@ -250,7 +251,7 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
     OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dimInfo:%d,%d,%d,%d,%d", imgDimInfo[0], imgDimInfo[1],
             imgDimInfo[2], imgDimInfo[3], imgDimInfo[4]);
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dim size must be 4 or 5!");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass img dim size must be 4 or 5!");
     return FAILED;
   }
 
@@ -319,7 +320,7 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   int64_t layer_width = dimInfo[3];
   int64_t layer_height = dimInfo[2];
   if (PatternFusionUtil::IsUnknownShape(layer_width) || PatternFusionUtil::IsUnknownShape(layer_height)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
     return FAILED;
   }
   float step_w_size = 0.0;
@@ -333,7 +334,7 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
     img_width = imgDimInfo[3];
     img_height = imgDimInfo[2];
     if (PatternFusionUtil::IsUnknownShape(img_width) || PatternFusionUtil::IsUnknownShape(img_height)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
       return FAILED;
     }
   } else {
@@ -368,13 +369,13 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   vector<int64_t> outputDims = boxOutTensorDesc.GetShape().GetDims();
 
   if (outputDims.size() < 4) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass output dim size must greater than 3!");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass output dim size must greater than 3!");
     return FAILED;
   }
   for (size_t i = 0; i <= 3; i++) {
     auto dim = outputDims[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "PriorBoxPass cannot be applied for unknown shape.");
       return FAILED;
     }
   }
@@ -383,13 +384,13 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   ge::GeTensorPtr assitPtr = nullptr;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Input type is FP16.");
   unique_ptr<uint16_t[]> outputAssit(new (std::nothrow) uint16_t[dimNums]());
-  FUSION_PASS_CHECK(outputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "outputAssit is NULL"),
+  FUSION_PASS_CHECK(outputAssit.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outputAssit is NULL"),
                     return PARAM_INVALID);
   ret = NnSet(dimNums, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(outputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
   // vector to tensor for const
   ret = BoxValueGenFP16(outputDims, outputData, outputAssit.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Generate data by FP16 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Generate data by FP16 failed."), return ret);
   // set output type to fp16
   boxOutTensorDesc.SetDataType(ge::DT_FLOAT16);
   FUSION_PASS_MAKE_SHARED(
