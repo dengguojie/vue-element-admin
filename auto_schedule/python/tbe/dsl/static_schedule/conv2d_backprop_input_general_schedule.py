@@ -2116,8 +2116,9 @@ def general_schedule(
             if l1_fusion_type != -1 and input_mem[0] == 1:
                 sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "phony_insn")
             else:
-                if tensor_attr.get("FM_NHWC_TRANS_5HD"):
-                    sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "dma_copy", {"layout_transform": "nd2nz"})
+                if tensor_attr.get("FM_NHWC_TRANS_5HD"): 
+                    #nd2nz emit insn should be under the batch axis
+                    sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[1], "dma_copy", {"layout_transform": "nd2nz"})
                 else:
                     sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "dma_copy")
                 if l1_fusion_type != -1:
@@ -2528,11 +2529,15 @@ def general_schedule(
 
     sch_agent = ScheduleAgent(sch)
     # split g_dim for ddr; outer is g, inner is c1
-    if l0c_multi_group_flag:
-        cl0_factor = cin1_g * cl0_tiling_g // 2
-        sch_agent[c_ddr].split_group(c_ddr.op.axis[1], cl0_factor)
+    if tensor_attr.get("5HD_TRANS_NHWC"):
+        #n hw c,the channel axis is the third axis
+        sch_agent[c_ddr].split_group(c_ddr.op.axis[2], nparts=g_after)
     else:
-        sch_agent[c_ddr].split_group(c_ddr.op.axis[1], nparts=g_after)
+        if l0c_multi_group_flag:
+            cl0_factor = cin1_g * cl0_tiling_g // 2
+            sch_agent[c_ddr].split_group(c_ddr.op.axis[1], cl0_factor)
+        else:
+            sch_agent[c_ddr].split_group(c_ddr.op.axis[1], nparts=g_after)
 
     affine_cub = _cub_process()
     _cl0_process(affine_cub)
@@ -2660,7 +2665,7 @@ def general_schedule(
         _handle_dynamic_workspace(stride_w)
     else:
         _handle_workspace()
-    if not l0c_multi_group_flag:
+    if not l0c_multi_group_flag and not cube_vector_split:
         _c_col_buffer_tile()
     if preload:
         if l0c_pbuffer == 2:
