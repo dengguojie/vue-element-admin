@@ -15,10 +15,10 @@
  */
 
 /*!
- * \file batch_matmul_fusedmuladd_ub_fusion.cpp
- * \brief tbe batchmatmul and fusedmuladd ops fusion pattern
+ * \file batch_matmul_elementwise_ub_fusion.cpp
+ * \brief tbe batchmatmul and all elementwise ops fusion pattern
  */
-#include "batch_matmul_fusedmuladd_ub_fusion.h"
+#include "batch_matmul_elementwise_ub_fusion.h"
 #include <string>
 #include <vector>
 #include "op_log.h"
@@ -34,7 +34,7 @@ namespace {
 static const char PATTERN_BATCH_MATMUL[] = "batchmatmul";
 static const char PATTERN_ELEM[] = "elemwise";
 static const char PATTERN_ELEM_1[] = "elemwise1";
-static vector<string> elem_typelist = {"FusedMulAdd", "Add", "Div"};
+static vector<string> elem_typelist = {"FusedMulAdd", "Add", "Div", "Relu"};
 static vector<string> elem1_typelist = {"Add", "Relu", "FusedMulAdd"};
 }  // namespace
 
@@ -47,7 +47,7 @@ static vector<string> elem1_typelist = {"Add", "Relu", "FusedMulAdd"};
  *
  * @return BufferFusionPattern: return all valid patterns.
  */
-vector<BufferFusionPattern*> TbeBatchMatmulFusedMulAddFusionPass::DefinePatterns() {
+vector<BufferFusionPattern*> TbeBatchMatmulElementWiseFusionPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
 
   string passName = "TbeBatchMatmulELEMPASS";
@@ -81,7 +81,7 @@ vector<BufferFusionPattern*> TbeBatchMatmulFusedMulAddFusionPass::DefinePatterns
   return patterns;
 }
 
-void TbeBatchMatmulFusedMulAddFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   vector<ge::NodePtr> elemWiseNodes1 = GetMatchedNodesByDescName(PATTERN_ELEM_1, mapping);
@@ -107,8 +107,8 @@ void TbeBatchMatmulFusedMulAddFusionPass::SetSplitInfo(const BufferFusionMapping
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
 }
 
-Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do TbeBatchMatmulFusedMulAddFusionPass!");
+Status TbeBatchMatmulElementWiseFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do TbeBatchMatmulElementWiseFusionPass!");
 
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
   vector<ge::NodePtr> elemNode1 = GetMatchedNodesByDescName(PATTERN_ELEM_1, mapping);
@@ -119,7 +119,7 @@ Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMap
   vector<string>::iterator ret;
   ret = find(elem_typelist.begin(), elem_typelist.end(), elemNode[0]->GetType());
   if (ret == elem_typelist.end()) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add, div and muladd in first elemwise");
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add, div, muladd and Relu in first elemwise");
     return SUCCESS;
   }
 
@@ -159,11 +159,11 @@ Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMap
   }
 
   SetSplitInfo(mapping, fusion_nodes);
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do TbeBatchMatmulFusedMulAddFusionPass!");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do TbeBatchMatmulElementWiseFusionPass!");
 
   return SUCCESS;
 }
 
-REGISTER_BUFFER_FUSION_PASS("TbeBatchMatmulFusedMulAddFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
-                            TbeBatchMatmulFusedMulAddFusionPass);
+REGISTER_BUFFER_FUSION_PASS("TbeBatchMatmulElementWiseFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                            TbeBatchMatmulElementWiseFusionPass);
 }  // namespace fe

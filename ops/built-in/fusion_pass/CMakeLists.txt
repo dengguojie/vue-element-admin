@@ -95,7 +95,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_fastgelugrad_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_elemwise.cc
-  buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_fusedmuladd_ub_fusion.cc
+  buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_elementwise_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_reduce_sum_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_dropout_do_mask_v3_d_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_dropout_do_mask_v3_d_ub_fusion.cc
