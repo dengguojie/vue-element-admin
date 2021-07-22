@@ -51,6 +51,19 @@ class AICPU_VISIBILITY CpuKernelRegister {
    */
   uint32_t RunCpuKernel(CpuKernelContext &ctx);
 
+  /*
+   * run async cpu kernel.
+   * @param ctx: context of kernel
+   * @param wait_type : event wait type
+   * @param wait_id : event wait id
+   * @param cb : callback function
+   * @return uint32_t: 0->success other->failed
+   */
+  uint32_t RunCpuKernelAsync(CpuKernelContext &ctx,
+                             const uint8_t wait_type,
+                             const uint32_t wait_id,
+                             std::function<uint32_t()> cb);
+
   // CpuKernel registration function to register different types of kernel to
   // the factory
   class Registerar {

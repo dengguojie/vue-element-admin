@@ -255,6 +255,22 @@ uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info,
   return KERNEL_STATUS_OK;
 }
 
+// parse async wait info
+uint32_t CpuKernelCache::ParseAsyncWait(FWKAdapter::ExtInfo *ext_info,
+                                        uint8_t &wait_type,
+                                        uint32_t &wait_id) {
+  if (ext_info->infoLen != sizeof(FWKAdapter::AsyncWait)) {
+    KERNEL_LOG_ERROR("Parse extend async wait failed, as info length must be [%zu], but got [%u].",
+    sizeof(FWKAdapter::AsyncWait), ext_info->infoLen);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+  FWKAdapter::AsyncWait *async_info = reinterpret_cast<FWKAdapter::AsyncWait *>(ext_info->infoMsg);
+  wait_type = async_info->waitType;
+  wait_id = async_info->waitId;
+  KERNEL_LOG_INFO("async wait type [%u], notify_id[%l].", wait_type, wait_id);
+  return KERNEL_STATUS_OK;
+}
+
 /*
  * parse extend information.
  */
@@ -262,10 +278,14 @@ uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
                                      bool &has_session_info,
                                      uint64_t &kernel_id,
                                      bool &unknown_shape,
+                                     bool &async_flag,
+                                     uint8_t &wait_type,
+                                     uint32_t &wait_id,
                                      std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
                                      std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type) {
   KERNEL_LOG_INFO("Parse extend info and update shape begin.");
   uint32_t offset = 0;
+  async_flag = false;
   FWKAdapter::ExtInfo *ext_info = nullptr;
   char *extInfo_buf =
       reinterpret_cast<char *>(static_cast<uintptr_t>(param_head->extInfoAddr));
@@ -296,6 +316,14 @@ uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
         break;
       case FWKAdapter::FWK_ADPT_EXT_BITMAP:
         ret = ParseExtBitMap(ext_info, unknown_shape);
+        break;
+      case FWKAdapter::FWK_ADPT_EXT_ASYNCWAIT:
+        ret = ParseAsyncWait(ext_info, wait_type, wait_id);
+        if (ret == KERNEL_STATUS_OK &&
+            wait_type != FWKAdapter::FWKExtWaitType::FWK_ADPT_WAIT_TYPE_NULL &&
+            wait_type != FWKAdapter::FWKExtWaitType::FWK_ADPT_WAIT_TYPE_INVALID) {
+          async_flag = true;
+        }
         break;
       default:
         KERNEL_LOG_INFO("Ignore infoType[%d], infoLen[%u].", ext_info->infoType,
@@ -431,10 +459,13 @@ int32_t CpuKernelCache::RunKernel(void *param) {
   bool has_sess_info = false;
   uint64_t kernel_id = 0;
   bool unknown_shape = false;
+  bool async_flag = false;
+  uint8_t wait_type = 0;
+  uint32_t wait_id = 0;
   std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type;
   std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type;
   ret = ParseExtMsg(param_head, has_sess_info, kernel_id, unknown_shape,
-                    input_shape_and_type, output_shape_and_type);
+                    async_flag, wait_type, wait_id, input_shape_and_type, output_shape_and_type);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
@@ -451,12 +482,17 @@ int32_t CpuKernelCache::RunKernel(void *param) {
     return -1;
   }
 
-  ret = CpuKernelRegister::Instance().RunCpuKernel(*ctx);
-  if (ret != KERNEL_STATUS_OK) {
-    return -1;
+  if (async_flag) {
+    ret = CpuKernelRegister::Instance().RunCpuKernelAsync(*ctx, wait_type, wait_id, [&](){
+      return UpdateFWKOutputShape(unknown_shape, *ctx, output_shape_and_type);
+    });
+  } else {
+    ret = CpuKernelRegister::Instance().RunCpuKernel(*ctx);
+    if (ret != KERNEL_STATUS_OK) {
+      return -1;
+    }
+    ret = UpdateFWKOutputShape(unknown_shape, *ctx, output_shape_and_type);
   }
-
-  ret = UpdateFWKOutputShape(unknown_shape, *ctx, output_shape_and_type);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }

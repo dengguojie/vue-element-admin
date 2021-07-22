@@ -27,6 +27,8 @@ set (local_context_src_files
     ${CMAKE_CURRENT_SOURCE_DIR}/common/device_sharder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/eigen_threadpool.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/cpu_kernel_cache.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/async_event_util.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/async_cpu_kernel.cc
     ${PROTO_SRCS}
 )
 

@@ -120,15 +120,31 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
                                uint64_t &kernel_id);
 
   /*
+   * parse extend async wait info
+   * @param ext_info : extend infomation
+   * @param wait_type: event wait type
+   * @param wait_id : event wait id
+   * @return uint32_t: 0 indicates success, while the others fail 
+   */
+  uint32_t ParseAsyncWait(FWKAdapter::ExtInfo *ext_info,
+                          uint8_t &wait_type,
+                          uint32_t &wait_id);
+
+  /*
    * parse extend information.
    * @param param_head: kernel context
    * @param has_session_info: whether has session info in extend info
    * @param kernel_id: kernel id
+   * @param wait_type: event wait type
+   * @param wait_id : event wait id
    * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t ParseExtMsg(
       AicpuParamHead *param_head, bool &has_session_info, uint64_t &kernel_id,
       bool &unknown_shape,
+      bool &async_flag,
+      uint8_t &wait_type,
+      uint32_t &wait_id,
       std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
       std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type);
 

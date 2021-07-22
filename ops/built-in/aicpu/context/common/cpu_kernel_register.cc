@@ -18,9 +18,12 @@
 #include <mutex>
 
 #include "aicpu_context.h"
+#include "aicpu_async_event.h"
 #include "cpu_kernel.h"
 #include "log.h"
 #include "status.h"
+#include "async_event_util.h"
+#include "async_cpu_kernel.h"
 
 namespace {
 #define TYPE_REGISTAR(type, fun) type##Registerar(type, fun)
@@ -110,6 +113,70 @@ uint32_t CpuKernelRegister::RunCpuKernel(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("RunCpuKernel[%s] success.", type.c_str());
   return KERNEL_STATUS_OK;
 }
+
+uint32_t CpuKernelRegister::RunCpuKernelAsync(CpuKernelContext &ctx,
+                                              const uint8_t wait_type,
+                                              const uint32_t wait_id,
+                                              std::function<uint32_t()> cb) {
+  std::string type = ctx.GetOpType();
+  KERNEL_LOG_INFO("RunCpuKernelAsync[%s] begin.", type.c_str());
+  auto kernel = GetCpuKernel(type);
+  if (kernel == nullptr) {
+    return KERNEL_STATUS_INNER_ERROR;
+  }
+  AsyncCpuKernel *async_kernel = dynamic_cast<AsyncCpuKernel *>(kernel.get());
+  if (async_kernel == nullptr) {
+    KERNEL_LOG_ERROR("kernel name[%s] does not hava async impl.", type.c_str());
+    return KERNEL_STATUS_INNER_ERROR;
+  }
+  if (aicpu::SetThreadLocalCtx != nullptr) {
+    if (aicpu::SetThreadLocalCtx(aicpu::CONTEXT_KEY_OP_NAME, type) !=
+        aicpu::AICPU_ERROR_NONE) {
+      KERNEL_LOG_ERROR("Set kernel name[%s] to context failed.", type.c_str());
+      return KERNEL_STATUS_INNER_ERROR;
+    }
+    if (aicpu::SetThreadLocalCtx(aicpu::CONTEXT_KEY_WAIT_TYPE, std::to_string(wait_type)) !=
+        aicpu::AICPU_ERROR_NONE) {
+      KERNEL_LOG_ERROR("Set wait type to context failed.");
+      return KERNEL_STATUS_INNER_ERROR;
+    }
+    if (aicpu::SetThreadLocalCtx(aicpu::CONTEXT_KEY_WAIT_ID, std::to_string(wait_id)) !=
+        aicpu::AICPU_ERROR_NONE) {
+      KERNEL_LOG_ERROR("Set wait id to context failed.");
+      return KERNEL_STATUS_INNER_ERROR;
+    }
+  }
+  if (aicpu::SetOpname != nullptr) {
+    (void)aicpu::SetOpname(type);
+  }
+  AsyncNotifyInfo notify_info;
+  if (aicpu::GetTaskAndStreamId != nullptr) {
+    aicpu::GetTaskAndStreamId(notify_info.taskId, notify_info.streamId);
+  }
+  (void)aicpu::aicpuGetContext(&notify_info.ctx);
+  notify_info.waitType = wait_type;
+  notify_info.waitId = wait_id;
+
+  auto start = std::chrono::steady_clock::now();
+  auto done = [&](uint32_t status) {
+    auto end = std::chrono::steady_clock::now();
+    double dr_us=std::chrono::duration<double,std::micro>(end-start).count();
+    KERNEL_LOG_EVENT("RunCpuKernel[%s], run time is [%lf] us.", type.c_str(), dr_us);
+    if (status == KERNEL_STATUS_OK) {
+      KERNEL_LOG_INFO("RunCpuKernel[%s] success.", type.c_str());
+      status = cb();
+    }
+    notify_info.retCode = status;
+    void *param = reinterpret_cast<void *>(&notify_info);
+    KERNEL_LOG_INFO("RunCpuKernelAsync notify event wait, wait_type[%u], "
+                    "wait_id[%u], task_id[%u], stream_id[%u], status[%u].",
+                    notify_info.waitType, notify_info.waitId, notify_info.taskId,
+                    notify_info.streamId, notify_info.retCode);
+    AsyncEventUtil::GetInstance().NotifyWait(param, sizeof(AsyncNotifyInfo));
+  };
+  return async_kernel->ComputeAsync(ctx, done);
+}
+
 
 CpuKernelRegister::Registerar::Registerar(const std::string &type,
                                           const KERNEL_CREATOR_FUN &fun) {

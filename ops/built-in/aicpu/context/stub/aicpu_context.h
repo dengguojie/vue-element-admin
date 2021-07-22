@@ -27,6 +27,7 @@ typedef struct {
   uint32_t deviceId;
   uint32_t tsId;
   pid_t hostPid;
+  uint32_t vfId;
 } aicpuContext_t;
 
 typedef enum {
@@ -41,10 +42,13 @@ enum CtxType : int32_t {
 };
 
 const std::string CONTEXT_KEY_OP_NAME = "opname";
+const std::string CONTEXT_KEY_WAIT_TYPE = "waitType";
+const std::string CONTEXT_KEY_WAIT_ID = "waitId";
 
 status_t aicpuSetContext(aicpuContext_t *ctx);
 
-status_t aicpuGetContext(aicpuContext_t *ctx);
+status_t __attribute__((weak))
+aicpuGetContext(aicpuContext_t *ctx);
 
 status_t InitTaskMonitorContext(uint32_t aicpuCoreCnt);
 
@@ -59,6 +63,9 @@ SetThreadLocalCtx(const std::string &key, const std::string &value);
 
 status_t __attribute__((weak))
 GetThreadLocalCtx(const std::string &key, std::string &value);
+
+status_t __attribute__((weak))
+GetTaskAndStreamId(uint64_t taskId, uint32_t streamId);
 
 status_t RemoveThreadLocalCtx(const std::string &key);
 }  // namespace aicpu
