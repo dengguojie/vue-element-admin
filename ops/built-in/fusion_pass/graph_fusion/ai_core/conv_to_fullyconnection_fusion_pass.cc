@@ -45,6 +45,7 @@ static const string REQUANT = "AscendRequant";
 static const char ATTR_GROUPS[] = "groups";
 static const char ATTR_PADS[] = "pads";
 static const char ATTR_NUM_OUTPUT[] = "num_output";
+static const char ATTR_AXIS[] = "axis";
 static const std::map<ge::Format, std::map<std::string, int32_t>> FE_AXIS_INDEX_OF_FORMAT = {
     {ge::FORMAT_NCHW, {{"N", NCHW_DIM_N}, {"C", NCHW_DIM_C}, {"H", NCHW_DIM_H}, {"W", NCHW_DIM_W}}},
     {ge::FORMAT_HWCN, {{"N", HWCN_DIM_N}, {"C", HWCN_DIM_C}, {"H", HWCN_DIM_H}, {"W", HWCN_DIM_W}}},
@@ -215,6 +216,10 @@ Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   int32_t outAixsC = GetDimByAxisName(outputDesc, "C");
   OP_LOGD(FUSED_OP_TYPE.c_str(), "outAixsC of conv is %ld.", outAixsC);
   (void)ge::AttrUtils::SetInt(convOp, ATTR_NUM_OUTPUT, outAixsC);
+
+  // >>> start: conv to fc attr axis should be 1
+  (void)ge::AttrUtils::SetInt(convOp, ATTR_AXIS, 1);
+  // <<< end: conv to fc attr axis should be 1
 
   // >>> start: change bias output format when shape is 1
   auto bias_tensor = convNode->GetOpDesc()->MutableInputDesc("bias");
