@@ -5,6 +5,14 @@
 #include "array_ops.h"
 
 using namespace std;
+
+const static char* x_c = "x";
+const static char* output_size_c = "output_size";
+const static char* kernel_size_c = "kernel_size";
+const static char* dilation_c = "dilation";
+const static char* padding_c = "padding";
+const static char* stride_c = "stride";
+const static char* y_c = "y";
 class Col2imTest : public testing::Test {
   protected:
     static void SetUpTestCase() {
@@ -19,10 +27,11 @@ class Col2imTest : public testing::Test {
 TEST_F(Col2imTest, col2im_test_case_0){
   ge::op::Col2im op;
 
+
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {2,48,9,16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {2,48,9,16}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
@@ -32,16 +41,16 @@ TEST_F(Col2imTest, col2im_test_case_0){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_SUCCESS);
@@ -49,7 +58,7 @@ TEST_F(Col2imTest, col2im_test_case_0){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_SUCCESS);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
 }
 
@@ -59,7 +68,7 @@ TEST_F(Col2imTest, col2im_test_case_1){
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {2,48,9,16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {2,48,9,16}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
@@ -69,16 +78,16 @@ TEST_F(Col2imTest, col2im_test_case_1){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_SUCCESS);
@@ -86,7 +95,7 @@ TEST_F(Col2imTest, col2im_test_case_1){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_SUCCESS);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }
 
@@ -96,7 +105,7 @@ TEST_F(Col2imTest, col2im_test_case_2){
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {9,16,16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {9,16,16}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
@@ -106,16 +115,16 @@ TEST_F(Col2imTest, col2im_test_case_2){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_SUCCESS);
@@ -123,7 +132,7 @@ TEST_F(Col2imTest, col2im_test_case_2){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_FAILED);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }
 
@@ -133,7 +142,7 @@ TEST_F(Col2imTest, col2im_test_case_3){
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {1,16,9,16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {1,16,9,16}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({3}), ge::FORMAT_ND, ge::DT_INT32);
@@ -143,16 +152,16 @@ TEST_F(Col2imTest, col2im_test_case_3){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_SUCCESS);
@@ -160,7 +169,7 @@ TEST_F(Col2imTest, col2im_test_case_3){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_FAILED);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }
 
@@ -170,7 +179,7 @@ TEST_F(Col2imTest, col2im_test_case_4){
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {1,16,9,16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {1,16,9,16}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
@@ -180,16 +189,16 @@ TEST_F(Col2imTest, col2im_test_case_4){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3, 2});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_FAILED);
@@ -197,7 +206,7 @@ TEST_F(Col2imTest, col2im_test_case_4){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_SUCCESS);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }
 
@@ -207,7 +216,7 @@ TEST_F(Col2imTest, col2im_test_case_5){
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {1,16,9,16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {1,16,9,16}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
@@ -217,16 +226,16 @@ TEST_F(Col2imTest, col2im_test_case_5){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_FAILED);
@@ -234,7 +243,7 @@ TEST_F(Col2imTest, col2im_test_case_5){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_SUCCESS);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }
 
@@ -244,7 +253,7 @@ TEST_F(Col2imTest, col2im_test_case_6){
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {1,16,9,16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {1,16,9,16}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
@@ -254,16 +263,16 @@ TEST_F(Col2imTest, col2im_test_case_6){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_FAILED);
@@ -271,7 +280,7 @@ TEST_F(Col2imTest, col2im_test_case_6){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_SUCCESS);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }
 
@@ -281,7 +290,7 @@ TEST_F(Col2imTest, col2im_test_case_7){
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {1,16,9,16}, ge::DT_FLOAT, ge::FORMAT_NCHW, {1,16,9,16}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
@@ -291,16 +300,16 @@ TEST_F(Col2imTest, col2im_test_case_7){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_FAILED);
@@ -308,7 +317,7 @@ TEST_F(Col2imTest, col2im_test_case_7){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_SUCCESS);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }
 
@@ -318,7 +327,7 @@ TEST_F(Col2imTest, col2im_test_case_8){
   ge::TensorDesc x_tensor_desc = create_desc_with_ori(
     {1,16,9,2044}, ge::DT_FLOAT, ge::FORMAT_NCHW, {1,16,9,2044}, ge::FORMAT_NCHW
   );
-  op.UpdateInputDesc("x", x_tensor_desc);
+  op.UpdateInputDesc(x_c, x_tensor_desc);
 
   ge::Tensor output_size_tensor;
   ge::TensorDesc output_size_tensor_desc(ge::Shape({2}), ge::FORMAT_ND, ge::DT_INT32);
@@ -328,16 +337,16 @@ TEST_F(Col2imTest, col2im_test_case_8){
   auto output_size_const = ge::op::Constant().set_attr_value(output_size_tensor);
 
   op.set_input_output_size(output_size_const);
-  op.UpdateInputDesc("output_size", output_size_tensor_desc);
+  op.UpdateInputDesc(output_size_c, output_size_tensor_desc);
 
   vector<int32_t> kernel_size({3, 3});
-  op.SetAttr("kernel_size", kernel_size);
+  op.SetAttr(kernel_size_c, kernel_size);
   vector<int32_t> dilation({1, 1});
-  op.SetAttr("dilation", dilation);
+  op.SetAttr(dilation_c, dilation);
   vector<int32_t> padding({0, 0});
-  op.SetAttr("padding", padding);
+  op.SetAttr(padding_c, padding);
   vector<int32_t> stride({1, 1});
-  op.SetAttr("stride", stride);
+  op.SetAttr(stride_c, stride);
 
   auto verify_ret = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_ret, ge::GRAPH_SUCCESS);
@@ -345,6 +354,6 @@ TEST_F(Col2imTest, col2im_test_case_8){
   auto infer_ret = op.InferShapeAndType();
   EXPECT_EQ(infer_ret, ge::GRAPH_FAILED);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName(y_c);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }

@@ -18,6 +18,7 @@
 #include "op_proto_test_util.h"
 #include "nonlinear_fuc_ops.h"
 
+const static char* input_x = "input_x";
 class ShrinkTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
@@ -32,7 +33,7 @@ class ShrinkTest : public testing::Test {
 TEST_F(ShrinkTest, ShrinkTest_1) {
   ge::op::Shrink op;
 
-  op.UpdateInputDesc("input_x",
+  op.UpdateInputDesc(input_x,
     create_desc_shape_range(
      {-1, -1},
      ge::DT_FLOAT16,
@@ -47,7 +48,7 @@ TEST_F(ShrinkTest, ShrinkTest_1) {
 TEST_F(ShrinkTest, ShrinkTest_2) {
   ge::op::Shrink op;
 
-  op.UpdateInputDesc("input_x",
+  op.UpdateInputDesc(input_x,
     create_desc_shape_range(
      {-1, -1},
      ge::DT_FLOAT,
@@ -62,7 +63,7 @@ TEST_F(ShrinkTest, ShrinkTest_2) {
 TEST_F(ShrinkTest, ShrinkTest_3) {
   ge::op::Shrink op;
 
-  op.UpdateInputDesc("input_x",
+  op.UpdateInputDesc(input_x,
     create_desc_shape_range(
      {-1, -1, -1},
      ge::DT_FLOAT16,
@@ -77,7 +78,7 @@ TEST_F(ShrinkTest, ShrinkTest_3) {
 TEST_F(ShrinkTest, ShrinkTest_4) {
   ge::op::Shrink op;
 
-  op.UpdateInputDesc("input_x",
+  op.UpdateInputDesc(input_x,
     create_desc_shape_range(
      {-1, -1, -1},
      ge::DT_FLOAT,
