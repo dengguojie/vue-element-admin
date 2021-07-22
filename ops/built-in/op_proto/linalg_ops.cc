@@ -361,7 +361,7 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
 
   int64_t n;
   size_t dim_size = op.get_input_desc_x().GetShape().GetDimNum();
-  if (dim_size <= 2) {
+  if (dim_size < 2) {
     return GRAPH_FAILED;
   }
   int64_t dim0 = op.get_input_desc_x().GetShape().GetDim(dim_size - 2);
