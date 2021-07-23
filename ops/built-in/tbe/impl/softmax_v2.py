@@ -283,14 +283,14 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             if check_axis_is_last(shape_x_ori, axis):
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                     datatype="float16,float16,float,float,\
-                                                              float16,float,float16,float",
+                                                              float16,float",
                                                     format="NC1HWC0,ND,ND,NC1HWC0,\
-                                                            NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
+                                                            NDC1HWC0,NDC1HWC0")
                 output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float,float,\
-                                                                  float16,float,float16,float",
+                                                                  float16,float",
                                                         format="NC1HWC0,ND,ND,NC1HWC0,\
-                                                                NDC1HWC0,NDC1HWC0,FRACTAL_NZ,FRACTAL_NZ")
+                                                                NDC1HWC0,NDC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                     datatype="float16,float16,float,float,float16,float",
