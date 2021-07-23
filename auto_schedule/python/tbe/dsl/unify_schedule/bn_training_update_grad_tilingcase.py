@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 # Copyright 2019-2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +31,7 @@ from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import register_build_pointcut
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
+from tbe.common.utils import op_tiling
 from .constants import Pattern
 from .vector_tilingcase import TilingCaseBase
 
@@ -55,6 +54,9 @@ from .util import get_reduce_axes
 from .util import is_placeholder
 from .util import shape_to_list
 
+CONST = "const"
+# storage bound which is the maximum memory of UB allocated by the backend
+STORAGE_BOUND = int(7 * 1024)
 
 class ComputeGraphInfo:
     """
@@ -535,8 +537,6 @@ def apply_compile_info(bn_training_update_grad_info, graph_info, tiling_list):
                     add_compile_info(key, key_info)
     else:
         raise RuntimeError("pre_compile_info is Null")
-        
-
 
 def _calc_tiling_key(bn_training_update_grad_info, tiling):
     # tiling: single_case
@@ -553,6 +553,45 @@ def _calc_tiling_key(bn_training_update_grad_info, tiling):
 
     tiling.tiling_key = tiling_key
 
+def _gen_tiling_case_const(compute_graph_info):
+    max_ub_count = STORAGE_BOUND
+    add_compile_info("max_ub_count", max_ub_count)
+
+    res_tensor = tuple(compute_graph_info.endpoint_output_tensor_set)[0]
+    res_shape = shape_to_list(res_tensor.shape)
+    tiling_case_list = []
+    inputs = []
+    tiling_format = {}
+
+    for _input in compute_graph_info.input_tensor_set:
+        input_shape = shape_to_list(_input.shape)
+        input_name = _input.op.name
+        if  input_name == "x_input" or  input_name == "grads_input":
+            inputs.insert(0, {"shape": input_shape, "dtype": _input.dtype})
+        else:
+            inputs.append({"shape": input_shape, "dtype": _input.dtype})
+
+    outputs = [{"shape": res_shape, "dtype": res_tensor.dtype}, 
+               {"shape": res_shape, "dtype": res_tensor.dtype}]
+
+    run_info = op_tiling.do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
+    tiling_format_other = {
+        "block_split_axis_index": "int",
+        "ub_split_axis_index": "int",
+        "block_factor": "int",
+        "ub_factor": "int",
+    }
+    tiling_format.update(tiling_format_other)
+    tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
+    tiling_case = BNTrainingUpdateGradTilingCase()
+    tiling_case.multi_core = True
+    tiling_case.block_split_axis_index = tiling_data["block_split_axis_index"]
+    tiling_case.ub_split_axis_index = tiling_data["ub_split_axis_index"]
+    tiling_case.block_factor = tiling_data["block_factor"]
+    tiling_case.ub_factor = tiling_data["ub_factor"]
+    tiling_case_list.append(tiling_case)
+    return tiling_case_list
+
 @register_tiling_case("BNTrainingUpdateGrad")
 def calc_tiling_case(outs, options=None):
     [options].clear()
@@ -565,13 +604,19 @@ def calc_tiling_case(outs, options=None):
     get_context().get_current_compute().add("compute_graph_info", compute_graph_info)
     get_context().get_current_compute().add("bn_training_update_grad_info", bn_training_update_grad_info)
     tiling_case_list = []
+    mode = get_context().get_current_compute().get("mode")
 
-    tiling_case_list = _calculate_tiling_cases(bn_training_update_grad_info)
-    tiling_case_list += _calculate_atomic_tiling_cases(bn_training_update_grad_info)
-    apply_compile_info(bn_training_update_grad_info, compute_graph_info, tiling_case_list)
-
-    for tiling_case in tiling_case_list:
-        _calc_tiling_key(bn_training_update_grad_info, tiling_case)
+    if mode == CONST:
+        apply_compile_info(bn_training_update_grad_info, compute_graph_info, tiling_case_list)
+        tiling_case_list = _gen_tiling_case_const(compute_graph_info)
+    else:
+        tiling_case_list = _calculate_tiling_cases(bn_training_update_grad_info)
+        tiling_case_list += _calculate_atomic_tiling_cases(bn_training_update_grad_info)
+        tiling_case_list += _calculate_special_tiling_cases(bn_training_update_grad_info)
+        for tiling_case in tiling_case_list:
+            _calc_tiling_key(bn_training_update_grad_info, tiling_case)
+    
+        apply_compile_info(bn_training_update_grad_info, compute_graph_info, tiling_case_list)
     
     return tiling_case_list
 
@@ -642,7 +687,7 @@ def _calculate_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTrainingUp
         original_axis = reorder_to_original_axis_map[i]
         if original_axis not in reduce_axis_index:
             block_split_axis = original_axis
-            if block_split_axis not in (0, 1):
+            if block_split_axis not in (0, 1, 2):
                 continue
             
             for j in range(0, len(reordered_shape)):
@@ -650,7 +695,7 @@ def _calculate_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTrainingUp
                 if original_axis not in reduce_axis_index and j < i:
                     continue 
                 ub_split_axis = reorder_to_original_axis_map[j]
-                if ub_split_axis not in (0, 2):
+                if ub_split_axis not in (0, 2, 3):
                     continue
                 tiling_case = BNTrainingUpdateGradTilingCase()
                 tiling_case.block_split_axis_index = block_split_axis
@@ -672,7 +717,7 @@ def _calculate_atomic_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTra
         original_axis = reorder_to_original_axis_map[i]
         if original_axis in reduce_axis_index:
             block_split_axis = original_axis
-            if block_split_axis not in (0, 1):
+            if block_split_axis not in (0, 1, 2):
                 continue
             
             for j in range(0, len(reordered_shape)):
@@ -680,7 +725,7 @@ def _calculate_atomic_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTra
                 if original_axis in reduce_axis_index and j < i:
                     continue 
                 ub_split_axis = reorder_to_original_axis_map[j]
-                if ub_split_axis not in (0, 2):
+                if ub_split_axis not in (0, 2, 3):
                     continue
                 tiling_case = BNTrainingUpdateGradTilingCase()
                 tiling_case.is_atomic = True
@@ -689,6 +734,28 @@ def _calculate_atomic_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTra
                 tiling_case.multi_core = True
                 tiling_case_list.append(tiling_case)
     
+    return tiling_case_list
+
+def _calculate_special_tiling_cases(info: BNTrainingUpdateGradInfo) -> List[BNTrainingUpdateGradTilingCase]:
+    tiling_case_list = []
+    tiling_case = BNTrainingUpdateGradTilingCase()
+    tiling_case.block_split_axis_index = 5
+    tiling_case.ub_split_axis_index = 2
+    tiling_case.multi_core = True
+    tiling_case_list.append(tiling_case)
+
+    tiling_case = BNTrainingUpdateGradTilingCase()
+    tiling_case.block_split_axis_index = 6
+    tiling_case.ub_split_axis_index = 2
+    tiling_case.multi_core = False
+    tiling_case_list.append(tiling_case)
+
+    tiling_case = BNTrainingUpdateGradTilingCase()
+    tiling_case.block_split_axis_index = 6
+    tiling_case.ub_split_axis_index = 3
+    tiling_case.multi_core = False
+    tiling_case_list.append(tiling_case)
+
     return tiling_case_list
 
 def _reorder_shape(ori_input_shape: list, reduce_axis_index: List[int]):

@@ -20,8 +20,23 @@ def gen_bn_training_update_grad_case(shape_grads, shape_x, shape_batch_mean, sha
 
 case1 = gen_bn_training_update_grad_case((-1,-1,-1,-1,16), (-1,-1,-1,-1,16), (1,-1,1,1,16), (1,-1,1,1,16), "float32", "float32",
                                          "bn_training_update_grad_1")
+case2 = gen_bn_training_update_grad_case((32,16,13,13,16), (32,16,13,13,16), (1,16,1,1,16), (1,16,1,1,16), "float32", "float32",
+                                         "bn_training_update_grad_2")
+case3 = gen_bn_training_update_grad_case((16,32,5,5,16), (16,32,5,5,16), (1,32,1,1,16), (1,32,1,1,16), "float32", "float32",
+                                         "bn_training_update_grad_3")
+case4 = gen_bn_training_update_grad_case((2,2,16,16,16), (2,2,16,16,16), (1,2,1,1,16), (1,2,1,1,16), "float32", "float32",
+                                         "bn_training_update_grad_4")
+case5 = gen_bn_training_update_grad_case((2,2,20,20,16), (2,2,20,20,16), (1,2,1,1,16), (1,2,1,1,16), "float32", "float32",
+                                         "bn_training_update_grad_5")
+case6 = gen_bn_training_update_grad_case((2,2,256,256,16), (2,2,256,256,16), (1,2,1,1,16), (1,2,1,1,16), "float32", "float32",
+                                         "bn_training_update_grad_6")
 
 ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):

@@ -9,7 +9,6 @@
 #include "op_tiling.h"
 
 namespace optiling {
-
 struct BNGradTilingInfo {
     int32_t block_dim;
     int32_t block_tiling_axis;
@@ -41,40 +40,96 @@ int32_t CalcBNGradTilingKey(BNGradTilingInfo& tilingInfo, int32_t pattern, BNGra
     return key;
 }
 
-bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, int64_t max_ub_count, int32_t core_num, BNGradTilingInfo& tilingInfo) {
+int32_t get_nearest_factor(int32_t dim, int32_t split_size) {
+    int32_t nearest_factor = split_size;
+    while (dim % nearest_factor != 0) {
+        nearest_factor -= 1;
+    }
+    if (int(split_size / nearest_factor) < 2) {
+        split_size = nearest_factor;
+    }
+    return split_size;
+}
+
+bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, vector<int64_t> input_shape, int64_t max_ub_count, int32_t core_num, BNGradTilingInfo& tilingInfo) {
     tilingInfo.block_dim = -1;
     tilingInfo.block_tiling_axis = -1;
     tilingInfo.block_tiling_factor = -1;
     tilingInfo.ub_tiling_axis = -1;
     tilingInfo.ub_tiling_factor = -1;
 
-    int32_t ub_split_axis = 2;
-    int32_t ub_split_inner = 1;
+    int32_t ub_split_axis = 0;
+    int32_t ub_split_inner = 0;
 
-    int32_t block_factor = c1 / core_num;
-    int32_t block_dim = core_num;
-
-    for(int32_t i = h; i > 0; i--) {
-        if (h%i != 0) {
-            continue;
+    if (max_ub_count / (h*w*c0) >= 2 && ((c1 >= core_num && c1 % core_num == 0) || (n >= core_num && n % core_num == 0))) {
+        ub_split_axis = 0;
+        ub_split_inner = 1;
+        int32_t n_inner = 0;
+        if (c1 >= core_num && c1 % core_num == 0) {
+            n_inner = n;
+        } else {
+            n_inner = n / core_num;
         }
 
-        if ((i*w*c0) > max_ub_count) {
-            continue;
-        }
+        for (int32_t i = n_inner; i > 0; i--) {
+            if (n_inner % i != 0){
+                continue;
+            }
+            if (h*w*c0*i > max_ub_count){
+                continue;
+            }
 
-        ub_split_inner = i;
-        break;
+            ub_split_inner = i;
+            break;
+        }
+        tilingInfo.block_dim = core_num;
+        tilingInfo.ub_tiling_axis = ub_split_axis;
+        tilingInfo.ub_tiling_factor = ub_split_inner;
+
+        return true;
     }
 
-    tilingInfo.block_dim = block_dim;
-    tilingInfo.block_tiling_axis = 0;
-    tilingInfo.block_tiling_factor = block_factor;
+    int32_t block_tiling_inner_loop = input_shape[2];
+    int32_t bound_size = max_ub_count;
+    int32_t split_axis = 2;
+    int32_t temp_size = 1;
+    bool need_split = false;
+
+    for (int32_t i = 4; i > 1; i --) {
+        temp_size = temp_size * input_shape[i];
+        if (temp_size >= bound_size) {
+            split_axis = i;
+            temp_size = temp_size / input_shape[i];
+            need_split = true;
+            break;
+        }
+    }
+
+    int32_t split_size = 1;
+    if (need_split) {
+        for (int32_t i = 1; i < input_shape[split_axis]+1; i++) {
+            if (temp_size * i > bound_size) {
+                split_size = i - 1;
+                split_size = get_nearest_factor(input_shape[split_axis], split_size);
+                break;
+            } 
+        }
+    } else {
+        split_size = block_tiling_inner_loop;
+    }
+
+    if (split_axis == 2 && split_size > block_tiling_inner_loop) {
+        split_size = block_tiling_inner_loop;
+    }
+
+    ub_split_inner = split_size;
+    ub_split_axis = split_axis;
+
+    tilingInfo.block_dim = core_num;
     tilingInfo.ub_tiling_axis = ub_split_axis;
     tilingInfo.ub_tiling_factor = ub_split_inner;
 
     return true;
-
 }
 
 bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_type, const nlohmann::json& op_info) {
@@ -99,7 +154,6 @@ bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_
     }
 
     return true;
-
 }
 
 bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
@@ -115,12 +169,50 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     int32_t c0 = input_shape[4];
 
     int64_t max_ub_count = op_info.at("max_ub_count").get<std::int64_t>();
+    string mode = op_info["mode"].get<string>();
+
     BNGradCompileInfo compileInfo;
     BNGradTilingInfo tilingInfo;
     GetBNGradCompileInfo(compileInfo, op_type, op_info);
     int32_t core_num = compileInfo.core_num;
+    int32_t half_core_num = core_num / 2;
 
-    GetBNGradTilingData(n, c1, h, w, c0, max_ub_count, core_num, tilingInfo);
+    GetBNGradTilingData(n, c1, h, w, c0, input_shape, max_ub_count, core_num, tilingInfo);
+
+    int32_t block_tiling_axis = -1;
+    int32_t ub_tiling_axis = tilingInfo.ub_tiling_axis;
+    int32_t ub_tiling_factor = tilingInfo.ub_tiling_factor;
+    int32_t outer_loop = input_shape[ub_tiling_axis] / ub_tiling_factor;
+
+    if (c1 >= core_num) {
+        block_tiling_axis = 1;
+    } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) && 
+                outer_loop >= core_num &&
+                input_shape[ub_tiling_axis] % core_num == 0) {
+        block_tiling_axis = 2;
+    } else if (ub_tiling_axis == 2 && 
+               input_shape[ub_tiling_axis] >= half_core_num &&
+               input_shape[ub_tiling_axis] % half_core_num == 0 &&
+               input_shape[0] < core_num) {
+        block_tiling_axis = 5;
+    } else if (n >= core_num) {
+        block_tiling_axis = 0;
+    } else {
+        block_tiling_axis = 6;
+    }
+
+    tilingInfo.block_tiling_axis = block_tiling_axis;
+    tilingInfo.block_tiling_factor = (input_shape[block_tiling_axis] + core_num - 1) / core_num;
+
+    if (mode == "const") {
+        run_info.block_dim = tilingInfo.block_dim;
+        run_info.tiling_key = 0;
+        ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_axis);
+        ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_axis);
+        ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
+        ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+        return true;
+    }
 
     run_info.block_dim = tilingInfo.block_dim;
     int32_t pattern = 134;

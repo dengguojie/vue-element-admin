@@ -30,9 +30,12 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import tuple_sum
+from impl.util.platform_adapter import para_check
+from tbe.dsl.base.operation import add_compile_info
 
 
 SCALAR_ONE = 1
+DYNAMIC_DIM = -1
 
 def _check_format_nd(data_format, origin_foramt):
     """
@@ -203,23 +206,39 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     for (grads, x, batch_mean, batch_variance) in ins:
         with tbe.compute():
 
-            dim_0_0 = operation.var("dim_0_0", range_grads[0])
-            dim_0_1 = operation.var("dim_0_1", range_grads[1])
-            dim_0_2 = operation.var("dim_0_2", range_grads[2])
-            dim_0_3 = operation.var("dim_0_3", range_grads[3])
+            if DYNAMIC_DIM in shape_x:
+                mode = para_check.ORIGINAL
+                dim_0_0 = operation.var("dim_0_0", range_grads[0])
+                dim_0_1 = operation.var("dim_0_1", range_grads[1])
+                dim_0_2 = operation.var("dim_0_2", range_grads[2])
+                dim_0_3 = operation.var("dim_0_3", range_grads[3])
 
-            shape1 = [dim_0_0, dim_0_1, dim_0_2, dim_0_3, 16]
-            shape2 = [1, dim_0_1, 1, 1, 16]
+                shape1 = [dim_0_0, dim_0_1, dim_0_2, dim_0_3, 16]
+                shape2 = [1, dim_0_1, 1, 1, 16]
 
-            grads_input = tvm.placeholder(shape1, name="grads_input",
-                                        dtype=input_grads_dtype)
-            x_input = tvm.placeholder(shape1, name="x_input", dtype=input_x_dtype)
-            batch_mean_input = tvm.placeholder(shape2,
-                                            name="batch_mean_input",
-                                            dtype=batch_mean_dtype)
-            batch_variance_input = tvm.placeholder(shape2,
-                                                name="batch_variance_input",
-                                                dtype=batch_variance_dtype)
+                grads_input = tvm.placeholder(shape1, name="grads_input",
+                                            dtype=input_grads_dtype)
+                x_input = tvm.placeholder(shape1, name="x_input", dtype=input_x_dtype)
+                batch_mean_input = tvm.placeholder(shape2,
+                                                name="batch_mean_input",
+                                                dtype=batch_mean_dtype)
+                batch_variance_input = tvm.placeholder(shape2,
+                                                    name="batch_variance_input",
+                                                    dtype=batch_variance_dtype)
+            else:
+                mode = para_check.CONST
+                grads_input = tvm.placeholder(shape_grads, name="grads_input",
+                                            dtype=input_grads_dtype)
+                x_input = tvm.placeholder(shape_x, name="x_input", dtype=input_x_dtype)
+                batch_mean_input = tvm.placeholder(shape_batch_mean,
+                                                name="batch_mean_input",
+                                                dtype=batch_mean_dtype)
+                batch_variance_input = tvm.placeholder(shape_batch_variance,
+                                                    name="batch_variance_input",
+                                                    dtype=batch_variance_dtype)
+            
+            get_context().get_current_compute().add("mode", mode)
+            add_compile_info("mode", mode)
 
             res_list = bn_training_update_grad_compute(grads_input, x_input,
                                                     batch_mean_input,
