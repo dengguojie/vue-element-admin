@@ -23,7 +23,9 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
+from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
+from tbe.common.register import register_param_generalization
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -247,6 +249,20 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
     return stride_h, stride_w, shape_dy[y_c_idx]
 
 
+def _collect_ori_tensors(ori_paras):
+    """
+    get valid tensors
+    """
+    ori_tensors = {}
+    for key, value in ori_paras.items():
+        valid_tensor = isinstance(value, dict) and \
+                       isinstance(value.get("ori_shape"), (list, tuple)) and \
+                       len(value.get("ori_shape")) > 0
+        if valid_tensor:
+            ori_tensors[key] = value
+    return ori_tensors
+
+
 def _avgpoolgrad_compute(input_size, filters, out_backprop, y, strides, pads,
                          dilations=(1, 1, 1, 1), groups=1, data_format='NHWC',
                          kernel_name='cce_avg_pool_grad_dilation'):
@@ -278,11 +294,171 @@ def _avgpoolgrad_compute(input_size, filters, out_backprop, y, strides, pads,
                                          "kernel_name": kernel_name,
                                          "group_dict": paras.get("group_para"),
                                          "correct_range_flag": paras.get("correct_range_flag", False),
-                                         "pooling_mode": paras.get("pooling_mode")
+                                         "pooling_mode": paras.get("pooling_mode"),
+                                         "ori_tensors": _collect_ori_tensors(ori_paras),
+                                         "op_type": "AvgPoolGrad"
                                      })
 
     return {'op_placeholder': [paras.get("input_tensor"), paras.get("dy_tensor"), paras.get("filter_tensor")],
             'op_res': [dedx]}
+
+
+def correct_fuzzy_build_range(input_grad, strides, data_format):
+    """
+    get input w range with UB size
+
+    Notice
+    ------
+    the proper range are not smaller than shape value
+    """
+    if (data_format != "NHWC") and (data_format != "NCHW"):
+        error_manager_cube.raise_err_input_params_not_expected("avg_pool_grad",
+                                                               "data_format",
+                                                               "NHWC/NCHW",
+                                                               data_format)
+    pos_h = data_format.find('H')
+    pos_w = data_format.find('W')
+    proper_range = list(map(list, input_grad.get("range")))
+    pos_range_h, pos_range_w = 2, 3  # NC1HWC0
+    proper_w = proper_range[pos_range_w][1]
+    cube_size_min = BLOCK_SIZE * BLOCK_SIZE * 2
+    ub_size = tbe_platform.get_soc_spec("UB_SIZE")
+    invalid = (None in proper_range[pos_range_h]) or \
+              (None in proper_range[pos_range_w]) or \
+              (input_grad["ori_shape"][pos_w] == -1)
+    if invalid:
+        return
+    strides_h = strides[pos_h]
+    strides_w = strides[pos_w]
+    if strides_h == 1 and strides_w == 1:
+        for y_w in list(range(proper_w, input_grad["ori_shape"][pos_w] - 1, -1)):
+            aub_size_min = y_w * BLOCK_SIZE * 2
+            limit_size = aub_size_min * UB_FUSED_OP_NUM + cube_size_min
+            if limit_size < ub_size:
+                break
+        proper_w = y_w
+    elif strides_h > 1 or strides_w > 1:
+        for y_w in list(range(proper_w, input_grad["ori_shape"][pos_w] - 1, -1)):
+            w_value = y_w * strides_w
+            aub_size_min = y_w * BLOCK_SIZE * 2
+            aub_filling_size_min = w_value * BLOCK_SIZE * 2
+            limit_size = aub_size_min * UB_FUSED_OP_NUM + aub_filling_size_min + cube_size_min
+            if limit_size < ub_size:
+                break
+        proper_w = y_w
+    if proper_w != proper_range[pos_range_w][1]:
+        proper_range[pos_range_w][1] = proper_w
+        input_grad["range"] = proper_range
+        valid = isinstance(input_grad["ori_range"], (list, tuple)) and len(input_grad["ori_range"]) == 4
+        if valid:
+            ori_range = list(map(list, input_grad["ori_range"]))
+            ori_range[pos_w][1] = proper_w
+            input_grad["ori_range"] = ori_range
+
+
+@tbe_register.register_param_generalization("AvgPoolGrad")
+def avg_pool_grad_generalization(orig_input_shape,
+                                 input_grad,
+                                 kernel_matrix,
+                                 out_grad,
+                                 ksize,
+                                 strides,
+                                 padding,
+                                 data_format='NHWC',
+                                 kernel_name="cce_avg_pool_grad_dilation",
+                                 generalize_config={"mode": "keep_rank"}):
+    """
+    computes average pooling backwards gradients.
+
+    Parameters:
+    ----------
+
+    orig_input_shape: a dict, forward input shape
+
+    input_grad: a dict, global model support 'NHWC' or 'NCHW'
+                and padding valid, common model support 'NHWC'
+                and float16
+
+    kernel_matrix: a dict, global model support 'NHWC' or 'NCHW'
+                and padding valid, common model support 'NHWC'
+                and float16
+
+    out_grad: a dict, global model support 'NHWC' or 'NCHW'
+                and padding valid, common model support 'NHWC'
+                and float16
+
+    ksize: filter window size, int or 4-D list, support 'NHWC'
+
+    strides: strides over h and w axis, int or 4-D list,
+             support 'NHWC' or 'NCHW'
+
+    padding:global model support 'NHWC' or 'NCHW' and padding valid
+
+    data_format: support 'NHWC' or 'NCHW'
+
+    kernel_name : cce kernel name, default value is "cce_avg_pool_grad_dilation"
+
+    generalize_config: dict
+        support keep_rank
+
+    Returns
+    -------
+    params list
+    """
+    result = []
+    # unknow_rank inputs ori_shape is [-2], normal shape length is 4
+    unknow_rank = len(input_grad["ori_shape"]) == 1 and input_grad["ori_shape"][0] == -2
+    if unknow_rank:
+        error_manager_cube.raise_err_specific_user("input_grad", "not support unknow_rank under mode {}".format(
+            generalize_config["mode"]))
+    correct_fuzzy_build_range(input_grad, strides, data_format)
+    have_range = {"input_grad": input_grad, "out_grad": out_grad}
+    for name, tensor in have_range.items():
+        tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] if tensor["ori_format"] == "NCHW" \
+            else [-1, -1, -1, tensor["ori_shape"][3]]
+        tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
+    # get dx_range depends on dy_range
+    dy_range = input_grad["range"]
+    ori_data_format = input_grad["ori_format"]
+    pos_c = ori_data_format.find('C')
+    groups = input_grad["ori_shape"][pos_c]
+    pads = [0, 0, 0, 0] if padding == "VALID" else [-1, -1, -1, -1]
+    ori_paras = {
+        "input_size": orig_input_shape,
+        "x": input_grad,
+        "filters": kernel_matrix,
+        "bias": None,
+        "offset_w": None,
+        "y": out_grad,
+        "strides": strides,
+        "pads": pads,
+        "dilations": (1, 1, 1, 1),
+        "groups": groups,
+        "data_format": data_format,
+        "output_padding": (0, 0, 0, 0),
+        "offset_x": 0,
+        "kernel_name": kernel_name
+    }
+    conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
+    dy_shape_nchw = conv2d_tranpose.get_input_nchw(input_grad["ori_shape"], input_grad["ori_format"])
+    filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix["ori_shape"], kernel_matrix["ori_format"])
+    _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
+    dx_range_nchw, _, _ = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
+    out_grad["range"] = [dx_range_nchw[0],
+                         [out_grad["shape"][1], out_grad["shape"][1]],
+                         dx_range_nchw[2],
+                         dx_range_nchw[3],
+                         [out_grad["shape"][4], out_grad["shape"][4]]]
+    result.append([orig_input_shape,
+                   input_grad,
+                   kernel_matrix,
+                   out_grad,
+                   ksize,
+                   strides,
+                   padding,
+                   data_format,
+                   kernel_name])
+    return result
 
 
 @tbe_register.register_operator("AvgPoolGrad")

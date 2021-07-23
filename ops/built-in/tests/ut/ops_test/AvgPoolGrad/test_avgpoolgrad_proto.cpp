@@ -5,7 +5,11 @@
 #include "nn_pooling_ops.h"
 #include "utils/attr_utils.h"
 #include "utils/op_desc_utils.h"
-
+#include "common/util/error_manager/error_manager.h"
+#include "graph/utils/type_utils.h"
+#include "op_log.h"
+#include "op_desc.h"
+#include "graph/debug/ge_attr_define.h"
 
 class AvgPoolGradProtoTest : public testing::Test {
  protected:
@@ -418,4 +422,60 @@ TEST_F(AvgPoolGradProtoTest, avg_pool_grad_no_outputshape){
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+// fuzzy compile for static shape
+TEST_F(AvgPoolGradProtoTest, avg_pool_grad_fuzzy_compile)
+{
+  ge::op::AvgPoolGrad op;
+
+  op.SetAttr("_fuzz_build", true);
+
+  ge::Tensor constTensor;
+  std::vector<int64_t> dims_input_size{1, 5, 4, 66};
+  ge::TensorDesc tensor_desc_input_size(ge::Shape(), ge::FORMAT_NCHW, ge::DT_INT32);
+  int element_size = dims_input_size.size();
+  tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+  constTensor.SetTensorDesc(tensor_desc_input_size);
+
+  int *conv_input_size_tensor_value = new int[element_size];
+  for (size_t i = 0; i < element_size; i++) {
+    *(conv_input_size_tensor_value + i) = dims_input_size[i];
+  }
+  constTensor.SetData((uint8_t *) conv_input_size_tensor_value, element_size * sizeof(int32_t));
+  auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+  op.set_input_orig_input_shape(const0);
+  delete[] conv_input_size_tensor_value;
+  op.UpdateInputDesc("orig_input_shape", tensor_desc_input_size);
+
+  op.UpdateInputDesc("input_grad",
+                      create_desc_shape_range({1, 5, 2, 17},
+                                             ge::DT_FLOAT16,
+                                             ge::FORMAT_NCHW,
+                                             {1, 5, 2, 17},
+                                             ge::FORMAT_NCHW,
+                                             {{1, 1}, {5, 5}, {1, 3}, {16, 31}}));
+
+  op.UpdateOutputDesc("out_grad",
+                     create_desc_shape_range({1, 5, 4, 66},
+                                             ge::DT_FLOAT16,
+                                             ge::FORMAT_NCHW,
+                                             {1, 5, 4, 66},
+                                             ge::FORMAT_NCHW,
+                                             {{1, 1}, {5, 5}, {1, 9}, {61, 124}}));
+
+  op.SetAttr("ksize", {1, 1, 7, 7});
+  op.SetAttr("strides", {1, 1, 3, 4});
+  op.SetAttr("padding", "SAME");
+  op.SetAttr("data_format", "NCHW");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeTensorDescPtr tensor_desc_input_grad = op_desc->MutableInputDesc("input_grad");
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  tensor_desc_input_grad->GetShapeRange(input_range);
+  std::vector<std::pair<int64_t, int64_t>> expect_x_range = {{1, 1}, {5, 5}, {1, 3}, {16, 31}};
+  EXPECT_EQ((input_range == expect_x_range), true);
 }

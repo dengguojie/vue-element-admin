@@ -1430,6 +1430,32 @@ bool CorrectFuzzyCompileRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tens
   return true;
 }
 
+bool DealWithFuzzyCompileCube(ge::Operator& op)
+{
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::AscendString oPType;
+  if (op.GetOpType(oPType) == ge::GRAPH_FAILED) {
+      return false;
+  }
+
+  if (oPType == "AvgPoolGrad") {
+    auto input_grad_desc = op_desc->MutableInputDesc("input_grad");
+    std::vector<int64_t> x_sizes = input_grad_desc->MutableShape().GetDims();
+    std::vector<std::pair<int64_t, int64_t>> input_range(x_sizes.size());
+    if (!GenFuzzyCompileShapeRange(op, input_grad_desc, input_range)) {
+      OP_LOGE(oPType.GetString(), "generate input shape range failed.");
+      return false;
+    }
+
+    if (ge::GRAPH_SUCCESS != input_grad_desc->SetShapeRange(input_range)) {
+      OP_LOGE(oPType.GetString(), "set input shape range failed.");
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // ----------------AvgPool-------------------
 IMPLEMT_VERIFIER(AvgPool, AvgPoolVerify) {
   auto ksize = op.get_attr_ksize();
@@ -5647,6 +5673,16 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
     tensordesc_output->SetShape(GeShape(orig_input_size));
   }
   tensordesc_output->SetDataType(output_dtype);
+
+  // fuzzy build compile
+  bool fuzzy_flag = false;
+  if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzzy_flag) &&
+    fuzzy_flag &&
+    (!unknown_rank) &&
+    !DealWithFuzzyCompileCube(op)) {
+      return ge::GRAPH_FAILED;
+  }
+
   OP_LOGD(op.GetName().c_str(), "Leave AvgPoolGrad inferfunction!");
   return GRAPH_SUCCESS;
 }

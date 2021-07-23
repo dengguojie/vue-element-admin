@@ -90,7 +90,7 @@ def parse_fuzz_build_range(info_list):
     op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
     if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
         target_index = 2
-    elif op_type == "Conv2DTranspose":
+    elif op_type in ["Conv2DTranspose", "AvgPoolGrad"]:
         target_index = 1
     else:
         target_index = 0
@@ -149,13 +149,13 @@ def gen_support_info(range_x, ori_tensors):
     op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
     if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
         item["index"] = 2
-    elif op_type == "Conv2DTranspose":
+    elif op_type in ["Conv2DTranspose", "AvgPoolGrad"]:
         item["index"] = 1
     else:
         item["index"] = 0
     item["tensor"] = []
     tensor_info = {}
-    if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
+    if op_type in ["Conv2DBackpropInput", "depthwise_conv2d_backprop_input", "AvgPoolGrad"]:
         ori_tensors_input = ori_tensors.get("out_backprop")
     else:
         ori_tensors_input = ori_tensors.get("x")
@@ -182,6 +182,9 @@ def gen_support_info(range_x, ori_tensors):
     dy_range_nchw, _, _ = conv2d_backprop.get_output_range(filter_shape_nchw, dx_range_nchw)
     if op_type == "depthwise_conv2d_backprop_input":
         dy_range_nchw[1] = [filter_shape_nchw[0] * filter_shape_nchw[1], filter_shape_nchw[0] * filter_shape_nchw[1]]
+    elif op_type == "AvgPoolGrad":
+        dy_range_nchw[1] = dx_range_nchw[1]
+
     range_valid = [[0, 0]] * 4
     range_valid[x_format.find("N")] = list(dy_range_nchw[0])
     range_valid[x_format.find("C")] = list(dy_range_nchw[1])
@@ -340,7 +343,7 @@ def calc_conv2dbp_input(outs, option=None):
         # generate tgt_area by format
         ori_tensors = DynamicConv2dBpInputParams.ori_tensor
         op_type = DynamicConv2dBpInputParams.dynamic_para.get("op_type")
-        if op_type == "Conv2DBackpropInput" or op_type == "depthwise_conv2d_backprop_input":
+        if op_type in ["Conv2DBackpropInput", "depthwise_conv2d_backprop_input", "AvgPoolGrad"]:
             ori_tensors_input = ori_tensors.get("out_backprop")
         else:
             ori_tensors_input = ori_tensors.get("x")

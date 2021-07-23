@@ -384,6 +384,9 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   vector<int64_t> orig_input_shape_v{orig_input_shape_const_tensor_ptr[0], orig_input_shape_const_tensor_ptr[1],
                                      orig_input_shape_const_tensor_ptr[2], orig_input_shape_const_tensor_ptr[3]};
   bool is_dynamic = false;
+  bool fuzzy_flag = false;
+  ge::AttrUtils::GetBool(avg_pool_grad_fused_node_desc, ge::ATTR_NAME_FUZZ_BUILD, fuzzy_flag);
+  is_dynamic = is_dynamic || fuzzy_flag;
   for (size_t i = 0; i < orig_input_shape_v.size(); i++) {
     auto dim = orig_input_shape_const_tensor_ptr[i];
     if (dim <= 0) {
@@ -574,6 +577,9 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                       return NOT_CHANGED);
     fusion_nodes.push_back(fusion_node);
   }
+
+  fusion_nodes.push_back(avg_pool_grad_fused_node);
+
   return SUCCESS;
 }
 REGISTER_PASS("AvgPoolGradFusionPass", BUILT_IN_GRAPH_PASS, AvgPoolGradFusionPass);

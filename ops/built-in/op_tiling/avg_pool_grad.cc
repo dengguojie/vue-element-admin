@@ -29,6 +29,39 @@
 
 namespace optiling {
 /*
+ * @brief: tiling function of cube operators
+ * @param [in] compile_info: compile time generated info of operator
+ * @param [out] opInfo: merge compile time generated info of operator
+ * @return : void
+ */
+void merge_compile_info(const nlohmann::json& compile_info, nlohmann::json &opInfo)
+{
+  if (compile_info.is_object()) {
+    opInfo = compile_info;
+  } else if (compile_info.is_array()) {
+    nlohmann::json item;
+    opInfo = compile_info[0];
+    for (std::size_t i = 1; i < compile_info.size(); i++) {
+      item = compile_info[i];
+      std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
+      for (auto key : key_list) {
+        if (item[key].is_object() && !item[key].empty()) {
+          std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
+          opInfo[key][item[key].begin().key()] = list_value;
+        }
+      }
+      std::vector<std::string> key_int = {"block_dim"};
+      for (auto key: key_int) {
+        if (item[key].is_object() && !item[key].empty()) {
+          int32_t int_value = item[key].begin().value().get<int32_t>();
+          opInfo[key][item[key].begin().key()] = int_value;
+        }
+      }
+    }
+  }
+}
+
+/*
  * @brief: tiling function of avg_pool_grad
  * @param [in] op_type: op_type of avg_pool_grad
  * @param [in] op_paras: inputs/outputs/atts of avg_pool_grad
@@ -46,7 +79,16 @@ bool AvgPoolGradTiling(const std::string& opType, const ge::Operator& opParas, c
     return false;
   }
 
-  std::vector<std::string>varMap = opCompileInfo.at("_vars")["10000"];
+  if (opCompileInfo.empty()) {
+    GELOGD("op compile info is empty");
+    return false;
+  }
+
+  nlohmann::json opInfo;
+  merge_compile_info(opCompileInfo, opInfo);
+
+  std::vector<std::string>varMap = opInfo.at("_vars").begin().value().get<std::vector<std::string>>();
+
   std::vector<int64_t> var_value;
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
     var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(nDim));
@@ -60,7 +102,11 @@ bool AvgPoolGradTiling(const std::string& opType, const ge::Operator& opParas, c
     var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(wDim));
   }
 
-  return cube_tiling(opType, opParas.GetOutputDesc(0).GetShape().GetDims(), var_value, opCompileInfo, runInfo);
+  return cube_tiling(opType,
+                     opParas.GetOutputDesc(0).GetShape().GetDims(),
+                     var_value,
+                     opInfo,
+                     runInfo);
 }
 
 // register tiling interface of the avg_pool_grad

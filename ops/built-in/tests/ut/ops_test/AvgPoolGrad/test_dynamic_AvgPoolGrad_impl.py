@@ -220,6 +220,46 @@ case17 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sh
                     [1,2,2,1], [1,1,2,1], "SAME", "NHWC"],
          "expect": "success",
          "support_expect": True}
+         
+def test_avg_pool_grad_fuzzy_compile_generaliation(test_arg):
+    from impl.dynamic.avg_pool_grad import avg_pool_grad_generalization
+    print("test_avg_pool_grad_fuzzy_compile_generaliation")
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'format': 'NCHW',
+            'ori_format': 'NCHW',
+            'dtype': 'float16'
+        }, {
+            'shape': (1, 1, 2, 17, 16),
+            'ori_shape': (1, 5, 2, 17),
+            'format': 'NC1HWC0',
+            'ori_format': 'NCHW',
+            'dtype': 'float16',
+            'range': ((1, 1), (1, 1), (1, 3), (16, 31), (16, 16)),
+            'ori_range': ((1, 1), (5, 5), (1, 3), (16, 31))
+        }, {
+            'shape': (49, 1, 16, 16),
+            'ori_shape': (7, 7, 1, 5),
+            'format': 'FRACTAL_Z',
+            'ori_format': 'HWCN',
+            'dtype': 'float16'
+        }, {
+            'shape': (1, 1, 4, 66, 16),
+            'ori_shape': (1, 5, 4, 66),
+            'format': 'NC1HWC0',
+            'ori_format': 'NCHW',
+            'dtype': 'float16'
+        },
+        (1, 1, 7, 7),
+        (1, 1, 3, 4),
+        'SAME',
+        'NCHW',
+        'avg_pool_grad_fuzzy_compile_generaliation',
+        {'mode': 'keep_rank'}
+    ]
+    avg_pool_grad_generalization(*input_list)
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
@@ -239,6 +279,7 @@ ut_case.add_case(["Ascend910A"], case15)
 ut_case.add_case(["Ascend910A"], case16)
 ut_case.add_case(["Ascend910A"], case17)
 ut_case.add_case(["Ascend910A"], case18)
+ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_generaliation)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
