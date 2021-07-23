@@ -936,9 +936,10 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
 INFER_FUNC_REG(ExpandDims, ExpandDimsInfer);
 
 template <typename T>
-static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTensorPtr &tenosr, int64_t &product,
-                                 int &unknow_index, GeShape &output, Operator &op) {
-  int64_t dim_num = tenosr->MutableTensorDesc().MutableShape().GetDim(0);
+static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const std::vector<int64_t> &shape_dims,
+                                 const GeTensorPtr &tenosr, int64_t &product, int &unknow_index, GeShape &output,
+                                 Operator &op) {
+  int64_t dim_num = shape_dims[0];
   const T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tenosr->GetData().GetData()));
   std::vector<int64_t> out_dims = output.GetDims();
   if (shape_data == nullptr) {
@@ -1276,6 +1277,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
     GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node from op failed, as node is null");
     return GRAPH_PARAM_INVALID;
   }
+
   graphStatus state = NodeUtils::GetInputConstData(node, "shape", tensor);
   if (state != GRAPH_SUCCESS) {
     GE_OP_LOGW(op.GetName().c_str(), "Op get input const data of shape failed");
@@ -1338,14 +1340,17 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   int64_t product = 1;
   int unknow_index = -1;
   GeShape output_shape;
+  auto shape_tensor_desc = op_desc->MutableInputDesc("shape");
+  DataType shape_type = shape_tensor_desc->GetDataType();
+  auto &shape_ref = shape_tensor_desc->MutableShape();
+  int64_t shape_size = shape_ref.GetShapeSize();
+  auto shape_dims = shape_ref.GetDims();
 
-  DataType shape_type = op_desc->MutableInputDesc("shape")->GetDataType();
-  int64_t shape_size = op_desc->MutableInputDesc("shape")->MutableShape().GetShapeSize();
   graphStatus ret = GRAPH_SUCCESS;
   if (shape_type == DT_INT32) {
-    ret = ValidateShape<int32_t>(x_shape, tensor, product, unknow_index, output_shape, op);
+    ret = ValidateShape<int32_t>(x_shape, shape_dims, tensor, product, unknow_index, output_shape, op);
   } else if (shape_type == DT_INT64) {
-    ret = ValidateShape<int64_t>(x_shape, tensor, product, unknow_index, output_shape, op);
+    ret = ValidateShape<int64_t>(x_shape, shape_dims, tensor, product, unknow_index, output_shape, op);
   } else if (shape_size > 0) {
     string reason =
         "dtype of shape input must be DT_INT32 or DT_INT64, actually is " + DataTypeToStringDesc(shape_type);
@@ -1716,8 +1721,8 @@ IMPLEMT_INFERFUNC(Size, SizeInfer) {
   DataType out_type = DT_INT32;
   GeAttrValue out_type_value;
   op_desc->GetAttr("dtype", out_type_value);
-  out_type_value.GetValue<DataType>(out_type);
-  output_desc_y->SetDataType(out_type);
+  out_type_value.GetValue<GeAttrValue::INT>(out_type);
+  output_desc_y->SetDataType(DataType(out_type));
   OP_LOGI(op.GetName().c_str(), "Size infershape end");
   return GRAPH_SUCCESS;
 }
