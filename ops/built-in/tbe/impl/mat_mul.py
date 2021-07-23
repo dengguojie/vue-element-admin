@@ -33,6 +33,7 @@ NoneType = type(None)
 
 # 2 means L1 enable
 L1FUSION_INPUT_CTR = 2
+_C0_16 = 16
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches, too-many-statements, too-many-locals,
@@ -174,13 +175,10 @@ def _shape_check_quantification(shape_a, shape_b, trans_a, trans_b, format_a):
 
 
 def _get_bias(shape_bias):
-    bias_length = shape_bias[0]
-    if bias_length % 16 != 0:
-        bias_length = (bias_length // 16) * 16 + 16
-        shape_bias = []
-        shape_bias.append(bias_length)
-
-    return shape_bias
+    bias_length = 1
+    for i in shape_bias:
+        bias_length *= i
+    return [(bias_length + _C0_16 - 1) // _C0_16 * _C0_16]
 
 
 def _get_input_shape(shape_x, transpose):
