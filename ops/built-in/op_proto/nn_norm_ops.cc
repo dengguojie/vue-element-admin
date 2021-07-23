@@ -1533,33 +1533,36 @@ INFER_FUNC_REG(SmoothL1LossGradV2, SmoothL1LossGradV2InferShape);
 
 // ----------------SmoothL1LossV2 Begin-------------------
 IMPLEMT_INFERFUNC(SmoothL1LossV2, SmoothL1LossV2InferShape) {
-  TensorDesc tensordesc_input1 = op.GetInputDesc("predict");
+  const char *op_name = "SmoothL1LossV2";
+  OP_LOGD(op_name, "SmoothL1LossV2InferShape begin.");
+
+  TensorDesc tensordesc_input2 = op.GetInputDescByName("label");
+  Shape input_shape2 = tensordesc_input2.GetShape();
+  std::vector<int64_t> dims_input2 = input_shape2.GetDims();
+  
+  TensorDesc tensordesc_input1 = op.GetInputDescByName("predict");
   Shape input_shape1 = tensordesc_input1.GetShape();
   DataType input_dtype1 = tensordesc_input1.GetDataType();
   std::vector<int64_t> dims_input1 = input_shape1.GetDims();
-
-  TensorDesc tensordesc_input2 = op.GetInputDesc("label");
-  Shape input_shape2 = tensordesc_input2.GetShape();
-  std::vector<int64_t> dims_input2 = input_shape2.GetDims();
-
-  if (dims_input1.size() != dims_input2.size()) {
-    OP_LOGE(op.GetName().c_str(), "Input Dims Unmatch.");
-    return GRAPH_FAILED;
-  }
-  TensorDesc tensordesc_output = op.GetOutputDesc("loss");
-
+  
   std::string reduction_val = "mean";
 
   if (GRAPH_SUCCESS != op.GetAttr("reduction", reduction_val)) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get the val of reduction.");
+    OP_LOGE(op_name, "Failed to get the val of reduction.");
     return GRAPH_FAILED;
   }
 
   if (reduction_val != "none" && reduction_val != "mean" &&
       reduction_val != "sum") {
-    OP_LOGE(op.GetName().c_str(), "The val of reduction is invalid.");
+    OP_LOGE(op_name, "The val of reduction is invalid.");
     return GRAPH_FAILED;
   }
+
+  if (dims_input1.size() != dims_input2.size()) {
+    OP_LOGE(op_name, "Input Dims Unmatch.");
+    return GRAPH_FAILED;
+  }
+  TensorDesc tensordesc_output = op.GetOutputDescByName("loss");
 
   if (reduction_val == "none") {
     tensordesc_output.SetShape(input_shape1);
@@ -1571,15 +1574,16 @@ IMPLEMT_INFERFUNC(SmoothL1LossV2, SmoothL1LossV2InferShape) {
 
   tensordesc_output.SetDataType(input_dtype1);
   (void)op.UpdateOutputDesc("loss", tensordesc_output);
-
+  OP_LOGD(op_name, "SmoothL1LossV2InferShape end.");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(SmoothL1LossV2, SmoothL1LossV2Verify) {
+  const char *op_name = "SmoothL1LossV2";
   DataType input_type_x = op.GetInputDesc("predict").GetDataType();
   DataType input_type_y = op.GetInputDesc("label").GetDataType();
   if (input_type_x != input_type_y) {
-    OP_LOGE(op.GetName().c_str(), "Input Type Unmatch.");
+    OP_LOGE(op_name, "Input Type Unmatch.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

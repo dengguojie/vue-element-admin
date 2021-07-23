@@ -1310,24 +1310,25 @@ VERIFY_FUNC_REG(ApproximateEqual, ApproximateEqualVerify);
 
 // --------------------AccumulateNV2--------------------------
 bool CheckInputSize(const Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "The op begin verify");
+  const char *op_name = "AccumulateNV2";
   auto input_size = op.GetInputsSize();
   if (input_size == 0) {
     std::string err_msg  = string("The op input size is zero");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
     return false;
   }
   return true;
 }
 
 bool CheckDynamicInputDtype(const Operator& op, const string& input_name1) {
+  const char *op_name = "AccumulateNV2";
   DataType first_input_dtype = op.GetDynamicInputDesc(input_name1, 0).GetDataType();
   auto input_dynamic_size = op.GetInputsSize();
   for (size_t i = 0; i < input_dynamic_size; ++i) {
     DataType input_dtype = op.GetDynamicInputDesc(input_name1, i).GetDataType();
     if (first_input_dtype != input_dtype) {
       std::string err_msg = OtherErrMsg(ConcatString("the op type is not same,type1:",input_dtype,",type2:",first_input_dtype));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
       return false;
     }
   }
@@ -1335,6 +1336,7 @@ bool CheckDynamicInputDtype(const Operator& op, const string& input_name1) {
 }
 
 IMPLEMT_VERIFIER(AccumulateNV2, AccumulateNV2Verify) {
+  const char *op_name = "AccumulateNV2";
   if (CheckInputSize(op) == false) {
     return GRAPH_FAILED;
   }
@@ -1344,13 +1346,13 @@ IMPLEMT_VERIFIER(AccumulateNV2, AccumulateNV2Verify) {
   int64_t num;
   if (GRAPH_SUCCESS != op.GetAttr("N", num)) {
     std::string err_msg = GetInputInvalidErrMsg("N");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
     return GRAPH_FAILED;
   } else {
     if (op.GetInputsSize() != static_cast<uint64_t>(num)) {
       string err_msg1 = ConcatString("The ",op.GetName().c_str()," op size is not same, op.GetInputsSize():",op.GetInputsSize(), ", num:",static_cast<uint64_t>(num));
       std::string err_msg = OtherErrMsg(err_msg1);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1359,9 +1361,10 @@ IMPLEMT_VERIFIER(AccumulateNV2, AccumulateNV2Verify) {
 
 int64_t GetAccumulateNV2ConstValue(const ge::Operator& op) {
   int64_t tensor_num;
+  const char *op_name = "AccumulateNV2";
   if (ge::GRAPH_SUCCESS != op.GetAttr("N", tensor_num)) {
     std::string err_msg = GetInputInvalidErrMsg("N");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
   }
   return tensor_num;
 }
@@ -1424,6 +1427,8 @@ IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
   2.input contains static shape and with no -1 shape
   3.input contains -1 shape
   */  
+  const char *op_name = "AccumulateNV2";
+  OP_LOGD(op_name, "AccumulateNV2InferShape begin.");
   const int64_t infer_condition_one_one = 11;
   const int64_t infer_condition_one_two = 12;
   const int64_t infer_condition_two = 2;
@@ -1492,7 +1497,7 @@ IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
                 for (size_t j = 0; j < shape_vector.size(); j++) {
                     if (shape_vector[j] == -1) {
                         std::string err_msg = OtherErrMsg("Operands could not be broadcast together with these shapes.");
-                        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+                        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
                         return GRAPH_FAILED;
                     }
                 }
@@ -1553,10 +1558,11 @@ IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
       }
     }
     auto y_desc = op_info->MutableOutputDesc("y");
+    y_desc->SetDataType(x_dtype);
     y_desc->SetShape(GeShape(out_shape));
     y_desc->SetShapeRange(out_range);
-    y_desc->SetDataType(x_dtype);
   }
+  OP_LOGD(op_name, "AccumulateNV2InferShape end.");
   return GRAPH_SUCCESS;
 }
 

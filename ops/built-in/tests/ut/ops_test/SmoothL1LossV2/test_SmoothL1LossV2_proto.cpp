@@ -76,3 +76,22 @@ TEST_F(smooth_l1_loss_v2, smooth_l1_loss_v2_infershape_test_2) {
   std::vector<int64_t> expected_output_shape = {10, 200};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(smooth_l1_loss_v2, smooth_l1_loss_v2_infershape_test_3) {
+
+  ge::op::SmoothL1LossV2 op;
+  ge::TensorDesc tensorDesc;
+  ge::Shape shape({10, 200});
+  tensorDesc.SetDataType(ge::DT_FLOAT);
+  tensorDesc.SetShape(shape);
+  
+  op.UpdateInputDesc("predict",tensorDesc);
+  op.UpdateInputDesc("label",tensorDesc);
+  float sigma = 1.0;
+  op.SetAttr("sigma", sigma);
+  std::string reduction = "what";
+  op.SetAttr("reduction", reduction);
+  
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

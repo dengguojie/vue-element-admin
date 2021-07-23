@@ -1458,32 +1458,31 @@ VERIFY_FUNC_REG(DecodeBboxV2, DecodeBboxV2Verify);
 // ----------------DecodeBboxV2-------------------
 // --------------------sort----------------------------
 IMPLEMT_INFERFUNC(Sort, SortInferShape) {
-
-  OP_LOGD(op.GetName().c_str(), "SortInferShape start.");
+  const char *op_name = "Sort";
+  OP_LOGD(op_name, "SortInferShape begin.");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto x_desc = op_desc->MutableInputDesc(0);
-  OP_LOGD(op.GetName().c_str(), "get input_data.");
+  OP_LOGD(op_name, "Get input_data.");
   std::vector<std::pair<int64_t, int64_t>> range;
-
-  //out_sorted
-  auto output_sorted_desc = op_desc->MutableOutputDesc(0);
-  output_sorted_desc->SetShape(x_desc->GetShape());
-  output_sorted_desc->SetDataType(x_desc->GetDataType());
-  OP_LOGD(op.GetName().c_str(), "update output_data.");
 
   //out_indices
   auto output_indices_desc = op_desc->MutableOutputDesc(1);
   output_indices_desc->SetShape(x_desc->GetShape());
   output_indices_desc->SetDataType(DT_INT32);
-  OP_LOGD(op.GetName().c_str(), "update output_indices.");
+  OP_LOGD(op_name, "Update output_indices.");
+
+  //out_sorted
+  auto output_sorted_desc = op_desc->MutableOutputDesc(0);
+  output_sorted_desc->SetShape(x_desc->GetShape());
+  output_sorted_desc->SetDataType(x_desc->GetDataType());
+  OP_LOGD(op_name, "Update output_val.");
 
   if(x_desc->GetShapeRange(range) == GRAPH_SUCCESS){
     output_sorted_desc->SetShapeRange(range);
     output_indices_desc->SetShapeRange(range);
-    OP_LOGD(op.GetName().c_str(), "SetShapeRange.");
+    OP_LOGD(op_name, "SetShapeRange.");
   }
-  OP_LOGD(op.GetName().c_str(), "SortInferShape end.");
-
+  OP_LOGD(op_name, "SortInferShape end.");
   return GRAPH_SUCCESS;
 }
 

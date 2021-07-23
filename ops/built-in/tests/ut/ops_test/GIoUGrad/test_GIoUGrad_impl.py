@@ -62,6 +62,36 @@ ut_case.add_case(["Ascend710", "Ascend910A"], {
      "case_name": "test3",
      "expect": "failed"})
      
+ut_case.add_case(["Ascend710", "Ascend910A"], {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (15360,),  "ori_shape": (15360,),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "output"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "output"},
+                False, False, "iou"],
+     "case_name": "test4",
+     "expect": "failed"})
+     
+ut_case.add_case(["Ascend710", "Ascend910A"], {
+    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (15360,),  "ori_shape": (15360,),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "input"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "output"},
+                {"dtype": "float32", "format": "ND", "ori_format": "ND", "shape": (4, 15360), "ori_shape": (4, 15360),
+                "param_type": "output"},
+                True, True, "iou"],
+     "case_name": "test5",
+     "expect": "failed"})
+     
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     exit(0)

@@ -2273,19 +2273,19 @@ INFER_FUNC_REG(EditDistance, EditDistanceInfer);
 
 // ----------------SortV2 Begin-------------------
 IMPLEMT_INFERFUNC(SortV2, SortV2InferShape) {
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  const char *op_name = "SortV2";
+  OP_LOGD(op_name, "SortV2InferShape begin.");
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
   Shape input_shape = tensordesc_input.GetShape();
-  DataType input_dtype = tensordesc_input.GetDataType();
   std::vector<int64_t> dims_input = input_shape.GetDims();
+  DataType input_dtype = tensordesc_input.GetDataType();
 
-  TensorDesc tensordesc_output1 = op.GetOutputDesc("y");
-
+  TensorDesc tensordesc_output1 = op.GetOutputDescByName("y");
+  tensordesc_output1.SetDataType(input_dtype);
   tensordesc_output1.SetShape(ge::Shape(dims_input));
 
-  tensordesc_output1.SetDataType(input_dtype);
-
   (void)op.UpdateOutputDesc("y", tensordesc_output1);
-
+  OP_LOGD(op_name, "SortV2InferShape begin.");
   return GRAPH_SUCCESS;
 }
 
@@ -2300,10 +2300,8 @@ template<typename T> static bool ExpandCalDim(const Tensor &data,
                                               std::vector<int64_t> &vec_dim,
                                               std::vector<int64_t> &x_dims,
                                               std::vector<std::pair<int64_t, int64_t>> &range_vector) {
-  OP_LOGD("ExpandCalDim Start.");
-
-  int64_t len_shape = data.GetSize() / sizeof(T);
   int64_t len_x = x_dims.size();
+  int64_t len_shape = data.GetSize() / sizeof(T);
   int64_t diff = abs(len_x - len_shape);
 
   if (len_shape < len_x) {
@@ -2364,38 +2362,35 @@ template<typename T> static bool ExpandCalDim(const Tensor &data,
     }
   }
 
-  OP_LOGD("ExpandCalDim Success Finished.");
-
   return true;
 }
 
 IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
-  OP_LOGD(op.GetName().c_str(), "ExpandInferShape Start.");
-
-  OP_LOGD(op.GetName().c_str(), "set input shape as const node for infershape.");
+  const char *op_name = "Expand";
+  OP_LOGD(op_name, "ExpandInferShape begin.");
   const vector<string> const_names = {"shape"};
   PREPARE_DYNAMIC_SHAPE(const_names);
-  OP_LOGD(op.GetName().c_str(), "get input x's tensordesc.");
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  OP_LOGD(op_name, "get input x's tensordesc.");
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
   Shape x_shape = tensordesc_input.GetShape();
-  DataType x_dtype = tensordesc_input.GetDataType();
   std::vector<int64_t> x_dims = x_shape.GetDims();
+  DataType x_dtype = tensordesc_input.GetDataType();
 
   Tensor data;
   std::vector<int64_t> vec_dim;
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   std::vector<std::pair<int64_t, int64_t>> range_vector;
 
   if (op.GetInputConstData("shape", data) != GRAPH_SUCCESS) {
-    OP_LOGD(op.GetName().c_str(), "Get constValue failed of [shape]");
+    OP_LOGD(op_name, "Get constValue failed of [shape]");
 
-    TensorDesc tensordesc_shape = op.GetInputDesc("shape"); 
+    TensorDesc tensordesc_shape = op.GetInputDescByName("shape"); 
     vector<int64_t> shape_dims = tensordesc_shape.GetShape().GetDims(); 
     size_t dim_num = shape_dims.size();
 
     if (dim_num > 1) {
-      OP_LOGE(op.GetName().c_str(), "The dim numbers of constnode are more than one.");
+      OP_LOGE(op_name, "The dim numbers of constnode are more than one.");
       return GRAPH_FAILED;
     }
     int64_t max_len = x_dims.size();
@@ -2407,31 +2402,30 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
       range_vector.push_back(std::make_pair(1, -1));
     }
   } else {
-    OP_LOGD(op.GetName().c_str(), "Get constValue successed of [shape]");
+    OP_LOGD(op_name, "Get constValue successed of [shape]");
     DataType data_type = data.GetTensorDesc().GetDataType();
     if (data_type == DT_INT32) {
       if (!ExpandCalDim<int32_t>(data, vec_dim, x_dims, range_vector)) {
-        OP_LOGE(op.GetName().c_str(), "Data shape are not compatible!");
+        OP_LOGE(op_name, "Data shape are not compatible!");
         return GRAPH_FAILED;
       }
     } else if (data_type == DT_INT64) {
       if (!ExpandCalDim<int64_t>(data, vec_dim, x_dims, range_vector)) {
-        OP_LOGE(op.GetName().c_str(), "Data shape are not compatible!");
+        OP_LOGE(op_name, "Data shape are not compatible!");
         return GRAPH_FAILED;
       }
     } else {
-      OP_LOGE(op.GetName().c_str(), "Data type not supported!");
+      OP_LOGE(op_name, "Data type not supported!");
       return GRAPH_PARAM_INVALID;
     }
   }
-  OP_LOGD(op.GetName().c_str(), "reset output y's tensordesc.");
-  tensordesc_output.SetShape(ge::Shape(vec_dim));
+  OP_LOGD(op_name, "reset output y's tensordesc.");
   tensordesc_output.SetDataType(x_dtype);
+  tensordesc_output.SetShape(ge::Shape(vec_dim));
   tensordesc_output.SetShapeRange(range_vector);
-  OP_LOGD(op.GetName().c_str(), "update output y's tensordesc.");
+  OP_LOGD(op_name, "update output y's tensordesc.");
   (void)op.UpdateOutputDesc("y", tensordesc_output);
-
-  OP_LOGD(op.GetName().c_str(), "ExpandInferShape Finished.");
+  OP_LOGD(op_name, "ExpandInferShape end.");
 
   return GRAPH_SUCCESS;
 }

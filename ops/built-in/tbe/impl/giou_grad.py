@@ -178,10 +178,10 @@ class GIoUGrad(object):
 
         util.check_kernel_name(self.kernel_name)
 
-        if trans != True:
+        if not trans:
             raise RuntimeError("The attr_trans should be true.")
 
-        if is_cross != False:
+        if is_cross:
             raise RuntimeError("The attr_is_cross should be false.")
 
         if mode != "iou":
@@ -217,40 +217,14 @@ class GIoUGrad(object):
 
     def compute_core(self, task_idx):
         """giou_grad_compute_compute_core"""
+        # func: init all unit
         self.init_date()
 
         # func: get b1 and b2
         self.move_in(task_idx)
-
-        b1w_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b1w_half", scope=tik.scope_ubuf)
-        b1h_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b1h_half", scope=tik.scope_ubuf)
-
-        b2w_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b2w_half", scope=tik.scope_ubuf)
-        b2h_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b2h_half", scope=tik.scope_ubuf)
-
-        self.tik_instance.vec_muls(BLOCK, b1w_half, self.b1w, self.half, REP_TIME, 1, 1)
-        self.tik_instance.vec_muls(BLOCK, b1h_half, self.b1h, self.half, REP_TIME, 1, 1)
-
-        # func: b1x1 = b1x - b1w/2
-        self.tik_instance.vec_sub(BLOCK, self.b1x1, self.b1x, b1w_half, REP_TIME, 1, 1, 1)
-        # func: b1x2 = b1x + b1w/2
-        self.tik_instance.vec_add(BLOCK, self.b1x2, self.b1x, b1w_half, REP_TIME, 1, 1, 1)
-        # func: b1y1 = b1y - b1h/2
-        self.tik_instance.vec_sub(BLOCK, self.b1y1, self.b1y, b1h_half, REP_TIME, 1, 1, 1)
-        # func: b1y2 = b1y + b1h/2
-        self.tik_instance.vec_add(BLOCK, self.b1y2, self.b1y, b1h_half, REP_TIME, 1, 1, 1)
-
-        self.tik_instance.vec_muls(BLOCK, b2w_half, self.b2w, self.half, REP_TIME, 1, 1)
-        self.tik_instance.vec_muls(BLOCK, b2h_half, self.b2h, self.half, REP_TIME, 1, 1)
-
-        # func: b2x1 = b2x - b2w/2
-        self.tik_instance.vec_sub(BLOCK, self.b2x1, self.b2x, b2w_half, REP_TIME, 1, 1, 1)
-        # func: b2x2 = b2x + b2w/2
-        self.tik_instance.vec_add(BLOCK, self.b2x2, self.b2x, b2w_half, REP_TIME, 1, 1, 1)
-        # func: b2y1 = b2y - b2h/2
-        self.tik_instance.vec_sub(BLOCK, self.b2y1, self.b2y, b2h_half, REP_TIME, 1, 1, 1)
-        # func: b2y2 = b2y + b2h/2
-        self.tik_instance.vec_add(BLOCK, self.b2y2, self.b2y, b2h_half, REP_TIME, 1, 1, 1)
+        
+        # func: xyhw trans to xyxy
+        self.data_trans()
 
         # func: compute for inter/union/enclose, giou = inter/union + union/enclose - 1
         self.update_part()
@@ -393,6 +367,38 @@ class GIoUGrad(object):
         self.tik_instance.data_move(self.b2h, self.gtboxes[self.all_num * 3 + task_idx * MINI_BATCH], 0, 1, REP_TIME, 0,
                                     0)
 
+    def data_trans(self):
+        """data_trans"""
+        b1w_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b1w_half", scope=tik.scope_ubuf)
+        b1h_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b1h_half", scope=tik.scope_ubuf)
+
+        b2w_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b2w_half", scope=tik.scope_ubuf)
+        b2h_half = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b2h_half", scope=tik.scope_ubuf)
+
+        self.tik_instance.vec_muls(BLOCK, b1w_half, self.b1w, self.half, REP_TIME, 1, 1)
+        self.tik_instance.vec_muls(BLOCK, b1h_half, self.b1h, self.half, REP_TIME, 1, 1)
+
+        # func: b1x1 = b1x - b1w/2
+        self.tik_instance.vec_sub(BLOCK, self.b1x1, self.b1x, b1w_half, REP_TIME, 1, 1, 1)
+        # func: b1x2 = b1x + b1w/2
+        self.tik_instance.vec_add(BLOCK, self.b1x2, self.b1x, b1w_half, REP_TIME, 1, 1, 1)
+        # func: b1y1 = b1y - b1h/2
+        self.tik_instance.vec_sub(BLOCK, self.b1y1, self.b1y, b1h_half, REP_TIME, 1, 1, 1)
+        # func: b1y2 = b1y + b1h/2
+        self.tik_instance.vec_add(BLOCK, self.b1y2, self.b1y, b1h_half, REP_TIME, 1, 1, 1)
+
+        self.tik_instance.vec_muls(BLOCK, b2w_half, self.b2w, self.half, REP_TIME, 1, 1)
+        self.tik_instance.vec_muls(BLOCK, b2h_half, self.b2h, self.half, REP_TIME, 1, 1)
+
+        # func: b2x1 = b2x - b2w/2
+        self.tik_instance.vec_sub(BLOCK, self.b2x1, self.b2x, b2w_half, REP_TIME, 1, 1, 1)
+        # func: b2x2 = b2x + b2w/2
+        self.tik_instance.vec_add(BLOCK, self.b2x2, self.b2x, b2w_half, REP_TIME, 1, 1, 1)
+        # func: b2y1 = b2y - b2h/2
+        self.tik_instance.vec_sub(BLOCK, self.b2y1, self.b2y, b2h_half, REP_TIME, 1, 1, 1)
+        # func: b2y2 = b2y + b2h/2
+        self.tik_instance.vec_add(BLOCK, self.b2y2, self.b2y, b2h_half, REP_TIME, 1, 1, 1)
+
     def update_part(self):
         """update_part"""
         b1_area = self.tik_instance.Tensor(self.dtype, [MINI_BATCH], name="b1_area", scope=tik.scope_ubuf)
@@ -437,7 +443,7 @@ class GIoUGrad(object):
         self.tik_instance.vec_add(BLOCK, self.union, b1_area, b2_area, REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(BLOCK, self.union, self.union, self.inter, REP_TIME, 1, 1, 1)
 
-        # for enclose
+        # for enclose = (max(b1x2. b2x2) - min(b1x1, b2x1)) * (max(b1y2. b2y2) - min(b1y1, b2y1))
         self.tik_instance.vec_min(BLOCK, xmin, self.b1x1, self.b2x1, REP_TIME, 1, 1, 1)
         self.tik_instance.vec_min(BLOCK, ymin, self.b1y1, self.b2y1, REP_TIME, 1, 1, 1)
 
@@ -447,7 +453,6 @@ class GIoUGrad(object):
         self.tik_instance.vec_sub(BLOCK, self.xlen_max, xmax, xmin, REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(BLOCK, self.ylen_max, ymax, ymin, REP_TIME, 1, 1, 1)
 
-        # func: enclose = (max(b1x2. b2x2) - min(b1x1, b2x1)) * (max(b1y2. b2y2) - min(b1y1, b2y1))
         self.tik_instance.vec_mul(BLOCK, self.enclose, self.xlen_max, self.ylen_max, REP_TIME, 1, 1, 1)
 
     def update_dpart(self):

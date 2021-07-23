@@ -24,18 +24,20 @@ from te.platform.fusion_manager import fusion_manager
 BLOCK = 8
 MIN = -3.4e38
 REPEAT_OFFSET = 255
+LABEL_MIN = 4
 LABEL_MAX = 1000
+
 
 # pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
 def check_supported(log_probs, targets, input_lengths, target_lengths, neg_log_likelihood, log_alpha, blank=0,
                     reduction="mean", zero_infinity=False, kernel_name="ctc_loss_v2"):
     """
     check the op support situation.
-    Go to AICPU when the label's length is over 1K. 
+    Go to AICPU when the label's length is less than 4. 
     """
     targets_shape = targets.get("shape")
-    if targets_shape[-1] > LABEL_MAX:
-        reason = "The label's length is over 1K."
+    if targets_shape[-1] < LABEL_MIN or targets_shape[-1] > LABEL_MAX:
+        reason = "The label's length is beyound [4, 1000]."
         return False, reason
 
     return True, ""
@@ -296,7 +298,7 @@ class CTCLossV2(object):
 
         with self.tik_instance.if_scope(self.T == t_i):
             self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (self.T - 1) * self.output_size],
-                                        log_alpha_ub[output_dst], 0, 1, self.output_size_up // BLOCK, 0, 0)
+                                        log_alpha_ub[output_dst], 0, 1, self.output_size // BLOCK, 0, 0)
 
             with self.tik_instance.if_scope(self.output_size % BLOCK != 0):
                 self.tik_instance.data_move(self.log_alpha_[task_idx * BLOCK],

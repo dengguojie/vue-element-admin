@@ -223,12 +223,13 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
 INFER_FUNC_REG(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer);
 
 IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
-  OP_LOGD(op.GetName().c_str(), "CTCLossV2Infer Begin.");
-  TensorDesc tensordesc_log_probs = op.get_input_desc_log_probs();
+  const char *op_name = "CTCLossV2";
+  OP_LOGD(op_name, "CTCLossV2Infer begin.");
   TensorDesc tensordesc_targets = op.get_input_desc_targets();
-
-  Shape shape_log_probs = tensordesc_log_probs.GetShape();
+  TensorDesc tensordesc_log_probs = op.get_input_desc_log_probs();
+  
   Shape shape_targets = tensordesc_targets.GetShape();
+  Shape shape_log_probs = tensordesc_log_probs.GetShape();
   
   DataType dtype = tensordesc_log_probs.GetDataType();
 
@@ -239,43 +240,47 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
   int64_t N = dims_log_probs[1];
   int64_t S = dims_targets[1];
 
-  TensorDesc tensordesc_log_alpha = op.get_output_desc_log_alpha();
   TensorDesc tensordesc_neg_log_likelihood = op.get_output_desc_neg_log_likelihood();
-  
-  std::vector<int64_t> dims_log_alpha = {N, T, 2*S + 1};
-  std::vector<int64_t> dims_neg_log_likelihood = {N};
+  TensorDesc tensordesc_log_alpha = op.get_output_desc_log_alpha();
 
-  tensordesc_log_alpha.SetShape(ge::Shape(dims_log_alpha));
-  tensordesc_log_alpha.SetDataType(dtype);
+  std::vector<int64_t> dims_neg_log_likelihood = {N}; 
+  std::vector<int64_t> dims_log_alpha = {N, T, 2 * S + 1};
+
   tensordesc_neg_log_likelihood.SetShape(ge::Shape(dims_neg_log_likelihood));
   tensordesc_neg_log_likelihood.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("log_alpha", tensordesc_log_alpha);
+  
+  tensordesc_log_alpha.SetShape(ge::Shape(dims_log_alpha));
+  tensordesc_log_alpha.SetDataType(dtype);
+  
   (void)op.UpdateOutputDesc("neg_log_likelihood", tensordesc_neg_log_likelihood);
-  OP_LOGD(op.GetName().c_str(), "CTCLossV2Infer End.");
+  (void)op.UpdateOutputDesc("log_alpha", tensordesc_log_alpha);
 
+  OP_LOGD(op_name, "CTCLossV2Infer end.");
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(CTCLossV2, CTCLossV2Infer);
 
 IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
-  OP_LOGD(op.GetName().c_str(), "CTCLossV2GradInfer Begin.");
-  TensorDesc tensordesc_log_probs = op.get_input_desc_log_probs();
-  Shape shape_log_probs = tensordesc_log_probs.GetShape();
-  std::vector<int64_t> dims_log_probs = shape_log_probs.GetDims();
-  DataType dtype = tensordesc_log_probs.GetDataType();
+  const char *op_name = "CTCLossV2Grad";
+  OP_LOGD(op_name, "CTCLossV2GradInfer begin.");
 
   TensorDesc tensordesc_grad_out = op.get_input_desc_grad_out();
   Shape shape_grad_out = tensordesc_grad_out.GetShape();
   DataType dtype_grad_out = tensordesc_grad_out.GetDataType();
   std::vector<int64_t> dims_grad_out = shape_grad_out.GetDims();
-  
+
+  TensorDesc tensordesc_log_probs = op.get_input_desc_log_probs();
+  Shape shape_log_probs = tensordesc_log_probs.GetShape();
+  std::vector<int64_t> dims_log_probs = shape_log_probs.GetDims();
+  DataType dtype = tensordesc_log_probs.GetDataType();
+
   TensorDesc tensordesc_targets = op.get_input_desc_targets();
   Shape shape_targets = tensordesc_targets.GetShape();
   std::vector<int64_t> dims_targets = shape_targets.GetDims();
 
   if (dims_log_probs.size() != 3){
-    OP_LOGE(op.GetName().c_str(), "The shape of log_probs is unexpected");
+    OP_LOGE(op_name, "The shape of log_probs is unexpected");
     return GRAPH_FAILED;
   }
 
@@ -284,7 +289,7 @@ IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
   int64_t C = dims_log_probs[2];
 
   if (dtype != dtype_grad_out){
-    OP_LOGE(op.GetName().c_str(), "The dtype of log_probs and grad_out is unmatch");
+    OP_LOGE(op_name, "The dtype of log_probs and grad_out is unmatch");
     return GRAPH_FAILED;
   }
 
@@ -294,8 +299,7 @@ IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
   tensordesc_grad.SetShape(ge::Shape(dims_grad));
   tensordesc_grad.SetDataType(dtype);
   (void)op.UpdateOutputDesc("grad", tensordesc_grad);
-  OP_LOGD(op.GetName().c_str(), "CTCLossV2GradInfer End.");
-
+  OP_LOGD(op_name, "CTCLossV2GradInfer begin.");
   return GRAPH_SUCCESS;
 }
 
