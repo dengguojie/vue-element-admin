@@ -4424,7 +4424,7 @@ class CceConvOp:
             """
             bias_init_align_dim_ub, bias_virtual_add schedule
             """
-            if ConvParam.bias_init_align_dim_flag:
+            if ConvParam.bias_init_align_dim_flag and not self._convbn1_flag:
                 # set scope
                 sch[tensor_map["bias_init_align_dim_ub"]].set_scope(cce.scope_ubuf)
                 sch[tensor_map["bias_virtual_add"]].set_scope(cce.scope_ubuf)
