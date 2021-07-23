@@ -83,6 +83,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Relu, Relu, ReluV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Mul, Mul, MulV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Tan, Tan, TanV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::IsNaN, IsNan, IsNaNV11);
 
 //onnx::8
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::8::Acos, Acos, AcosV8);
@@ -186,6 +187,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Relu, Relu, ReluV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Mul, Mul, MulV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Tan, Tan, TanV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::IsNaN, IsNan, IsNaNV9);
 
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Acos, Acos, AcosV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Acosh, Acosh, AcoshV10);
@@ -236,6 +238,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Relu, Relu, ReluV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Mul, Mul, MulV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV10);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::Tan, Tan, TanV10);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::10::IsNaN, IsNan, IsNaNV10);
 
 //onnx::12
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Acos, Acos, AcosV12);
@@ -288,6 +291,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Mul, Mul, MulV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Tan, Tan, TanV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::ScatterND, TensorScatterUpdate, ScatterNDV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::IsNaN, IsNan, IsNaNV12);
 
 //onnx::13
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Acos, Acos, AcosV13);
@@ -339,4 +343,5 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Mul, Mul, MulV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::GlobalAveragePool, GlobalAveragePool, GlobalAveragePoolV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Tan, Tan, TanV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::ScatterND, TensorScatterUpdate, ScatterNDV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::IsNaN, IsNan, IsNaNV13);
 }  // namespace domi

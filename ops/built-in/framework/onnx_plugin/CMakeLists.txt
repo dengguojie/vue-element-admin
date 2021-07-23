@@ -125,6 +125,7 @@ set(_onnx_plugins
   eyelike_plugin.cc
   einsum_plugin.cc
   random_normal_plugin.cc
+  isinf_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include

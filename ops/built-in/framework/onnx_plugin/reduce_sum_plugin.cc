@@ -34,12 +34,12 @@ Status parse_params_reduce_sum(const Message* op_src, ge::Operator& op_dest)
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
 
-  opDesc->AddDynamicInputDesc("x", 2);
+  opDesc->AddDynamicInputDesc("x", 1);
   opDesc->AddDynamicOutputDesc("output", 1);
 
   ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::11::ReduceSum");
 
-  std::vector<int> v_axes;
+  std::vector<int> v_axes = {};
   bool keep_dims_attr = true;
 
   for (const auto& attr : node->attribute()) {
@@ -54,7 +54,10 @@ Status parse_params_reduce_sum(const Message* op_src, ge::Operator& op_dest)
 
   int num = v_axes.size();
   ge::TensorDesc tensorDesc;
-  std::vector<int64_t> dims = {num};
+  std::vector<int64_t> dims = {};
+  if (num != 0) {
+    dims.push_back(num);
+  }
   ge::Shape shape(dims);
   tensorDesc.SetShape(shape);
   tensorDesc.SetDataType(DT_INT32);
@@ -144,11 +147,18 @@ static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
   }
   if (input_num == 1 && empty_axes == 0) {
     std::vector<int64_t> v_axes={};
+    ge::TensorDesc tensorDesc;
+    std::vector<int64_t> dims = {};
+    ge::Shape shape(dims);
+    tensorDesc.SetShape(shape);
+    tensorDesc.SetDataType(DT_INT64);
+    ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(v_axes.data()), v_axes.size() * sizeof(int));
+    auto axes = op::Const("axes").set_attr_value(tensor);
     std::vector<Operator> inputs{data0};
     std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
-    auto reducesum = op::ReduceSumD()
+    auto reducesum = op::ReduceSum()
                       .set_input_x(data0)
-                      .set_attr_axes(v_axes)
+                      .set_input_axes(axes)
                       .set_attr_keep_dims(flag);
     output_indexs.emplace_back(reducesum, vector<std::size_t>{0});
     graph.SetInputs(inputs).SetOutputs(output_indexs);
