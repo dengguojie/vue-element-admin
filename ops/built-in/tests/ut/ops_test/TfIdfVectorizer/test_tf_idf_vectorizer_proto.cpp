@@ -63,7 +63,6 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test6_failed) {
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
-  op.SetAttr("max_skip_count", -2);
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
@@ -73,8 +72,7 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test7_failed) {
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
-  op.SetAttr("max_skip_count", 0);
-  op.SetAttr("min_gram_length", -2);
+  op.SetAttr("max_skip_count", -2);
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
@@ -83,10 +81,8 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test8_failed) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
-  op.SetAttr("max_gram_length", 1);
+  op.SetAttr("max_gram_length", 2);
   op.SetAttr("max_skip_count", 0);
-  op.SetAttr("min_gram_length", 2);
-  op.SetAttr("mode", "TF");
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
@@ -97,8 +93,7 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test9_failed) {
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
   op.SetAttr("max_skip_count", 0);
-  op.SetAttr("min_gram_length", 1);
-  op.SetAttr("mode", "ERROR");
+  op.SetAttr("min_gram_length", -2);
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
@@ -107,9 +102,9 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test10_failed) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
-  op.SetAttr("max_gram_length", 2);
+  op.SetAttr("max_gram_length", 1);
   op.SetAttr("max_skip_count", 0);
-  op.SetAttr("min_gram_length", 1);
+  op.SetAttr("min_gram_length", 2);
   op.SetAttr("mode", "TF");
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
@@ -122,13 +117,48 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test11_failed) {
   op.SetAttr("max_gram_length", 2);
   op.SetAttr("max_skip_count", 0);
   op.SetAttr("min_gram_length", 1);
+  auto verify_fail_res = op.VerifyAllAttr(true);
+  EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
+}
+
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test12_failed) {
+  ge::op::TfIdfVectorizer op;
+  op.UpdateInputDesc("input",
+                     create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
+  op.SetAttr("max_gram_length", 2);
+  op.SetAttr("max_skip_count", 0);
+  op.SetAttr("min_gram_length", 1);
+  op.SetAttr("mode", "ERROR");
+  auto verify_fail_res = op.VerifyAllAttr(true);
+  EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
+}
+
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test13_failed) {
+  ge::op::TfIdfVectorizer op;
+  op.UpdateInputDesc("input",
+                     create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
+  op.SetAttr("max_gram_length", 2);
+  op.SetAttr("max_skip_count", 0);
+  op.SetAttr("min_gram_length", 1);
+  op.SetAttr("mode", "TF");
+  auto verify_fail_res = op.VerifyAllAttr(true);
+  EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
+}
+
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test14_failed) {
+  ge::op::TfIdfVectorizer op;
+  op.UpdateInputDesc("input",
+                     create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
+  op.SetAttr("max_gram_length", 2);
+  op.SetAttr("max_skip_count", 0);
+  op.SetAttr("min_gram_length", 1);
   op.SetAttr("mode", "TF");
   op.SetAttr("ngram_counts", {0, 4});
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test12_failed) {
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test15_failed) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
@@ -144,7 +174,7 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test12_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test13_failed) {
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test16_failed) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
@@ -162,7 +192,25 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test13_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test14_failed) {
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test17_failed) {
+  ge::op::TfIdfVectorizer op;
+  op.UpdateInputDesc("input",
+                     create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
+  op.SetAttr("max_gram_length", 2);
+  op.SetAttr("max_skip_count", 0);
+  op.SetAttr("min_gram_length", 1);
+  op.SetAttr("mode", "TF");
+  std::vector<int64_t> ngramCounts = {0, 4};
+  op.SetAttr("ngram_counts", ngramCounts);
+  std::vector<int64_t> ngramIndexes = {0, 1, 2};
+  op.SetAttr("ngram_indexes", ngramIndexes);
+  std::vector<std::string> poolStrings = {"2", "3", "5", "4"};
+  op.SetAttr("pool_strings", poolStrings);
+  auto verify_fail_res = op.VerifyAllAttr(true);
+  EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
+}
+
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test18_failed) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
@@ -180,7 +228,7 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test14_failed) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test15_success) {
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test19_success) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input", create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -197,7 +245,7 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test15_success) {
   EXPECT_EQ(verify_fail_res, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test16_failed) {
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test20_failed) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
@@ -211,13 +259,13 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test16_failed) {
   op.SetAttr("ngram_indexes", ngramIndexes);
   std::vector<int64_t> poolInt64s = {2, 3, 5, 4};
   op.SetAttr("pool_int64s", poolInt64s);
-  std::vector<float> weights = {1.0, 2.0};
-  op.SetAttr("weights", weights);
+  std::vector<float> weights_vec = {1.0, 2.0};
+  op.SetAttr("weights", weights_vec);
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
 }
 
-TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test17_success) {
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test21_success) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input", create_desc_with_ori({2}, ge::DT_INT64, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
   op.SetAttr("max_gram_length", 2);
@@ -230,14 +278,31 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_verify_test17_success) {
   op.SetAttr("ngram_indexes", ngramIndexes);
   std::vector<int64_t> poolInt64s = {2, 3, 5, 4};
   op.SetAttr("pool_int64s", poolInt64s);
-  std::vector<float> weights = {1.0, 2.0, 3.0};
-  op.SetAttr("weights", weights);
+  std::vector<float> weights_vec = {1.0, 2.0, 3.0};
+  op.SetAttr("weights", weights_vec);
   auto verify_fail_res = op.VerifyAllAttr(true);
   EXPECT_EQ(verify_fail_res, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_static_infer_test1_failed) {
+  ge::op::TfIdfVectorizer op;
+  op.UpdateInputDesc("input",
+                     create_desc_with_ori({2, 12}, ge::DT_INT64, ge::FORMAT_ND, {2, 12}, ge::FORMAT_ND));
+  op.SetAttr("max_gram_length", 2);
+  op.SetAttr("max_skip_count", 0);
+  op.SetAttr("min_gram_length", 1);
+  op.SetAttr("mode", "TF");
+  std::vector<int64_t> ngramCounts = {0, 2};
+  op.SetAttr("ngram_counts", ngramCounts);
+  std::vector<int64_t> poolInt64s = {2, 3, 5, 4};
+  op.SetAttr("pool_int64s", poolInt64s);
+  std::vector<float> weights_vec = {1.0, 2.0, 3.0};
+  op.SetAttr("weights", weights_vec);
+  auto infer_res = op.InferShapeAndType();
+  EXPECT_EQ(infer_res, ge::GRAPH_FAILED);
+}
 
-TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_static_infer_test1_success) {
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_static_infer_test2_success) {
   ge::op::TfIdfVectorizer op;
   op.UpdateInputDesc("input",
                      create_desc_with_ori({2, 12}, ge::DT_INT64, ge::FORMAT_ND, {2, 12}, ge::FORMAT_ND));
@@ -251,13 +316,36 @@ TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_static_infer_test1_success) {
   op.SetAttr("ngram_indexes", ngramIndexes);
   std::vector<int64_t> poolInt64s = {2, 3, 5, 4};
   op.SetAttr("pool_int64s", poolInt64s);
-  std::vector<float> weights = {1.0, 2.0, 3.0};
-  op.SetAttr("weights", weights);
+  std::vector<float> weights_vec = {1.0, 2.0, 3.0};
+  op.SetAttr("weights", weights_vec);
   auto infer_res = op.InferShapeAndType();
   EXPECT_EQ(infer_res, ge::GRAPH_SUCCESS);
-  auto out_var_desc = op.GetOutputDesc("output");
+  auto out_var_desc = op.GetOutputDescByName("output");
   EXPECT_EQ(out_var_desc.GetDataType(), ge::DT_FLOAT);
   std::vector<int64_t> expected_var_output_shape = {2, 3};
   EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
 }
 
+TEST_F(TfIdfVectorizerTest, TfIdfVectorizer_static_infer_test3_success) {
+  ge::op::TfIdfVectorizer op;
+  op.UpdateInputDesc("input",
+                     create_desc_with_ori({12}, ge::DT_INT64, ge::FORMAT_ND, {12}, ge::FORMAT_ND));
+  op.SetAttr("max_gram_length", 2);
+  op.SetAttr("max_skip_count", 0);
+  op.SetAttr("min_gram_length", 1);
+  op.SetAttr("mode", "TF");
+  std::vector<int64_t> ngramCounts = {0, 2};
+  op.SetAttr("ngram_counts", ngramCounts);
+  std::vector<int64_t> ngramIndexes = {0, 1, 2};
+  op.SetAttr("ngram_indexes", ngramIndexes);
+  std::vector<int64_t> poolInt64s = {2, 3, 5, 4};
+  op.SetAttr("pool_int64s", poolInt64s);
+  std::vector<float> weights_vec = {1.0, 2.0, 3.0};
+  op.SetAttr("weights", weights_vec);
+  auto infer_res = op.InferShapeAndType();
+  EXPECT_EQ(infer_res, ge::GRAPH_SUCCESS);
+  auto out_var_desc = op.GetOutputDescByName("output");
+  EXPECT_EQ(out_var_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_var_output_shape = {3};
+  EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
+}

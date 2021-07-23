@@ -34,9 +34,45 @@ class addcdiv : public testing::Test {
   }
 };
 
+TEST_F(addcdiv, addcdiv_verify_test1_failed) {
+  ge::op::Addcdiv op;
+  auto input_data_desc = create_desc_shape_range({-1, -1, -1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 16, 1}, ge::FORMAT_NCHW,
+   {{1, 3}, {1, 16}, {16, 16}, {1, 1}});
+  op.UpdateInputDesc("input_data", input_data_desc);
+
+  auto x1_desc = create_desc_shape_range({-1,}, ge::DT_FLOAT, ge::FORMAT_ND, {16,}, ge::FORMAT_ND, {{1, 16},});
+  op.UpdateInputDesc("x1", x1_desc);
+
+  auto x2_desc = create_desc_shape_range({-1,}, ge::DT_FLOAT16, ge::FORMAT_ND, {16,}, ge::FORMAT_ND, {{1, 16},});
+  op.UpdateInputDesc("x2", x2_desc);
+
+  auto value_desc = create_desc_shape_range({-1,}, ge::DT_FLOAT16, ge::FORMAT_ND, {16,}, ge::FORMAT_ND, {{1, 16}});
+  op.UpdateInputDesc("value", value_desc);
+  auto verify_fail_res = op.VerifyAllAttr(true);
+  EXPECT_EQ(verify_fail_res, ge::GRAPH_FAILED);
+}
+
+TEST_F(addcdiv, addcdiv_verify_test1_success) {
+  ge::op::Addcdiv op;
+  auto input_data_desc = create_desc_shape_range({-1, -1, -1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 16, 1}, ge::FORMAT_NCHW,
+   {{1, 3}, {1, 16}, {16, 16}, {1, 1}});
+  op.UpdateInputDesc("input_data", input_data_desc);
+
+  auto x1_desc = create_desc_shape_range({-1,}, ge::DT_FLOAT16, ge::FORMAT_ND, {16,}, ge::FORMAT_ND, {{1, 16},});
+  op.UpdateInputDesc("x1", x1_desc);
+
+  auto x2_desc = create_desc_shape_range({-1,}, ge::DT_FLOAT16, ge::FORMAT_ND, {16,}, ge::FORMAT_ND, {{1, 16},});
+  op.UpdateInputDesc("x2", x2_desc);
+
+  auto value_desc = create_desc_shape_range({-1,}, ge::DT_FLOAT16, ge::FORMAT_ND, {16,}, ge::FORMAT_ND, {{1, 16}});
+  op.UpdateInputDesc("value", value_desc);
+  auto verify_fail_res = op.VerifyAllAttr(true);
+  EXPECT_EQ(verify_fail_res, ge::GRAPH_SUCCESS);
+}
+
 TEST_F(addcdiv, addcdiv_infershape_fp16_test) {
   ge::op::Addcdiv op;
-  auto input_data_desc = create_desc_shape_range({-1,-1,-1,1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1,16,16,1}, ge::FORMAT_NCHW,
+  auto input_data_desc = create_desc_shape_range({-1, -1, -1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 16, 16, 1}, ge::FORMAT_NCHW,
    {{1, 3}, {1, 16}, {16, 16}, {1, 1}});
   op.UpdateInputDesc("input_data", input_data_desc);
 
@@ -53,10 +89,10 @@ TEST_F(addcdiv, addcdiv_infershape_fp16_test) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-  auto output_y_desc = op.GetOutputDesc("y");
+  auto output_y_desc = op.GetOutputDescByName("y");
   EXPECT_EQ(output_y_desc.GetDataType(), ge::DT_FLOAT16);
 
-  std::vector<int64_t> expected_output_shape = {-1,-1,-1,-1};
+  std::vector<int64_t> expected_output_shape = {-1, -1, -1, -1};
   EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_output_shape);
 
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;

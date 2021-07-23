@@ -3149,8 +3149,11 @@ INFER_FUNC_REG(GridSampler3DGrad, GridSampler3DGradInferShape);
 
 // ---------------Upsample3dForward Op START-------------------
 static bool Upasmple3dForwardInferShape(Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter proto inferfunction!");
-  TensorDesc input_desc = op.GetInputDesc("x");
+  AscendString op_name_str;
+  op.GetName(op_name_str);
+  const char *op_name = op_name_str.GetString();
+  OP_LOGI(op_name, "Enter proto inferfunction!");
+  TensorDesc input_desc = op.GetInputDescByName("x");
   auto input_shape_dims = input_desc.GetShape().GetDims();
   DataType input_dtype = input_desc.GetDataType();
   constexpr int THREEDIMS = 3;
@@ -3158,12 +3161,12 @@ static bool Upasmple3dForwardInferShape(Operator& op) {
   
  if (input_dtype != DT_FLOAT16 && input_dtype != DT_FLOAT && input_dtype != DT_DOUBLE)
   {
-    OP_LOGE(op.GetName().c_str(), "input datatype must be float16,float or double!");
+    OP_LOGE(op_name, "input datatype must be float16,float or double!");
     return false;
   }
   
   if (input_shape_dims.size() != 5) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
+    OP_LOGE(op_name, "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
     return false;
   }
   output_shape.emplace_back(input_shape_dims[0]);
@@ -3173,30 +3176,30 @@ static bool Upasmple3dForwardInferShape(Operator& op) {
   op.GetAttr("output_size", output_size);
   std::vector<float> scales; 
   op.GetAttr("scales", scales);
- 
+
   if (!output_size.empty() && scales.empty())
   { 
     if (output_size.size() != THREEDIMS) {
-      OP_LOGE(op.GetName().c_str(),"attr::output_size dims must be 3, but get %d.", output_size.size());
+      OP_LOGE(op_name,"attr::output_size dims must be 3, but get %d.", output_size.size());
       return false;
     }
     output_shape.insert(output_shape.end(),output_size.begin(),output_size.end());
   } else if (output_size.empty() && !scales.empty()) {
     if (scales.size() != THREEDIMS) {
-      OP_LOGE(op.GetName().c_str(),"attr::scales dims must be 3, but get %d.", scales.size());
+      OP_LOGE(op_name,"attr::scales dims must be 3, but get %d.", scales.size());
       return false;
     }
     for (int i = 0; i < THREEDIMS; i++) {
       output_shape.emplace_back(int64_t(floor(input_shape_dims[i+2] * scales[i])));
     }
   } else {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(op_name,
             "only one of attr::output_size or attr::scales should be defined as a non-empty value.");
     return false;
   }
 
   Shape output_desc_shape(output_shape);
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(output_desc_shape);
   output_desc.SetDataType(input_dtype);
   op.UpdateOutputDesc("y", output_desc);
@@ -3226,8 +3229,11 @@ INFER_FUNC_REG(UpsampleTrilinear3d, UpsampleTrilinear3dInferShape);
 
 // ---------------Upsample3dBackward Op START-------------------
 static bool Upsample3dBackwardInferShape(Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter proto inferfunction!");
-  TensorDesc inputDesc = op.GetInputDesc("grad_output");
+  AscendString op_name_str;
+  op.GetName(op_name_str);
+  const char *op_name = op_name_str.GetString();
+  OP_LOGI(op_name, "Enter proto inferfunction!");
+  TensorDesc inputDesc = op.GetInputDescByName("grad_output");
   auto input_dtype = inputDesc.GetDataType();
   auto input_shape_dims = inputDesc.GetShape().GetDims();
   constexpr int FIVEDIMS = 5;
@@ -3235,22 +3241,22 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
 
  if (input_dtype != DT_FLOAT16 && input_dtype != DT_FLOAT && input_dtype != DT_DOUBLE)
   {
-    OP_LOGE(op.GetName().c_str(), "input datatype must be float16,float or double!");
+    OP_LOGE(op_name, "input datatype must be float16,float or double!");
     return false;
   }
 
   if (input_shape_dims.size() != FIVEDIMS) {
-    OP_LOGE(op.GetName().c_str(), "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
+    OP_LOGE(op_name, "Expected dim of input x should be 5. but get %d.", input_shape_dims.size());
     return false;
   }
 
   std::vector<int64_t> input_size;
   if (GRAPH_SUCCESS != op.GetAttr("input_size", input_size)) {
-    OP_LOGE(op.GetName().c_str(), "get attr::input_size faild!");
+    OP_LOGE(op_name, "get attr::input_size faild!");
     return false;
   } 
   if (input_size.size() != FIVEDIMS) {
-    OP_LOGE(op.GetName().c_str(),"attr::input_size dims must be 5, but get %d.", input_size.size());
+    OP_LOGE(op_name,"attr::input_size dims must be 5, but get %d.", input_size.size());
     return false;
   }
 
@@ -3262,39 +3268,39 @@ static bool Upsample3dBackwardInferShape(Operator& op) {
   if (!output_size.empty() && scales.empty())
   { 
     if (output_size.size() != THREEDIMS) {
-      OP_LOGE(op.GetName().c_str(),"attr::output_size dims must be 3, but get %d.", output_size.size());
+      OP_LOGE(op_name,"attr::output_size dims must be 3, but get %d.", output_size.size());
       return false;
     }
     for (int i = 0; i < THREEDIMS; i++) {
       if (output_size[i] != input_shape_dims[i+2])
       {
-        OP_LOGE(op.GetName().c_str(),"attr::output_size[%d](get %ld) != input::grad_output_size[%d](get %ld).", 
+        OP_LOGE(op_name,"attr::output_size[%d](get %ld) != input::grad_output_size[%d](get %ld).", 
                 i, output_size[i], i+2, input_shape_dims[i+2]);
         return false;
       }
     }
   } else if (output_size.empty() && !scales.empty()) {
     if (scales.size() != THREEDIMS) {
-      OP_LOGE(op.GetName().c_str(),"attr::scales dims must be 3, but get %d.", scales.size());
+      OP_LOGE(op_name,"attr::scales dims must be 3, but get %d.", scales.size());
       return false;
     }
     for (int i = 0; i < THREEDIMS; i++) {
       int64_t tmp = int64_t(floor(input_size[i+2] * scales[i]));
       if (tmp != input_shape_dims[i+2])
       {
-        OP_LOGE(op.GetName().c_str(),"input_size[%d]*scales[%d](get %ld) != grad_output_size[%d](get %ld).", 
+        OP_LOGE(op_name,"input_size[%d]*scales[%d](get %ld) != grad_output_size[%d](get %ld).", 
                 i+2, i, tmp, i+2, input_shape_dims[i+2]);
         return false;
       }
     }
   } else {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(op_name,
             "only one of attr::output_size or attr::scales should be defined as a non-empty value.");
     return false;
   }
 
   Shape output_desc_shape(input_size);
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(output_desc_shape);
   output_desc.SetDataType(input_dtype);
   op.UpdateOutputDesc("y", output_desc);

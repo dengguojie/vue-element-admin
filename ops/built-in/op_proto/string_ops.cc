@@ -899,12 +899,15 @@ INFER_FUNC_REG(DecodeBase64, DecodeBase64Infer);
 
 // -----------------StringNormalizer Op-------------------------
 IMPLEMT_VERIFIER(StringNormalizer, StringNormalizerVerify) {
-  TensorDesc input_desc = op.GetInputDesc("input");
+  AscendString op_name_str;
+  op.GetName(op_name_str);
+  const char *op_name = op_name_str.GetString();
+  TensorDesc input_desc = op.GetInputDescByName("input");
   auto input_type = input_desc.GetDataType();
   // verify input type
   if (input_type != DT_STRING)
   {
-    OP_LOGE(op.GetName().c_str(), "input must be UTF-8 string!");
+    OP_LOGE(op_name, "input must be UTF-8 string!");
     return GRAPH_FAILED;
   }
   // verify input dims
@@ -912,13 +915,13 @@ IMPLEMT_VERIFIER(StringNormalizer, StringNormalizerVerify) {
   constexpr int ONEDIMS = 1;
   constexpr int TWODIMS = 2;
   if (input_shape.size() != ONEDIMS && input_shape.size() != TWODIMS) {
-    OP_LOGE(op.GetName().c_str(), 
+    OP_LOGE(op_name, 
             "input dims must be 1 or 2, but get %d.", input_shape.size());
     return GRAPH_FAILED;
   }
   // verify 2-D input shape
   if (input_shape.size() == TWODIMS && input_shape[0] !=1) {
-    OP_LOGE(op.GetName().c_str(), 
+    OP_LOGE(op_name, 
             "when get 2-D input, expected shape is [1, N],but get [%ld, N]", input_shape[0]);
     return GRAPH_FAILED;
   }
@@ -926,43 +929,46 @@ IMPLEMT_VERIFIER(StringNormalizer, StringNormalizerVerify) {
   std::vector<std::string> stop_words; 
   op.GetAttr("stopwords", stop_words);
   if (stop_words.empty()) {
-    OP_LOGI(op.GetName().c_str(), 
+    OP_LOGI(op_name, 
             "attr::stop_words equals to the default value: {}.");
   }
 
   bool is_case_sensitive = false; 
   op.GetAttr("is_case_sensitive", is_case_sensitive);
   if (!is_case_sensitive) {
-    OP_LOGI(op.GetName().c_str(), 
+    OP_LOGI(op_name, 
             "attr::is_case_sensitive equals to the default value: false.");
   }
 
   std::string case_change_action = "NONE";
   op.GetAttr("case_change_action", case_change_action);
   if (case_change_action == "NONE") {
-    OP_LOGI(op.GetName().c_str(), 
+    OP_LOGI(op_name, 
             "attr::case_change_action defaults to \"NONE\"".);
   }
   if ((case_change_action != "LOWER") && 
       (case_change_action != "UPPER") && 
       (case_change_action != "NONE")) {
-    OP_LOGE(op.GetName().c_str(), 
+    OP_LOGE(op_name, 
             "attr::case_change_action is unrecognized, acceptable values are \"LOWER\",\"UPPER\",\"NONE\".");
     return GRAPH_FAILED;
   }
 
-  std::string local = "en_US"; 
-  op.GetAttr("local", local);
-  if (local == "en_US") {
-    OP_LOGI(op.GetName().c_str(), 
-            "get attr::local equals to the default value: \"en_US\".");
+  std::string locale = "C"; 
+  op.GetAttr("locale", locale);
+  if (locale == "C") {
+    OP_LOGI(op_name, 
+            "get attr::locale equals to the default value: \"C\".");
   }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(StringNormalizerInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter StringNormalizer proto inferfunction!");
-  TensorDesc input_desc = op.GetInputDesc("input");
+  AscendString op_name_str;
+  op.GetName(op_name_str);
+  const char *op_name = op_name_str.GetString();
+  OP_LOGI(op_name, "Enter StringNormalizer proto inferfunction!");
+  TensorDesc input_desc = op.GetInputDescByName("input");
   auto input_type = input_desc.GetDataType();
   auto input_shape = input_desc.GetShape().GetDims();
   constexpr int ONEDIMS = 1;
@@ -978,9 +984,11 @@ IMPLEMT_COMMON_INFERFUNC(StringNormalizerInferShape) {
     range.emplace_back(std::make_pair(1, 1));
     range.emplace_back(std::make_pair(1, input_shape[1]));
   } else {
+    OP_LOGE(op_name, 
+            "input dims must be 1 or 2, but get %d.", input_shape.size());
     return GRAPH_FAILED;
   }
-  TensorDesc output_desc = op.GetOutputDesc("output");
+  TensorDesc output_desc = op.GetOutputDescByName("output");
   output_desc.SetDataType(input_type);
   Shape output_desc_shape(output_shape);
   output_desc.SetShape(output_desc_shape);

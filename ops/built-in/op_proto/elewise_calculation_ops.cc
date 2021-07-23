@@ -4099,6 +4099,12 @@ bool InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
                                         const string& input_name2,
                                         const string& input_name3,
                                         const string& output_name) {
+  AscendString op_name_str;
+  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+    OP_LOGE("get op name faild!");
+    return false;
+  }
+  const char *op_name = op_name_str.GetString();
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(input_name1);
   GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(input_name2);
@@ -4109,7 +4115,7 @@ bool InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
         tensordesc_input1 == nullptr ||
         tensordesc_input2 == nullptr ||
         tensordesc_input3 == nullptr,
-        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
+        OP_LOGE(op_name, "invalid OpDesc."), return GRAPH_FAILED);
   DataType input_dtype = tensordesc_input1->GetDataType();
   
   // output Desc
@@ -4119,7 +4125,7 @@ bool InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
   ge::GeShape shape_x = tensordesc_input1->GetShape();
   ge::GeShape shape_y = tensordesc_input2->GetShape();
   ge::GeShape shape_z = tensordesc_input3->GetShape();
-  OP_LOGI(op.GetName().c_str(), "shape %s: %s, shape %s: %s, shape %s: %s.",
+  OP_LOGI(op_name, "shape %s: %s, shape %s: %s, shape %s: %s.",
           input_name1.c_str(), to_string(shape_x).c_str(),
           input_name2.c_str(), to_string(shape_y).c_str(),
           input_name3.c_str(), to_string(shape_z).c_str());
@@ -4130,8 +4136,7 @@ bool InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
   // unknown rank
   if (IsUnknownRankShape(dims_x) || IsUnknownRankShape(dims_y) || IsUnknownRankShape(dims_z)) {
     tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
-    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.",
-            to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
+    OP_LOGI(op_name, "output shape is UNKOWN RANK, output dtype is:%d.",
             input_dtype);
     return true;
   }
@@ -4164,12 +4169,15 @@ bool InferShapeAndTypeAddcdivAndAddcmul(Operator& op,
 
 // ----------------Addcdiv begin-------------------
 IMPLEMT_VERIFIER(Addcdiv, AddcdivVerify) {
+  AscendString op_name_str;
+  op.GetName(op_name_str);
+  const char *op_name = op_name_str.GetString();
   // the data type of input_data, x1 and x2 should be same.
-  if (op.GetInputDesc("x2").GetDataType() !=
-          op.GetInputDesc("input_data").GetDataType() ||
-      op.GetInputDesc("x1").GetDataType() !=
-          op.GetInputDesc("input_data").GetDataType()) {
-    OP_LOGE(op.GetName().c_str(),
+  if (op.GetInputDescByName("x1").GetDataType() !=
+          op.GetInputDescByName("input_data").GetDataType() ||
+      op.GetInputDescByName("x2").GetDataType() !=
+          op.GetInputDescByName("input_data").GetDataType()) {
+    OP_LOGE(op_name,
             "input_data data type and x1, x2 match failed");
     return GRAPH_FAILED;
   }
@@ -4191,13 +4199,16 @@ VERIFY_FUNC_REG(Addcdiv, AddcdivVerify);
 
 // ----------------Addcmul begin-------------------
 IMPLEMT_VERIFIER(Addcmul, AddcmulVerify) {
+  AscendString op_name_str;
+  op.GetName(op_name_str);
+  const char *op_name = op_name_str.GetString();
   // the data type of input_data,x1 and x2 should be same.
-  if (op.GetInputDesc("input_data").GetDataType() !=
-          op.GetInputDesc("x1").GetDataType() ||
-      op.GetInputDesc("input_data").GetDataType() !=
-          op.GetInputDesc("x2").GetDataType()) {
-    OP_LOGE(op.GetName().c_str(),
-            "input_data data type and x1,x2 match failed");
+  if (op.GetInputDescByName("x1").GetDataType() !=
+          op.GetInputDescByName("input_data").GetDataType() ||
+      op.GetInputDescByName("x2").GetDataType() !=
+          op.GetInputDescByName("input_data").GetDataType()) {
+    OP_LOGE(op_name,
+            "input_data data type and x1, x2 match failed");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
