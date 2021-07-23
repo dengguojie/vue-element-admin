@@ -123,6 +123,8 @@ set(_onnx_plugins
   custom/yolo_plugin.cc
   custom/yolov3detectionoutputv2_plugin.cc
   eyelike_plugin.cc
+  einsum_plugin.cc
+  random_normal_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
