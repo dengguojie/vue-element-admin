@@ -393,7 +393,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         dma load3d: check kh*kw*c0*m0 not bigger than L1
         """
         if ConvParam.l0a_dma_flag:
-            m_bit_ratio = {"float16": 2, "int8": 1} 
+            m_bit_ratio = {"float16": 2, "int8": 1}
             kernel_h = shape_w[2]
             kernel_w = shape_w[3]
             block_size_m = config['mac'][0]
@@ -1361,6 +1361,24 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             "conv_fm_h": input_h,
             "conv_fm_w": input_w
         }
+
+        if ConvParam.fusion_para.get("l1_fusion_type") == 1:
+            fmap_vm_group_opt, fmap_vm_batch, fmap_vm_howo, fmap_vm_c1_opt, \
+                fmap_vm_kh, fmap_vm_kw, fmap_vm_c0 = fmap_im2col_vm_shape
+            fmap_im2col_vm_shape_new = [fmap_vm_batch,
+                                        fmap_vm_howo,
+                                        fmap_vm_group_opt*fmap_vm_c1_opt,
+                                        fmap_vm_kh,
+                                        fmap_vm_kw,
+                                        fmap_vm_c0]
+            return tvm.compute(fmap_im2col_vm_shape_new,
+                               lambda batch, howo, cin_1, k_h, k_w, cin_0:
+                               __im2col_row_major_indices(0, batch, howo, cin_1, k_h, k_w, cin_0,
+                                                          fmap, kernel_w, padding, stride, dilate),
+                               name=get_name_with_suffix_num('im2col_row_major'),
+                               tag=OP_TAG + 'im2col_row_major',
+                               attrs=attrs_dict)
+
         return tvm.compute(fmap_im2col_vm_shape,
                            lambda group, batch, howo, cin_1, k_h, k_w, cin_0:
                            __im2col_row_major_indices(group, batch, howo, cin_1, k_h, k_w, cin_0,
@@ -1401,7 +1419,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             """
             block_size = config['mac'][1]
             block_size_m = config['mac'][0]
-            _, _, howo, _, kernel_h, kernel_w, _ = fmap.shape
+            if ConvParam.fusion_para.get("l1_fusion_type") == 1:
+                _, howo, _, kernel_h, kernel_w, _ = fmap.shape
+            else:
+                _, _, howo, _, kernel_h, kernel_w, _ = fmap.shape
 
             hw_index = m_1*block_size_m + m_0
 
@@ -1421,6 +1442,13 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             dtype = compute_dtype
             if ConvParam.l0a_dma_flag:
                 return fmap(group, batch, hw_index, c1_index, kh_index, kw_index, c0_index)
+
+            if ConvParam.fusion_para.get("l1_fusion_type") == 1:
+                return tvm.select(
+                    tvm.any(hw_index < 0, hw_index > howo.value - 1),
+                    tvm.const(0.0, dtype),
+                    fmap(batch, hw_index,
+                         c1_index + group*ConvParam.para_dict.get("c1_opt"), kh_index, kw_index, c0_index))
 
             return tvm.select(
                 tvm.any(hw_index < 0, hw_index > howo.value - 1),
@@ -1454,30 +1482,50 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         kernel_h = ConvParam.para_dict["filter_h"]
         kernel_w = ConvParam.para_dict["filter_w"]
         reduce_c1hwc0 = fmap_c1*fmap_c0*kernel_h*kernel_w
-        _, _, howo, input_c1, filter_h, filter_w, input_c0 = fmap_row_major.shape
-        if ConvParam.para_dict["group_opt"] > 1:
+        if ConvParam.fusion_para.get("l1_fusion_type") == 1:
+            _, howo, input_c1, filter_h, filter_w, input_c0 = fmap_row_major.shape
+            fmap_im2col_shape_new = [fmap_im2col_shape[1],
+                                     fmap_im2col_shape[2],
+                                     fmap_im2col_shape[0]*fmap_im2col_shape[3]]
+        else:
+            _, _, howo, input_c1, filter_h, filter_w, input_c0 = fmap_row_major.shape
+
+        if ConvParam.fusion_para.get("l1_fusion_type") == 1:
             row_major_reshape = tvm.compute(
-                fmap_im2col_shape,
-                lambda group, i, j, k:
-                tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo,
-                                   group*fmap_im2col_shape[3] + k < reduce_c1hwc0),
-                           fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
+                fmap_im2col_shape_new,
+                lambda i, j, k:
+                tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo),
+                           fmap_row_major(i, j,
+                                          k // (filter_h*filter_w*input_c0),
                                           k // (filter_w*input_c0) % filter_h,
                                           k // (input_c0) % (filter_w),
                                           k % input_c0), tvm.const(0.0, compute_dtype)),
                 name=get_name_with_suffix_num("row_major_reshape"),
                 tag=OP_TAG + 'row_major_reshape')
         else:
-            row_major_reshape = tvm.compute(
-                fmap_im2col_shape,
-                lambda group, i, j, k:
-                tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo),
-                           fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
-                                          k // (filter_w*input_c0) % filter_h,
-                                          k // (input_c0) % (filter_w),
-                                          k % input_c0), tvm.const(0.0, compute_dtype)),
-                name=get_name_with_suffix_num("row_major_reshape"),
-                tag=OP_TAG + 'row_major_reshape')
+            if ConvParam.para_dict.get("group_opt") > 1:
+                row_major_reshape = tvm.compute(
+                    fmap_im2col_shape,
+                    lambda group, i, j, k:
+                    tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo,
+                                       group*fmap_im2col_shape[3] + k < reduce_c1hwc0),
+                               fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
+                                              k // (filter_w*input_c0) % filter_h,
+                                              k // (input_c0) % (filter_w),
+                                              k % input_c0), tvm.const(0.0, compute_dtype)),
+                    name=get_name_with_suffix_num("row_major_reshape"),
+                    tag=OP_TAG + 'row_major_reshape')
+            else:
+                row_major_reshape = tvm.compute(
+                    fmap_im2col_shape,
+                    lambda group, i, j, k:
+                    tvm.select(tvm.all(k < input_c1*filter_h*filter_w*input_c0, j < howo),
+                               fmap_row_major(group, i, j, k // (filter_h*filter_w*input_c0),
+                                              k // (filter_w*input_c0) % filter_h,
+                                              k // (input_c0) % (filter_w),
+                                              k % input_c0), tvm.const(0.0, compute_dtype)),
+                    name=get_name_with_suffix_num("row_major_reshape"),
+                    tag=OP_TAG + 'row_major_reshape')
 
         return row_major_reshape
 
@@ -1500,11 +1548,23 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         """
         block_size_m = config['mac'][0]
         block_size_k = config['mac'][1]
-        res_im2col_fractal = tvm.compute(fmap_im2col_shape,
-                                         lambda group, i, j, k, l, m:
-                                         im2col_row_major_reshape(group, i, j*block_size_m + l, k*block_size_k + m),
-                                         name=get_name_with_suffix_num("_im2col_fractal"),
-                                         tag=OP_TAG + '_im2col_fractal')
+        kernel_h = ConvParam.para_dict.get("filter_h")
+        kernel_w = ConvParam.para_dict.get("filter_w")
+        c1_opt = ConvParam.para_dict.get("c1_opt")
+        group_reduce_offset = c1_opt*kernel_h*kernel_w*block_size_k
+        if ConvParam.fusion_para.get("l1_fusion_type") == 1:
+            res_im2col_fractal = tvm.compute(fmap_im2col_shape,
+                                             lambda group, i, j, k, l, m:
+                                             im2col_row_major_reshape(
+                                                 i, j*block_size_m + l, group*group_reduce_offset + k*block_size_k + m),
+                                             name=get_name_with_suffix_num("_im2col_fractal"),
+                                             tag=OP_TAG + '_im2col_fractal')
+        else:
+            res_im2col_fractal = tvm.compute(fmap_im2col_shape,
+                                             lambda group, i, j, k, l, m:
+                                             im2col_row_major_reshape(group, i, j*block_size_m + l, k*block_size_k + m),
+                                             name=get_name_with_suffix_num("_im2col_fractal"),
+                                             tag=OP_TAG + '_im2col_fractal')
 
         return res_im2col_fractal
 

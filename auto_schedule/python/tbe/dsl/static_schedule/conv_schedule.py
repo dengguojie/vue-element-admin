@@ -2665,9 +2665,10 @@ class CceConvOp:
                         sch[fmap_col_before].emit_insn(k1_outer_inner, 'dma_copy')
                         sch[fmap_col].emit_insn(new_fmap_col_axis[0], 'dma_copy')
                     else:
-                        sch[fmap_col_before].emit_insn(
-                            fmap_col_before.op.axis[1],
-                            'set_fmatrix', setfmatrix_dict)
+                        if self._l1_fusion_type == 1:
+                            sch[fmap_col_before].emit_insn(fmap_col_before.op.axis[0], 'set_fmatrix', setfmatrix_dict)
+                        else:
+                            sch[fmap_col_before].emit_insn(fmap_col_before.op.axis[1], 'set_fmatrix', setfmatrix_dict)
                         sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'im2col')
 
             def get_weight_repeat_number():
@@ -3118,9 +3119,14 @@ class CceConvOp:
                             (1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
                             (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
                     else:
-                        sch[fmap_col_before].buffer_align(
-                            (1, 1), (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
-                            (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
+                        if self._l1_fusion_type == 1:
+                            sch[fmap_col_before].buffer_align(
+                                (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
+                                (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
+                        else:
+                            sch[fmap_col_before].buffer_align(
+                                (1, 1), (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
+                                (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
 
         def _non_convolution_body_set_scope():
             """
@@ -4090,14 +4096,9 @@ class CceConvOp:
                 else:
                     # wait for pass bug ok
                     if self._l1_fusion_type == 1:
-                        if tiling["CL0_matrix"][5] > 1:
-                            sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)
-                            if not self._dynamic_flag:
-                                sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
-                        else:
-                            sch[al1].compute_at(sch[res_c], cout1_group_inner_outer)
-                            if not self._dynamic_flag:
-                                sch[fmap_col_before].compute_at(sch[res_c], cout1_group_inner_outer)
+                        sch[al1].compute_at(sch[res_c], batch_outer)
+                        if not self._dynamic_flag:
+                            sch[fmap_col_before].compute_at(sch[res_c], batch_outer)
                     # wait for pass bug ok
                     elif tiling["CL0_matrix"][5] > 1:
                         sch[al1].compute_at(sch[c_col], al1_at_ccol_axis)

@@ -6,7 +6,6 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 
 def test_conv2d_v200_lxfusion(test_arg):
-
     from functools import reduce
     from impl.conv2d import conv2d_compute
     from tbe import tvm
@@ -23,12 +22,12 @@ def test_conv2d_v200_lxfusion(test_arg):
     from tbe.common.buildcfg.compatible_interface import set_L1_info
     from tbe.tvm.buffer_manager import RemappedBuffer
     from tbe.tvm.buffer_manager import get_buffer_manager
-
-    l1_fusion_type = 0
-    fm_addr_type = 0
-    out_addr_type = 0
-    out_16_addr_type = 0
-    eltwise_addr_type = 0
+    from tbe.common.buildcfg import build_config
+    # l1_fusion_type = 0
+    # fm_addr_type = 0
+    # out_addr_type = 0
+    # out_16_addr_type = 0
+    # eltwise_addr_type = 0
 
     # l1_fusion_type = 0
     # fm_addr_type = 1
@@ -36,11 +35,11 @@ def test_conv2d_v200_lxfusion(test_arg):
     # out_16_addr_type = 1
     # eltwise_addr_type = 1
 
-    # l1_fusion_type = 1
-    # fm_addr_type = 1
-    # out_addr_type = 1
-    # out_16_addr_type = 1
-    # eltwise_addr_type = 1
+    l1_fusion_type = 1
+    fm_addr_type = 1
+    out_addr_type = 1
+    out_16_addr_type = 1
+    eltwise_addr_type = 1
 
     l1_space = 0
     # [0, 32, 96, 128, 512, 1024] for weight space.
@@ -277,230 +276,231 @@ def test_conv2d_v200_lxfusion(test_arg):
         scope_dict = {0: "global", 1: "local.L1_Fusion"}
         rb_fmap = RemappedBuffer(0, scope_dict[fm_addr_type], fm_total_shape, shape_in_5HD)
 
-        with tvm.target.cce():
-            if fm_addr_type:
-                if fm_total_shape == []:
-                    fm_total_shape = shape_in_5HD
+        with build_config(enable_L1_fusion = int(l1_fusion_type)):
+            with tvm.target.cce():
+                if fm_addr_type:
+                    if fm_total_shape == []:
+                        fm_total_shape = shape_in_5HD
 
-            fm = tvm.placeholder(shape_in_5HD, name="fm", dtype="int8", attrs={"ori_format": "NCHW",
-                                                                            "L1_valid_size": L1_valid_size,
-                                                                            "L1_addr_flag": 1})
-            buffer_manager.set_remapped_buffers([rb_fmap])
-            buffer_manager.set_tensor_list([fm])
+                fm = tvm.placeholder(shape_in_5HD, name="fm", dtype="int8", attrs={"ori_format": "NCHW",
+                                                                                "L1_valid_size": L1_valid_size,
+                                                                                "L1_addr_flag": 1})
+                buffer_manager.set_remapped_buffers([rb_fmap])
+                buffer_manager.set_tensor_list([fm])
 
-            filter_w = tvm.placeholder(shape_w_fracz, name="filter_w", dtype="int8",
-                                    attrs={"ori_shape": shape_w, "ori_format": "NCHW"})
+                filter_w = tvm.placeholder(shape_w_fracz, name="filter_w", dtype="int8",
+                                        attrs={"ori_shape": shape_w, "ori_format": "NCHW"})
 
-            if dataflow_v200 in (0, 1, 2, 3):
-                if bias_flag:
-                    bias_tensor = tvm.placeholder((Co1*16, ), name="bias_tensor", dtype="int32")
+                if dataflow_v200 in (0, 1, 2, 3):
+                    if bias_flag:
+                        bias_tensor = tvm.placeholder((Co1*16, ), name="bias_tensor", dtype="int32")
+                    else:
+                        bias_tensor = None
+                    conv_res = conv2d_compute(fm, filter_w, bias_tensor, None, None, strides, pads, dilations, offset_x=offset_d)
+                    vdeq = tvm.placeholder(shape_scale, name="vreq_reg", dtype="uint64",
+                                        attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                    if dataflow_v200 == 0:
+                        # conv + dequant
+                        out = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=relu_flag)
+                        if bias_flag:
+                            tensor_list = [fm, filter_w, bias_tensor, vdeq, out]
+                            out_index = 4
+                        else:
+                            tensor_list = [fm, filter_w, vdeq, out]
+                            out_index = 3
+
+                    elif dataflow_v200 == 1:
+                        # conv + dequant + add + relu + quant singleout
+                        dequant = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=relu_flag)
+                        if eltwise_addr_type:
+                            if eltwise_total_shape == []:
+                                eltwise_total_shape = dequant.shape
+
+                        fm2 = tvm.placeholder(dequant.shape, name="fm2", dtype="float16")
+                        add = eltwise_compute([dequant, fm2], None)
+                        relu = leaky_relu_compute(add, None)
+                        out = ascend_quant_compute(relu, {"addr_type": out_addr_type}, scale=quant_scale, offset=quant_offset, sqrt_mode=False)
+
+                        if bias_flag:
+                            tensor_list = [fm, filter_w, bias_tensor, vdeq, fm2, out]
+                            fm2_index = 4
+                            out_index = 5
+                        else:
+                            tensor_list = [fm, filter_w, vdeq, fm2, out]
+                            fm2_index = 3
+                            out_index = 4
+
+                    elif dataflow_v200 == 2:
+                        # conv + dequant + add + relu + quant dualout
+                        dequant = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=relu_flag)
+                        if eltwise_addr_type:
+                            if eltwise_total_shape == []:
+                                eltwise_total_shape = dequant.shape
+
+                        fm2 = tvm.placeholder(dequant.shape, name="fm2", dtype="float16")
+                        add = eltwise_compute([dequant, fm2], None)
+                        relu = leaky_relu_compute(add, None)
+                        quant = ascend_quant_compute(relu, {"addr_type": out_addr_type}, scale=quant_scale, offset=quant_offset, sqrt_mode=False)
+
+                        out_relu = relu
+                        out_quant = quant
+                        out = [out_relu, out_quant]
+
+                        if bias_flag:
+                            tensor_list = [fm, filter_w, bias_tensor, vdeq, fm2, out_relu, out_quant]
+                            fm2_index = 4
+                            out_relu_index = 5
+                            out_quant_index = 6
+                        else:
+                            tensor_list = [fm, filter_w, vdeq, fm2, out_relu, out_quant]
+                            fm2_index = 3
+                            out_relu_index = 4
+                            out_quant_index = 5
+
+                    elif dataflow_v200 == 3:
+                        # conv + requant
+                        out = ascend_requant_compute(conv_res, vdeq, None, relu_flag=relu_flag)
+                        if bias_flag:
+                            tensor_list = [fm, filter_w, bias_tensor, vdeq, out]
+                            out_index = 4
+                        else:
+                            tensor_list = [fm, filter_w, vdeq, out]
+                            out_index = 3
+
                 else:
-                    bias_tensor = None
-                conv_res = conv2d_compute(fm, filter_w, bias_tensor, None, None, strides, pads, dilations, offset_x=offset_d)
-                vdeq = tvm.placeholder(shape_scale, name="vreq_reg", dtype="uint64",
-                                    attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
-                if dataflow_v200 == 0:
-                    # conv + dequant
-                    out = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=relu_flag)
-                    if bias_flag:
-                        tensor_list = [fm, filter_w, bias_tensor, vdeq, out]
-                        out_index = 4
-                    else:
-                        tensor_list = [fm, filter_w, vdeq, out]
-                        out_index = 3
+                    conv_res = conv2d_compute(fm, filter_w, None, None, None, strides, pads, dilations)
 
-                elif dataflow_v200 == 1:
-                    # conv + dequant + add + relu + quant singleout
-                    dequant = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=relu_flag)
-                    if eltwise_addr_type:
-                        if eltwise_total_shape == []:
-                            eltwise_total_shape = dequant.shape
+                    if dataflow_v200 == 4:
+                        # conv + dequants16
+                        vdeq_reg = tvm.placeholder(shape_scale, name="vdeq_reg", dtype="uint64",
+                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
 
-                    fm2 = tvm.placeholder(dequant.shape, name="fm2", dtype="float16")
-                    add = eltwise_compute([dequant, fm2], None)
-                    relu = leaky_relu_compute(add, None)
-                    out = ascend_quant_compute(relu, {"addr_type": out_addr_type}, scale=quant_scale, offset=quant_offset, sqrt_mode=False)
+                        if bias_flag:
+                            bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
+                        else:
+                            bias_tensor = None
 
-                    if bias_flag:
-                        tensor_list = [fm, filter_w, bias_tensor, vdeq, fm2, out]
-                        fm2_index = 4
-                        out_index = 5
-                    else:
-                        tensor_list = [fm, filter_w, vdeq, fm2, out]
-                        fm2_index = 3
-                        out_index = 4
+                        out = ascend_dequant_s16_compute(conv_res, vdeq_reg, bias_tensor, None, relu_flag=relu_flag)
 
+                        if bias_flag:
+                            tensor_list = [fm, filter_w, vdeq_reg, bias_tensor, out]
+                            out_index = 4
+                        else:
+                            tensor_list = [fm, filter_w, vdeq_reg, out]
+                            out_index = 3
+
+                    elif dataflow_v200 == 5:
+                        # conv + dequant_s16 + requant_s16(relu) singleout
+                        vdeq16_reg = tvm.placeholder(shape_scale, name="vdeqs16_reg", dtype="uint64",
+                                                    attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+
+                        if bias_flag:
+                            bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
+                        else:
+                            bias_tensor = None
+
+                        dequant_s16 = ascend_dequant_s16_compute(conv_res, vdeq16_reg, bias_tensor, None, relu_flag=relu_flag)
+
+                        # vadd(relu) + s16———>s8
+                        conv16_reg = tvm.placeholder(shape_scale, name="conv16_reg", dtype="uint64",
+                                                    attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                        if eltwise_addr_type:
+                            if eltwise_total_shape == []:
+                                eltwise_total_shape = dequant_s16.shape
+
+                        fm2 = tvm.placeholder(dequant_s16.shape, name="fm2", dtype="int16")
+                        out = ascend_requant_s16_compute(dequant_s16, conv16_reg, fm2, None, None,
+                                                        dual_output=False, relu_flag=reqs16_relu_flag)
+                        out = out[0]
+
+                        if bias_flag:
+                            tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out]
+                            fm2_index = 5
+                            out_index = 6
+                        else:
+                            tensor_list = [fm, filter_w, vdeq16_reg, conv16_reg, fm2, out]
+                            fm2_index = 4
+                            out_index = 5
+
+                    elif dataflow_v200 == 6:
+                        # conv + dequant_s16 + requant_s16(relu) dualout
+                        vdeq16_reg = tvm.placeholder(shape_scale, name="vdeqs16_reg", dtype="uint64",
+                                                    attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+
+                        if bias_flag:
+                            bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
+                        else:
+                            bias_tensor = None
+
+                        dequant_s16 = ascend_dequant_s16_compute(conv_res, vdeq16_reg, bias_tensor, None, relu_flag=relu_flag)
+
+                        # vadd(relu) + s16———>s8
+                        conv16_reg = tvm.placeholder(shape_scale, name="conv16_reg", dtype="uint64",
+                                                    attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
+                        if eltwise_addr_type:
+                            if eltwise_total_shape == []:
+                                eltwise_total_shape = dequant_s16.shape
+
+                        fm2 = tvm.placeholder(dequant_s16.shape, name="fm2", dtype="int16")
+                        res_s8, res_s16 = ascend_requant_s16_compute(dequant_s16, conv16_reg, fm2, None, None,
+                                                        dual_output=True, relu_flag=reqs16_relu_flag)
+                        out_s8 = res_s8
+                        out_s16 = res_s16
+
+                        out = [out_s8, out_s16]
+
+                        if bias_flag:
+                            tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out_s8, out_s16]
+                            fm2_index = 5
+                            out_s8_index = 6
+                            out_s16_index = 7
+                        else:
+                            tensor_list = [fm, filter_w, vdeq16_reg, conv16_reg, fm2, out_s8, out_s16]
+                            fm2_index = 4
+                            out_s8_index = 5
+                            out_s16_index = 6
+
+                #====================set pass info===================================
+                rb_list = []
+                # each tensor in build tensor list needs to be set remap info.
+                for i, _ in enumerate(tensor_list):
+                    rb = RemappedBuffer(i, "global", (), ())
+                    rb_list.append(rb)
+
+                rb_list[0] = rb_fmap
+
+                if dataflow_v200 in (1, 2, 5, 6): # with fm2
+                    rb_fm2 = RemappedBuffer(fm2_index, scope_dict[eltwise_addr_type], eltwise_total_shape, eltwise_shape)
+                    rb_list[fm2_index] = rb_fm2
+
+                if dataflow_v200 in (0, 4): # singleout fp16/s16
+                    rb_out = RemappedBuffer(out_index, scope_dict[out_addr_type], ws_16_valid_shape, list(i.value for i in out.shape))
+                    rb_list[out_index] = rb_out
+                elif dataflow_v200 in (1, 3, 5): # singleout s8
+                    rb_out = RemappedBuffer(out_index, scope_dict[out_addr_type], ws_s8_valid_shape, list(i.value for i in out.shape))
+                    rb_list[out_index] = rb_out
                 elif dataflow_v200 == 2:
-                    # conv + dequant + add + relu + quant dualout
-                    dequant = ascend_dequant_compute(conv_res, vdeq, None, sqrt_mode=False, relu_flag=relu_flag)
-                    if eltwise_addr_type:
-                        if eltwise_total_shape == []:
-                            eltwise_total_shape = dequant.shape
+                    rb_out_relu = RemappedBuffer(out_relu_index, scope_dict[out_16_addr_type], ws_16_valid_shape, list(i.value for i in out_relu.shape))
+                    rb_out_quant = RemappedBuffer(out_quant_index, scope_dict[out_addr_type], ws_s8_valid_shape, list(i.value for i in out_quant.shape))
+                    rb_list[out_relu_index] = rb_out_relu
+                    rb_list[out_quant_index] = rb_out_quant
+                else:
+                    rb_out_s16 = RemappedBuffer(out_s16_index, scope_dict[out_16_addr_type], ws_16_valid_shape, list(i.value for i in out_s16.shape))
+                    rb_out_s8 = RemappedBuffer(out_s8_index, scope_dict[out_addr_type], ws_s8_valid_shape, list(i.value for i in out_s8.shape))
+                    rb_list[out_s16_index] = rb_out_s16
+                    rb_list[out_s8_index] = rb_out_s8
 
-                    fm2 = tvm.placeholder(dequant.shape, name="fm2", dtype="float16")
-                    add = eltwise_compute([dequant, fm2], None)
-                    relu = leaky_relu_compute(add, None)
-                    quant = ascend_quant_compute(relu, {"addr_type": out_addr_type}, scale=quant_scale, offset=quant_offset, sqrt_mode=False)
+                buffer_manager.set_remapped_buffers(rb_list)
+                buffer_manager.set_tensor_list(tensor_list)
 
-                    out_relu = relu
-                    out_quant = quant
-                    out = [out_relu, out_quant]
+                sch = generic.auto_schedule(out)
 
-                    if bias_flag:
-                        tensor_list = [fm, filter_w, bias_tensor, vdeq, fm2, out_relu, out_quant]
-                        fm2_index = 4
-                        out_relu_index = 5
-                        out_quant_index = 6
-                    else:
-                        tensor_list = [fm, filter_w, vdeq, fm2, out_relu, out_quant]
-                        fm2_index = 3
-                        out_relu_index = 4
-                        out_quant_index = 5
-
-                elif dataflow_v200 == 3:
-                    # conv + requant
-                    out = ascend_requant_compute(conv_res, vdeq, None, relu_flag=relu_flag)
-                    if bias_flag:
-                        tensor_list = [fm, filter_w, bias_tensor, vdeq, out]
-                        out_index = 4
-                    else:
-                        tensor_list = [fm, filter_w, vdeq, out]
-                        out_index = 3
-
-            else:
-                conv_res = conv2d_compute(fm, filter_w, None, None, None, strides, pads, dilations)
-
-                if dataflow_v200 == 4:
-                    # conv + dequants16
-                    vdeq_reg = tvm.placeholder(shape_scale, name="vdeq_reg", dtype="uint64",
-                                            attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
-
-                    if bias_flag:
-                        bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
-                    else:
-                        bias_tensor = None
-
-                    out = ascend_dequant_s16_compute(conv_res, vdeq_reg, bias_tensor, None, relu_flag=relu_flag)
-
-                    if bias_flag:
-                        tensor_list = [fm, filter_w, vdeq_reg, bias_tensor, out]
-                        out_index = 4
-                    else:
-                        tensor_list = [fm, filter_w, vdeq_reg, out]
-                        out_index = 3
-
-                elif dataflow_v200 == 5:
-                    # conv + dequant_s16 + requant_s16(relu) singleout
-                    vdeq16_reg = tvm.placeholder(shape_scale, name="vdeqs16_reg", dtype="uint64",
-                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
-
-                    if bias_flag:
-                        bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
-                    else:
-                        bias_tensor = None
-
-                    dequant_s16 = ascend_dequant_s16_compute(conv_res, vdeq16_reg, bias_tensor, None, relu_flag=relu_flag)
-
-                    # vadd(relu) + s16———>s8
-                    conv16_reg = tvm.placeholder(shape_scale, name="conv16_reg", dtype="uint64",
-                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
-                    if eltwise_addr_type:
-                        if eltwise_total_shape == []:
-                            eltwise_total_shape = dequants16.shape
-
-                    fm2 = tvm.placeholder(dequant_s16.shape, name="fm2", dtype="int16")
-                    out = ascend_requant_s16_compute(dequant_s16, conv16_reg, fm2, None, None,
-                                                    dual_output=False, relu_flag=reqs16_relu_flag)
-                    out = out[0]
-
-                    if bias_flag:
-                        tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out]
-                        fm2_index = 5
-                        out_index = 6
-                    else:
-                        tensor_list = [fm, filter_w, vdeq16_reg, conv16_reg, fm2, out]
-                        fm2_index = 4
-                        out_index = 5
-
-                elif dataflow_v200 == 6:
-                    # conv + dequant_s16 + requant_s16(relu) dualout
-                    vdeq16_reg = tvm.placeholder(shape_scale, name="vdeqs16_reg", dtype="uint64",
-                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
-
-                    if bias_flag:
-                        bias_tensor = tvm.placeholder((1, Co1, 1, 1, 16), name="bias_s16", dtype="int16")
-                    else:
-                        bias_tensor = None
-
-                    dequant_s16 = ascend_dequant_s16_compute(conv_res, vdeq16_reg, bias_tensor, None, relu_flag=relu_flag)
-
-                    # vadd(relu) + s16———>s8
-                    conv16_reg = tvm.placeholder(shape_scale, name="conv16_reg", dtype="uint64",
-                                                attrs={"ori_shape": [Co1*16 if vector_flag else 1]})
-                    if eltwise_addr_type:
-                        if eltwise_total_shape == []:
-                            eltwise_total_shape = dequants16.shape
-
-                    fm2 = tvm.placeholder(dequant_s16.shape, name="fm2", dtype="int16")
-                    res_s8, res_s16 = ascend_requant_s16_compute(dequant_s16, conv16_reg, fm2, None, None,
-                                                    dual_output=True, relu_flag=reqs16_relu_flag)
-                    out_s8 = res_s8
-                    out_s16 = res_s16
-
-                    out = [out_s8, out_s16]
-
-                    if bias_flag:
-                        tensor_list = [fm, filter_w, vdeq16_reg, bias_tensor, conv16_reg, fm2, out_s8, out_s16]
-                        fm2_index = 5
-                        out_s8_index = 6
-                        out_s16_index = 7
-                    else:
-                        tensor_list = [fm, filter_w, vdeq16_reg, conv16_reg, fm2, out_s8, out_s16]
-                        fm2_index = 4
-                        out_s8_index = 5
-                        out_s16_index = 6
-
-            #====================set pass info===================================
-            rb_list = []
-            # each tensor in build tensor list needs to be set remap info.
-            for i, _ in enumerate(tensor_list):
-                rb = RemappedBuffer(i, "global", (), ())
-                rb_list.append(rb)
-
-            rb_list[0] = rb_fmap
-
-            if dataflow_v200 in (1, 2, 5, 6): # with fm2
-                rb_fm2 = RemappedBuffer(fm2_index, scope_dict[eltwise_addr_type], eltwise_total_shape, eltwise_shape)
-                rb_list[fm2_index] = rb_fm2
-
-            if dataflow_v200 in (0, 4): # singleout fp16/s16
-                rb_out = RemappedBuffer(out_index, scope_dict[out_addr_type], ws_16_valid_shape, list(i.value for i in out.shape))
-                rb_list[out_index] = rb_out
-            elif dataflow_v200 in (1, 3, 5): # singleout s8
-                rb_out = RemappedBuffer(out_index, scope_dict[out_addr_type], ws_s8_valid_shape, list(i.value for i in out.shape))
-                rb_list[out_index] = rb_out
-            elif dataflow_v200 == 2:
-                rb_out_relu = RemappedBuffer(out_relu_index, scope_dict[out_16_addr_type], ws_16_valid_shape, list(i.value for i in out_relu.shape))
-                rb_out_quant = RemappedBuffer(out_quant_index, scope_dict[out_addr_type], ws_s8_valid_shape, list(i.value for i in out_quant.shape))
-                rb_list[out_relu_index] = rb_out_relu
-                rb_list[out_quant_index] = rb_out_quant
-            else:
-                rb_out_s16 = RemappedBuffer(out_s16_index, scope_dict[out_16_addr_type], ws_16_valid_shape, list(i.value for i in out_s16.shape))
-                rb_out_s8 = RemappedBuffer(out_s8_index, scope_dict[out_addr_type], ws_s8_valid_shape, list(i.value for i in out_s8.shape))
-                rb_list[out_s16_index] = rb_out_s16
-                rb_list[out_s8_index] = rb_out_s8
-
-            buffer_manager.set_remapped_buffers(rb_list)
-            buffer_manager.set_tensor_list(tensor_list)
-
-            sch = generic.auto_schedule(out)
-
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": kernel_name,
-            "tensor_list": tensor_list}
-        build(sch, config)
+            config = {
+                "print_ir": False,
+                "need_build": True,
+                "name": kernel_name,
+                "tensor_list": tensor_list}
+            build(sch, config)
 
 
     def run_testcase(config_dict):
@@ -534,8 +534,4 @@ def test_conv2d_v200_lxfusion(test_arg):
     run_testcase(v200_l1fusion_testcase["3796CS"]["st"])
 
 print("adding Conv2D v200 l1fusion ut testcases")
-ut_case.add_cust_test_func(support_soc="Hi3796CV300CS", test_func=test_conv2d_v200_lxfusion)
-if __name__ == '__main__':
-    # ut_case.add_cust_test_func(test_func=test_leakyrelu_depthwise_fusion_testcase)
-    ut_case.run("Hi3796CV300CS")
-    exit(0)
+ut_case.add_cust_test_func(test_func=test_conv2d_v200_lxfusion)
