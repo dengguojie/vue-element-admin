@@ -67,6 +67,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         strides,
         pad,
         output_shape,
+        output_dtype,
         fusion_para,
         kernel_name,
         offset_x,
@@ -94,6 +95,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
 
         self._m0 = tbe_platform.CUBE_MKN["float16"]["mac"][0]
         self._output_shape = output_shape
+        self.output_dtype = output_dtype
         self._stride_h, self._stride_w = strides
         _, _, self._kernel_h, self._kernel_w = kernel_size
         self._kernel_name = kernel_name
@@ -496,7 +498,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
             dict_args["reason"] = "ouput shape illegal"
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         ub_dx_shape = [batch_dx_img, c1_dx_img, m_l0c, c0_dx_img]
-        res_c_dtype = "float16"
+        res_c_dtype = self.output_dtype
         if tensor_a.dtype == "int8" and tensor_b.dtype == "int8":
             res_c_dtype = "int32"
 
@@ -532,7 +534,8 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 )
 
             if (tensor_bias is not None
-                    and (tensor_bias.dtype == "float16" or (self._stride_h > 1 or self._stride_w > 1))
+                    and ((tensor_bias.dtype == "float16" or tensor_bias.dtype == "float32")
+                    or (self._stride_h > 1 or self._stride_w > 1))
             ):
                 res_cub = _add_bias_in_ub(res_cub, tensor_bias)
 

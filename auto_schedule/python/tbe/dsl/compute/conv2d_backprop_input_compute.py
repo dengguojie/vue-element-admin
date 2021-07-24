@@ -270,7 +270,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                 dict_args, error_manager_util.get_error_message(dict_args)
             )
 
-        if res_dtype not in valid_dtype_dict["dx"][filters.dtype]:
+        if res_dtype not in valid_dtype_dict["dx"]:
             dict_args = _gen_dict_args("dx dtype", valid_dtype_dict["dx"], res_dtype)
             raise RuntimeError(
                 dict_args, error_manager_util.get_error_message(dict_args)
@@ -337,7 +337,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     valid_dtype_dict = {}
     valid_dtype_dict["filter"] = ("float16", "int8")
     valid_dtype_dict["dedy"] = ("float16", "int8")
-    valid_dtype_dict["dx"] = {"float16": "float16", "int8": "int32"}
+    valid_dtype_dict["dx"] = ("float16", "float32", "int32")
 
     _check_dtype(valid_dtype_dict)
     _check_shape()
@@ -797,6 +797,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             strides=strides,
             pad=padding,
             output_shape=shape_dx,
+            output_dtype=res_dtype,
             fusion_para=fusion_para,
             kernel_name=kernel_name,
             offset_x=offset_x,
@@ -849,6 +850,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             strides=strides,
             pad=padding,
             output_shape=shape_dx,
+            output_dtype=res_dtype,
             dilations=dilations,
             offset_x=offset_x,
             fusion_para=fusion_para,

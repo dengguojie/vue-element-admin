@@ -179,7 +179,7 @@ def _depthwise_conv2d_backprop_input_compute(
         para_dict={"strides": (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
                    "padding": conv2dbp_para.pads,
                    "dilations": conv2dbp_para.dilations,
-                   "res_dtype": default_para.get("res_dtype"),
+                   "res_dtype": input_grad.get("dtype"),
                    "kernel_name": kernel_name,
                    "group_dict": paras.get("group_para"),
                    "correct_range_flag": paras.get("correct_range_flag", False),

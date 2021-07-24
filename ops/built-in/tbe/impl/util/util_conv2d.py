@@ -552,7 +552,7 @@ def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
     para_check.check_dtype_rule(offset_w_dtype, ['int32'])
     para_check.check_dtype_rule(in_dtype, ('int8', "float16"))
     para_check.check_dtype_rule(w_dtype, ('int8', "float16"))
-    para_check.check_dtype_rule(res_dtype, ('int32', "float16"))
+    para_check.check_dtype_rule(res_dtype, ('int32', "float16", "float32"))
 
     if isinstance(padh, list):
         if len(padh) != PAD_SHAPE_DIM:

@@ -997,8 +997,9 @@ class Conv3dBpInputTiling(CubeTilingOp):
         dy_filing_size = (d_factor * aub_tiling_k_factor * aub_tiling_m_factor * (dy_w * self.stride_w) *
                           utils.CUBE_SIZE * utils.FP16_SIZE * tiling["manual_pingpong_buffer"]["AUB_pbuffer"])
 
-        cub_size = (tiling["CUB_matrix"][0] * tiling["CUB_matrix"][1] * utils.CUBE_SIZE**2 * utils.FP16_SIZE *
-                     tiling["manual_pingpong_buffer"]["CUB_pbuffer"])
+        cub_size = (tiling["CUB_matrix"][0] * tiling["CUB_matrix"][1] * utils.CUBE_SIZE**2 *
+                    BIT_RATIO_DICT.get(self.c_type) *
+                    tiling["manual_pingpong_buffer"]["CUB_pbuffer"])
 
         return (dedy_ub_size * (self.var_map.get("fused_num", 0) + 1) + dy_filing_size +
                 cub_size) <= tbe_platform_info.get_soc_spec("UB_SIZE")

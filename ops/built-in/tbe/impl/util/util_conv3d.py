@@ -17,6 +17,7 @@ util_conv3d
 """
 from impl.util.platform_adapter import error_manager_util
 
+BIAS_LENGTH = 1
 
 def transform_shape_with_exception(src_format, to_format, ori_shape,
                                    format_white_list, attr_name):
@@ -49,3 +50,39 @@ def transform_shape_with_format(src_format, to_format, ori_shape, format_white_l
                 res_shape[i] = ori_shape[j]
                 break
     return res_shape
+
+def check_bias(bias, res_dtype):
+    """
+    algorithm: Check the input params of bias
+
+    Parameters
+    ----------
+
+    bias: A dict with keys(shape and dtype) or None
+        input bias tensor
+
+    res_dtype: The dtype of output
+
+    Returns
+    -------
+    None
+    """
+    bias_shape = bias.get("ori_shape")
+    if len(bias_shape) != BIAS_LENGTH:
+        dict_args = {
+            'errCode': 'E60006',
+            'param_name': 'bias',
+            'expected_length': '1',
+            'length': '{}'.format(len(bias_shape))
+        }
+        raise RuntimeError(dict_args,
+                            error_manager_util.get_error_message(dict_args))
+    bias_dtype = bias.get("dtype").lower()
+    if bias_dtype != res_dtype:
+        dict_args = {
+            'errCode': 'E65002',
+            'param_1': 'bias_dtype',
+            'param_2': 'res_dtype'
+        }
+        raise RuntimeError(dict_args,
+                            error_manager_util.get_error_message(dict_args))

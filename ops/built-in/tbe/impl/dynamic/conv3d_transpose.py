@@ -26,7 +26,6 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 
-
 Nonetype = type(None)
 _X_TARGET_FORMAT = "NDHWC"
 _X_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
@@ -314,6 +313,12 @@ def conv3d_transpose(input_size, x, filter, # pylint: disable=R0913,R0914
     -------
     None
     """
+    if bias:
+        res_dtype = y.get("dtype").lower()
+        util_conv3d.check_bias(bias, res_dtype)
+        bias_dtype = bias.get("dtype").lower()
+        para_check.check_dtype_rule(bias_dtype, ("float16", "float32"), "bias")
+
     with tbe.compute():
         res = _conv3d_transpose_compute(filter, x, y, input_size, strides, pads,
                                         dilations, groups, output_padding,

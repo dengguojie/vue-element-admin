@@ -36,7 +36,8 @@ _FUSION_NODE_WHITELIST = [
     "conv3d_backprop_input_dy_l1_s1",
     "conv3d_backprop_input_c_ub_vn",
     "conv3d_backprop_input_dy_vn"]
-
+# the bytes length of several dtype
+_BIT_RATIO_DICT = {"float32": 4, "float16": 2}
 
 def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pylint:disable=R0914, R0915
     """
@@ -347,6 +348,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         c_fill_zero = tensor_map.get("c_fill_zero")
         c_ub = tensor_map.get("c_ub")
         output_shape = cube_util.shape_to_list(c_ub_exact_hw.op.attrs["output_shape"])
+        output_dtype = c_ub_exact_hw.op.attrs["output_dtype"].value
         sch[c_fill_zero].set_scope(tbe_platform_info.scope_ubuf)
         sch[c_ub_vn].set_scope(tbe_platform_info.scope_ubuf)
         c_col = tensor_map.get("c_col")
@@ -468,6 +470,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         tensor_attr['padding'] = padding
         tensor_attr['padding_var'] = padding_var
         tensor_attr['output_shape'] = output_shape
+        tensor_attr['output_dtype'] = output_dtype
         tensor_attr['stride_d'] = stride_d
         tensor_attr['kernel_d'] = kernel_d
         tensor_attr['kernel_h'] = kernel_h
@@ -585,7 +588,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         dedy_ub_size = (d_factor * aub_tiling_k_factor * dy_w * c0_size * 2 *
                         compute_util.int_ceil_div(aub_tiling_m_factor, stride_h))
         dy_filing_size = d_factor * aub_tiling_k_factor * aub_tiling_m_factor * (dy_w * stride_w) * c0_size * 2
-        c_ub_size = cub_tiling_nc_factor * cub_tiling_mc_factor * c0_size**2 * cub_pbuffer * 2
+        c_ub_size = cub_tiling_nc_factor * cub_tiling_mc_factor * c0_size**2 * cub_pbuffer * _BIT_RATIO_DICT.get(output_dtype)
         c_ub_size = c_ub_size * (cub_fused_num + 1)
         ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
         if (dedy_ub_size * (aub_fused_num + 1) + dy_filing_size + c_ub_size) > ub_size:
@@ -1088,6 +1091,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     b_l1 = tensor_map.get("b_l1")
     a_ub = tensor_map.get("a_ub")
     output_shape = tensor_attr.get("output_shape")
+    output_dtype = tensor_attr.get("output_dtype")
     padding = tensor_attr.get("padding")
     padding_var = tensor_attr.get("padding_var")
     stride_h = tensor_attr.get("stride_h")
@@ -1146,7 +1150,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             "c_shape": tiling_output_shape,
             "a_dtype": 'float16',
             "b_dtype": 'float16',
-            "c_dtype": 'float16',
+            "c_dtype": output_dtype,
             "mad_dtype": 'float32',
             "pad": [pad_head, pad_tail, padu, padd, padl, padr],
             "stride": [stride_d, 1, 1],

@@ -244,7 +244,7 @@ def check_and_config_para(input_x1, input_x2, bias, output_y,
     # check bias if bias in not None
     if bias:
         dtype_bias = bias.get("dtype")
-        para_check.check_dtype_rule(dtype_bias, "float16", "bias")
+        para_check.check_dtype_rule(dtype_bias, ("float16", "float32"), "bias")
 
     return dtype_a, dtype_out, input_range
 

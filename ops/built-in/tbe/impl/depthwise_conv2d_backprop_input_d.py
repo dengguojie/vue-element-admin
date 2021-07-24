@@ -63,7 +63,7 @@ def _check_params(shape, dtype, format):
         para_check.check_shape(shape, min_rank=FEATURE_MAP_DIM, max_rank=FEATURE_MAP_DIM)
     if format in ("HWCK", "HWCN"):
         para_check.check_shape(shape, min_rank=FILTER_DIM, max_rank=FILTER_DIM)
-    para_check.check_dtype(dtype.lower(), ('float16', ))
+    para_check.check_dtype(dtype.lower(), ('float16', 'float32',))
 
 
 def _ceil(x_size):
@@ -369,7 +369,7 @@ def depthwise_conv2d_backprop_input_d(filter,
         "strides": strides,
         "padding": pads,
         "dilations": dilations,
-        "res_dtype": filter_dtype,
+        "res_dtype": input_dtype,
         "kernel_name": kernel_name,
         "group_dict": group_dict
     }

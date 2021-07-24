@@ -34,7 +34,6 @@ from impl.util.platform_adapter import tvm
 from tbe.common.register import register_param_generalization
 
 
-BIAS_LENGTH = 1
 # [strides_batch, strides_depth, strides_height,
 #  strides_width, strides_channel]
 STRIDE_LENGTH = 5
@@ -487,7 +486,7 @@ def _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype):
     """
     para_check.check_dtype_rule(fmp_dtype, VALID_DTYPE, "fmap")
     para_check.check_dtype_rule(w_dtype, VALID_DTYPE, "filter")
-    para_check.check_dtype_rule(res_dtype, VALID_DTYPE, "output")
+    para_check.check_dtype_rule(res_dtype, ("float16", "float32"), "output")
 
 
 def _get_fmap_range(in_range, in_shape, in_format):
@@ -669,7 +668,6 @@ def _check_variable_range(range_i, mini, maxi=MAX_SHAPE_NUM, name=None):
         error_manager_cube.raise_err_attr_range_invalid(
             "conv3d", [mini, maxi], name, range_i[1])
 
-
 def _check_and_config_para(fmap,
                            weight,
                            bias,
@@ -724,12 +722,9 @@ def _check_and_config_para(fmap,
         in_format, w_format, in_shape, w_shape, strides, dilations)
 
     if bias:
-        bias_dtype = bias.get("dtype")
-        para_check.check_dtype_rule(bias_dtype, ('float16'), "bias")
-        bias_shape = bias.get("ori_shape")
-        if len(bias_shape) != BIAS_LENGTH:
-            error_manager_cube.raise_err_specific_user(
-                'conv3d', "the length of bias is illegal")
+        util_conv3d.check_bias(bias, res_dtype)
+        bias_dtype = bias.get("dtype").lower()
+        para_check.check_dtype_rule(bias_dtype, ("float16", "float32"), "bias")
 
     if offset_w:
         error_manager_cube.raise_err_specific_user(

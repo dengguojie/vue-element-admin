@@ -702,7 +702,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     # dtype check
     valid_filter_dtype = ("float16", "int8")
     valid_dedy_dtype = ("float16", "int8")
-    valid_res_dtype = ("float16", "int32")
+    valid_res_dtype = ("float16", "float32", "int32")
 
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()

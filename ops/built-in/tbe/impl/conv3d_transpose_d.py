@@ -28,7 +28,6 @@ from impl.util.platform_adapter import tvm
 
 
 _L1FUSION_INPUT_CTR = 2
-_BIAS_LENGTH = 1
 
 _OUT_BACKPROP_TARGET_FORMAT = "NDHWC"
 _OUT_BACKPROP_FORMAT_WHITE_LIST = ["NDHWC", "NCDHW"]
@@ -379,6 +378,11 @@ def check_supported(out_backprop,
         check_conv3dbp_input_params(shape_filters, shape_out_backprop, shape_res, shape_strides, pads,
                                     groups, shape_dilations, filters_dtype, out_backprop_dtype, res_dtype,
                                     kernel_name)
+        if bias:
+            util_conv3d.check_bias(bias, res_dtype)
+            bias_dtype = bias.get("dtype").lower()
+            para_check.check_dtype_rule(bias_dtype, ("float16", "float32"), "bias")
+
         return True, ""
     except Exception as e:
         reason = e.args[1]
@@ -530,7 +534,7 @@ def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
             tensor_bias = tvm.placeholder((util_common.ceil(filter_channel * groups,
                                                             tbe_platform.C0_SIZE),
                                            tbe_platform.C0_SIZE),
-                                           name="bias", dtype=filter_dtype)
+                                           name="bias", dtype=res_dtype)
         para_dict = {
             "strides": strides,
             "pads": padding,

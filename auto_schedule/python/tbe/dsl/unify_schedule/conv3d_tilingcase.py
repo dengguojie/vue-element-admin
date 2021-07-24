@@ -54,7 +54,7 @@ W_LEN = 400
 D_LEN = 400
 VALID_TILING_NUM = 32
 N_BASE = 2
-
+BIT_RATIO_DICT = {"float32": 4, "float16": 2}
 
 def _parse_fuzz_build_range(info_list):
     """
@@ -388,6 +388,7 @@ class Conv3dTiling(CubeTilingOp):
         super().__init__(tiling_info, var_map)
         self.a_info = tiling_info['a_shape']
         self.b_info = tiling_info['b_shape']
+        self.c_type = tiling_info["c_dtype"]
         self._get_calc_info()
         self.key = 'A_shape'
         self.op_type = "convolution_3d"
@@ -742,7 +743,7 @@ class Conv3dTiling(CubeTilingOp):
         # get m axis length in cub
         fused_num = self.var_map.get("fused_num", 0)
         tensor_num = fused_num + 2 if fused_num > 0 else 1
-        cub_bound = (tiling['CL0_matrix'][0] * tiling['CL0_matrix'][1] * utils.FP16_M * utils.FP16_SIZE)
+        cub_bound = (tiling['CL0_matrix'][0] * tiling['CL0_matrix'][1] * utils.FP16_M * BIT_RATIO_DICT.get(self.c_type))
 
         return cub_bound * tensor_num <= tbe_platform_info.get_soc_spec("UB_SIZE")
 

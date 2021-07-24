@@ -355,7 +355,7 @@ def conv3d_backprop_input_fusion_compute(filters, #pylint: disable=R0913,R0914
                          input_sizes)
     filter_dtype = filters.op.dtype
     out_backprop_dtype = out_backprop.dtype
-    res_dtype = "float16"
+    res_dtype = y_input.get("dtype")
 
     res = check_conv3dbp_input_params(shape_filters,
                                       shape_out_backprop,
@@ -639,7 +639,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
         aub_dedy_size_min = dedy_w * _BLOCK_SIZE * 2
         aub_filling_size_min = w_value * _BLOCK_SIZE * 2
-        cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * 2
+        cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * _BIT_RATIO_DICT.get(res_dtype)
         ub_size = tbe_platform.get_soc_spec("UB_SIZE")
 
         if (aub_dedy_size_min + aub_filling_size_min + cub_size_min) > ub_size:
@@ -747,7 +747,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     res_dtype = res_dtype.lower()
     para_check.check_dtype_rule(filter_dtype, ('float16'), "filter")
     para_check.check_dtype_rule(out_backprop_dtype, ('float16'), "out_backprop")
-    para_check.check_dtype_rule(res_dtype, ('float16'), "output")
+    para_check.check_dtype_rule(res_dtype, ('float16', 'float32'), "output")
 
     # the relation limits between shape
     shape_filter = list(shape_filter)

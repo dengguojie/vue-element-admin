@@ -171,6 +171,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
         DynamicConv3dBpInputParams.para_dict = para_dict
     pattc = conv3d_bp_gen_dx.DeConvPattern(filter_sizes, strides=strides,
                                            pad=padding, output_shape=shape_dx,
+                                           output_dtype=res_dtype,
                                            dilations=dilations,
                                            kernel_name=kernel_name,
                                            group_dict=group_dict,
@@ -248,7 +249,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
 
         aub_dedy_size_min = dedy_w_upper * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
         aub_filling_size_min = w_value * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
-        cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
+        cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * _BIT_RATIO_DICT[res_dtype]
         ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
 
         if (aub_dedy_size_min * (var_map.get("fused_num", 0) + 1) + aub_filling_size_min + cub_size_min) > ub_size:
@@ -344,7 +345,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
     res_dtype = res_dtype.lower()
     tbe_utils.para_check.check_dtype_rule(filter_dtype, ('float16'), "filter")
     tbe_utils.para_check.check_dtype_rule(out_backprop_dtype, ('float16'), "out_backprop")
-    tbe_utils.para_check.check_dtype_rule(res_dtype, ('float16'), "output")
+    tbe_utils.para_check.check_dtype_rule(res_dtype, ('float16', 'float32'), "output")
 
     # the relation limits between shape
     shape_filter = list(shape_filter)

@@ -62,8 +62,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
     """
 
     def __init__(self,  # pylint: disable=R0913
-                 kernel_sizes, strides, pad, output_shape, dilations,
-                 kernel_name, group_dict, var_map, dsl_flag):
+                 kernel_sizes, strides, pad, output_shape, output_dtype,
+                 dilations, kernel_name, group_dict, var_map, dsl_flag):
         super(DeConvPattern, self).__init__()
         _, _, kernel_d, kernel_h, kernel_w = kernel_sizes
         self._kernel_d = kernel_d
@@ -72,6 +72,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         _, self._stride_d, self._stride_h, self._stride_w, _ = strides
         self._pad_head, self._pad_tail, self._pad_up, self._pad_down, self._pad_left, self._pad_right = pad
         self.output_shape = output_shape
+        self.output_dtype = output_dtype
         self._kernel_name = kernel_name
         self._group_dict = group_dict
         self._var_map = var_map
@@ -355,13 +356,13 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         _, dx_d, dx_cin1, dx_h, dx_w, dx_cin0 = self.output_shape
         out_shape = (dx_batch, dx_deep, dx_cin1, dx_h * dx_w, dx_cin0)
 
-        # float32->float16
+        # float32->output_dtype
         dx_ub = tvm.compute(
             (dx_batch, dx_deep, dx_cin1, dx_hw, dx_c0),
             lambda dx_batch_idx, dx_deep_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
             dx_col[dx_cin1_idx // self._cin1_g, dx_batch_idx, dx_deep_idx,
                    dx_cin1_idx - dx_cin1_idx // self._cin1_g * self._cin1_g,
-                   dx_hw_idx, dx_cin0_idx].astype("float16"),
+                   dx_hw_idx, dx_cin0_idx].astype(self.output_dtype),
             name="c_ub",
             tag=self.op_tag + "c_ub")
 
@@ -376,7 +377,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                             self._kernel_d) >= 0,
                             dx_deep_idx +
                             self._pad_head >= self._stride_d * self.dy_d),
-                    tvm.const(0, dtype="float16")),
+                    tvm.const(0, dtype=self.output_dtype)),
                 name="dx_filing_zero",
                 tag=self.op_tag + "dx_filing_zero"
             )
@@ -387,7 +388,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 tvm.select(
                     dx_deep_idx + self._pad_head >=
                     self._stride_d * (self.dy_d - 1) + self._kernel_d,
-                    tvm.const(0, dtype="float16")),
+                    tvm.const(0, dtype=self.output_dtype)),
                 name="dx_filing_zero",
                 tag=self.op_tag + "dx_filing_zero"
             )
@@ -401,7 +402,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
             tag=self.op_tag + "c_ub_vn"
         )
 
-        if tensor_bias is not None and tensor_bias.dtype == "float16":
+        if tensor_bias is not None and tensor_bias.dtype == self.output_dtype:
             dx_ub_vn = _add_bias_in_ub(dx_ub_vn, tensor_bias)
 
         if self.dsl_flag:
@@ -413,6 +414,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 name="c_ub_exact_hw",
                 tag="c_ub_exact_hw",
                 attrs={"output_shape": self.output_shape,
+                       "output_dtype": self.output_dtype,
                        "stride_d": self._stride_d,
                        'depth_pad': (self._pad_head, self._pad_tail),
                        'kernels': (self._kernel_d,
@@ -431,6 +433,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 name="c_ddr",
                 tag="c_ddr",
                 attrs={"output_shape": self.output_shape,
+                       "output_dtype": self.output_dtype,
                        "stride_d": self._stride_d,
                        'depth_pad': (self._pad_head, self._pad_tail),
                        'kernels': (self._kernel_d,
@@ -446,6 +449,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 name="c_ddr",
                 tag="c_ddr",
                 attrs={"output_shape": self.output_shape,
+                       "output_dtype": self.output_dtype,
                        "stride_d": self._stride_d,
                        'depth_pad': (self._pad_head, self._pad_tail),
                        'kernels': (self._kernel_d,

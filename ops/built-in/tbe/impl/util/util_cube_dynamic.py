@@ -170,7 +170,7 @@ class CubeParaProcess:
             "valid_format": {"weights": ("NCHW", "NHWC", "HWCN"),
                              "input": ("NCHW", "NHWC"),
                              "output": ("NCHW", "NHWC")},
-            "valid_dtype": ("float16", "int8", "int32")
+            "valid_dtype": ("float16", "int8", "int32", "float32")
         }
 
     def check_support_valid(self, in_shape, filter_shape):
@@ -852,12 +852,10 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.check_input_dict(self.out_backprop, "out_backprop", False)
         self.check_input_dict(self.y, "y", False)
         para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
+        para_check.check_dtype_rule(self.y.get("dtype"), self.valid_paras.get("valid_dtype"))
         if UNKNOWN_FLAG in self.input_size.get("ori_shape") or DYNAMIC_FLAG in self.input_size.get("ori_shape"):
             err_man.raise_err_specific_user(
                 self.op_type, "dynamic shape not support input size's shape [-1] and [-2]")
-        if self.dtype != self.y.get("dtype"):
-            err_man.raise_err_specific_user(
-                "conv2d_backprop_input", "the dtype of filter and y are not the same.")
         if self.dtype != self.out_backprop.get("dtype"):
             err_man.raise_err_specific_user(
                 "conv2d_backprop_input", "the dtype of filter and out_backprop are not the same.")
@@ -1113,7 +1111,7 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
         filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
         if self.paras.get("bias"):
             input_channel = align(param.get("input_size")[C_DIM], tbe_platform.CUBE_MKN[self.dtype]['mac'][2])
-            bias_tensor = tvm.placeholder((input_channel,), name="tensor_bias", dtype=self.dtype)
+            bias_tensor = tvm.placeholder((input_channel,), name="tensor_bias", dtype=self.y.get("dtype"))
         else:
             bias_tensor = None
 
@@ -1137,7 +1135,7 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
             "valid_format": {"weights": ("NCHW",),
                              "input": ("NCHW",),
                              "output": ("NCHW",)},
-            "valid_dtype": ("float16",)
+            "valid_dtype": ("float16", "float32",)
         }
 
     def check_support_valid(self, in_shape, w_shape):
@@ -1311,7 +1309,7 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
         x_tensor = tvm.placeholder(param.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
         filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
         if self.paras.get("bias"):
-            bias_tensor = tvm.placeholder((param.get("filter_shape")[N_DIM],), name="tensor_bias", dtype=self.dtype)
+            bias_tensor = tvm.placeholder((param.get("filter_shape")[N_DIM],), name="tensor_bias", dtype=self.bias.get("dtype"))
         else:
             bias_tensor = None
 

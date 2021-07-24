@@ -230,8 +230,8 @@ def verify_compute_tensor(tensors):
     for tensor in tensors:
         if 'not_auto_cast' in tensor.op.tag or \
                 'convolution' in tensor.op.tag or \
-                'conv2d_backprop' in tensor.op.tag or \
-                'conv3d_backprop' in tensor.op.tag or \
+                'conv2d' in tensor.op.tag or \
+                'conv3d' in tensor.op.tag or \
                 'matmul' in tensor.op.tag:
             return False
 

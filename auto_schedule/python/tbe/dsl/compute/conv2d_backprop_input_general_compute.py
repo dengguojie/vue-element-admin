@@ -61,6 +61,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         strides,
         pad,
         output_shape,
+        output_dtype,
         dilations,
         offset_x,
         fusion_para,
@@ -77,6 +78,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         self._stride_h, self._stride_w = strides
         self._pad_up, self._pad_down, self._pad_left, self._pad_right = pad
         self._output_shape = output_shape
+        self.output_dtype = output_dtype
         self._kernel_name = kernel_name
         _, _, self._dilate_h, self._dilate_w = dilations
         self.m_0, _, _ = tbe_platform.CUBE_MKN["float16"]["mac"]
@@ -526,20 +528,21 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         _, dx_cin1, dx_h, dx_w, dx_cin0 = self._output_shape
         out_shape = (dx_batch, dx_cin1, dx_h * dx_w, dx_cin0)
 
-        # float32->float16
-        output_type = "float16"
+        # float32->output_dtype
+        output_dtype = self.output_dtype
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
-            output_type = "int32"
+            output_dtype = "int32"
 
         if self._cube_vector_split_flag:
             dx_ddr = tvm.compute(
                 out_shape,
                 lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx: dx_col[dx_cin1_idx // self._cin1_g,
                     dx_batch_idx, dx_cin1_idx % self._cin1_g, dx_hw_idx, dx_cin0_idx
-                ].astype(output_type),
+                ].astype(output_dtype),
                 name="c_ddr",
                 tag="conv2d_backprop_input",
                 attrs={"output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
+                       "output_dtype": self.output_dtype,
                        "group_dict": self._group_dict,
                        "l0c_shape": (dx_g, dx_batch, dx_c1, dx_hw, dx_c0),
                        "kernel_name": self._kernel_name})
@@ -549,9 +552,9 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 lambda dx_batch_idx, dx_cin1_idx, dx_hw_idx, dx_cin0_idx:
                 dx_col[dx_cin1_idx // self._cin1_g, dx_batch_idx,
                     dx_cin1_idx % self._cin1_g, dx_hw_idx, dx_cin0_idx]
-                .astype(output_type), name="c_ub")
+                .astype(output_dtype), name="c_ub")
 
-            if tensor_bias is not None and tensor_bias.dtype == "float16":
+            if tensor_bias is not None and (tensor_bias.dtype == "float16" or tensor_bias.dtype == "float32"):
                 dx_ub = _add_bias_in_ub(dx_ub, tensor_bias)
 
             dx_ddr = tvm.compute(
@@ -562,6 +565,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 name="c_ddr",
                 tag="conv2d_backprop_input",
                 attrs={"output_shape": (dx_batch, dx_cin1, dx_h, dx_w, dx_cin0),
+                       "output_dtype": self.output_dtype,
                        "group_dict": self._group_dict,
                        "l0c_shape": (dx_g, dx_batch, dx_c1, dx_hw, dx_c0),
                        "kernel_name": self._kernel_name})

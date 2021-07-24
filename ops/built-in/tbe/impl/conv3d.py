@@ -23,8 +23,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+from impl.util import util_conv3d
 
-_BIAS_LENGTH = 1
 # [strides_batch, strides_depth, strides_height,
 #  strides_width, strides_channel]
 _STRIDE_LENGTH = 5
@@ -369,7 +369,7 @@ def _check_conv3d_dtype(fmp_dtype, w_dtype, res_dtype):
     """
     para_check.check_dtype_rule(fmp_dtype, ('float16'), "fmap")
     para_check.check_dtype_rule(w_dtype, ('float16'), "filter")
-    para_check.check_dtype_rule(res_dtype, ('float16'), "output")
+    para_check.check_dtype_rule(res_dtype, ('float16', 'float32'), "output")
 
 
 def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
@@ -437,7 +437,6 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
 
     return shape_fm, shape_filter, stride_full[2:], dilation_full[2:]
 
-
 def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
                        fmp_format, w_format, bias, strides, pads, dilations,
                        groups):
@@ -481,18 +480,10 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
     -------
     """
     if bias:
-        bias_dtype = bias.get("dtype")
-        para_check.check_dtype_rule(bias_dtype, ('float16'), "bias")
-        bias_shape = bias.get("ori_shape")
-        if len(bias_shape) != _BIAS_LENGTH:
-            dict_args = {
-                'errCode': 'E60006',
-                'param_name': 'bias',
-                'expected_length': '1',
-                'length': '{}'.format(len(bias_shape))
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+        util_conv3d.check_bias(bias, res_dtype)
+        bias_dtype = bias.get("dtype").lower()
+        para_check.check_dtype_rule(bias_dtype, ("float16", "float32"), "bias")
+    
     if len(strides) != _STRIDE_LENGTH:
         dict_args = {
             'errCode': 'E60006',
@@ -539,7 +530,7 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
     _check_groups_validation(shape_fm[1], shape_filter[1], groups)
 
     _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw,
-                        dilation_dhw, res_dtype, w_dtype)
+                        dilation_dhw, fmp_dtype, w_dtype)
 
     return shape_fm, shape_filter, stride_dhw, dilation_dhw, group_dict
 
@@ -790,7 +781,7 @@ def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
             str(dilation_w))
 
 
-def _cal_input_param(fmap, weight, bias_tensor, strides, pads, dilations, groups, data_format, kernel_name):
+def _cal_input_param(fmap, weight, bias_tensor, output, strides, pads, dilations, groups, data_format, kernel_name):
     """
     to calculate fusion param
     """
@@ -806,7 +797,7 @@ def _cal_input_param(fmap, weight, bias_tensor, strides, pads, dilations, groups
     pos_h = data_format.find('H')
     pos_w = data_format.find('W')
 
-    res_dtype = 'float16'
+    res_dtype = output.get("dtype").lower()
     mad_dtype = _get_mad_dtype(weight.dtype)
 
     w_format = weight.op.attrs['ori_format'].value
@@ -1001,7 +992,7 @@ def conv3d_fusion_compute(data,
                           kernel_name="conv3d"):
     """
     """
-    para_dict, filter_size = _cal_input_param(data, weight, bias, strides, pads, dilations, groups, data_format, kernel_name)
+    para_dict, filter_size = _cal_input_param(data, weight, bias, output, strides, pads, dilations, groups, data_format, kernel_name)
 
     res = tbe.conv3d(data, weight, filter_size, para_dict)
 

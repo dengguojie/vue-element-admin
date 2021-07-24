@@ -170,6 +170,10 @@ def check_supported(x,
        wi - (wk - 1)*wk + 1 + padw // stridew = wo
     """
     try:
+        if bias:
+            bias_dtype = bias.get("dtype").lower()
+            para_check.check_dtype_rule(bias_dtype, ("float16", "float32", "int32"), "bias")
+
         _check_param(x, filter, y, input_size, strides, pads, dilations, data_format, offset_x)
         return True, ""
     except Exception as e:
