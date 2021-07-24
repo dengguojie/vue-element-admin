@@ -487,3 +487,63 @@ TEST_F(SplitVTiling, SplitV_tiling8) {
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "7 32 3400000 85 1280 320 5 0 256 1 64 256 1 40000 85 0 0 0 0 0 0 0 0 0 ");
 }
+
+TEST_F(SplitVTiling, SplitV_tiling9) {
+  using namespace optiling;
+  optiling::OpRunInfo op_run_info;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  TeOpParas opParas;
+  vector<vector<int64_t>> input_shapes = {
+      {40000, 85},
+      {4},
+      {1},
+  };
+  vector<vector<int64_t>> output_shapes = {
+      {40000, 2},
+      {40000, 2},
+      {40000, 1},
+      {40000, 80},
+  };
+  vector<string> dtypes = {"float16", "int32", "int32"};
+  std::vector<int32_t> size_splits{32,32,16,1280};
+  std::vector<int32_t> split_dim{-1};
+
+  for (size_t i = 0; i < input_shapes.size(); i++) {
+    TeOpTensorArg tensorInputArg;
+    TeOpTensor tensorInput;
+    tensorInput.shape = input_shapes[i];
+    tensorInput.dtype = dtypes[i];
+    tensorInput.format = "FRACTAL_NZ";
+    tensorInputArg.tensor.push_back(tensorInput);
+    tensorInputArg.arg_type = TA_SINGLE;
+    opParas.inputs.push_back(tensorInputArg);
+  }
+
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    TeOpTensorArg tensorOutputsArg;
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = output_shapes[i];
+    tensorOutput.format = "FRACTAL_NZ";
+    tensorOutput.dtype = dtypes[0];
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+  }
+
+  opParas.const_inputs["size_splits"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
+    (const uint8_t*)size_splits.data(), size_splits.size() * 4, ge::Tensor());
+  opParas.const_inputs["split_dim"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
+    (const uint8_t*)split_dim.data(), split_dim.size() * 4, ge::Tensor());
+
+  opParas.op_type = "SplitV";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_elems\":126976, \"num_split\":4}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456ckl";
+  // do tilling, get runInfo
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data),
+            to_string(runInfo.tiling_data));
+}

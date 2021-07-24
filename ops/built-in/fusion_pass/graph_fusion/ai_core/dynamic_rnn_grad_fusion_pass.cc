@@ -1499,6 +1499,9 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   }
 
   tSizeJudge = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(0);
+  if (tSizeJudge == -1) {
+    return SUCCESS;
+  }
   nSizeJudge = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(1);
   if (PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(8).GetShape().GetDim(0)) ||
       PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(7).GetShape().GetDim(0)) ||

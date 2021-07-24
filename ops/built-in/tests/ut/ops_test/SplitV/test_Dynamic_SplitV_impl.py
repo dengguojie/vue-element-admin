@@ -46,10 +46,26 @@ case3 = {"params": [{"shape": (-1, -1), "dtype": "float16", "format": "ND",
          "expect": "success",
          "support_expect": True}
 
+case4 = {"params": [{"shape": (6, -1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (-1, 96), "ori_format": "ND", "range": [(6, 6), (1, None), (16, 16), (16, 16)]},
+                    {"shape": (2,), "dtype": "int32", "format": "ND",
+                     "ori_shape": (2,), "ori_format": "ND", "range": [[2, 2]]},
+                    {"shape": (1,), "dtype": "int32", "format": "ND",
+                     "ori_shape": (1,), "ori_format": "ND", "range": [[1, 1]]},
+                    [{"shape": (2, -1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (-1, 32), "ori_format": "ND", "range": [(2, 2), (2, None), (16, 16), (16, 16)]},
+                     {"shape": (4, -1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                      "ori_shape": (-1, 64), "ori_format": "ND", "range": [(4, 4), (2, None), (16, 16), (16, 16)]}
+                     ],
+                    2],
+         "case_name": "split_v_4",
+         "expect": "success",
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 
 
 if __name__ == '__main__':

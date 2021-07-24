@@ -617,11 +617,11 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     xInputIndex = 0;
     splitDimInputIndex = 2;
   }
-
   if (opParas.inputs[0].tensor.size() == 0 || opParas.inputs[1].tensor.size() == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling : split, opParas.inputs error");
     return false;
   }
+  std::string input_format = opParas.inputs[0].tensor[0].format;
   if (isSplitV) {
     if (opParas.inputs[2].tensor.size() == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling : splitv, opParas.inputs error");
@@ -656,6 +656,9 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     return false;
   }
   int64_t splitDim = splitDimVec[0];
+  if (splitDim == 1 and input_format == "FRACTAL_NZ") {
+    splitDim = 0;
+  }
   if (splitDim < -shapeSize || splitDim >= shapeSize) {
     VECTOR_INNER_ERR_REPORT_TILIING("SplitVTiling", "split_dim is invalid");
 
@@ -673,7 +676,12 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get size_splits value failed.");
       return false;
     }
-
+    int64_t size = sizeSplitsVec.size();
+    if (input_format == "FRACTAL_NZ") {
+      for (int in = 0; in < size; in++) {
+        sizeSplitsVec[in] = sizeSplitsVec[in] / 16;
+      }
+    }
     if (!CheckSplitVAttr(splitDim, numSplit, inputShape, sizeSplitsVec)) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: CheckSplitVAttr failed.");
       return false;

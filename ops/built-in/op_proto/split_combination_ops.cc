@@ -290,7 +290,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   auto x_shape = x_desc.GetShape();
   DataType x_dtype = x_desc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
-
+  TensorDesc tdx = op.GetInputDesc("x");
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
     OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
@@ -426,10 +426,11 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
 
   for (auto i = 0; i < num_split; ++i) {
     x_shape.SetDim(split_dim, size_splits[i]);
-    td.SetShape(x_shape);
-    td.SetDataType(x_dtype);
-    td.SetShapeRange(x_shape_range);
-    op.UpdateDynamicOutputDesc("y", i, td);
+    tdx.SetShape(x_shape);
+    tdx.SetOriginShape(x_shape);
+    tdx.SetDataType(x_dtype);
+    tdx.SetShapeRange(x_shape_range);
+    op.UpdateDynamicOutputDesc("y", i, tdx);
   }
   OP_LOGD(op.GetName().c_str(), "SplitVInferShape success");
   return GRAPH_SUCCESS;

@@ -123,6 +123,7 @@ class SplitV():
         -------
         None
         """
+        self.x = x
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.num_split = num_split
         self.kernel_name = kernel_name
@@ -455,6 +456,14 @@ class SplitV():
                 size_splits_sum.set_as(size_splits_sum + size_temp)
             with self.tik_instance.else_scope():
                 index.set_as(i)
+
+        if self.x.get("format") == "FRACTAL_NZ":
+            factor = self.tik_instance.Scalar(dtype=self.size_splits_dtype, name="factor", init_value=16)
+            temp_value = self.tik_instance.Scalar(dtype=self.size_splits_dtype, name="temp_value", init_value=0)
+            with self.tik_instance.for_range(0, self.num_split) as i:
+                temp_value.set_as(size_splits_ub[i])
+                size_splits_ub[i].set_as(temp_value / factor)
+
         with self.tik_instance.if_scope(index != -1):
             size_splits_ub[index].set_as(self.shape_dim - size_splits_sum)
 

@@ -229,12 +229,12 @@ IMPLEMT_INFERFUNC(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape) {
   ge::Shape shapeDY = inputDYTensorDesc.GetShape();
   DataType dtype = inputDYTensorDesc.GetDataType();
 
-  int64_t dim_num = shapeDY.GetDimNum();
+  int64_t dim_num = shapeDY.GetDims().size();
   int64_t batch_size = 0;
   int64_t output_dim_size = 0;
-  if (dim_num == 5) {
-    batch_size = shapeDY.GetDims().at(2);
-    output_dim_size = shapeDY.GetDims().at(1);
+  if (dim_num == 3) {
+    batch_size = shapeDY.GetDims().at(1);
+    output_dim_size = shapeDY.GetDims().at(2);
   } else {
     OpsOneInputShapeErrReport(op.GetName(), "The input shape of dy", "not right");
     OP_LOGE(op.GetName().c_str(), "The input shape of dy is not right, please check!");
@@ -244,11 +244,11 @@ IMPLEMT_INFERFUNC(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape) {
   TensorDesc outputDgateTensorDesc = op.GetOutputDesc("dgate");
   TensorDesc outputDct1TensorDesc = op.GetOutputDesc("dct_1");
 
-  vector<int64_t> outputDgateDims = {1, 4 * output_dim_size, batch_size, 16, 16};
+  vector<int64_t> outputDgateDims = {batch_size, 4 * output_dim_size};
   outputDgateTensorDesc.SetShape(ge::Shape(outputDgateDims));
   outputDgateTensorDesc.SetDataType(dtype);
 
-  vector<int64_t> outputDct1HDims = {1, output_dim_size, batch_size, 16, 16};
+  vector<int64_t> outputDct1HDims = {batch_size, output_dim_size};
   outputDct1TensorDesc.SetShape(ge::Shape(outputDct1HDims));
   outputDct1TensorDesc.SetDataType(dtype);
 
