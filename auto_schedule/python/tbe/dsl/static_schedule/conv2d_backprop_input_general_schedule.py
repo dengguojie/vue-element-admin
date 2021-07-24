@@ -2258,7 +2258,9 @@ def general_schedule(
 
     def _emit_insn():  # pylint: disable=R0914,R0915
         if tensor_attr.get("WEIGHT_NHWC_TRANS_FZ"):
-            sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy", {"layout_transform": "nd2nz"})
+            nd_factor = kernel_h * kernel_w
+            bl1_outer, bl1_inner = sch_agent[b_l1].split(sch_agent[b_l1].op.axis[0], nd_factor)
+            sch_agent[b_l1].emit_insn(bl1_outer, "dma_copy", {"layout_transform": "nd2nz"})
         else:
             sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy")
 

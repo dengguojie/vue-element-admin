@@ -140,6 +140,7 @@ def _test_op_check_supported(test_arg):
 def _gen_conv2d_bp_input_check_support_case():
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported)
 
+
 def _test_nhwc_in_nhwc_out_case_1(test_arg):
     cce_conf.te_set_version('Ascend920A')
     conv_filter = (160, 1, 1, 160)

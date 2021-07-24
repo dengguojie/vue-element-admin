@@ -1352,9 +1352,11 @@ class Conv2dDxOptiSchedule:
         if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
             res_ori = res.op.input_tensors[0]
             DIM_MAP["out_img_shape"] = cube_util.shape_to_list(res_ori.shape)
-            DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["a_l1"].shape)
         else:
             DIM_MAP["out_img_shape"] = cube_util.shape_to_list(res.shape)
+        if self.dx_para.get_para_map("FM_NHWC_TRANS_5HD"):
+            DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["a_l1"].shape)
+        else:
             DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["img_placehold"].shape)
         DIM_MAP["A_matrix_dim"] = cube_util.shape_to_list(dedy_col.shape)
         DIM_MAP["B_matrix_dim"] = cube_util.shape_to_list(weight_l0.shape)
