@@ -794,8 +794,9 @@ def mat_mul(input_x1,
                                dtype=src_dtype)
     shape_bias_length = len(shape_bias)
     if shape_bias_length > 0:
+        bias_dtype = bias.get("dtype")
         tensor_bias = tvm.placeholder(shape_bias, name='tensor_bias',
-                                      dtype=dst_dtype)
+                                      dtype=bias_dtype)
 
     if offset_w is None:
         tensor_offset_w = None
