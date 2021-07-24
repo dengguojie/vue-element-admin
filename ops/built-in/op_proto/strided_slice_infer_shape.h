@@ -190,7 +190,7 @@ static std::pair<int64_t, int64_t> CalcRange(const std::vector<int64_t> &shape,
   const auto ranges = params.ranges;
   size_t index = static_cast<size_t>(i);
   if (index >= shape.size() || index >= ranges.size()) {
-    return {1, -1};
+    return {0, -1};
   }
 
   if (shape[index] >= 0) {
@@ -230,18 +230,18 @@ static std::pair<int64_t, int64_t> CalcRange(const std::vector<int64_t> &shape,
 
   bool unknown_begin_i = !params.begin_valid && masks_i[0] == 0;
   if (unknown_begin_i) {
-    range_left = 1;
+    range_left = 0;
     begin_i = 0;
   }
 
   bool unknown_end_i = !params.end_valid && masks_i[1] == 0;
   if (unknown_end_i) {
-    range_left = 1;
+    range_left = 0;
     end_i = range_i.second;
   }
 
   if (!params.stride_valid) {
-    range_left = 1;
+    range_left = 0;
     stride_i = 1;
   }
 
@@ -262,8 +262,12 @@ static std::pair<int64_t, int64_t> CalcRange(const std::vector<int64_t> &shape,
     } else if (stride_i > 0) {
       if (begin_i < 0) {
         // stride_i > 0, range_i.second ==-1, begin_i < 0, end_i >= 0
-        range_left = 1;
-        range_right = get_output_interval(std::min(std::abs(end_i), std::abs(begin_i)));
+        range_left = 0;
+        if (begin_i + range_i.first >= end_i) {
+          range_right = 0;
+        } else {
+          range_right = get_output_interval(std::min(std::abs(end_i), std::abs(begin_i)));
+        }
       } else {
         // stride_i > 0, range_i.second ==-1, begin_i >= 0, end_i < 0
         range_right = -1;
@@ -278,14 +282,6 @@ static std::pair<int64_t, int64_t> CalcRange(const std::vector<int64_t> &shape,
         range_right = -1;
       }
     }
-  }
-
-  if (range_left == 0) {
-    range_left = 1;
-  }
-
-  if (range_right == 0) {
-    range_right = 1;
   }
 
   return {static_cast<int64_t>(std::min(static_cast<uint64_t>(range_left), static_cast<uint64_t>(range_right))),

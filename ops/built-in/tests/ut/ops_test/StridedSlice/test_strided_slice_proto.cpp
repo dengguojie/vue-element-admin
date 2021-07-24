@@ -205,7 +205,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_00) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 3}, {2, 3}, {3, 3}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 3}, {2, 3}, {3, 3}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -222,7 +222,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_01) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 3}, {2, 3}, {3, 3}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 3}, {2, 3}, {3, 3}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -239,7 +239,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_10) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, 100}, {1, 48}, {9, 9},};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, 100}, {0, 48}, {9, 9},};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -256,7 +256,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_11) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 3}, {2, 3}, {3, 3}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 3}, {2, 3}, {3, 3}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -273,7 +273,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_12) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 3}, {2, 3}, {3, 3}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 3}, {2, 3}, {3, 3}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -290,7 +290,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_13) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 96}, {1, 96}, {2, 96}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 96}, {1, 96}, {2, 96}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -307,7 +307,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_14) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 92}, {1, 92}, {1, 92}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 92}, {0, 92}, {0, 92}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -324,7 +324,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_15) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 2}, {1, 2}, {1, 2}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 2}, {0, 2}, {0, 2}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -341,7 +341,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_16) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 1}, {1, 1}, {1, 1}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 1}, {0, 0}, {0, 0}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -358,7 +358,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_20) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, -1}, {1, -1}, {9, 9},};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, -1}, {0, -1}, {9, 9},};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -375,7 +375,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_21) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 3}, {1, 1}, {1, 1}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 3}, {0, 0}, {0, 0}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -392,7 +392,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_22) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 3}, {3, 3}, {3, 3}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 3}, {3, 3}, {3, 3}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -409,7 +409,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_23) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 2}, {1, 2}, {1, 5}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 2}, {0, 2}, {0, 5}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -426,7 +426,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_24) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, -1}, {3, -1}, {40, -1}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, -1}, {3, -1}, {40, -1}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -443,7 +443,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_25) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 2}, {1, 2}, {1, 2}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 2}, {0, 2}, {0, 2}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -460,7 +460,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_26) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 1}, {1, 1}, {1, 1}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 1}, {0, 0}, {0, 0}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -477,7 +477,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_30) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, -1}, {1, -1}, {9, 9},};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, -1}, {0, -1}, {9, 9},};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -494,7 +494,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_31) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 5}, {1, 1}, {1, 6}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 5}, {0, 0}, {0, 6}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -511,7 +511,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_32) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, -1};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, -1}, {1, 9}, {1, -1}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, -1}, {0, 9}, {0, -1}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -545,7 +545,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_34) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, 11, 12};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 9}, {10, 10}, {11, 11}, {12, 12}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 9}, {10, 10}, {11, 11}, {12, 12}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -562,7 +562,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_35) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, 11, 12};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 9}, {11, 11}, {12, 12}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 9}, {11, 11}, {12, 12}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -647,7 +647,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_40) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, 11, 12};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 9}, {1, 8}, {11, 11}, {12, 12}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 9}, {0, 8}, {11, 11}, {12, 12}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -664,7 +664,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_41) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {-1, -1, 11, 12};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 8}, {1, 7}, {11, 11}, {12, 12}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{0, 8}, {0, 7}, {11, 11}, {12, 12}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
@@ -698,7 +698,7 @@ TEST_F(strided_slice, strided_slice_infer_shape_range_43) {
                 output_shape, output_shape_range);
 
   std::vector<int64_t> expected_output_shape = {1, -1, 13, 13, 3, 32};
-  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 1}, {1, 32}, {13, 13}, {13, 13}, {3, 3}, {32, 32}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 1}, {0, 32}, {13, 13}, {13, 13}, {3, 3}, {32, 32}};
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
