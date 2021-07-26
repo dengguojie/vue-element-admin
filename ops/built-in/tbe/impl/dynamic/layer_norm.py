@@ -36,7 +36,7 @@ from copy import deepcopy
 SHAPE_SIZE_LIMIT = 2147483648
 
 SIZE_SIXTEEN = 16
-LAST_DIM_RANGE_SET = ((1, 64), (65, 2000), (2001, None))
+LAST_DIM_RANGE_SET = ((1, 1), (2, 64), (65, 2000), (2001, None))
 
 
 # pylint: disable = unused-argument
@@ -88,7 +88,6 @@ def get_op_support_info(input_x,
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,too-many-statements,too-many-branches
 def _division_sixteen(shape):
-
     if len(shape) < 2:
         if shape[-1] == 0:
             error_detail = "value of shape_x is illegal"
@@ -287,6 +286,175 @@ def op_select_format(input_x,
     return param_dynamic_in_json
 
 
+def to_frac_z_axis(ori_shape, ori_axis):
+    """
+    judge the format is fractal NZ
+
+    Parameters
+    ----------
+    ori_shape: list or tuple
+        original shape of input
+    ori_axis: list or tuple
+        original axis of original shape to operate
+
+    Returns
+    -------
+    output: list
+        axis of the fractal Nz shape
+    """
+
+    frac_z_axis = list(ori_axis)
+    shape_len = len(ori_shape)
+    axis_count = len(frac_z_axis)
+    axis_negative_1 = shape_len - 1
+    axis_negative_2 = shape_len - 2
+    for i in range(axis_count):
+        axis_index = (frac_z_axis[i] + shape_len) % shape_len
+        if axis_index == axis_negative_1:
+            if frac_z_axis[i] > shape_len - 2:
+                frac_z_axis[i] = axis_index - 1
+                frac_z_axis.append(axis_index + 2)
+        elif axis_index == axis_negative_2:
+            frac_z_axis[i] = axis_index + 1
+            frac_z_axis.append(axis_index + 2)
+        else:
+            frac_z_axis[i] = axis_index
+    return frac_z_axis
+
+
+def _broadcast_nz(tensor, shape):
+    broadcast_axes = []
+    src_shape = shape_util.shape_to_list(tensor.shape)
+    for i, _ in enumerate(shape):
+        if shape[i] != src_shape[i]:
+            broadcast_axes.append(i)
+    if len(broadcast_axes) == 2 and broadcast_axes[1] - broadcast_axes[0] != 1 and broadcast_axes[1] + 1 == len(shape):
+        temp_shape = src_shape[:-1] + [shape[-1]]
+        tensor = tbe.broadcast(tensor, temp_shape)
+    tensor = tbe.broadcast(tensor, shape)
+    return tensor
+
+
+def layer_norm_compute_nz(input_x, input_gamma, input_beta,
+                          output_y, output_mean, output_variance,
+                          ori_reduce_axis, reduce_axis, begin_params_axis,
+                          epsilon, kernel_name="layer_norm",
+                          impl_mode="high_performance"):
+    """
+    DSL description of the layernorm operator's mathematical calculation process
+
+    Parameters
+    ----------
+    input_x: TVM tensor
+        the placeholder of x input data
+    input_gamma: TVM tensor
+        the placeholder of gamma input data
+    input_beta: TVM tensor
+        the placeholder of beta input data
+    output_data: dict
+        shape and dtype of output
+    ori_reduce_axis: list
+      the reduce  axis of ori_shape
+    reduce_axis: list
+      the reduce  axis of  shape
+    begin_params_axis: int
+      The first parameter (beta, gamma) dimension: scale
+      and centering parameters will have dimensions
+      `begin_params_axis : rank(inputs)` and will be broadcast with the
+      normalized inputs accordingly.
+    epsilon: float,
+      Minimum positive number greater than 0
+    kernel_name: str
+        cce kernel name, default value is "cce_layernorm"
+
+    Returns
+    -------
+    res_tuple: tuple
+        (mean, variance, result)
+    """
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    dtype = input_x.dtype.lower()
+    input_x1 = input_x
+    cast_dtype = dtype
+    cast_dtype_precision = dtype
+    is_cast = False
+    if dtype == "float16" and \
+            ((tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and impl_mode == "high_performance") or impl_mode == "high_precision"):
+        cast_dtype = "float32"
+        cast_dtype_precision = "float32"
+        input_x = tbe.cast_to(input_x, "float32")
+        input_x1 = tbe.cast_to(input_x1, "float32")
+        input_gamma = tbe.cast_to(input_gamma, "float32")
+        input_beta = tbe.cast_to(input_beta, "float32")
+        is_cast = True
+
+    # Calculate the scaling ratio of the average
+    reduce_elts = 1.0
+    for i in reduce_axis:
+        reduce_elts *= shape_x[i]
+    if isinstance(reduce_elts, float):
+        mean_cofs = reduce_elts**(-1)
+        mean_cof = tvm.const(mean_cofs, dtype=cast_dtype)
+    else:
+        mean_cof = tbe.var("mean_cof", dtype=cast_dtype)
+        operation.add_compile_info("reduce_mean_cof_dtype", cast_dtype)
+
+    # DSL description of the mean calculation process
+    mean_muls = tbe.vmuls(input_x, mean_cof)
+    mean = tbe.reduce_sum(mean_muls, axis=reduce_axis, keepdims=True)
+
+    if is_cast:
+        mean_16 = tbe.cast_to(mean, "float16")
+        mean = tbe.cast_to(mean_16, "float32")
+    # DSL description of the variance calculation process
+    mean_variance_broadcast = _broadcast_nz(mean, shape_x)
+    variance_sub = tbe.vsub(input_x1, mean_variance_broadcast)
+    variance_mul = tbe.vmul(variance_sub, variance_sub)
+    variance_muls = tbe.vmuls(variance_mul, mean_cof)
+    variance = tbe.reduce_sum(variance_muls, axis=reduce_axis, keepdims=True)
+    if is_cast:
+        variance_16 = tbe.cast_to(variance, "float16")
+        variance = tbe.cast_to(variance_16, "float32")
+    normalize_sub = variance_sub
+
+    # DSL description of the normalize calculation process
+    if impl_mode == "high_performance":
+        epsilon = tvm.const(epsilon, dtype=cast_dtype)
+        variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
+        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
+        normalize_log = tbe.vlog(normalize_add)
+        normalize_log_mul = \
+            tbe.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
+        normalize_exp = tbe.vexp(normalize_log_mul)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_exp)
+    else:
+        tesor_one = tbe.broadcast(tvm.const
+                                  (1, cast_dtype_precision),
+                                  shape_x)
+        variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
+        epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
+        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
+        normalize_sqrt = tbe.vsqrt(normalize_add, 0)
+        normalize_rsqrt = tbe.vdiv(tesor_one, normalize_sqrt)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_rsqrt)
+
+    # DSL description of the scale and translate calculation process
+    if begin_params_axis == 0:
+        scale_mul = tbe.vmul(input_gamma, normalize_mul)
+        res = tbe.vadd(scale_mul, input_beta)
+    else:
+        gamma_broadcast = _broadcast_nz(input_gamma, shape_x)
+        beta_broadcast = _broadcast_nz(input_beta, shape_x)
+        scale_mul = tbe.vmul(gamma_broadcast, normalize_mul)
+        res = tbe.vadd(scale_mul, beta_broadcast)
+
+    if is_cast:
+        res = tbe.cast_to(res, "float16")
+        return mean_16, variance_16, res
+    else:
+        return mean, variance, res
+
+
 def layer_norm_compute(input_x,
                        input_gamma,
                        input_beta,
@@ -405,13 +573,8 @@ def layer_norm_compute(input_x,
         scale_mul = tbe.vmul(gamma_broadcast, normalize_mul)
         res = tbe.vadd(scale_mul, beta_broadcast)
 
-    if dtype == "float16" and ((tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
-                                and impl_mode == "high_performance") or impl_mode == "high_precision"):
-        mean = tbe.cast_to(mean, "float16")
-        variance = tbe.cast_to(variance, "float16")
-        res = tbe.cast_to(res, "float16")
-
     if is_cast:
+        res = tbe.cast_to(res, "float16")
         return mean_16, variance_16, res
     else:
         return mean, variance, res
@@ -469,6 +632,10 @@ def layer_norm(input_x,
     """
     shape_x = list(input_x.get("shape"))
     range_x = list(input_x.get("range"))
+    ori_shape_x = list(input_x.get("ori_shape"))
+    input_format = input_x.get("format").upper()
+    input_gamma_format = input_gamma.get("format").upper()
+    input_beta_format = input_beta.get("format").upper()
 
     check_list = ("float16", "float32")
     dtype = input_x.get("dtype").lower()
@@ -481,55 +648,81 @@ def layer_norm(input_x,
     shape_gamma = list(input_gamma.get("shape"))
     shape_beta = list(input_beta.get("shape"))
 
-    begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
-    begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
+    if input_format == "FRACTAL_NZ":
+        begin_norm_axis = shape_util.axis_check(len(ori_shape_x), begin_norm_axis)
+        begin_params_axis = shape_util.axis_check(len(ori_shape_x), begin_params_axis)
 
-    if shape_gamma != shape_beta:
-        error_detail = "gamma and beta's shape must be same."
-        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", "input_beta",
-                                                               error_detail)
-    no_need_fix_gamma = False
-    no_need_fix_beta = False
-    if shape_x[begin_params_axis:] != shape_gamma:
-        if len(shape_x) == len(shape_gamma):
-            no_need_fix_gamma = True
-        else:
+        if input_gamma_format == "FRACTAL_NZ" or input_beta_format == "FRACTAL_NZ":
+            error_detail = "gamma and beta not support Nz in bert"
+            error_manager_vector.raise_err_two_input_format_invalid(kernel_name, "input_gamma",
+                                                                    "input_beta", error_detail)
+        if shape_gamma != shape_beta:
+            error_detail = "gamma and beta's shape must be same."
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma",
+                                                                   "input_beta", error_detail)
+        if ori_shape_x[begin_params_axis:] != shape_gamma:
             error_detail = "x or gamma or begin_params_axis is wrong."
-            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "input_gamma", error_detail)
-    if shape_x[begin_params_axis:] != shape_beta:
-        if len(shape_x) == len(shape_beta):
-            no_need_fix_beta = True
-        else:
-            error_detail = "x or gamma or begin_params_axis is wrong."
-            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "input_beta", error_detail)
-    # make shape_x,shape_gamma,shape_beta dim same
-    if begin_params_axis != 0 and not no_need_fix_gamma:
-        for i in range(begin_params_axis):
-            shape_gamma.insert(i, 1)
-    if begin_params_axis != 0 and not no_need_fix_beta:
-        for i in range(begin_params_axis):
-            shape_beta.insert(i, 1)
-    index_list = tuple(index for index, _ in enumerate(shape_x))
-    reduce_axis = index_list[begin_norm_axis:]
-    broadcast_axis = index_list[:begin_params_axis]
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x",
+                                                                   "input_gamma", error_detail)
+        if len(shape_gamma) > 1:
+            error_detail = "shape of gamma or beta only support 1D in bert"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_gamma", error_detail)
 
-    is_support_broadcast = False
+        if begin_params_axis != 0:
+            for i in range(begin_params_axis):
+                shape_gamma.insert(i, 1)
+        shape_gamma[-2] = shape_x[-4]
+        shape_gamma[-1] = 1
+        shape_gamma.append(1)
+        shape_gamma.append(shape_x[-1])
+        shape_beta = shape_gamma
+        index_list = tuple(index for index, _ in enumerate(ori_shape_x))
+        ori_reduce_axis = index_list[begin_norm_axis:]
+        reduce_axis = to_frac_z_axis(ori_shape_x, ori_reduce_axis)
+        broadcast_axis = index_list[:begin_params_axis]
+    else:
+        begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
+        begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
+
+        if shape_gamma != shape_beta:
+            error_detail = "gamma and beta's shape must be same."
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", "input_beta",
+                                                                   error_detail)
+        no_need_fix_gamma = False
+        no_need_fix_beta = False
+        if shape_x[begin_params_axis:] != shape_gamma:
+            if len(shape_x) == len(shape_gamma):
+                no_need_fix_gamma = True
+            else:
+                error_detail = "x or gamma or begin_params_axis is wrong."
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "input_gamma", error_detail)
+        if shape_x[begin_params_axis:] != shape_beta:
+            if len(shape_x) == len(shape_beta):
+                no_need_fix_beta = True
+            else:
+                error_detail = "x or gamma or begin_params_axis is wrong."
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "input_beta", error_detail)
+        # make shape_x,shape_gamma,shape_beta dim same
+        if begin_params_axis != 0 and not no_need_fix_gamma:
+            for i in range(begin_params_axis):
+                shape_gamma.insert(i, 1)
+        if begin_params_axis != 0 and not no_need_fix_beta:
+            for i in range(begin_params_axis):
+                shape_beta.insert(i, 1)
+        index_list = tuple(index for index, _ in enumerate(shape_x))
+        reduce_axis = index_list[begin_norm_axis:]
+        broadcast_axis = index_list[:begin_params_axis]
+
     input_gamma["shape"] = tuple(shape_gamma)
     input_beta["shape"] = tuple(shape_beta)
-    axis_tensor_rb = {
-        "shape": [len(reduce_axis), len(broadcast_axis)],
-        "value": (reduce_axis, broadcast_axis),
-        "rel_pos_to_reduce": "axis"
-    }
-    axis_tensor_r = {"shape": [len(reduce_axis)], "value": (reduce_axis), "rel_pos_to_reduce": "axis"}
 
-    ins = _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis)
+    ins = _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis, input_format)
     schedules, tensors = [], []
     var_list = []
-    for i in range(len(shape_x)-1):
+    for i in range(len(shape_x) - 1):
         dim_axis = operation.var("dim_" + str(i), range_x[i])
         var_list.append(dim_axis)
-    var_list.append(operation.var("dim_" + str(len(shape_x)-1)))
+    var_list.append(operation.var("dim_" + str(len(shape_x) - 1)))
 
     for (dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis) in ins[:1]:
         x_last_dim_range = dy_shape_x["range"][-1]
@@ -537,18 +730,24 @@ def layer_norm(input_x,
             x_last_dim_range_set = [x_last_dim_range]
         else:
             x_last_dim_range_set = LAST_DIM_RANGE_SET
-        for idx, rn in enumerate(x_last_dim_range_set):
+        for _, rn in enumerate(x_last_dim_range_set):
             with tbe.compute():
                 x_var, gamma_var, beta_var, reduce_axis_var = _reduce_variable_shape(
-                    [dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis], var_list, rn)
+                    [dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis], var_list, rn, input_format)
                 data_x = tvm.placeholder(x_var, name="x", dtype=dtype)
                 data_gamma = tvm.placeholder(gamma_var, name="gamma", dtype=dtype)
                 data_beta = tvm.placeholder(beta_var, name="beta", dtype=dtype)
 
-                mean, variance, res = layer_norm_compute(data_x, data_gamma, data_beta,
-                                                         output_y, output_mean, output_variance,
-                                                         dy_reduce_axis.get("value"), begin_params_axis, epsilon,
-                                                         kernel_name, impl_mode)
+                if input_format == "FRACTAL_NZ":
+                    mean, variance, res = layer_norm_compute_nz(data_x, data_gamma, data_beta,
+                                                                output_y, output_mean, output_variance, ori_reduce_axis,
+                                                                dy_reduce_axis.get("value"), begin_params_axis, epsilon,
+                                                                kernel_name, impl_mode)
+                else:
+                    mean, variance, res = layer_norm_compute(data_x, data_gamma, data_beta,
+                                                             output_y, output_mean, output_variance,
+                                                             dy_reduce_axis.get("value"), begin_params_axis, epsilon,
+                                                             kernel_name, impl_mode)
                 tensors.append([data_x, data_gamma, data_beta, res, mean, variance])
             with tvm.target.cce():
                 sch = tbe.auto_schedule([res, mean, variance])
@@ -565,8 +764,8 @@ def layer_norm(input_x,
     tbe.build(schedules, config)
 
 
-def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis):
-    input_x, input_gamma, input_beta = generate_reduce_input((input_x, input_gamma, input_beta))
+def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis, input_format):
+    input_x, input_gamma, input_beta = generate_reduce_input((input_x, input_gamma, input_beta), input_format)
     x_range = input_x.get("range")
     gamma_shape = input_gamma.get("shape")
     dynamic_index = []
@@ -672,7 +871,7 @@ def _process_all_unknown_shape(shape_list, range_list):
     return shape_list, range_list
 
 
-def generate_reduce_input(inputs_before_reduce):
+def generate_reduce_input(inputs_before_reduce, input_format):
 
     shape_local = [list(x["shape"]) for x in inputs_before_reduce]
     range_local = [
@@ -684,12 +883,13 @@ def generate_reduce_input(inputs_before_reduce):
     max_len = max([len(x_shape) for x_shape in shape_list])
     new_shape_local = [[1] * (max_len - len(x_shape)) + x_shape if len(x_shape) != max_len else x_shape
                        for x_shape in shape_list]
-    new_range_local = [[(1, 1)] * (max_len - len(x_range)) + x_range if len(x_range) != max_len else x_range
-                       for x_range in range_list]
-    for index in range(len(new_shape_local)):
-        for idx, val in enumerate(new_shape_local[index]):
-            if new_range_local[index][idx][0] == new_range_local[index][idx][1]:
-                new_shape_local[index][idx] = new_range_local[index][idx][0]
+    if input_format == "FRACTAL_NZ":
+        new_range_local = [[(1, None)] * max_len if len(x_range) != max_len else x_range
+                           for x_range in range_list]
+    else:
+        new_range_local = [[(1, None)] * (max_len - len(x_range)) + x_range if len(x_range) != max_len else x_range
+                           for x_range in range_list]
+
     for index in range(len(new_shape_local)):
         for idx, val in enumerate(new_shape_local[index]):
             if new_range_local[index][idx][0] == new_range_local[index][idx][1]:
@@ -732,7 +932,7 @@ def _generate_all_ins(inputx):
     return outs
 
 
-def _reduce_variable_shape(inputs, var_list, dim_ln_range):
+def _reduce_variable_shape(inputs, var_list, dim_ln_range, x_dtype=None):
     """
     variable shape for reduce ops
     """
@@ -757,7 +957,7 @@ def _reduce_variable_shape(inputs, var_list, dim_ln_range):
     current_compute = operation.get_context().get_current_compute()
     if current_compute:
         current_compute.add("mode", mode)
-        current_compute.add("dim_ln_range", dim_ln_range)
+
         ori_axis = input_axis[0].get("ori_axis")
         if ori_axis is not None:
             current_compute.add("ori_axis", ori_axis)
@@ -768,7 +968,11 @@ def _reduce_variable_shape(inputs, var_list, dim_ln_range):
     shape_local = [x["shape"] for x in inputs_before_reduce]
     range_local = [x.get("range") if x.get("range") else [(1, None)] * len(shape_local[0])
                    for x in inputs_before_reduce]
+    current_compute.add("dim_ln_range", dim_ln_range)
+    current_compute.add("input_format", x_dtype)
+
     shape_before_reduce = []
+
     for i in range(len(shape_local)):
         single_shape_before_reduce = []
         for index in range(len(shape_local[i])):

@@ -1,5 +1,19 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+# Copyright 2019-2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
 LayerNorm Schedule Remake stage 1
 """
@@ -16,6 +30,7 @@ from typing import Set
 from tbe import tvm
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.utils import shape_util
 from ..base import operation
 from ..base.operation import get_context
 from ..base.operation import register_schedule
@@ -29,6 +44,8 @@ from . import util
 from .util import get_dsl_insn
 
 MAX_NODE_COUNT = 12
+PHONY_INSN = "phony_insn"
+DMA_COPY = "dma_copy"
 
 
 class WorkspaceLayerNormSchedule:
@@ -38,14 +55,29 @@ class WorkspaceLayerNormSchedule:
         # foward compute graph
         self.forward_compute_graph_map = self.graph_info.tensor_consumers_map
         self.backward_compute_graph_map = self.graph_info.tensor_producers_map
+        self.dim_ln_range = operation.get_context().get_current_compute().get("dim_ln_range")
         self.emit_insn_dict = {}
         self.outs = outs
+        self.is_cast = False
+        self.is_last_dim_one = False
+        self.reduce0_tensor = None
+        self.reduce1_tensor = None
+        self.sub_to_mul0 = None
+        self.sub_to_mul1 = None
+        self.mid0_output_gm_tensor = None
+        self.mid1_output_gm_tensor = None
+        self.input_tensor_ub_list = []
+        self.input_tensor_2_dict = {}
+        self.beta_gam_ub_list = []
+        self.output_tensor_ub_list = []
+        self.tensorub2tensor = dict()
+        self.tensor2tensorub = dict()
+        self.mid_tensor_ub_back_dict = {}
 
     def get_sub_tensor(self):
         for input_tensor in self.graph_info.input_tensor_set:
             if input_tensor.op.name == "x":
                 self.x_tensor = input_tensor
-        self.is_cast = False
         for x_consumer_tensor in self.graph_info.tensor_consumers_map[self.x_tensor]:
             opname, num = x_consumer_tensor.op.name.split("_")
             if opname == "cast":
@@ -65,9 +97,13 @@ class WorkspaceLayerNormSchedule:
                 sub_gm_num = int(num)
         self.outs.append(sub_gm_tensor)
         self.sub_gm_tensor = sub_gm_tensor
+        self.shape_dim = len(self.sub_gm_tensor.shape)
+        shape = shape_util.shape_to_list(self.sub_gm_tensor.shape)
+        if shape[-1] == 1:
+            self.shape_dim -= 1
+            self.is_last_dim_one = True
         # find reduce_0, reduce_1, mid_output, end_output
-        self.reduce0_tensor = None
-        self.reduce1_tensor = None
+
         mid_num = -1
         for red_tensor in self.graph_info.reduce_tensor_set:
             red_tensor_num = int(red_tensor.op.name.split("_")[1])
@@ -80,8 +116,6 @@ class WorkspaceLayerNormSchedule:
                 self.reduce1_tensor = red_tensor
 
         sub_to_mul_num = -1
-        self.sub_to_mul0 = None
-        self.sub_to_mul1 = None
         for tensor in tuple(self.forward_compute_graph_map[self.sub_gm_tensor]):
             mul_tensor_num = int(tensor.op.name.split("_")[1])
             if self.sub_to_mul0 is None:
@@ -93,8 +127,6 @@ class WorkspaceLayerNormSchedule:
                 self.sub_to_mul1 = tensor
 
         mid_output_num = -1
-        self.mid0_output_gm_tensor = None
-        self.mid1_output_gm_tensor = None
         for mid_out_tensor in self.graph_info.mid_output_tensor_set:
             tensor_num = int(mid_out_tensor.op.name.split("_")[1])
             if self.mid0_output_gm_tensor is None:
@@ -131,15 +163,13 @@ class WorkspaceLayerNormSchedule:
     def _do_set_var_range(self):
         res_tensor = tuple(self.graph_info.endpoint_output_tensor_set)[0]
         self.res_shape = res_tensor.shape
-        self.dim_ln_range = operation.get_context().get_current_compute().get("dim_ln_range")
+        if tuple(self.dim_ln_range) == (1, 1):
+            self.is_last_dim_one = True
         if isinstance(self.res_shape[-1], tvm.expr.Var):
             self.schedule.set_var_range(self.res_shape[-1], *self.dim_ln_range)
 
     def _do_cache_read_write(self):
         def _do_cache_read():
-            self.input_tensor_ub_list = []
-            self.input_tensor_2_dict = {}
-            self.beta_gam_ub_list = []
             # raw input params
             for input_tensor in self.graph_info.input_tensor_set:
                 for nextest_tensor in self.forward_compute_graph_map[input_tensor]:
@@ -153,9 +183,6 @@ class WorkspaceLayerNormSchedule:
                     self.beta_gam_ub_list.append(input_tensor_ub)
 
         def _do_cache_write():
-            self.output_tensor_ub_list = []
-            self.tensorub2tensor = dict()
-            self.tensor2tensorub = dict()
             for output_tensor in self.graph_info.output_tensor_set:
                 output_tensor_ub = self.schedule.cache_write(output_tensor, tbe_platform_info.scope_ubuf)
                 self.output_tensor_ub_list.append(output_tensor_ub)
@@ -165,7 +192,6 @@ class WorkspaceLayerNormSchedule:
         def _do_reused_by():
             # reused_by mid_tensor
             # middle_output cache_read
-            self.mid_tensor_ub_back_dict = {}
             for mid_tensor in self.graph_info.mid_output_tensor_set:
                 mid_tensor_ub_back = self.schedule.cache_read(mid_tensor, tbe_platform_info.scope_ubuf,
                                                               self.forward_compute_graph_map[mid_tensor])
@@ -196,11 +222,9 @@ class WorkspaceLayerNormSchedule:
         _do_reused_by()
 
     def _do_set_scope(self):
-
         for tensor in self.forward_compute_graph_map:
             if tensor not in tuple(
                     self.graph_info.output_tensor_set | self.graph_info.input_tensor_set | {self.sub_gm_tensor}):
-
                 self.schedule[tensor].set_scope(tbe_platform_info.scope_ubuf)
 
     def _do_storage_bound(self):
@@ -220,33 +244,40 @@ class WorkspaceLayerNormSchedule:
             self.schedule[stage_tensor].set_storage_bound(self.max_ub_size)
 
     def _do_storage_align(self):
-        tensor_storage_bound_set = set(self.forward_compute_graph_map.keys()) | set(
-            self.output_tensor_ub_list) | set(self.input_tensor_ub_list)
-        reduce_len = len(self.reduce0_tensor.op.reduce_axis)
-        output_dtype = tuple(self.graph_info.endpoint_output_tensor_set)[0].dtype
-        if output_dtype in ("fp16", "float16"):
-            align_num = 16
-        else:
-            align_num = 8
-        if self.is_cast:
-            op_name_0 = self.mid0_output_gm_tensor.op.name
-            op_name_1 = self.mid1_output_gm_tensor.op.name
-            op_name_0_consumer = tuple(self.forward_compute_graph_map[self.mid0_output_gm_tensor])[0].op.name
-            op_name_1_consumer = tuple(self.forward_compute_graph_map[self.mid1_output_gm_tensor])[0].op.name
+        case = self.tiling_case
+        input_format = case.format
+        if input_format != "FRACTAL_NZ":
+            tensor_storage_bound_set = set(self.forward_compute_graph_map.keys()) | set(
+                self.output_tensor_ub_list) | set(self.input_tensor_ub_list)
+            reduce_len = len(self.reduce0_tensor.op.reduce_axis)
+            output_dtype = tuple(self.graph_info.endpoint_output_tensor_set)[0].dtype
+            if output_dtype in ("fp16", "float16"):
+                align_num = 16
+            else:
+                align_num = 8
+            if self.is_cast:
+                op_name_0 = self.mid0_output_gm_tensor.op.name
+                op_name_1 = self.mid1_output_gm_tensor.op.name
+                op_name_0_consumer = tuple(self.forward_compute_graph_map[self.mid0_output_gm_tensor])[0].op.name
+                op_name_1_consumer = tuple(self.forward_compute_graph_map[self.mid1_output_gm_tensor])[0].op.name
 
-        if reduce_len < 2:
-            for stage_tensor in tensor_storage_bound_set:
-                if stage_tensor in self.graph_info.input_tensor_set | self.graph_info.output_tensor_set | {self.sub_gm_tensor}:
-                    continue
-                op_name = stage_tensor.op.name
-                if op_name.startswith("reduce") and reduce_len < 2:
-                    continue
-                if self.is_cast and (op_name.startswith(op_name_0) or op_name.startswith(op_name_0_consumer) or op_name.startswith(op_name_1) or op_name.startswith(op_name_1_consumer)):
-                    continue
-                self.schedule[stage_tensor].storage_align(stage_tensor.op.axis[-2], align_num, 0)
+            # if self.shape_dim > 1: operate storage align
+            if self.shape_dim > 1 and not self.is_last_dim_one:
+                for stage_tensor in tensor_storage_bound_set:
+                    if stage_tensor in self.graph_info.input_tensor_set | self.graph_info.output_tensor_set | {self.sub_gm_tensor}:
+                        continue
+                    op_name = stage_tensor.op.name
+                    if op_name.startswith("reduce"):
+                        continue
+                    if self.is_cast and (op_name.startswith(op_name_0) or op_name.startswith(op_name_0_consumer) or op_name.startswith(op_name_1) or op_name.startswith(op_name_1_consumer)):
+                        continue
+                    self.schedule[stage_tensor].storage_align(stage_tensor.op.axis[-2], align_num, 0)
 
     def _do_tiling(self):
         case = self.tiling_case
+        reduce_axis_list = case.reduce_axis_list
+        input_format = case.format
+
         # get last endpoint output tensor
         self.res_tensor = tuple(self.graph_info.endpoint_output_tensor_set)[0]
 
@@ -269,6 +300,10 @@ class WorkspaceLayerNormSchedule:
 
         # subgraph 0 tiling case
         def do_tiling_subgraph0():
+            sub_order = []
+            for d_i in range(len(self.sub_gm_tensor.shape)):
+                sub_order.append(self.sub_gm_tensor.op.axis[d_i])
+
             if not self.is_cast:
                 reduce_tensor = self.mid_tensor_ub_back_dict[self.mid0_output_gm_tensor][0]
             else:
@@ -292,8 +327,14 @@ class WorkspaceLayerNormSchedule:
             self.sub_ub_split_result = [sub_ub_gm_outer, sub_ub_gm_inner]
             self.reduce0_ub_split_result = [reduce0_ub_fuse_outer, reduce0_ub_fuse_inner]
 
+            return sub_order
+
         # subgraph1 tiling case
         def do_tiling_subgraph1():
+            res_order = []
+            for d_i in range(len(self.res_tensor.shape)):
+                res_order.append(self.res_tensor.op.axis[d_i])
+
             if not self.is_cast:
                 reduce_tensor = self.mid_tensor_ub_back_dict[self.mid1_output_gm_tensor][0]
             else:
@@ -325,10 +366,67 @@ class WorkspaceLayerNormSchedule:
             self.res_ub_split_result = [res_ub_gm_outer, res_ub_gm_inner]
             self.reduce1_ub_split_result = [reduce1_ub_fuse_outer, reduce1_ub_fuse_inner]
 
-        do_tiling_subgraph0()
-        do_tiling_subgraph1()
+            return res_order
+
+        sub_order = do_tiling_subgraph0()
+        res_order = do_tiling_subgraph1()
+
+        # reorder part
+        if input_format == "FRACTAL_NZ":
+            res_axis_order = []
+            sub_axis_order = []
+            sub_reorder_dict_old2new = {}
+            new_index = 0
+            # reorder nonreduce axis order before last reduce axis
+            for idx, sub_axis in enumerate(sub_order):
+                if idx not in reduce_axis_list:
+                    sub_axis_order.append(sub_axis)
+                    res_axis_order.append(res_order[idx])
+                    sub_reorder_dict_old2new[idx] = new_index
+                    new_index += 1
+                elif idx != reduce_axis_list[-1]:
+                    continue
+                else:
+                    break
+            # reorder separated reduce axis together
+            # append reduce axis
+            for rai in reduce_axis_list:
+                sub_axis_order.append(sub_order[rai])
+                res_axis_order.append(res_order[rai])
+                sub_reorder_dict_old2new[rai] = new_index
+                new_index += 1
+            # reorder nonreduce axis order after last reduce axis
+            for ot in range(reduce_axis_list[-1] + 1, len(sub_order)):
+                sub_axis_order.append(sub_order[ot])
+                res_axis_order.append(res_order[ot])
+                sub_reorder_dict_old2new[ot] = new_index
+                new_index += 1
+            # reorder split result order
+            reordered_block_index = sub_reorder_dict_old2new[self.block_split_axis_index]
+            if case.is_split_ub:
+                reordered_ub_index = sub_reorder_dict_old2new[self.ub_split_axis_index]
+                fin_sub_axis_order = sub_axis_order[:reordered_block_index] + self.sub_block_split_result[:1] + self.sub_ub_fuse_split_result + \
+                    sub_axis_order[reordered_block_index + 1:reordered_ub_index] + \
+                    self.sub_ub_split_result + sub_axis_order[reordered_ub_index + 1:]
+
+                fin_res_axis_order = res_axis_order[:reordered_block_index] + self.res_block_split_result[:1] + self.res_ub_fuse_split_result + \
+                    res_axis_order[reordered_block_index + 1:reordered_ub_index] + \
+                    self.res_ub_split_result + res_axis_order[reordered_ub_index + 1:]
+            else:
+                fin_sub_axis_order = sub_axis_order[:reordered_block_index] + self.sub_block_split_result[:1] + \
+                    self.sub_ub_fuse_split_result[:1] + self.sub_ub_split_result + \
+                    sub_axis_order[reordered_block_index + 1:]
+
+                fin_res_axis_order = res_axis_order[:reordered_block_index] + self.res_block_split_result[:1] + \
+                    self.res_ub_fuse_split_result[:1] + self.res_ub_split_result + \
+                    res_axis_order[reordered_block_index + 1:]
+
+            self.schedule[self.sub_gm_tensor].reorder(*fin_sub_axis_order)
+            self.schedule[self.res_tensor].reorder(*fin_res_axis_order)
 
     def _do_compute_at(self):
+        # redefine tensor emitinsn axis
+        self.ub_split_axis_index = 0
 
         def _compute_at_func(tensor_key,
                              base_tensor,
@@ -370,12 +468,12 @@ class WorkspaceLayerNormSchedule:
                 x_mul_ub = self.input_tensor_2_dict[self.cast_to_mul0]
                 self.schedule[x_mul_ub].compute_at(self.schedule[mean_tensor_ub], self.reduce0_ub_split_result[0])
                 self.emit_insn_dict[x_mul_ub] = {
-                    "insn": "dma_copy",
-                    "axis": x_mul_ub.op.axis[self.ub_split_axis_index]
+                    "insn": DMA_COPY,
+                    "axis": x_mul_ub.op.axis[0]
                 }
 
                 _compute_at_func(mean_tensor_ub, mean_tensor_ub, self.reduce0_ub_split_result, [],
-                                 self.ub_split_axis_index, False)
+                                 0, False)
 
                 self.schedule[mean_tensor_ub].compute_at(self.schedule[self.sub_gm_tensor],
                                                          self.sub_ub_fuse_split_result[0])
@@ -397,25 +495,25 @@ class WorkspaceLayerNormSchedule:
                     "axis": mid0_tensor_ub.op.axis[self.block_split_axis_index]
                 }
                 self.emit_insn_dict[self.mid0_output_gm_tensor] = {
-                    "insn": "dma_copy",
+                    "insn": DMA_COPY,
                     "axis": self.mid0_output_gm_tensor.op.axis[self.block_split_axis_index]
                 }
                 self.emit_insn_dict[mid0_tensor_ub_back] = {
-                    "insn": "phony_insn",
+                    "insn": PHONY_INSN,
                     "axis": mid0_tensor_ub_back.op.axis[self.block_split_axis_index],
                 }
                 self.emit_insn_dict[special_tensor_0] = {
-                    "insn": "phony_insn",
+                    "insn": PHONY_INSN,
                     "axis": special_tensor_0.op.axis[self.block_split_axis_index],
                 }
 
                 x_sub_ub = self.input_tensor_2_dict[self.cast_to_sub1]
                 self.schedule[x_sub_ub].compute_at(self.schedule[self.sub_gm_tensor], self.sub_ub_split_result[0])
-                self.emit_insn_dict[x_sub_ub] = {"insn": "dma_copy", "axis": x_sub_ub.op.axis[self.ub_split_axis_index]}
+                self.emit_insn_dict[x_sub_ub] = {"insn": DMA_COPY, "axis": x_sub_ub.op.axis[0]}
 
                 # mid0_output compute at
                 _compute_at_func(self.sub_gm_tensor, self.sub_gm_tensor, self.sub_ub_split_result,
-                                 [special_tensor_0, self.x_tensor], self.ub_split_axis_index)
+                                 [special_tensor_0, self.x_tensor], 0)
             else:
                 mean_tensor_ub, mean_tensor_ub_back = self.mid_tensor_ub_back_dict[self.mid0_output_gm_tensor]
 
@@ -424,13 +522,13 @@ class WorkspaceLayerNormSchedule:
                 self.schedule[x_mul_ub].compute_at(self.schedule[mean_tensor_ub], self.reduce0_ub_split_result[0])
 
                 self.emit_insn_dict[x_mul_ub] = {
-                    "insn": "dma_copy",
-                    "axis": x_mul_ub.op.axis[self.ub_split_axis_index]
+                    "insn": DMA_COPY,
+                    "axis": x_mul_ub.op.axis[0]
                 }
 
                 # mid0_output compute at
                 _compute_at_func(self.mid0_output_gm_tensor, mean_tensor_ub, self.reduce0_ub_split_result, [],
-                                 self.ub_split_axis_index, False)
+                                 0, False)
 
                 # after reduce
                 # reduce fuse loop:ub->gm->ub
@@ -445,25 +543,25 @@ class WorkspaceLayerNormSchedule:
                                                        "attr": {"extra_space": 1024}}
 
                 self.emit_insn_dict[self.mid0_output_gm_tensor] = {
-                    "insn": "dma_copy",
+                    "insn": DMA_COPY,
                     "axis": self.mid0_output_gm_tensor.op.axis[self.block_split_axis_index]
                 }
                 self.emit_insn_dict[mean_tensor_ub_back] = {
-                    "insn": "phony_insn",
+                    "insn": PHONY_INSN,
                     "axis": mean_tensor_ub_back.op.axis[self.block_split_axis_index],
                 }
                 x_sub_ub = self.input_tensor_2_dict[self.sub_gm_tensor]
 
                 self.schedule[x_sub_ub].compute_at(self.schedule[self.sub_gm_tensor], self.sub_ub_split_result[0])
-                self.emit_insn_dict[x_sub_ub] = {"insn": "dma_copy", "axis": x_sub_ub.op.axis[self.ub_split_axis_index]}
+                self.emit_insn_dict[x_sub_ub] = {"insn": DMA_COPY, "axis": x_sub_ub.op.axis[0]}
 
                 # mid0_output compute at
                 _compute_at_func(self.sub_gm_tensor, self.sub_gm_tensor, self.sub_ub_split_result,
-                                 [self.mid0_output_gm_tensor, self.x_tensor], self.ub_split_axis_index)
+                                 [self.mid0_output_gm_tensor, self.x_tensor], 0)
             sub_1_ub = self.mid_tensor_ub_back_dict[self.sub_gm_tensor][0]
             self.schedule[sub_1_ub].compute_at(self.schedule[self.sub_gm_tensor], self.sub_ub_split_result[0])
-            self.emit_insn_dict[sub_1_ub] = {"insn": "", "axis": sub_1_ub.op.axis[self.ub_split_axis_index]}
-            self.emit_insn_dict[self.sub_gm_tensor] = {"insn": "dma_copy", "axis": self.sub_ub_split_result[1]}
+            self.emit_insn_dict[sub_1_ub] = {"insn": "", "axis": sub_1_ub.op.axis[0]}
+            self.emit_insn_dict[self.sub_gm_tensor] = {"insn": DMA_COPY, "axis": self.sub_ub_split_result[1]}
 
         def _do_compute_at_1():
             # before reduce
@@ -475,11 +573,11 @@ class WorkspaceLayerNormSchedule:
                 self.schedule[sub_1_ub_back_var].compute_at(self.schedule[variance_tensor_ub],
                                                             self.reduce1_ub_split_result[0])
                 self.emit_insn_dict[sub_1_ub_back_var] = {
-                    "insn": "dma_copy",
-                    "axis": sub_1_ub_back_var.op.axis[self.ub_split_axis_index]
+                    "insn": DMA_COPY,
+                    "axis": sub_1_ub_back_var.op.axis[0]
                 }
-                _compute_at_func(variance_tensor_ub, variance_tensor_ub, self.reduce1_ub_split_result, [self.sub_gm_tensor],
-                                 self.ub_split_axis_index, False)
+                _compute_at_func(variance_tensor_ub, variance_tensor_ub,
+                                 self.reduce1_ub_split_result, [self.sub_gm_tensor], 0, False)
                 self.schedule[variance_tensor_ub].compute_at(self.schedule[self.res_tensor],
                                                              self.res_ub_fuse_split_result[0])
                 self.schedule[mid1_tensor_ub].compute_at(self.schedule[self.res_tensor],
@@ -501,24 +599,24 @@ class WorkspaceLayerNormSchedule:
                     "axis": mid1_tensor_ub.op.axis[self.block_split_axis_index],
                 }
                 self.emit_insn_dict[self.mid1_output_gm_tensor] = {
-                    "insn": "dma_copy",
+                    "insn": DMA_COPY,
                     "axis": self.mid1_output_gm_tensor.op.axis[self.block_split_axis_index],
                 }
                 self.emit_insn_dict[mid1_tensor_ub_back] = {
-                    "insn": "phony_insn",
+                    "insn": PHONY_INSN,
                     "axis": mid1_tensor_ub_back.op.axis[self.block_split_axis_index],
                 }
                 self.emit_insn_dict[special_tensor_1] = {
-                    "insn": "phony_insn",
+                    "insn": PHONY_INSN,
                     "axis": special_tensor_1.op.axis[self.block_split_axis_index],
                 }
                 self.schedule[sub_1_ub_back_res].compute_at(self.schedule[self.res_tensor], self.res_ub_split_result[0])
                 self.emit_insn_dict[sub_1_ub_back_res] = {
-                    "insn": "dma_copy",
-                    "axis": sub_1_ub_back_res.op.axis[self.ub_split_axis_index],
+                    "insn": DMA_COPY,
+                    "axis": sub_1_ub_back_res.op.axis[0],
                 }
                 _compute_at_func(self.res_tensor, self.res_tensor, self.res_ub_split_result,
-                                 [self.sub_gm_tensor, special_tensor_1], self.ub_split_axis_index)
+                                 [self.sub_gm_tensor, special_tensor_1], 0)
             else:
                 variance_tensor_ub, variance_tensor_ub_back = self.mid_tensor_ub_back_dict[self.mid1_output_gm_tensor]
                 sub_1_ub_back_var = self.input_tensor_2_dict[self.sub_to_mul0]
@@ -528,12 +626,12 @@ class WorkspaceLayerNormSchedule:
                 self.schedule[sub_1_ub_back_var].compute_at(self.schedule[variance_tensor_ub],
                                                             self.reduce1_ub_split_result[0])
                 self.emit_insn_dict[sub_1_ub_back_var] = {
-                    "insn": "dma_copy",
-                    "axis": sub_1_ub_back_var.op.axis[self.ub_split_axis_index]
+                    "insn": DMA_COPY,
+                    "axis": sub_1_ub_back_var.op.axis[0]
                 }
 
-                _compute_at_func(self.mid1_output_gm_tensor, variance_tensor_ub, self.reduce1_ub_split_result, [self.sub_gm_tensor],
-                                 self.ub_split_axis_index, False)
+                _compute_at_func(self.mid1_output_gm_tensor, variance_tensor_ub,
+                                 self.reduce1_ub_split_result, [self.sub_gm_tensor], 0, False)
 
                 # after reduce
                 # reduce fuse loop:ub->gm->ub
@@ -547,29 +645,29 @@ class WorkspaceLayerNormSchedule:
                 self.emit_insn_dict[variance_tensor_ub] = {"insn": "", "axis": self.reduce1_ub_split_result[1],
                                                            "attr": {"extra_space": 1024}}
                 self.emit_insn_dict[self.mid1_output_gm_tensor] = {
-                    "insn": "dma_copy",
+                    "insn": DMA_COPY,
                     "axis": self.mid1_output_gm_tensor.op.axis[self.block_split_axis_index],
                 }
                 self.emit_insn_dict[variance_tensor_ub_back] = {
-                    "insn": "phony_insn",
+                    "insn": PHONY_INSN,
                     "axis": variance_tensor_ub_back.op.axis[self.block_split_axis_index],
                 }
                 self.schedule[sub_1_ub_back_res].compute_at(self.schedule[self.res_tensor], self.res_ub_split_result[0])
                 self.emit_insn_dict[sub_1_ub_back_res] = {
-                    "insn": "dma_copy",
-                    "axis": sub_1_ub_back_res.op.axis[self.ub_split_axis_index],
+                    "insn": DMA_COPY,
+                    "axis": sub_1_ub_back_res.op.axis[0],
                 }
                 _compute_at_func(self.res_tensor, self.res_tensor, self.res_ub_split_result,
-                                 [self.sub_gm_tensor, self.mid1_output_gm_tensor], self.ub_split_axis_index)
+                                 [self.sub_gm_tensor, self.mid1_output_gm_tensor], 0)
 
             res_ub = self.tensor2tensorub[self.res_tensor]
             self.schedule[res_ub].compute_at(self.schedule[self.res_tensor], self.res_ub_split_result[0])
-            self.emit_insn_dict[res_ub] = {"insn": "", "axis": res_ub.op.axis[self.ub_split_axis_index]}
-            self.emit_insn_dict[self.res_tensor] = {"insn": "dma_copy", "axis": self.res_ub_split_result[1]}
+            self.emit_insn_dict[res_ub] = {"insn": "", "axis": res_ub.op.axis[0]}
+            self.emit_insn_dict[self.res_tensor] = {"insn": DMA_COPY, "axis": self.res_ub_split_result[1]}
 
             for bg_ub in self.beta_gam_ub_list:
                 self.schedule[bg_ub].compute_at(self.schedule[self.res_tensor], self.res_ub_split_result[0])
-                self.emit_insn_dict[bg_ub] = {"insn": "dma_copy", "axis": bg_ub.op.axis[self.ub_split_axis_index]}
+                self.emit_insn_dict[bg_ub] = {"insn": DMA_COPY, "axis": bg_ub.op.axis[0]}
 
         _do_compute_at_0()
         _do_compute_at_1()
@@ -583,7 +681,7 @@ class WorkspaceLayerNormSchedule:
             attr = self.emit_insn_dict[tensor].get("attr")
             if attr:
                 storage_bound_num = attr.get("extra_space")
-                if insn == "phony_insn":
+                if insn == PHONY_INSN:
                     self.schedule[tensor].emit_insn(emit_insn_axis, insn, attrs=dict(storage_bound=[storage_bound_num]))
                     continue
                 elif insn == "":
@@ -591,7 +689,7 @@ class WorkspaceLayerNormSchedule:
                 self.schedule[tensor].emit_insn(emit_insn_axis, INSN_MAPPING[insn],
                                                 attrs=dict(storage_bound=[storage_bound_num]))
             else:
-                if insn == "phony_insn":
+                if insn == PHONY_INSN:
                     self.schedule[tensor].emit_insn(emit_insn_axis, insn)
                     continue
                 elif insn == "":

@@ -37,6 +37,7 @@ from ..base.operation import get_context
 from ..base.operation import register_build_pointcut
 from ..base.operation import register_tiling_case
 from tbe.common.utils import op_tiling
+from tbe.common.utils import shape_util
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
@@ -217,7 +218,7 @@ def _get_block_size(dtype):
     return block_size
 
 
-def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None):
+def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None, input_format=None):
     # Common_Info
     atomic = 0
     for item in tiling_list:
@@ -240,7 +241,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list, mode=None):
     pre_compile_info = get_compile_info()
     if pre_compile_info and "core_num" not in pre_compile_info:
         info_map = {"common_info": common_info, "pattern_info": pattern_info,
-                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": util.get_core_num(), "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 10 * 1024, "mode": mode}
+                    "ub_info": ub_info, "reduce_axis": reduce_info.reduce_axis_indexes, "core_num": core_num, "max_ub_size_normal_fp16": 10 * 1024, "max_ub_size_normal_fp32": 10 * 1024, "mode": mode, "input_format": input_format}
         for key in info_map.keys():
             if key not in pre_compile_info.keys():
                 add_compile_info(key, info_map.get(key))
@@ -271,7 +272,9 @@ def _calc_tiling_key(reduce_info, tiling, dim_ln_range):
     tiling_key = _get_tiling_key(atomic, db, shape_type, block_split_axis, block_split_axis_1, ub_split_axis_index_reduce, ub_split_axis,
                                  shape, reduce_axis_idx, is_normal, is_fuse_axis)
 
-    if dim_ln_range[-1] is not None and dim_ln_range[-1] <= LAST_DIM_RANGE_NUM1:
+    if dim_ln_range[0] == 1:
+        range_key = 5
+    elif dim_ln_range[-1] is not None and dim_ln_range[-1] <= LAST_DIM_RANGE_NUM1:
         range_key = 0
     elif dim_ln_range[-1] is not None and dim_ln_range[-1] <= LAST_DIM_RANGE_NUM2:
         range_key = 1
@@ -322,12 +325,17 @@ def calc_tiling_case(outs, options=None):
     # get mode
     mode = operation.get_context().get_current_compute().get("mode")
     dim_ln_range = operation.get_context().get_current_compute().get("dim_ln_range")
-    apply_compile_info(layer_norm_info, compute_graph_info, tiling_case_list, mode)
+
+    input_format = operation.get_context().get_current_compute().get("input_format")
+    apply_compile_info(layer_norm_info, compute_graph_info, tiling_case_list, mode, input_format)
+
     # Normal reduce tiling cases
     if mode == CONST:
-        tiling_case_list += _gen_tiling_case_const(layer_norm_info, compute_graph_info)
+        tiling_case_list += _gen_tiling_case_const(layer_norm_info, compute_graph_info, input_format)
+    elif input_format == "FRACTAL_NZ":
+        tiling_case_list += _gen_tiling_case_NZ(layer_norm_info, input_format, dim_ln_range)
     else:
-        tiling_case_list += _gen_tiling_case(layer_norm_info)
+        tiling_case_list += _gen_tiling_case(layer_norm_info, input_format, dim_ln_range)
     # apply_compile_info(layer_norm_info, compute_graph_info, tiling_case_list)
     # calc_tiling_key
     for tiling_case in tiling_case_list:
@@ -395,6 +403,8 @@ class LayerNormTilingCase(TilingCaseBase):
         self.is_normal = True
         self.is_split_ub = True
         self.is_fuse_axis = False
+        self.format = None
+        self.reduce_axis_list = []
 
     def __repr__(self):
         segment0 = "ATOMIC" if self.is_atomic else "NORMAL"
@@ -478,55 +488,94 @@ class LayerNormInfo:
         return a1_start_index, a1_end_index
 
 
-def _gen_tiling_case(info: LayerNormInfo):
+def _gen_tiling_case_common(block_split_axis, input_format, shape_before_reduce, reduce_axis_index, tiling_case_list, dim_ln_range):
+    # last dim is one case
+    shape_list = shape_util.shape_to_list(shape_before_reduce)
+    if tuple(dim_ln_range) == (1, 1):
+        new_reduce_axis_index = reduce_axis_index[:-1]
+    else:
+        new_reduce_axis_index = reduce_axis_index
+    for wj in new_reduce_axis_index:
+        # workspace tilingcase
+        ub_split_axis = wj
+        # specail not block_split_axis is one, is not as ub_split axis
+        if shape_list[ub_split_axis] == 1 and ub_split_axis != block_split_axis:
+            continue
+        for k in range(len(new_reduce_axis_index)):
+            ub_split_axis_index_reduce = k
+            workspace_tiling_case = LayerNormTilingCase()
+            workspace_tiling_case.block_split_axis_index = block_split_axis
+            workspace_tiling_case.ub_split_axis_index = ub_split_axis
+            workspace_tiling_case.ub_split_axis_index_reduce = ub_split_axis_index_reduce
+            workspace_tiling_case.is_normal = False
+            workspace_tiling_case.multi_core = True
+            workspace_tiling_case.is_split_ub = False if ub_split_axis == block_split_axis else True
+            workspace_tiling_case.format = input_format
+            workspace_tiling_case.reduce_axis_list = reduce_axis_index
+            tiling_case_list.append(workspace_tiling_case)
+    for nj in range(block_split_axis, len(shape_before_reduce)):
+        # Normal tilingcase
+        n_ub_split_axis = nj
+        # specail not block_split_axis is one, is not as ub_split axis
+        if shape_list[n_ub_split_axis] == 1 and n_ub_split_axis != block_split_axis:
+            continue
+        if n_ub_split_axis in reduce_axis_index:
+            continue
+        normal_tiling_case = LayerNormTilingCase()
+        normal_tiling_case.block_split_axis_index = block_split_axis
+        normal_tiling_case.ub_split_axis_index = n_ub_split_axis
+        normal_tiling_case.ub_split_axis_index_reduce = 0
+        normal_tiling_case.multi_core = True
+        normal_tiling_case.is_normal = True
+        normal_tiling_case.format = input_format
+        normal_tiling_case.reduce_axis_list = reduce_axis_index
+        if n_ub_split_axis == block_split_axis:
+            normal_tiling_case.is_split_ub = False
+            tiling_case_list.append(normal_tiling_case)
+        else:
+            normal_tiling_case.is_split_ub = True
+            for ii in range(block_split_axis, block_split_axis + 2):
+                fuse_normal_tiling_case = deepcopy(normal_tiling_case)
+                fuse_normal_tiling_case.block_split_axis_index_1 = ii
+                tiling_case_list.append(fuse_normal_tiling_case)
+
+
+def _gen_tiling_case_NZ(info: LayerNormInfo, input_format, dim_ln_range):
     shape_before_reduce = info.shape_before_reduce
     reduce_axis_index = info.reduce_axis_indexes
     tiling_case_list = []
-    for i in range(0, 1):
+    for i in range(0, len(shape_before_reduce)):
+        # if i not in reduce_axis_index: NOT ALL REDUCE CASE
+        # ELSE: ALL REDUCE
+        if i in reduce_axis_index:
+            continue
+        block_split_axis = i
+
+        _gen_tiling_case_common(block_split_axis, input_format, shape_before_reduce,
+                                reduce_axis_index, tiling_case_list, dim_ln_range)
+        break
+    return tiling_case_list
+
+
+def _gen_tiling_case(info: LayerNormInfo, input_format, dim_ln_range):
+    shape_before_reduce = info.shape_before_reduce
+    reduce_axis_index = info.reduce_axis_indexes
+    tiling_case_list = []
+    for i in range(0, len(shape_before_reduce)):
         # if i not in reduce_axis_index: NOT ALL REDUCE CASE
         # ELSE: ALL REDUCE
         block_split_axis = i
 
-        for wj in range(i, len(shape_before_reduce)):
-            # workspace tilingcase
-            ub_split_axis = wj
-            if ub_split_axis in reduce_axis_index:
-                for k in range(len(reduce_axis_index)):
-                    ub_split_axis_index_reduce = k
-                    workspace_tiling_case = LayerNormTilingCase()
-                    workspace_tiling_case.block_split_axis_index = block_split_axis
-                    workspace_tiling_case.ub_split_axis_index = ub_split_axis
-                    workspace_tiling_case.ub_split_axis_index_reduce = ub_split_axis_index_reduce
-                    workspace_tiling_case.is_normal = False
-                    workspace_tiling_case.multi_core = True
-                    workspace_tiling_case.is_split_ub = False if ub_split_axis == block_split_axis else True
-                    tiling_case_list.append(workspace_tiling_case)
-        for nj in range(i, len(shape_before_reduce)):
-            # Normal tilingcase
-            n_ub_split_axis = nj
-            if n_ub_split_axis in reduce_axis_index:
-                continue
-            normal_tiling_case = LayerNormTilingCase()
-            normal_tiling_case.block_split_axis_index = block_split_axis
-            normal_tiling_case.ub_split_axis_index = n_ub_split_axis
-            normal_tiling_case.ub_split_axis_index_reduce = 0
-            normal_tiling_case.multi_core = True
-            normal_tiling_case.is_normal = True
-            if n_ub_split_axis == block_split_axis:
-                normal_tiling_case.is_split_ub = False
-                tiling_case_list.append(normal_tiling_case)
-            else:
-                normal_tiling_case.is_split_ub = True
-                for ii in range(i, i + 2):
-                    fuse_normal_tiling_case = deepcopy(normal_tiling_case)
-                    fuse_normal_tiling_case.block_split_axis_index_1 = ii
-                    tiling_case_list.append(fuse_normal_tiling_case)
+        _gen_tiling_case_common(block_split_axis, input_format, shape_before_reduce,
+                                reduce_axis_index, tiling_case_list, dim_ln_range)
+        break
     return tiling_case_list
 
 
-def _gen_tiling_case_const(info: LayerNormInfo, compute_graph_info):
+def _gen_tiling_case_const(info: LayerNormInfo, compute_graph_info, input_format):
     res_tensor = tuple(compute_graph_info.endpoint_output_tensor_set)[0]
     res_shape = util.shape_to_list(res_tensor.shape)
+    reduce_axis_index = info.reduce_axis_indexes
     tiling_case_list = []
     inputs = []
     tiling_format = {}
@@ -536,7 +585,7 @@ def _gen_tiling_case_const(info: LayerNormInfo, compute_graph_info):
         if input_name == "x":
             inputs.insert(0, {"shape": input_shape, "dtype": _input.dtype})
             for i in range(len(input_shape)):
-                tiling_format["dim_" + str(i)] = "int"
+                tiling_format["dim_%s" % str(i)] = "int"
         else:
             inputs.append({"shape": input_shape, "dtype": _input.dtype})
     outputs = [{"shape": res_shape, "dtype": res_tensor.dtype}]
@@ -566,6 +615,8 @@ def _gen_tiling_case_const(info: LayerNormInfo, compute_graph_info):
     tiling_case.ub_fuse_factor = tiling_data["ub_fuse_factor"]
     tiling_case.is_normal = True if tiling_data["is_normal"] else False
     tiling_case.is_split_ub = True if tiling_data["block_split_axis_index"] != tiling_data["ub_split_axis_index"] else False
+    tiling_case.format = input_format
+    tiling_case.reduce_axis_list = reduce_axis_index
     tiling_case_list.append(tiling_case)
     return tiling_case_list
 
@@ -578,8 +629,7 @@ def _get_pattern_key(_shape, _reduce_idx_list, block_split_axis=0, ub_split_axis
             pattern_key += num_thr * num_tw**(length - i - 1)
         else:
             pattern_key += num_tw**(length - i - 1)
-    pattern_key += block_split_axis * 100 + \
-        ub_split_axis * 10 + ub_split_axis_index_reduce
+    pattern_key += block_split_axis * 100 + ub_split_axis * 10 + ub_split_axis_index_reduce
     if not is_normal:
         pattern_key *= num_tw
     if is_fuse_axis:

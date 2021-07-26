@@ -23,6 +23,7 @@ const int32_t NUM_TW = 2;
 const int32_t NUM_THR = 3;
 const string TSCONST = "const";
 const string TSSTATIC = "static";
+const int32_t LAST_DIM_RANGE_ONE = 1;
 const int32_t LAST_DIM_RANGE_NUM1 = 64;
 const int32_t LAST_DIM_RANGE_NUM2 = 2000;
 
@@ -109,7 +110,9 @@ int32_t CalcTilingKey(CompileInfo &commoninfo, std::vector<int64_t> input_x,
     key += pos[i] * val[i];
   }
   int32_t range_key;
-  if (input_x[input_x.size() - 1] <= LAST_DIM_RANGE_NUM1) {
+  if (input_x[input_x.size() - 1] == LAST_DIM_RANGE_ONE) {
+    range_key = 5;
+  } else if (input_x[input_x.size() - 1] <= LAST_DIM_RANGE_NUM1) {
     range_key = 0;
   } else if (input_x[input_x.size() - 1] <= LAST_DIM_RANGE_NUM2) {
     range_key = 1;
@@ -128,15 +131,19 @@ bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_info,
   std::vector<int32_t> ub_info;
 
   OP_TILING_CHECK((op_info.find("common_info") == op_info.end()),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [common_info]"),
+                  VECTOR_INNER_ERR_REPORT_TILIING(
+                      op_type, "compile info not contain [common_info]"),
                   return false);
   common_info = op_info.at("common_info").get<std::vector<int32_t>>();
   OP_TILING_CHECK((op_info.find("pattern_info") == op_info.end()),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [pattern_info]"),
+                  VECTOR_INNER_ERR_REPORT_TILIING(
+                      op_type, "compile info not contain [pattern_info]"),
                   return false);
   pattern_info = op_info.at("pattern_info").get<std::vector<int32_t>>();
   OP_TILING_CHECK((op_info.find("ub_info") == op_info.end()),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [ub_info]"), return false);
+                  VECTOR_INNER_ERR_REPORT_TILIING(
+                      op_type, "compile info not contain [ub_info]"),
+                  return false);
   ub_info = op_info.at("ub_info").get<std::vector<int32_t>>();
 
   compileinfo.core_num = common_info[0];
@@ -190,6 +197,19 @@ bool CheckWorkspaceCase(std::vector<int64_t> input_x,
                         std::vector<int32_t> reduce_axis, int32_t max_ub_size) {
   int32_t reduce_index = 0;
   int32_t reduce_shape_size = 1;
+  // add last dim is not reduce axis judge NCHW->5HD NC1HWC0 reduce_axis[3]
+  for (size_t j = input_x.size() - 1; j >= 0; j--) {
+    if (IsInVector(reduce_axis, j)) {
+      break;
+    }
+    reduce_shape_size *= input_x[j];
+  }
+  // judge
+  if (reduce_shape_size > max_ub_size) {
+    OP_LOGI("CheckWorkspaceCase: normal case.");
+    return false;
+  }
+
   for (size_t j = 0; j < reduce_axis.size(); j++) {
     reduce_index = reduce_axis[j];
     reduce_shape_size *= input_x[reduce_index];
@@ -307,9 +327,31 @@ std::vector<int32_t> GetUbTilingData(int32_t block_inner, size_t i,
   return res;
 }
 
+void GetUbTilingDataAfterFuse(int32_t block_axis_1, int32_t block_factor_1,
+                              int32_t ub_tiling_axis,
+                              std::vector<int64_t> input_x, int32_t ub_factor,
+                              TilingParams &tilingparams) {
+  int32_t new_ub_factor;
+  if (block_axis_1 == ub_tiling_axis) {
+    new_ub_factor =
+        (input_x[block_axis_1] + block_factor_1 - 1) / block_factor_1;
+    if (new_ub_factor < ub_factor) {
+      tilingparams.ub_factor = new_ub_factor;
+    }
+  }
+}
+
 int32_t GetUbReduceAxis(std::vector<int64_t> input_x, const int32_t max_ub_size,
                         std::vector<int32_t> reduce_axis) {
   int32_t reduce_shape_size = 1;
+  // add last dim is not reduce axis judge
+  for (size_t j = input_x.size() - 1; j >= 0; j--) {
+    if (IsInVector(reduce_axis, j)) {
+      break;
+    }
+    reduce_shape_size *= input_x[j];
+  }
+
   for (size_t i = static_cast<int32_t>(reduce_axis.size()) - 1; i >= 0; i--) {
     reduce_shape_size *= input_x[reduce_axis[i]];
     if (reduce_shape_size > max_ub_size) {
@@ -385,47 +427,45 @@ GetBlockTilingData(int32_t block_axis, int32_t block_factor,
   return res;
 }
 
-void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
-                   std::vector<int32_t> reduce_axis, int32_t core_num,
-                   int32_t max_ub_size, CompileInfo &compileinfo,
-                   const std::string input_dtype) {
-  // std::vector<int32_t> tiling_params;
-
-  int32_t block = 1;
-  if (input_dtype == "float32") {
-    block = 8;
+void GetTilingDataAllReduceAxis(std::vector<int64_t> input_x,
+                                TilingParams &tilingparams,
+                                std::vector<int32_t> reduce_axis,
+                                int32_t max_ub_size, CompileInfo &compileinfo,
+                                int32_t block) {
+  // all_reduce
+  tilingparams.block_dim = 1;
+  tilingparams.block_tiling_axis = 0;
+  tilingparams.block_factor = input_x[0];
+  // judge exceed ub_size and do workspace
+  bool isworkspace = CheckWorkspaceCase(input_x, reduce_axis, max_ub_size);
+  bool isexceedub = CheckExceedUbSize(input_x[0], input_x, 0, max_ub_size);
+  if (isworkspace && isexceedub) {
+    // workspace
+    // not open and open multi-core block
+    std::vector<int32_t> ubtilingdata = GetUbTilingData(
+        input_x[0], 0, input_x, max_ub_size, reduce_axis, block);
+    tilingparams.ub_tiling_axis = ubtilingdata[0];
+    tilingparams.ub_factor = ubtilingdata[1];
+    int32_t ub_tiling_axis_reduce =
+        GetUbReduceAxis(input_x, max_ub_size, reduce_axis);
+    tilingparams.ub_tiling_axis_reduce = ub_tiling_axis_reduce;
+    tilingparams.ub_fuse_factor = input_x[0];
+    compileinfo.is_normal = false;
   } else {
-    block = 16;
+    // normal case
+    tilingparams.ub_tiling_axis = 0;
+    tilingparams.ub_factor = input_x[0];
+    tilingparams.ub_tiling_axis_reduce = 0;
+    tilingparams.ub_fuse_factor = 0;
+    compileinfo.is_normal = true;
   }
-  if (input_x.size() == reduce_axis.size()) {
-    // all_reduce
-    tilingparams.block_dim = 1;
-    tilingparams.block_tiling_axis = 0;
-    tilingparams.block_factor = input_x[0];
-    // judge exceed ub_size and do workspace
-    bool isworkspace = CheckWorkspaceCase(input_x, reduce_axis, max_ub_size);
-    bool isexceedub = CheckExceedUbSize(input_x[0], input_x, 0, max_ub_size);
-    if (isworkspace && isexceedub) {
-      // workspace
-      // not open and open multi-core block
-      std::vector<int32_t> ubtilingdata = GetUbTilingData(
-          input_x[0], 0, input_x, max_ub_size, reduce_axis, block);
-      tilingparams.ub_tiling_axis = ubtilingdata[0];
-      tilingparams.ub_factor = ubtilingdata[1];
-      int32_t ub_tiling_axis_reduce =
-          GetUbReduceAxis(input_x, max_ub_size, reduce_axis);
-      tilingparams.ub_tiling_axis_reduce = ub_tiling_axis_reduce;
-      tilingparams.ub_fuse_factor = input_x[0];
-      compileinfo.is_normal = false;
-    } else {
-      // normal case
-      tilingparams.ub_tiling_axis = 0;
-      tilingparams.ub_factor = input_x[0];
-      tilingparams.ub_tiling_axis_reduce = 0;
-      tilingparams.ub_fuse_factor = 0;
-      compileinfo.is_normal = true;
-    }
-  }
+}
+
+void GetTilingDataNonAllReduceND(std::vector<int64_t> input_x,
+                                 TilingParams &tilingparams,
+                                 std::vector<int32_t> reduce_axis,
+                                 int32_t core_num, int32_t max_ub_size,
+                                 CompileInfo &compileinfo, int32_t block) {
   for (size_t i = 0; i < input_x.size(); i++) {
     if (IsInVector(reduce_axis, i)) {
       continue;
@@ -434,10 +474,10 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
         int32_t mul_num = GetUnblockAxisOutputMul(i, input_x, reduce_axis);
         int32_t block_inner_core = input_x[i] % core_num == 0
                                        ? input_x[i] / core_num
-                                       : (input_x[i] + core_num + 1) / core_num;
+                                       : (input_x[i] + core_num - 1) / core_num;
         int32_t min_block_inner_core = block % mul_num == 0
                                            ? block / mul_num
-                                           : (block + mul_num) / mul_num;
+                                           : (block + mul_num - 1) / mul_num;
         if (block_inner_core < min_block_inner_core) {
           block_inner_core = min_block_inner_core;
         }
@@ -447,7 +487,7 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
         tilingparams.block_dim =
             input_x[i] % block_inner == 0
                 ? input_x[i] / block_inner
-                : (input_x[i] + block_inner + 1) / block_inner;
+                : (input_x[i] + block_inner - 1) / block_inner;
         tilingparams.block_tiling_axis = i;
         tilingparams.block_factor = block_inner;
 
@@ -523,6 +563,9 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
               tilingparams.block_tiling_axis_1 = blocktilingdata[2];
               tilingparams.block_factor = blocktilingdata[1];
               tilingparams.block_factor_1 = blocktilingdata[3];
+              GetUbTilingDataAfterFuse(blocktilingdata[2], blocktilingdata[3],
+                                       ubtilingdata[0], input_x,
+                                       ubtilingdata[1], tilingparams);
             }
             tilingparams.ub_tiling_axis_reduce = 0;
             tilingparams.ub_fuse_factor = 0;
@@ -554,7 +597,7 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
         tilingparams.block_dim =
             input_x[i] % block_inner == 0
                 ? input_x[i] / block_inner
-                : (input_x[i] + block_inner + 1) / block_inner;
+                : (input_x[i] + block_inner - 1) / block_inner;
 
         // judge exceed ub_size and do workspace
         bool isworkspace =
@@ -602,6 +645,9 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
               tilingparams.block_tiling_axis_1 = blocktilingdata[2];
               tilingparams.block_factor = blocktilingdata[1];
               tilingparams.block_factor_1 = blocktilingdata[3];
+              GetUbTilingDataAfterFuse(blocktilingdata[2], blocktilingdata[3],
+                                       ubtilingdata[0], input_x,
+                                       ubtilingdata[1], tilingparams);
             }
             tilingparams.ub_tiling_axis_reduce = 0;
             tilingparams.ub_fuse_factor = 0;
@@ -621,6 +667,77 @@ void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
   }
 }
 
+void GetTilingDataNonAllReduceNZ(std::vector<int64_t> input_x,
+                                 TilingParams &tilingparams,
+                                 std::vector<int32_t> reduce_axis,
+                                 int32_t core_num, int32_t max_ub_size,
+                                 CompileInfo &compileinfo, int32_t block) {
+  // reorder input_x : set reduce axis together
+  std::vector<int64_t> new_input_x;
+  std::vector<int32_t> new_reduce_axis;
+  std::vector<int32_t> old_input_x_index;
+  int32_t index = 0;
+  for (size_t i = 0; i < input_x.size(); i++) {
+    if (IsInVector(reduce_axis, i) &&
+        (i == reduce_axis[reduce_axis.size() - 1])) {
+      for (size_t j = 0; j < reduce_axis.size(); j++) {
+        new_input_x.push_back(input_x[reduce_axis[j]]);
+        old_input_x_index.push_back(reduce_axis[j]);
+        new_reduce_axis.push_back(index);
+        index++;
+      }
+    } else if (IsInVector(reduce_axis, i)) {
+      continue;
+    } else {
+      new_input_x.push_back(input_x[i]);
+      old_input_x_index.push_back(i);
+      index++;
+    }
+  }
+  // call ND tiling func as common func
+  GetTilingDataNonAllReduceND(new_input_x, tilingparams, new_reduce_axis,
+                              core_num, max_ub_size, compileinfo, block);
+  // update new_index to old_index
+  tilingparams.block_tiling_axis =
+      old_input_x_index[tilingparams.block_tiling_axis];
+  tilingparams.ub_tiling_axis = old_input_x_index[tilingparams.ub_tiling_axis];
+  if ((tilingparams.block_tiling_axis == tilingparams.ub_tiling_axis) ||
+      !(compileinfo.is_normal)) {
+    tilingparams.ub_tiling_axis_reduce = 0;
+  } else {
+    tilingparams.block_tiling_axis_1 =
+        old_input_x_index[tilingparams.block_tiling_axis_1];
+  }
+}
+
+void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams,
+                   std::vector<int32_t> reduce_axis, int32_t core_num,
+                   int32_t max_ub_size, CompileInfo &compileinfo,
+                   const std::string input_dtype, std::string input_format) {
+  // std::vector<int32_t> tiling_params;
+
+  int32_t block = 1;
+  if (input_dtype == "float32") {
+    block = 8;
+  } else {
+    block = 16;
+  }
+  if (input_x.size() == reduce_axis.size()) {
+    // all_reduce
+    GetTilingDataAllReduceAxis(input_x, tilingparams, reduce_axis, max_ub_size,
+                               compileinfo, block);
+  }
+  if (input_format == "FRACTAL_NZ") {
+    // non all reduce, input_format=="FRACTAL_NZ"
+    GetTilingDataNonAllReduceNZ(input_x, tilingparams, reduce_axis, core_num,
+                                max_ub_size, compileinfo, block);
+  } else {
+    // non all reduce, input_format!="FRACTAL_NZ"
+    GetTilingDataNonAllReduceND(input_x, tilingparams, reduce_axis, core_num,
+                                max_ub_size, compileinfo, block);
+  }
+}
+
 bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
                      const nlohmann::json &op_info, OpRunInfo &run_info) {
   OP_LOGI(op_type.c_str(), "LayerNormTiling running.");
@@ -632,6 +749,7 @@ bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
   std::vector<int32_t> reduce_axis =
       op_info["reduce_axis"].get<std::vector<int32_t>>();
   int32_t core_num = op_info["core_num"].get<int32_t>();
+  std::string input_format = op_info["input_format"].get<std::string>();
   string mode;
   auto iter_num = op_info.find("mode");
   if (iter_num != op_info.end()) {
@@ -641,10 +759,13 @@ bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
   }
 
   int32_t max_ub_size;
+  int32_t block = 1;
   if (input_dtype == "float32" || input_dtype == "fp32") {
     max_ub_size = op_info["max_ub_size_normal_fp32"].get<int32_t>();
+    block = 8;
   } else {
     max_ub_size = op_info["max_ub_size_normal_fp16"].get<int32_t>();
+    block = 16;
   }
   int32_t workspace_sub1 = 4;
   for (uint32_t i = 0; i < input_x.size(); i++) {
@@ -663,12 +784,20 @@ bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras,
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
   }
 
+  // update last dim align block
+  std::vector<int64_t> old_input_x = input_x;
+  if ((input_x[input_x.size() - 1] != LAST_DIM_RANGE_ONE) &&
+      (input_x.size() > 1)) {
+    input_x[input_x.size() - 1] =
+        (input_x[input_x.size() - 1] + block - 1) / block * block;
+  }
+
   GetTilingData(input_x, tilingparams, reduce_axis, core_num, max_ub_size,
-                compileinfo, input_dtype);
+                compileinfo, input_dtype, input_format);
 
   // tiling_key
   int32_t tiling_key =
-      CalcTilingKey(compileinfo, input_x, tilingparams, reduce_axis);
+      CalcTilingKey(compileinfo, old_input_x, tilingparams, reduce_axis);
 
   run_info.workspaces = workspaces;
   run_info.block_dim = tilingparams.block_dim;
