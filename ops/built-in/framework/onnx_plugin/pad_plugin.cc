@@ -13,6 +13,7 @@
 
 #include "onnx_common.h"
 
+using namespace std;
 using namespace ge;
 using ge::Operator;
 
@@ -47,7 +48,7 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   // 1.add dynamic input and out
-  opDesc->AddDynamicInputDesc("x", 3);
+  opDesc->AddDynamicInputDesc("x", 1);
   opDesc->AddDynamicOutputDesc("output", 1);
   // 2.set original_type
   ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::9::Pad");
@@ -84,22 +85,12 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
-  int num = v_pads.size();
-  ge::TensorDesc tensorDesc1;
-  std::vector<int64_t> pads_dims = {num};
-  ge::Shape pads_shape(pads_dims);
-  tensorDesc1.SetShape(pads_shape);
-  tensorDesc1.SetDataType(DT_INT32);
 
-  ge::TensorDesc tensorDesc2;
-  std::vector<int64_t> value_dims = {1};
-  ge::Shape value_shape(value_dims);
-  tensorDesc2.SetShape(value_shape);
-  tensorDesc2.SetDataType(DT_FLOAT);
-
-  ge::Tensor tensor1(tensorDesc1, reinterpret_cast<uint8_t*>(v_pads.data()), v_pads.size() * sizeof(DT_INT32));
+  std::vector<int64_t> dims = {(int64_t)v_pads.size()};
+  ge::Tensor tensor1 = Vec2Tensor(v_pads, dims, ge::DT_INT32);
   op_dest.SetAttr("paddings", tensor1);
-  ge::Tensor tensor2(tensorDesc2, reinterpret_cast<uint8_t*>(&value), sizeof(DT_FLOAT));
+  std::vector<int64_t> dims_1 = {1};
+  ge::Tensor tensor2 = Scalar2Tensor(value, dims_1, ge::DT_FLOAT);
   op_dest.SetAttr("constant_values", tensor2);
 
   return SUCCESS;

@@ -136,3 +136,33 @@ TEST_F(pads_onnx_plugin_test, pads_onnx_plugin_test_case_7) {
 
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(pads_onnx_plugin_test, pads_onnx_plugin_test_case_8) {
+  ge::Graph graph;
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string modelFile = caseDir + "/test_pads_V9_case_mode_fail.onnx";
+  std::map<ge::AscendString, ge::AscendString> parser_params;
+
+  auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
+
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(pads_onnx_plugin_test, pads_onnx_plugin_test_case_9) {
+  ge::Graph graph;
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string modelFile = caseDir + "/test_pads_V9_case_mode_nopad.onnx";
+  std::map<ge::AscendString, ge::AscendString> parser_params;
+
+  auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
+
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

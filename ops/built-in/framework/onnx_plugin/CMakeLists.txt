@@ -126,6 +126,7 @@ set(_onnx_plugins
   einsum_plugin.cc
   random_normal_plugin.cc
   isinf_plugin.cc
+  onnx_common.cc
 )
 
 set(_ops_all_onnx_plugin_include

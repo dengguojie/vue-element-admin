@@ -41,6 +41,23 @@ namespace domi {
   do { \
       REPORT_INNER_ERROR("I79999", "onnx_plugin op_name[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
-}  // namespace domi
 
+template<typename T>
+ge::Tensor Vec2Tensor(vector<T>& vals, const vector<int64_t>& dims, ge::DataType dtype, ge::Format format = ge::FORMAT_ND) {
+  ge::Shape shape(dims);
+  ge::TensorDesc desc(shape, format, dtype);
+  ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(vals.data()), vals.size() * sizeof(T));
+  return tensor;
+}
+
+template<typename T>
+ge::Tensor Scalar2Tensor(T val, const vector<int64_t>& dims, ge::DataType dtype, ge::Format format = ge::FORMAT_ND) {
+  ge::Shape shape(dims);
+  ge::TensorDesc desc(shape, format, dtype);
+  ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(&val), sizeof(T));
+  return tensor;
+}
+
+ge::DataType GetOmDtypeFromOnnxDtype(int onnx_type);
+}  // namespace domi
 #endif  //  OPS_BUILT_IN_FRAMEWORK_ONNX_PLUGIN_ONNX_COMMON_H_

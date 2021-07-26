@@ -19,7 +19,6 @@
  * \brief
  */
 #include "onnx_common.h"
-
 using namespace std;
 using namespace ge;
 using ge::Operator;
@@ -29,7 +28,7 @@ namespace domi {
 Status ParseParamsClipV9(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    ONNX_PLUGIN_LOGE("Clip", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -54,16 +53,10 @@ Status ParseParamsClipV9(const Message* op_src, ge::Operator& op_dest) {
     }
   }
 
-  // 3.set attr if needed
-  ge::TensorDesc tensorDesc;
   std::vector<int64_t> dims = {1};
-  ge::Shape shape(dims);
-  tensorDesc.SetShape(shape);
-  tensorDesc.SetDataType(DT_FLOAT);
-
-  ge::Tensor tensor1(tensorDesc, reinterpret_cast<uint8_t*>(&max), sizeof(float));
+  ge::Tensor tensor1 = Scalar2Tensor(max, dims, ge::DT_FLOAT);
   op_dest.SetAttr("max", tensor1);
-  ge::Tensor tensor2(tensorDesc, reinterpret_cast<uint8_t*>(&min), sizeof(float));
+  ge::Tensor tensor2 = Scalar2Tensor(min, dims, ge::DT_FLOAT);
   op_dest.SetAttr("min", tensor2);
 
   return SUCCESS;
@@ -72,15 +65,9 @@ Status ParseParamsClipV9(const Message* op_src, ge::Operator& op_dest) {
 static Status ParseOpToGraphClipV9(const Operator& op, Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
   ge::Tensor value1;
-  if (op.GetAttr("max", value1) != SUCCESS) {
-    ONNX_PLUGIN_LOGE("Clip", "get max from op failed");
-    return FAILED;
-  }
+  op.GetAttr("max", value1);
   ge::Tensor value2;
-  if (op.GetAttr("min", value2) != SUCCESS) {
-    ONNX_PLUGIN_LOGE("Clip", "get max from op failed");
-    return FAILED;
-  }
+  op.GetAttr("min", value2);
 
   auto data1 = op::Const("data1").set_attr_value(value1);
   auto data2 = op::Const("data2").set_attr_value(value2);
@@ -108,7 +95,7 @@ Status ParseParamsClipV11(const Message* op_src, ge::Operator& op_dest) {
   // 3.set attr if needed
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    ONNX_PLUGIN_LOGE("Clip", "Dynamic cast op_src to NodeProto failed.");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
@@ -116,7 +103,7 @@ Status ParseParamsClipV11(const Message* op_src, ge::Operator& op_dest) {
   bool no_min = false;
   int num = node->input_size();
   if (num < 2) {
-    ONNX_PLUGIN_LOGE("Clip", "At least of 'min' or 'max' must not be None");
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "At least of 'min' or 'max' must not be None");
     return FAILED;
   } else if (num == 2) {
     no_min = false;
@@ -135,24 +122,16 @@ Status ParseParamsClipV11(const Message* op_src, ge::Operator& op_dest) {
 static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
   auto data0 = op::Data("x").set_attr_index(0);
   bool no_max = true;
-  if (op.GetAttr("no_max", no_max) != SUCCESS) {
-    ONNX_PLUGIN_LOGE("Clip", "get no_max from op failed");
-    return FAILED;
-  }
+  op.GetAttr("no_max", no_max);
   bool no_min = true;
-  if (op.GetAttr("no_min", no_min) != SUCCESS) {
-    ONNX_PLUGIN_LOGE("Clip", "get no_min from op failed");
-    return FAILED;
-  }
-
+  op.GetAttr("no_min", no_min);
+  
   int index = 1;
   Operator min_op;
   if (no_min) {
-    ONNX_PLUGIN_LOGI("Clip", "Min is ommitted, use default value=-3.402823e+38");
     float min = -3.402823e+38;
-    ge::Shape shape({1});
-    TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    ge::Tensor min_tensor(tensorDesc, reinterpret_cast<uint8_t*>(&min), sizeof(ge::DT_FLOAT));
+    std::vector<int64_t> dims = {1};
+    ge::Tensor min_tensor = Scalar2Tensor(min, dims, ge::DT_FLOAT);
     min_op = op::Const("min").set_attr_value(min_tensor);
   } else {
     min_op = op::Data("min").set_attr_index(index);
@@ -161,11 +140,9 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
 
   Operator max_op;
   if (no_max) {
-    ONNX_PLUGIN_LOGI("Clip", "Max is ommitted, use default value=3.402823e+38");
     float max = 3.402823e+38;
-    ge::Shape shape({1});
-    TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    ge::Tensor max_tensor(tensorDesc, reinterpret_cast<uint8_t*>(&max), sizeof(ge::DT_FLOAT));
+    std::vector<int64_t> dims = {1};
+    ge::Tensor max_tensor = Scalar2Tensor(max, dims, ge::DT_FLOAT);
     max_op = op::Const("max").set_attr_value(max_tensor);
   } else {
     max_op = op::Data("max").set_attr_index(index);

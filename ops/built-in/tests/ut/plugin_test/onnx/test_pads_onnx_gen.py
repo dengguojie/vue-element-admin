@@ -57,6 +57,56 @@ def pad_9_mode_reflect():
     model_def.opset_import[0].version = 9
     onnx.save(model_def, "./test_pads_V9_case_mode_reflect.onnx")
 
+def pad_9_mode_fail():
+    # Create one input (ValueInfoProto)
+    X = helper.make_tensor_value_info('X', TensorProto.FLOAT, [3, 2])
+    # Create one output (ValueInfoProto)
+    Y = helper.make_tensor_value_info('Y', TensorProto.FLOAT, [3, 4])
+    # Create a node (NodeProto) - This is based on Pad-11
+    node_def = helper.make_node(
+    'Pad', # node name
+    inputs=['X'], # inputs
+    outputs=['Y'], # outputs
+    pads = [0,2,0],
+    value = 0,
+    mode = "constant"
+    )
+    # Create the graph (GraphProto)
+    graph_def = helper.make_graph(
+    [node_def],
+    'test-model',
+    [X],
+    [Y],
+    )
+    # Create the model (ModelProto)
+    model_def = onnx.helper.make_model(graph_def, producer_name='zyx')
+    model_def.opset_import[0].version = 9
+    onnx.save(model_def, "./test_pads_V9_case_mode_fail.onnx")
+
+def pad_9_mode_nopad():
+    # Create one input (ValueInfoProto)
+    X = helper.make_tensor_value_info('X', TensorProto.FLOAT, [3, 2])
+    # Create one output (ValueInfoProto)
+    Y = helper.make_tensor_value_info('Y', TensorProto.FLOAT, [3, 4])
+    # Create a node (NodeProto) - This is based on Pad-11
+    node_def = helper.make_node(
+    'Pad', # node name
+    inputs=['X'], # inputs
+    outputs=['Y'], # outputs
+    value = 0,
+    mode = "constant"
+    )
+    # Create the graph (GraphProto)
+    graph_def = helper.make_graph(
+    [node_def],
+    'test-model',
+    [X],
+    [Y],
+    )
+    # Create the model (ModelProto)
+    model_def = onnx.helper.make_model(graph_def, producer_name='zyx')
+    model_def.opset_import[0].version = 9
+    onnx.save(model_def, "./test_pads_V9_case_mode_nopad.onnx")
 
 def pad_11_int32():
     # Create one input (ValueInfoProto)
@@ -194,6 +244,8 @@ def pad_11_mode_edge():
 if __name__ == "__main__":
     case_one()
     pad_9_mode_reflect()
+    pad_9_mode_fail()
+    pad_9_mode_nopad()
     pad_11_float()
     pad_11_int32()
     pad_11_int64()
