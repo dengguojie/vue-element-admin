@@ -49,7 +49,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
-@register_operator_compute("abs_grad", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("AbsGrad", op_mode="dynamic", support_fusion=True)
 def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
     """
     do abs_grad compute

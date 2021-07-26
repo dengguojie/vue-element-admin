@@ -31,7 +31,7 @@ SCALAR_ONE = 1
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=unused-variable
-@register_operator_compute("softplus_grad", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("SoftplusGrad", op_mode="dynamic", support_fusion=True)
 def softplus_grad_compute(input_gradients, input_features, output_backprops,
                           kernel_name="softplus_grad"):
     """

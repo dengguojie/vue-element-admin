@@ -27,7 +27,7 @@ from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@register_operator_compute("truncate_mod", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("TruncateMod", op_mode="dynamic", support_fusion=True)
 def truncate_mod_compute(input_x, input_y, output_z,
                          kernel_name="truncate_mod"):
     """

@@ -108,7 +108,7 @@ def _cosh_repeat(data):
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
-@register_operator_compute("asinh_grad", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("AsinhGrad", op_mode="dynamic", support_fusion=True)
 def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
     """
     do element-wise asinh_grad compute

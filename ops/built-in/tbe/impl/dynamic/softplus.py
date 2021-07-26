@@ -34,7 +34,7 @@ NEG_ONE = -1
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=invalid-name
-@register_operator_compute("softplus", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("Softplus", op_mode="dynamic", support_fusion=True)
 def softplus_compute(input_x, y, kernel_name="softplus"):
     """
     Compute for softplus.

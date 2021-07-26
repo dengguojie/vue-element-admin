@@ -32,7 +32,7 @@ SCALAR_ONE = 1
 
 # pylint: disable=unused-argument,too-many-locals
 # pylint: disable=invalid-name
-@register_operator_compute("softsign", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("Softsign", op_mode="dynamic", support_fusion=True)
 def softsign_compute(input_x, y, kernel_name="softsign"):
     """
     Computes for softsign.

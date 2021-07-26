@@ -79,7 +79,7 @@ MIN_FP16 = 2 ** (-24)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@register_operator_compute("asinh", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("Asinh", op_mode="dynamic", support_fusion=True)
 def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     """
     algrithm: asinh(x) = log(x + sqrt(x^2 + 1))

@@ -192,7 +192,7 @@ def zero_diff_scale_compute(input_x, shift, power):
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
 # pylint: disable=too-many-locals
-@register_operator_compute("power", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("Power", op_mode="dynamic", support_fusion=True)
 def power_compute(input_x, output_y, power=1.0, scale=1.0,
                   shift=0.0, kernel_name="power"):
     """

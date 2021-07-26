@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
-@register_operator_compute("mul_no_nan", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("MulNoNan", op_mode="dynamic", support_fusion=True)
 def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     """
     calculating data

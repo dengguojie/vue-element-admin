@@ -79,7 +79,7 @@ def get_fusion_params(x_tensor, y):
     return fusion_params
 
 
-@register_operator_compute("leaky_relu", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("LeakyRelu", op_mode="dynamic", support_fusion=True)
 def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
     """
     compute for caffe_relu_layer_cce
