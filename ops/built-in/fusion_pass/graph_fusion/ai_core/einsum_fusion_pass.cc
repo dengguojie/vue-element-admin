@@ -474,29 +474,27 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abcd,cde->abe") {  // 004:reshape+reshape+matmul+reshape
+  } else if (equation == "abcd,cde->abe") {  // 004:reshape+reshape+matmul+reshape-->reshape+batchmatmul
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[3]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t[]> input_assist_3(new (nothrow) int32_t[3]());
-    FUSION_PASS_CHECK(input_assist_3.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
-                      return PARAM_INVALID);
     // add input and output desc
     reshape_1_desc->AddInputDesc("x", x0_desc);
     tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[1]);
     tmp_dims.push_back(x0_dims[2] * x0_dims[3]);
     AssistIntHelp(tmp_dims, input_assist_1.get());
     x0_desc.SetShape(GeShape(tmp_dims));
     x0_desc.SetOriginShape(GeShape(tmp_dims));
     reshape_1_desc->AddOutputDesc("y", x0_desc);
-    matmul_desc->AddInputDesc("x1", x0_desc);
+    batchmatmul_desc->AddInputDesc("x1", x0_desc);
     reshape_2_desc->AddInputDesc("x", x1_desc);
     tmp_dims.clear();
     tmp_dims.push_back(x1_dims[0] * x1_dims[1]);
@@ -505,35 +503,26 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
     reshape_2_desc->AddOutputDesc("y", x1_desc);
-    matmul_desc->AddInputDesc("x2", x1_desc);
-    tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
-    tmp_dims.push_back(x1_dims[2]);
-    x1_desc.SetShape(GeShape(tmp_dims));
-    x1_desc.SetOriginShape(GeShape(tmp_dims));
-    matmul_desc->AddOutputDesc("y", x1_desc);
-    reshape_3_desc->AddInputDesc("x", x1_desc);
+    batchmatmul_desc->AddInputDesc("x2", x1_desc);
     tmp_dims.clear();
     tmp_dims.push_back(x0_dims[0]);
     tmp_dims.push_back(x0_dims[1]);
     tmp_dims.push_back(x1_dims[2]);
-    AssistIntHelp(tmp_dims, input_assist_3.get());
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
-    reshape_3_desc->AddOutputDesc("y", x1_desc);
-    // create matmul and reshape node
-    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    batchmatmul_desc->AddOutputDesc("y", x1_desc);
+    // create batchmatmul and reshape node
+    NodePtr batchmatmul_node = graph.AddNode(batchmatmul_desc);
     NodePtr reshape_1_node = graph.AddNode(reshape_1_desc);
     NodePtr reshape_2_node = graph.AddNode(reshape_2_desc);
-    NodePtr reshape_3_node = graph.AddNode(reshape_3_desc);
-    // set matmul op attr
-    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
-    matmul_op.SetAttr("transpose_x1", false);
-    matmul_op.SetAttr("transpose_x2", false);
+    // set batchmatmul op attr
+    Operator batchmatmul_op = OpDescUtils::CreateOperatorFromNode(batchmatmul_node);
+    batchmatmul_op.SetAttr("adj_x1", false);
+    batchmatmul_op.SetAttr("adj_x2", false);
     // add const
-    assist_desc.SetShape(GeShape({2}));
+    assist_desc.SetShape(GeShape({3}));
     FUSION_PASS_MAKE_SHARED((assist_ptr_1 = make_shared<GeTensor>(
-                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_1.get()), 2 * sizeof(int32_t))),
+                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_1.get()), 3 * sizeof(int32_t))),
                             assist_ptr_1 = nullptr;
                             return PARAM_INVALID);
     vector<GeTensorPtr> weights_1 = {assist_ptr_1};
@@ -553,17 +542,6 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     NodePtr const_node_2 = const_nodes_2[0];
     const_node_2->GetOpDesc()->SetType("Constant");
     reshape_2_desc->SetIsInputConst(is_input_const);
-    assist_desc.SetShape(GeShape({3}));
-    FUSION_PASS_MAKE_SHARED((assist_ptr_3 = make_shared<GeTensor>(
-                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_3.get()), 3 * sizeof(int32_t))),
-                            assist_ptr_3 = nullptr;
-                            return PARAM_INVALID);
-    vector<GeTensorPtr> weights_3 = {assist_ptr_3};
-    OpDescUtils::SetWeights(reshape_3_node, weights_3);
-    auto const_nodes_3 = OpDescUtils::GetConstInputs(reshape_3_node);
-    NodePtr const_node_3 = const_nodes_3[0];
-    const_node_3->GetOpDesc()->SetType("Constant");
-    reshape_3_desc->SetIsInputConst(is_input_const);
     // unlink
     for (auto inAnchor : node->GetAllInDataAnchors()) {
       if (inAnchor != nullptr) {
@@ -585,98 +563,46 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
                               x1_anchor_peer_node->GetName().c_str(), reshape_2_node->GetName().c_str()),
                       return FAILED);
     FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(reshape_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
+        SUCCESS != GraphUtils::AddEdge(reshape_1_node->GetOutDataAnchor(0), batchmatmul_node->GetInDataAnchor(0)),
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                reshape_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                reshape_1_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
         return FAILED);
     FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(reshape_2_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1)),
+        SUCCESS != GraphUtils::AddEdge(reshape_2_node->GetOutDataAnchor(0), batchmatmul_node->GetInDataAnchor(1)),
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                reshape_2_node->GetName().c_str(), matmul_node->GetName().c_str()),
-        return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), reshape_3_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                matmul_node->GetName().c_str(), reshape_3_node->GetName().c_str()),
+                reshape_2_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
         return FAILED);
     for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
       auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
       auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
-      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(reshape_3_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(batchmatmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                                reshape_3_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                                batchmatmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
                         return FAILED);
     }
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abc,cd->abd") {  // 005:reshape+matmul+reshape
+  } else if (equation == "abc,cd->abd") {  // 005:reshape+matmul+reshape-->batchmatmul
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 2),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and two."), return NOT_CHANGED);
-    // init const
-    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
-    FUSION_PASS_CHECK(input_assist_1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
-                      return PARAM_INVALID);
-    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[3]());
-    FUSION_PASS_CHECK(input_assist_2.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
-                      return PARAM_INVALID);
+
     // add input and output desc
-    reshape_1_desc->AddInputDesc("x", x0_desc);
-    tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
-    tmp_dims.push_back(x0_dims[2]);
-    AssistIntHelp(tmp_dims, input_assist_1.get());
-    x0_desc.SetShape(GeShape(tmp_dims));
-    x0_desc.SetOriginShape(GeShape(tmp_dims));
-    reshape_1_desc->AddOutputDesc("y", x0_desc);
-    matmul_desc->AddInputDesc("x1", x0_desc);
-    matmul_desc->AddInputDesc("x2", x1_desc);
-    tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
-    tmp_dims.push_back(x1_dims[1]);
-    x1_desc.SetShape(GeShape(tmp_dims));
-    x1_desc.SetOriginShape(GeShape(tmp_dims));
-    matmul_desc->AddOutputDesc("y", x1_desc);
-    reshape_2_desc->AddInputDesc("x", x1_desc);
+    batchmatmul_desc->AddInputDesc("x1", x0_desc);
+    batchmatmul_desc->AddInputDesc("x2", x1_desc);
     tmp_dims.clear();
     tmp_dims.push_back(x0_dims[0]);
     tmp_dims.push_back(x0_dims[1]);
     tmp_dims.push_back(x1_dims[1]);
-    AssistIntHelp(tmp_dims, input_assist_2.get());
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
-    reshape_2_desc->AddOutputDesc("y", x1_desc);
-    // create matmul and reshape node
-    NodePtr matmul_node = graph.AddNode(matmul_desc);
-    NodePtr reshape_1_node = graph.AddNode(reshape_1_desc);
-    NodePtr reshape_2_node = graph.AddNode(reshape_2_desc);
-    // set matmul op attr
-    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
-    matmul_op.SetAttr("transpose_x1", false);
-    matmul_op.SetAttr("transpose_x2", false);
-    // add const
-    assist_desc.SetShape(GeShape({2}));
-    FUSION_PASS_MAKE_SHARED((assist_ptr_1 = make_shared<GeTensor>(
-                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_1.get()), 2 * sizeof(int32_t))),
-                            assist_ptr_1 = nullptr;
-                            return PARAM_INVALID);
-    vector<GeTensorPtr> weights_1 = {assist_ptr_1};
-    OpDescUtils::SetWeights(reshape_1_node, weights_1);
-    auto const_nodes_1 = OpDescUtils::GetConstInputs(reshape_1_node);
-    NodePtr const_node_1 = const_nodes_1[0];
-    const_node_1->GetOpDesc()->SetType("Constant");
-    reshape_1_desc->SetIsInputConst(is_input_const);
-    assist_desc.SetShape(GeShape({3}));
-    FUSION_PASS_MAKE_SHARED((assist_ptr_2 = make_shared<GeTensor>(
-                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_2.get()), 3 * sizeof(int32_t))),
-                            assist_ptr_2 = nullptr;
-                            return PARAM_INVALID);
-    vector<GeTensorPtr> weights_2 = {assist_ptr_2};
-    OpDescUtils::SetWeights(reshape_2_node, weights_2);
-    auto const_nodes_2 = OpDescUtils::GetConstInputs(reshape_2_node);
-    NodePtr const_node_2 = const_nodes_2[0];
-    const_node_2->GetOpDesc()->SetType("Constant");
-    reshape_2_desc->SetIsInputConst(is_input_const);
+    batchmatmul_desc->AddOutputDesc("y", x1_desc);
+    // create batchmatmul node
+    NodePtr batchmatmul_node = graph.AddNode(batchmatmul_desc);
+    // set batchmatmul op attr
+    Operator batchmatmul_op = OpDescUtils::CreateOperatorFromNode(batchmatmul_node);
+    batchmatmul_op.SetAttr("adj_x1", false);
+    batchmatmul_op.SetAttr("adj_x2", false);
     // unlink
     for (auto inAnchor : node->GetAllInDataAnchors()) {
       if (inAnchor != nullptr) {
@@ -689,102 +615,44 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
       }
     }
     // add edge
-    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, reshape_1_node->GetInDataAnchor(0)),
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, batchmatmul_node->GetInDataAnchor(0)),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                              x0_anchor_peer_node->GetName().c_str(), reshape_1_node->GetName().c_str()),
+                              x0_anchor_peer_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
                       return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(reshape_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                reshape_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
-        return FAILED);
-    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, matmul_node->GetInDataAnchor(1)),
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, batchmatmul_node->GetInDataAnchor(1)),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                              x1_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                              x1_anchor_peer_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
                       return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), reshape_2_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                matmul_node->GetName().c_str(), reshape_2_node->GetName().c_str()),
-        return FAILED);
     for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
       auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
       auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
-      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(reshape_2_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(batchmatmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                                reshape_2_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                                batchmatmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
                         return FAILED);
     }
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abd,cd->abc") {  // 006:reshape+matmul+reshape
+  } else if (equation == "abd,cd->abc") {  // 006:reshape+matmul+reshape-->batchmatmul
     FUSION_PASS_CHECK((x0_dims.size() != 3) && (x1_dims.size() != 2),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be three and two."), return NOT_CHANGED);
-    // init const
-    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
-    FUSION_PASS_CHECK(input_assist_1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
-                      return PARAM_INVALID);
-    unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[3]());
-    FUSION_PASS_CHECK(input_assist_2.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
-                      return PARAM_INVALID);
     // add input and output desc
-    reshape_1_desc->AddInputDesc("x", x0_desc);
-    tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
-    tmp_dims.push_back(x0_dims[2]);
-    AssistIntHelp(tmp_dims, input_assist_1.get());
-    x0_desc.SetShape(GeShape(tmp_dims));
-    x0_desc.SetOriginShape(GeShape(tmp_dims));
-    reshape_1_desc->AddOutputDesc("y", x0_desc);
-    matmul_desc->AddInputDesc("x1", x0_desc);
-    matmul_desc->AddInputDesc("x2", x1_desc);
-    tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
-    tmp_dims.push_back(x1_dims[0]);
-    x1_desc.SetShape(GeShape(tmp_dims));
-    x1_desc.SetOriginShape(GeShape(tmp_dims));
-    matmul_desc->AddOutputDesc("y", x1_desc);
-    reshape_2_desc->AddInputDesc("x", x1_desc);
+    batchmatmul_desc->AddInputDesc("x1", x0_desc);
+    batchmatmul_desc->AddInputDesc("x2", x1_desc);
     tmp_dims.clear();
     tmp_dims.push_back(x0_dims[0]);
     tmp_dims.push_back(x0_dims[1]);
     tmp_dims.push_back(x1_dims[0]);
-    AssistIntHelp(tmp_dims, input_assist_2.get());
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
-    reshape_2_desc->AddOutputDesc("y", x1_desc);
-    // create matmul and reshape node
-    NodePtr matmul_node = graph.AddNode(matmul_desc);
-    NodePtr reshape_1_node = graph.AddNode(reshape_1_desc);
-    NodePtr reshape_2_node = graph.AddNode(reshape_2_desc);
+    batchmatmul_desc->AddOutputDesc("y", x1_desc);
+    // create batchmatmul and reshape node
+    NodePtr batchmatmul_node = graph.AddNode(batchmatmul_desc);
     // set matmul op attr
-    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
-    matmul_op.SetAttr("transpose_x1", false);
-    matmul_op.SetAttr("transpose_x2", true);
-    // add const
-    assist_desc.SetShape(GeShape({2}));
-    FUSION_PASS_MAKE_SHARED((assist_ptr_1 = make_shared<GeTensor>(
-                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_1.get()), 2 * sizeof(int32_t))),
-                            assist_ptr_1 = nullptr;
-                            return PARAM_INVALID);
-    vector<GeTensorPtr> weights_1 = {assist_ptr_1};
-    OpDescUtils::SetWeights(reshape_1_node, weights_1);
-    auto const_nodes_1 = OpDescUtils::GetConstInputs(reshape_1_node);
-    NodePtr const_node_1 = const_nodes_1[0];
-    const_node_1->GetOpDesc()->SetType("Constant");
-    reshape_1_desc->SetIsInputConst(is_input_const);
-    assist_desc.SetShape(GeShape({3}));
-    FUSION_PASS_MAKE_SHARED((assist_ptr_2 = make_shared<GeTensor>(
-                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_2.get()), 3 * sizeof(int32_t))),
-                            assist_ptr_2 = nullptr;
-                            return PARAM_INVALID);
-    vector<GeTensorPtr> weights_2 = {assist_ptr_2};
-    OpDescUtils::SetWeights(reshape_2_node, weights_2);
-    auto const_nodes_2 = OpDescUtils::GetConstInputs(reshape_2_node);
-    NodePtr const_node_2 = const_nodes_2[0];
-    const_node_2->GetOpDesc()->SetType("Constant");
-    reshape_2_desc->SetIsInputConst(is_input_const);
+    Operator batchmatmul_op = OpDescUtils::CreateOperatorFromNode(batchmatmul_node);
+    batchmatmul_op.SetAttr("adj_x1", false);
+    batchmatmul_op.SetAttr("adj_x2", true);
     // unlink
     for (auto inAnchor : node->GetAllInDataAnchors()) {
       if (inAnchor != nullptr) {
@@ -797,30 +665,20 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
       }
     }
     // add edge
-    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, reshape_1_node->GetInDataAnchor(0)),
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x0_anchor_peer_anchor, batchmatmul_node->GetInDataAnchor(0)),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                              x0_anchor_peer_node->GetName().c_str(), reshape_1_node->GetName().c_str()),
+                              x0_anchor_peer_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
                       return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(reshape_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                reshape_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
-        return FAILED);
-    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, matmul_node->GetInDataAnchor(1)),
+    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, batchmatmul_node->GetInDataAnchor(1)),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                              x1_anchor_peer_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                              x1_anchor_peer_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
                       return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), reshape_2_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                matmul_node->GetName().c_str(), reshape_2_node->GetName().c_str()),
-        return FAILED);
     for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
       auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
       auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
-      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(reshape_2_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(batchmatmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                                reshape_2_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                                batchmatmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
                         return FAILED);
     }
     // remove node
@@ -1396,29 +1254,27 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     // remove node
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(node),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove einsum node failed"), return FAILED);
-  } else if (equation == "abde,cde->abc") {  // 012:reshape+reshape+matmul+reshape
+  } else if (equation == "abde,cde->abc") {  // 012:reshape+reshape+matmul+reshape-->reshape+batchmatmul
     FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 3),
                       OP_LOGI(FUSED_OP_TYPE.c_str(), "input dims size must be four and three."), return NOT_CHANGED);
     // init const
-    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[2]());
+    unique_ptr<int32_t[]> input_assist_1(new (nothrow) int32_t[3]());
     FUSION_PASS_CHECK(input_assist_1.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
     unique_ptr<int32_t[]> input_assist_2(new (nothrow) int32_t[2]());
     FUSION_PASS_CHECK(input_assist_2.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
                       return PARAM_INVALID);
-    unique_ptr<int32_t[]> input_assist_3(new (nothrow) int32_t[3]());
-    FUSION_PASS_CHECK(input_assist_3.get() == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input_assist is NULL"),
-                      return PARAM_INVALID);
     // add input and output desc
     reshape_1_desc->AddInputDesc("x", x0_desc);
     tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
+    tmp_dims.push_back(x0_dims[0]);
+    tmp_dims.push_back(x0_dims[1]);
     tmp_dims.push_back(x0_dims[2] * x0_dims[3]);
     AssistIntHelp(tmp_dims, input_assist_1.get());
     x0_desc.SetShape(GeShape(tmp_dims));
     x0_desc.SetOriginShape(GeShape(tmp_dims));
     reshape_1_desc->AddOutputDesc("y", x0_desc);
-    matmul_desc->AddInputDesc("x1", x0_desc);
+    batchmatmul_desc->AddInputDesc("x1", x0_desc);
     reshape_2_desc->AddInputDesc("x", x1_desc);
     tmp_dims.clear();
     tmp_dims.push_back(x1_dims[0]);
@@ -1427,35 +1283,26 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
     reshape_2_desc->AddOutputDesc("y", x1_desc);
-    matmul_desc->AddInputDesc("x2", x1_desc);
-    tmp_dims.clear();
-    tmp_dims.push_back(x0_dims[0] * x0_dims[1]);
-    tmp_dims.push_back(x1_dims[0]);
-    x1_desc.SetShape(GeShape(tmp_dims));
-    x1_desc.SetOriginShape(GeShape(tmp_dims));
-    matmul_desc->AddOutputDesc("y", x1_desc);
-    reshape_3_desc->AddInputDesc("x", x1_desc);
+    batchmatmul_desc->AddInputDesc("x2", x1_desc);
     tmp_dims.clear();
     tmp_dims.push_back(x0_dims[0]);
     tmp_dims.push_back(x0_dims[1]);
     tmp_dims.push_back(x1_dims[0]);
-    AssistIntHelp(tmp_dims, input_assist_3.get());
     x1_desc.SetShape(GeShape(tmp_dims));
     x1_desc.SetOriginShape(GeShape(tmp_dims));
-    reshape_3_desc->AddOutputDesc("y", x1_desc);
-    // create matmul and reshape node
-    NodePtr matmul_node = graph.AddNode(matmul_desc);
+    batchmatmul_desc->AddOutputDesc("y", x1_desc);
+    // create batchmatmul and reshape node
+    NodePtr batchmatmul_node = graph.AddNode(batchmatmul_desc);
     NodePtr reshape_1_node = graph.AddNode(reshape_1_desc);
     NodePtr reshape_2_node = graph.AddNode(reshape_2_desc);
-    NodePtr reshape_3_node = graph.AddNode(reshape_3_desc);
     // set op attr
-    Operator matmul_op = OpDescUtils::CreateOperatorFromNode(matmul_node);
-    matmul_op.SetAttr("transpose_x1", false);
-    matmul_op.SetAttr("transpose_x2", true);
+    Operator batchmatmul_op = OpDescUtils::CreateOperatorFromNode(batchmatmul_node);
+    batchmatmul_op.SetAttr("adj_x1", false);
+    batchmatmul_op.SetAttr("adj_x2", true);
     // add const
-    assist_desc.SetShape(GeShape({2}));
+    assist_desc.SetShape(GeShape({3}));
     FUSION_PASS_MAKE_SHARED((assist_ptr_1 = make_shared<GeTensor>(
-                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_1.get()), 2 * sizeof(int32_t))),
+                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_1.get()), 3 * sizeof(int32_t))),
                             assist_ptr_1 = nullptr;
                             return PARAM_INVALID);
     vector<GeTensorPtr> weights_1 = {assist_ptr_1};
@@ -1475,17 +1322,6 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
     NodePtr const_node_2 = const_nodes_2[0];
     const_node_2->GetOpDesc()->SetType("Constant");
     reshape_2_desc->SetIsInputConst(is_input_const);
-    assist_desc.SetShape(GeShape({3}));
-    FUSION_PASS_MAKE_SHARED((assist_ptr_3 = make_shared<GeTensor>(
-                                 assist_desc, reinterpret_cast<uint8_t*>(input_assist_3.get()), 4 * sizeof(int32_t))),
-                            assist_ptr_3 = nullptr;
-                            return PARAM_INVALID);
-    vector<GeTensorPtr> weights_3 = {assist_ptr_3};
-    OpDescUtils::SetWeights(reshape_3_node, weights_3);
-    auto const_nodes_3 = OpDescUtils::GetConstInputs(reshape_3_node);
-    NodePtr const_node_3 = const_nodes_3[0];
-    const_node_3->GetOpDesc()->SetType("Constant");
-    reshape_3_desc->SetIsInputConst(is_input_const);
     // unlink
     for (auto inAnchor : node->GetAllInDataAnchors()) {
       if (inAnchor != nullptr) {
@@ -1503,30 +1339,25 @@ Status EinsumPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>
                               x0_anchor_peer_node->GetName().c_str(), reshape_1_node->GetName().c_str()),
                       return FAILED);
     FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(reshape_1_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0)),
+        SUCCESS != GraphUtils::AddEdge(reshape_1_node->GetOutDataAnchor(0), batchmatmul_node->GetInDataAnchor(0)),
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                reshape_1_node->GetName().c_str(), matmul_node->GetName().c_str()),
+                reshape_1_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
         return FAILED);
     FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, reshape_2_node->GetInDataAnchor(0)),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
                               x1_anchor_peer_node->GetName().c_str(), reshape_2_node->GetName().c_str()),
                       return FAILED);
     FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(reshape_2_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1)),
+        SUCCESS != GraphUtils::AddEdge(reshape_2_node->GetOutDataAnchor(0), batchmatmul_node->GetInDataAnchor(1)),
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                reshape_2_node->GetName().c_str(), matmul_node->GetName().c_str()),
-        return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), reshape_3_node->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                matmul_node->GetName().c_str(), reshape_3_node->GetName().c_str()),
+                reshape_2_node->GetName().c_str(), batchmatmul_node->GetName().c_str()),
         return FAILED);
     for (uint64_t i = 0; i < out_anchor_peer_anchors.size(); ++i) {
       auto out_anchor_peer_anchor = out_anchor_peer_anchors.at(i);
       auto out_anchor_peer_node = out_anchor_peer_anchor->GetOwnerNode();
-      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(reshape_3_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
+      FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(batchmatmul_node->GetOutDataAnchor(0), out_anchor_peer_anchor),
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                                reshape_3_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
+                                batchmatmul_node->GetName().c_str(), out_anchor_peer_node->GetName().c_str()),
                         return FAILED);
     }
     // remove node
