@@ -862,7 +862,7 @@ def correct_fuzz_build_range(x, filter, strides, padding):
         if valid:
             ori_range = list(map(list, x["ori_range"]))
             ori_range[pos_w][1] = proper_w
-            to_print = "{}, ori_range changed from {} to {}".format(to_print, x["ori_range"], proper_range)
+            to_print = "{}, ori_range changed from {} to {}".format(to_print, x["ori_range"], ori_range)
             x["ori_range"] = ori_range
         warnings.warn(to_print)
     # <<< end: change input range and ori_range if exists
@@ -1088,6 +1088,20 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
 
     ksize_c = ksize[3] if data_format in ("NHWC",) else ksize[1]
     strides_c = strides[3] if data_format in ("NHWC",) else strides[1]
+    window_size = ksize[1] * ksize[2] if data_format in ("NHWC",) else ksize[2] * ksize[3]
+    if window_size > AVG_KERNEL_SIZE_H_MUL_W:
+        error_info = {}
+        error_info['errCode'] = para_check.OP_ERROR_CODE_000
+        error_info['op_name'] = 'avg_pool'
+        error_info['param_name'] = "window_size"
+        error_info['expected_value'] = '256'
+        error_info['real_value'] = str(window_size)
+        raise RuntimeError("In op[%s], the parameter[%s] should less than [%s], "
+                           "but actually is [%s]." %
+                           (error_info['op_name'], error_info['param_name'],
+                            error_info['expected_value'],
+                            error_info['real_value']))
+
     if ksize[0] != 1 or (ksize_c != 1):
         error_info = {}
         error_info['errCode'] = para_check.OP_ERROR_CODE_000

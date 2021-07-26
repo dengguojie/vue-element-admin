@@ -25,7 +25,7 @@ case4 = {"params": [{"shape": (-1,1,-1,-1,16), "dtype": "float16", "format": "NC
                     {"shape": (-1, 1, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 16, -1, -1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (30, 100), (30, 100)]},
                     [1,1,21,21], [1,1,1,1], "SAME", "NCHW"],
-         "expect": "success",
+         "expect": RuntimeError,
          "support_expect": True}
 
 # dynamic hw VALID NHWC
@@ -408,6 +408,18 @@ case35 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
          "expect": "success",
          "support_expect": True}
 
+# kh * kw > 255 
+case36 = {"params": [{"shape": (1,-1,2,32), "format": "NHWC", "dtype": "float16", "ori_shape": (1,-1,2,32), "ori_format": "NHWC",
+                     "range":[(1, 1), (3, 100), (2, 100), (32, 32)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, -1, 1, 32),"format": "NHWC", "dtype": "float16", "ori_shape": (1, -1, 1, 32),"ori_format": "NHWC",
+                     "range":[(1, 1), (1, 99), (1, 99), (32, 32)]},
+                    [1,16,15,1], [1,2,1,1], "VALID", "NHWC"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
@@ -443,6 +455,7 @@ ut_case.add_case(["Ascend910A"], case32)
 ut_case.add_case(["Ascend910A"], case33)
 ut_case.add_case(["Ascend910A"], case34)
 ut_case.add_case(["Ascend910A"], case35)
+ut_case.add_case(["Ascend910A"], case36)
 
 def test_avg_pool_fuzz_build_generalization(test_arg):
     from impl.dynamic.avg_pool import avg_pool_generalization

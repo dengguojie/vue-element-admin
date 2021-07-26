@@ -309,11 +309,6 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     strides = strides[dim_n], strides[dim_c], strides[dim_h], strides[dim_w]
     in_range, dedy_range = _check_range(in_range, dedy_range, shape_in, shape_dedy)
 
-    def _convert_shape_to_list(shape):
-        for i, var in enumerate(shape):
-            if isinstance(var, tvm.expr.IntImm):
-                shape[i] = var.value
-
     filter_h_dilations = (shape_dedw[2] - 1) * dilations[2] + 1
     filter_w_dilations = (shape_dedw[3] - 1) * dilations[3] + 1
     fmap_h_min, fmap_w_min = FMAP_HW_MIN, FMAP_HW_MIN
