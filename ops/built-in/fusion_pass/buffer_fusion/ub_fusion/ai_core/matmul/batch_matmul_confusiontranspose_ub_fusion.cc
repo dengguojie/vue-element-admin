@@ -71,7 +71,8 @@ Status BatchMatmulConfusiontransposeUbFusion::CheckInputParameters(const vector<
     for (auto matmulControlNode : matmulNode->GetOutControlNodes()) {
       FUSION_PASS_CHECK(matmulControlNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "out control of matmul is null"),
                         return FAILED);
-      if (matmulControlNode->GetType() != "ConfusionTransposeD" && matmulControlNode->GetType() != "DropOutDoMaskV3D") {
+      if (matmulControlNode->GetType() != "ConfusionTransposeD" && matmulControlNode->GetType() != "DropOutDoMaskV3D" &&
+          matmulControlNode->GetType() != "Add") {
         continue;
       }
       FUSION_PASS_CHECK(

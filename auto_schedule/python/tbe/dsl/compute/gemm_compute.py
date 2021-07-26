@@ -603,7 +603,7 @@ def filter_case(use_old_code, tensor_a, tensor_b, kernel_name):
     if info_str in black_list_1980:
         use_old_code = True
     # ACL_BERTBASE excute fail
-    if kernel_name.find("gelu") != -1:
+    if kernel_name.find("mul_gelu") != -1:
         use_old_code = True
 
     return use_old_code
@@ -925,7 +925,7 @@ class GEMMCompute:
             offset_drq: scale placeholder for requantization or dequantization
 
         offset_a: the offset for tensor a
-            
+
         offset_b: the offset for tensor b
 
         compress_index: index for compressed wights, None means not compress wights, now only for matmul

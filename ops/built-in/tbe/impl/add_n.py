@@ -20,8 +20,11 @@ import functools
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
+from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_compute
+from tbe.dsl import broadcast
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -46,13 +49,39 @@ def add_n_compute_for_fusion(datas, output, tensor_num, kernel_name="add_n"):
     -------
     res : output of the data's add_n
     """
-    res = datas[0]
+    # if fused with batch_matmul, split batch dim in batchmatmul
+    batchmatmul_flag = False
     for i, data_n in enumerate(datas):
-        if i == 0:
-            continue
-        res = tbe.vadd(res, data_n)
+        batchmatmul_flag = util_compute.check_batchmatmul_fuse(data_n)
+        if batchmatmul_flag:
+            if "para_name" in data_n.op.attrs:
+                para_name = data_n.op.attrs["para_name"].value
+                para_name += "_addn"
+            else:
+                para_name = "addn"
+            batch_shape = shape_util.shape_to_list(data_n.op.attrs["batch_shape"])
+            batchmatmul_node = data_n
+            batchmatmul_idx = i
+            shape_max = batch_shape + shape_util.shape_to_list(data_n.shape)[-4:]
+            break
+    nz_addn = []
+    for i, data_n in enumerate(datas):
+        if batchmatmul_flag and i != batchmatmul_idx:
+            data_n = broadcast(data_n, shape_max)
+            data_n = util_compute.batchmatmul_elem_reshape(batchmatmul_node, data_n, batch_shape, para_name + str(i))
+            nz_addn.append(data_n)
 
-    return res
+    if not batchmatmul_flag:
+        res = datas[0]
+        for i, data_n in enumerate(datas):
+            if i == 0:
+                continue
+            res = tbe.vadd(res, data_n)
+        return res
+    else:
+        for i, nz_add in enumerate(nz_addn):
+            batchmatmul_node = tbe.vadd(batchmatmul_node, nz_add)
+        return batchmatmul_node
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument

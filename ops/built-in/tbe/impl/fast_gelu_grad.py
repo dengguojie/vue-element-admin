@@ -24,6 +24,9 @@ from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
+from te.utils import shape_util
+from impl.util import util_compute
+from tbe.dsl import broadcast
 
 CONST_1 = 1
 
@@ -89,6 +92,16 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z,
     else:
         div_down_rec = tbe.vrec(div_down, priority_flag=1)
     result_temp = tbe.vmul(div_up, div_down_rec)
+    if util_compute.check_batchmatmul_fuse(input_dy):
+        batch_shape = shape_util.shape_to_list(input_dy.op.attrs["batch_shape"])
+        unfold_shape = batch_shape + shape_util.shape_to_list(input_dy.shape)[-4:]
+        result_temp = broadcast(result_temp, unfold_shape)
+        result_temp = util_compute.batchmatmul_elem_reshape(input_dy, result_temp, batch_shape, "fast_gelu_grad")
+    elif util_compute.check_batchmatmul_fuse(input_x):
+        batch_shape = shape_util.shape_to_list(input_x.op.attrs["batch_shape"])
+        unfold_shape = batch_shape + shape_util.shape_to_list(input_x.shape)[-4:]
+        input_dy = broadcast(input_dy, unfold_shape)
+        input_dy = util_compute.batchmatmul_elem_reshape(result_temp, input_dy, batch_shape, "fast_gelu_grad")
 
     result = tbe.vmul(input_dy, result_temp)
     return result

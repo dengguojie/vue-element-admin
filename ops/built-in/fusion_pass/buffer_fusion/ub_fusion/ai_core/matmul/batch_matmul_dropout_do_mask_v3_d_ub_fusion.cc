@@ -34,6 +34,8 @@ namespace {
 static const string PATTERN_BATCH_MATMUL = "batch_matmul";
 static const string PATTERN_DROPOUTDOMASKV3D = "dropout_do_mask_v3_d";
 static const string PATTERN_OTHER_INPUT = "other_input";
+static const string PATTERN_OTHER_INPUT1 = "other_input1";
+static const string PATTERN_ADD = "add";
 }  // namespace
 
 vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatterns() {
@@ -55,9 +57,13 @@ vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatter
   pattern->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL})
     .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
     .AddOpDesc(PATTERN_DROPOUTDOMASKV3D, {OP_PATTERN_DROPOUTDOMASKV3D})
+    .AddOpDesc(PATTERN_OTHER_INPUT1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
+    .AddOpDesc(PATTERN_ADD, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
     .SetHead({PATTERN_BATCH_MATMUL})
     .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_DROPOUTDOMASKV3D})
-    .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_DROPOUTDOMASKV3D});
+    .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_DROPOUTDOMASKV3D})
+    .SetOutputs(PATTERN_OTHER_INPUT1, {PATTERN_ADD})
+    .SetOutputs(PATTERN_DROPOUTDOMASKV3D, {PATTERN_ADD});
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Define pattern %s success.", pass_name.c_str());
 
@@ -67,22 +73,25 @@ vector<BufferFusionPattern*> BatchMatmulDropOutDoMaskV3DFusionPass::DefinePatter
 void BatchMatmulDropOutDoMaskV3DFusionPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_DROPOUTDOMASKV3D, mapping);
-  if (matmulNodes.empty()) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched");
-    return;
-  }
-  if (elemWiseNodes.empty()) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "DropOutV3 node not matched");
-    return;
-  }
+  vector<ge::NodePtr> elemWiseNodes1 = GetMatchedNodesByDescName(PATTERN_ADD, mapping);
+  FUSION_PASS_CHECK(matmulNodes.empty(),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Matmul node not matched"),
+                    return);
+  FUSION_PASS_CHECK(elemWiseNodes.empty(),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "DropOutV3 node not matched"),
+                    return);
   FUSION_PASS_CHECK(matmulNodes[0]->GetInDataNodes().size() <= 0,
     OP_LOGE(FUSED_OP_TYPE.c_str(), "matmulNodes's input can not <= 0."), return);
+
   int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
   vector<AxisSplitMap> split_maps;
   if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE)) {
     return;
   }
   AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
+  FUSION_PASS_CHECK(!elemWiseNodes1.empty(),
+                    AddElemwiseSplitMap(split_maps, elemWiseNodes1[0], pre),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Add node matched"));
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE);
 }
 
@@ -92,6 +101,7 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
 
   vector<ge::NodePtr> batch_matmul_nodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
   vector<ge::NodePtr> dropout_nodes = GetMatchedNodesByDescName(PATTERN_DROPOUTDOMASKV3D, mapping);
+  vector<ge::NodePtr> add_nodes = GetMatchedNodesByDescName(PATTERN_ADD, mapping);
 
   FUSION_PASS_CHECK(batch_matmul_nodes.empty(),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "BatchMatMul node is not matched."),
@@ -99,6 +109,9 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
   FUSION_PASS_CHECK(dropout_nodes.empty(),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "DropOutDoMaskV3D node is not matched."),
                     return SUCCESS);
+  FUSION_PASS_CHECK(add_nodes.empty(),
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Elemwise node is not matched."),
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "matched BATCH_MATMUL+DROPOUTDOMASKV3D"));
 
   // adjust control-edges to destroy the loop in BERT
   // "dropout_do_mask -> batch_matmul1 (control-node) -> fusion_transpose
@@ -158,12 +171,28 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
       for (const auto& dropout_out_node : dropout_node->GetOutAllNodes()) {
         FUSION_PASS_CHECK(dropout_out_node == nullptr,
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
-        FUSION_PASS_CHECK(
-          ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
-            dropout_out_node->GetInControlAnchor()) != SUCCESS,
-          OP_LOGD(FUSED_OP_TYPE.c_str(),
-                  "Adding control-edge between BatchMatMul and DropOutDoMaskV3D's output node is failed."),
-          return FAILED);
+        if (dropout_out_node->GetType() != "Add" || add_nodes.empty()) {
+          FUSION_PASS_CHECK(
+            ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
+              dropout_out_node->GetInControlAnchor()) != SUCCESS,
+            OP_LOGD(FUSED_OP_TYPE.c_str(),
+                    "Adding control-edge between BatchMatMul and DropOutDoMaskV3D's output node is failed."),
+                    return FAILED);
+        } else {
+          // dropout_out_node is add_node
+          for (const auto& add_out_node : dropout_out_node->GetOutAllNodes()) {
+            FUSION_PASS_CHECK(add_out_node == nullptr,
+                              OP_LOGE(FUSED_OP_TYPE.c_str(), "Output node of dropout is null."), return FAILED);
+            if (add_out_node->GetInControlAnchor() != nullptr) {
+              FUSION_PASS_CHECK(
+                ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
+                                        add_out_node->GetInControlAnchor()) != SUCCESS,
+                OP_LOGD(FUSED_OP_TYPE.c_str(),
+                        "Adding control-edge between BatchMatMul and Add's output node is failed"),
+                return FAILED);
+            }
+          }
+        }
       }
     }
   }

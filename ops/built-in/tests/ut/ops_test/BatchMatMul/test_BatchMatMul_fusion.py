@@ -15,6 +15,8 @@ from impl.fused_mul_add import fusion_mul_add_compute
 from impl.fused_mul_add import check_format
 from impl.fused_mul_add import _infer_shape_one
 from impl.fused_mul_add import _infer_shape_two
+from impl.add_n import add_n_compute_for_fusion
+from impl.fast_gelu_grad import fast_gelu_grad_compute
 from te.utils import para_check
 
 def _get_batchmatmul_node(case):
@@ -159,7 +161,7 @@ def _get_batchmatmul_node(case):
     if shape_bias_length > 0:
         tensor_list = [tensor_a, tensor_b, tensor_bias, result]
 
-    return result, tensor_list  
+    return result, tensor_list
 
 def test_batchmatmul_reduce_sum_fusion_ub(fusion_case):
         with cce():
@@ -270,6 +272,78 @@ def test_batchmatmul_fusedmuladd_fusion_ub(fusion_case):
         }
         cce_build_code(sch, config)
 
+def test_batchmatmul_addn_fusion_ub(fusion_case):
+    with cce():
+        result_matmul, tensor_list = _get_batchmatmul_node(fusion_case)
+        output = fusion_case[3]
+        addn = fusion_case[6]
+        shape_input0 = list(shape_util.scalar2tensor_one(output.get("shape")))
+        shape_input1 = list(shape_util.scalar2tensor_one(addn.get("shape")))
+
+        dtype_input0 = output.get("dtype").lower()
+        dtype_input1 = addn.get("dtype").lower()
+
+        format_input0 = output.get("format").upper()
+        format_input1 = addn.get("format").upper()
+
+        data_input0 = tvm.placeholder(shape_input0,
+                                      name="data_input0",
+                                      attrs={'format': format_input0},
+                                      dtype=dtype_input0)
+        data_input1 = tvm.placeholder(shape_input1,
+                                      name="data_input1",
+                                      attrs={'format': format_input1},
+                                      dtype=dtype_input1)
+
+        result_matmul.op.tag = "matmul"
+        res = add_n_compute_for_fusion([result_matmul, data_input1], data_input0, 2)
+
+        tensor_list += [data_input1, res]
+        sch = auto_schedule(res)
+        config = {
+            "print_ir":False,
+            "need_build":True,
+            "name":"batchmatmul_addn_fusion",
+            "tensor_list":tensor_list,
+        }
+        cce_build_code(sch, config)
+
+def test_batchmatmul_fast_gelu_grad_fusion_ub(fusion_case):
+    with cce():
+        result_matmul, tensor_list = _get_batchmatmul_node(fusion_case)
+        output = fusion_case[3]
+        input_x = fusion_case[6]
+        shape_input0 = list(shape_util.scalar2tensor_one(output.get("shape")))
+        shape_input1 = list(shape_util.scalar2tensor_one(input_x.get("shape")))
+
+        dtype_input0 = output.get("dtype").lower()
+        dtype_input1 = input_x.get("dtype").lower()
+
+        format_input0 = output.get("format").upper()
+        format_input1 = input_x.get("format").upper()
+
+        data_input0 = tvm.placeholder(shape_input0,
+                                      name="data_input0",
+                                      attrs={'format': format_input0},
+                                      dtype=dtype_input0)
+        data_input1 = tvm.placeholder(shape_input1,
+                                      name="data_input1",
+                                      attrs={'format': format_input1},
+                                      dtype=dtype_input1)
+
+        result_matmul.op.tag = "matmul"
+        res = fast_gelu_grad_compute(result_matmul, data_input1, data_input0)
+        res_other_format = fast_gelu_grad_compute(data_input1, result_matmul, data_input0)
+
+        tensor_list += [data_input1, res, res_other_format]
+        sch = auto_schedule(res, res_other_format)
+        config = {
+            "print_ir":False,
+            "need_build":True,
+            "name":"batchmatmul_fast_gelu_grad_fusion",
+            "tensor_list":tensor_list,
+        }
+        cce_build_code(sch, config)
 
 def test_batchmatmul_fusion(fusion_case):
     def test_fusion_case(test_args):
@@ -278,4 +352,9 @@ def test_batchmatmul_fusion(fusion_case):
             test_batchmatmul_reduce_sum_fusion_ub(fusion_case.get("params"))
         elif "fused_mul_add" in fusion_case.get("case_name"):
             test_batchmatmul_fusedmuladd_fusion_ub(fusion_case.get("params"))
+        elif "addn" in fusion_case.get("case_name"):
+            test_batchmatmul_addn_fusion_ub(fusion_case.get("params"))
+        elif "fast_gelu_grad" in fusion_case.get("case_name"):
+            test_batchmatmul_fast_gelu_grad_fusion_ub(fusion_case.get("params"))
+
     return test_fusion_case

@@ -816,6 +816,7 @@ def batch_matmul(input_x, input_y, bias=None, output_z={}, trans_a=False,
                                attrs={'format': format_a,
                                       'ori_batch_shape': ori_batch_shape_a},
                                dtype=inp_src_dtype)
+
     tensor_b = tvm.placeholder(shape_b_dup, name='tensor_b',
                                attrs={'format': format_b,
                                       'ori_batch_shape': ori_batch_shape_b},

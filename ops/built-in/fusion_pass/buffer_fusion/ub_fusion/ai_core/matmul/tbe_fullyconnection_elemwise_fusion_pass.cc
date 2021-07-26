@@ -22,7 +22,7 @@
 
 namespace fe {
 
-static const string PATTERN_FC_MATMUL = "FullyConnection/MatMul";     // desc name
+static const string PATTERN_FC_MATMUL = "FullyConnection/MatMul/BatchMatmul";     // desc name
 static const string PATTERN_DEQUANT = "dequant";
 static const string PATTERN_QUANT = "quant";
 static const string PATTERN_ELTWISE1 = "eltwise1";      // desc name
@@ -31,13 +31,15 @@ static const string PATTERN_OTHER_INPUT = "InputData";  // desc name
 static const vector<string> elemWiseWhiteList = {
   "Elu", "LeakyRelu", "Gelu", "Softsign", "Relu6", "Relu", "Softplus", "Sigmoid", "Tanh", "Selu",
   "GeluGrad", "Add", "AddN", "FastGelu", "FastGeluGrad", "Eltwise", "PRelu", "Mul", "Power", "Relu6D"};
-
+static const vector<string> matmulWhiteList = {
+  "FullyConnection", "MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"
+};
 /*
  * @brief:  define fully connection elemwise fusion pattern
  *
  * pattern configuration limit:
  *
- * FullyConnection/MatMUL + (AscendDequant) +（ReLU/LeakyReLU) + (eltwise)
+ * FullyConnection/MatMUL/BatchMatmul + (AscendDequant) +（ReLU/LeakyReLU) + (eltwise)
  *
  *
  * @return BufferFusionPattern: return all valid patterns.
@@ -55,7 +57,8 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
-  pattern->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+  pattern->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL},
+                     TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(PATTERN_DEQUANT, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
           .AddOpDesc(PATTERN_ELTWISE2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
@@ -172,12 +175,12 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   vector<ge::NodePtr> fcNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
   vector<ge::NodePtr> reluNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE1, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);
-  // check whether the fc/matmul op
+  // check whether the fc/matmul/batchmatmul op
   for (const auto &fcNode : fcNodes) {
-    if (fcNode->GetType() != "FullyConnection" && fcNode->GetType() != "MatMul" && fcNode->GetType() != "MatMulV2") {
+    if (find(matmulWhiteList.begin(), matmulWhiteList.end(), fcNode->GetType()) == matmulWhiteList.end()) {
       fusionNodes.clear();
       OP_LOGD(FUSED_OP_TYPE.c_str(),
-              "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
+              "fcNode op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
               fcNode->GetName().c_str(), fcNode->GetType().c_str());
       return SUCCESS;
     }

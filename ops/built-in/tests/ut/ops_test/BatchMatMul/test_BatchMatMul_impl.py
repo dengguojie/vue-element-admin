@@ -149,9 +149,9 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case("Ascend920A", case9)
 print("==========add case for batchmamtul fusion===============")
-#for fusion_case in batchmatmul_ut_fusion_case:
-#    ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend710"],
-#                               test_func=test_batchmatmul_fusion(fusion_case))
+for fusion_case in batchmatmul_ut_fusion_case:
+   ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend710"],
+                              test_func=test_batchmatmul_fusion(fusion_case))
 
 def test_split_batch_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}

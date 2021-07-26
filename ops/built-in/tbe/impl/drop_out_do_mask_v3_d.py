@@ -108,7 +108,7 @@ def reshape_input_mask(input_tensor, input_mask, kernel_name):
                 tag="dropout_broadcast"
             )
 
-    return input_mask
+    return input_mask, batch_shape
 
 
 @fusion_manager.register("drop_out_do_mask_v3_d")
@@ -117,13 +117,15 @@ def drop_out_do_mask_v3_d_compute(input_tensor: tvm.tensor.Tensor,
                                   output,
                                   input_keep_prob: float,
                                   kernel_name="drop_out_do_mask_v3_d"):
-    input_mask = reshape_input_mask(input_tensor, input_mask, kernel_name)
+    input_mask, batch_shape = reshape_input_mask(input_tensor, input_mask, kernel_name)
     input_dtype = input_tensor.dtype
     input_mask = te.lang.cce.cast_to(input_mask, input_dtype)
     rec_keep_prob = 1 / input_keep_prob
     mul_input_mask = te.lang.cce.vmul(input_tensor, input_mask)
     output = te.lang.cce.vmuls(mul_input_mask,
                                tvm.const(rec_keep_prob, input_dtype))
+    if batch_shape:
+        output.op.attrs["batch_shape"] = batch_shape
     return output
 
 

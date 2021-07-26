@@ -32,7 +32,7 @@ protected:
 };
 
 namespace fe {
-  Status RunBufferFusionPass(string fusionPassName, BufferFusionPassType passType,
+  static Status RunBufferFusionPass(string fusionPassName, BufferFusionPassType passType,
     ge::ComputeGraphPtr& compute_graph_ptr) {
       std::map<string, BufferFusionPassRegistry::CreateFn> createFns =
           BufferFusionPassRegistry::GetInstance().GetCreateFnByType(passType);
