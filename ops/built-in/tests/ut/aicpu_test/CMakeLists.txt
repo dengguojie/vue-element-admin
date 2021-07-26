@@ -244,7 +244,9 @@ if(NOT UT_NO_EXEC)
   add_custom_command(
     TARGET  cpu_kernels_ut POST_BUILD
     COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/testcase && python3.7 run_all_gen_data.py
+    COMMAND cp cpu_kernels_ut cpu_kernels_ut.bak
     COMMAND cpu_kernels_ut
+    COMMAND rm -f cpu_kernels_ut.bak
     COMMENT "Run cpu_kernels_ut"
   )
 endif()
