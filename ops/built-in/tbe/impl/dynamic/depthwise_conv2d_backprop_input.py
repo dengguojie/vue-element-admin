@@ -87,16 +87,11 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
                                                     name, str(tensor.get("shape")), str(SHAPE_LEN)))
         # if over l1 size then modify w range
         dy_w_range_max, is_single_point = modify_w_range_max(
-            input_grad.get("ori_shape")[input_grad.get("ori_format").find("W")],
-            filter.get("ori_shape")[
-                filter.get("ori_format").find("W")],
-            filter.get("ori_shape")[
-                filter.get("ori_format").find("H")],
-            out_backprop.get("ori_shape")[
-                out_backprop.get("ori_format").find("W")],
-            strides[data_format.find("W")],
-            out_backprop.get("dtype").lower(),
-            filter.get("dtype").lower(),
+            input_grad,
+            filter,
+            out_backprop,
+            strides,
+            data_format,
             "depthwise_conv2d_backprop_input")
 
         # get dx_range depends on dy_range

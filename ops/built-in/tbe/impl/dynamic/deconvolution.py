@@ -151,21 +151,17 @@ def deconvolution_generalization(x, filter, bias, offset_w, y, strides, pads, di
                                                            "invalid {} ori_shape {}, only support {}d".format(
                                                                name, str(tensor.get("shape")), str(SHAPE_LEN)))
         # if over l1 size then modify w range
-        dy_w_range_max, is_single_point = modify_w_range_max(y.get("ori_shape")[y.get("ori_format").find("W")],
-                                                             filter.get("ori_shape")[
-                                                                 filter.get("ori_format").find("W")],
-                                                             filter.get("ori_shape")[
-                                                                 filter.get("ori_format").find("H")],
-                                                             x.get("ori_shape")[x.get("ori_format").find("W")],
-                                                             strides[1],
-                                                             x.get("dtype").lower(),
-                                                             filter.get("dtype").lower(),
+        strides_4d = [1, 1, strides[0], strides[1]]
+        dy_w_range_max, is_single_point = modify_w_range_max(y,
+                                                             filter,
+                                                             x,
+                                                             strides_4d,
+                                                             data_format,
                                                              "deconvolution")
 
         # modify dy_range
         dy_range = x.get("range")
         ori_data_format = x.get("ori_format")
-        strides_4d = [1, 1, strides[0], strides[1]]
         ori_paras = {
             "x": x, "filters": filter, "bias": None, "offset_w": None, "y": y,
             "strides": strides_4d, "pads": pads, "dilations": dilations, "data_format": data_format,

@@ -851,7 +851,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         """
 
         tiling = {}
-        _, _, k_w, k_h, _ = self.b_info
+        _, _, k_h, k_w, _ = self.b_info
         bit_dir = {
             "float32": 16,
             "int32": 16,
@@ -982,7 +982,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 (self.k_h * self.k_w * utils.CUBE_SIZE)
         return tiling
 
-    def _get_al1_bound(self, tiling, curent_size):
+    def _get_al1_bound(self, tiling, fmap_h, fmap_w):
         """
         get al1 bound info
 
@@ -990,7 +990,9 @@ class Conv2dBpInputTiling(CubeTilingOp):
         ----------
         tiling : dict, result of tiling fetch
 
-        current_size : int, size of h,w
+        fmap_h : int, size of h
+
+        fmap_w : int, size of w
 
         Returns
         -------
@@ -999,8 +1001,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
         """
 
         # shape info
-        out_w = curent_size
-        w_i = self.get_output_w(out_w) * self.stride_w
+        h_i = self.get_output_h(fmap_h) * self.stride_h
+        w_i = self.get_output_w(fmap_w) * self.stride_w
 
         if len(tiling['AL1_shape']) == 1:
             tiling['AL1_shape'].append(1)
@@ -1014,23 +1016,23 @@ class Conv2dBpInputTiling(CubeTilingOp):
             return al1_m_data
 
         # tiling load lens less than out_w, nned to load a full line
-        if al1_m_data < out_w:
-            l1_ho = 1 if out_w % al1_m_data == 0 else 2
+        if al1_m_data < fmap_w:
+            l1_ho = 1 if fmap_w % al1_m_data == 0 else 2
         else:
             # load3d instructions refer to load extra lines with pad/stride/filter
-            if al1_m_data % out_w == 0:
+            if al1_m_data % fmap_w == 0:
                 # full line could load without extra lines
                 extend_h = 0
-            elif (al1_m_data * 2) % out_w == 0:
+            elif (al1_m_data * 2) % fmap_w == 0:
                 # every 2 load3d covered only 1 extra line
                 extend_h = 1
             else:
                 # other situations need 2 extra lines in case
                 extend_h = 2
-            l1_ho = al1_m_data // out_w + extend_h
+            l1_ho = al1_m_data // fmap_w + extend_h
 
         # calculate input lines (hi) from output lines (ho)
-        li_hi = self.k_h + (l1_ho - 1)
+        li_hi = min(self.k_h + (l1_ho - 1), h_i)
 
         return li_hi * w_i
 
@@ -1055,10 +1057,11 @@ class Conv2dBpInputTiling(CubeTilingOp):
             return True
 
         # shape info
+        fmap_h = current_h
         fmap_w = current_w
 
         # get M axis length in al1
-        al1_bound = self._get_al1_bound(tiling, fmap_w)
+        al1_bound = self._get_al1_bound(tiling, fmap_h, fmap_w)
 
         # fmap size in L1 ( M * K * db * 2byte)
         fmap_l1_size = utils.FP16_SIZE * al1_bound * tiling['AL1_shape'][0] * \

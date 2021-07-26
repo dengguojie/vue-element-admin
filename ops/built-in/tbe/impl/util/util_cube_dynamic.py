@@ -117,13 +117,25 @@ def set_default_para():
     default_para["input_size"] = {"ori_shape": INPUT_SIZE_DEFAULT_SHAPE}
     return default_para
 
-def modify_w_range_max(fmap_w, filter_w, filter_h, dedy_w, stride_w, out_backprop_dtype, filter_dtype, op_type):
+def modify_w_range_max(fmap, filter, dedy, strides, data_format, op_type):
     """
     modify w range max value
     """
+
+    fmap_h = fmap.get("ori_shape")[fmap.get("ori_format").find("H")]
+    fmap_w = fmap.get("ori_shape")[fmap.get("ori_format").find("W")]
+    filter_h = filter.get("ori_shape")[filter.get("ori_format").find("H")]
+    filter_w = filter.get("ori_shape")[filter.get("ori_format").find("W")]
+    dedy_h_max = dedy.get("ori_range")[dedy.get("ori_format").find("H")][1]
+    dedy_w = dedy.get("ori_shape")[dedy.get("ori_format").find("W")]
+    stride_h = strides[data_format.find("H")]
+    stride_w = strides[data_format.find("W")]
+    out_backprop_dtype = dedy.get("dtype").lower()
+    filter_dtype = filter.get("dtype").lower()
+
     c0_size = cce_params.C0_SIZE
     c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
-    h_value_max = filter_h + 1
+    h_value_max = min(filter_h + 1, dedy_h_max * stride_h)
 
     b_l1_size = filter_w * filter_h * c0_size * c0_size_k * BIT_RATIO_DICT.get(filter_dtype)
     l1_size = get_soc_spec("L1_SIZE")
@@ -135,7 +147,7 @@ def modify_w_range_max(fmap_w, filter_w, filter_h, dedy_w, stride_w, out_backpro
     if w_max < dedy_w:
         if fmap_w % c0_size == 0:
             is_single_point = True
-            h_value_max = filter_h
+            h_value_max = min(filter_h, dedy_h_max * stride_h)
             w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
             w_max = w_value // stride_w
             if w_max >= dedy_w:

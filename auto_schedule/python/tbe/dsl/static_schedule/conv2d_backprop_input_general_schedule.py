@@ -2351,6 +2351,10 @@ def general_schedule(
                 al1_m < output_shape[3],
                 al1_h_small,
                 al1_h_large)
+            al1_h = tvm.select(
+                al1_h < dy_h * stride_h,
+                al1_h,
+                dy_h * stride_h)
             al1_w = a_ddr.shape[3] * stride_w
             return al1_h, al1_w
 
@@ -2359,6 +2363,7 @@ def general_schedule(
                 k_al1, multi_m_al1 = tiling["AL1_shape"][:2]
                 al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
                 al1_c = k_al1 // kernel_h // kernel_w
+                al1_c = max(al1_c, 16)
                 al1_h, al1_w = _get_al1_m_extent(al1_m)
                 al1_bound = al1_c * al1_h * al1_w
             else:
@@ -2372,12 +2377,13 @@ def general_schedule(
         def _set_aub_bound():
             _, _, _, dx_w, _ = output_shape
             if stride_h > 1 or stride_w > 1:
-                aub_co0 = tbe_platform.CUBE_MKN[c_col.dtype]["mac"][1]
+                aub_co0 = tbe_platform.CUBE_MKN[a_filling.dtype]["mac"][1]
                 aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
                 aub_co1 = aub_tiling_k // (kernel_h * kernel_w * aub_co0)
                 if tiling.get("AL1_shape"):
                     al1_co1 = tiling.get("AL1_shape")[0] // (kernel_h * kernel_w * aub_co0)
                     aub_co1 = min(aub_co1, al1_co1)
+                aub_co1 = max(aub_co1, 1)
                 aub_filling_w = dy_w * stride_w
                 aub_h = aub_tiling_m // stride_h + 1
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0
