@@ -3554,7 +3554,10 @@ def roi_align(feature_map_dict,
 
     if ((cce_product in (tbe_platform.ASCEND_610, "Ascend615")) \
             and (dtype == "float16") and \
-            (pool_h == 7) and (pool_w == 7) and (roi_end_mode == 1)):
+            (pool_h == 7) and (pool_w == 7) and (roi_end_mode == 1) \
+            and (feature_map_dict.get("shape")[0] == 1) \
+            and (rois_dict.get("shape")[1] == 4) and (len(rois_dict.get("shape")) == 2) \
+            and (rois_dict.get("shape")[0] % 4 == 0) and (rois_dict.get("shape")[0] <= 96)):
         return roi_align_vbi.roi_align_vbi(feature_map_dict, rois_dict, kernel_name)
     if (dtype == "float16") and (impl_mode == "high_precision"):
         return roi_align_tik(feature_map_dict, rois_dict, roisn_dict,

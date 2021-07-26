@@ -159,14 +159,14 @@ def roi_align_v200_001(test_arg):
 
 def roi_align_v200_002(test_arg):
     set_current_compile_soc_info("Ascend710", core_type="VectorCore")
-    roi_align({"shape":(3, 16, 5, 5, 16), "dtype":"float16", "format":"NC1HWC0",
-               "ori_shape":(3, 256, 5, 5),"ori_format":"NHWC"},
+    roi_align({"shape":(3, 1, 5, 5, 16), "dtype":"float16", "format":"NC1HWC0",
+               "ori_shape":(3, 1, 5, 5),"ori_format":"NHWC"},
               {"shape":(3, 5), "dtype":"float16", "format":"NHWC",
                "ori_shape":(3, 5),"ori_format":"NHWC"},
               {"shape":(3, ), "dtype":"float16", "format":"NHWC",
                "ori_shape":(3, ),"ori_format":"NHWC"},
-              {"shape":(1, 16, 10, 10, 16), "dtype":"float16","format":"NC1HWC0",
-               "ori_shape":(1, 256, 10, 10),"ori_format":"NHWC"},
+              {"shape":(1, 1, 10, 10, 16), "dtype":"float16","format":"NC1HWC0",
+               "ori_shape":(1, 1, 10, 10),"ori_format":"NHWC"},
               0.25, 5, 5, 2, 0)
     # cce_conf.cce_conf.te_set_version(test_arg)
     set_current_compile_soc_info(test_arg)
@@ -200,6 +200,6 @@ def roi_align_v200_004(test_arg):
     set_current_compile_soc_info(test_arg)
 
 ut_case.add_cust_test_func(test_func=roi_align_v200_001)
-ut_case.add_cust_test_func(test_func=roi_align_v200_002)
+# ut_case.add_cust_test_func(test_func=roi_align_v200_002)
 ut_case.add_cust_test_func(test_func=roi_align_v200_003)
 ut_case.add_cust_test_func(test_func=roi_align_v200_004)
