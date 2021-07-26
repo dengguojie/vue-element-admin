@@ -5678,7 +5678,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
   bool fuzzy_flag = false;
   if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzzy_flag) &&
     fuzzy_flag &&
-    (!unknown_rank) &&
+    (!IsUnknown(input_grad_shape)) &&
     !DealWithFuzzyCompileCube(op)) {
       return ge::GRAPH_FAILED;
   }

@@ -225,3 +225,47 @@ TEST_F(AvgPoolGradTiling, Avg_pool_grad_fuzzy_compile_list_input) {
   EXPECT_EQ(runInfo.GetTilingKey(), 0);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 2 4 17 66 ");
 }
+
+// fuzzy compile with error compileInfo
+TEST_F(AvgPoolGradTiling, Avg_pool_grad_fuzzy_compile_error_compileInfo) {
+  using namespace optiling;
+  std::string op_name = "AvgPoolGrad";
+  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "_var": {"0": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}, "block_dim": {"0": 1}, "correct_range_flag": false, "cost_range": {"0": [1, 1, 1, 9, 61, 124]}, "kernelId": 0, "repo_range": {}, "repo_seeds": {}, "tiling_type": "dynamic_tiling"})";
+
+  ge::Graph graph("Avg_pool_grad_fuzzy_compile_error_compileInfo");
+
+  auto orig_input_shape = vector<int64_t>({1, 5, 4, 66});
+  ge::TensorDesc desc_orig_input(ge::Shape(orig_input_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+  auto orig_input = op::Data("orig_input");
+  orig_input.update_input_desc_x(desc_orig_input);
+  orig_input.update_output_desc_y(desc_orig_input);
+
+  auto input_grad_shape = vector<int64_t>({1, 5, 2, 17});
+  ge::TensorDesc desc_input_grad(ge::Shape(input_grad_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+  auto input_grad = op::Data("input_grad");
+  input_grad.update_input_desc_x(desc_input_grad);
+  input_grad.update_output_desc_y(desc_input_grad);
+
+  auto avg_pool_grad_op = op::AvgPoolGrad(op_name);
+  avg_pool_grad_op.set_input_orig_input_shape(orig_input);
+  avg_pool_grad_op.set_input_input_grad(input_grad);
+
+  auto out_grad_shape = vector<int64_t>({1, 5, 4, 66});
+  ge::TensorDesc output_desc_out_grad(ge::Shape(out_grad_shape), ge::FORMAT_NCHW, ge::DT_FLOAT16);
+
+  avg_pool_grad_op.update_input_desc_orig_input_shape(desc_orig_input);
+  avg_pool_grad_op.update_input_desc_input_grad(desc_input_grad);
+  avg_pool_grad_op.update_output_desc_out_grad(output_desc_out_grad);
+
+  std::vector<Operator> inputs{orig_input, input_grad};
+  std::vector<Operator> outputs{avg_pool_grad_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Avg_pool_grad_fuzzy_compile_error_compileInfo", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second(avg_pool_grad_op, op_compile_info, runInfo));
+}

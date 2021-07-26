@@ -440,9 +440,9 @@ def avg_pool_grad_generalization(orig_input_shape,
         "kernel_name": kernel_name
     }
     conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
-    dy_shape_nchw = conv2d_tranpose.get_input_nchw(input_grad["ori_shape"], input_grad["ori_format"])
+    conv2d_tranpose.get_attr_nchw(data_format)
     filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix["ori_shape"], kernel_matrix["ori_format"])
-    _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
+    _, dy_range_nchw = conv2d_tranpose.get_input_nchw(input_grad["ori_shape"], input_grad["ori_format"], dy_range)
     dx_range_nchw, _, _ = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
     out_grad["range"] = [dx_range_nchw[0],
                          [out_grad["shape"][1], out_grad["shape"][1]],

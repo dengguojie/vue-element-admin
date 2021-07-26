@@ -79,34 +79,39 @@ bool AvgPoolGradTiling(const std::string& opType, const ge::Operator& opParas, c
     return false;
   }
 
-  if (opCompileInfo.empty()) {
-    GELOGD("op compile info is empty");
+  try {
+    if (opCompileInfo.empty()) {
+      GELOGD("op compile info is empty");
+      return false;
+    }
+
+    nlohmann::json opInfo;
+    merge_compile_info(opCompileInfo, opInfo);
+
+    std::vector<std::string>varMap = opInfo.at("_vars").begin().value().get<std::vector<std::string>>();
+
+    std::vector<int64_t> var_value;
+    if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
+        var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(nDim));
+    }
+    if (std::find(varMap.begin(), varMap.end(), "dx_h") != varMap.end()) {
+      var_value.insert(var_value.end(), opParas.GetInputDesc(1).GetShape().GetDim(hDim));
+      var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(hDim));
+    }
+    if (std::find(varMap.begin(), varMap.end(), "dx_w") != varMap.end()) {
+      var_value.insert(var_value.end(), opParas.GetInputDesc(1).GetShape().GetDim(wDim));
+      var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(wDim));
+    }
+
+    return cube_tiling(opType,
+                       opParas.GetOutputDesc(0).GetShape().GetDims(),
+                       var_value,
+                       opInfo,
+                       runInfo);
+  } catch (...) {
+    GELOGD("get unknown exception, please check compile info json.");
     return false;
   }
-
-  nlohmann::json opInfo;
-  merge_compile_info(opCompileInfo, opInfo);
-
-  std::vector<std::string>varMap = opInfo.at("_vars").begin().value().get<std::vector<std::string>>();
-
-  std::vector<int64_t> var_value;
-  if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(nDim));
-  }
-  if (std::find(varMap.begin(), varMap.end(), "dx_h") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.GetInputDesc(1).GetShape().GetDim(hDim));
-    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(hDim));
-  }
-  if (std::find(varMap.begin(), varMap.end(), "dx_w") != varMap.end()) {
-    var_value.insert(var_value.end(), opParas.GetInputDesc(1).GetShape().GetDim(wDim));
-    var_value.insert(var_value.end(), opParas.GetOutputDesc(0).GetShape().GetDim(wDim));
-  }
-
-  return cube_tiling(opType,
-                     opParas.GetOutputDesc(0).GetShape().GetDims(),
-                     var_value,
-                     opInfo,
-                     runInfo);
 }
 
 // register tiling interface of the avg_pool_grad
