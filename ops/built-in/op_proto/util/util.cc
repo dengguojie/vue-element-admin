@@ -26,12 +26,14 @@
 #include <algorithm>
 #include <set>
 #include "./error_util.h"
+#include "./vector_proto_profiling.h"
 #include "op_common_util.h"
 #include "graph/utils/type_utils.h"
 #include "axis_util.h"
 
 namespace ge {
 using namespace std;
+
 bool GetInputDataType(const ge::DataType& data_type, const std::vector<ge::DataType>& supportList) {
   std::vector<ge::DataType>::const_iterator supportIter = find(supportList.begin(), supportList.end(), data_type);
   if (supportIter == supportList.end()) {
@@ -276,6 +278,7 @@ std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
 
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name, bool& is_dynamic) {
+  PROFILING_PROTO_INIT(op.GetName().c_str());
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_desc == nullptr || op_desc->MutableOutputDesc(output_name) == nullptr ||
       op_desc->MutableInputDesc(input_name1) == nullptr || op_desc->MutableInputDesc(input_name2) == nullptr,
@@ -294,6 +297,7 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
           input_name2.c_str(), to_string(shapeY).c_str());
   std::vector<int64_t> dimsX = shapeX.GetDims();
   std::vector<int64_t> dimsY = shapeY.GetDims();
+  PROFILING_PROTO_AFTER_GET_SHAPE_REG();
   // swap based on shape size
   if (dimsX.size() < dimsY.size()) {
     std::vector<int64_t> dimsTmp = dimsX;
@@ -301,7 +305,6 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
     dimsY = dimsTmp;
   }
 
-  std::vector<int64_t> dimVec;
   // unknown rank
   if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
     tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
@@ -320,17 +323,21 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   }
 
   // when not dynamic case, do infer shape only
-  if (!IsUnknown(dimsY) && !IsUnknown(dimsX)) {
+  if (!IsUnKnownShape(dimsY) && !IsUnKnownShape(dimsX)) {
+    std::vector<int64_t> dimVec(dimsX.size(), 0);
     for (size_t i = 0; i < dimsX.size(); i++) {
-      int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
-      dims = (dimsY[i] == 0 || dimsX[i] == 0) ? 0 : dims;
-      dimVec.push_back(dims);
+      dimVec[i] = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+      dimVec[i] = (dimsY[i] == 0 || dimsX[i] == 0) ? 0 : dimVec[i];
     }
+
+    PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
     tensordesc_output->SetShape(ge::GeShape(dimVec));
     is_dynamic = false;
+    PROFILING_PROTO_END();
     return true;
   }
 
+  std::vector<int64_t> dimVec;
   // dynamic case
   for (size_t i = 0; i < dimsX.size(); i++) {
     CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1),
@@ -1163,6 +1170,7 @@ bool OneInOneOutDynamicInfer(const Operator& op,
                              const std::string& input_name,
                              const std::vector<std::string>& output_name_list) {
   // get input desc
+  PROFILING_PROTO_INIT(op.GetName().c_str());
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_info == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")), return false);
   auto input_desc = op_info->MutableInputDesc(input_name);
@@ -1187,11 +1195,14 @@ bool OneInOneOutDynamicInfer(const Operator& op,
   } else {
     auto output_desc = op_info->MutableOutputDesc(0);
     CHECK(output_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid output_desc")), return false);
+    PROFILING_PROTO_AFTER_GET_SHAPE_REG();
+    PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
     for (const string& output_name : output_name_list) {
       output_desc = op_info->MutableOutputDesc(output_name);
       output_desc->SetShape(GeShape(input_shape));
       output_desc->SetDataType(input_dtype);
     }
+    PROFILING_PROTO_END();
   }
   return true;
 }

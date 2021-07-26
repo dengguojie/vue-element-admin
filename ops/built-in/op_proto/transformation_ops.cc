@@ -36,6 +36,7 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
+#include "util/vector_proto_profiling.h"
 #include "util/util.h"
 #include "common_shape_fns.h"
 #include "op_log.h"
@@ -1277,16 +1278,29 @@ INFER_FORMAT_FUNC_REG(TransposeD, TransposeDInferFormat);
 
 // ----------------TranData Op Begin---------------------
 IMPLEMT_COMMON_INFERFUNC(TransDataInferShape) {
-// main part of shape infer
-TensorDesc src_tensor = op.GetInputDesc("src");
-  Shape src_shape = src_tensor.GetShape();
-  DataType input_dtype = src_tensor.GetDataType();
-  TensorDesc td = op.GetOutputDesc("dst");
-  if (src_tensor.GetOriginFormat() == td.GetOriginFormat()) {
-    td.SetShape(ge::Shape(src_shape));
-    td.SetDataType(input_dtype);
-    (void)op.UpdateOutputDesc("dst", td);
+  PROFILING_PROTO_INIT(op.GetName().c_str());
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_info == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")),
+        return false);
+  auto input_desc = op_info->MutableInputDesc("src");
+  CHECK(input_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid input_desc")),
+        return false);
+  auto output_desc = op_info->MutableOutputDesc("dst");
+  CHECK(output_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid output_desc")),
+        return false);
+  auto input_foramt = input_desc->GetOriginFormat();
+  auto output_foramt = output_desc->GetOriginFormat();
+  PROFILING_PROTO_AFTER_GET_SHAPE_REG();
+
+  PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
+  if (input_foramt == output_foramt) {
+    output_desc->SetShape(GeShape(input_desc->MutableShape().GetDims()));
+    output_desc->SetDataType(input_desc->GetDataType());
   }
+  PROFILING_PROTO_END();
   return GRAPH_SUCCESS;
 }
 

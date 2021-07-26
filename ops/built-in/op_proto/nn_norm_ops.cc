@@ -278,7 +278,8 @@ COMMON_INFER_FUNC_REG(Centralization, CentralizationInferShape);
 
 // -----------------------------SoftmaxGrad------------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxGradInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "softmax", "grad_softmax", "grad_x")) {
+  bool is_dynamic_output = true;
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "softmax", "grad_softmax", "grad_x", is_dynamic_output)) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;

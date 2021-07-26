@@ -28,6 +28,7 @@
 #include "trans_data_common.h"
 #include "transpose.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 
@@ -722,6 +723,7 @@ bool IsDoWithPositiveSourceNtc100(const std::string& srcFormat, const std::strin
  */
 bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
                      OpRunInfo& runInfo) {
+  PROFILING_TILING_INIT(opType.c_str());
   OP_LOGI(opType.c_str(), "Tiling is running.");
   if (op_info == nullptr) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: op_info json error.");
@@ -733,10 +735,10 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     return false;
   }
   if (opParas.outputs.empty() || opParas.outputs.size() < 1 || opParas.outputs[0].tensor.empty()) {
-
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op TransDataTiling: output shape error.");
     return false;
   }
+
   std::string srcFormat = opParas.inputs[0].tensor[0].format;
   std::string dstFormat = opParas.outputs[0].tensor[0].format;
   OP_LOGD(opType, "Input format is [%s], Output format is [%s].",
@@ -774,12 +776,19 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   int64_t hiddenSize = 0;
   int64_t group = 1;
 
+  // get the point ts after get info from opParas
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+
   bool flag = GetCompileParams(op_info, srcFormat, dstFormat, dType, ubSize, blockDim, inputSize, hiddenSize, group,
                                 opType);
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "TransDataTiling: GetCompileParams error.");
     return false;
   }
+
+  // get the point ts after get compile info
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+
   int64_t c0Len = GetC0Len(dType);
   bool ret = CheckTensorShape(opType, ubSize, blockDim, outShape);
   if (!ret) {
@@ -863,6 +872,8 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     PrintTilingModeNtc200Params(opType, runParams200);
   }
 
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+
   // block_dim, core num used in tik op
   runInfo.block_dim = blockDim;
   // workspace, null for tik op
@@ -871,6 +882,8 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
 
   OP_LOGI(opType.c_str(), "tiling run success.");
 
+  // get the point ts and calcu the all time cost
+  PROFILING_TILING_END()
   return true;
 }
 
@@ -878,3 +891,4 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
 REGISTER_OP_TILING_FUNC_BUFFERED(TransData, TransDataTiling);
 
 }  // namespace optiling
+
