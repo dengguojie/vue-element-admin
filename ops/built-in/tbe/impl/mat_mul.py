@@ -796,7 +796,7 @@ def mat_mul(input_x1,
     if shape_bias_length > 0:
         bias_dtype = bias.get("dtype")
         tensor_bias = tvm.placeholder(shape_bias, name='tensor_bias',
-                                      dtype=bias_dtype)
+                                      dtype=dst_dtype, attrs={'ori_shape': bias['ori_shape']})
 
     if offset_w is None:
         tensor_offset_w = None

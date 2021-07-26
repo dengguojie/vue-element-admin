@@ -890,7 +890,7 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w={}, output_z={}, trans
 
     if shape_bias_length > 0:
         tensor_bias = tvm.placeholder(shape_bias_dup, name='tensor_bias',
-                                      dtype=dst_dtype)
+                                      dtype=dst_dtype, attrs={'ori_shape': bias['ori_shape']})
 
     if offset_w is None:
         tensor_offset_w = None

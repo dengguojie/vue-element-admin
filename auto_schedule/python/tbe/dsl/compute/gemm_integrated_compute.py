@@ -1195,11 +1195,12 @@ class GEMMCompute(FormatCompute):
         a_shape_len = len(a_shape)
         b_shape_len = len(b_shape)
         have_batch = (a_shape_len > 4) or (b_shape_len > 4)
+        if have_batch:
+            batch = a_shape[0] if a_shape_len >= b_shape_len else b_shape[0]
+            l0c_shape.insert(0, batch)
+
         if self.have_bias and (not self.cube_vector_split):
-            if have_batch:
-                tensor_bias_l0c = self._get_bias_l0c_with_batch(tensor_bias, a_shape, b_shape, l0c_shape)
-            else:
-                tensor_bias_l0c = self._get_bias_l0c_without_batch(tensor_bias, l0c_shape)
+            tensor_bias_l0c = self._get_bias_l0c_compute(tensor_bias, l0c_shape)
         else:
             tensor_bias_l0c = tensor_bias
 
@@ -1218,72 +1219,44 @@ class GEMMCompute(FormatCompute):
                     bias_shape.append(self._get_value(i))
         return bias_shape
 
-    def _get_bias_l0c_with_batch(self, tensor_bias, a_shape, b_shape, l0c_shape):
+    def _get_bias_l0c_compute(self, tensor_bias, l0c_shape):
+        ori_shape = tbe_utils.shape_to_list(tensor_bias.op.attrs['ori_shape'])
         block_out = self.block_out
-        bias_len = len(tensor_bias.shape)
-        a_shape_len = len(a_shape)
-        b_shape_len = len(b_shape)
-        batch = a_shape[0] if a_shape_len >= b_shape_len else b_shape[0]
-        l0c_shape.insert(0, batch)
         bias_shape = self._get_bias_l0c_shape(tensor_bias)
-        # tensor_bias shape only be [n,], [1,n] and [1,1,n]
-        if len(bias_shape) == 1:
-            if bias_len == 1:
-                tensor_bias_ub = tvm.compute(
-                    bias_shape, lambda i: tensor_bias[i],
-                    name="tensor_bias_ub")
-            elif bias_len == 2:
-                tensor_bias_ub = tvm.compute(
-                    bias_shape, lambda i: tensor_bias[0, i],
-                    name="tensor_bias_ub"
-                )
-            else:
-                tensor_bias_ub = tvm.compute(
-                    bias_shape, lambda i: tensor_bias[0, 0, i],
-                    name="tensor_bias_ub"
-                )
-        elif bias_len == 3:
-            # bias_shape only be (batch, 1, n)
-            tensor_bias_ub = tvm.compute(
-                bias_shape, lambda *indices: tensor_bias[indices],
-                name="tensor_bias_ub"
-            )
 
+        # only support [n], [1,n], [1,1,n]
+        def index_bias_of_ori_shape(indices):
+            return [0]*(len(bias_shape) - 1) + [indices[-1]]
+
+        def index_bias_of_fractal_nz(indices):
+            return [0]*(len(bias_shape) - 1) + [indices[-4]*block_out + indices[-1]]
+
+        if ori_shape[-1] % 16 == 0:
+            tensor_bias_ub = tvm.compute(
+                bias_shape, lambda *indices: tensor_bias(*index_bias_of_ori_shape(indices)), name="tensor_bias_ub")
+        else:
+            tensor_bias_ub = tvm.compute(
+                bias_shape, lambda *indices:
+                tvm.select(indices[-1] < ori_shape[-1], tensor_bias(*index_bias_of_ori_shape(indices))), name="tensor_bias_ub")
+            tensor_init_value_of_bias_ub = tvm.compute(
+                bias_shape, lambda *indices:
+                tvm.select(indices[-1] >= ori_shape[-1], tvm.const(0, dtype=tensor_bias.op.dtype)), name="tensor_init_value_of_bias_ub")
+            tensor_virtual_add_bias = tvm.compute(
+                bias_shape, lambda *indices: tensor_bias_ub[indices]+tensor_init_value_of_bias_ub[indices], name="tensor_virtual_add_bias")
+            tensor_bias_ub = tensor_virtual_add_bias
+
+        # l0c_shape [batch, n1, m1, m0, n0]
         if tensor_bias.dtype == "float16" and self.l0c_support_fp32:
             tensor_bias_l0c = tvm.compute(
-                l0c_shape, lambda batch, i, j, k, l: shape_util.cast(
-                    tensor_bias_ub[i * block_out + l], dtype="float32"), name="tensor_bias_l0c")
+                l0c_shape, lambda *indices: shape_util.cast(
+                    tensor_bias_ub(*index_bias_of_fractal_nz(indices)), dtype="float32"), name="tensor_bias_l0c")
         else:
             tensor_bias_l0c = tvm.compute(
                 l0c_shape,
-                lambda batch, i, j, k, l: tensor_bias_ub[i * block_out + l], name="tensor_bias_l0c")
+                lambda *indices: tensor_bias_ub(*index_bias_of_fractal_nz(indices)), name="tensor_bias_l0c")
 
         return tensor_bias_l0c
 
-    def _get_bias_l0c_without_batch(self, tensor_bias, l0c_shape):
-        block_out = self.block_out
-        bias_len = len(tensor_bias.shape)
-        bias_shape = self._get_bias_l0c_shape(tensor_bias)
-        # bias only be [n,] and [1,n] for gevm and gemm
-        if bias_len == 1:
-            tensor_bias_ub = tvm.compute(
-                bias_shape, lambda i:
-                tensor_bias[i], name="tensor_bias_ub")
-        else:
-            tensor_bias_ub = tvm.compute(
-                bias_shape, lambda i: tensor_bias[0, i],
-                name="tensor_bias_ub")
-
-        if tensor_bias.dtype == "float16" and self.l0c_support_fp32:
-            tensor_bias_l0c = tvm.compute(
-                l0c_shape, lambda i, j, k, l: shape_util.cast(
-                    tensor_bias_ub[i * block_out + l],
-                    dtype="float32"), name="tensor_bias_l0c")
-        else:
-            tensor_bias_l0c = tvm.compute(
-                l0c_shape, lambda i, j, k, l: tensor_bias_ub[
-                    i * block_out + l], name="tensor_bias_l0c")
-        return tensor_bias_l0c
 
     def _compute_c_matrix(self, a_matrix_in, b_matrix_in, tensor_bias):
         """ MatMul calculation

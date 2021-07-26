@@ -60,8 +60,8 @@ def test_fully_connection_requant_fusion(x, w, b, offset_w, y, num_output, trans
         shape_b = b.get('shape')
         dtype_b = b.get('dtype')
         b_size = shape_b[1] * shape_b[4]
-        shape_bias = (1, b_size)
-        tensor_b = tvm.placeholder(shape_bias, dtype=dtype_b, name='tensor_bias')
+        shape_bias = (b_size, )
+        tensor_b = tvm.placeholder(shape_bias, dtype=dtype_b, name='tensor_bias', attrs={'ori_shape': shape_bias})
     else:
         tensor_b = None
 
@@ -116,5 +116,5 @@ ut_case.add_cust_test_func(
 )
 
 if __name__ == "__main__":
-    ut_case.run()
+    ut_case.run(["Ascend910A"])
     sys.exit(0)

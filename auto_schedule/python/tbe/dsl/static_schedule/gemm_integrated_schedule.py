@@ -18,6 +18,7 @@
 gemm schedule
 """
 from enum import Enum
+from collections.abc import Iterable
 
 from tbe import tvm
 from tbe.common import platform as tbe_platform
@@ -177,6 +178,7 @@ class GemmSchedule(object):
         self.gm_ub = None
         self.have_batch_a, self.have_batch_b, self.have_batch = False, False, False
         self.have_bias, self.have_c = False, False
+        self.need_init_bias = False
         self.a_l1_inline_flag, self.b_l1_inline_flag = False, False
         self.dequant_flag, self.quant_fusion, self.quantify_fusion = False, False, False
         self.requant_fusion, self.dequant_fusion = False, False
@@ -390,6 +392,10 @@ class GemmSchedule(object):
         self.only_use_gevm_gemv_flow = tensor_l0c.op.attrs["only_use_gevm_gemv_flow"].value
         self.int8_not_double_m = tensor_l0c.op.attrs["int8_not_double_m"].value
         self.placeholder_name = tensor_l0c.op.attrs["placeholder_name"]
+        # user self.placeholder_name to avoid the inconsistency of placeholder names
+        # in the fusion scene and the single operator scene
+        self.need_init_bias = ori_tensors[self.placeholder_name['bias'].value].op.attrs[
+            "ori_shape"][-1].value % 16 != 0 if self.have_bias else False
         self.compress_flag = tensor_l0c.op.attrs["compress_flag"].value
         self.kernel_name = tensor_l0c.op.attrs["kernel_name"].value
         self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
@@ -705,6 +711,11 @@ class GemmSchedule(object):
             self._get_tensor_and_set_scope("tensor_bias_l0c", tbe_platform_info.scope_cc, "bias_l0c")
             self._get_tensor_and_set_scope("tensor_c_add_bias", tbe_platform_info.scope_cc, "c_add_bias")
             self._get_tensor_and_set_scope("tensor_bias_ub", tbe_platform_info.scope_ubuf, "bias_ub")
+
+            if self.need_init_bias:
+                self._get_tensor_and_set_scope('tensor_init_value_of_bias_ub', tbe_platform_info.scope_ubuf, 'init_value_of_bias_ub')
+                self._get_tensor_and_set_scope('tensor_virtual_add_bias', tbe_platform_info.scope_ubuf, 'virtual_add_bias')
+
         if add_bias_in_fb:
             pass
         if add_bias_in_ub:
@@ -752,6 +763,9 @@ class GemmSchedule(object):
         self._add_tensor_to_list(TENSOR_MAP.get("cast_to_fp16"), [tensors_in_cub])
         self._add_tensor_to_list(TENSOR_MAP.get("bias_cast_to_fp32"), [tensors_in_cub])
         self._add_tensor_to_list(TENSOR_MAP.get("bias_ub"), [bias_ub_compute_at])
+        if self.need_init_bias:
+            self._add_tensor_to_list(TENSOR_MAP.get("init_value_of_bias_ub"), [bias_ub_compute_at])
+            self._add_tensor_to_list(TENSOR_MAP.get("virtual_add_bias"), [bias_ub_compute_at])
         self._add_tensor_to_list(TENSOR_MAP.get("nz_to_nd"), [tensors_in_cub])
 
         cast_to_fp16 = TENSOR_MAP.get("cast_to_fp16")
@@ -2938,6 +2952,12 @@ class GemmSchedule(object):
             if bias_ub is not None:
                 sch[bias_ub].preload()
                 sch[bias_ub].double_buffer()
+
+                if self.need_init_bias:
+                    sch[self.TENSOR_MAP['init_value_of_bias_ub']].preload()
+                    sch[self.TENSOR_MAP['init_value_of_bias_ub']].double_buffer()
+                    sch[self.TENSOR_MAP['virtual_add_bias']].preload()
+                    sch[self.TENSOR_MAP['virtual_add_bias']].double_buffer()
             for tensor in self.tensors_in_cub:
                 if tensor in (self.res, self.TENSOR_MAP.get("c_gm")):
                     continue
@@ -2975,6 +2995,9 @@ class GemmSchedule(object):
         self._emit_insn_func(self.TENSOR_MAP.get("alpha_c"), 0, "vector_muls", mode=1)
         self._emit_insn_func(self.TENSOR_MAP.get("beta_bias"), 0, "vector_muls")
         self._emit_insn_func(self.TENSOR_MAP.get("bias_ub"), 0, "dma_copy")
+        if self.need_init_bias:
+            self._emit_insn_func(self.TENSOR_MAP.get("init_value_of_bias_ub"), 0, "dma_copy")
+            self._emit_insn_func(self.TENSOR_MAP.get("virtual_add_bias"), 0, "phony_insn")
 
         # only in |matmul|ND Nz|all data type|
         self._emit_insn_func(self.TENSOR_MAP.get("bias_l0c"), 0, "dma_copy")
@@ -3225,10 +3248,16 @@ class GemmSchedule(object):
         for axpy, parent in self.axpy_2_parent.items():
             self.buffer_reuse_dict[parent] = axpy
 
+        if self.need_init_bias:
+            self._add_key_value(TENSOR_MAP.get("virtual_add_bias"), [TENSOR_MAP.get("bias_ub"), TENSOR_MAP.get("init_value_of_bias_ub")])
+
     def _do_buffer_reuse(self):
         for bereused_tensor, tensor in self.buffer_reuse_dict.items():
             if (bereused_tensor is not None) and (tensor is not None):
-                self.sch[bereused_tensor].reused_by(tensor)
+                if isinstance(tensor, Iterable):
+                    self.sch[bereused_tensor].reused_by(*tensor)
+                else:
+                    self.sch[bereused_tensor].reused_by(tensor)
 
     def _compute_run_once_flag(self):
         # 0: not run_once

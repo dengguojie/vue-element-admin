@@ -463,7 +463,8 @@ def fully_connection(x, w, b, offset_w, y, num_output, transpose, axis, offset_x
         shape_b = b.get('shape')
         dtype_b = b.get('dtype')
         shape_bias = (shape_b[1] * shape_b[4],)
-        tensor_b = tvm.placeholder(shape_bias, dtype=dtype_b, name='tensor_bias')
+        tensor_b = tvm.placeholder(
+            shape_bias, dtype=dtype_b, name='tensor_bias', attrs={'ori_shape': shape_bias})
     else:
         tensor_b = None
 

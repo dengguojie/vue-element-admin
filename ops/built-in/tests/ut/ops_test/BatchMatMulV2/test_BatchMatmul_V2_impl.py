@@ -13,10 +13,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 BatchMatmul ut case
 """
-from op_test_frame.ut import OpUT
 import sys
 import time
 import unittest
+from op_test_frame.ut import OpUT
 ut_case = OpUT("BatchMatmulV2", None, None)
 
 from tbe import tvm
@@ -219,5 +219,10 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A"])
-    exit(0)
+    ut_case._case_info_map = {}
+
+    from case_batchmatmul_v2 import precision_cases
+    for case in precision_cases:
+        ut_case.add_precision_case(["Ascend310", "Ascend910"], case)
+
+    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")

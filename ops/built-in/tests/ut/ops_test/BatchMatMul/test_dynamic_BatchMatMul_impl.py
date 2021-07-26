@@ -281,4 +281,4 @@ def test_get_op_support_info_dynamic_batchmatmul(test_arg):
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_batchmatmul)
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend310", "Ascend910"])
+    ut_case.run(["Ascend310", "Ascend910A"])

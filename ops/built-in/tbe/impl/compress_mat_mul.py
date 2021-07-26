@@ -505,7 +505,7 @@ def compress_mat_mul(input_x1,
     shape_bias_length = len(shape_bias)
     if shape_bias_length > 0:
         tensor_bias = tvm.placeholder(shape_bias, name='tensor_bias',
-                                      dtype=dst_dtype)
+                                      dtype=dst_dtype, attrs={'ori_shape': bias['ori_shape']})
 
     if offset_w is None:
         tensor_offset_w = None

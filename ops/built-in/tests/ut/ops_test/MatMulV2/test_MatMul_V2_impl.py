@@ -8,6 +8,65 @@ from matmul_cpu_dsl import matmul_cpu_validation
 
 ut_case = OpUT("MatMul", None, None)
 
+
+def golden_matmul_v2(input_x1,
+                     input_x2,
+                     bias,
+                     offset_w={},
+                     output_y={},
+                     trans_a=False,
+                     trans_b=False,
+                     offset_x=0,
+                     kernel_name="matmul"):
+    import numpy as np
+    import math
+
+    a = np.array(input_x1.get("value"))
+    b = np.array(input_x2.get("value"))
+    assert len(a.shape) >= 4 and len(b.shape) >= 4, f"only support Nz now"
+    assert a.dtype == 'float16' and b.dtype == 'float16', f"only support float16 now"
+
+    if trans_a:
+        # m1, k1, k0, m0 -> m1, m0, k1, k0
+        a = np.transpose(a, [x for x in range(
+            len(a.shape) - 4)] + [-4, -1, -3, -2])
+    else:
+        # k1, m1, m0, k0 -> m1, m0, k1, k0
+        a = np.transpose(a, [x for x in range(
+            len(a.shape) - 4)] + [-3, -2, -4, -1])
+    *_, m1, m0, k1, k0 = a.shape
+    a = a.reshape(list(a.shape[:len(a.shape)-4]) +
+                  [m1*m0, k1*k0]).astype('float32')
+
+    if trans_b:
+        # k1, n1, n0, k0 -> k1, k0, n1, n0
+        b = np.transpose(b, [x for x in range(
+            len(b.shape) - 4)] + [-4, -1, -3, -2])
+    else:
+        # n1, k1, k0, n0 -> k1, k0, n1, n0
+        b = np.transpose(b, [x for x in range(
+            len(b.shape) - 4)] + [-3, -2, -4, -1])
+    *_, k1, k0, n1, n0 = b.shape
+    b = b.reshape(list(b.shape[:len(b.shape)-4]) +
+                  [k1*k0, n1*n0]).astype('float32')
+
+    res = np.matmul(a, b)
+
+    if bias is not None:
+        np_bias = np.array(bias.get("value"))
+        np_bias = np.pad(np_bias, [(0, 0)]*(len(np_bias.shape)-1) +
+                         [(0, math.ceil(np_bias.shape[-1] / 16)*16-np_bias.shape[-1])])
+        if np_bias.dtype == 'float16':
+            np_bias = np_bias.astype('float32')
+        res += np_bias
+
+    # b..., m, n -> b..., m1, m0, n1, n0 -> b..., n1, m1, m0, n0
+    res = res.reshape(list(res.shape[:len(res.shape)-2]) +
+                      [res.shape[-2] // 16, 16, res.shape[-1] // 16, 16])
+    res = np.transpose(res, [x for x in range(
+        len(res.shape) - 4)] + [-2, -4, -3, -1]).astype('float16')
+    return res
+
 case1 = {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96),"ori_format": "ND"},
                     {"shape": (4, 6,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64),"ori_format": "ND"},
                     {"shape": (64, ), "dtype": "float16", "format": "ND", "ori_shape": (64, ),"ori_format": "ND"},
@@ -67,6 +126,86 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910B"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 #precision cases
+
+align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+                               {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+                                   96, 64), "ori_format": "ND", "param_type": "input"},
+                               {"shape": (64, ), "dtype": "float16", "format": "ND",
+                                "ori_shape": (64, ), "ori_format": "ND", "param_type": "input"},
+                               None,
+                               {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                                "ori_shape": (32, 64), "ori_format": "ND", "param_type": "output"},
+                               False, False],
+                    "case_name": "MatMul_bias_1d_fp16_align",
+                    "expect": "success",
+                    "format_expect": [],
+                    "calc_expect_func": golden_matmul_v2,
+                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
+                    "support_expect": True}
+not_align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+                                   {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+                                       96, 64), "ori_format": "ND", "param_type": "input"},
+                                   {"shape": (49, ), "dtype": "float16", "format": "ND",
+                                    "ori_shape": (49, ), "ori_format": "ND", "param_type": "input"},
+                                   None,
+                                   {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                                    "ori_shape": (32, 64), "ori_format": "ND", "param_type": "output"},
+                                   False, False],
+                        "case_name": "MatMul_bias_1d_fp16_not_align",
+                        "expect": "success",
+                        "format_expect": [],
+                        "calc_expect_func": golden_matmul_v2,
+                        "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
+                        "support_expect": True}
+not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+                                   {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+                                       96, 64), "ori_format": "ND", "param_type": "input"},
+                                   {"shape": (49, ), "dtype": "float32", "format": "ND",
+                                    "ori_shape": (49, ), "ori_format": "ND", "param_type": "input"},
+                                   None,
+                                   {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                                    "ori_shape": (32, 64), "ori_format": "ND", "param_type": "output"},
+                                   False, False],
+                        "case_name": "MatMul_bias_1d_fp32_not_align",
+                        "expect": "success",
+                        "format_expect": [],
+                        "calc_expect_func": golden_matmul_v2,
+                        "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
+                        "support_expect": True}
+# operator only support bias shape [n]
+# not_align_bias_case3 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+#                                    {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+#                                        96, 64), "ori_format": "ND", "param_type": "input"},
+#                                    {"shape": (1, 49, ), "dtype": "float16", "format": "ND",
+#                                     "ori_shape": (1, 49, ), "ori_format": "ND", "param_type": "input"},
+#                                    None,
+#                                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+#                                     "ori_shape": (32, 64), "ori_format": "ND", "param_type": "output"},
+#                                    False, False],
+#                         "case_name": "MatMul_bias_2d_fp16",
+#                         "expect": "failed",
+#                         "format_expect": [],
+#                         "calc_expect_func": golden_matmul_v2,
+#                         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
+#                         "support_expect": True}
+# not_align_bias_case4 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+#                                    {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+#                                        96, 64), "ori_format": "ND", "param_type": "input"},
+#                                    {"shape": (1, 49, ), "dtype": "float32", "format": "ND",
+#                                     "ori_shape": (1, 49, ), "ori_format": "ND", "param_type": "input"},
+#                                    None,
+#                                    {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+#                                     "ori_shape": (32, 64), "ori_format": "ND", "param_type": "output"},
+#                                    False, False],
+#                         "case_name": "MatMul_bias_2d_fp32",
+#                         "expect": "failed",
+#                         "format_expect": [],
+#                         "calc_expect_func": golden_matmul_v2,
+#                         "precision_standard": precision_info.PrecisionStandard(0.005, 0.005),
+#                         "support_expect": True}
+
+ut_case.add_case(["Ascend310"], not_align_bias_case1)
+ut_case.add_case(["Ascend310"], not_align_bias_case2)
 
 def maxtrix_zN_reverse(matrix, shape, dtype):
     idx = 0
@@ -235,3 +374,13 @@ def test_check_support(test_arg):
                     kernel_name="matmul")
 
 ut_case.add_cust_test_func(test_func=test_check_support)
+
+if __name__ == '__main__':
+    ut_case._case_info_map = {}
+    ut_case.add_case(["Ascend310"], not_align_bias_case1)
+    ut_case.add_case(["Ascend310"], not_align_bias_case2)
+    ut_case.add_precision_case(["Ascend310", "Ascend910"], align_bias_case1)
+    ut_case.add_precision_case(["Ascend310", "Ascend910"], not_align_bias_case1)
+    ut_case.add_precision_case(["Ascend310", "Ascend910"], not_align_bias_case2)
+
+    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")
