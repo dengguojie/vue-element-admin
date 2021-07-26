@@ -108,15 +108,17 @@ Status ResizeBilinearV2CastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "castNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
-  ge::GeTensorDesc outputResizeDesc = resizeDesc->GetOutputDesc(0);
-  ge::GeTensorDesc inputCastDesc = castDesc->GetInputDesc(0);
-  ge::GeTensorDesc outputCastDesc = castDesc->GetOutputDesc(0);
+  ge::GeTensorDesc outputResizeDesc = resizeDesc->GetOutputDesc("y");
+  ge::GeTensorDesc inputCastDesc = castDesc->GetInputDesc("x");
+  ge::GeTensorDesc outputCastDesc = castDesc->GetOutputDesc("y");
   Format inputCastFormat = inputCastDesc.GetFormat();
   DataType inputCastDataType = inputCastDesc.GetDataType();
   DataType outputCastDataType = outputCastDesc.GetDataType();
+  ge::GeTensorDesc inputResizeDesc = resizeDesc->GetInputDesc("x");
+  DataType inputResizeDataType = inputResizeDesc.GetDataType();
 
   if (inputCastFormat != ge::FORMAT_NC1HWC0 || inputCastDataType != ge::DT_FLOAT ||
-      outputCastDataType != ge::DT_FLOAT16) {
+      outputCastDataType != ge::DT_FLOAT16 || inputResizeDataType != ge::DT_FLOAT16) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "castNode's DataType is not float32 to float16, fusion failed.");
     return NOT_CHANGED;
   }
