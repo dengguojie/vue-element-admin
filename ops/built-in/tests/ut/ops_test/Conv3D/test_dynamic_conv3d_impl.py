@@ -315,6 +315,11 @@ case36 = _run_api_end_with_d(pads=pads)
 fmap = {'ori_shape': (1, -1, -1, 1, 32), 'shape': (1, -1, -1, 1, 32),
         'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 1), (2, 18), (50, 70), (1, 1), (32,32)]}
 case37 = _run_api_end_with_d(fmap=fmap)
+
+# test fmap = [-2]
+fmap = {'ori_shape': (-2,), 'shape': (-2,),
+        'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}
+case38 = _run_api_end_with_d(fmap=fmap)
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A", "Ascend310"],
@@ -427,6 +432,9 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case37, RuntimeError, "dynamic_case37", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case38, RuntimeError, "dynamic_case38", True))
 
 # test_conv3d_fuzzy_build_generalization
 print("adding conv3d test_conv3d_fuzzy_build_generalization testcase")

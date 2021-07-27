@@ -183,6 +183,18 @@ pads = [1, 2, 1, 2, 1, 2]
 case17 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
                   input_size=input_size, filter=filter, pads=pads)
 
+# test dedy_shape = [-2]
+input_size = {'ori_shape': (5,), 'ori_format': 'ND', 'dtype': 'int32'}
+filter = {'ori_shape': (3, 3, 3, 128, 256), 'ori_format': 'DHWCN', 'dtype': 'float16'}
+out_backprop = {'ori_shape': (-2,), 'ori_format': 'NDHWC', 'dtype': 'float16',
+                'range': ((1, None), (1, None), (16, 16), (1, None), (1, None), (16, 16))}
+y = {'ori_shape': (-1, -1, -1, -1, 128), 'ori_format': 'NDHWC', 'dtype': 'float16',
+    'range': ((1, None), (1, None), (8, 8), (1, None), (1, None), (16, 16))}
+strides = (1, 2, 2, 2, 1)
+pads = [1, 2, 1, 2, 1, 2]
+case18 = _run_api(out_backprop=out_backprop, y=y, strides=strides,
+                  input_size=input_size, filter=filter, pads=pads)
+
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A"],
@@ -219,6 +231,8 @@ ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case16, RuntimeError, "dynamic_case16", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case17, RuntimeError, "dynamic_case17", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(case18, RuntimeError, "dynamic_case18", True))
 
 # test_conv3d_backprop_input_fuzz_build_generalization
 print("adding conv3d test_conv3d_backprop_input_fuzz_build_generalization testcase")

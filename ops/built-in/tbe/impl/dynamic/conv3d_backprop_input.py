@@ -88,7 +88,7 @@ _DIM_STR = "NDHW"
 _DIM_MAP = {"N": [0, 0], "D": [1, 1], "H": [2, 3], "W": [3, 4]}
 
 _DYNAMIC_DIM_VAL = -1
-
+_DYNAMIC_RANK_FLAG = [-2]
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
     if attr_value < attr_min or attr_value > attr_max:
@@ -132,11 +132,17 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
                            error_manager_util.get_error_message(dict_args))
 
     if ori_format_out_backprop == "NDHWC":
-        shape_out_backprop = list(ori_shape_out_backprop)
+        if list(ori_shape_out_backprop) == _DYNAMIC_RANK_FLAG:
+            shape_out_backprop = [-1, -1, -1, -1, shape_filters[-1]]
+        else:
+            shape_out_backprop = list(ori_shape_out_backprop)
         shape_strides = ori_shape_strides
         shape_dilations = ori_shape_dialtions
     elif ori_format_out_backprop == "NCDHW":
-        shape_out_backprop = _ncdhw2ndhwc(ori_shape_out_backprop)
+        if list(ori_shape_out_backprop) == _DYNAMIC_RANK_FLAG:
+            shape_out_backprop = [-1, -1, -1, -1, shape_filters[-1]]
+        else:
+            shape_out_backprop = _ncdhw2ndhwc(ori_shape_out_backprop)
         shape_strides = _ncdhw2ndhwc(ori_shape_strides)
         shape_dilations = _ncdhw2ndhwc(ori_shape_dialtions)
     else:
@@ -660,7 +666,11 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
     # get range_dedy
     range_dedy, range_input = _range_correction(range_input, shape_filters, pads, shape_strides,
                                                 shape_dilations, shape_out_backprop)
-
+    if list(ori_shape_out_backprop) == _DYNAMIC_RANK_FLAG:
+        range_dedy = [(1, None), (1, None),
+                      (util_common.ceil(shape_out_backprop[4], _C0_SIZE),
+                       util_common.ceil(shape_out_backprop[4], _C0_SIZE)),
+                      (1, None), (1, None), (_C0_SIZE, _C0_SIZE)]
     # get placeholder
     dx_shape, dedy, filter_frac, input_sizes, shape_out_backprop, group_dict = \
         _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_dtype,

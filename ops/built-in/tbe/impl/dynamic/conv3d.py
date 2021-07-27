@@ -77,7 +77,7 @@ VALID_DTYPE = ("float16",)
 DYNAMIC_FLAG = -1
 RANGE_DIM_LEN = 2
 L1FUSION_INPUT_CTR = 2
-
+DYNAMIC_RANK_FLAG = [-2]
 
 def get_op_support_info(fmap,
                         weight,
@@ -433,7 +433,7 @@ def _get_attrs(strides, dilations, data_format):
 
 
 def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
-                      dilations):
+                      dilations, groups):
     """
     algorithm: unified format
 
@@ -454,15 +454,21 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
         Dilation on D/H/W, format sensitive
         Dilations in the batch and depth dimensions must be 1
 
+    groups: Int of blocked connections from input channels to output channels
+        Default value is 1
+
     Returns
     -------
     shape_fm, shape_filter, stride_dhw, dilation_dhw
     """
 
     pos_n, pos_c, pos_d, pos_h, pos_w = _pos_from_format(fmp_format)
-    shape_fm = _get_shape_ncdhw(fmp_shape, fmp_format)
     shape_filter = _get_shape_ncdhw(w_shape, w_format)
     stride_dhw, dilation_dhw = _get_attrs(strides, dilations, fmp_format)
+    if list(fmp_shape) == DYNAMIC_RANK_FLAG:
+        shape_fm = [-1, shape_filter[1] * groups, -1, -1, -1]
+    else:
+        shape_fm = _get_shape_ncdhw(fmp_shape, fmp_format)
 
     return shape_fm, shape_filter, stride_dhw, dilation_dhw
 
@@ -704,8 +710,9 @@ def _check_and_config_para(fmap,
     if len(pads) != PADS_LENGTH:
         error_manager_cube.raise_err_one_para('E62501', 'conv3d', 'pads')
 
-    if len(in_shape) != SHAPE_DIMS:
-        error_manager_cube.raise_err_one_para('E62501', 'conv3d', 'in_shape')
+    if list(in_shape) != DYNAMIC_RANK_FLAG:
+        if len(in_shape) != SHAPE_DIMS:
+            error_manager_cube.raise_err_one_para('E62501', 'conv3d', 'in_shape')
 
     para_check.check_shape_rule(w_shape, min_dim=SHAPE_DIMS,
                                 max_dim=SHAPE_DIMS)
@@ -719,7 +726,7 @@ def _check_and_config_para(fmap,
             'conv3d', 'weight', FILTER_FORMAT_WHITE_LIST, w_format)
     # shape_fm/shape_filter format is NCDHW
     shape_fm, shape_filter, stride_dhw, dilation_dhw = _format_normalize(
-        in_format, w_format, in_shape, w_shape, strides, dilations)
+        in_format, w_format, in_shape, w_shape, strides, dilations, groups)
 
     if bias:
         util_conv3d.check_bias(bias, res_dtype)
@@ -735,7 +742,12 @@ def _check_and_config_para(fmap,
     _check_conv3d_dtype(in_dtype, w_dtype, res_dtype)
     _check_dynamic_mode(shape_fm, shape_filter, groups)
     # calculate fmap_range
-    fmap_range = _get_fmap_range(in_range, shape_fm, in_format)
+    if list(in_shape) == DYNAMIC_RANK_FLAG:
+        fmap_range = [(1, None), (1, None),
+                      (shape_filter[1] * groups, shape_filter[1] * groups),
+                      (1, None), (1, None)]
+    else:
+        fmap_range = _get_fmap_range(in_range, shape_fm, in_format)
 
     # check fmap_range
     batch_range, d_range, _, h_range, w_range = fmap_range
