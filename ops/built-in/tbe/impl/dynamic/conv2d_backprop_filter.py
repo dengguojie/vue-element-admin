@@ -207,7 +207,7 @@ def _get_nchw_shape(fmap, out_backprop, filters, groups):
         if dedy_shape[C_DIM] == DYNAMIC_FLAG:
             dedy_shape[C_DIM] = cout
     if list(x_shape) == DYNAMIC_RANK_FLAG:
-        x_shape = [DYNAMIC_FLAG, cout, DYNAMIC_FLAG, DYNAMIC_FLAG]
+        x_shape = [DYNAMIC_FLAG, cin, DYNAMIC_FLAG, DYNAMIC_FLAG]
         x_range = [(1, None), (cin, cin), (1, None), (1, None)]
     else:
         x_shape = _get_shape(x_shape, x_format)

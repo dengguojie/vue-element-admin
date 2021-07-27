@@ -799,7 +799,7 @@ class AvgPool:
         return self.tik_instance
 
 
-def correct_fuzz_build_range(x, filter, strides, padding):
+def correct_fuzz_build_range(x, ksize, strides, padding, data_format):
     """
     get input w range within L1 size
 
@@ -837,8 +837,8 @@ def correct_fuzz_build_range(x, filter, strides, padding):
         return
     # >>> start: get the max proper w right range, at least same to shape value
     type_byte = int(re.findall(r'\d+', x["dtype"])[0]) // 8
-    filter_h = filter["ori_shape"][filter["ori_format"].find("H")]
-    filter_w = filter["ori_shape"][filter["ori_format"].find("W")]
+    filter_h = ksize[data_format.find("H")]
+    filter_w = ksize[data_format.find("W")]
     l1_size = tbe_platform.get_soc_spec("L1_SIZE")
     proper_w = proper_range[pos_range_w][1]
     for i in list(range(proper_w, x["ori_shape"][pos_w] - 1, -1)):
@@ -904,7 +904,7 @@ def avg_pool_generalization(x, filter, bias, y, ksize, strides, padding="VALID",
     if unknow_rank:
         error_manager_cube.raise_err_specific_user("avg_pool", "not support unknow_rank under mode {}".format(
             generalize_config["mode"]))
-    correct_fuzz_build_range(x, filter, strides, padding)
+    correct_fuzz_build_range(x, ksize, strides, padding, data_format)
     have_range = {"x": x, "y": y}
     for name, tensor in have_range.items():
         # only change shape NHW dim to -1, range is already set at infershape
