@@ -44,3 +44,21 @@ TEST_F(index_put_test, index_put_verify_test_2) {
     auto ret = op.VerifyAllAttr(true);
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(index_put_test, index_put_verify_test_3) {
+    ge::op::IndexPut op;
+    op.UpdateInputDesc("x1", create_desc_with_ori({33, 25, 5}, ge::DT_FLOAT, ge::FORMAT_ND, {33, 25, 5}, ge::FORMAT_ND));
+    op.UpdateInputDesc("x2", create_desc_with_ori({33, 25, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {33, 25, 5}, ge::FORMAT_ND));
+    op.UpdateInputDesc("indices", create_desc_with_ori({33, 25, 1}, ge::DT_FLOAT16, ge::FORMAT_ND, {33, 25, 1}, ge::FORMAT_ND));
+    auto ret = op.VerifyAllAttr(true);
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(index_put_test, index_put_verify_test_4) {
+    ge::op::IndexPut op;
+    op.UpdateInputDesc("x1", create_desc_with_ori({33, 25, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {33, 25, 5}, ge::FORMAT_ND));
+    op.UpdateInputDesc("x2", create_desc_with_ori({33, 25, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {33, 25, 5}, ge::FORMAT_ND));
+    op.UpdateInputDesc("indices", create_desc_with_ori({33, 25, 1}, ge::DT_INT64, ge::FORMAT_ND, {33, 25, 1}, ge::FORMAT_ND));
+    auto ret = op.VerifyAllAttr(true);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

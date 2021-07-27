@@ -1215,10 +1215,10 @@ REG_OP(IndexAdd)
 * Warning:THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(IndexPut)
-    .INPUT(x1, TensorType({DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
-    .INPUT(x2, TensorType({DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
-    .INPUT(indices, TensorType({DT_INT32}))
-    .OUTPUT(y, TensorType({DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
+    .INPUT(x1, TensorType({DT_INT64, DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
+    .INPUT(x2, TensorType({DT_INT64, DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
+    .INPUT(indices, TensorType({DT_INT64, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_INT64, DT_INT32, DT_INT8, DT_UINT8, DT_FLOAT32, DT_FLOAT16}))
     .ATTR(accumulate, Int, 0)
     .OP_END_FACTORY_REG(IndexPut)
 

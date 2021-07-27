@@ -3188,7 +3188,7 @@ IMPLEMT_VERIFIER(IndexAdd, IndexAddVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(IndexAddInferShape) {
   AscendString op_name_str;
-  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+  if (GRAPH_SUCCESS != op.GetName(op_name_str)) {
     OP_LOGE("get op name faild!");
     return false;
   }
@@ -3253,9 +3253,9 @@ IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
             "The input shape of x1 x2 y is equal, please check!");
     return GRAPH_FAILED;
   }
-  if (indices_dtype != DT_INT32) {
+  if (indices_dtype != DT_INT32 && indices_dtype != DT_INT64) {
     OP_LOGE(op_name,
-            "The input shape of indices is not int32, please check!");
+            "The input shape of indices is neither int32 nor int64, please check!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -3263,7 +3263,7 @@ IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(IndexPutInferShape) {
   AscendString op_name_str;
-  if (GRAPH_SUCCESS !=op.GetName(op_name_str)) {
+  if (GRAPH_SUCCESS != op.GetName(op_name_str)) {
     OP_LOGE("get op name faild!");
     return false;
   }
