@@ -443,12 +443,20 @@ def avg_pool_grad_generalization(orig_input_shape,
     conv2d_tranpose.get_attr_nchw(data_format)
     filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix["ori_shape"], kernel_matrix["ori_format"])
     _, dy_range_nchw = conv2d_tranpose.get_input_nchw(input_grad["ori_shape"], input_grad["ori_format"], dy_range)
-    dx_range_nchw, _, _ = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
+    dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
     out_grad["range"] = [dx_range_nchw[0],
                          [out_grad["shape"][1], out_grad["shape"][1]],
                          dx_range_nchw[2],
                          dx_range_nchw[3],
                          [out_grad["shape"][4], out_grad["shape"][4]]]
+
+    input_grad["range"] = list(input_grad["range"])
+    input_grad["ori_range"] = list(input_grad["ori_range"])
+    input_grad["range"][input_grad.get("format").find("H") - 1] = new_dy_range_nchw[2]
+    input_grad["range"][input_grad.get("format").find("W") - 1] = new_dy_range_nchw[3]
+    input_grad["ori_range"][input_grad.get("ori_format").find("H")] = new_dy_range_nchw[2]
+    input_grad["ori_range"][input_grad.get("ori_format").find("W")] = new_dy_range_nchw[3]
+
     result.append([orig_input_shape,
                    input_grad,
                    kernel_matrix,
