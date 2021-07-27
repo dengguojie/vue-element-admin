@@ -2224,6 +2224,9 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
         elif dtype == "float32":
             paddings = [[0, 0], [paddings[3][0] // 8, paddings[3][1] // 8], [paddings[1][0], paddings[1][1]],
                         [paddings[2][0], paddings[2][1]], [0, 0]]
+    if input_format == "NC1HWC0" and ori_format == "NCHW" and dtype == "float16":
+        paddings = [[0, 0], [paddings[1][0] // 16, paddings[1][1] // 16], [paddings[2][0], paddings[2][1]],
+                    [paddings[3][0], paddings[3][1]], [0, 0]]
 
     if len(paddings) is not len(shape):
         rule_desc = "Paddings and input_x'shape should have the same length."
