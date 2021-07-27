@@ -382,3 +382,25 @@ def test_matmul_multi_output(test_arg):
         cce_build_code(sch, config)
 ut_case.add_cust_test_func(test_func=test_matmul_multi_output)
 
+
+not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
+                                   {"shape": (4, 6, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+                                       96, 49), "ori_format": "ND", "param_type": "input"},
+                                   {"shape": (49, ), "dtype": "float32", "format": "ND",
+                                    "ori_shape": (49, ), "ori_format": "ND", "param_type": "input"},
+                                   None,
+                                   {"shape": (4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                                    "ori_shape": (32, 49), "ori_format": "ND", "param_type": "output"},
+                                   False, False],
+                        "case_name": "MatMul_bias_1d_fp32_not_align",
+                        "expect": "success",
+                        "format_expect": [],
+                        "support_expect": True}
+
+ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
+
+if __name__ == '__main__':
+    ut_case._case_info_map = {}
+    ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
+
+    ut_case.run(["Ascend310", "Ascend920A"])

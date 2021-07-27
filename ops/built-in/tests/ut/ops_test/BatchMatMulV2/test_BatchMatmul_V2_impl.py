@@ -178,6 +178,17 @@ case14 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": 
          "expect": "success",
          "support_expect": True}
 
+case15 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 32, 64),"ori_format": "ND"},
+                     {"shape": (4, 4, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 64, 49),"ori_format": "ND"},
+                     {"shape": (49,), "dtype": "float32", "format": "ND", "ori_shape": (49,),"ori_format": "ND"},
+                    None,
+                    {"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 32, 49),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_v2_15",
+         "expect": "success",
+         "support_expect": True}
+
 
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)
@@ -186,6 +197,7 @@ ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend920A"], case14)
+ut_case.add_case(["Ascend920A"], case15)
 
 def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
@@ -220,9 +232,11 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}
+    ut_case.add_case(["Ascend920A"], case14)
+    ut_case.add_case(["Ascend920A"], case15)
 
     from case_batchmatmul_v2 import precision_cases
     for case in precision_cases:
         ut_case.add_precision_case(["Ascend310", "Ascend910"], case)
 
-    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")
+    ut_case.run(["Ascend310", "Ascend910A", "Ascend920A"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")

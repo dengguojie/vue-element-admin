@@ -375,12 +375,15 @@ def test_check_support(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_check_support)
 
+ut_case.add_case(["Ascend310"], not_align_bias_case1)
+ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
+
 if __name__ == '__main__':
     ut_case._case_info_map = {}
     ut_case.add_case(["Ascend310"], not_align_bias_case1)
-    ut_case.add_case(["Ascend310"], not_align_bias_case2)
+    ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
     ut_case.add_precision_case(["Ascend310", "Ascend910"], align_bias_case1)
     ut_case.add_precision_case(["Ascend310", "Ascend910"], not_align_bias_case1)
     ut_case.add_precision_case(["Ascend310", "Ascend910"], not_align_bias_case2)
 
-    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")
+    ut_case.run(["Ascend310", "Ascend920A"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")
