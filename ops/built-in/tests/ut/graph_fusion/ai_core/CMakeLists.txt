@@ -31,13 +31,8 @@ target_include_directories(ops_cpp_fusion_pass_aicore_utest PRIVATE
 target_compile_definitions(ops_cpp_fusion_pass_aicore_utest PRIVATE
         _GLIBCXX_USE_CXX11_ABI=0
         )
-if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
-   set(compile_opt_mode ${CMAKE_BUILD_MODE})
-else()
-   set(compile_opt_mode -O0)
-endif()
 target_compile_options(ops_cpp_fusion_pass_aicore_utest PUBLIC
-        ${compile_opt_mode}
+        -O0
         -Dgoogle=ascend_private
         )
 target_link_libraries(ops_cpp_fusion_pass_aicore_utest PRIVATE

@@ -2,13 +2,6 @@ cmake_minimum_required(VERSION 3.14)
 
 project(cann C CXX)
 
-#switch build mode
-if(${BUILD_MODE} STREQUAL "FALSE")
-  set(CMAKE_BUILD_MODE "${BUILD_MODE}")
-else()
-  set(CMAKE_BUILD_MODE "-${BUILD_MODE}")
-endif()
-
 # set variables for cann project
 set(CANN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "CANN_ROOT=${CANN_ROOT}")

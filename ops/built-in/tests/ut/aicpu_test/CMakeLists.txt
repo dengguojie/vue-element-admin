@@ -148,7 +148,7 @@ target_include_directories(cpu_kernels_llt PUBLIC
 
 target_compile_options(cpu_kernels_llt PUBLIC
   -D_GLIBCXX_USE_CXX11_ABI=0
-  -g
+  -O0
   -Dgoogle=ascend_private
   -DRUN_TEST
 )
