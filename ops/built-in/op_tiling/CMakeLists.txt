@@ -231,8 +231,13 @@ elseif(UT_TEST_ALL OR TILING_UT)
   target_include_directories(optiling_llt PUBLIC
     ${_op_tiling_include}
   )
+  if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+  else()
+   set(compile_opt_mode -O0)
+  endif()
   target_compile_options(optiling_llt PUBLIC
-    -O0
+    ${compile_opt_mode}
     -Dgoogle=ascend_private
   )
   target_link_libraries(optiling_llt

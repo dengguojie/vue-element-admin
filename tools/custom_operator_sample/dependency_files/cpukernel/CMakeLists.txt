@@ -140,8 +140,13 @@ message(STATUS "SOC_VERSION=${SOC_VERSION}")
 target_compile_definitions(${AICPU_KERNEL_TARGET} PUBLIC
     google=ascend_private
 )
+if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+else()
+   set(compile_opt_mode -O2)
+endif()
 target_compile_options(${AICPU_KERNEL_TARGET} PRIVATE
-    -O2
+    ${compile_opt_mode}
     -std=c++14
 )
 set(AICPU_SOC_VERSION $ENV{AICPU_SOC_VERSION})

@@ -192,11 +192,16 @@ elseif(UT_TEST_ALL OR PROTO_UT OR PASS_UT OR PLUGIN_UT OR ONNX_PLUGIN_UT)
     ${_op_proto_utils}
     ${_proto_h}
   )
+  if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+  else()
+   set(compile_opt_mode -O0)
+  endif()
   target_include_directories(opsproto_llt PUBLIC
     ${_op_proto_include}
   )
   target_compile_options(opsproto_llt PUBLIC
-    -O0
+    ${compile_opt_mode}
     -Dgoogle=ascend_private
   )
   target_link_libraries(opsproto_llt

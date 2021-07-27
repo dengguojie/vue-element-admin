@@ -28,8 +28,14 @@ target_compile_definitions(ops_cpp_plugin_utest PRIVATE
         _GLIBCXX_USE_CXX11_ABI=0
         )
 
+if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+else()
+   set(compile_opt_mode -O0)
+endif()
+
 target_compile_options(ops_cpp_plugin_utest PUBLIC
-        -O0
+        ${compile_opt_mode}
         -Dgoogle=ascend_private
         )
 

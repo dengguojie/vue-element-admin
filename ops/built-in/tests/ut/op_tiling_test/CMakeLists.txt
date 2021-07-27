@@ -27,8 +27,13 @@ target_include_directories(ops_cpp_op_tiling_utest PRIVATE
 target_compile_definitions(ops_cpp_op_tiling_utest PRIVATE
         _GLIBCXX_USE_CXX11_ABI=0
         )
+if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+else()
+   set(compile_opt_mode -O0)
+endif()
 target_compile_options(ops_cpp_op_tiling_utest PUBLIC
-        -O0
+        ${compile_opt_mode}
         -Dgoogle=ascend_private
         )
 target_link_libraries(ops_cpp_op_tiling_utest PRIVATE

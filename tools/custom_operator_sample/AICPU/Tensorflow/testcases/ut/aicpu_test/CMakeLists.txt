@@ -118,7 +118,7 @@ elseif ("${IMPL}" STREQUAL "TRUE")
 
     target_compile_options(cpu_kernels_llt PUBLIC
       -D_GLIBCXX_USE_CXX11_ABI=0
-      -O0
+      -g
       -Dgoogle=ascend_private
       -DRUN_TEST
     )
