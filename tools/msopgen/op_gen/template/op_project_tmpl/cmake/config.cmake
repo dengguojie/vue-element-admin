@@ -60,6 +60,9 @@ set(CAFFE_PLUGIN_TARGET_OUT_DIR ${OUT_DIR}/packages/framework/${PROJECT_DIR}/caf
 set(OP_PROTO_TARGET "cust_op_proto")
 set(OP_PROTO_TARGET_OUT_DIR ${OUT_DIR}/packages/op_proto/${PROJECT_DIR}/)
 
+set(OP_TILING_TARGET "optiling")
+set(OP_TILING_TARGET_OUT_DIR ${OUT_DIR}/packages/op_impl/${PROJECT_DIR}/ai_core/tbe/op_tiling)
+
 set(AIC_FUSION_PASS_TARGET "cust_aic_fusion_pass")
 set(AIC_FUSION_PASS_TARGET_OUT_DIR ${OUT_DIR}/packages/fusion_pass/${PROJECT_DIR}/ai_core)
 
