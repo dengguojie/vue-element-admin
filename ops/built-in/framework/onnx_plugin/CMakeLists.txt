@@ -202,8 +202,13 @@ elseif(UT_TEST_ALL OR ONNX_PLUGIN_UT)
   target_include_directories(ops_all_onnx_plugin_llt PUBLIC
     ${_ops_all_onnx_plugin_include}
     )
+  if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
+   set(compile_opt_mode ${CMAKE_BUILD_MODE})
+  else()
+   set(compile_opt_mode -O0)
+  endif()
   target_compile_options(ops_all_onnx_plugin_llt PUBLIC
-    -O0
+    ${compile_opt_mode}
     -Dgoogle=ascend_private
     )
   target_link_libraries(ops_all_onnx_plugin_llt
