@@ -144,6 +144,8 @@ def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     weight_input = tbe.broadcast(weight_input, shape_x)
     val_prod = tbe.vmul(val_min, weight_input)
     res = tbe.vadd(val_max, val_prod)
+    res.op.attrs["weight_input"] = weight_input
+
     return res
 
 

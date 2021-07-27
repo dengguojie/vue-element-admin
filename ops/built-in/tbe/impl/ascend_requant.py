@@ -16,6 +16,7 @@
 ascend_requant
 """
 from functools import reduce as function_reduce
+from tbe.common.platform.platform_info import get_soc_spec
 from te import tvm
 import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
@@ -27,6 +28,21 @@ from impl import ascend_quant_util as util
 
 
 # pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
+def is_support_v220():
+    """
+    Check if Ascend920A version.
+
+    Returns
+    -------
+    True: Ascend920A version.
+    False: other version.
+    """
+    soc_version = get_soc_spec("SOC_VERSION")
+    if soc_version == "Ascend920":
+        return True
+    return False
+
+
 @fusion_manager.register("ascend_requant")
 def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend_requant"):
     """
@@ -139,7 +155,7 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
 
     res_shape[-2] = x.shape[-2]
     if conv_flag:
-        if x.op.attrs["remove_padded_column_in_next_op"].value == 1:
+        if not is_support_v220() and x.op.attrs["remove_padded_column_in_next_op"].value == 1:
             res_shape[-2] = res_shape[-2]//2
             res_ub_reform = tvm.compute(res_shape,
                                         lambda batch, cout1, howo, cout0:
@@ -190,6 +206,13 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
                 new_indice[1] = cout1
 
             if tensor_flag:
+                if is_support_v220():
+                    return tvm.vdeq_cast(
+                        x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
+                                              batch,
+                                              cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                        req_scale(*new_indice), "int8", do_relu=relu_flag)
+
                 return tvm.select(
                     cout1 < true_cout1,
                     tvm.vdeq_cast(
@@ -198,6 +221,14 @@ def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_fla
                                               cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
                         req_scale(*new_indice), "int8", do_relu=relu_flag),
                     tvm.const(0, dtype="int8"))
+
+            if is_support_v220():
+                return tvm.deq_cast(
+                    x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
+                                          batch,
+                                          cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                    req_scale(*new_indice), "int8")
+
             return tvm.select(cout1 < true_cout1,
                               tvm.deq_cast(
                                   x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,

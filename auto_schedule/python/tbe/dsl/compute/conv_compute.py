@@ -27,6 +27,7 @@ from tbe.common.platform import CUBE_MKN
 from tbe.common.buildcfg import get_current_build_config
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.compute.conv_compute_v2 import conv_v220_compute
 from tbe.tvm.buffer_manager import get_buffer_manager
 from tbe.tvm.dsl_source_info import source_info_decorator
 
@@ -253,7 +254,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         err_man.raise_err_scene_equal_limitation("conv2d", "input feature map channel", "filter channel")
 
     if optim_dict is None:
-        optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False}
+        optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False, "v220_c04_mode": "disabled"}
     block_size_k = CUBE_MKN[in_dtype]['mac'][1]
     shape_in[1] = ((shape_in[1] + block_size_k - 1) // block_size_k)*block_size_k
     # int8 feature_map_channel_in is aligned by 16, but weight_channel_in is aligned by 32.
@@ -357,7 +358,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         check for not bigger than L1
         """
 
-        m_bit_ratio = {"float16": 2, "int8": 1}
+        m_bit_ratio = {"float16": 2, "int8": 1, "float32": 4, "bfloat16": 2}
         if "fmap_w" in ConvParam.dyn_var_map and ConvParam.dynamic_flag:
             fmap_w_upper = get_te_var("fmap_w").get_bound()[1]
             if fmap_w_upper:
@@ -447,6 +448,8 @@ class ConvParam:
         cls.dynamic_flag = False
         cls.has_padding = False
         cls.dequant_doubleout_flag = False # mark v100 v200 conv_dequant_*_quant doubleout
+        cls.v220_c04_mode = "disabled"
+        cls.input_nd_flag = False
         cls.multi_conv2d_fusion_flag = False # mark multi conv2d fusion
         cls.bias_init_align_dim_flag = False
         cls.fusion_para = {"input_memory_type": [],
@@ -537,8 +540,7 @@ def _fmap_c0_check_value(dtype, optim_dict):
     """
     This is fmap c0 check value.
     """
-    fmap_c0_check_value = 4 if optim_dict["c0_optim_flg"] and optim_dict["use_v200_c04_flg"] and is_support_v200() \
-        else CUBE_MKN[dtype]['mac'][1]
+    fmap_c0_check_value = 4 if optim_dict["use_v200_c04_flg"] else CUBE_MKN[dtype]['mac'][1]
 
     return fmap_c0_check_value
 
@@ -609,8 +611,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                  howo, cout0).astype(res_dtype),
                            name=get_name_with_suffix_num('C_UB'),
                            tag=OP_TAG + "C_UB")
-        if not is_support_v220():
-            TENSOR_MAP["c_ub"] = c_ub
+        TENSOR_MAP["c_ub"] = c_ub
         return c_ub
 
     def _fmap_ddr2l1(fmap, fmap_shape, strideh_opti_flag):
@@ -1139,8 +1140,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         dim_map_copy = DIM_MAP.copy()
         dim_map_copy.update(dim_map1)
 
-        if not is_support_v220():
-            TENSOR_MAP["c_ub"] = c_ub
+        TENSOR_MAP["c_ub"] = c_ub
         TENSOR_MAP["conv_vector_fused_flag"] = conv_fused_flag
         ConvParam.tensor_map = TENSOR_MAP
         ConvParam.dim_map.update(dim_map_copy)
@@ -1846,7 +1846,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             err_man.raise_err_specific("conv2d", "Invalid optim_dict check")
 
         kernel_one_one = (para_dict["filter_h"] == 1) and (para_dict["filter_w"] == 1)
-        if optim_dict["c0_optim_flg"]:
+
+        if optim_dict["c0_optim_flg"] and not is_support_v220():
             c0_value = _fmap_c0_check_value(weight.dtype, optim_dict)
             if weight.dtype != "int8" and data.shape[1].value == 1 and data.shape[4].value == c0_value \
                     and weight.shape[3].value == 16 and not kernel_one_one:
@@ -1862,11 +1863,14 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a tvm.tensor.Tensor")
         if len(data.shape) != 5:
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a 5 dim tvm.tensor.Tensor")
-        check_dtype_list = ('int8', "float16")
+        check_dtype_list = ("int8", "float16", "bfloat16", "float32")
         util.check_dtype_rule(data.dtype, check_dtype_list)
 
-        block_size_k = 4 if optim_dict["c0_optim_flg"] and is_support_v200() and optim_dict["use_v200_c04_flg"] \
-            else CUBE_MKN[data.dtype]['mac'][1]
+        if optim_dict.get("use_v200_c04_flg") or optim_dict.get("v220_c04_mode") == "first_layer_c04":
+            block_size_k = 4
+        else:
+            block_size_k = CUBE_MKN[data.dtype]['mac'][1]
+
         if data.shape[4].value != block_size_k:
             err_man.raise_err_scene_equal_limitation("conv2d",
                                                      "the last dim of first Input parameter", str(block_size_k))
@@ -1879,7 +1883,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a tvm.tensor.Tensor")
         if len(weight.shape) != 4:
             err_man.raise_err_specific("conv2d", "the first Input parameter must be a 4 dim tvm.tensor.Tensor")
-        check_dtype_list = ('int8', "float16")
+        check_dtype_list = ("int8", "float16", "bfloat16", "float32")
 
         util.check_dtype_rule(weight.dtype, check_dtype_list)
         block_size_k = CUBE_MKN[weight.dtype]['mac'][1]
@@ -2388,6 +2392,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     res_dtype = "float16"
     if (in_dtype, w_dtype) == ("int8", "int8"):
         res_dtype = "int32"
+    if (in_dtype, w_dtype) == ("float32", "float32"):
+        res_dtype = "float32"
     #====================fetch L1fusion information from pass interface=============
     l1_fusion_enable_flag = get_current_build_config("enable_L1_fusion")
     l2_fusion_enable_flag = get_current_build_config("enable_L2_fusion") and get_current_build_config("l2_mode") == 1
@@ -2464,10 +2470,16 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         ConvParam.conv1d_split_w_flag = False
 
     conv_shape = ConvParam.dim_map["output_conv_res_shape"]
-    if "invalid_data_rm" not in optim_dict:
-        optim_dict["invalid_data_rm"] = False
-    invalid_data_rm_flag = optim_dict["invalid_data_rm"]
+
+    invalid_data_rm_flag = optim_dict.get("invalid_data_rm", False)
     ConvParam.invalid_data_rm_flag = invalid_data_rm_flag
+
+    if is_support_v220():
+        conv_res = conv_v220_compute(data, weight, para_dict, optim_dict, dsl_flag, ConvParam)
+        if lxfusion_enable_flag and not dsl_flag:
+            tensor_list[-1] = conv_res
+            buffer_manager.set_tensor_list(tensor_list)
+        return conv_res
 
     if in_dtype == "int8":  # quant
         if dsl_flag:  # quant fusion

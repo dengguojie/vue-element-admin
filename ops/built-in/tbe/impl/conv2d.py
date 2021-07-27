@@ -23,6 +23,7 @@ from tbe.dsl import auto_schedule
 from tbe.dsl import build
 from tbe.dsl.compute.conv_compute import conv
 from tbe.common.register import register_op_compute
+from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
@@ -474,7 +475,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
     """
     # for pylint, otherwise "Dangerous default value [] as argument"
     if optim_dict is None:
-        optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False}
+        optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False, "v220_c04_mode": "disabled"}
 
     if fusion_para is None:
         fusion_para = {"fmap_l1_addr_flag": 0, "fmap_l1_valid_size": -1, "slice_offset": (0, 0, 0, 0, 0)}
@@ -497,9 +498,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
                                                               kernel_name, dilateh, dilatew,
                                                               optim_dict, groups)
 
-    c0_val = 16
-    if in_dtype == "int8":
-        c0_val = 32
+    c0_val = CUBE_MKN[in_dtype]['mac'][1]
 
     enlarge = min(
         util_conv2d.lcm(util_conv2d.lcm(cin_ori, c0_val)//cin_ori, util_conv2d.lcm(cout_ori, 16)//cout_ori), groups)
