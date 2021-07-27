@@ -367,7 +367,7 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
         dst_tensor = tvm.compute(
             dst_shape,
             lambda  i, j, k, l: src(j * fractal_n0 + k,
-            (i % hw) // src_w, (i % hw) // src_w,
+            (i % hw) // src_w, (i % hw) % src_w,
             (i // hw) * dst_c0 + l),
             name = "res_fractal_z_weight",
             attrs={"ori_format": "NHWC", "ori_shape": src.shape},
