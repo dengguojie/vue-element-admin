@@ -165,7 +165,7 @@ def _depthwise_conv2d_backprop_input_compute(
         ori_paras["input_size"]["ori_shape"] = default_para["input_size"]["ori_shape"]
     conv2dbp_para = DepthwiseConv2dBackpropParaProcess(ori_paras)
     paras = conv2dbp_para.config_paras()
-
+    res_dtype = input_grad.get("dtype").lower()
     dedx = tbe.conv2d_backprop_input(
         filters=paras.get("filter_tensor"),
         out_backprop=paras.get("dy_tensor"),
@@ -174,7 +174,7 @@ def _depthwise_conv2d_backprop_input_compute(
         para_dict={"strides": (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
                    "padding": conv2dbp_para.pads,
                    "dilations": conv2dbp_para.dilations,
-                   "res_dtype": input_grad.get("dtype"),
+                   "res_dtype": res_dtype,
                    "kernel_name": kernel_name,
                    "group_dict": paras.get("group_para"),
                    "correct_range_flag": paras.get("correct_range_flag", False),

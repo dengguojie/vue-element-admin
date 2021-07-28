@@ -741,7 +741,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     out_channel, in_channel, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
 
-    _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN[res_dtype]["mac"]
+    _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN[filters.dtype]["mac"]
     shape_dx = (dx_batch, ceil(dx_c, dx_n0), dx_h, dx_w, dx_n0)
 
     shape_dy = cube_util.shape_to_list(out_backprop.shape)

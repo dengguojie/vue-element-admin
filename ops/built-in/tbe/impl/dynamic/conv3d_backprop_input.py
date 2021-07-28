@@ -380,8 +380,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         w_value = dedy_w_upper * stride_w
 
         aub_dedy_size_min = dedy_w_upper * _C0_SIZE * 2
-        aub_filling_size_min = w_value * _C0_SIZE  * _BIT_RATIO_DICT.get(res_dtype)
-        cub_size_min = _C0_SIZE * _C0_SIZE * 2
+        aub_filling_size_min = w_value * _C0_SIZE * 2
+        cub_size_min = _C0_SIZE * _C0_SIZE * _BIT_RATIO_DICT.get(res_dtype)
         ub_size = tbe_platform.get_soc_spec("UB_SIZE")
 
         if (aub_dedy_size_min * (param_dict.get("fused_num", 0) + 1) +
