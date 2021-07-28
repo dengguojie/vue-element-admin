@@ -7775,6 +7775,7 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV1InferShape) {
   auto output_max = op_info->MutableOutputDesc("y");
   auto output_mask = op_info->MutableOutputDesc("argmax");
   auto shape = input_desc->MutableShape();
+  DataType input_dtype = input_desc->GetDataType();
 
   std::vector<int64_t> input_dims = shape.GetDims();
   std::vector<std::pair<int64_t, int64_t>> input_range;
@@ -7880,8 +7881,10 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV1InferShape) {
 
   output_max->SetShape(GeShape(vec_max));
   output_max->SetShapeRange(max_range);
+  output_max->SetDataType(input_dtype);
   output_mask->SetShape(GeShape(vec_mask));
   output_mask->SetShapeRange(mask_range);
+  output_mask->SetDataType(DT_UINT16);
   return GRAPH_SUCCESS;
 }
 
