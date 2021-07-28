@@ -72,6 +72,8 @@ class LayerNormBetaGammaSchedule:
                           "unified_broadcast": "vector_dup",
                           "reduce_sum": "vector_reduce_sum",
                           "broadcast_for_tensor": "unified_broadcast"}
+        self._dy_type = None
+        self._max_reduce_factor = 1
 
     def gen_reversed_subgraph_list(self, out_tensor, tensor_list):
         if out_tensor is None:
@@ -98,12 +100,12 @@ class LayerNormBetaGammaSchedule:
         emit_insn_list = []
         tensorlist = []
         data_dy_out = self.gen_reversed_subgraph_list(res_list, tensorlist)
-        dy_type = None
         for tensor, tensor_out in tensorlist:
             if tensor.op.name == "data_dy_layernormgrad_beta_gamma":
                 tensor_ub = sch.cache_read(tensor, tbe_platform.scope_ubuf, data_dy_out)
                 emit_insn_list.append((tensor_ub, tbe_platform.DMA_COPY))
-                dy_type = tensor.dtype
+                self._dy_type = tensor.dtype
+                self._max_reduce_factor = self.calc_max_reduce_factor(res_list)
             elif tensor.op.name in ("data_x", "data_mean", "data_variance"):
                 tensor_ub = sch.cache_read(tensor, tbe_platform.scope_ubuf, [tensor_out])
                 emit_insn_list.append((tensor_ub, tbe_platform.DMA_COPY))
@@ -111,17 +113,18 @@ class LayerNormBetaGammaSchedule:
                 sch[tensor].set_scope(tbe_platform.scope_ubuf)
                 insn = self.get_emit_insn_map(tensor)
                 emit_insn_list.append((tensor, insn))
-        return emit_insn_list, dy_type
+        return emit_insn_list
 
     def schedule_split_reduce(self, sch, outs, is_split_i=False):
         res = outs[0]
-        emit_insn_list, dy_type = self.travel_res_and_cache_read([res], sch)
+        emit_insn_list = self.travel_res_and_cache_read([res], sch)
         dim0, dim1 = res.op.axis
         reduce_axis = res.op.reduce_axis[0]
         sch[res].reorder(reduce_axis, dim0, dim1)
         reduce_o, reduce_i = sch[res].split(reduce_axis, factor=self.reduce_factor)
         if is_split_i:
-            reduce_i_o, reduce_i_i = sch[res].split(reduce_i, factor=50)
+            # for this situation, double buffer is enabled, so split factor must divided by 2
+            reduce_i_o, reduce_i_i = sch[res].split(reduce_i, factor=self._max_reduce_factor // 2)
         rf_ub = sch.rfactor(res, reduce_o)[0]
         sch[rf_ub].set_scope(tbe_platform.scope_ubuf)
         last_dim = int(res.shape[-1])
@@ -145,17 +148,19 @@ class LayerNormBetaGammaSchedule:
         sch[rf_ub].compute_at(sch[res_gm], res_gm.op.reduce_axis[0])
         for tensor, insn in emit_insn_list:
             sch[tensor].emit_insn(tensor.op.axis[0], insn)
+            if is_split_i:
+                sch[tensor].double_buffer()
         if is_split_i:
             sch[rf_ub].emit_insn(rf_ub.op.reduce_axis[1], tbe_platform.REDUCE_SUM)
         else:
             sch[rf_ub].emit_insn(rf_ub.op.reduce_axis[0], tbe_platform.REDUCE_SUM)
         sch[res_gm].emit_insn(res_gm.op.axis[0], tbe_platform.DMA_COPY)
         sch[res].emit_insn(sch[res].op.axis[0], tbe_platform.PHONY_INSN)
-        return res_gm_list, dy_type
+        return res_gm_list
 
     def schedule_no_split_reduce(self, sch, outs):
         res = outs[0]
-        emit_insn_list, dy_type = self.travel_res_and_cache_read([res], sch)
+        emit_insn_list = self.travel_res_and_cache_read([res], sch)
         dim0, dim1 = res.op.axis
         reduce_axis = res.op.reduce_axis[0]
         sch[res].reorder(reduce_axis, dim0, dim1)
@@ -165,21 +170,24 @@ class LayerNormBetaGammaSchedule:
         for tensor, insn in emit_insn_list:
             sch[tensor].emit_insn(tensor.op.axis[0], insn)
         sch[res].emit_insn(res.op.axis[0], tbe_platform.DMA_COPY)
-        return dy_type
 
-    def get_max_reduce_factor(self, outs, dy_type):
+    def calc_max_reduce_factor(self, outs):
         res = outs[0]
         last_dim = int(res.shape[-1])
         ub_bytes = util.get_ub_size()
         bytes_fp32 = 4
+        bytes_fp16 = 2
         # 4 fp32 tensor
-        bytes_independent = last_dim * 4 * bytes_fp32
-        if dy_type == "float32":
-            # fp32 situation, 3 tensor dependent on factor
-            factor = (ub_bytes - bytes_independent) // (3 * bytes_fp32 * last_dim)
+        bytes_independent = last_dim * 2 * bytes_fp32
+        if self._dy_type == "float32":
+            # 2 data ub depend on factor, 2 rf ub, 1 mul ub reuse data ub
+            factor = (ub_bytes - bytes_independent) // (2 * bytes_fp32 * last_dim)
         else:
-            # fp15 situation, 4 fp32 tensor and 2 fp16 tensor dependent on factor, 2 fp16 same as 1 fp32
-            factor = (ub_bytes - bytes_independent) // (5 * bytes_fp32 * last_dim)
+            # 2 rf ub same as fp32, 1 mul ub resue and 2nd data ub same as fp32
+            # 1st data ub half as 2nd data ub, 1 cast ub
+            # so depent facto ub is 2 fp32 and 1 fp16, equals 5 fp16
+            factor = (ub_bytes - bytes_independent) // (5 * bytes_fp16 * last_dim)
+        factor -= factor % 2
         return factor
 
     def schedule(self, outs, tiling_case):
@@ -188,21 +196,18 @@ class LayerNormBetaGammaSchedule:
         self.fused_axis = operation.get_context().get_current_compute().get("fused_axis")
         key_name, sch.tiling_key = tiling_case
         core_num = util.get_core_num()
-        max_reduce_factor = 1
         if key_name == "no_split_reduce":
-            dy_type = self.schedule_no_split_reduce(sch, outs)
+            self.schedule_no_split_reduce(sch, outs)
             sch.set_var_range(self.fused_axis, 1, core_num)
         else:
             self.reduce_factor = var("reduce_factor")
             if key_name == "split_reduce":
-                [res_gm_0, res_gm_1], dy_type = self.schedule_split_reduce(sch, outs, is_split_i=False)
-                max_reduce_factor = self.get_max_reduce_factor(outs, dy_type)
-                sch.set_var_range(self.fused_axis, core_num + 1, core_num * max_reduce_factor)
-                sch.set_var_range(self.reduce_factor, 1, max_reduce_factor)
+                [res_gm_0, res_gm_1] = self.schedule_split_reduce(sch, outs, is_split_i=False)
+                sch.set_var_range(self.fused_axis, core_num + 1, core_num * self._max_reduce_factor)
+                sch.set_var_range(self.reduce_factor, 1, self._max_reduce_factor)
             elif key_name == "split_reduce_i":
-                [res_gm_0, res_gm_1], dy_type = self.schedule_split_reduce(sch, outs, is_split_i=True)
-                max_reduce_factor = self.get_max_reduce_factor(outs, dy_type)
-                sch.set_var_range(self.fused_axis, core_num * max_reduce_factor + 1 , None)
+                [res_gm_0, res_gm_1] = self.schedule_split_reduce(sch, outs, is_split_i=True)
+                sch.set_var_range(self.fused_axis, core_num * self._max_reduce_factor + 1 , None)
             else:
                 raise RuntimeError("LayerNormBetaGammaBackpropV2 tiling key error.")
             outs.pop()
@@ -210,6 +215,6 @@ class LayerNormBetaGammaSchedule:
             outs.append(res_gm_0)
             outs.append(res_gm_1)
         add_compile_info("core_num", core_num)
-        add_compile_info("max_reduce_factor", max_reduce_factor)
+        add_compile_info("max_reduce_factor", self._max_reduce_factor)
         return sch
 

@@ -106,18 +106,13 @@ def layer_norm_beta_gamma_backprop_v2_compute(data_dy, res_for_gamma, output_pd_
         has_improve_precision = True
         dtype = "float32"
 
-    data_dy_2 = data_dy
     if has_improve_precision:
-        data_dy_2 = tbe.cast_to(data_dy, "float32")
         data_dy = tbe.cast_to(data_dy, "float32")
         res_for_gamma = tbe.cast_to(res_for_gamma, "float32")
 
     data_x = tbe.vmul(res_for_gamma, data_dy)
     if param_axis:
-        pd_gamma, pd_beta = tuple_sum([data_x, data_dy_2], param_axis, keepdims=True)
-    else:
-        pd_beta = tbe.vadds(data_dy_2, tvm.const(0, dtype=dtype))
-        pd_gamma = tbe.vadds(data_x, tvm.const(0, dtype=dtype))
+        pd_gamma, pd_beta = tuple_sum([data_x, data_dy], param_axis, keepdims=True)
 
     if dtype == "float16" and not has_improve_precision:
         pd_gamma = tbe.cast_to(pd_gamma, "float32")
