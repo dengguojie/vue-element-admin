@@ -6,7 +6,13 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "nn_calculation_ops.h"
+#define private public
+#define protected public
+#include "buffer_fusion/ub_fusion/ai_core/conv3d/conv3d_elemwise_pass.h"
+#include "inc/common/op_slice_info.h"
+#include "common/lxfusion_json_util.h"
 #include "fusion_pass_test_utils.h"
+#include "fusion_pass_test_slice_utils.h"
 
 using namespace ge;
 using namespace op;
@@ -23,15 +29,15 @@ protected:
 };
 
 namespace fe {
-  Status RunBufferFusionPass(string fusionPassName, BufferFusionPassType passType,
+  static Status RunConv3dBufferFusionPass(string fusionPassName, BufferFusionPassType passType,
                                                    ge::ComputeGraph &computeGraph) {
       std::map<string, BufferFusionPassRegistry::CreateFn> createFns =
               BufferFusionPassRegistry::GetInstance().GetCreateFnByType(passType);
       const auto &iter = createFns.find(fusionPassName);
       if (iter != createFns.end()) {
           if (passType == fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS) {
-              auto BufferFusionPassBasePtr = std::unique_ptr<BufferFusionPassBase>(
-                      dynamic_cast<BufferFusionPassBase *>(iter->second()));
+              auto BufferFusionPassBasePtr = std::unique_ptr<TbeConv3dElemwisePass>(
+                      dynamic_cast<TbeConv3dElemwisePass *>(iter->second()));
               if (BufferFusionPassBasePtr == nullptr) {
                   return FAILED;
               }
@@ -67,7 +73,28 @@ namespace fe {
                 }
               }
               vector<ge::NodePtr> fusion_nodes;
+              InputSplitInfo input_split_info;
+              vector<int64_t> axis = {0};
+              int64_t idx = 0;
+              vector<int64_t> overlap = {-1};
+              input_split_info.Initialize();
+              input_split_info.SetAxis(axis);
+              input_split_info.SetIndex(idx);
+              input_split_info.SetHeadOverLap(overlap);
+              input_split_info.SetTailOverLap(overlap);
+              OutputSplitInfo output_split_info;
+              output_split_info.Initialize();
+              output_split_info.SetAxis(axis);
+              output_split_info.SetIndex(idx);
+              AxisSplitMap split_map;
+              split_map.Initialize();
+              split_map.AddInputSplitInfo(input_split_info);
+              split_map.AddOutputSplitInfo(output_split_info);
+              vector<AxisSplitMap> split_map_vec = {split_map};
+              SetSplitMapMainNode(split_map_vec, conv3dNodes, "Conv3dBackpropOp");
               BufferFusionPassBasePtr->GetFusionNodes(mapping, fusion_nodes);
+              BufferFusionPassBasePtr->SetSplitInfo(mapping, fusion_nodes);
+
               return SUCCESS;
           }
       }
@@ -121,7 +148,7 @@ TEST_F(conv3d_elemwise_fusion_test, conv3d_elemwise_fusion_test_1) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::RunBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, *compute_graph_ptr);
+    RunConv3dBufferFusionPass("TbeConv3dElemwisePass", fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, *compute_graph_ptr);
 
     bool find_mul = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {

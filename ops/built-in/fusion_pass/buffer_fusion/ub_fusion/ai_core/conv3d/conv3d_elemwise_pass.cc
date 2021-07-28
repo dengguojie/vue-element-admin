@@ -153,13 +153,11 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
   auto fusionShape0 = std::vector<int64_t>{dims0[0] * dims0[1], dims0[2], dims0[3] * dims0[4], dims0[5]};
   auto fusionShape1 = std::vector<int64_t>{dims1[0] * dims1[1], dims1[2], dims1[3] * dims1[4], dims1[5]};
   for (size_t i = 0; i < fusionShape0.size(); ++i) {
-    if (fusionShape0[i] != fusionShape1[i] && fusionShape0[i] != 1 && fusionShape1[i] != 1) {
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "the shape can not support to fuse!");
-      return SUCCESS;
-    }
+    FUSION_PASS_CHECK(fusionShape0[i] != fusionShape1[i] &&
+                      fusionShape0[i] != 1 && fusionShape1[i] != 1,
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "the shape can not support to fuse!"),
+                      return SUCCESS);
   }
-
-  fusion_nodes = GetMatchedNodes(mapping);
 
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> conv3dNodes = GetMatchedNodesByDescName(PATTERN_CONV3D, mapping);
@@ -178,13 +176,13 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
     allDims.resize(input0Dims.size() + input1Dims.size());
     merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
     for (auto singleDim : allDims) {
-      if (singleDim < 0) {
-        fusion_nodes.clear();
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
-        return SUCCESS;
-      }
+      FUSION_PASS_CHECK(singleDim < 0,
+                        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape"),
+                        return SUCCESS);
     }
   }
+
+  fusion_nodes = GetMatchedNodes(mapping);
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do conv3d_elemwise!");
   SetSplitInfo(mapping, fusion_nodes);
