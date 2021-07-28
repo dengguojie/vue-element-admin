@@ -47,6 +47,9 @@ static const string PATTERN_CONV2DBPFILTER = "Conv2DBackpropFilterD";
 static const string PATTERN_FUSEDDBNDW = "FusedDbnDw";
 static const uint32_t kSupportAicoreNum = 32;
 static const vector<int64_t> kSupportBatch = {32, 256};
+static const vector<int64_t> Batch256AddCase = {
+  256, 1024, 14, 14, 14, 14, 1, 1
+};
 static const vector<vector<int64_t>> kSupportCases = {
     // c_in, c_out, x_h, x_w, y_h, y_w, k_h, k_w
     {64, 256, 56, 56, 56, 56, 1, 1},
@@ -302,6 +305,9 @@ Status Resnet50DbnDwFusionPass::CheckSupportCase(OpDescPtr &dw_op_desc) {
     if (params == case_now) {
       return SUCCESS;
     }
+  }
+  if (batch == 256 && params == Batch256AddCase) {
+    return SUCCESS;
   }
   return FAILED;
 }
