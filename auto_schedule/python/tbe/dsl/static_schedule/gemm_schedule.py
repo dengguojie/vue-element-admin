@@ -2420,6 +2420,7 @@ class GEMM_Schedule:
                         else:
                             al1_k, al1_ma, _, al1_k0 = list(i.value for i in a_l1.shape)
                         al1_tiling_k = al1_k * al1_k0
+                        al1_ma = al1_ma // al0_tiling_m0
                     else:
                         if self.gemm_params.ops_mode == "int8int32":
                             al1_ma, al1_k, _, al1_k0 = list(i.value for i in a_l1.shape)
@@ -2706,17 +2707,21 @@ class GEMM_Schedule:
                     return
                 l1_ma = al1_tiling_m * al0_tiling_ma
                 l1_ka = (al1_tiling_k + al0_tiling_k0 - 1) // al0_tiling_k0
-                if self.gemm_params.ops_mode == "int8int32":
-                    tiling_ori_al1 = l1_ma, l1_ka, al0_tiling_m0, al0_tiling_k0
-                elif transpose_a:
-                    tiling_ori_al1 = l1_ka, l1_ma * al0_tiling_m0, al0_tiling_k0
-                else:
-                    tiling_ori_al1 = l1_ma, l1_ka * al0_tiling_k0, al0_tiling_m0
                 al1_shape = list(i.value for i in a_l1.shape)
-                if self.gemm_params.ops_mode != "int8int32" and transpose_a:
+                if self.gemm_params.cube_vector_split:
+                    tiling_ori_al1 = l1_ka, l1_ma,  al0_tiling_m0, al0_tiling_k0
                     al1_shape[1] = al1_shape[1] // tiling.get("block_dim")[2]
                 else:
-                    al1_shape[0] = al1_shape[0] // tiling.get("block_dim")[2]
+                    if self.gemm_params.ops_mode == "int8int32":
+                        tiling_ori_al1 = l1_ma, l1_ka, al0_tiling_m0, al0_tiling_k0
+                    elif transpose_a:
+                        tiling_ori_al1 = l1_ka, l1_ma * al0_tiling_m0, al0_tiling_k0
+                    else:
+                        tiling_ori_al1 = l1_ma, l1_ka * al0_tiling_k0, al0_tiling_m0
+                    if self.gemm_params.ops_mode != "int8int32" and transpose_a:
+                        al1_shape[1] = al1_shape[1] // tiling.get("block_dim")[2]
+                    else:
+                        al1_shape[0] = al1_shape[0] // tiling.get("block_dim")[2]
                 l1a2l0c_affine_shape = (
                     None,
                     l1_ma,
@@ -2767,17 +2772,22 @@ class GEMM_Schedule:
                         l1_kb,
                         bl0_tiling_k0
                     )
-                    if self.gemm_params.ops_mode == "int8int32":
-                        tiling_ori_bl1 = l1_kb, l1_nb, bl0_tiling_n0, bl0_tiling_k0
-                    elif transpose_b:
-                        tiling_ori_bl1 = l1_nb, l1_kb * bl0_tiling_k0, bl0_tiling_n0
-                    else:
-                        tiling_ori_bl1 = l1_kb, l1_nb * bl0_tiling_n0, bl0_tiling_k0
                     bl1_shape = list(i.value for i in b_l1.shape)
-                    if self.gemm_params.ops_mode != "int8int32" and transpose_b:
+                    if self.gemm_params.cube_vector_split:
+                        tiling_ori_bl1 = l1_nb, l1_kb, bl0_tiling_n0, bl0_tiling_k0
                         bl1_shape[0] = bl1_shape[0] // tiling.get("block_dim")[1]
                     else:
-                        bl1_shape[1] = bl1_shape[1] // tiling.get("block_dim")[1]
+                        if self.gemm_params.ops_mode == "int8int32":
+                            tiling_ori_bl1 = l1_kb, l1_nb, bl0_tiling_n0, bl0_tiling_k0
+                        elif transpose_b:
+                            tiling_ori_bl1 = l1_nb, l1_kb * bl0_tiling_k0, bl0_tiling_n0
+                        else:
+                            tiling_ori_bl1 = l1_kb, l1_nb * bl0_tiling_n0, bl0_tiling_k0
+
+                        if self.gemm_params.ops_mode != "int8int32" and transpose_b:
+                            bl1_shape[0] = bl1_shape[0] // tiling.get("block_dim")[1]
+                        else:
+                            bl1_shape[1] = bl1_shape[1] // tiling.get("block_dim")[1]
                     status_ori = Compare.compare(tiling_ori_bl1, bl1_shape)
                     status = Compare.compare(
                         [l1_nb, bl0_tiling_n0, l1_kb, bl0_tiling_k0],

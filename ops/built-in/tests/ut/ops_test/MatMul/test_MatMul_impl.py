@@ -404,3 +404,4 @@ if __name__ == '__main__':
     ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
 
     ut_case.run(["Ascend310", "Ascend920A"])
+
