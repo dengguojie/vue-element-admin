@@ -146,6 +146,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
 
 from impl.avg_pool import check_supported
+from impl.avg_pool import get_op_support_info
 
 def test_check_support(test_arg):
     check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
@@ -166,8 +167,17 @@ def test_check_support(test_arg):
     [1,2,2,1],[1,4,4,1],"VALIED","NCHW")
 
 
-ut_case.add_cust_test_func(test_func=test_check_support)
+def test_get_op_support_info(test_arg):
+    get_op_support_info({"shape": (1, 16, 24, 24, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 24, 24, 256),"ori_format": "NHWC", "param_type": "input"},
+    None,None,{"shape": (1, 16, 24, 24, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 24, 24, 256),"ori_format": "NHWC", "param_type": "output"},
+    [1,2,2,1],[1,4,4,1],"VALIED","NHWC")
+    get_op_support_info({"shape": (1, 16, 24, 24, 164), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 256, 24, 24),"ori_format": "NCHW", "param_type": "input"},
+    None,None,{"shape": (1, 16, 24, 24, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 256, 24, 24),"ori_format": "NCHW", "param_type": "output"},
+    [1,2,2,1],[1,4,4,1],"VALIED","NCHW")
 
+
+ut_case.add_cust_test_func(test_func=test_check_support)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])

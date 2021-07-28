@@ -89,15 +89,15 @@ def get_op_support_info(x, filter, bias, y, ksize, strides,
     get the avgpool split
     """
     format_x = x.get("format")
-
+    input_shape = x.get("shape")
     if data_format in ("NHWC",):
         ksize_h = ksize[1]
         ksize_w = ksize[2]
-        window = [ksize[1], ksize[2]]
+        window = [input_shape[1], input_shape[2]]
     else:
         ksize_h = ksize[2]
         ksize_w = ksize[3]
-        window = [ksize[2], ksize[3]]
+        window = [input_shape[2], input_shape[3]]
 
     if format_x == "NC1HWC0":
         if (ksize_h == window[0] and ksize_w == window[1]) or padding == "SAME":
@@ -105,8 +105,7 @@ def get_op_support_info(x, filter, bias, y, ksize, strides,
                                  util_select_op_base.SplitOutput([0, [0]])]]
         elif padding == "VALID":
             axis_split_matrix = [
-                [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
-                [util_select_op_base.SplitInput([0, [2], [0], [0]]), util_select_op_base.SplitOutput([0, [2]])]]
+                [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]]
         else:
             axis_split_matrix = None
         axis_reduce_list = None
