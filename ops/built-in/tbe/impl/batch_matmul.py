@@ -98,7 +98,7 @@ def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
     else:
         # cut k_dim which is reduce dim
         axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
-                            util_select_op_base.ReduceOutput([0, 1, False])]]
+                             util_select_op_base.ReduceOutput([0, 1, False])]]
 
     axis_split_matrix_batch = []
     for i in range(batch_len_a):
@@ -107,19 +107,19 @@ def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
             batch_split_list.append([1, [i], [-1], [-1]])
         axis_split_matrix_batch.append(
             [util_select_op_base.SplitInput(*batch_split_list),
-                util_select_op_base.SplitOutput([0, [i]])]
+             util_select_op_base.SplitOutput([0, [i]])]
         )
 
     out_m_axis = batch_len_a + 1 if format_a == "FRACTAL_NZ" else batch_len_a
     axis_split_matrix_a = [
         [util_select_op_base.SplitInput(m_split_list),
-            util_select_op_base.SplitOutput([0, [out_m_axis]])]
+         util_select_op_base.SplitOutput([0, [out_m_axis]])]
     ]
 
     out_n_axis = batch_len_a if format_b in ("FRACTAL_NZ", "FRACTAL_Z") else batch_len_a + 1
     axis_split_matrix_b = [
         [util_select_op_base.SplitInput(*n_split_list),
-            util_select_op_base.SplitOutput([0, [out_n_axis]])]
+         util_select_op_base.SplitOutput([0, [out_n_axis]])]
     ]
 
     axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b + axis_split_matrix_batch
