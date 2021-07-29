@@ -128,6 +128,7 @@ set(_onnx_plugins
   isinf_plugin.cc
   onnx_common.cc
   hardswish_plugin.cc
+  reduce_log_sum_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
