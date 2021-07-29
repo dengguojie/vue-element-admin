@@ -931,7 +931,7 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
     post_step = params_total_size // step_indices
 
     param_moved_ele_per_core = ele_per_core * post_step
-    last_param_moved_ele_per_core = (ele_per_core + last_ele_per_core) * post_step
+    last_param_moved_ele_per_core = last_ele_per_core * post_step
 
     param_core_len = _calculate_burst_len_by_dtype(data, post_step)
     core_len, core_len_last = _calculate_last_burst_len(data, param_moved_ele_per_core, last_param_moved_ele_per_core)
@@ -988,28 +988,54 @@ def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shap
                             block_ub.access_ptr("r"), 0, 1, 1, 0, 0))
     # 1 means the last core number
     with ir_build.else_scope():
+        # 35000 is output ub size
+        param_times_per_output_ub = 35000 // post_step
+        indices_loops = (ele_per_core + last_ele_per_core) // param_times_per_output_ub
+        indices_loops_remain = (ele_per_core + last_ele_per_core) % int(param_times_per_output_ub)
+        core_len_last = _calculate_burst_len_by_dtype(data, param_times_per_output_ub * post_step)
+        core_len_last_remain = _calculate_burst_len_by_dtype(data, indices_loops_remain * post_step)
+
         ir_build.emit(
             tvm.call_extern(indices.dtype, "copy_gm_to_ubuf", three_indices_ub.access_ptr("w"),
                             indices.access_ptr('r', offset=(block_index) * indice_ele_per_core), 0, 1,
                             indice_core_len_last, 0, 0))
         # combine last data with previous core
-        with ir_build.for_range(0, ele_per_core + last_ele_per_core, name='last_core_row') as last_core_row:
+        with ir_build.for_range(0, indices_loops, name='indices_loops') as indices_loop_times:
+            with ir_build.for_range(0, param_times_per_output_ub, name='last_core_row') as last_core_row:
+                reg_gm[0] = tvm.const(0, dtype=indices.dtype)
+                gm_offset = 0
+                for row2 in range(indices_move_length):
+                    ir_build.emit(
+                        tvm.call_extern(indices.dtype, "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[row2]),
+                                        three_indices_ub.access_ptr('r', offset=param_times_per_output_ub * indices_loop_times + last_core_row * jump_step + row2)))
+                    gm_offset += reg[row2] * shape_list[row2]
+                # calculate the start position to fetch num
+                ir_build.emit(
+                    tvm.call_extern(data.dtype, "copy_gm_to_ubuf",
+                                    output_ub.access_ptr("w", offset=post_step * last_core_row),
+                                    data.access_ptr('r', offset=gm_offset), 0, 1, param_core_len, 0, 0))
+            ir_build.emit(
+                tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
+                                dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step + indices_loop_times * param_times_per_output_ub * post_step),
+                                output_ub.access_ptr("r"), 0, 1, core_len_last, 0, 0))
+
+        with ir_build.for_range(0, indices_loops_remain, name='last_core_row_remain') as last_core_row_remain:
             reg_gm[0] = tvm.const(0, dtype=indices.dtype)
             gm_offset = 0
             for row2 in range(indices_move_length):
                 ir_build.emit(
                     tvm.call_extern(indices.dtype, "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[row2]),
-                                    three_indices_ub.access_ptr('r', offset=last_core_row * jump_step + row2)))
+                                    three_indices_ub.access_ptr('r', offset=param_times_per_output_ub * indices_loops + last_core_row_remain * jump_step + row2)))
                 gm_offset += reg[row2] * shape_list[row2]
-                # calculate the start position to fetch num
+            # calculate the start position to fetch num
             ir_build.emit(
                 tvm.call_extern(data.dtype, "copy_gm_to_ubuf",
-                                output_ub.access_ptr("w", offset=post_step * last_core_row),
+                                output_ub.access_ptr("w", offset=post_step * last_core_row_remain),
                                 data.access_ptr('r', offset=gm_offset), 0, 1, param_core_len, 0, 0))
         ir_build.emit(
             tvm.call_extern(dst.dtype, "copy_ubuf_to_gm",
-                            dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step),
-                            output_ub.access_ptr("r"), 0, 1, core_len_last, 0, 0))
+                            dst.access_ptr('w', offset=(block_index) * ele_per_core * post_step + indices_loops * param_times_per_output_ub * post_step),
+                            output_ub.access_ptr("r"), 0, 1, core_len_last_remain, 0, 0))
 
 
 def _calculate_last_burst_len(data, ele_num, last_ele_num):

@@ -128,6 +128,16 @@ ut_case.add_case("all",
                       "format": "ND", "ori_format": "ND"},
                      "gather_nd_10", "success"))
 
+ut_case.add_case("all",
+                 gen_gather_nd_case(
+                     {"shape": (8, 95, 32), "dtype": "float16", "ori_shape": (8, 95, 32),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (2, 3, 3, 13, 1), "dtype": "int64", "ori_shape": (2, 3, 3, 13, 1),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (2, 3, 3, 13, 95, 32), "dtype": "float16", "ori_shape": (2, 3, 3, 13, 95, 32),
+                      "format": "ND", "ori_format": "ND"},
+                     "gather_nd_11", "success"))
+
 def calc_expect_func(dict_data, dict_indices, dict_out):
     shape_indices = dict_indices["value"].shape
     shape_indices_ele = list(shape_indices[:-1]) + list(dict_data["value"].shape[shape_indices[-1]:])
