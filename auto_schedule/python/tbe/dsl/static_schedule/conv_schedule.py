@@ -2078,6 +2078,8 @@ class CceConvOp:
                                         "crop_size_w": aipp_map["crop_size_w"]}
                         sch[al1].emit_insn(al1.op.axis[1],
                                            "load_image_to_cbuf", aipp_map_res)
+                        if self._input_memory_type[0] != 1 and self._l1_fusion_type in (0, 1):
+                            sch[al1].pragma(al1.op.axis[1], 'jump_data', 1)
                     else:
                         if not self._pre_relu_fused_flag:
                             sch[al1].emit_insn(al1.op.axis[0], 'dma_copy', {"mem_align": 1})
@@ -4572,8 +4574,8 @@ class CceConvOp:
         kernel_h = ConvParam.filter_h
         stride_h = ConvParam.stride_h
         stride_w = ConvParam.stride_w
-        kw_dilate = (ConvParam.filter_w - 1)*ConvParam.dilate_w + 1
-        kh_dilate = (kernel_h - 1)*ConvParam.dilate_h + 1
+        kw_dilate = (ConvParam.filter_w - 1) * ConvParam.dilate_w + 1
+        kh_dilate = (kernel_h - 1) * ConvParam.dilate_h + 1
 
         w_out = ConvParam.w_out
         _align_fmap_col_before(l0a_load2d_flag, w_out)
@@ -4745,12 +4747,11 @@ class CceConvOp:
             sch[fmap_col].op.axis[3], factor_k)
 
         # split N begin
-        fmap_col_no, fmap_col_ni = sch[fmap_col].split(
-            sch[fmap_col].op.axis[1], 1)
+        fmap_col_no, fmap_col_ni = sch[fmap_col].split(sch[fmap_col].op.axis[1], 1)
 
-        sch[fmap_col].reorder(sch[fmap_col].op.axis[0],
-                              fmap_col_no, a1_axis, a2_axis, fmap_col_ni, a3_axis, a4_axis,
-                              sch[fmap_col].op.axis[4], sch[fmap_col].op.axis[5])
+        sch[fmap_col].reorder(sch[fmap_col].op.axis[0], fmap_col_no, a1_axis, a2_axis,
+                              fmap_col_ni, a3_axis, a4_axis, sch[fmap_col].op.axis[4],
+                              sch[fmap_col].op.axis[5])
         new_fmap_col_axis = [fmap_col_no, a1_axis, a2_axis,
                              fmap_col_ni, a3_axis, a4_axis,
                              sch[fmap_col].op.axis[4],
@@ -4782,11 +4783,8 @@ class CceConvOp:
                         int_ceil_div(dim_map["out_img_shape"][2], c_tiling_factor[1])]
 
         c_ub_tiling_factor = tiling["CUB_matrix"]
-        c_ub_factor = [int_ceil_div(c_tiling_factor[0],
-                                    c_ub_tiling_factor[0]),
-                       int_ceil_div(
-                           c_tiling_factor[1],
-                           c_ub_tiling_factor[1]*c_ub_tiling_factor[2])]
+        c_ub_factor = [int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
+                       int_ceil_div(c_tiling_factor[1], c_ub_tiling_factor[1] * c_ub_tiling_factor[2])]
 
         if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
             c_tiling_factor[1] = pooling_out[1]
@@ -4823,14 +4821,9 @@ class CceConvOp:
             bl1_factor = [1, tiling["block_dim"][1]]
 
         # --------------------------double buffer------------------------
-        double_buffer_flag = {'AL1_pbuffer': False,
-                              'BL1_pbuffer': False,
-                              'AL0_pbuffer': False,
-                              'BL0_pbuffer': False,
-                              'CL0_pbuffer': False,
-                              'CUB_pbuffer': False,
-                              'UBG_pbuffer': False,
-                              'AUB_pbuffer': False}
+        double_buffer_flag = {'AL1_pbuffer': False, 'BL1_pbuffer': False, 'AL0_pbuffer': False,
+                              'BL0_pbuffer': False, 'CL0_pbuffer': False, 'CUB_pbuffer': False,
+                              'UBG_pbuffer': False, 'AUB_pbuffer': False}
 
         if "manual_pingpong_buffer" in tiling:
             double_buffer_flag = tiling["manual_pingpong_buffer"]
