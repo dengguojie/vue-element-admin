@@ -98,6 +98,25 @@ Status ResizeBilinearV2CastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Cast Node is null, fusion failed."),
                     return PARAM_INVALID);
 
+  // check output node of ResizeBilinear
+  for (InDataAnchorPtr outAnchorPtr : resizeNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    ge::NodePtr fusedNextNode = outAnchorPtr->GetOwnerNode();
+    if (fusedNextNode->GetType() != "Cast") {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "ResizeBilinear's output node is not cast, fusion failed.");
+      return NOT_CHANGED;
+    } else {
+      ge::OpDescPtr fusedNextDesc = fusedNextNode->GetOpDesc();
+      ge::GeTensorDesc inputDesc = fusedNextDesc->GetInputDesc("x");
+      ge::GeTensorDesc outpuDesc = fusedNextDesc->GetOutputDesc("y");
+      DataType inputDataType = inputDesc.GetDataType();
+      DataType outputDataType = outpuDesc.GetDataType();
+      if (inputDataType != ge::DT_FLOAT || outputDataType != ge::DT_FLOAT16) {
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "castNode's DataType is not float32 to float16, fusion failed.");
+        return NOT_CHANGED;
+      }
+    }
+  }
+
   // check Cast node
   ge::OpDescPtr resizeDesc = resizeNode->GetOpDesc();
   FUSION_PASS_CHECK(resizeDesc == nullptr,
