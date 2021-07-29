@@ -127,6 +127,7 @@ def modify_w_range_max(fmap, filter, dedy, strides, data_format, op_type):
     filter_h = filter.get("ori_shape")[filter.get("ori_format").find("H")]
     filter_w = filter.get("ori_shape")[filter.get("ori_format").find("W")]
     dedy_h_max = dedy.get("ori_range")[dedy.get("ori_format").find("H")][1]
+    dedy_h = dedy.get("ori_shape")[dedy.get("ori_format").find("H")]
     dedy_w = dedy.get("ori_shape")[dedy.get("ori_format").find("W")]
     stride_h = strides[data_format.find("H")]
     stride_w = strides[data_format.find("W")]
@@ -135,34 +136,35 @@ def modify_w_range_max(fmap, filter, dedy, strides, data_format, op_type):
 
     c0_size = cce_params.C0_SIZE
     c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
-    h_value_max = min(filter_h + 1, dedy_h_max * stride_h)
+    while dedy_h_max >= dedy_h:
+        h_value_max = min(filter_h + 1, dedy_h_max * stride_h)
+        l1_size = get_soc_spec("L1_SIZE")
+        a_l1_size = l1_size
+        w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
+        w_max = w_value // stride_w
 
-    b_l1_size = filter_w * filter_h * c0_size * c0_size_k * BIT_RATIO_DICT.get(filter_dtype)
-    l1_size = get_soc_spec("L1_SIZE")
-    a_l1_size = l1_size - b_l1_size
-    w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
-    w_max = w_value // stride_w
-
-    is_single_point = False
-    if w_max < dedy_w:
-        if fmap_w % c0_size == 0:
-            is_single_point = True
-            h_value_max = min(filter_h, dedy_h_max * stride_h)
-            w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
-            w_max = w_value // stride_w
-            if w_max >= dedy_w:
-                w_max = dedy_w
+        is_single_point = False
+        if w_max < dedy_w:
+            if fmap_w % c0_size == 0:
+                is_single_point = True
+                h_value_max = min(filter_h, dedy_h_max * stride_h)
+                w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
+                w_max = w_value // stride_w
+                if w_max >= dedy_w:
+                    w_max = dedy_w
+                    return dedy_h_max, w_max, is_single_point
+                else:
+                    dedy_h_max = dedy_h_max - 1
+                    continue
             else:
-                err_man.raise_err_specific_user(op_type,
-                                                "w of dedy is too large, only support not larger than {}, "
-                                                "actually is {}".format(str(w_max), str(dedy_w)))
+                dedy_h_max = dedy_h_max - 1
+                continue
         else:
-            err_man.raise_err_specific_user(op_type,
-                                            "w of dedy is too large, only support not larger than {}, "
-                                            "actually is {}".format(str(w_max), str(dedy_w)))
+            return dedy_h_max, w_max, is_single_point
 
-    return w_max, is_single_point
-
+    err_man.raise_err_specific_user(op_type,
+                                    "w of dedy is too large, only support not larger than {}, "
+                                    "actually is {}".format(str(w_max), str(dedy_w)))
 
 class CubeParaProcess:
     """

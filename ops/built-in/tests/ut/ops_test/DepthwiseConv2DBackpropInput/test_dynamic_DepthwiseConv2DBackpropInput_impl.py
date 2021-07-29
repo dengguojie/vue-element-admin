@@ -233,6 +233,42 @@ def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fix
 
 ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_range_max_fixed)
 
+
+def test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed(test_arg):
+    from impl.dynamic.depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input_generalization
+    input_list = [
+        {
+            'shape': (4,),
+            'ori_shape': (4,),
+            'ori_format': 'ND',
+            'format': 'ND',
+            'dtype': 'int32'
+        }, {
+            'ori_shape': (1, 1, 16, 10),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, {
+            'shape': (3, 1, 1, 3276, 16),
+            'ori_shape': (3, 1, 1, 3276),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': [(1, 3), (1, 1), (1, 3), (1024, 4096), (16, 16)],
+            'ori_range': [(1, 3), (1, 1), (1, 3), (1024, 4096)]
+        }, {
+            'shape': (3, 1, 3, 3276, 16),
+            'ori_shape': (3, 1, 3, 3276),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 4, 1), (1, 1, 1, 1), (6, 7, 4, 5), 'NCHW',
+        'depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed']
+    depthwise_conv2d_backprop_input_generalization(*input_list)
+
+
+ut_case.add_cust_test_func(test_func=test_depthwise_conv2d_backprop_input_fuzz_build_generalization_h_range_max_fixed)
+
 if __name__ == '__main__':
     ut_case.run()
     exit(0)

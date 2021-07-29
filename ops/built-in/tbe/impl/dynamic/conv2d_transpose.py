@@ -154,7 +154,7 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
                                                 "invalid {} ori_shape {}, only support {}d".format(
                                                     name, str(tensor.get("shape")), str(SHAPE_LEN)))
         # if over l1 size then modify w range
-        dy_w_range_max, is_single_point = modify_w_range_max(y,
+        dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(y,
                                                              filter,
                                                              x,
                                                              strides,
@@ -175,6 +175,7 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
         dy_shape_nchw = conv2d_tranpose.get_input_nchw(x.get("ori_shape"), x.get("ori_format"))
         filter_shape_nchw = conv2d_tranpose.get_input_nchw(filter.get("ori_shape"), filter.get("ori_format"))
         _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
+        dy_range_nchw[2] = [dy_range_nchw[2][0], min(dy_h_range_max, dy_range_nchw[2][1])]
         if is_single_point:
             dy_range_nchw[3] = [dy_w_range_max, dy_w_range_max]
         else:
