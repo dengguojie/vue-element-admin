@@ -58,6 +58,67 @@ def test_conv3d_fuzzy_build_generalization(test_arg):
         }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization']
     conv3d_generalization(*input_list)
 
+def test_conv3d_fuzz_build_tilingcase(test_arg):
+    import json
+    from impl.dynamic.conv3d import conv3d
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [2, 4],
+                                        [8, 16],
+                                        [8, 16],
+                                        [8, 16],
+                                        [320, 320]
+                                    ],
+                                    "shape": [-1, -1, -1, -1, 320]
+                                }]
+                            }]
+                        }, {
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [2, 4],
+                                        [4, 8],
+                                        [4, 8],
+                                        [4, 8],
+                                        [512, 1024]
+                                    ],
+                                    "shape": [-1, -1, -1, -1, 320]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (2, 8, 20, 8, 8, 16),
+                'ori_shape': (-1, -1, -1, -1, 320),
+                'ori_format': 'NDHWC',
+                'format': 'NDC1HWC0',
+                'dtype': 'float16',
+                'range': [(2, 3), (8, 15), (20, 20), (8, 15), (8, 15), (16, 16)]
+            }, {
+                'shape': (160, 20, 16, 16),
+                'ori_shape': (2, 2, 2, 320, 320),
+                'ori_format': 'DHWCN',
+                'format': 'FRACTAL_Z_3D',
+                'dtype': 'float16'
+            }, None, None, {
+                'shape': (2, 4, 20, 4, 4, 16),
+                'ori_shape': (2, 4, 4, 4, 320),
+                'ori_format': 'NDHWC',
+                'format': 'NDC1HWC0',
+                'dtype': 'float16'
+            }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization']
+        conv3d(*input_list)
+
 def _test_op_get_op_support_info(test_arg):
     from impl.dynamic.conv3d import get_op_support_info
     [fmap, weight, bias, offset_w, output, strides,
@@ -439,6 +500,9 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 # test_conv3d_fuzzy_build_generalization
 print("adding conv3d test_conv3d_fuzzy_build_generalization testcase")
 ut_case.add_cust_test_func(test_func=test_conv3d_fuzzy_build_generalization)
+
+print("adding conv3d test_conv3d_fuzz_build_tilingcase testcase")
+ut_case.add_cust_test_func(test_func=test_conv3d_fuzz_build_tilingcase)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
