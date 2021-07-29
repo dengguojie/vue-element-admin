@@ -127,6 +127,7 @@ set(_onnx_plugins
   random_normal_plugin.cc
   isinf_plugin.cc
   onnx_common.cc
+  hardswish_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
