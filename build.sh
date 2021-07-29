@@ -62,7 +62,14 @@ set_env(){
   echo  " ">> ~/.bashrc
   
   echo  export ASCEND_CODE_HOME=$(cd "$(dirname $0)"; pwd) >> ~/.bashrc
-  echo  export ASCEND_HOME="/usr/local/Ascend" >> ~/.bashrc
+  if [ $UID -ne 0 ];then
+    echo  export ASCEND_HOME=~/Ascend >> ~/.bashrc
+    echo  export ASCEND_CUSTOM_PATH=~/Ascend >> ~/.bashrc
+  else
+    echo  export ASCEND_HOME="/usr/local/Ascend" >> ~/.bashrc
+    unset ASCEND_CUSTOM_PATH
+  fi
+  
   echo  export OP_TEST_FRAME_INSTALL_HOME=\$ASCEND_CODE_HOME/tools/op_test_frame/python >> ~/.bashrc
   echo  export OPS_SOURCE_PATH=\$ASCEND_CODE_HOME/ops/built-in/tbe>> ~/.bashrc
   echo  export ASCEND_OPP_PATH=\$ASCEND_HOME/opp >> ~/.bashrc
