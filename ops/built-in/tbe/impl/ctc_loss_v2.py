@@ -36,8 +36,8 @@ def check_supported(log_probs, targets, input_lengths, target_lengths, neg_log_l
     Go to AICPU when the label's length is less than 4. 
     """
     targets_shape = targets.get("shape")
-    if targets_shape[-1] < LABEL_MIN or targets_shape[-1] > LABEL_MAX:
-        reason = "The label's length is beyound [4, 1000]."
+    if targets_shape[-1] > LABEL_MAX:
+        reason = "The label's length is over 1K."
         return False, reason
 
     return True, ""
@@ -297,12 +297,14 @@ class CTCLossV2(object):
             output_dst.set_as(self.output_size_up - output_src)
 
         with self.tik_instance.if_scope(self.T == t_i):
-            self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (self.T - 1) * self.output_size],
-                                        log_alpha_ub[output_dst], 0, 1, self.output_size // BLOCK, 0, 0)
-
-            with self.tik_instance.if_scope(self.output_size % BLOCK != 0):
+            if self.S >= LABEL_MIN:
+                # func: pick res data in log_alpha_
+                self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (t_i - 1) * self.output_size],
+                                            log_alpha_ub[output_dst], 0, 1, self.output_size // BLOCK, 0, 0)
                 self.tik_instance.data_move(self.log_alpha_[task_idx * BLOCK],
                                             log_alpha_ub[output_dst + self.output_size_up - BLOCK], 0, 1, 1, 0, 0)
+            else:
+                self.tik_instance.data_move(self.log_alpha_[task_idx * BLOCK], log_alpha_ub[output_dst], 0, 1, 1, 0, 0)
         with self.tik_instance.else_scope():
             self.tik_instance.data_move(self.log_alpha[task_idx * self.alpha_size + (t_i - 1) * self.output_size],
                                         log_alpha_ub[output_dst], 0, 1, self.output_size_up // BLOCK, 0, 0)
@@ -374,14 +376,13 @@ class CTCLossV2(object):
 
         mask = self.tik_instance.Scalar("int32", init_value=self.output_size % BLOCK)
         with self.tik_instance.for_range(0, self.N) as task_idx:
-            with self.tik_instance.if_scope(mask != 0):
-                self.tik_instance.data_move(log_alpha_ub, self.log_alpha[(task_idx + 1) * self.alpha_size - mask],
-                                            0, 1, 1, 0, 0)
-                self.tik_instance.data_move(tmp_ub, self.log_alpha_[task_idx * BLOCK], 0, 1, 1, 0, 0)
-                with self.tik_instance.for_range(0, mask) as idx:
-                    log_alpha_ub[idx].set_as(tmp_ub[idx])
-                self.tik_instance.data_move(self.log_alpha[(task_idx + 1) * self.alpha_size - mask], log_alpha_ub,
-                                            0, 1, 1, 0, 0)
+            self.tik_instance.data_move(log_alpha_ub, self.log_alpha[(task_idx + 1) * self.alpha_size - mask],
+                                        0, 1, 1, 0, 0)
+            self.tik_instance.data_move(tmp_ub, self.log_alpha_[task_idx * BLOCK], 0, 1, 1, 0, 0)
+            with self.tik_instance.for_range(0, mask) as idx:
+                log_alpha_ub[idx].set_as(tmp_ub[idx])
+            self.tik_instance.data_move(self.log_alpha[(task_idx + 1) * self.alpha_size - mask], log_alpha_ub,
+                                        0, 1, 1, 0, 0)
 
             self.tik_instance.data_move(neg_log_likelihood_ub, self.neg_log_likelihood_[task_idx * BLOCK], 0, 1, 1, 0,
                                         0)

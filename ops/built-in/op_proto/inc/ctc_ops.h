@@ -164,7 +164,7 @@ REG_OP(CTCBeamSearchDecoder)
 * Compatible with Pytorch CTCLoss operator.
 
 *@par Restrictions:
-*The length of Label should in [4, 1000].
+*The limit of Label’s length is 1K.
 */
 REG_OP(CTCLossV2)
     .INPUT(log_probs, TensorType({DT_FLOAT, DT_DOUBLE}))

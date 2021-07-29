@@ -68,6 +68,7 @@ def generate_case(input1_shape, input2_shape, input3_shape, input4_shape, output
 
 
 ut_case.add_case("Ascend910A", case=generate_case((195, 1, 41), (1, 74), (1,), (1,), (1,), (1, 195, 149)))
+ut_case.add_case("Ascend910A", case=generate_case((195, 1, 41), (1, 3), (1,), (1,), (1,), (1, 195, 7)))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

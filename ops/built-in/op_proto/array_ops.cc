@@ -2290,7 +2290,7 @@ IMPLEMT_INFERFUNC(SortV2, SortV2InferShape) {
   tensordesc_output1.SetShape(ge::Shape(dims_input));
 
   (void)op.UpdateOutputDesc("y", tensordesc_output1);
-  OP_LOGD(op_name, "SortV2InferShape begin.");
+  OP_LOGD(op_name, "SortV2InferShape end.");
   return GRAPH_SUCCESS;
 }
 
