@@ -68,7 +68,7 @@ def is_finite_fp32_002(test_args):
 def is_finite_fp32_003(test_args):
     cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
     from impl.dynamic import is_finite
-    shape = (3000, 100, 100)
+    shape = (16, 8, 7, 15, 16)
     with tbe.common.context.op_context.OpContext("dynamic"):
         is_finite({"shape": shape, "ori_shape": shape, "dtype": "float32", "format": "ND", "ori_format": "ND",
                    "param_type": "input"},

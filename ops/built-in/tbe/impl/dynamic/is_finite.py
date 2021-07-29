@@ -346,7 +346,7 @@ class IsFinite:
         self.total_element_size.set_as(self.ub_tiling[1])
         self.per_core_size.set_as(self.ub_tiling[2])
 
-        with self.tik_inst.if_scope(block_idx == self.need_core_num - 1):
+        with self.tik_inst.if_scope(tik.all(block_idx == self.need_core_num - 1, self.ub_tiling[5] != 0)):
             self.core_size.set_as(self.ub_tiling[5])
             self.core_loop_cnt.set_as(self.ub_tiling[6])
             self.core_left_size.set_as(self.ub_tiling[7])
