@@ -111,7 +111,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     # the number of rows UB can deal each time.
     core_row_capicity = max_tensor_size // (column_aligned * element_bytes)
 
-    if k <= 0 or k > column:
+    if k <= 0 or k >= column:
         return _in_top_k_special_k(predictions, targets, k, kernel_name)
     if core_row_capicity > 0:
         if row <= BLOCK_SIZE:

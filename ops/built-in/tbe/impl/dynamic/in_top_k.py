@@ -216,7 +216,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     if k <= 0:
         _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets)
     else:
-        with tik_instance.if_scope(k > column):
+        with tik_instance.if_scope(k >= column):
             _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets)
         with tik_instance.else_scope():
             with tik_instance.for_range(0, mini_cloud_core_nums, block_num=mini_cloud_core_nums) as core_loop:
@@ -301,7 +301,7 @@ def _in_top_k_special_k(tik_instance, obj_tiling, obj_gm, k, targets):
         tik_instance.vconv(BLOCK_SIZE, '', output_ub, tensor_ub, 1, 1, 1, 8, 8)
     copy_repeat_times = (row + BLOCK_SIZE - 1) // BLOCK_SIZE
     with tik_instance.for_range(0, copy_repeat_times) as i:
-        with tik_instance.if_scope(k > column):
+        with tik_instance.if_scope(k >= column):
             tik_instance.data_move(target_ub, obj_gm.get_targets_gm()[i * BLOCK_SIZE], 0, 1, 4, 0, 0)
             invalid_mask = calc_invalid_mask(tik_instance, target_ub, BLOCK_SIZE, column, tensor_zeros,
                                              dst_ub, dst_ub1, 0)

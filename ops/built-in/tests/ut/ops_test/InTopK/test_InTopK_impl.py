@@ -99,6 +99,14 @@ case10 = {"params": [{"shape": (57, 18000), "dtype": "float32", "ori_shape":(57,
           "expect": "success",
           "format_expect": [],
           "support_expect": True}
+case11 = {"params": [{"shape": (1216, 1), "dtype": "float32", "ori_shape":(1216, 1), "ori_format":"ND", "format":"ND"},
+                    {"shape": (1216, ), "dtype": "int32", "ori_shape":(1216,), "ori_format":"ND", "format":"ND"},
+                    {"shape": (1216, 1), "dtype": "float32", "ori_shape":(1216, 1), "ori_format":"ND", "format":"ND"},
+                    1],
+          "case_name": "in_top_k_11",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
 
     
 
@@ -112,6 +120,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
 
 def calc_expect_func(predictions, targets, precision, k):
     x = predictions["value"]
