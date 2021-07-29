@@ -1,0 +1,562 @@
+[
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_512",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[2, 8, 8]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[2, 8, 8]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_1K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[4, 8, 8]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[4, 8, 8]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_4K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 10, 10]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 10, 10]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_8K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 20, 10]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 20, 10]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_16K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 20, 20]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 20, 20]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_32K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 40, 20]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 40, 20]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_64K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 40, 40]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 40, 40]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_128K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[20, 40, 40]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[20, 40, 40]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_256K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[20, 80, 40]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[20, 80, 40]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_512K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[20, 80, 80]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[20, 80, 80]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_1M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[25, 100, 100]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[25, 100, 100]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_2M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[50, 100, 100]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[50, 100, 100]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_8M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[50, 200, 200]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[50, 200, 200]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_FLOAT_128M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 400, 400]],
+        "type": ["float32"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[200, 400, 400]],
+        "type": ["float32"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_512",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[1, 8, 8]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[1, 8, 8]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_1K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[2, 8, 8]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[2, 8, 8]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_4K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 10, 10]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 10, 10]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_8K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 20, 10]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 20, 10]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_16K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 20, 20]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 20, 20]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_32K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 40, 20]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 40, 20]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_64K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[5, 40, 40]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_128K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 40, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 40, 40]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_256K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 80, 40]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 80, 40]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_512K",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 80, 80]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[10, 80, 80]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_1M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[25, 50, 100]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[25, 50, 100]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_2M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[25, 100, 100]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[25, 100, 100]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_8M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[25, 200, 200]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[25, 200, 200]],
+        "type": ["double"]
+      }
+    ]
+  },
+  {
+    "op": "Atan",
+    "case_name": "DATA_TYPE_DT_DOUBLE_128M",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 400, 400]],
+        "type": ["double"],
+        "value_range": [[-100, 100]],
+        "data_distribute": "uniform"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [[100, 400, 400]],
+        "type": ["double"]
+      }
+    ]
+  }
+]

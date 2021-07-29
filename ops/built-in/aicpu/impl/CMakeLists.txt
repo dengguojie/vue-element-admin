@@ -4,6 +4,7 @@ set(local_kernels_src_files
     kernels/normalized/adaptive_max_pool_2d.cc
     kernels/normalized/add.cc
     kernels/normalized/asin.cc
+    kernels/normalized/atan.cc
     kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
     kernels/normalized/concatv2.cc

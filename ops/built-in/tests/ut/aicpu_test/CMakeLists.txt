@@ -63,6 +63,7 @@ set(_cpu_context
 set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/device/avg_pool1d_avg_matrix.cc
   ${CPU_KERNELS_DIR}/kernels/device/where.cc
+  ${CPU_KERNELS_DIR}/kernels/host/assign.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_nz.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_z.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractalz_3d.cc
@@ -70,11 +71,11 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_utils.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
   ${CPU_KERNELS_DIR}/kernels/host/no_op.cc
-  ${CPU_KERNELS_DIR}/kernels/host/assign.cc
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/atan.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cast.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ceil.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
@@ -166,9 +167,12 @@ set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_read_file.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_test_utils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
+  testcase/SpatialTransformer/src/SpatialTransformer_utest.cpp
   testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
   testcase/add/src/add_utest.cpp
   testcase/asin/src/asin_utest.cpp
+  testcase/assign/src/assign_utest.cpp
+  testcase/atan/src/atan_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
   testcase/cast/src/cast_utest.cpp
   testcase/ceil/src/ceil_utest.cpp
@@ -197,24 +201,21 @@ set(_cpu_kernels_ut_files
   testcase/masked_select_grad/src/masked_select_grad_utest.cpp
   testcase/mul/src/mul_utest.cpp
   testcase/no_op/src/no_op_utest.cpp
-  testcase/assign/src/assign_utest.cpp
   testcase/not_equal/src/not_equal_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
-  testcase/resize_bilinear/src/resize_bilinear_utest.cpp
   testcase/resize_bilinear/src/resize_bilinear_grad_utest.cpp
+  testcase/resize_bilinear/src/resize_bilinear_utest.cpp
   testcase/round/src/round_utest.cpp
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
-  testcase/SpatialTransformer/src/SpatialTransformer_utest.cpp
   testcase/split_v/src/split_v_utest.cpp
   testcase/strided_slice/src/strided_slice_utest.cpp
   testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
   testcase/top_k/src/top_k_utest.cpp
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp
-  testcase/trans_data/src/trans_data_utest.cpp
   testcase/trans_data/src/trans_data_utest.cpp
   testcase/where/src/where_utest.cpp
 )
