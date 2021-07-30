@@ -25,6 +25,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
+from impl.util.util_cube_dynamic import modify_w_range_max
 from tbe.common.register import register_param_generalization
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
@@ -417,6 +418,15 @@ def avg_pool_grad_generalization(orig_input_shape,
         tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] if tensor["ori_format"] == "NCHW" \
             else [-1, -1, -1, tensor["ori_shape"][3]]
         tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
+
+    # if over l1 size then modify dy h/w range
+    dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(out_grad,
+                                                                         kernel_matrix,
+                                                                         input_grad,
+                                                                         strides,
+                                                                         data_format,
+                                                                         "AvgPoolGrad")
+
     # get dx_range depends on dy_range
     dy_range = input_grad["range"]
     ori_data_format = input_grad["ori_format"]
@@ -443,6 +453,13 @@ def avg_pool_grad_generalization(orig_input_shape,
     conv2d_tranpose.get_attr_nchw(data_format)
     filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix["ori_shape"], kernel_matrix["ori_format"])
     _, dy_range_nchw = conv2d_tranpose.get_input_nchw(input_grad["ori_shape"], input_grad["ori_format"], dy_range)
+
+    dy_range_nchw[2] = [dy_range_nchw[2][0], min(dy_h_range_max, dy_range_nchw[2][1])]
+    if is_single_point:
+        dy_range_nchw[3] = [dy_w_range_max, dy_w_range_max]
+    else:
+        dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
+
     dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
     out_grad["range"] = [dx_range_nchw[0],
                          [out_grad["shape"][1], out_grad["shape"][1]],
