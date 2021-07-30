@@ -178,7 +178,7 @@ TEST_F(dynamic_rnn_grad_fusion_test, dynamic_rnn_grad_fusion_test_1) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("DynamicRNNGradFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("DynamicRNNGradAFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
   bool findBasicLSTMCellCStateGradV2 = false;
   bool findMatMulV2 = false;

@@ -91,10 +91,10 @@ namespace {
 
 // ----------------LSTM begin-------------------
 
-IMPLEMT_VERIFIER(LSTM, LSTMInferShape) {
+IMPLEMT_VERIFIER(LSTM, LSTMVerify) {
   return GRAPH_SUCCESS;
 }
-IMPLEMT_VERIFIER(LSTM, LSTMVerify) {
+IMPLEMT_VERIFIER(LSTM, LSTMInferShape) {
   int32_t output_size = 0;
   int32_t input_size = op.GetInputsSize();
   bool expose_hidden = false;

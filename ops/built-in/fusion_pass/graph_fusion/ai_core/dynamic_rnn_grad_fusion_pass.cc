@@ -40,7 +40,7 @@ int64_t cIdx1 = 1;
 vector<FusionPattern*> DynamicRNNGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicRNNGradFusionPass");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicRNNGradAFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
@@ -1622,5 +1622,5 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   return SUCCESS;
 }
 
-REGISTER_PASS("DynamicRNNGradFusionPass", BUILT_IN_GRAPH_PASS, DynamicRNNGradFusionPass);
+REGISTER_PASS("DynamicRNNGradAFusionPass", BUILT_IN_GRAPH_PASS, DynamicRNNGradFusionPass);
 }
