@@ -24,6 +24,7 @@ from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+DYNAMIC_UNRANK = [-2]
 # block length in number
 BLOCK_LENGTH = 32
 # max ub size
@@ -45,9 +46,12 @@ def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segme
     segment_ids_dtype = segment_ids.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "int16")
     para_check.check_dtype(dtype, check_list, param_name="x")
-    para_check.check_shape(shape, param_name="x")
     check_list_ids = ("int32")
     para_check.check_dtype(segment_ids_dtype, check_list_ids, param_name="segment_ids")
+    if list(shape) == DYNAMIC_UNRANK or list(segment_ids_shape) == DYNAMIC_UNRANK:
+        return True, ""
+    para_check.check_shape(shape, param_name="x")
+    para_check.check_shape(segment_ids_shape, param_name="segment_ids")
     if num_segments <= 0:
         error_manager_vector.raise_err_check_params_rules(kernel_name, 'num_segments must greater than 0',
                                                           "num_segments", num_segments)
@@ -116,6 +120,9 @@ def unsorted_segment_max_d(x, segment_ids, y, num_segments, kernel_name="unsorte
     dtype = x.get("dtype")
     segment_ids_shape = segment_ids.get("shape")
     segment_ids_dtype = segment_ids.get("dtype")
+
+    para_check.check_shape(shape, param_name="x")
+    para_check.check_shape(segment_ids_shape, param_name="segment_ids")
 
     segment_max_support = tbe_platform.api_check_support("te.lang.cce.unsorted_segment_max", "float32")
     if not segment_max_support:

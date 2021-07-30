@@ -23,6 +23,7 @@ from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+DYNAMIC_UNRANK = [-2]
 #block length in number
 BLOCK_LENGTH = 32
 #max ub size
@@ -46,6 +47,10 @@ def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segme
     para_check.check_dtype(dtype, check_list, param_name="x")
     check_list_ids = ("int32")
     para_check.check_dtype(segment_ids_dtype, check_list_ids, param_name="segment_ids")
+    if list(shape) == DYNAMIC_UNRANK or list(segment_ids_shape) == DYNAMIC_UNRANK:
+        return True, ""
+    para_check.check_shape(shape, param_name="x")
+    para_check.check_shape(segment_ids_shape, param_name="segment_ids")
     if num_segments <= 0:
         error_manager_vector.raise_err_check_params_rules(kernel_name, 'num_segments must greater than 0',
                                                           "num_segments", num_segments)

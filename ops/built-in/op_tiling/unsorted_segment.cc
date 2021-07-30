@@ -25,6 +25,7 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 
@@ -254,7 +255,6 @@ public:
             scalars[i].input_once_num = _floor_align_mask(res_ub_size / input_byte / (a + b) * a);
             scalars[i].output_once_num = _floor_align_mask(res_ub_size / input_byte / (a + b) * b);
         }
-        _get_select_keys_for_compile();
     }
     ~UnsortedSegmentTilingCal()
     {
@@ -271,7 +271,6 @@ public:
 
     int32_t ids_once_num;
     int32_t res_ub_size;
-    vector<map<string, int>> select_keys_for_compile;
     // ===================scalar param==============================
     CommonScalar scalars[UB_TEMPLATE_NUM];
     CommonScalar* obj_scalar;
@@ -314,77 +313,6 @@ public:
         scalar.repeat_time_last_part = _ceil_div(scalar.e_out_param.last, mask);
         scalar.ids_last_burst_len = _ceil_div(ids_num, BYTE_BLOCK / ids_ele_byte);
 
-    }
-
-    void _get_select_keys_for_compile()
-    {
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN.begin(),
-        SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN.begin(),
-        SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN.begin(),
-        SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN.begin(),
-        SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN.begin(),
-        SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN.begin(),
-        SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN.begin(),
-        SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN.end());
-
-        select_keys_for_compile.insert(select_keys_for_compile.end(),
-        SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID.begin(),
-        SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID.end());
     }
 
     vector<map<string, int>> _get_tiling_mode(int32_t num_segments_core_num)
@@ -567,6 +495,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
                             const nlohmann::json &op_compile_info_json,
                             OpRunInfo &run_info)
 {
+    PROFILING_TILING_INIT(op_type.c_str());
     GELOGI("op[%s] op tiling begin.", op_type.c_str());
     if (op_paras.inputs.empty()) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs is empty.");
@@ -606,6 +535,8 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     GELOGD("op[%s] e_size is %d", op_type.c_str(), e_size);
     const std::string &input_dtype = op_paras.inputs[0].tensor[0].dtype;
     const std::string &ids_dtype = op_paras.inputs[1].tensor[0].dtype;
+    PROFILING_TILING_AFTER_GET_SHAPE_REG();
+
     bool flag = False;
     // get input dtype
     EleByte input_ele_byte;
@@ -644,30 +575,19 @@ bool UnsortedSegmentTiling(const std::string &op_type,
             std::get<0>(op_paras.const_inputs.at(key_num_segments)));
     int32_t num_segments = *num_segments_ptr;
     GELOGD("op [%s] : num_segments=%d", op_type.c_str(), num_segments);
-
+    PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
     //==============================================
     // tiling params
     UnsortedSegmentTilingCal params(core_num, num_segments, int32_t(input_ele_byte), ids_size, e_size, ub_size);
 
-    for (int i = 0; i < UB_TEMPLATE_NUM; i++) {
-        params._get_tiling_params(i,  ids_ele_byte);
-    }
+    params._get_tiling_params(0,  ids_ele_byte);
     auto select_mode = params._get_tiling_mode(params.scalars[0].num_segments_core_num);
 
     float ub_use_rate = 0;
     for (auto the_mode : select_mode) {
+        params._get_tiling_params(the_mode["ub_div_id"],  ids_ele_byte);
         auto* scalar = &(params.scalars[the_mode["ub_div_id"]]);
         if (scalar->ub_use_rate > ub_use_rate) {
-            bool is_in_list = False;
-            for (auto select_key : params.select_keys_for_compile) {
-                if (the_mode["ub_div_id"] == select_key["ub_div_id"]) {
-                    is_in_list = True;
-                    break;
-                }
-            }
-            if (not is_in_list) {
-                continue;
-            }
             ub_use_rate = scalar->ub_use_rate;
             scalar->select_key = the_mode["select_key"];
             params.obj_scalar = scalar;
@@ -680,6 +600,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
 
     int32_t need_core_num = params.obj_scalar->e_out_loop_param.times *
         params.obj_scalar->num_segments_loop_param.times;
+    PROFILING_TILING_AFTER_CALCU_TILING_REG();
     // write tiling params to run_info
     params.write_tiling_params(run_info);
     // cout tiling params
@@ -691,6 +612,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     run_info.workspaces = workspace;
 
     GELOGI("op[%s] op tiling success.", op_type.c_str());
+    PROFILING_TILING_END();
     return true;
 }
 

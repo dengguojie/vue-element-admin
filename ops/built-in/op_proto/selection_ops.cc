@@ -35,6 +35,7 @@
 #include "graph/debug/ge_attr_define.h"
 #include "axis_util.h"
 #include "common_shape_fns.h"
+#include "util/vector_proto_profiling.h"
 
 #define ELLIPSIS_MASK_UPDATE(mask, new_mask, bit_ellipsis, i, pow_table, \
                              right_mov)                                  \
@@ -1263,6 +1264,7 @@ static void GetUnsortedSegmentSumConstValue(const Tensor& const_tensor, const Da
 }
 
 IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
+  PROFILING_PROTO_INIT(op.GetName().c_str());
   vector<string> input_infer_depends = {"num_segments"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
@@ -1297,6 +1299,7 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
   int64_t dim_idsize_input = shape_id.GetDimNum();
   int64_t dim_size_input = shape.GetDimNum();
   DataType input_dtype = op_desc->MutableInputDesc("x")->GetDataType();
+  PROFILING_PROTO_AFTER_GET_SHAPE_REG();
   vector<int64_t> shape_vector;
   if (IsUnknownRankShape(shape_vec) || IsUnknownRankShape(shape_id_vec)) {
     shape_vector.push_back(-2);
@@ -1321,12 +1324,13 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
     }
   }
 
+  PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
   GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc("y");
   ge::GeShape out_shape = ge::GeShape(shape_vector);
   tensordesc_output->SetShape(out_shape);
   tensordesc_output->SetDataType(input_dtype);
   tensordesc_output->SetShapeRange(out_range);
-
+  PROFILING_PROTO_END();
   return GRAPH_SUCCESS;
 }
 
@@ -1379,6 +1383,9 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumDInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(UnsortedSegmentSumD, UnsortedSegmentSumDInferShape);
+COMMON_INFER_FUNC_REG(UnsortedSegmentMinD, UnsortedSegmentSumDInferShape);
+COMMON_INFER_FUNC_REG(UnsortedSegmentMaxD, UnsortedSegmentSumDInferShape);
+COMMON_INFER_FUNC_REG(UnsortedSegmentProdD, UnsortedSegmentSumDInferShape);
 // ----------------UnsortedSegmentSumD END------------------
 
 // ----------------StridedSliceD Op Begin-------------------
@@ -3115,111 +3122,6 @@ IMPLEMT_COMMON_INFERFUNC(InplaceSubDInferShape) {
 
 COMMON_INFER_FUNC_REG(InplaceSubD, InplaceSubDInferShape);
 // ----------------InplaceSubD  END-------------------
-
-// ----------------UnsortedSegmentMinD-------------------
-IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentMinDInferShape) {
-  auto input_desc = op.GetInputDesc("x");
-  const std::string kNumSegmentsName = "num_segments";
-  int64_t num_segments;
-  if (op.GetAttr(kNumSegmentsName, num_segments) != GRAPH_SUCCESS) {
-    std::string err_msg = GetInputInvalidErrMsg(kNumSegmentsName.c_str());
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-
-  Shape shape = op.GetInputDesc("x").GetShape();
-  Shape shape_id = op.GetInputDesc("segment_ids").GetShape();
-  int64_t dim_idsize_input = shape_id.GetDimNum();
-  int64_t dim_size_input = shape.GetDimNum();
-  vector<int64_t> shape_vector;
-  shape_vector.push_back(num_segments);
-  for (int i = dim_idsize_input; i < dim_size_input; i++) {
-    shape_vector.push_back(shape.GetDim(i));
-  }
-  Shape output_shape(shape_vector);
-  DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(output_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    std::string err_msg = UpdateParamErrMsg("y");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(UnsortedSegmentMinD, UnsortedSegmentMinDInferShape);
-// ----------------UnsortedSegmentMinD END-------------------
-
-// ----------------UnsortedSegmentMaxD-------------------
-IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentMaxDInferShape) {
-  auto input_desc = op.GetInputDesc("x");
-  const std::string kNumSegmentsName = "num_segments";
-  int64_t num_segments;
-  if (op.GetAttr(kNumSegmentsName, num_segments) != GRAPH_SUCCESS) {
-    std::string err_msg = GetInputInvalidErrMsg(kNumSegmentsName.c_str());
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-  Shape shape = op.GetInputDesc("x").GetShape();
-  Shape shape_id = op.GetInputDesc("segment_ids").GetShape();
-  int64_t dim_idsize_input = shape_id.GetDimNum();
-  int64_t dim_size_input = shape.GetDimNum();
-  vector<int64_t> shape_vector;
-  shape_vector.push_back(num_segments);
-  for (int i = dim_idsize_input; i < dim_size_input; i++) {
-    shape_vector.push_back(shape.GetDim(i));
-  }
-  Shape output_shape(shape_vector);
-  DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(output_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    std::string err_msg = UpdateParamErrMsg("y");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-COMMON_INFER_FUNC_REG(UnsortedSegmentMaxD, UnsortedSegmentMaxDInferShape);
-// ----------------UnsortedSegmentMaxD END-------------------
-
-// ----------------UnsortedSegmentProdD----------------------
-IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentProdDInferShape) {
-  auto input_desc = op.GetInputDesc("x");
-  const std::string kNumSegmentsName = "num_segments";
-  int64_t num_segments;
-  if (op.GetAttr(kNumSegmentsName, num_segments) != GRAPH_SUCCESS) {
-    std::string err_msg = GetInputInvalidErrMsg(kNumSegmentsName.c_str());
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-
-  Shape shape = op.GetInputDesc("x").GetShape();
-  Shape shape_id = op.GetInputDesc("segment_ids").GetShape();
-  int64_t dim_idsize_input = shape_id.GetDimNum();
-  int64_t dim_size_input = shape.GetDimNum();
-  vector<int64_t> shape_vector;
-  shape_vector.push_back(num_segments);
-  for (int i = dim_idsize_input; i < dim_size_input; i++) {
-    shape_vector.push_back(shape.GetDim(i));
-  }
-  Shape output_shape(shape_vector);
-  DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(output_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    std::string err_msg = UpdateParamErrMsg("y");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(UnsortedSegmentProdD, UnsortedSegmentProdDInferShape);
 
 // ----------------ScatterNDNonAliasingAdd-------------------
 IMPLEMT_VERIFIER(ScatterNonAliasingAdd, ScatterNonAliasingAddVerify) {
